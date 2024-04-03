@@ -16,6 +16,23 @@
 #define __AWH_OPERATING_SYSTEM__
 
 /**
+ * Стандартные модули
+ */
+#include <memory>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <unistd.h>
+
+// Если используется BOOST
+#ifdef USE_BOOST_CONVERT
+	#include <boost/locale/encoding_utf.hpp>
+// Если нужно использовать стандартную библиотеку
+#else
+	#include <codecvt>
+#endif
+
+/**
  * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
@@ -68,23 +85,6 @@
 	 * Файловый разделитель UNIX-подобных систем
 	 */
 	#define FS_SEPARATOR "/"
-#endif
-
-/**
- * Стандартные модули
- */
-#include <memory>
-#include <vector>
-#include <string>
-#include <cstring>
-#include <unistd.h>
-
-// Если используется BOOST
-#ifdef USE_BOOST_CONVERT
-	#include <boost/locale/encoding_utf.hpp>
-// Если нужно использовать стандартную библиотеку
-#else
-	#include <codecvt>
 #endif
 
 // Подписываемся на стандартное пространство имён
