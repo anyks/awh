@@ -1713,10 +1713,10 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 									cout << " WS2 SESSION " << i->second.get() << endl;
 
 								// Выполняем поиск брокера в списке активных сессий
-								auto i = this->_sessions.find(bid);
+								auto j = this->_sessions.find(bid);
 								// Если активная сессия найдена
-								if(i != this->_sessions.end())
-									cout << " HTTP2 SESSION " << i->second.get() << endl;
+								if(j != this->_sessions.end())
+									cout << " HTTP2 SESSION " << j->second.get() << endl;
 								
 								// Выполняем передачу данных клиенту Websocket
 								return this->_ws2.sendMessage(bid, message, text);
