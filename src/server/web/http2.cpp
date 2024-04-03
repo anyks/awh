@@ -1707,7 +1707,7 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 							case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 								
 								
-								/*
+								
 								// Выполняем поиск брокера в списке активных сессий
 								auto j = this->_sessions.find(bid);
 								// Если активная сессия найдена
@@ -1721,11 +1721,11 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 										cout << " WS2 SESSION " << i->second.get() << endl;
 
 										// Выполняем копирование контекста сессии HTTP/2
-										(* i->second.get()) = (* j->second.get());
+										// (* i->second.get()) = (* j->second.get());
 									}
 
 								}
-								*/
+								
 								
 								// Выполняем передачу данных клиенту Websocket
 								return this->_ws2.sendMessage(bid, message, text);

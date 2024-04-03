@@ -26,7 +26,7 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Выполняем активацию HTTP/2 протокола
-		// web2_t::connectEvents(bid, sid);
+		web2_t::connectEvents(bid, sid);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
 		auto i = this->_sessions.find(bid);
 		// Если проктокол интернета HTTP/2 инициализирован для клиента
