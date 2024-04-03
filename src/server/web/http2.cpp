@@ -1706,17 +1706,25 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 							// Если протокол соответствует протоколу Websocket
 							case static_cast <uint8_t> (agent_t::WEBSOCKET): {
 								
-								// Выполняем поиск брокера в списке активных сессий
-								auto i = this->_ws2._sessions.find(bid);
-								// Если активная сессия найдена
-								if(i != this->_ws2._sessions.end())
-									cout << " WS2 SESSION " << i->second.get() << endl;
+								
 
 								// Выполняем поиск брокера в списке активных сессий
 								auto j = this->_sessions.find(bid);
 								// Если активная сессия найдена
-								if(j != this->_sessions.end())
+								if(j != this->_sessions.end()){
 									cout << " HTTP2 SESSION " << j->second.get() << endl;
+
+									// Выполняем поиск брокера в списке активных сессий
+									auto i = this->_ws2._sessions.find(bid);
+									// Если активная сессия найдена
+									if(i != this->_ws2._sessions.end()){
+										cout << " WS2 SESSION " << i->second.get() << endl;
+
+										// Выполняем копирование контекста сессии HTTP/2
+										(* i->second.get()) = (* j->second.get());
+									}
+
+								}
 								
 								// Выполняем передачу данных клиенту Websocket
 								return this->_ws2.sendMessage(bid, message, text);
