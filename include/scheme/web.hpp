@@ -18,14 +18,15 @@
 /**
  * Стандартные модули
  */
+#include <map>
 #include <ctime>
 #include <vector>
 
 /**
  * Наши модули
  */
-#include <sys/buffer.hpp>
 #include <http/server.hpp>
+#include <sys/buffer.hpp>
 #include <scheme/server.hpp>
 
 // Подписываемся на стандартное пространство имён
