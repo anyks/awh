@@ -501,7 +501,7 @@ namespace awh {
 				map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				// Список активных сессий HTTP/2
-				map <uint64_t, unique_ptr <http2_t>> _sessions;
+				map <uint64_t, shared_ptr <http2_t>> _sessions;
 			protected:
 				/**
 				 * statusEvents Метод обратного вызова при активации ядра сервера

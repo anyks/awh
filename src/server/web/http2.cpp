@@ -65,7 +65,8 @@ void awh::server::Http2::disconnectEvents(const uint64_t bid, const uint16_t sid
 			// Если активная сессия найдена
 			if(j != this->_ws2._sessions.end())
 				// Выполняем закрытие подключения
-				(* j->second.get()) = nullptr;
+				// (* j->second.get()) = nullptr;
+				j->second.reset(nullptr);
 		}
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
@@ -493,7 +494,8 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 									// Если сессия была удалена
 									if(!i->second->is())
 										// Выполняем копирование контекста сессии HTTP/2
-										(* this->_sessions.at(bid).get()) = (* i->second.get());
+										// (* this->_sessions.at(bid).get()) = (* i->second.get());
+										this->_sessions.at(bid) = i->second;
 								}
 							} break;
 						}
@@ -1060,7 +1062,10 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 							// Выполняем создание нового объекта сессии HTTP/2
 							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <awh::http2_t> (new awh::http2_t(this->_fmk, this->_log)));
 							// Выполняем копирование контекста сессии HTTP/2
-							(* ret.first->second.get()) = (* i->second.get());
+							// (* ret.first->second.get()) = (* i->second.get());
+
+							ret.first->second = i->second;
+
 						}
 						// Выполняем установку сетевого ядра
 						this->_ws2._core = this->_core;
@@ -1266,7 +1271,8 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 									// Если активная сессия найдена
 									if(i != this->_ws2._sessions.end())
 										// Выполняем закрытие подключения
-										(* i->second.get()) = nullptr;
+										// (* i->second.get()) = nullptr;
+										i->second.reset(nullptr);
 									// Выполняем удаление созданной ранее сессии HTTP/2
 									this->_sessions.erase(bid);
 									// Выполняем удаление отключённого брокера Websocket-клиента
@@ -2629,7 +2635,8 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 							// Если активная сессия найдена
 							if(i != this->_ws2._sessions.end())
 								// Выполняем закрытие подключения
-								(* i->second.get()) = nullptr;
+								// (* i->second.get()) = nullptr;
+								i->second.reset(nullptr);
 						} break;
 					}
 				}
