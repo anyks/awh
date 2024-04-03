@@ -694,12 +694,10 @@ int awh::Http2::close(nghttp2_session * session, const int32_t sid, const uint32
 				self->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_HTTP_1_1_REQUIRED, self->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED"));
 		} break;
 	}
-	/*
 	// Если функция обратного вызова установлена
 	if(self->_callbacks.is("close"))
 		// Выполняем функцию обратного вызова
 		return self->_callbacks.call <int (const int32_t, const error_t)> ("close", sid, code);
-	*/
 	// Выводим значение по умолчанию
 	return 0;
 }
@@ -1924,9 +1922,6 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
  * free Метод очистки активной сессии
  */
 void awh::Http2::free() noexcept {
-	
-	cout << " ^^^^^ FREE1 " << endl;
-	
 	// Если сессия создана удачно
 	if(this->_session != nullptr){
 		// Выполняем удаление сессии
@@ -1938,8 +1933,6 @@ void awh::Http2::free() noexcept {
 	if(!this->_payloads.empty())
 		// Выполняем очистку очередей полезной нагрузки
 		this->_payloads.clear();
-	
-	cout << " ^^^^^ FREE2 " << endl;
 }
 /**
  * close Метод закрытия подключения
@@ -1947,9 +1940,6 @@ void awh::Http2::free() noexcept {
 void awh::Http2::close() noexcept {
 	// Если активное событие не установлено
 	if(!(this->_close = (this->_event != event_t::NONE))){
-		
-		cout << " ^^^^^ CLOSE1 " << endl;
-		
 		// Если сессия создана удачно
 		if(this->_session != nullptr){
 			// Результат завершения сессии
@@ -1963,9 +1953,6 @@ void awh::Http2::close() noexcept {
 					// Выполняем функцию обратного вызова
 					this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_CANCEL, this->_fmk->format("Could not terminate session: %s", nghttp2_strerror(rv)));
 			}
-			
-			cout << " ^^^^^ CLOSE2 " << endl;
-			
 			// Выполняем удаление созданную ранее сессию
 			this->free();
 		}

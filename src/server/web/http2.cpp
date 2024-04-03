@@ -1672,6 +1672,9 @@ void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) 
  * @return        результат отправки сообщения
  */
 bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+	
+	return false;
+	
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
