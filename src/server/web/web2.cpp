@@ -46,11 +46,6 @@ void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid) no
 			if(this->_core->proto(bid) != engine_t::proto_t::HTTP2)
 				// Выходим из функции
 				return;
-			
-
-			cout << " ************** connectEvents " << endl;
-			
-			
 			// Создаём локальный контейнер функций обратного вызова
 			fn_t callbacks(this->_log);
 			// Выполняем установку функции обратного вызова начала открытии потока

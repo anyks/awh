@@ -64,9 +64,7 @@ void awh::server::Http2::disconnectEvents(const uint64_t bid, const uint16_t sid
 			auto j = this->_ws2._sessions.find(bid);
 			// Если активная сессия найдена
 			if(j != this->_ws2._sessions.end())
-				// Выполняем закрытие подключения
-				// (* j->second.get()) = nullptr;
-				// j->second.reset(nullptr);
+				// Выполняем удаление сессии подключения
 				this->_ws2._sessions.erase(j);
 		}
 		// Выполняем отключение подключившегося брокера
@@ -333,9 +331,6 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
  * @return      статус полученных данных
  */
 int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
-	
-	cout << " &&&&&&&&& closedSignal " << endl;
-	
 	// Выполняем закрытие потока
 	this->_scheme.closeStream(sid, bid);
 	// Если разрешено выполнить остановку
@@ -453,9 +448,6 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 		case static_cast <uint8_t> (awh::http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
-				
-				cout << " &&&&&&&&& END SEND " << endl;
-				
 				// Получаем параметры активного клиента
 				scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
@@ -495,7 +487,6 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 									// Если сессия была удалена
 									if(!i->second->is())
 										// Выполняем копирование контекста сессии HTTP/2
-										// (* this->_sessions.at(bid).get()) = (* i->second.get());
 										this->_sessions.at(bid) = i->second;
 								}
 							} break;
@@ -530,9 +521,6 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
 									// Если мы получили неустановленный флаг или флаг завершения потока
 									if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
-										
-										cout << " &&&&&&&&& END GET " << endl;
-										
 										// Извлекаем данные потока
 										scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
 										// Если поток получен удачно
@@ -1063,10 +1051,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 							// Выполняем создание нового объекта сессии HTTP/2
 							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <awh::http2_t> (new awh::http2_t(this->_fmk, this->_log)));
 							// Выполняем копирование контекста сессии HTTP/2
-							// (* ret.first->second.get()) = (* i->second.get());
-
 							ret.first->second = i->second;
-
 						}
 						// Выполняем установку сетевого ядра
 						this->_ws2._core = this->_core;
@@ -1271,9 +1256,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 									auto i = this->_ws2._sessions.find(bid);
 									// Если активная сессия найдена
 									if(i != this->_ws2._sessions.end())
-										// Выполняем закрытие подключения
-										// (* i->second.get()) = nullptr;
-										// i->second.reset(nullptr);
+										// Выполняем удаление устаревшей сессии
 										this->_ws2._sessions.erase(i);
 									// Выполняем удаление созданной ранее сессии HTTP/2
 									this->_sessions.erase(bid);
@@ -1721,38 +1704,9 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 						// Определяем тип активного протокола
 						switch(static_cast <uint8_t> (i->second)){
 							// Если протокол соответствует протоколу Websocket
-							case static_cast <uint8_t> (agent_t::WEBSOCKET): {
-								
-								
-								
-								// Выполняем поиск брокера в списке активных сессий
-								auto j = this->_sessions.find(bid);
-								// Если активная сессия найдена
-								if(j != this->_sessions.end()){
-									cout << " HTTP2 SESSION " << j->second.get() << endl;
-
-									// Выполняем поиск брокера в списке активных сессий
-									auto i = this->_ws2._sessions.find(bid);
-									// Если активная сессия найдена
-									if(i != this->_ws2._sessions.end()){
-										cout << " WS2 SESSION " << i->second.get() << endl;
-
-										// Выполняем копирование контекста сессии HTTP/2
-										// (* i->second.get()) = (* j->second.get());
-									}
-
-								}
-								/*
-								scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_ws2._scheme.get(bid));
-
-								this->send(options->sid, bid, message.data(), message.size(), false);
-								
-								return false;
-								*/
-								
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
 								// Выполняем передачу данных клиенту Websocket
 								return this->_ws2.sendMessage(bid, message, text);
-							}
 						}
 					}
 				} break;
@@ -2636,9 +2590,7 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 							auto i = this->_ws2._sessions.find(bid);
 							// Если активная сессия найдена
 							if(i != this->_ws2._sessions.end())
-								// Выполняем закрытие подключения
-								// (* i->second.get()) = nullptr;
-								// i->second.reset(nullptr);
+								// Выполняем удаление сессии HTTP/2
 								this->_ws2._sessions.erase(i);
 						} break;
 					}
