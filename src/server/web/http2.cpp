@@ -485,9 +485,13 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								// Если активная сессия найдена
 								if(i != this->_ws2._sessions.end()){
 									// Если сессия была удалена
-									if(!i->second->is())
+									if(!i->second->is()){
+										
+										cout << " ^^^^^^^^^^^^^^ " << endl;
+										
 										// Выполняем копирование контекста сессии HTTP/2
 										(* this->_sessions.at(bid).get()) = (* i->second.get());
+									}
 								}
 							} break;
 						}
@@ -1048,6 +1052,9 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						auto i = this->_sessions.find(bid);
 						// Если активная сессия найдена
 						if(i != this->_sessions.end()){
+							
+							cout << " &&&&&&&&&&1 " << endl;
+							
 							// Выполняем создание нового объекта сессии HTTP/2
 							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <awh::http2_t> (new awh::http2_t(this->_fmk, this->_log)));
 							// Выполняем копирование контекста сессии HTTP/2
@@ -1672,9 +1679,6 @@ void awh::server::Http2::sendError(const uint64_t bid, const ws::mess_t & mess) 
  * @return        результат отправки сообщения
  */
 bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
-	
-	return false;
-	
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
