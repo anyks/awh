@@ -1031,8 +1031,6 @@ bool awh::Http2::submit(const int32_t sid, const flag_t flag) noexcept {
 			// Выводим результат
 			return false;
 		}
-
-		/*
 		// Если сессия инициализированна
 		if(this->_session != nullptr){
 			// Фиксируем отправленный результат
@@ -1051,7 +1049,6 @@ bool awh::Http2::submit(const int32_t sid, const flag_t flag) noexcept {
 			// Выводим результат
 			return true;
 		}
-		*/
 	}
 	// Выводим результат
 	return false;
