@@ -910,6 +910,9 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 		}
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+		
+		cout << " *********** SEND HTTP2 " << offset << endl;
+		
 		// Выводим результат количество отправленных байт
 		return offset;
 	// Выводим сообщение об ошибке
@@ -1028,6 +1031,8 @@ bool awh::Http2::submit(const int32_t sid, const flag_t flag) noexcept {
 			// Выводим результат
 			return false;
 		}
+
+		/*
 		// Если сессия инициализированна
 		if(this->_session != nullptr){
 			// Фиксируем отправленный результат
@@ -1046,6 +1051,7 @@ bool awh::Http2::submit(const int32_t sid, const flag_t flag) noexcept {
 			// Выводим результат
 			return true;
 		}
+		*/
 	}
 	// Выводим результат
 	return false;

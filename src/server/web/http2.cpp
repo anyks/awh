@@ -1734,15 +1734,16 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 									}
 
 								}
-
+								/*
 								scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_ws2._scheme.get(bid));
 
 								this->send(options->sid, bid, message.data(), message.size(), false);
 								
 								return false;
+								*/
 								
 								// Выполняем передачу данных клиенту Websocket
-								// return this->_ws2.sendMessage(bid, message, text);
+								return this->_ws2.sendMessage(bid, message, text);
 							}
 						}
 					}
