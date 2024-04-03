@@ -331,6 +331,9 @@ int awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) noexc
  * @return      статус полученных данных
  */
 int awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
+	
+	cout << " &&&&&&&&& closedSignal " << endl;
+	
 	// Выполняем закрытие потока
 	this->_scheme.closeStream(sid, bid);
 	// Если разрешено выполнить остановку
@@ -448,6 +451,9 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 		case static_cast <uint8_t> (awh::http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
+				
+				cout << " &&&&&&&&& END SEND " << endl;
+				
 				// Получаем параметры активного клиента
 				scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 				// Если параметры активного клиента получены
@@ -521,6 +527,9 @@ int awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const
 								case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
 									// Если мы получили неустановленный флаг или флаг завершения потока
 									if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
+										
+										cout << " &&&&&&&&& END GET " << endl;
+										
 										// Извлекаем данные потока
 										scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
 										// Если поток получен удачно
@@ -1726,9 +1735,10 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 
 								}
 								
+								return false;
 								
 								// Выполняем передачу данных клиенту Websocket
-								return this->_ws2.sendMessage(bid, message, text);
+								// return this->_ws2.sendMessage(bid, message, text);
 							}
 						}
 					}

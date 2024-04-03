@@ -1922,6 +1922,9 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
  * free Метод очистки активной сессии
  */
 void awh::Http2::free() noexcept {
+	
+	cout << " ========= FREE " << endl;
+	
 	// Если сессия создана удачно
 	if(this->_session != nullptr){
 		// Выполняем удаление сессии
