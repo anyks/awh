@@ -166,7 +166,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						// Выполняем парсинг полученных данных
 						const size_t bytes = options->http.parse(static_cast <buffer_t::data_t> (options->buffer), static_cast <size_t> (options->buffer));
 						// Если все данные получены
-						if(options->http.is(http_t::state_t::END)){
+						if((bytes > 0) && options->http.is(http_t::state_t::END)){
 							// Получаем флаг постоянного подключения
 							const bool alive = options->http.is(http_t::state_t::ALIVE);
 							// Если включён режим отладки

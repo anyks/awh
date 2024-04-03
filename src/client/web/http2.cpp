@@ -318,7 +318,7 @@ int awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direc
 												// Если тело ответа существует
 												if(!i->second->http.empty(awh::http_t::suite_t::BODY))
 													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<body %u>", i->second->http.body().size()) << endl << endl;
+													cout << this->_fmk->format("<body %zu>", i->second->http.body().size()) << endl << endl;
 												// Иначе устанавливаем перенос строки
 												else cout << endl;
 											}

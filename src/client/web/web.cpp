@@ -232,7 +232,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 						// Выполняем парсинг полученных данных
 						const size_t bytes = this->_scheme.proxy.http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 						// Если все данные получены
-						if(this->_scheme.proxy.http.is(http_t::state_t::END)){
+						if((bytes > 0) && this->_scheme.proxy.http.is(http_t::state_t::END)){
 							// Выполняем очистку буфера данных
 							this->_buffer.clear();
 							/**

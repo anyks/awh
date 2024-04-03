@@ -204,8 +204,6 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								{
 									// Выполняем создание объекта для вывода HTTP-запроса
 									http_t http(this->_fmk, this->_log);
-									// Устанавливаем тело ответа
-									http.body(options->http.body());
 									// Устанавливаем параметры запроса
 									http.request(options->http.request());
 									// Устанавливаем заголовки запроса
@@ -218,14 +216,16 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 									const auto & request = http.process(http_t::process_t::REQUEST, http.request());
 									// Если параметры запроса получены
 									if(!request.empty()){
+										// Получаем размер тела сообщения
+										const size_t bodySize = options->http.body().size();
 										// Выводим заголовок запроса
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 										// Выводим параметры запроса
 										cout << string(request.begin(), request.end()) << endl;
 										// Если тело запроса существует
-										if(!http.empty(awh::http_t::suite_t::BODY))
+										if(bodySize > 0)
 											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<body %u>", http.body().size()) << endl << endl;
+											cout << this->_fmk->format("<body %zu>", bodySize) << endl << endl;
 										// Иначе устанавливаем перенос строки
 										else cout << endl;
 									}

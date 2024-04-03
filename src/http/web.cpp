@@ -123,7 +123,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
 									if(this->_callbacks.is("header"))
 										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, std::move(key), std::move(val));
+										this->_callbacks.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, key, val);
 									// Выполняем поиск ключа заголовка в списке трейлеров
 									auto i = this->_trailers.find(key);
 									// Если трейлер найден в списке
@@ -133,7 +133,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									// Если трейлер не соответствует
 									else {
 										// Устанавливаем код внутренней ошибки сервера
-										this->_res.code = 500;
+										// this->_res.code = 500;
 										// Стираем сообщение ответа сервера
 										this->_res.message = this->_fmk->format("Trailer \"%s\" does not exist", key.c_str());
 										// Выполняем очистку списка трейлеров

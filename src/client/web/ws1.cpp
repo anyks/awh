@@ -191,8 +191,6 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 							{
 								// Выполняем создание объекта для вывода HTTP-ответа
 								http_t http(this->_fmk, this->_log);
-								// Устанавливаем тело ответа
-								http.body(this->_http.body());
 								// Устанавливаем заголовки ответа
 								http.headers(this->_http.headers());
 								// Устанавливаем параметры ответа
@@ -205,17 +203,20 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 								const auto & response = http.process(http_t::process_t::RESPONSE, http.response());
 								// Если параметры ответа получены
 								if(!response.empty()){
+									// Получаем размер тела сообщения
+									const size_t bodySize = this->_http.body().size();
 									// Выводим заголовок ответа
 									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 									// Выводим параметры ответа
-									cout << string(response.begin(), response.end()) << endl << endl;
+									cout << string(response.begin(), response.end()) << endl;
 									// Если тело ответа существует
-									if(!http.empty(awh::http_t::suite_t::BODY))
+									if(bodySize > 0)
 										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<body %u>", http.body().size()) << endl << endl;
+										cout << this->_fmk->format("<body %zu>", bodySize) << endl << endl;
 									// Иначе устанавливаем перенос строки
 									else cout << endl;
 								}
+								
 							}
 						#endif
 						// Выполняем препарирование полученных данных

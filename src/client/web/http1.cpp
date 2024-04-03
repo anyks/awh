@@ -132,7 +132,7 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 								// Выполняем парсинг полученных данных
 								const size_t bytes = this->_http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 								// Если все данные получены
-								if((completed = this->_http.is(http_t::state_t::END))){
+								if((bytes > 0) && (completed = this->_http.is(http_t::state_t::END))){
 									/**
 									 * Если включён режим отладки
 									 */
@@ -145,11 +145,11 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 												// Выводим заголовок ответа
 												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 												// Выводим параметры ответа
-												cout << string(response.begin(), response.end()) << endl << endl;
+												cout << string(response.begin(), response.end()) << endl;
 												// Если тело ответа существует
 												if(!this->_http.empty(awh::http_t::suite_t::BODY))
 													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
+													cout << this->_fmk->format("<body %zu>", this->_http.body().size()) << endl << endl;
 												// Иначе устанавливаем перенос строки
 												else cout << endl;
 											}
