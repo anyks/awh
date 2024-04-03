@@ -656,7 +656,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 						break;
 				}
 				// Закрываем пайп
-				_wpclose(stream);
+				_pclose(stream);
 			}
 		#endif
 	}
