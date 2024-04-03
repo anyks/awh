@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <map>
 #include <ctime>
 #include <vector>
 
