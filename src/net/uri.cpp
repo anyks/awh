@@ -659,7 +659,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 	map <flag_t, string> result;
 	// Если URI передан
 	if(!uri.empty()){
-		// Выполняем проверку электронной почты
+		// Выполняем проверку строки URI для сплита
 		const auto & match = this->_regexp.exec(this->_fmk->replace(uri, " ", "%20"), this->_uri);
 		// Если результат получен
 		if(!match.empty()){
@@ -1011,7 +1011,7 @@ string awh::URI::joinPath(const vector <string> & path, const string & delim) co
 }
 /**
  * params Метод получения параметров URI
- * @param uri    для получения параметров
+ * @param uri    URI для получения параметров
  * @param schema протокол передачи данных
  * @return       параметры полученные из URI
  */
@@ -1020,7 +1020,7 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 	params_t result;
 	// Если URI передан
 	if(!uri.empty()){
-		// Выполняем проверку электронной почты
+		// Выполняем проверку URI для получения параметров
 		const auto & match = this->_regexp.exec(uri, this->_params);
 		// Если результат получен
 		if(!match.empty()){
@@ -1037,25 +1037,45 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 			// Если порт не получен но указана схема
 			else if(!schema.empty()){
 				// Если схема принадлежит зашифрованному HTTP серверу
-				if(this->_fmk->compare(schema, "https")) result.port = 443;
+				if(this->_fmk->compare(schema, "https"))
+					// Выполняем установку порта по умолчанию
+					result.port = 443;
 				// Если схема принадлежит не зашифрованному HTTP серверу
-				else if(this->_fmk->compare(schema, "http")) result.port = 80;
+				else if(this->_fmk->compare(schema, "http"))
+					// Выполняем установку порта по умолчанию
+					result.port = 80;
 				// Если схема принадлежит зашифрованному WebSocket серверу
-				else if(this->_fmk->compare(schema, "wss")) result.port = 443;
+				else if(this->_fmk->compare(schema, "wss"))
+					// Выполняем установку порта по умолчанию
+					result.port = 443;
 				// Если схема принадлежит не зашифрованному WebSocket серверу
-				else if(this->_fmk->compare(schema, "ws")) result.port = 80;
+				else if(this->_fmk->compare(schema, "ws"))
+					// Выполняем установку порта по умолчанию
+					result.port = 80;
 				// Если схема принадлежит FTP серверу
-				else if(this->_fmk->compare(schema, "ftp")) result.port = 21;
+				else if(this->_fmk->compare(schema, "ftp"))
+					// Выполняем установку порта по умолчанию
+					result.port = 21;
 				// Если схема принадлежит MQTT брокеру сообщений
-				else if(this->_fmk->compare(schema, "mqtt")) result.port = 1883;
+				else if(this->_fmk->compare(schema, "mqtt"))
+					// Выполняем установку порта по умолчанию
+					result.port = 1883;
 				// Если схема принадлежит адресу электронной почты
-				else if(this->_fmk->compare(schema, "mailto")) result.port = 25;
+				else if(this->_fmk->compare(schema, "mailto"))
+					// Выполняем установку порта по умолчанию
+					result.port = 25;
 				// Если схема принадлежит Redis базе данных
-				else if(this->_fmk->compare(schema, "redis")) result.port = 6379;
+				else if(this->_fmk->compare(schema, "redis"))
+					// Выполняем установку порта по умолчанию
+					result.port = 6379;
 				// Если схема принадлежит SOCKS5 прокси серверу
-				else if(this->_fmk->compare(schema, "socks5")) result.port = 1080;
+				else if(this->_fmk->compare(schema, "socks5"))
+					// Выполняем установку порта по умолчанию
+					result.port = 1080;
 				// Если схема принадлежит PostgreSQL базе данных
-				else if(this->_fmk->compare(schema, "postgresql")) result.port = 5432;
+				else if(this->_fmk->compare(schema, "postgresql"))
+					// Выполняем установку порта по умолчанию
+					result.port = 5432;
 			// Устанавливаем порт по умолчанию
 			} else result.port = 80;
 			// Если пароль получен а пользователь нет

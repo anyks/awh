@@ -264,7 +264,7 @@ namespace awh {
 		public:
 			/**
 			 * params Метод получения параметров URI
-			 * @param uri    для получения параметров
+			 * @param uri    URI для получения параметров
 			 * @param schema протокол передачи данных
 			 * @return       параметры полученные из URI
 			 */

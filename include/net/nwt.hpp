@@ -113,7 +113,7 @@ namespace awh {
 			void zones(const set <string> & zones) noexcept;
 		public:
 			/**
-			 * parse Метод парсинга URI строки
+			 * parse Метод парсинга URI-строки
 			 * @param text текст для парсинга
 			 * @return     параметры полученные в результате парсинга
 			 */

@@ -519,7 +519,7 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 	type_t result = type_t::NONE;
 	// Если хост передан
 	if(!host.empty()){
-		// Выполняем проверку электронной почты
+		// Выполняем проверку хоста
 		const auto & match = this->_regexp.exec(host, this->_exp);
 		// Если результат получен
 		if(!match.empty()){
