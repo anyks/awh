@@ -371,9 +371,15 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 			// Определяем статус режима работы
 			switch(static_cast <uint8_t> (this->_state)){
 				// Если передан режим ожидания получения запроса
-				case static_cast <uint8_t> (state_t::QUERY): this->_separator = ' '; break;
+				case static_cast <uint8_t> (state_t::QUERY):
+					// Устанавливаем разделитель
+					this->_separator = ' ';
+				break;
 				// Если передан режим получения заголовков
-				case static_cast <uint8_t> (state_t::HEADERS): this->_separator = ':'; break;
+				case static_cast <uint8_t> (state_t::HEADERS):
+					// Устанавливаем разделитель
+					this->_separator = ':';
+				break;
 			}
 			/**
 			 * Выполняем парсинг заголовков запроса
@@ -448,7 +454,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					// Выходим из функции
 					return;
 				// Если необходимо  получить оставшиеся данные
-				} else {
+				} else if((size > 0) && (this->_pos[0] > -1)) {
 					// Определяем статус режима работы
 					switch(static_cast <uint8_t> (this->_state)){
 						// Если передан режим ожидания получения запроса
@@ -678,8 +684,10 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 		char letter = 0, old = 0;
 		// Смещение в буфере и длина полученной строки
 		size_t offset = 0, length = 0, count = 0;
-		// Выполняем сброс массива сепараторов
-		::memset(this->_pos, -1, sizeof(this->_pos));
+		// Если позиция ещё не сброшена
+		if((this->_pos[0] > -1) && (this->_pos[1] > -1))
+			// Выполняем сброс массива сепараторов
+			::memset(this->_pos, -1, sizeof(this->_pos));
 		// Переходим по всему буферу
 		for(size_t i = 0; i < size; i++){
 			// Получаем значение текущей буквы
@@ -707,12 +715,18 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 			if((i > 0) && (letter == '\n')){
 				// Если предыдущая буква была возвратом каретки, уменьшаем длину строки
 				length = ((old == '\r' ? i - 1 : i) - offset);
+				/*
 				// Если символ является последним и он не является переносом строки
 				if((i == (size - 1)) && (letter != '\n'))
 					// Увеличиваем общий размер обработанных байт
 					length++;
+				*/
+				// Если данные не получены но мы дошли до конца
+				if((length == 0) && (old == '\r') && (letter == '\n'))
+					// Выполняем функцию обратного вызова
+					callback(nullptr, 0, i + 1, true);
 				// Если длина слова получена, выводим полученную строку
-				callback(buffer + offset, length, i + 1, stop);
+				else callback(buffer + offset, length, i + 1, stop);
 				// Если массив сепараторов получен
 				if(this->_separator != '\0'){
 					// Выполняем сброс количество найденных сепараторов
