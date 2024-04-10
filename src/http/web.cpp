@@ -722,11 +722,13 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 					length++;
 				*/
 				// Если данные не получены но мы дошли до конца
-				if((length == 0) && (old == '\r') && (letter == '\n'))
+				if((length == 0) && (old == '\r') && (letter == '\n')){
+					// Устанавливаем флаг конца
+					stop = ((this->_state == state_t::HEADERS) || (this->_state == state_t::BODY));
 					// Выполняем функцию обратного вызова
-					callback(nullptr, 0, i + 1, true);
+					callback(nullptr, 0, i + 1, stop);
 				// Если длина слова получена, выводим полученную строку
-				else callback(buffer + offset, length, i + 1, stop);
+				} else callback(buffer + offset, length, i + 1, stop);
 				// Если массив сепараторов получен
 				if(this->_separator != '\0'){
 					// Выполняем сброс количество найденных сепараторов
