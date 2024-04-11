@@ -1970,43 +1970,29 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
 			if(i != this->_schemes.end()){
-				// Количество полученных байт
-				int64_t bytes = -1;
-				/**
-				 * Выполняем чтение данных с сокета
-				 */
-				do {
-					// Если подключение выполнено и чтение данных разрешено
-					if(!broker->_bev.locked.read && (broker->_payload.size > 0)){
-						// Определяем тип сокета
-						switch(static_cast <uint8_t> (this->_settings.sonet)){
-							// Если тип сокета установлен как DTLS
-							case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-								// Выполняем установку таймаута ожидания чтения из сокета
-								broker->_ectx.timeout(broker->_timeouts.read * 1000, engine_t::method_t::READ);
-							break;
-						}
-						// Выполняем получение сообщения от клиента
-						bytes = broker->_ectx.read(broker->_payload.data.get(), broker->_payload.size);
-						// Если данные получены
-						if(bytes > 0){
-							// Если данных достаточно и функция обратного вызова на получение данных установлена
-							if(this->_callbacks.is("read"))
-								// Выводим функцию обратного вызова
-								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->_payload.data.get(), static_cast <size_t> (bytes), bid, i->first);
-						// Если данные небыли получены
-						} else if(bytes <= 0) {
-							// Если чтение не выполнена, закрываем подключение
-							if(bytes == 0)
-								// Выполняем закрытие подключения
-								this->close(bid);
-							// Выходим из цикла
-							break;
-						}
-					// Выходим из цикла
-					} else break;
-				// Выполняем чтение до тех пор, пока всё не прочитаем
-				} while(this->has(bid) && ((static_cast <size_t> (bytes) == broker->_payload.size) || (this->_settings.sonet != scheme_t::sonet_t::UDP)));
+				// Если подключение выполнено и чтение данных разрешено
+				if(!broker->_bev.locked.read && (broker->_payload.size > 0)){
+					// Определяем тип сокета
+					switch(static_cast <uint8_t> (this->_settings.sonet)){
+						// Если тип сокета установлен как DTLS
+						case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+							// Выполняем установку таймаута ожидания чтения из сокета
+							broker->_ectx.timeout(broker->_timeouts.read * 1000, engine_t::method_t::READ);
+						break;
+					}
+					// Выполняем получение сообщения от клиента
+					const int64_t bytes = broker->_ectx.read(broker->_payload.data.get(), broker->_payload.size);
+					// Если данные получены
+					if(bytes > 0){
+						// Если данных достаточно и функция обратного вызова на получение данных установлена
+						if(this->_callbacks.is("read"))
+							// Выводим функцию обратного вызова
+							this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->_payload.data.get(), static_cast <size_t> (bytes), bid, i->first);
+					// Если чтение не выполнена, закрываем подключение
+					} else if(bytes == 0)
+						// Выполняем закрытие подключения
+						this->close(bid);
+				}
 			// Если схема сети не существует
 			} else {
 				// Выводим сообщение в лог, о таймауте подключения
