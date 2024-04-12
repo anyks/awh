@@ -86,12 +86,13 @@ namespace awh {
 					ALIVE                 = 0x01, // Флаг автоматического поддержания подключения
 					NOT_INFO              = 0x02, // Флаг запрещающий вывод информационных сообщений
 					NOT_STOP              = 0x03, // Флаг запрета остановки работы базы событий
-					REDIRECTS             = 0x04, // Флаг разрешающий автоматическое перенаправление запросов
-					NO_INIT_SSL           = 0x05, // Флаг запрещающий переключение контекста SSL
-					TAKEOVER_CLIENT       = 0x06, // Флаг ожидания входящих сообщений для клиента
-					TAKEOVER_SERVER       = 0x07, // Флаг ожидания входящих сообщений для сервера
-					WEBSOCKET_ENABLE      = 0x08, // Флаг разрешения использования Websocket-клиента
-					CONNECT_METHOD_ENABLE = 0x09  // Флаг разрешающий метод CONNECT для прокси-сервера
+					NOT_PING              = 0x04, // Флаг запрещающий выполнение пингов
+					REDIRECTS             = 0x05, // Флаг разрешающий автоматическое перенаправление запросов
+					NO_INIT_SSL           = 0x06, // Флаг запрещающий переключение контекста SSL
+					TAKEOVER_CLIENT       = 0x07, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER       = 0x08, // Флаг ожидания входящих сообщений для сервера
+					WEBSOCKET_ENABLE      = 0x09, // Флаг разрешения использования Websocket-клиента
+					CONNECT_METHOD_ENABLE = 0x0A  // Флаг разрешающий метод CONNECT для прокси-сервера
 				};
 			public:
 				/**
@@ -180,13 +181,15 @@ namespace awh {
 				bool _active;
 				// Флаг принудительной остановки
 				bool _stopped;
+				// Флаг разрешающий выполнение пингов
+				bool _pinging;
 				// Флаг остановки работы базы событий
 				bool _complete;
 				// Флаг выполнения редиректов
 				bool _redirects;
 			protected:
 				// Время отправленного пинга
-				time_t _pinging;
+				time_t _sendPing;
 			protected:
 				// Количество попыток
 				uint8_t _attempt;
@@ -338,6 +341,12 @@ namespace awh {
 				 * start Метод запуска клиента
 				 */
 				virtual void start() noexcept;
+			public:
+				/**
+				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+				 * @param time время ожидания в миллисекундах
+				 */
+				virtual void waitPong(const time_t time) noexcept = 0;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова

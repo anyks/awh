@@ -224,6 +224,7 @@ int main(int argc, char * argv[]){
 	ws.mode({
 		// server::web_t::flag_t::NOT_STOP,
 		// server::web_t::flag_t::NOT_INFO,
+		// server::web_t::flag_t::NOT_PING,
 		server::web_t::flag_t::TAKEOVER_CLIENT,
 		server::web_t::flag_t::TAKEOVER_SERVER
 	});

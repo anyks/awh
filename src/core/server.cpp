@@ -1638,7 +1638,7 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 						this->work(sid, shm->_host, AF_INET);
 					} break;
 					// Если домен является доменной зоной
-					case static_cast <uint8_t> (net_t::type_t::ZONE): {
+					case static_cast <uint8_t> (net_t::type_t::FQDN): {
 						// Если объект DNS-резолвера установлен
 						if(this->_dns != nullptr) {
 							// Определяем тип протокола подключения

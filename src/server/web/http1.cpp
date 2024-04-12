@@ -843,36 +843,39 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 void awh::server::Http1::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (this->_core != nullptr)){
-		// Выполняем перебор всех активных агентов
-		for(auto & agent : this->_agents){
-			// Определяем тип активного агента
-			switch(static_cast <uint8_t> (agent.second)){
-				// Если агент соответствует серверу HTTP
-				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Получаем параметры активного клиента
-					scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(agent.first));
-					// Если параметры активного клиента получены
-					if((options != nullptr) && ((!options->alive && !this->_service.alive) || options->close)){
-						// Если брокер давно должен был быть отключён, отключаем его
-						if(options->close || !options->http.is(http_t::state_t::ALIVE))
-							// Выполняем отключение клиента от сервера
-							const_cast <server::core_t *> (this->_core)->close(agent.first);
-						// Иначе проверяем прошедшее время
-						else {
-							// Получаем текущий штамп времени
-							const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-							// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-							if((stamp - options->point) >= this->_timeAlive)
-								// Завершаем работу
+		// Если разрешено выполнять пинги
+		if(this->_pinging){
+			// Выполняем перебор всех активных агентов
+			for(auto & agent : this->_agents){
+				// Определяем тип активного агента
+				switch(static_cast <uint8_t> (agent.second)){
+					// Если агент соответствует серверу HTTP
+					case static_cast <uint8_t> (agent_t::HTTP): {
+						// Получаем параметры активного клиента
+						scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(agent.first));
+						// Если параметры активного клиента получены
+						if((options != nullptr) && ((!options->alive && !this->_service.alive) || options->close)){
+							// Если брокер давно должен был быть отключён, отключаем его
+							if(options->close || !options->http.is(http_t::state_t::ALIVE))
+								// Выполняем отключение клиента от сервера
 								const_cast <server::core_t *> (this->_core)->close(agent.first);
+							// Иначе проверяем прошедшее время
+							else {
+								// Получаем текущий штамп времени
+								const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								// Если брокер не ответил на пинг больше двух интервалов, отключаем его
+								if((stamp - options->point) >= this->_timeAlive)
+									// Завершаем работу
+									const_cast <server::core_t *> (this->_core)->close(agent.first);
+							}
 						}
-					}
-				} break;
-				// Если агент соответствует серверу Websocket
-				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем передачу данных клиенту Websocket
-					this->_ws1.pinging(tid);
-				break;
+					} break;
+					// Если агент соответствует серверу Websocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET):
+						// Выполняем передачу данных клиенту Websocket
+						this->_ws1.pinging(tid);
+					break;
+				}
 			}
 		}
 	}
@@ -1431,6 +1434,16 @@ void awh::server::Http1::close(const uint64_t bid) noexcept {
 	}
 }
 /**
+ * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+ * @param time время ожидания в миллисекундах
+ */
+void awh::server::Http1::waitPong(const time_t time) noexcept {
+	// Если время ожидания передано
+	if(time > 0)
+		// Выполняем установку времени ожидания
+		this->_ws1.waitPong(time);
+}
+/**
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */
@@ -1545,6 +1558,8 @@ void awh::server::Http1::compressors(const vector <http_t::compressor_t> & compr
 void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
+	// Активируем выполнение пинга
+	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг поддержания автоматического подключения

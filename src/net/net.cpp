@@ -538,7 +538,7 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 						// Если мы определили сеть
 						case 4: return type_t::NETWORK;
 						// Если мы определили доменная зона
-						case 5: return type_t::ZONE;
+						case 5: return type_t::FQDN;
 						// Если мы определили URL-адрес
 						case 6: return type_t::URL;
 						// Если мы определили адрес в файловой системе

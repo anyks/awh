@@ -603,6 +603,8 @@ void awh::client::Web2::chunk(const size_t size) noexcept {
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
+	// Активируем выполнение пинга
+	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Если установлен флаг запрещающий переключение контекста SSL
 	this->_nossl = (flags.find(flag_t::NO_INIT_SSL) != flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля

@@ -184,7 +184,7 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 				this->_scheme.url.ip = net = host;
 			} break;
 			// Если хост является доменной зоной
-			case static_cast <uint8_t> (net_t::type_t::ZONE):
+			case static_cast <uint8_t> (net_t::type_t::FQDN):
 				// Устанавливаем доменное имя
 				this->_scheme.url.domain = host;
 			break;

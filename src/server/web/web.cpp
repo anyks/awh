@@ -39,12 +39,15 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 		case static_cast <uint8_t> (awh::core_t::status_t::START): {
 			// Выполняем биндинг ядра локального таймера
 			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
-			// Устанавливаем интервал времени на выполнения пинга клиента
-			uint16_t tid = this->_timer.interval(PING_INTERVAL);
-			// Выполняем добавление функции обратного вызова
-			this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
+			// Если разрешено выполнять пинги
+			if(this->_pinging){
+				// Устанавливаем интервал времени на выполнения пинга клиента
+				const uint16_t tid = this->_timer.interval(PING_INTERVAL);
+				// Выполняем добавление функции обратного вызова
+				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
+			}
 			// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
-			tid = this->_timer.interval(3000);
+			const uint16_t tid = this->_timer.interval(3000);
 			// Выполняем добавление функции обратного вызова
 			this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
 		} break;
@@ -410,8 +413,8 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
- _complete(true), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(AWH_BUFFER_CHUNK),
- _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
+ _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
+ _chunkSize(AWH_BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
@@ -425,8 +428,8 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
- _complete(true), _timeAlive(KEEPALIVE_TIMEOUT), _chunkSize(AWH_BUFFER_CHUNK),
- _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
+ _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
+ _chunkSize(AWH_BUFFER_CHUNK), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова

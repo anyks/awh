@@ -293,6 +293,14 @@ void awh::server::AWH::close(const uint64_t bid) noexcept {
 	this->_http.close(bid);
 }
 /**
+ * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+ * @param time время ожидания в миллисекундах
+ */
+void awh::server::AWH::waitPong(const time_t time) noexcept {
+	// Выполняем установку времени ожидания
+	this->_http.waitPong(time);
+}
+/**
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */

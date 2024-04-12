@@ -210,7 +210,7 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 					// Если домен является адресом/Маски сети
 					case static_cast <uint8_t> (net_t::type_t::NETWORK): break;
 					// Если мы получили доменное имя
-					case static_cast <uint8_t> (net_t::type_t::ZONE):
+					case static_cast <uint8_t> (net_t::type_t::FQDN):
 						// Устанавливаем доменное имя
 						result.domain = result.host;
 					break;
@@ -770,7 +770,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 										result.emplace(flag_t::HOST, data);
 									break;
 									// Если мы получили доменное имя
-									case static_cast <uint8_t> (net_t::type_t::ZONE):
+									case static_cast <uint8_t> (net_t::type_t::FQDN):
 										// Устанавливаем результат хоста
 										result.emplace(flag_t::HOST, this->_fmk->transform(data, fmk_t::transform_t::LOWER));
 									break;

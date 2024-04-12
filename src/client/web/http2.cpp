@@ -202,7 +202,7 @@ int awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffer, c
 						// Добавляем полученный чанк в тело данных
 						i->second->http.payload(vector <char> (buffer, buffer + size));
 						// Обновляем время отправленного пинга
-						this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 						if(this->_callbacks.is("chunks"))
 							// Выполняем функцию обратного вызова
@@ -955,29 +955,32 @@ void awh::client::Http2::result(const int32_t sid, const uint64_t rid) noexcept 
 void awh::client::Http2::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (this->_core != nullptr)){
-		// Выполняем перебор всех доступных воркеров
-		for(auto & worker : this->_workers){
-			// Определяем протокол клиента
-			switch(static_cast <uint8_t> (worker.second->agent)){
-				// Если агент является клиентом HTTP
-				case static_cast <uint8_t> (agent_t::HTTP): {
-					// Получаем текущий штамп времени
-					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-					// Если время с предыдущего пинга прошло больше половины времени пинга
-					if((stamp - this->_pinging) > (PING_INTERVAL / 2)){
-						// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
-						if(!this->ping())
-							// Выполняем закрытие подключения
-							web2_t::close(this->_bid);
-						// Обновляем время отправленного пинга
-						else this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-					}
-				} break;
-				// Если агент является клиентом Websocket
-				case static_cast <uint8_t> (agent_t::WEBSOCKET):
-					// Выполняем переброс персистентного вызова на клиент Websocket
-					this->_ws2.pinging(tid);
-				break;
+		// Если разрешено выполнять пинги
+		if(this->_pinging){
+			// Выполняем перебор всех доступных воркеров
+			for(auto & worker : this->_workers){
+				// Определяем протокол клиента
+				switch(static_cast <uint8_t> (worker.second->agent)){
+					// Если агент является клиентом HTTP
+					case static_cast <uint8_t> (agent_t::HTTP): {
+						// Получаем текущий штамп времени
+						const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						// Если время с предыдущего пинга прошло больше половины времени пинга
+						if((stamp - this->_sendPing) > (PING_INTERVAL / 2)){
+							// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
+							if(!this->ping())
+								// Выполняем закрытие подключения
+								web2_t::close(this->_bid);
+							// Обновляем время отправленного пинга
+							else this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						}
+					} break;
+					// Если агент является клиентом Websocket
+					case static_cast <uint8_t> (agent_t::WEBSOCKET):
+						// Выполняем переброс персистентного вызова на клиент Websocket
+						this->_ws2.pinging(tid);
+					break;
+				}
 			}
 		}
 	}
@@ -1775,6 +1778,16 @@ void awh::client::Http2::pause() noexcept {
 			}
 		}
 	}
+}
+/**
+ * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+ * @param time время ожидания в миллисекундах
+ */
+void awh::client::Http2::waitPong(const time_t time) noexcept {
+	// Если время ожидания передано
+	if(time > 0)
+		// Выполняем установку времени ожидания
+		this->_ws2.waitPong(time);
 }
 /**
  * callbacks Метод установки функций обратного вызова

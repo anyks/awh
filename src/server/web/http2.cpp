@@ -411,7 +411,7 @@ int awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, const
 							// Добавляем полученный чанк в тело данных
 							stream->http.payload(vector <char> (buffer, buffer + size));
 							// Обновляем время отправленного пинга
-							options->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						} break;
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
@@ -1365,8 +1365,8 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
  * @param tid идентификатор таймера
  */
 void awh::server::Http2::pinging(const uint16_t tid) noexcept {
-	// Если данные существуют
-	if(tid > 0){
+	// Если данные существуют и разрешено выполнять пинги
+	if((tid > 0) && this->_pinging){
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
 			// Определяем протокола подключения
@@ -1402,13 +1402,13 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 								// Получаем текущий штамп времени
 								const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 								// Если время с предыдущего пинга прошло больше половины времени пинга
-								if((stamp - item.second->pinging) > (PING_INTERVAL / 2)){
+								if((stamp - item.second->sendPing) > (PING_INTERVAL / 2)){
 									// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 									if(!this->ping(item.first))
 										// Выполняем закрытие подключения
 										web2_t::close(item.first);
 									// Обновляем время отправленного пинга
-									else item.second->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+									else item.second->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 								}
 							} break;
 							// Если протокол соответствует протоколу Websocket
@@ -2600,6 +2600,16 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 	}
 }
 /**
+ * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+ * @param time время ожидания в миллисекундах
+ */
+void awh::server::Http2::waitPong(const time_t time) noexcept {
+	// Если время ожидания передано
+	if(time > 0)
+		// Выполняем установку времени ожидания
+		this->_ws2.waitPong(time);
+}
+/**
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */
@@ -2804,6 +2814,8 @@ void awh::server::Http2::mode(const set <flag_t> & flags) noexcept {
 	this->_ws2.mode(flags);
 	// Устанавливаем флаги настроек модуля для HTTP-сервера
 	this->_http1.mode(flags);
+	// Активируем выполнение пинга
+	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг поддержания автоматического подключения

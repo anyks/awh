@@ -86,6 +86,14 @@ void awh::client::Websocket::start() noexcept {
 	this->_ws.start();
 }
 /**
+ * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+ * @param time время ожидания в миллисекундах
+ */
+void awh::client::Websocket::waitPong(const time_t time) noexcept {
+	// Выполняем установку времени ожидания
+	this->_ws.waitPong(time);
+}
+/**
  * callbacks Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */

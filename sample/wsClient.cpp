@@ -313,14 +313,17 @@ int main(int argc, char * argv[]){
 	 * 5. Устанавливаем флаг разрешения метода CONNECT
 	 */
 	ws.mode({
-		// client::web_t::flag_t::NOT_STOP,
 		client::web_t::flag_t::ALIVE,
+		// client::web_t::flag_t::NOT_STOP,
 		// client::web_t::flag_t::NOT_INFO,
+		// client::web_t::flag_t::NOT_PING,
 		client::web_t::flag_t::REDIRECTS,
 		client::web_t::flag_t::TAKEOVER_CLIENT,
 		client::web_t::flag_t::TAKEOVER_SERVER,
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
+	// Устанавливаем время ожидания ответа WebSocket-сервера
+	// ws.waitPong(300000);
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);
 	// Устанавливаем простое чтение базы событий

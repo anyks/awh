@@ -123,6 +123,9 @@ namespace awh {
 				// Контрольная точка ответа на пинг
 				time_t _point;
 			private:
+				// Время ожидания понга
+				time_t _waitPong;
+			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
 				// Объект для работы с HTTP-протколом
@@ -303,6 +306,12 @@ namespace awh {
 				 * start Метод запуска клиента
 				 */
 				void start() noexcept;
+			public:
+				/**
+				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+				 * @param time время ожидания в миллисекундах
+				 */
+				void waitPong(const time_t time) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова

@@ -106,7 +106,7 @@ namespace awh {
 						bool stopped;                    // Флаг принудительной остановки
 						int32_t sid;                     // Идентификатор потока
 						time_t point;                    // Контрольная точка ответа на пинг
-						time_t pinging;                  // Время отправленного пинга
+						time_t sendPing;                 // Время отправленного пинга
 						hash_t hash;                     // Создаём объект для компрессии-декомпрессии данных
 						allow_t allow;                   // Объект разрешения обмена данными
 						frame_t frame;                   // Объект для работы с фреймом WebSocket
@@ -126,7 +126,7 @@ namespace awh {
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
 						close(false), shake(false), crypted(false),
 						inflate(false), stopped(false), sid(1), point(0),
-						pinging(0), hash(log), frame(fmk, log), http(fmk, log),
+						sendPing(0), hash(log), frame(fmk, log), http(fmk, log),
 						proto(engine_t::proto_t::HTTP1_1),
 						compressor(http_t::compressor_t::NONE) {}
 						/**

@@ -257,7 +257,7 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 					// Обнуляем время последнего ответа на пинг
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
-					this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Выполняем препарирование полученных данных
 					switch(static_cast <uint8_t> (this->prepare(this->_sid, bid))){
 						// Если необходимо выполнить остановку обработки
@@ -476,16 +476,21 @@ void awh::client::Websocket1::flush() noexcept {
 void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (this->_core != nullptr)){
-		// Получаем текущий штамп времени
-		const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-		// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-		if(this->_close || ((stamp - this->_point) >= (PING_INTERVAL * 5)))
-			// Завершаем работу
-			const_cast <client::core_t *> (this->_core)->close(this->_bid);
-		// Если время с предыдущего пинга прошло больше половины времени пинга
-		else if((stamp - this->_pinging) > (PING_INTERVAL / 2))
-			// Отправляем запрос брокеру
-			this->ping(::to_string(this->_bid));
+		// Если разрешено выполнять пинги
+		if(this->_pinging){
+			// Получаем текущий штамп времени
+			const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+			// Если брокер не ответил на пинг больше двух интервалов, отключаем его
+			if(this->_close || ((stamp - this->_point) >= this->_waitPong)){
+				// Создаём сообщение
+				this->_mess = ws::mess_t(1005, "PING response not received");
+				// Выполняем отправку сообщения об ошибке
+				this->sendError(this->_mess);
+			// Если время с предыдущего пинга прошло больше половины времени пинга
+			} else if((stamp - this->_sendPing) > (PING_INTERVAL / 2))
+				// Отправляем запрос брокеру
+				this->ping(::to_string(this->_bid));
+		}
 	}
 }
 /**
@@ -504,7 +509,7 @@ void awh::client::Websocket1::ping(const string & message) noexcept {
 				// Выполняем отправку сообщения на сервер
 				if(const_cast <client::core_t *> (this->_core)->send(buffer.data(), buffer.size(), this->_bid))
 					// Обновляем время отправленного пинга
-					this->_pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 			}
 		}
 	}
@@ -979,12 +984,10 @@ void awh::client::Websocket1::extraction(const vector <char> & buffer, const boo
 				} else this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", data, text);
 			// Выводим сообщение об ошибке
 			} else {
-				// Создаём сообщение
-				this->_mess = ws::mess_t(1007, "Received data decompression error");
-				// Выводим сообщение
-				this->error(this->_mess);
 				// Иначе выводим сообщение так - как оно пришло
 				this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", buffer, text);
+				// Создаём сообщение
+				this->_mess = ws::mess_t(1007, "Received data decompression error");
 				// Выполняем отправку сообщения об ошибке
 				this->sendError(this->_mess);
 			}
@@ -1039,6 +1042,8 @@ void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
 						// Выводим отправляемое сообщение
 						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 					#endif
+					// Выводим сообщение об ошибке
+					this->error(mess);
 					// Выходим из функции
 					return;
 				}
@@ -1269,6 +1274,16 @@ void awh::client::Websocket1::start() noexcept {
 	this->_freeze = false;
 }
 /**
+ * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+ * @param time время ожидания в миллисекундах
+ */
+void awh::client::Websocket1::waitPong(const time_t time) noexcept {
+	// Если время ожидания передано
+	if(time > 0)
+		// Выполняем установку времени ожидания
+		this->_waitPong = time;
+}
+/**
  * callbacks Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */
@@ -1349,6 +1364,8 @@ void awh::client::Websocket1::segmentSize(const size_t size) noexcept {
 void awh::client::Websocket1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг разрешающий вывод информационных сообщений
 	this->_verb = (flags.find(flag_t::NOT_INFO) == flags.end());
+	// Активируем выполнение пинга
+	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Если установлен флаг запрещающий переключение контекста SSL
 	this->_nossl = (flags.find(flag_t::NO_INIT_SSL) != flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
@@ -1532,8 +1549,8 @@ void awh::client::Websocket1::encryption(const string & pass, const string & sal
 awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _http(fmk, log), _hash(log), _frame(fmk, log),
- _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
+ _point(0), _waitPong(PING_INTERVAL * 5), _http(fmk, log), _hash(log),
+ _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
@@ -1554,8 +1571,8 @@ awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
 awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _http(fmk, log), _hash(log), _frame(fmk, log),
- _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
+ _point(0), _waitPong(PING_INTERVAL * 5), _http(fmk, log), _hash(log),
+ _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос

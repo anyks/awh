@@ -862,6 +862,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								client::web_t::flag_t::NOT_INFO,
 								client::web_t::flag_t::WEBSOCKET_ENABLE
 							};
+							// Если флаг запрета выполнения пингов установлен
+							if(this->_flags.find(flag_t::NOT_PING) != this->_flags.end())
+								// Устанавливаем флаг запрета выполнения пингов
+								flags.emplace(client::web_t::flag_t::NOT_PING);
 							// Если флаг разрешения выполнения редиректов установлен
 							if(this->_flags.find(flag_t::REDIRECTS) != this->_flags.end())
 								// Устанавливаем флаг разрешения выполнения редиректов
@@ -959,6 +963,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										client::web_t::flag_t::NOT_INFO,
 										client::web_t::flag_t::WEBSOCKET_ENABLE
 									};
+									// Если флаг запрета выполнения пингов установлен
+									if(this->_flags.find(flag_t::NOT_PING) != this->_flags.end())
+										// Устанавливаем флаг запрета выполнения пингов
+										flags.emplace(client::web_t::flag_t::NOT_PING);
 									// Если флаг разрешения выполнения редиректов установлен
 									if(this->_flags.find(flag_t::REDIRECTS) != this->_flags.end())
 										// Устанавливаем флаг разрешения выполнения редиректов
@@ -1060,6 +1068,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										client::web_t::flag_t::NOT_INFO,
 										client::web_t::flag_t::WEBSOCKET_ENABLE
 									};
+									// Если флаг запрета выполнения пингов установлен
+									if(this->_flags.find(flag_t::NOT_PING) != this->_flags.end())
+										// Устанавливаем флаг запрета выполнения пингов
+										flags.emplace(client::web_t::flag_t::NOT_PING);
 									// Если флаг разрешения выполнения редиректов установлен
 									if(this->_flags.find(flag_t::REDIRECTS) != this->_flags.end())
 										// Устанавливаем флаг разрешения выполнения редиректов
@@ -1428,6 +1440,10 @@ void awh::server::Proxy::mode(const set <flag_t> & flags) noexcept {
 	this->_flags = flags;
 	// Создаём список флагов сервера
 	set <server::web_t::flag_t> server;
+	// Если флаг запрета выполнения пингов установлен
+	if(flags.find(flag_t::NOT_PING) != flags.end())
+		// Устанавливаем флаг запрета выполнения пингов
+		server.emplace(server::web_t::flag_t::NOT_PING);
 	// Если флаг анбиндинга ядра сетевого модуля установлен
 	if(flags.find(flag_t::NOT_STOP) == flags.end())
 		// Устанавливаем флаг анбиндинга ядра сетевого модуля

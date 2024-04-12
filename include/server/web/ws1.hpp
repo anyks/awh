@@ -65,6 +65,9 @@ namespace awh {
 				 */
 				friend class Websocket2;
 			private:
+				// Время ожидания понга
+				time_t _waitPong;
+			private:
 				// Размер отправляемого сегмента
 				size_t _frameSize;
 			private:
@@ -240,6 +243,12 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+				 * @param time время ожидания в миллисекундах
+				 */
+				void waitPong(const time_t time) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

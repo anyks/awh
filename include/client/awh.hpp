@@ -279,6 +279,12 @@ namespace awh {
 				void start() noexcept;
 			public:
 				/**
+				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+				 * @param time время ожидания в миллисекундах
+				 */
+				void waitPong(const time_t time) noexcept;
+			public:
+				/**
 				 * callbacks Метод установки функций обратного вызова
 				 * @param callbacks функции обратного вызова
 				 */

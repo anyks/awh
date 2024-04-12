@@ -82,10 +82,11 @@ namespace awh {
 					ALIVE                 = 0x01, // Флаг автоматического поддержания подключения
 					NOT_INFO              = 0x02, // Флаг запрещающий вывод информационных сообщений
 					NOT_STOP              = 0x03, // Флаг запрета остановки работы базы событий
-					TAKEOVER_CLIENT       = 0x04, // Флаг ожидания входящих сообщений для клиента
-					TAKEOVER_SERVER       = 0x05, // Флаг ожидания входящих сообщений для сервера
-					WEBSOCKET_ENABLE      = 0x06, // Флаг разрешения использования Websocket-сервера
-					CONNECT_METHOD_ENABLE = 0x07  // Флаг разрешающий метод CONNECT для сервера
+					NOT_PING              = 0x04, // Флаг запрещающий выполнение пингов
+					TAKEOVER_CLIENT       = 0x05, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER       = 0x06, // Флаг ожидания входящих сообщений для сервера
+					WEBSOCKET_ENABLE      = 0x07, // Флаг разрешения использования Websocket-сервера
+					CONNECT_METHOD_ENABLE = 0x08  // Флаг разрешающий метод CONNECT для сервера
 				};
 			protected:
 				/**
@@ -151,6 +152,8 @@ namespace awh {
 				// Ядро для локального таймера
 				timer_t _timer;
 			protected:
+				// Флаг разрешающий выполнение пингов
+				bool _pinging;
 				// Флаг остановки работы базы событий
 				bool _complete;
 			protected:
@@ -269,6 +272,12 @@ namespace awh {
 				 * @param tid идентификатор таймера
 				 */
 				virtual void pinging(const uint16_t tid) noexcept = 0;
+			public:
+				/**
+				 * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+				 * @param time время ожидания в миллисекундах
+				 */
+				virtual void waitPong(const time_t time) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB брокера

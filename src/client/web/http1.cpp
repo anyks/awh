@@ -568,10 +568,13 @@ void awh::client::Http1::result(const int32_t sid) noexcept {
 void awh::client::Http1::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (this->_core != nullptr)){
-		// Если агент является клиентом Websocket
-		if(this->_agent == agent_t::WEBSOCKET)
-			// Выполняем переброс персистентного вызова на клиент Websocket
-			this->_ws1.pinging(tid);
+		// Если разрешено выполнять пинги
+		if(this->_pinging){
+			// Если агент является клиентом Websocket
+			if(this->_agent == agent_t::WEBSOCKET)
+				// Выполняем переброс персистентного вызова на клиент Websocket
+				this->_ws1.pinging(tid);
+		}
 	}
 }
 /**
@@ -1125,6 +1128,16 @@ void awh::client::Http1::pause() noexcept {
 	this->_ws1.pause();
 }
 /**
+ * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+ * @param time время ожидания в миллисекундах
+ */
+void awh::client::Http1::waitPong(const time_t time) noexcept {
+	// Если время ожидания передано
+	if(time > 0)
+		// Выполняем установку времени ожидания
+		this->_ws1.waitPong(time);
+}
+/**
  * callbacks Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */
@@ -1241,6 +1254,8 @@ void awh::client::Http1::segmentSize(const size_t size) noexcept {
 void awh::client::Http1::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-клиента
 	this->_ws1.mode(flags);
+	// Активируем выполнение пинга
+	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Если установлен флаг запрещающий переключение контекста SSL
 	this->_nossl = (flags.find(flag_t::NO_INIT_SSL) != flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля

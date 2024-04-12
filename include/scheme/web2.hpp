@@ -74,7 +74,7 @@ namespace awh {
 							bool close;                                   // Флаг требования закрыть брокера
 							bool stopped;                                 // Флаг принудительной остановки
 							time_t point;                                 // Контрольная точка ответа на пинг
-							time_t pinging;                               // Время отправленного пинга
+							time_t sendPing;                              // Время отправленного пинга
 							size_t requests;                              // Количество выполненных запросов
 							engine_t::proto_t proto;                      // Активный прототип интернета
 							map <int32_t, unique_ptr <stream_t>> streams; // Список активных потоков
@@ -90,7 +90,7 @@ namespace awh {
 							 * @param log объект для работы с логами
 							 */
 							Options(const fmk_t * fmk, const log_t * log) noexcept :
-							 alive(false), close(false), stopped(false), point(0), pinging(0),
+							 alive(false), close(false), stopped(false), point(0), sendPing(0),
 							 requests(0), proto(engine_t::proto_t::HTTP1_1), fmk(fmk), log(log) {}
 						/**
 						 * ~Options Деструктор

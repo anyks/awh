@@ -152,6 +152,12 @@ namespace awh {
 				void close(const uint64_t bid) noexcept;
 			public:
 				/**
+				 * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+				 * @param time время ожидания в миллисекундах
+				 */
+				void waitPong(const time_t time) noexcept;
+			public:
+				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола
 				 * @param subprotocol сабпротокол для установки
 				 */

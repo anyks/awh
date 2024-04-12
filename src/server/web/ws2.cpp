@@ -364,7 +364,7 @@ int awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t bid, 
 				// Обнуляем время последнего ответа на пинг
 				options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Обновляем время отправленного пинга
-				options->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+				options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Добавляем полученные данные в буфер
 				options->buffer.payload.emplace(reinterpret_cast <const char *> (buffer), size);
 			}
@@ -1017,7 +1017,7 @@ void awh::server::Websocket2::ping(const uint64_t bid, const string & message) n
 				// Выполняем отправку сообщения клиенту
 				if(web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::NONE))
 					// Обновляем время отправленного пинга
-					options->pinging = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 			}
 		}
 	}
@@ -1133,30 +1133,35 @@ void awh::server::Websocket2::disconnect(const uint64_t bid) noexcept {
 void awh::server::Websocket2::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (this->_core != nullptr)){
-		// Выполняем перебор всех активных клиентов
-		for(auto & item : this->_scheme.get()){
-			// Если переключение протокола на HTTP/2 не выполнено
-			if(item.second->proto != engine_t::proto_t::HTTP2)
-				// Выполняем переброс события пинга в модуль Websocket
-				this->_ws1.pinging(tid);
-			// Если переключение протокола на HTTP/2 выполнено
-			else if(item.second->allow.receive) {
-				// Если рукопожатие выполнено
-				if(item.second->shake){
-					// Получаем текущий штамп времени
-					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-					// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-					if(item.second->close || ((stamp - item.second->point) >= (PING_INTERVAL * 5)))
-						// Завершаем работу
-						const_cast <server::core_t *> (this->_core)->close(item.first);
-					// Если время с предыдущего пинга прошло больше половины времени пинга
-					else if((stamp - item.second->pinging) > (PING_INTERVAL / 2))
-						// Отправляем запрос брокеру
-						this->ping(item.first, ::to_string(item.first));
-				// Если рукопожатие не выполнено и пинг не прошёл
-				} else if(!web2_t::ping(item.first))
-					// Выполняем закрытие подключения
-					web2_t::close(item.first);
+		// Если разрешено выполнять пинги
+		if(this->_pinging){
+			// Выполняем перебор всех активных клиентов
+			for(auto & item : this->_scheme.get()){
+				// Если переключение протокола на HTTP/2 не выполнено
+				if(item.second->proto != engine_t::proto_t::HTTP2)
+					// Выполняем переброс события пинга в модуль Websocket
+					this->_ws1.pinging(tid);
+				// Если переключение протокола на HTTP/2 выполнено
+				else if(item.second->allow.receive) {
+					// Если рукопожатие выполнено
+					if(item.second->shake){
+						// Получаем текущий штамп времени
+						const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						// Если брокер не ответил на пинг больше двух интервалов, отключаем его
+						if(item.second->close || ((stamp - item.second->point) >= this->_waitPong)){
+							// Создаём сообщение
+							item.second->mess = ws::mess_t(1005, "PING response not received");
+							// Отправляем серверу сообщение
+							this->sendError(item.first, item.second->mess);
+						// Если время с предыдущего пинга прошло больше половины времени пинга
+						} else if((stamp - item.second->sendPing) > (PING_INTERVAL / 2))
+							// Отправляем запрос брокеру
+							this->ping(item.first, ::to_string(item.first));
+					// Если рукопожатие не выполнено и пинг не прошёл
+					} else if(!web2_t::ping(item.first))
+						// Выполняем закрытие подключения
+						web2_t::close(item.first);
+				}
 			}
 		}
 	}
@@ -1550,6 +1555,19 @@ void awh::server::Websocket2::close(const uint64_t bid) noexcept {
 	}
 }
 /**
+ * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+ * @param time время ожидания в миллисекундах
+ */
+void awh::server::Websocket2::waitPong(const time_t time) noexcept {
+	// Если время ожидания передано
+	if(time > 0){
+		// Выполняем установку времени ожидания
+		this->_waitPong = time;
+		// Выполняем установку времени ожидания для WebSocket/1.1
+		this->_ws1.waitPong(time);
+	}
+}
+/**
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */
@@ -1714,6 +1732,8 @@ void awh::server::Websocket2::compressors(const vector <http_t::compressor_t> & 
 void awh::server::Websocket2::mode(const set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
+	// Активируем выполнение пинга
+	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг поддержания автоматического подключения
@@ -1956,7 +1976,8 @@ void awh::server::Websocket2::encryption(const string & pass, const string & sal
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept : web2_t(fmk, log), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
+awh::server::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept :
+web2_t(fmk, log), _waitPong(PING_INTERVAL * 5), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Если размер фрейма не установлен
@@ -1970,7 +1991,8 @@ awh::server::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web2_t(core, fmk, log), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
+awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+ web2_t(core, fmk, log), _waitPong(PING_INTERVAL * 5), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Если размер фрейма не установлен

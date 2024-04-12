@@ -378,6 +378,8 @@ void awh::server::Sample::total(const u_short total) noexcept {
  * @param flag флаг модуля для установки
  */
 void awh::server::Sample::mode(const set <flag_t> & flags) noexcept {
+	// Активируем выполнение пинга
+	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -404,8 +406,9 @@ void awh::server::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _alive(false), _complete(true), _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log),
- _callbacks(log), _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
+ _pid(getpid()), _alive(false), _pinging(true), _complete(true),
+ _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log), _callbacks(log),
+ _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Добавляем схему сети в сетевое ядро
