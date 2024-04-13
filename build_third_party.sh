@@ -196,8 +196,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.2.1
-	VER="3.2.1"
+	# Версия OpenSSL v3.3.0
+	VER="3.3.0"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*
@@ -286,7 +286,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия Zlib
-	VER="1.3"
+	VER="1.3.1"
 
 	# Переключаемся на master
 	git checkout master
@@ -503,7 +503,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src/build/cmake" || exit 1
 
 	# Версия ZSTD
-	VER="1.5.5"
+	VER="1.5.6"
 
 	# Выполняем удаление предыдущей закаченной версии
 	git tag -d v${VER}
@@ -1118,6 +1118,26 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** PCRE2 ******\n"
 	cd "$src" || exit 1
 
+	# Версия PCRE2
+	VER="10.43"
+
+	# Выполняем удаление предыдущей закаченной версии
+	git tag -d pcre2-${VER}
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на master
+	git reset --hard origin/master
+	# Переключаемся на master
+	git checkout master
+	# Выполняем обновление данных
+	git pull origin master
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch pcre2-${VER}
+
 	# Создаём каталог сборки
 	mkdir -p "build" || exit 1
 	# Переходим в каталог
@@ -1397,7 +1417,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия LibXML2
-	VER="2.12.1"
+	VER="2.12.6"
 
 	# Выполняем удаление предыдущей закаченной версии
 	git tag -d v${VER}
@@ -1738,7 +1758,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgHttp2
-	VER="1.60.0"
+	VER="1.61.0"
 
 	# Переключаемся на master
 	git checkout master
