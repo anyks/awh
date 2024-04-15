@@ -1254,11 +1254,11 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 				// Выводим сообщение об ошибке
 				this->_log->print("Filename: \"%s\" is broken", log_t::flag_t::WARNING, filename.c_str());
 			// Если файл открыт удачно
-			else if(fstat(fd, &info) < 0)
+			else if(::fstat(fd, &info) < 0)
 				// Выводим сообщение об ошибке
 				this->_log->print("Filename: \"%s\" is unknown size", log_t::flag_t::WARNING, filename.c_str());
 			// Иначе продолжаем
-			else {
+			else if(info.st_size > 0) {
 				// Создаём смещение в тексте
 				off_t offset = 0;
 				// Инициализируем смещение в памяти
@@ -1303,7 +1303,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 								// Выполняем компенсацию размера строки
 								length++;
 							// Если длина слова получена, выводим полученную строку
-							callback(string((char *) buffer + offset, length));
+							callback(string(reinterpret_cast <char *> (buffer) + offset, length));
 							// Выполняем смещение
 							offset = (i + 1);
 						}
@@ -1313,13 +1313,15 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 					// Если данные не все прочитаны, выводим как есть
 					if((offset == 0) && (size > 0))
 						// Выводим полученную строку
-						callback(string((char *) buffer, size));
+						callback(string(reinterpret_cast <char *> (buffer), size));
 				}
 				// Выполняем удаление сопоставления для указанного диапазона адресов
 				::munmap(buffer, (length + offset - paOffset));
 			}
-			// Если файл открыт, закрываем его
-			if(fd > -1) ::close(fd);
+			// Если файл открыт
+			if(fd > -1)
+				// Закрываем файловый дескриптор
+				::close(fd);
 		// Выводим сообщение об ошибке
 		} else this->_log->print("Filename: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
 	#endif
