@@ -3332,7 +3332,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Если запрос должен содержать тело и тело ответа существует
 						if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 							// Устанавливаем Content-Type если не передан
-							if(!available[5] && !this->is(suite_t::BLACK, "Content-Type"))
+							if(!available[5] && ((this->_identity == identity_t::HTTP) || (res.code >= 400)) && !this->is(suite_t::BLACK, "Content-Type"))
 								// Добавляем заголовок в ответ
 								response.append(this->_fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
 							// Если тело запроса существует
@@ -4175,7 +4175,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Если запрос должен содержать тело и тело ответа существует
 						if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 							// Устанавливаем Content-Type если не передан
-							if(!available[5] && !this->is(suite_t::BLACK, "content-type"))
+							if(!available[5] && ((this->_identity == identity_t::HTTP) || (res.code >= 400)) && !this->is(suite_t::BLACK, "content-type"))
 								// Добавляем заголовок в ответ
 								result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
 							// Если тело запроса существует
