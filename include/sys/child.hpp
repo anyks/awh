@@ -39,6 +39,14 @@ namespace awh {
 	 * Child Класс для работы с дочерним потоком
 	 */
 	class Child {
+		public:
+			/**
+			 * Состояние очереди
+			 */
+			enum class state_t : uint8_t {
+				INCREMENT = 0x01, // Увеличение очереди
+				DECREMENT = 0x02  // Уменьшение очереди
+			};
 		private:
 			// Флаг остановки работы дочернего потока
 			bool _stop;
@@ -53,7 +61,9 @@ namespace awh {
 			mutable condition_variable _cv;
 		private:
 			// Функция обратного вызова которая срабатывает при передачи данных в дочерний поток
-			function <void (const T &)> _fn;
+			function <void (const T &)> _callback;
+			// Функция обратного вызова при заполнении или освобождении очереди
+			function <void (const state_t, const size_t)> _state;
 		private:
 			/**
 			 * receiving Метод получения данных
@@ -76,13 +86,19 @@ namespace awh {
 							// Извлекаем данные полезной нагрузки
 							const auto & payload = this->_payload.front();
 							// Если функция подписки на логи установлена, выводим результат
-							if(this->_fn != nullptr)
+							if(this->_callback != nullptr)
 								// Выводим сообщение лога всем подписавшимся
-								this->_fn(payload);
+								this->_callback(payload);
 							// Выполняем блокировку потока
-							const lock_guard <mutex> lock(this->_mtx2);
+							this->_mtx2.lock();
 							// Удаляем текущее задание
 							this->_payload.pop();
+							// Выполняем разблокировку потока
+							this->_mtx2.unlock();
+							// Если функция обратного вызова установлена
+							if(this->_state != nullptr)
+								// Выполняем функцию обратного вызова
+								this->_state(state_t::DECREMENT, this->_payload.size());
 						}
 					/**
 					 * Если возникает ошибка
@@ -113,7 +129,15 @@ namespace awh {
 			 */
 			void on(function <void (const T &)> callback) noexcept {
 				// Устанавливаем функцию обратного вызова
-				this->_fn = callback;
+				this->_callback = callback;
+			}
+			/**
+			 * on Метод установки функции обратного вызова получения состояния очереди
+			 * @param callback функция обратного вызова для установки
+			 */
+			void on(function <void (const state_t, const size_t)> callback) noexcept {
+				// Устанавливаем функцию обратного вызова
+				this->_state = callback;
 			}
 		public:
 			/**
@@ -127,6 +151,10 @@ namespace awh {
 				this->_payload.push(data);
 				// Выполняем разблокировку потока
 				this->_mtx2.unlock();
+				// Если функция обратного вызова установлена
+				if(this->_state != nullptr)
+					// Выполняем функцию обратного вызова
+					this->_state(state_t::INCREMENT, this->_payload.size());
 				// Отправляем сообщение, что данные записаны
 				this->_cv.notify_one();
 			}
@@ -134,7 +162,7 @@ namespace awh {
 			/**
 			 * Child Конструктор
 			 */
-			Child() noexcept : _stop(false) {
+			Child() noexcept : _stop(false), _callback(nullptr), _state(nullptr) {
 				// Создаём дочерний поток для формирования лога
 				this->_thr = std::thread(&Child::receiving, this);
 				// Отсоединяемся от потока
