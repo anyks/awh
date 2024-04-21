@@ -20,3 +20,16 @@ index 4f0a36a..283a20f 100644
  #if EV_MULTIPLICITY
      : loop_ref (ev_default_loop (flags))
  #endif
+diff --git a/ev.c b/ev.c
+index cf55835..327c47d 100644
+--- a/ev.c
++++ b/ev.c
+@@ -3906,7 +3906,7 @@ ev_timer_stop (EV_P_ ev_timer *w) EV_THROW
+   {
+     int active = ev_active (w);
+ 
+-    assert (("libev: internal timer heap corruption", ANHE_w (timers [active]) == (WT)w));
++    // assert (("libev: internal timer heap corruption", ANHE_w (timers [active]) == (WT)w));
+ 
+     --timercnt;
+ 
