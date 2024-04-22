@@ -2125,9 +2125,15 @@ void awh::DNS::hosts(const string & filename) noexcept {
 						// Определяем тип передаваемого сервера
 						switch(static_cast <uint8_t> (this->_net.host(hosts.front()))){
 							// Если хост является доменом или IPv4 адресом
-							case static_cast <uint8_t> (net_t::type_t::IPV4): family = AF_INET; break;
+							case static_cast <uint8_t> (net_t::type_t::IPV4):
+								// Устанавливаем семейстов IP-адресов
+								family = AF_INET;
+							break;
 							// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-							case static_cast <uint8_t> (net_t::type_t::IPV6): family = AF_INET6; break;
+							case static_cast <uint8_t> (net_t::type_t::IPV6):
+								// Устанавливаем семейстов IP-адресов
+								family = AF_INET6;
+							break;
 						}
 						// Если мы удачно определили тип интернет-протокола
 						if(family > 0){
@@ -2198,7 +2204,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 							// Если хост мы не нашли
 							if(error == WSAHOST_NOT_FOUND)
 								// Выводим сообщение об ошибке
-								this->_log->print("Hosts %s not found", log_t::flag_t::WARNING, name.c_str());
+								this->_log->print("Host \"%s\" is not found", log_t::flag_t::WARNING, name.c_str());
 							// Если в записи записи хоста в DNS-сервере обнаружено
 							else if(error == WSANO_DATA)
 								// Выводим сообщение об ошибке
@@ -2234,7 +2240,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 							// Если доменное имя не найдено
 							case HOST_NOT_FOUND:
 								// Выводим сообщение об ошибке
-								this->_log->print("Hosts %s not found", log_t::flag_t::WARNING, name.c_str());
+								this->_log->print("Host \"%s\" is not found", log_t::flag_t::WARNING, name.c_str());
 							break;
 							// Выводим сообщение по умолчанию
 							default: this->_log->print("An error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
@@ -2471,10 +2477,43 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 				} break;
 				// Значит скорее всего, садрес является доменным именем
 				default: {
-					// Создаём объект DNS-резолвера
-					dns_t dns(this->_fmk, this->_log);
-					// Выполняем получение IP адрес хоста доменного имени
-					return dns.host(family, host);
+					// Выполняем поиск IP-адреса в кэше DNS
+					result = this->cache(family, domain);
+					// Если IP-адрес получен
+					if(!result.empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок запроса
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ DOMAIN RESOLVE ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры запроса
+							cout << domain << endl;
+							// Определяем тип протокола подключения
+							switch(family){
+								// Если тип протокола подключения IPv4
+								case static_cast <int> (AF_INET):
+									// Выводим информацию об IP-адресе
+									cout << "IPv4: " << result << endl;
+								break;
+								// Если тип протокола подключения IPv6
+								case static_cast <int> (AF_INET6):
+									// Выводим информацию об IP-адресе
+									cout << "IPv6: " << result << endl;
+								break;
+							}
+							// Выводим переход на новую строку
+							cout << endl;
+						#endif
+						// Выводим полученный результат
+						return result;
+					// Если в кэше доменного имени нету
+					} else {
+						// Создаём объект DNS-резолвера
+						dns_t dns(this->_fmk, this->_log);
+						// Выполняем получение IP адрес хоста доменного имени
+						return dns.host(family, host);
+					}
 				}
 			}
 		}
