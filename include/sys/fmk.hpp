@@ -50,6 +50,16 @@
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
 
+/**
+ * Если используется модуль IDN
+ */
+#if defined(AWH_IDN)
+	/**
+	 * Модуль iconv
+	 */
+	#include <iconv/iconv.h>
+#endif
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 

@@ -16,6 +16,64 @@
 #include <sys/fmk.hpp>
 
 /**
+ * Если используется модуль IDN
+ */
+#if defined(AWH_IDN)
+	/**
+	 * convertEncoding Функция конвертирования из одной кодировки в другую
+	 * @param data данные для конвертирования
+	 * @param from название кодировки из которой необходимо выполнить конвертирование
+	 * @param to   название кодировки в которую необходимо выпоолнить конвертацию
+	 * @return     получившееся в результате значение
+	 */
+	static string convertEncoding(const string & data, const string & from, const string & to){
+		// Результат работы функции
+		string result = "";
+		// Если данные переданы на вход правильно
+		if(!data.empty() && !from.empty() && !to.empty()){
+			// Выполняем инициализацию конвертера
+			iconv_t convert = iconv_open(to.c_str(), from.c_str());
+			// Если инициализировать конвертер не вышло
+			if(convert == (iconv_t)(-1))
+				// Выполняем генерацию ошибки
+				throw std::logic_error("Unable to create convertion descriptor");
+			// Получаем размер входящей строки
+			size_t size = data.size();
+			// Выполняем получение указатель на входящую строку
+			char * ptr = const_cast <char *> (data.c_str());
+			// Выполняем создание буфера для получения результата
+			result.resize(6 * data.size(), 0);
+			// Выполняем получения указателя на результирующий буфер
+			char * output = result.data();
+			// Получаем длину результирующего буфера
+			size_t length = result.size();
+			// Выполняем конвертацию текста из одной кодировки в другую
+			const size_t status = iconv(convert, &ptr, &size, &output, &length);
+			// Выполняем закрытие конвертера
+			iconv_close(convert);
+			// Если конвертация не выполнена
+			if(status == (size_t)(-1)){
+				// Выполняем очистку полученного результата
+				result.clear();
+				// Выполняем формирование ответа
+				result.append("Unable to convert ");
+				result.append(data);
+				result.append(" from ");
+				result.append(from);
+				result.append(" to ");
+				result.append(to);
+				// Выполняем генерацию ошибки
+				throw std::logic_error(result);
+			}
+			// Выполняем коррекцию полученной длины строки
+			result.resize(result.size() - length);
+		}
+		// Выводим результат
+		return result;
+	}
+#endif
+
+/**
  * Устанавливаем шаблон функции
  */
 template <typename T>
@@ -1364,8 +1422,39 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 		 * Выполняем работу для Unix
 		 */
 		#else
-			// Конвертация нам не требуется
-			return text;
+			/**
+			 * Если используется модуль IDN
+			 */
+			#if defined(AWH_IDN)
+				// Определяем кодировку в которую нам нужно сконвертировать текст
+				switch(static_cast <uint8_t> (codepage)){
+					// Если требуется выполнить кодировку в автоматическом режиме
+					case static_cast <uint8_t> (codepage_t::AUTO): {
+						// Если текст передан в кодировке UTF-8
+						if(this->isUTF8(text.c_str()))
+							// Выполняем перекодирование в CP1251
+							return this->iconv(text, codepage_t::UTF8_CP1251);
+						// Выполняем перекодирование в UTF-8
+						else return this->iconv(text, codepage_t::CP1251_UTF8);
+					} break;
+					// Если требуется выполнить кодировку в UTF-8
+					case static_cast <uint8_t> (codepage_t::CP1251_UTF8):
+						// Выполняем конвертирование строки из CP1251 в UTF-8
+						return convertEncoding(text, "CP1251", "UTF-8");
+					// Если требуется выполнить кодировку в CP1251
+					case static_cast <uint8_t> (codepage_t::UTF8_CP1251):
+						// Выполняем конвертирование строки из UTF-8 в CP1251
+						return convertEncoding(text, "UTF-8", "CP1251");
+					// Если кодировка не установлена
+					default: return text;
+				}
+			/**
+			 * Выполняем работу для остальных условий
+			 */
+			#else
+				// Выводим текст как он есть
+				return text;
+			#endif
 		#endif
 	}
 	// Выводим результат
