@@ -1735,13 +1735,13 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 					} else host = this->host(family, server);
 				}
 			}
-			// Если NTP-сервер имён получен
+			// Если DNS-сервер имён получен
 			if(!host.empty()){
 				// Определяем тип протокола подключения
 				switch(family){
 					// Если тип протокола подключения IPv4
 					case static_cast <int> (AF_INET): {
-						// Создаём объект сервера NTP
+						// Создаём объект сервера DNS
 						server_t <1> server;
 						// Запоминаем полученный порт
 						server.port = port;
@@ -1752,7 +1752,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 							// Выполняем сравнение двух IP-адресов
 							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
 						}) == this->_serversIPv4.end()){
-							// Выполняем добавление полученный сервер в список NTP-серверов
+							// Выполняем добавление полученный сервер в список DNS-серверов
 							this->_serversIPv4.push_back(std::move(server));
 							/**
 							 * Если включён режим отладки
@@ -1767,7 +1767,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <int> (AF_INET6): {
-						// Создаём объект сервера NTP
+						// Создаём объект сервера DNS
 						server_t <4> server;
 						// Запоминаем полученный порт
 						server.port = port;
@@ -1778,7 +1778,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 							// Выполняем сравнение двух IP-адресов
 							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
 						}) == this->_serversIPv6.end()){
-							// Выполняем добавление полученный сервер в список NTP-серверов
+							// Выполняем добавление полученный сервер в список DNS-серверов
 							this->_serversIPv6.push_back(std::move(server));
 							/**
 							 * Если включён режим отладки
@@ -1926,7 +1926,7 @@ void awh::DNS::replace(const int family, const vector <string> & servers) noexce
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
+	if(hold.access({status_t::RESOLVE, status_t::NSS_REP}, status_t::NSS_REP)){
 		// Определяем тип подключения
 		switch(family){
 			// Для протокола IPv4
