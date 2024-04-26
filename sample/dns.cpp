@@ -51,6 +51,35 @@ int main(int argc, char * argv[]){
 	 * Пример переменной окружения: $ export AWH_DNS_IPV4_STALIN_INFO=255.255.255.222
 	 */
 	log.print("IP4: %s", log_t::flag_t::INFO, dns.resolve("stalin.info").c_str());
+	// Выполняем очистку кэша
+	dns.flush();
+	// Выполняем поиск доменных имён принадлежащим IP-адресу yandex.ru
+	const auto & yandex = dns.search("77.88.55.60");
+	// Если список доменных имён получен
+	if(!yandex.empty()){
+		// Выполняем перебор всего списка доменных имён
+		for(auto & domain : yandex)
+			// Выводим доменное имя
+			log.print("Domain: %s => %s", log_t::flag_t::INFO, domain.c_str(), "77.88.55.60");
+	}
+	// Выполняем поиск доменных имён принадлежащим IP-адресу google.com
+	const auto & google = dns.search("74.125.131.139");
+	// Если список доменных имён получен
+	if(!google.empty()){
+		// Выполняем перебор всего списка доменных имён
+		for(auto & domain : google)
+			// Выводим доменное имя
+			log.print("Domain: %s => %s", log_t::flag_t::INFO, domain.c_str(), "74.125.131.139");
+	}
+	// Выполняем поиск доменных имён принадлежащим IP-адресу anyks.com
+	const auto & anyks = dns.search("193.42.110.185");
+	// Если список доменных имён получен
+	if(!anyks.empty()){
+		// Выполняем перебор всего списка доменных имён
+		for(auto & domain : anyks)
+			// Выводим доменное имя
+			log.print("Domain: %s => %s", log_t::flag_t::INFO, domain.c_str(), "193.42.110.185");
+	}
 	// Выполняем кодирование кирилического доменного имени
 	log.print("Encode domain \"ремпрофи.рф\" == \"%s\"", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
 	// Выполняем декодирование кирилического доменного имени

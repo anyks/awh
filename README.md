@@ -1267,6 +1267,13 @@ int main(int argc, char * argv[]){
 	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com").c_str());
 
 	log.print("IP4: %s", log_t::flag_t::INFO, dns.resolve("stalin.info").c_str());
+
+	const auto & yandex = dns.search("77.88.55.60");
+	if(!yandex.empty()){
+		for(auto & domain : yandex)
+			log.print("Domain: %s => %s", log_t::flag_t::INFO, domain.c_str(), "77.88.55.60");
+	}
+	
 	log.print("Encode domain \"ремпрофи.рф\" == \"%s\"", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
 	log.print("Decode domain \"xn--e1agliedd7a.xn--p1ai\" == \"%s\"", log_t::flag_t::INFO, dns.decode("xn--e1agliedd7a.xn--p1ai").c_str());
 
@@ -2499,6 +2506,14 @@ int main(int argc, char * argv[]){
 
 	net = "73:0b:04:0d:db:79";
 	cout << " MAC: 73:0b:04:0d:db:79 || " << net << endl;
+
+	net.arpa("70.255.255.5.in-addr.arpa");
+	cout << " ARPA: 70.255.255.5.in-addr.arpa || " << net << endl;
+	cout << " ARPA IPv4: " << net.arpa() << endl;
+
+	net.arpa("b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa");
+	cout << " ARPA: b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa || " << net << endl;
+	cout << " ARPA IPv6: " << net.arpa() << endl;
 
 	return 0;
 }

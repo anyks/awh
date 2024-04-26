@@ -796,7 +796,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 	// Если маска сети передана
 	if(!mask.empty()){
 		// Создаём объкт для работы с адресами
-		net_t net{};
+		net_t net(this->_exp);
 		// Выполняем парсинг маски
 		if(net.parse(mask) && (this->_type == net.type())){
 			// Бинарный контейнер
@@ -844,7 +844,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 	// Если маска сети передана
 	if(prefix > 0){
 		// Создаём объкт для работы с адресами
-		net_t net{};
+		net_t net(this->_exp);
 		// Определяем тип IP-адреса
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP-адрес определён как IPv4
@@ -889,7 +889,7 @@ bool awh::Net::mapping(const string & network) const noexcept {
 	// Если адрес сети передан
 	if((result = !network.empty())){
 		// Создаём объкт для работы с адресами
-		net_t net{};
+		net_t net(this->_exp);
 		// Если парсинг адреса сети выполнен
 		if((result = net.parse(network))){
 			// Если сеть и IP-адрес принадлежат одной версии сети
@@ -1001,7 +1001,7 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) c
 	// Если типы адресов совпадают
 	if((this->type() == begin.type()) && (this->type() == end.type())){
 		// Создаём объекты сетевых модулей
-		net_t net1{}, net2{}, net3{};
+		net_t net1(this->_exp), net2(this->_exp), net3(this->_exp);
 		// Определяем тип IP-адреса
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP-адрес определён как IPv4
@@ -1070,7 +1070,7 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty() && !begin.empty() && !end.empty()){
 		// Создаём объекты сетевых модулей
-		net_t net1{}, net2{}, net3{};
+		net_t net1(this->_exp), net2(this->_exp), net3(this->_exp);
 		// Устанавливаем новое значение адреса для начала и конца диапазона адресов
 		net2 = begin; net3 = end;
 		// Определяем тип IP-адреса
@@ -1136,7 +1136,7 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 	// Если адрес сети передан
 	if((result = (!network.empty() && (prefix > 0)))){
 		// Создаём объкт для работы с адресами
-		net_t net{};
+		net_t net(this->_exp);
 		// Если парсинг адреса сети выполнен
 		if((result = net.parse(network))){
 			// Если сеть и IP-адрес принадлежат одной версии сети
@@ -1184,7 +1184,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty()){
 		// Создаём объкт для работы с адресами
-		net_t net{};
+		net_t net(this->_exp);
 		// Выполняем инициализацию списка локальных адресов
 		const_cast <net_t *> (this)->initLocalNet();
 		// Выполняем группировку нужного нам вида адресов
@@ -1259,6 +1259,140 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 		if(result == mode_t::NONE)
 			// Устанавливаем, что файл ялвяется глобальным
 			result = mode_t::WAN;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * arpa Получение записи в формате ARPA
+ * @return запись в формате ARPA
+ */
+string awh::Net::arpa() const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Определяем тип IP-адреса
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если IP-адрес определён как IPv4
+		case static_cast <uint8_t> (type_t::IPV4): {
+			// Переходим по всему массиву
+			for(int8_t i = (static_cast <int8_t> (this->_buffer.size()) - 1); i > -1; i--){
+				// Если строка уже существует, добавляем разделитель
+				if(!result.empty())
+					// Добавляем разделитель
+					result.append(1, '.');
+				// Добавляем октет в версию
+				result.append(to_string(this->_buffer[i]));
+			}
+			// Добавляем запись ARPA
+			result.append(".in-addr.arpa");
+		} break;
+		// Если IP-адрес определён как IPv6
+		case static_cast <uint8_t> (type_t::IPV6): {
+			// Значение хексета
+			uint16_t num = 0;
+			// Переходим по всему массиву
+			for(uint8_t i = 0; i < static_cast <uint8_t> (this->_buffer.size()); i += 2){
+				// Выполняем получение значение числа
+				::memcpy(&num, this->_buffer.data() + i, sizeof(num));
+				// Если строка уже существует, добавляем разделитель
+				if(!result.empty())
+					// Добавляем разделитель
+					result.insert(result.begin(), '.');
+				// Выполняем перебор полученного хексета
+				for(auto & item : this->zerro(this->itoa(static_cast <int64_t> (num), 16), 4)){
+					// Если последний символ не является точкой
+					if(result.front() != '.')
+						// Добавляем разделитель
+						result.insert(result.begin(), '.');
+					// Добавляем хексет в версию
+					result.insert(result.begin(), tolower(item));
+				}
+			}
+			// Добавляем запись ARPA
+			result.append("ip6.arpa");
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * arpa Метод установки записи в формате ARPA
+ * @param addr адрес в формате ARPA (1.0.168.192.in-addr.arpa)
+ * @return     результат установки записи
+ */
+bool awh::Net::arpa(const string & addr) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если запись передана
+	if(!addr.empty() && (addr.length() > 13)){
+		// Если адрес является адресом IPv4
+		if((result = (addr.substr(addr.length() - 13).compare(".in-addr.arpa") == 0))){
+			// Выполняем очистку буфера данных
+			this->_buffer.clear();
+			// Выполняем инициализацию буфера
+			this->_buffer.resize(4, 0);
+			// Устанавливаем тип адреса
+			this->_type = type_t::IPV4;
+			// Позиция разделителя
+			size_t start = 0, stop = 0, index = 3;
+			// Получаем адрес для парсинга
+			const string ip = addr.substr(0, addr.length() - 13);
+			// Выполняем поиск разделителя
+			while((stop = ip.find('.', start)) != string::npos){
+				// Извлекаем полученное число
+				this->_buffer[index] = static_cast <uint8_t> (::stoi(ip.substr(start, stop - start)));
+				// Выполняем смещение
+				start = (stop + 1);
+				// Уменьшаем смещение индекса
+				index--;
+			}
+			// Выполняем установку последнего октета
+			this->_buffer[index] = static_cast <uint8_t> (::stoi(ip.substr(start)));
+		// Если адрес является адресом IPv6
+		} else if((result = (addr.substr(addr.length() - 9).compare(".ip6.arpa") == 0))) {
+			// Временный буфер хексета
+			uint8_t hexset[4];
+			// Результирующий буфер данных
+			uint16_t buffer[8];
+			// Выполняем очистку буфера данных
+			this->_buffer.clear();
+			// Выполняем инициализацию буфера
+			this->_buffer.resize(16, 0);
+			// Устанавливаем тип адреса
+			this->_type = type_t::IPV6;
+			// Позиция разделителя
+			size_t start = 0, stop = 0;
+			// Устанавливаем индекс последнего элемента
+			uint8_t index1 = 4, index2 = 8;
+			// Получаем адрес для парсинга
+			const string ip = addr.substr(0, addr.length() - 9);
+			// Выполняем поиск разделителя
+			while((stop = ip.find('.', start)) != string::npos){
+				// Выполняем уменьшение значения индекса
+				index1--;
+				// Выполняем установку хексета
+				hexset[index1] = static_cast <uint8_t> (ip.substr(start, stop - start)[0]);
+				// Если хексет полностью заполнен
+				if(index1 == 0){
+					// Добавляем хексет в список
+					buffer[--index2] = static_cast <uint16_t> (this->atoi(reinterpret_cast <char *> (hexset)));
+					// Выполняем сброс индекса
+					index1 = 4;
+				}
+				// Выполняем смещение
+				start = (stop + 1);
+			}
+			// Выполняем уменьшение значения индекса
+			index1--;
+			// Выполняем установку хексета
+			hexset[index1] = static_cast <uint8_t> (ip.substr(start, stop - start)[0]);
+			// Если хексет полностью заполнен
+			if(index1 == 0)
+				// Добавляем хексет в список
+				buffer[--index2] = static_cast <uint16_t> (this->atoi(reinterpret_cast <char *> (hexset)));
+			// Выполняем копирование бинарных данных в буфер
+			::memcpy(this->_buffer.data(), buffer, sizeof(buffer));
+		}
 	}
 	// Выводим результат
 	return result;
@@ -1857,6 +1991,14 @@ awh::Net::Net() noexcept : _type(type_t::NONE) {
 		// Определение адреса файловой системы
 		"(\\.{0,2}\\/\\w+(?:\\/[\\w\\.\\-]+)*))$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS}
 	);
+}
+/**
+ * Net конструктор
+ * @param exp регулярное выражение для установки
+ */
+awh::Net::Net(const regexp_t::exp_t & exp) noexcept : _type(type_t::NONE) {
+	// Устанавливаем регулярное выражение для проверки адреса
+	this->_exp.set(exp);
 }
 /**
  * Оператор [>>] чтения из потока IP-адреса

@@ -70,6 +70,9 @@ namespace awh {
 				private:
 					// Флаг инициализации
 					bool _mode;
+					// Флаг инициализации
+					bool _init;
+				private:
 					// Объект контекста регулярного выражения
 					regex_t _reg;
 				public:
@@ -77,6 +80,12 @@ namespace awh {
 					 * clear Метод очистки созданного объекта
 					 */
 					void clear() noexcept;
+				public:
+					/**
+					 * set Метод установки внешнего регулярного выражения
+					 * @param exp объект внешнего регулярного выражения
+					 */
+					void set(const Expression & exp) noexcept;
 				public:
 					/**
 					 * Оператор проверки на инициализацию регулярного выражения
@@ -94,7 +103,7 @@ namespace awh {
 					/**
 					 * Expression Конструктор
 					 */
-					Expression() noexcept : _mode(false) {}
+					Expression() noexcept : _mode(false), _init(true) {}
 					/**
 					 * ~Expression Деструктор
 					 */

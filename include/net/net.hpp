@@ -328,6 +328,18 @@ namespace awh {
 			mode_t mode() const noexcept;
 		public:
 			/**
+			 * arpa Получение записи в формате ARPA
+			 * @return запись в формате ARPA
+			 */
+			string arpa() const noexcept;
+			/**
+			 * arpa Метод установки записи в формате ARPA
+			 * @param addr адрес в формате ARPA (1.0.168.192.in-addr.arpa)
+			 * @return     результат установки записи
+			 */
+			bool arpa(const string & addr) noexcept;
+		public:
+			/**
 			 * parse Метод парсинга адреса
 			 * @param addr адрес аппаратный или интернет подключения для парсинга
 			 * @return     результат работы парсинга
@@ -420,6 +432,13 @@ namespace awh {
 			 * Net конструктор
 			 */
 			Net() noexcept;
+		private:
+			/**
+			 * Net конструктор
+			 * @param exp регулярное выражение для установки
+			 */
+			Net(const regexp_t::exp_t & exp) noexcept;
+		public:
 			/**
 			 * ~Net деструктор
 			 */

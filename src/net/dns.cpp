@@ -348,17 +348,28 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 		size += (domain.size() + 1);
 		// Создаём части флагов вопроса пакета запроса
 		qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
-		// Определяем тип подключения
-		switch(this->_family){
-			// Для протокола IPv4
-			case AF_INET:
+		// Определяем тип DNS-запроса
+		switch(static_cast <uint8_t> (this->_qtype)){
+			// Если тип DNS-запроса установлен как IP-адрес
+			case static_cast <uint8_t> (qtype_t::IP): {
+				// Определяем тип подключения
+				switch(this->_family){
+					// Для протокола IPv4
+					case AF_INET:
+						// Устанавливаем тип флага запроса
+						qflags->qtype = htons(0x0001);
+					break;
+					// Для протокола IPv6
+					case AF_INET6:
+						// Устанавливаем тип флага запроса
+						qflags->qtype = htons(0x1C);
+					break;
+				}
+			} break;
+			// Если тип DNS-запроса установлен как PTR-запись
+			case static_cast <uint8_t> (qtype_t::PTR):
 				// Устанавливаем тип флага запроса
-				qflags->qtype = htons(0x0001);
-			break;
-			// Для протокола IPv6
-			case AF_INET6:
-				// Устанавливаем тип флага запроса
-				qflags->qtype = htons(0x1C);
+				qflags->qtype = htons(0xC);
 			break;
 		}
 		// Устанавливаем класс флага запроса
@@ -397,7 +408,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 				return result;
 			}
 			// Если запрос на сервер DNS успешно отправлен
-			if((bytes = ::sendto(this->_fd, (const char *) buffer, size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
+			if((bytes = ::sendto(this->_fd, reinterpret_cast <const char *> (buffer), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
 				// Буфер пакета данных
 				u_char buffer[65536];
 				// Получаем объект DNS-сервера
@@ -405,7 +416,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 				// Выполняем зануление буфера данных
 				::memset(buffer, 0, sizeof(buffer));
 				// Выполняем чтение ответа сервера
-				const int64_t bytes = ::recvfrom(this->_fd, (char *) buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
+				const int64_t bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (buffer), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Если сокет находится в блокирующем режиме
@@ -508,6 +519,8 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 									} break;
 									// Если запись является каноническим именем
 									case 5: {
+									// Если запись является PTR
+									case 12:
 										// Выполняем извлечение значение записи
 										rdata[i] = this->join(this->extract(buffer, size));
 										// Устанавливаем тип полученных данных
@@ -517,8 +530,8 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 								// Увеличиваем размер полученных данных
 								size += ntohs(rrflags->rdlength);
 							}
-							// Список IP-адресов
-							vector <string> ips;
+							// Список полученных записей
+							vector <string> records;
 							/**
 							 * Если включён режим отладки
 							 */
@@ -537,6 +550,18 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 									switch(type[i]){
 										// Если тип полученной записи CNAME
 										case 5: printf("CNAME: %s\n", rdata[i].c_str()); break;
+										// Если тип получения записи PTR
+										case 12: {
+											// Выводим информацию в консоль
+											printf("PTR: %s\n", rdata[i].c_str());
+											// Выполняем установку ARPA-адреса
+											if(const_cast <dns_t *> (this->_self)->_net.arpa(this->_domain)){
+												// Выполняем извлечение PTR-записи
+												records.push_back(rdata[i]);
+												// Записываем данные в кэш
+												self->setToCache(this->_family, rdata[i], this->_self->_net.get());
+											}
+										} break;
 										// Если тип полученной записи IPv4
 										case 1:
 										// Если тип полученной записи IPv6
@@ -552,7 +577,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 												// Если чёрный список IP-адресов получен
 												if((count == 1) || !self->isInBlackList(this->_family, this->_domain, ip)){
 													// Добавляем IP-адрес в список адресов
-													ips.push_back(ip);
+													records.push_back(ip);
 													// Записываем данные в кэш
 													self->setToCache(this->_family, this->_domain, ip);
 												}
@@ -572,56 +597,71 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 								char buffer[INET6_ADDRSTRLEN];
 								// Переходим по всему списку записей
 								for(int i = 0; i < count; ++i){
-									// Если тип полученной записи IPv4 или IPv6
-									if((type[i] == 1) || (type[i] == 28)){
-										// Зануляем буфер данных
-										::memset(buffer, 0, sizeof(buffer));
-										// Получаем IP-адрес принадлежащий доменному имени
-										const string ip = ::inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
-										// Если IP-адрес получен
-										if(!ip.empty()){
-											// Если чёрный список IP-адресов получен
-											if((count == 1) || !self->isInBlackList(this->_family, this->_domain, ip)){
-												// Добавляем IP-адрес в список адресов
-												ips.push_back(ip);
+									// Определяем тип записи
+									switch(type[i]){
+										// Если тип получения записи PTR
+										case 12: {
+											// Выполняем установку ARPA-адреса
+											if(const_cast <dns_t *> (this->_self)->_net.arpa(this->_domain)){
+												// Выполняем извлечение PTR-записи
+												records.push_back(rdata[i]);
 												// Записываем данные в кэш
-												self->setToCache(this->_family, this->_domain, ip);
+												self->setToCache(this->_family, rdata[i], this->_self->_net.get());
 											}
-										}
+										} break;
+										// Если тип полученной записи IPv4
+										case 1:
+										// Если тип полученной записи IPv6
+										case 28: {
+											// Зануляем буфер данных
+											::memset(buffer, 0, sizeof(buffer));
+											// Получаем IP-адрес принадлежащий доменному имени
+											const string ip = ::inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+											// Если IP-адрес получен
+											if(!ip.empty()){
+												// Если чёрный список IP-адресов получен
+												if((count == 1) || !self->isInBlackList(this->_family, this->_domain, ip)){
+													// Добавляем IP-адрес в список адресов
+													records.push_back(ip);
+													// Записываем данные в кэш
+													self->setToCache(this->_family, this->_domain, ip);
+												}
+											}
+										} break;
 									}
 								}
 							#endif
-							// Если список IP-адресов получен
-							if(!ips.empty()){
-								// Если количество IP-адресов в списке больше 1-го
-								if(ips.size() > 1){
-									// Переходим по всему списку полученных адресов
-									for(auto & addr : ips){
-										// Если IP-адрес не найден в списке
+							// Если список записей получен
+							if(!records.empty()){
+								// Если количество записей в списке больше 1-й
+								if(records.size() > 1){
+									// Переходим по всему списку полученных записей
+									for(auto & addr : records){
+										// Если запись не найдена в списке
 										if(self->_using.count(addr) < 1){
-											// Выполняем установку IP-адреса
+											// Выполняем установку записи
 											result = std::move(addr);
 											// Выходим из цикла
 											break;
 										}
 									}
 								}
-								// Если IP-адрес не установлен
+								// Если запись не установлена
 								if(result.empty()){
-									// Выполняем установку IP-адреса
-									result = std::move(ips.front());
-									// Если количество IP-адресов в списке больше 1-го
-									if(ips.size() > 1){
-										// Получаем текущее значение адреса
-										auto i = ips.begin();
+									// Выполняем установку первой записи в списке
+									result = std::move(records.front());
+									// Если количество записей в списке больше 1-й
+									if(records.size() > 1){
+										// Получаем текущее значение записи
+										auto i = records.begin();
 										// Выполняем смещение итератора
 										std::advance(i, 1);
-										// Переходим по всему списку полученных адресов
-										for(; i != ips.end(); ++i)
-											// Очищаем список используемых IP-адресов
+										// Переходим по всему списку полученных записей
+										for(; i != records.end(); ++i)
+											// Очищаем список используемых записей
 											self->_using.erase(* i);
 									}
-								// Если IP-адрес получен, то запоминаем полученный адрес
+								// Если запись получена, то запоминаем полученную запись
 								} else self->_using.emplace(result);
 							}
 						} break;
@@ -722,7 +762,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 	 */
 	#if defined(AWH_IDN)
 		// Если доменное имя передано
-		if(!domain.empty()){
+		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
 			/**
 			 * Если операционной системой является Windows
 			 */
@@ -770,7 +810,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 	 */
 	#if defined(AWH_IDN)
 		// Если доменное имя передано
-		if(!domain.empty()){
+		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
 			/**
 			 * Если операционной системой является Windows
 			 */
@@ -2584,6 +2624,42 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 						// Выполняем добавление доменное имя в список
 						result.push_back(i->first);
 				}
+			}
+		}
+		// Если список IP-адресов пустой
+		if(result.empty()){
+			// Устанавливаем полученный IP-адрес
+			this->_net = ip;
+			// Получаем доменное имя в виде ARPA-записи
+			const string & domain = this->_net.arpa();
+			// Определяем тип протокола подключения
+			switch(family){
+				// Если тип протокола подключения IPv4
+				case static_cast <int> (AF_INET): {
+					// Если список DNS-серверов пустой
+					if(this->_serversIPv4.empty())
+						// Устанавливаем список серверов IPv4
+						this->replace(AF_INET);
+					// Устанавливаем тип DNS-запроса
+					this->_workerIPv4->_qtype = worker_t::qtype_t::PTR;
+					// Выполняем получение PTR-записи
+					if(!this->_workerIPv4->request(domain).empty())
+						// Выполняем поиск в кэше ещё раз
+						result = this->search(family, ip);
+				} break;
+				// Если тип протокола подключения IPv6
+				case static_cast <int> (AF_INET6): {
+					// Если список DNS-серверов пустой
+					if(this->_serversIPv6.empty())
+						// Устанавливаем список серверов IPv6
+						this->replace(AF_INET6);
+					// Устанавливаем тип DNS-запроса
+					this->_workerIPv6->_qtype = worker_t::qtype_t::PTR;
+					// Выполняем получение PTR-записи
+					if(!this->_workerIPv6->request(domain).empty())
+						// Выполняем поиск в кэше ещё раз
+						result = this->search(family, ip);
+				} break;
 			}
 		}
 	}

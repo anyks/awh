@@ -225,6 +225,14 @@ namespace awh {
 					 */
 					friend class DNS;
 				private:
+					/**
+					 * Тип запроса
+					 */
+					enum class qtype_t : uint8_t {
+						IP  = 0x01, // Тип запроса IP-адрес
+						PTR = 0x02  // Тип запроса PTR-адрес
+					};
+				private:
 					// Файловый дескриптор (сокет)
 					SOCKET _fd;
 				private:
@@ -233,6 +241,9 @@ namespace awh {
 				private:
 					// Тип протокола интернета AF_INET или AF_INET6
 					int _family;
+				private:
+					// Тип DNS-запроса
+					qtype_t _qtype;
 				private:
 					// Название искомого домена
 					string _domain;
@@ -307,7 +318,7 @@ namespace awh {
 					 */
 					Worker(const int family, const DNS * self) noexcept :
 					 _fd(INVALID_SOCKET), _mode(false), _family(family),
-					 _domain(""), _socket(self->_fmk, self->_log), _self(self) {}
+					 _qtype(qtype_t::IP), _domain{""}, _socket(self->_fmk, self->_log), _self(self) {}
 					/**
 					 * ~Worker Деструктор
 					 */
