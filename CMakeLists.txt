@@ -45,7 +45,7 @@ endif(CMAKE_BUILD_EVENT2)
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 
 # Получаем архитектуру
-EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
+EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
 # Проверка версии OS
@@ -55,7 +55,9 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(DEBUGGER "-ggdb3")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE MACOS_VERSION)
+    if(NOT MACOS_VERSION)
+        EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE MACOS_VERSION)
+    endif()
     message(STATUS "Detected OS: MacOS X v${MACOS_VERSION}")
     set(DEBUGGER "-glldb")    
     set(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION})
