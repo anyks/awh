@@ -156,8 +156,11 @@ mkdir -p "$PREFIX/include"
 if [ $OS = "Darwin" ]; then
 	# Устанавливаем количество ядер системы
 	numproc=$(sysctl -n hw.logicalcpu)
-	# Устанавливаем версию операционной системы
-	export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)
+	# Если версия MacOS X не установлена
+	if [ ! -n "$MACOSX_DEPLOYMENT_TARGET" ]; then
+		# Устанавливаем версию операционной системы
+		export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)
+	fi
 elif [ $OS = "FreeBSD" ]; then
 	# Устанавливаем количество ядер системы
 	numproc=$(sysctl -n hw.ncpu)
