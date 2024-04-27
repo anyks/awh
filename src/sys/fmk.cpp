@@ -16,61 +16,66 @@
 #include <sys/fmk.hpp>
 
 /**
- * Если используется модуль IDN
+ * Выполняем работу не для OS Windows
  */
-#if defined(AWH_IDN)
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * convertEncoding Функция конвертирования из одной кодировки в другую
-	 * @param data данные для конвертирования
-	 * @param from название кодировки из которой необходимо выполнить конвертирование
-	 * @param to   название кодировки в которую необходимо выпоолнить конвертацию
-	 * @return     получившееся в результате значение
+	 * Если используется модуль IDN
 	 */
-	static string convertEncoding(const string & data, const string & from, const string & to){
-		// Результат работы функции
-		string result = "";
-		// Если данные переданы на вход правильно
-		if(!data.empty() && !from.empty() && !to.empty()){
-			// Выполняем инициализацию конвертера
-			iconv_t convert = iconv_open(to.c_str(), from.c_str());
-			// Если инициализировать конвертер не вышло
-			if(convert == (iconv_t)(-1))
-				// Выполняем генерацию ошибки
-				throw std::logic_error("Unable to create convertion descriptor");
-			// Получаем размер входящей строки
-			size_t size = data.size();
-			// Выполняем получение указатель на входящую строку
-			char * ptr = const_cast <char *> (data.c_str());
-			// Выполняем создание буфера для получения результата
-			result.resize(6 * data.size(), 0);
-			// Выполняем получения указателя на результирующий буфер
-			char * output = result.data();
-			// Получаем длину результирующего буфера
-			size_t length = result.size();
-			// Выполняем конвертацию текста из одной кодировки в другую
-			const size_t status = iconv(convert, &ptr, &size, &output, &length);
-			// Выполняем закрытие конвертера
-			iconv_close(convert);
-			// Если конвертация не выполнена
-			if(status == (size_t)(-1)){
-				// Выполняем очистку полученного результата
-				result.clear();
-				// Выполняем формирование ответа
-				result.append("Unable to convert ");
-				result.append(data);
-				result.append(" from ");
-				result.append(from);
-				result.append(" to ");
-				result.append(to);
-				// Выполняем генерацию ошибки
-				throw std::logic_error(result);
+	#if defined(AWH_IDN)
+		/**
+		 * convertEncoding Функция конвертирования из одной кодировки в другую
+		 * @param data данные для конвертирования
+		 * @param from название кодировки из которой необходимо выполнить конвертирование
+		 * @param to   название кодировки в которую необходимо выпоолнить конвертацию
+		 * @return     получившееся в результате значение
+		 */
+		static string convertEncoding(const string & data, const string & from, const string & to){
+			// Результат работы функции
+			string result = "";
+			// Если данные переданы на вход правильно
+			if(!data.empty() && !from.empty() && !to.empty()){
+				// Выполняем инициализацию конвертера
+				iconv_t convert = iconv_open(to.c_str(), from.c_str());
+				// Если инициализировать конвертер не вышло
+				if(convert == (iconv_t)(-1))
+					// Выполняем генерацию ошибки
+					throw std::logic_error("Unable to create convertion descriptor");
+				// Получаем размер входящей строки
+				size_t size = data.size();
+				// Выполняем получение указатель на входящую строку
+				char * ptr = const_cast <char *> (data.c_str());
+				// Выполняем создание буфера для получения результата
+				result.resize(6 * data.size(), 0);
+				// Выполняем получения указателя на результирующий буфер
+				char * output = result.data();
+				// Получаем длину результирующего буфера
+				size_t length = result.size();
+				// Выполняем конвертацию текста из одной кодировки в другую
+				const size_t status = iconv(convert, &ptr, &size, &output, &length);
+				// Выполняем закрытие конвертера
+				iconv_close(convert);
+				// Если конвертация не выполнена
+				if(status == (size_t)(-1)){
+					// Выполняем очистку полученного результата
+					result.clear();
+					// Выполняем формирование ответа
+					result.append("Unable to convert ");
+					result.append(data);
+					result.append(" from ");
+					result.append(from);
+					result.append(" to ");
+					result.append(to);
+					// Выполняем генерацию ошибки
+					throw std::logic_error(result);
+				}
+				// Выполняем коррекцию полученной длины строки
+				result.resize(result.size() - length);
 			}
-			// Выполняем коррекцию полученной длины строки
-			result.resize(result.size() - length);
+			// Выводим результат
+			return result;
 		}
-		// Выводим результат
-		return result;
-	}
+	#endif
 #endif
 
 /**

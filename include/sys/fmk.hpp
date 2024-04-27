@@ -51,13 +51,18 @@
 #include <openssl/hmac.h>
 
 /**
- * Если используется модуль IDN
+ * Выполняем работу не для OS Windows
  */
-#if defined(AWH_IDN)
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * Модуль iconv
+	 * Если используется модуль IDN
 	 */
-	#include <iconv/iconv.h>
+	#if defined(AWH_IDN)
+		/**
+		 * Модуль iconv
+		 */
+		#include <iconv/iconv.h>
+	#endif
 #endif
 
 // Подписываемся на стандартное пространство имён
