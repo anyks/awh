@@ -21,6 +21,7 @@
 #include <map>
 #include <ctime>
 #include <mutex>
+#include <queue>
 #include <vector>
 #include <thread>
 #include <string>
@@ -46,6 +47,7 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/child.hpp>
+#include <sys/buffer.hpp>
 #include <net/socket.hpp>
 #include <lib/event2/sys/events.hpp>
 
@@ -60,6 +62,11 @@ namespace awh {
 	 * Cluster Класс работы с кластером
 	 */
 	typedef class Cluster {
+		private:
+			// Максимальный размер отправляемой полезной нагрузки
+			static constexpr size_t MAX_PAYLOAD = 0xFF2;
+			// Максимальный размер одного сообщения
+			static constexpr size_t MAX_MESSAGE = 0x3B9ACA00;
 		public:
 			/**
 			 * События работы кластера
@@ -79,6 +86,41 @@ namespace awh {
 			};
 		private:
 			/**
+			 * Стейт входящего собщения
+			 */
+			enum class state_t : uint8_t {
+				NONE = 0x00, // Стейт не установлен
+				HEAD = 0x01, // Заголовок входящего сообщения
+				DATA = 0x02  // Данные входящего сообщения
+			};
+		private:
+			/**
+			 * Message Структура межпроцессного сообщения
+			 */
+			typedef struct Message {
+				bool quit;   // Флаг остановки работы процесса
+				pid_t pid;   // Пид активного процесса
+				size_t size; // Размер передаваемых данных
+				/**
+				 * Message Конструктор
+				 */
+				Message() noexcept : quit(false), pid(0), size(0) {}
+			} __attribute__((packed)) mess_t;
+			/**
+			 * Payload Структура полезной нагрузки
+			 */
+			typedef struct Payload {
+				SOCKET fd;                 // Файловый дескриптор для отправки сообщения
+				size_t pos;                // Позиция в буфере
+				size_t size;               // Размер буфера
+				size_t offset;             // Смещение в бинарном буфере
+				unique_ptr <char []> data; // Данные буфера
+				/**
+				 * Payload Конструктор
+				 */
+				Payload() noexcept : fd(-1), pos(0), size(0), offset(0), data(nullptr) {}
+			} payload_t;
+			/**
 			 * Worker Класс воркера
 			 */
 			typedef class Worker {
@@ -94,24 +136,77 @@ namespace awh {
 						 */
 						Data() noexcept : pid(0) {}
 					} data_t;
+					/**
+					 * Payload Структура буфера полезной нагрузки
+					 */
+					typedef struct Payload {
+						// Стейт входящего сообщения
+						state_t state;
+						// Параметры входящего сообщения
+						mess_t message;
+						// Буфер полезной нагрузки
+						buffer_t buffer;
+						/**
+						 * Payload Конструктор
+						 */
+						Payload() noexcept : state(state_t::HEAD) {}
+					} payload_t;
 				public:
-					mutex mtx;         // Мютекс для блокировки потока
-					uint16_t wid;      // Идентификатор воркера
-					bool async;        // Флаг асинхронного режима обмена сообщениями
-					bool working;      // Флаг запуска работы
-					bool restart;      // Флаг автоматического перезапуска
-					uint16_t count;    // Количество рабочих процессов
-					Cluster * cluster; // Родительский объект кластера
+					// Мютекс для блокировки потока
+					mutex mtx;
+				public:
+					// Идентификатор воркера
+					uint16_t wid;
+				public:
+					// Флаг асинхронного режима обмена сообщениями
+					bool async;
+					// Флаг запуска работы
+					bool working;
+					// Флаг автоматического перезапуска
+					bool restart;
+				public:
+					// Количество рабочих процессов
+					uint16_t count;
 				private:
-					// Общий буфер входящих данных
-					vector <char> _buffer;
+					// Бинарный буфер полученных данных
+					uint8_t _buffer[4096];
+				public:
+					// Родительский объект кластера
+					Cluster * cluster;
 				private:
 					// Объект для работы с дочерним потоком
 					child_t <data_t> * _child;
 				private:
+					// Полезная нагрузка полученная в сообщениях
+					map <pid_t, unique_ptr <payload_t>> _payload;
+				private:
 					// Объект для работы с логами
 					const log_t * _log;
 				public:
+					/**
+					 * Если операционной системой не является Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						/**
+						 * child Метод обратного вызова при завершении работы процесса
+						 * @param fd    файловый дескриптор (сокет)
+						 * @param event возникшее событие
+						 */
+						void child(SOCKET fd, short event) noexcept;
+						/**
+						 * message Функция обратного вызова получении сообщений
+						 * @param fd    файловый дескриптор (сокет)
+						 * @param event возникшее событие
+						 */
+						void message(SOCKET fd, const int event) noexcept;
+						/**
+						 * process Метод перезапуска упавшего процесса
+						 * @param pid    идентификатор упавшего процесса
+						 * @param status статус остановившегося процесса
+						 */
+						void process(const pid_t pid, const int status) noexcept;
+					#endif
+				private:
 					/**
 					 * Если операционной системой не является Windows
 					 */
@@ -122,23 +217,11 @@ namespace awh {
 						 */
 						void callback(const data_t & data) noexcept;
 						/**
-						 * child Функция обратного вызова при завершении работы процесса
-						 * @param fd    файловый дескриптор (сокет)
-						 * @param event возникшее событие
-						 */
-						void child(evutil_socket_t fd, short event) noexcept;
-						/**
-						 * process Метод перезапуска упавшего процесса
+						 * prepare Метод извлечения данных из полученного буфера
 						 * @param pid    идентификатор упавшего процесса
-						 * @param status статус остановившегося процесса
+						 * @param family идентификатор семейства кластера
 						 */
-						void process(const pid_t pid, const int status) noexcept;
-						/**
-						 * message Функция обратного вызова получении сообщений
-						 * @param fd    файловый дескриптор (сокет)
-						 * @param event возникшее событие
-						 */
-						void message(evutil_socket_t fd, const int event) noexcept;
+						void prepare(const pid_t pid, const family_t family) noexcept;
 					#endif
 				public:
 					/**
@@ -161,7 +244,7 @@ namespace awh {
 					 */
 					Worker(const log_t * log) noexcept :
 					 wid(0), async(false), working(false), restart(false),
-					 count(1), cluster(nullptr), _child(nullptr), _log(log) {}
+					 count(1), _buffer{0}, cluster(nullptr), _child(nullptr), _log(log) {}
 					/**
 					 * ~Worker Деструктор
 					 */
@@ -181,32 +264,20 @@ namespace awh {
 					int cfds[2];       // Список файловых дескрипторов дочернего процесса
 					time_t date;       // Время начала жизни процесса
 					awh::event_t mess; // Объект события на получения сообщений
+					awh::event_t send; // Объект события на отправку сообщений
 					/**
 					 * Broker Конструктор
 					 * @param log объект для работы с логами
 					 */
 					Broker(const log_t * log) noexcept :
-					 end(false), pid(0), mfds{0,0}, cfds{0,0},
-					 date(0), mess(awh::event_t::type_t::EVENT, log) {}
+					 end(false), pid(0), mfds{0,0}, cfds{0,0}, date(0),
+					 mess(awh::event_t::type_t::EVENT, log),
+					 send(awh::event_t::type_t::EVENT, log) {}
 					/**
 					 * ~Broker Деструктор
 					 */
 					~Broker() noexcept {}
 				} broker_t;
-				/**
-				 * Message Структура межпроцессного сообщения
-				 */
-				typedef struct Message {
-					bool end;             // Флаг получения последнего чанка
-					bool quit;            // Флаг остановки работы процесса
-					pid_t pid;            // Пид активного процесса
-					size_t size;          // Размер передаваемых данных
-					u_char payload[4082]; // Буфер полезной нагрузки
-					/**
-					 * Message Конструктор
-					 */
-					Message() noexcept : end(false), quit(false), pid(0), size(0), payload{0} {}
-				} __attribute__((packed)) mess_t;
 			/**
 			 * Если операционной системой является Windows
 			 */
@@ -241,6 +312,8 @@ namespace awh {
 		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
+			// Буферы отправляемой полезной нагрузки
+			map <uint16_t, queue <payload_t>> _payloads;
 			// Список активных воркеров
 			map <uint16_t, unique_ptr <worker_t>> _workers;
 			// Список дочерних брокеров
@@ -261,6 +334,33 @@ namespace awh {
 			 * @param stop  флаг остановки итерации создания дочерних процессов
 			 */
 			void fork(const uint16_t wid, const uint16_t index = 0, const bool stop = false) noexcept;
+		private:
+			/**
+			 * write Метод записи буфера данных в сокет
+			 * @param wid   идентификатор воркера
+			 * @param pid   идентификатор процесса для получения сообщения
+			 * @param fd    идентификатор файлового дескриптора
+			 * @param event возникшее событие
+			 */
+			void write(const uint16_t wid, const pid_t pid, const SOCKET fd, const int event) noexcept;
+		private:
+			/**
+			 * send Метод асинхронной отправки буфера данных в сокет
+			 * @param wid    идентификатор воркера
+			 * @param buffer буфер для записи данных
+			 * @param size   размер записываемых данных
+			 * @param fd     идентификатор файлового дескриптора
+			 */
+			void send(const uint16_t wid, const char * buffer, const size_t size, const SOCKET fd) noexcept;
+		private:
+			/**
+			 * emplace Метод добавления нового буфера полезной нагрузки
+			 * @param wid    идентификатор воркера
+			 * @param buffer бинарный буфер полезной нагрузки
+			 * @param size   размер бинарного буфера полезной нагрузки
+			 * @param fd     идентификатор файлового дескриптора
+			 */
+			void emplace(const uint16_t wid, const char * buffer, const size_t size, const SOCKET fd) noexcept;
 		public:
 			/**
 			 * master Метод проверки является ли процесс родительским
