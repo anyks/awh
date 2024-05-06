@@ -173,8 +173,6 @@ void awh::Scheme::Broker::connect(const evutil_socket_t fd, const short event) n
 	this->_bev.events.connect.stop();
 	// Выполняем разблокировку потока
 	this->_mtx.unlock();
-	// Останавливаем ожидания события подключения
-	this->events(mode_t::DISABLED, engine_t::method_t::CONNECT);
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("connect"))
 		// Выполняем функцию обратного вызова

@@ -2472,6 +2472,14 @@ void awh::server::Core::clusterAsyncMessages(const bool mode) noexcept {
 	#endif
 }
 /**
+ * cluster Метод проверки активации кластера
+ * @return режим активации кластера
+ */
+awh::scheme_t::mode_t awh::server::Core::cluster() const noexcept {
+	// Выводим режим активации кластера
+	return this->_clusterMode;
+}
+/**
  * cluster Метод установки количества процессов кластера
  * @param mode флаг активации/деактивации кластера
  * @param size количество рабочих процессов

@@ -33,31 +33,34 @@ void awh::server::Web::openEvents(const uint16_t sid) noexcept {
  * @param status флаг запуска/остановки
  */
 void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept {
-	// Определяем статус активности сетевого ядра
-	switch(static_cast <uint8_t> (status)){
-		// Если система запущена
-		case static_cast <uint8_t> (awh::core_t::status_t::START): {
-			// Выполняем биндинг ядра локального таймера
-			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
-			// Если разрешено выполнять пинги
-			if(this->_pinging){
-				// Устанавливаем интервал времени на выполнения пинга клиента
-				const uint16_t tid = this->_timer.interval(PING_INTERVAL);
+	// Если режим работы кластера не активирован
+	if(this->_core->cluster() == awh::scheme_t::mode_t::DISABLED){
+		// Определяем статус активности сетевого ядра
+		switch(static_cast <uint8_t> (status)){
+			// Если система запущена
+			case static_cast <uint8_t> (awh::core_t::status_t::START): {
+				// Выполняем биндинг ядра локального таймера
+				const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
+				// Если разрешено выполнять пинги
+				if(this->_pinging){
+					// Устанавливаем интервал времени на выполнения пинга клиента
+					const uint16_t tid = this->_timer.interval(PING_INTERVAL);
+					// Выполняем добавление функции обратного вызова
+					this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
+				}
+				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
+				const uint16_t tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
-			}
-			// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
-			const uint16_t tid = this->_timer.interval(3000);
-			// Выполняем добавление функции обратного вызова
-			this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
-		} break;
-		// Если система остановлена
-		case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
-			// Останавливаем все установленные таймеры
-			this->_timer.clear();
-			// Выполняем анбиндинг ядра локального таймера
-			const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
-		} break;
+				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
+			} break;
+			// Если система остановлена
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
+				// Останавливаем все установленные таймеры
+				this->_timer.clear();
+				// Выполняем анбиндинг ядра локального таймера
+				const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
+			} break;
+		}
 	}
 	// Если функция получения событий запуска и остановки сетевого ядра установлена
 	if(this->_callbacks.is("status"))
@@ -124,6 +127,38 @@ void awh::server::Web::callbacksEvents(const fn_t::event_t event, const uint64_t
  * @param event  идентификатор события
  */
 void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
+	// Определяем полученное событие
+	switch(static_cast <uint8_t> (event)){
+		// Если событие запуска сервиса
+		case static_cast <uint8_t> (cluster_t::event_t::START): {
+			// Если событие прислал дочерний процесс
+			if(family == cluster_t::family_t::CHILDREN){
+				// Выполняем биндинг ядра локального таймера
+				const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
+				// Если разрешено выполнять пинги
+				if(this->_pinging){
+					// Устанавливаем интервал времени на выполнения пинга клиента
+					const uint16_t tid = this->_timer.interval(PING_INTERVAL);
+					// Выполняем добавление функции обратного вызова
+					this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
+				}
+				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
+				const uint16_t tid = this->_timer.interval(3000);
+				// Выполняем добавление функции обратного вызова
+				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
+			}
+		} break;
+		// Если событие остановки сервиса
+		case static_cast <uint8_t> (cluster_t::event_t::STOP): {
+			// Если событие прислал дочерний процесс
+			if(family == cluster_t::family_t::CHILDREN){
+				// Останавливаем все установленные таймеры
+				this->_timer.clear();
+				// Выполняем анбиндинг ядра локального таймера
+				const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
+			}
+		} break;
+	}
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("cluster"))
 		// Выполняем функцию обратного вызова

@@ -166,10 +166,12 @@ void awh::Scheme::Broker::accept(ev::io & watcher, int revents) noexcept {
 void awh::Scheme::Broker::connect(ev::io & watcher, int revents) noexcept {
 	// Зануляем неиспользуемые переменные
 	(void) revents;
+	// Выполняем блокировку потока
+	this->_mtx.lock();
 	// Выполняем остановку чтения
 	watcher.stop();
-	// Останавливаем ожидания события подключения
-	this->events(mode_t::DISABLED, engine_t::method_t::CONNECT);
+	// Выполняем разблокировку потока
+	this->_mtx.unlock();
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("connect"))
 		// Выполняем функцию обратного вызова

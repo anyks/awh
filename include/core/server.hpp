@@ -299,6 +299,12 @@ namespace awh {
 				 * @param mode флаг асинхронного режима обмена сообщениями
 				 */
 				void clusterAsyncMessages(const bool mode) noexcept;
+			public:
+				/**
+				 * cluster Метод проверки активации кластера
+				 * @return режим активации кластера
+				 */
+				awh::scheme_t::mode_t cluster() const noexcept;
 				/**
 				 * cluster Метод установки количества процессов кластера
 				 * @param mode флаг активации/деактивации кластера
