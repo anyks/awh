@@ -149,7 +149,7 @@ namespace awh {
 						/**
 						 * Payload Конструктор
 						 */
-						Payload() noexcept : state(state_t::HEAD) {}
+						Payload() noexcept : state(state_t::HEAD), buffer(buffer_t::mode_t::COPY) {}
 					} payload_t;
 				public:
 					// Мютекс для блокировки потока
