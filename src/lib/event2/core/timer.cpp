@@ -26,8 +26,13 @@ void awh::Timer::event(const uint16_t tid, const evutil_socket_t fd, const short
 	auto i = this->_brokers.find(tid);
 	// Если активный брокер найден
 	if(i != this->_brokers.end()){
-		// Выполняем остановку активного брокера
-		i->second->event.stop();
+		// Если таймер был запущен
+		if(i->second->launched){
+			// Снимаем флаг запуска таймера
+			i->second->launched = !i->second->launched;
+			// Выполняем остановку активного брокера
+			i->second->event.stop();
+		}
 		// Если персистентная работа не установлена, удаляем таймер
 		if(!i->second->persist){
 			// Выполняем блокировку потока
@@ -64,11 +69,22 @@ void awh::Timer::event(const uint16_t tid, const evutil_socket_t fd, const short
 				// Выполняем поиск активного брокера
 				auto i = this->_brokers.find(tid);
 				// Если активный брокер найден
-				if(i != this->_brokers.end())
-					// Продолжаем работу дальше
-					i->second->event.start();
-			// Продолжаем работу дальше
-			} else i->second->event.start();
+				if(i != this->_brokers.end()){
+					// Если таймер не был запущен ранее
+					if(!i->second->launched){
+						// Устанавливаем флаг запуска таймера
+						i->second->launched = !i->second->launched;
+						// Продолжаем работу дальше
+						i->second->event.start();
+					}
+				}
+			// Если таймер не был запущен ранее
+			} else if(!i->second->launched) {
+				// Устанавливаем флаг запуска таймера
+				i->second->launched = !i->second->launched;
+				// Продолжаем работу дальше
+				i->second->event.start();
+			}
 		}
 	}
 }
@@ -82,8 +98,13 @@ void awh::Timer::clear() noexcept {
 	if(!this->_brokers.empty()){
 		// Выполняем перебор всех активных брокеров
 		for(auto i = this->_brokers.begin(); i != this->_brokers.end();){
-			// Выполняем остановку активного брокера
-			i->second->event.stop();
+			// Если таймер был запущен
+			if(i->second->launched){
+				// Снимаем флаг запуска таймера
+				i->second->launched = !i->second->launched;
+				// Выполняем остановку активного брокера
+				i->second->event.stop();
+			}
 			// Если функция обратного вызова существует
 			if(this->_callbacks.is(static_cast <uint64_t> (i->first)))
 				// Выполняем удаление функции обратного вызова
@@ -104,8 +125,13 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 	auto i = this->_brokers.find(tid);
 	// Если активный брокер найден
 	if(i != this->_brokers.end()){
-		// Выполняем остановку активного брокера
-		i->second->event.stop();
+		// Если таймер был запущен
+		if(i->second->launched){
+			// Снимаем флаг запуска таймера
+			i->second->launched = !i->second->launched;
+			// Выполняем остановку активного брокера
+			i->second->event.stop();
+		}
 		// Если функция обратного вызова существует
 		if(this->_callbacks.is(static_cast <uint64_t> (tid)))
 			// Выполняем удаление функции обратного вызова
@@ -136,6 +162,8 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 			this->_mtx.unlock();
 			// Получаем идентификатор таймера
 			result = ret.first->first;
+			// Устанавливаем флаг запуска таймера
+			ret.first->second->launched = true;
 			// Устанавливаем тип таймера
 			ret.first->second->event.set(-1, EV_TIMEOUT);
 			// Устанавливаем базу данных событий
@@ -179,6 +207,8 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			result = ret.first->first;
 			// Устанавливаем флаг персистентной работы
 			ret.first->second->persist = true;
+			// Устанавливаем флаг запуска таймера
+			ret.first->second->launched = true;
 			// Устанавливаем тип таймера
 			ret.first->second->event.set(-1, EV_TIMEOUT);
 			// Устанавливаем базу данных событий

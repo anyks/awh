@@ -74,6 +74,9 @@ namespace awh {
 					// Флаг персистентной работы
 					bool persist;
 				public:
+					// Флаг запущенного брокера
+					bool launched;
+				public:
 					// Объект события таймера
 					ev::timer io;
 				public:
@@ -89,7 +92,7 @@ namespace awh {
 					 * @param delay задержка времени в секундах
 					 */
 					Broker(const uint16_t tid, const float delay) noexcept :
-					 persist(false), timeout(tid, delay, this), fn(nullptr) {}
+					 persist(false), launched(false), timeout(tid, delay, this), fn(nullptr) {}
 					/**
 					 * ~Broker Деструктор
 					 */
