@@ -761,53 +761,58 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
  * @param event возникшее событие
  */
 void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd, const int event) noexcept {
-	// Выполняем поиск брокеров
-	auto i = this->_brokers.find(wid);
-	// Если брокер найден
-	if(i != this->_brokers.end()){
-		// Выполняем поиск индекса активного процесса
-		auto j = this->_pids.find(pid);
-		// Если индекс активного процесса найден
-		if(j != this->_pids.end()){
-			// Ещем для указанного потока очередь полезной нагрузки
-			auto k = this->_payloads.find(wid);
-			// Если для потока очередь полезной нагрузки получена
-			if((k != this->_payloads.end()) && !k->second.empty()){
-				// Если есть данные для отправки
-				if((k->second.front().offset - k->second.front().pos) > 0){
-					// Останавливаем детектирования возможности записи в сокет
-					i->second.at(j->second)->send.stop();
-					// Выполняем запись в сокет
-					const size_t bytes = ::write(fd, k->second.front().data.get() + k->second.front().pos, k->second.front().offset - k->second.front().pos);
-					// Если данные записаны удачно
-					if(bytes > 0){
-						// Увеличиваем смещение в бинарном буфере
-						k->second.front().pos += bytes;
-						// Если все данные записаны успешно, тогда удаляем результат
-						if(k->second.front().pos == k->second.front().offset){
-							// Выполняем удаление буфера буфера полезной нагрузки
-							k->second.pop();
-							// Если очередь полностью пустая
-							if(k->second.empty())
-								// Выполняем удаление всей очереди
-								this->_payloads.erase(k);
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем поиск брокеров
+		auto i = this->_brokers.find(wid);
+		// Если брокер найден
+		if(i != this->_brokers.end()){
+			// Выполняем поиск индекса активного процесса
+			auto j = this->_pids.find(pid);
+			// Если индекс активного процесса найден
+			if(j != this->_pids.end()){
+				// Ещем для указанного потока очередь полезной нагрузки
+				auto k = this->_payloads.find(wid);
+				// Если для потока очередь полезной нагрузки получена
+				if((k != this->_payloads.end()) && !k->second.empty()){
+					// Если есть данные для отправки
+					if((k->second.front().offset - k->second.front().pos) > 0){
+						// Останавливаем детектирования возможности записи в сокет
+						i->second.at(j->second)->send.stop();
+						// Выполняем запись в сокет
+						const size_t bytes = ::write(fd, k->second.front().data.get() + k->second.front().pos, k->second.front().offset - k->second.front().pos);
+						// Если данные записаны удачно
+						if(bytes > 0){
+							// Увеличиваем смещение в бинарном буфере
+							k->second.front().pos += bytes;
+							// Если все данные записаны успешно, тогда удаляем результат
+							if(k->second.front().pos == k->second.front().offset){
+								// Выполняем удаление буфера буфера полезной нагрузки
+								k->second.pop();
+								// Если очередь полностью пустая
+								if(k->second.empty())
+									// Выполняем удаление всей очереди
+									this->_payloads.erase(k);
+							}
 						}
-					}
-					// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
-					if(this->_payloads.find(wid) != this->_payloads.end()){
-						// Если сокет подключения активен
-						if((fd != INVALID_SOCKET) && (fd < MAX_SOCKETS))
-							// Запускаем ожидание записи данных
-							i->second.at(j->second)->send.start();
-					}
-				// Если данных для отправки больше нет и сокет подключения активен
-				} else if((fd != INVALID_SOCKET) && (fd < MAX_SOCKETS))
-					// Останавливаем детектирования возможности записи в сокет
-					i->second.at(j->second)->send.stop();
-			// Останавливаем детектирования возможности записи в сокет
-			} else i->second.at(j->second)->send.stop();
+						// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
+						if(this->_payloads.find(wid) != this->_payloads.end()){
+							// Если сокет подключения активен
+							if((fd != INVALID_SOCKET) && (fd < MAX_SOCKETS))
+								// Запускаем ожидание записи данных
+								i->second.at(j->second)->send.start();
+						}
+					// Если данных для отправки больше нет и сокет подключения активен
+					} else if((fd != INVALID_SOCKET) && (fd < MAX_SOCKETS))
+						// Останавливаем детектирования возможности записи в сокет
+						i->second.at(j->second)->send.stop();
+				// Останавливаем детектирования возможности записи в сокет
+				} else i->second.at(j->second)->send.stop();
+			}
 		}
-	}
+	#endif
 }
 /**
  * send Метод асинхронной отправки буфера данных в сокет
@@ -817,36 +822,41 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd, c
  * @param fd     идентификатор файлового дескриптора
  */
 void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t size, const SOCKET fd) noexcept {
-	// Если идентификатор брокера подключений существует
-	if((buffer != nullptr) && (size > 0) && (fd > -1)){
-		// Ещем для указанного потока очередь полезной нагрузки
-		auto i = this->_payloads.find(wid);
-		// Если для потока очередь полезной нагрузки получена
-		if((i != this->_payloads.end()) && !i->second.empty() && ((i->second.front().offset - i->second.front().pos) > 0)){
-			// Если ещё есть место в буфере данных
-			if(i->second.back().offset < i->second.back().size){
-				// Получаем размер данных который возможно скопировать
-				const size_t actual = ((i->second.back().size - i->second.back().offset) >= size ? size : (i->second.back().size - i->second.back().offset));
-				// Выполняем копирование переданного буфера данных в временный буфер данных
-				::memcpy(i->second.back().data.get() + i->second.back().offset, buffer, actual);
-				// Выполняем смещение в основном буфере данных
-				i->second.back().offset += actual;
-				// Если не все данные были скопированы
-				if(actual < size)
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если идентификатор брокера подключений существует
+		if((buffer != nullptr) && (size > 0) && (fd > -1)){
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(wid);
+			// Если для потока очередь полезной нагрузки получена
+			if((i != this->_payloads.end()) && !i->second.empty() && ((i->second.front().offset - i->second.front().pos) > 0)){
+				// Если ещё есть место в буфере данных
+				if(i->second.back().offset < i->second.back().size){
+					// Получаем размер данных который возможно скопировать
+					const size_t actual = ((i->second.back().size - i->second.back().offset) >= size ? size : (i->second.back().size - i->second.back().offset));
+					// Выполняем копирование переданного буфера данных в временный буфер данных
+					::memcpy(i->second.back().data.get() + i->second.back().offset, buffer, actual);
+					// Выполняем смещение в основном буфере данных
+					i->second.back().offset += actual;
+					// Если не все данные были скопированы
+					if(actual < size)
+						// Выполняем создание нового фрейма
+						this->emplace(wid, buffer + actual, size - actual, fd);
+				// Если места в буфере данных больше нет
+				} else this->emplace(wid, buffer, size, fd);
+			// Если очередь ещё не существует
+			} else {
+				// Выполняем запись в сокет
+				const size_t bytes = ::write(fd, buffer, size);
+				// Если данные отправлены не полностью
+				if(bytes < size)
 					// Выполняем создание нового фрейма
-					this->emplace(wid, buffer + actual, size - actual, fd);
-			// Если места в буфере данных больше нет
-			} else this->emplace(wid, buffer, size, fd);
-		// Если очередь ещё не существует
-		} else {
-			// Выполняем запись в сокет
-			const size_t bytes = ::write(fd, buffer, size);
-			// Если данные отправлены не полностью
-			if(bytes < size)
-				// Выполняем создание нового фрейма
-				this->emplace(wid, buffer + bytes, size - bytes, fd);
+					this->emplace(wid, buffer + bytes, size - bytes, fd);
+			}
 		}
-	}
+	#endif
 }
 /**
  * emplace Метод добавления нового буфера полезной нагрузки
@@ -856,74 +866,79 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
  * @param fd     идентификатор файлового дескриптора
  */
 void awh::Cluster::emplace(const uint16_t wid, const char * buffer, const size_t size, const SOCKET fd) noexcept {
-	// Если идентификатор брокера подключений существует
-	if((buffer != nullptr) && (size > 0) && (fd > -1)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Смещение в переданном буфере данных
-			size_t offset = 0, actual = 0;
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если идентификатор брокера подключений существует
+		if((buffer != nullptr) && (size > 0) && (fd > -1)){
 			/**
-			 * Выполняем создание нужного количества буферов
+			 * Выполняем отлов ошибок
 			 */
-			do {
-				// Объект полезной нагрузки для отправки
-				payload_t payload;
-				// Устанавливаем файловый дескриптор
-				payload.fd = fd;
-				// Устанавливаем размер буфера данных
-				payload.size = MAX_PAYLOAD;
-				// Выполняем создание буфера данных
-				payload.data = unique_ptr <char []> (new char [MAX_PAYLOAD]);
-				// Получаем размер данных который возможно скопировать
-				actual = ((MAX_PAYLOAD >= (size - offset)) ? (size - offset) : MAX_PAYLOAD);
-				// Выполняем копирование буфера полезной нагрузки
-				::memcpy(payload.data.get(), buffer + offset, size - offset);
-				// Выполняем смещение в буфере
-				offset += actual;
-				// Увеличиваем смещение в буфере полезной нагрузки
-				payload.offset += actual;
-				// Ещем для указанного потока очередь полезной нагрузки
-				auto i = this->_payloads.find(wid);
-				// Если для потока очередь полезной нагрузки получена
-				if(i != this->_payloads.end())
-					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-					i->second.push(std::move(payload));
-				// Если для потока почередь полезной нагрузки ещё не сформированна
-				else {
-					// Создаём новую очередь полезной нагрузки
-					auto ret = this->_payloads.emplace(wid, queue <payload_t> ());
-					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-					ret.first->second.push(std::move(payload));
+			try {
+				// Смещение в переданном буфере данных
+				size_t offset = 0, actual = 0;
+				/**
+				 * Выполняем создание нужного количества буферов
+				 */
+				do {
+					// Объект полезной нагрузки для отправки
+					payload_t payload;
+					// Устанавливаем файловый дескриптор
+					payload.fd = fd;
+					// Устанавливаем размер буфера данных
+					payload.size = MAX_PAYLOAD;
+					// Выполняем создание буфера данных
+					payload.data = unique_ptr <char []> (new char [MAX_PAYLOAD]);
+					// Получаем размер данных который возможно скопировать
+					actual = ((MAX_PAYLOAD >= (size - offset)) ? (size - offset) : MAX_PAYLOAD);
+					// Выполняем копирование буфера полезной нагрузки
+					::memcpy(payload.data.get(), buffer + offset, size - offset);
+					// Выполняем смещение в буфере
+					offset += actual;
+					// Увеличиваем смещение в буфере полезной нагрузки
+					payload.offset += actual;
+					// Ещем для указанного потока очередь полезной нагрузки
+					auto i = this->_payloads.find(wid);
+					// Если для потока очередь полезной нагрузки получена
+					if(i != this->_payloads.end())
+						// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+						i->second.push(std::move(payload));
+					// Если для потока почередь полезной нагрузки ещё не сформированна
+					else {
+						// Создаём новую очередь полезной нагрузки
+						auto ret = this->_payloads.emplace(wid, queue <payload_t> ());
+						// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+						ret.first->second.push(std::move(payload));
+					}
+				/**
+				 * Если не все данные полезной нагрузки установлены, создаём новый буфер
+				 */
+				} while(offset < size);
+				// Выполняем поиск брокеров
+				auto i = this->_brokers.find(wid);
+				// Если брокер найден
+				if(i != this->_brokers.end()){
+					// Получаем идентификатор текущего процесса
+					const pid_t pid = ::getpid();
+					// Выполняем поиск индекса брокера
+					auto j = this->_pids.find(pid);
+					// Если индекс брокера найден
+					if(j != this->_pids.end())
+						// Запускаем ожидание записи данных
+						i->second.at(j->second)->send.start();
 				}
 			/**
-			 * Если не все данные полезной нагрузки установлены, создаём новый буфер
+			 * Если возникает ошибка
 			 */
-			} while(offset < size);
-			// Выполняем поиск брокеров
-			auto i = this->_brokers.find(wid);
-			// Если брокер найден
-			if(i != this->_brokers.end()){
-				// Получаем идентификатор текущего процесса
-				const pid_t pid = ::getpid();
-				// Выполняем поиск индекса брокера
-				auto j = this->_pids.find(pid);
-				// Если индекс брокера найден
-				if(j != this->_pids.end())
-					// Запускаем ожидание записи данных
-					i->second.at(j->second)->send.start();
+			} catch(const bad_alloc &) {
+				// Выводим в лог сообщение
+				this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
 			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const bad_alloc &) {
-			// Выводим в лог сообщение
-			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
 		}
-	}
+	#endif
 }
 /**
  * master Метод проверки является ли процесс родительским
