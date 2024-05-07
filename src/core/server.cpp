@@ -1970,6 +1970,20 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
 			if(i != this->_schemes.end()){
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					/**
+					 * Если используется модуль LibEv
+					 */
+					#if defined(AWH_EV)
+						// Если подключение ещё существует
+						if(this->has(bid))
+							// Останавливаем чтение данных
+							broker->_bev.events.read.stop();
+					#endif
+				#endif
 				// Если подключение выполнено и чтение данных разрешено
 				if(!broker->_bev.locked.read && (broker->_payload.size > 0)){
 					// Определяем тип сокета
@@ -1993,6 +2007,20 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						// Выполняем закрытие подключения
 						this->close(bid);
 				}
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					/**
+					 * Если используется модуль LibEv
+					 */
+					#if defined(AWH_EV)
+						// Если подключение ещё существует
+						if(this->has(bid))
+							// Продолжаем чтение данных дальше
+							broker->_bev.events.read.start();
+					#endif
+				#endif
 			// Если схема сети не существует
 			} else {
 				// Выводим сообщение в лог, о таймауте подключения

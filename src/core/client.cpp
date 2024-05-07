@@ -1349,6 +1349,20 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
 					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						/**
+						 * Если используется модуль LibEv
+						 */
+						#if defined(AWH_EV)
+							// Если подключение ещё существует
+							if(this->has(bid))
+								// Останавливаем чтение данных
+								broker->_bev.events.read.stop();
+						#endif
+					#endif
+					/**
 					 * Выполняем чтение данных с сокета
 					 */
 					do {
@@ -1391,6 +1405,20 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 						} else break;
 					// Выполняем чтение до тех пор, пока всё не прочитаем
 					} while(this->has(bid));
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						/**
+						 * Если используется модуль LibEv
+						 */
+						#if defined(AWH_EV)
+							// Если подключение ещё существует
+							if(this->has(bid))
+								// Продолжаем чтение данных дальше
+								broker->_bev.events.read.start();
+						#endif
+					#endif
 				// Если подключение завершено
 				} else {
 					// Останавливаем чтение данных
