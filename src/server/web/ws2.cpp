@@ -1212,7 +1212,7 @@ void awh::server::Websocket2::sendError(const uint64_t bid, const ws::mess_t & m
 					// Выполняем отправку сообщение об ошибке на клиент Websocket
 					this->_ws1.sendError(bid, mess);
 				// Если переключение протокола на HTTP/2 выполнено
-				else {
+				else if(!options->stopped) {
 					// Получаем буфер сообщения
 					const auto & buffer = options->frame.methods.message(mess);
 					// Если данные сообщения получены

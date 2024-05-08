@@ -940,26 +940,27 @@ void awh::server::Websocket1::sendError(const uint64_t bid, const ws::mess_t & m
 				core->events(bid, awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 			}
 			// Если отправка сообщений разблокированна
-			if((options != nullptr) && options->allow.send){
+			if((options != nullptr) && options->allow.send && !options->stopped){
 				// Получаем буфер сообщения
 				const auto & buffer = options->frame.methods.message(mess);
 				// Если данные сообщения получены
 				if((options->stopped = !buffer.empty())){
 					// Выполняем отправку сообщения брокеру
-					core->send(buffer.data(), buffer.size(), bid);
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим отправляемое сообщение
-						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
-					#endif
-					// Выводим сообщение об ошибке
-					this->error(bid, mess);
-					// Выходим из функции
-					return;
+					if(core->send(buffer.data(), buffer.size(), bid)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим отправляемое сообщение
+							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
+						#endif
+						// Выводим сообщение об ошибке
+						this->error(bid, mess);
+						// Выходим из функции
+						return;
+					}
 				}
 			}
 		}

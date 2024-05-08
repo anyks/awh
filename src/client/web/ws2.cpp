@@ -1326,7 +1326,7 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
 				// Запрещаем получение данных
 				this->_allow.receive = false;
 				// Если код ошибки относится к Websocket
-				if(mess.code >= 1000){
+				if((mess.code >= 1000) && !this->_stopped){
 					// Получаем буфер сообщения
 					const auto & buffer = this->_frame.methods.message(mess);
 					// Если данные сообщения получены

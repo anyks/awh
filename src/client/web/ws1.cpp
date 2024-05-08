@@ -1026,26 +1026,27 @@ void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
 			// Выполняем остановку получения данных
 			core->events(this->_bid, awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 			// Если код ошибки относится к Websocket
-			if(mess.code >= 1000){
+			if((mess.code >= 1000) && !this->_stopped){
 				// Получаем буфер сообщения
 				const auto & buffer = this->_frame.methods.message(mess);
 				// Если данные сообщения получены
 				if((this->_stopped = !buffer.empty())){
 					// Выполняем отправку сообщения на сервер
-					core->send(buffer.data(), buffer.size(), this->_bid);
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим отправляемое сообщение
-						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
-					#endif
-					// Выводим сообщение об ошибке
-					this->error(mess);
-					// Выходим из функции
-					return;
+					if(core->send(buffer.data(), buffer.size(), this->_bid)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим отправляемое сообщение
+							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
+						#endif
+						// Выводим сообщение об ошибке
+						this->error(mess);
+						// Выходим из функции
+						return;
+					}
 				}
 			}
 			// Завершаем работу
