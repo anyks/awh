@@ -1350,10 +1350,19 @@ bool awh::Net::arpa(const string & addr) noexcept {
 			this->_buffer[index] = static_cast <uint8_t> (::stoi(ip.substr(start)));
 		// Если адрес является адресом IPv6
 		} else if((result = (addr.substr(addr.length() - 9).compare(".ip6.arpa") == 0))) {
-			// Временный буфер хексета
-			uint8_t hexset[4];
-			// Результирующий буфер данных
-			uint16_t buffer[8];
+			/**
+			 * Buffer Структура бинарного буфера
+			 */
+			struct Buffer {
+				// Временный буфер хексета
+				uint8_t hexset[4];
+				// Результирующий буфер данных
+				uint16_t address[8];
+				/**
+				 * Buffer Конструктор
+				 */
+				Buffer() noexcept : hexset{0,0,0,0}, address{0,0,0,0,0,0,0,0} {}
+			} __attribute__((packed)) buffer;
 			// Выполняем очистку буфера данных
 			this->_buffer.clear();
 			// Выполняем инициализацию буфера
@@ -1368,30 +1377,26 @@ bool awh::Net::arpa(const string & addr) noexcept {
 			const string ip = addr.substr(0, addr.length() - 9);
 			// Выполняем поиск разделителя
 			while((stop = ip.find('.', start)) != string::npos){
-				// Выполняем уменьшение значения индекса
-				index1--;
 				// Выполняем установку хексета
-				hexset[index1] = static_cast <uint8_t> (ip.substr(start, stop - start)[0]);
+				buffer.hexset[--index1] = static_cast <uint8_t> (ip.at(start));
 				// Если хексет полностью заполнен
 				if(index1 == 0){
 					// Добавляем хексет в список
-					buffer[--index2] = static_cast <uint16_t> (this->atoi(reinterpret_cast <char *> (hexset)));
+					buffer.address[--index2] = static_cast <uint16_t> (this->atoi(reinterpret_cast <const char *> (buffer.hexset)));
 					// Выполняем сброс индекса
 					index1 = 4;
 				}
 				// Выполняем смещение
 				start = (stop + 1);
 			}
-			// Выполняем уменьшение значения индекса
-			index1--;
 			// Выполняем установку хексета
-			hexset[index1] = static_cast <uint8_t> (ip.substr(start, stop - start)[0]);
+			buffer.hexset[--index1] = static_cast <uint8_t> (ip.at(start));
 			// Если хексет полностью заполнен
 			if(index1 == 0)
 				// Добавляем хексет в список
-				buffer[--index2] = static_cast <uint16_t> (this->atoi(reinterpret_cast <char *> (hexset)));
+				buffer.address[--index2] = static_cast <uint16_t> (this->atoi(reinterpret_cast <char *> (buffer.hexset)));
 			// Выполняем копирование бинарных данных в буфер
-			::memcpy(this->_buffer.data(), buffer, sizeof(buffer));
+			::memcpy(this->_buffer.data(), buffer.address, sizeof(buffer.address));
 		}
 	}
 	// Выводим результат
