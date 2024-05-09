@@ -25,6 +25,7 @@
 	 * Стандартные модули
 	 */
 	#include <queue>
+	#include <linux/sysctl.h>
 #endif
 
 /**
@@ -36,7 +37,6 @@
 	 */
 	#include <pwd.h>
 	#include <grp.h>
-	#include <sys/sysctl.h>
 	#include <sys/resource.h>
 /**
  * Методы только для OS Windows
@@ -46,6 +46,16 @@
 	 * Стандартные модули
 	 */
 	#include <wchar.h>
+#endif
+
+/**
+ * Если операционной системой является MacOS X или FreeBSD
+ */
+#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
+	/**
+	 * Стандартные модули
+	 */
+	#include <sys/sysctl.h>
 #endif
 
 // Подключаем заголовочный файл
