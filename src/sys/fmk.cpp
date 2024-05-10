@@ -2316,7 +2316,7 @@ size_t awh::Framework::setCase(const size_t pos, const size_t cur) const noexcep
 	return result;
 }
 /**
- * countLetter Метод подсчета количества указанной буквы в слове
+ * countLetter Метод подсчёта количества указанной буквы в слове
  * @param word   слово в котором нужно подсчитать букву
  * @param letter букву которую нужно подсчитать
  * @return       результат подсчёта
@@ -2328,7 +2328,7 @@ size_t awh::Framework::countLetter(const wstring & word, const wchar_t letter) c
 	if(!word.empty() && (letter > 0)){
 		// Ищем нашу букву
 		size_t pos = 0;
-		// Выполняем подсчет количества указанных букв в слове
+		// Выполняем подсчёт количества указанных букв в слове
 		while((pos = word.find(letter, pos)) != wstring::npos){
 			// Считаем количество букв
 			result++;

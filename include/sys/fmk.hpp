@@ -615,7 +615,7 @@ namespace awh {
 			 */
 			size_t setCase(const size_t pos, const size_t cur = 0) const noexcept;
 			/**
-			 * countLetter Метод подсчета количества указанной буквы в слове
+			 * countLetter Метод подсчёта количества указанной буквы в слове
 			 * @param word   слово в котором нужно подсчитать букву
 			 * @param letter букву которую нужно подсчитать
 			 * @return       результат подсчёта
