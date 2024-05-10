@@ -2731,7 +2731,7 @@ string awh::Framework::time2abbr(const time_t date) const noexcept {
 	return result;
 }
 /**
- * strpTime Функция получения Unix TimeStamp из строки
+ * strpTime Метод получения Unix TimeStamp из строки
  * @param str    строка с датой
  * @param format форматы даты
  * @param tm     объект даты
