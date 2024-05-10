@@ -489,6 +489,11 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 				// Если символ принадлежит к цифрам
 				result = this->_symbols.isArabic(letter);
 			break;
+			// Если установлен флаг проверки на соответствие кодировки UTF-8
+			case static_cast <uint8_t> (check_t::UTF8):
+				// Выполняем проверку симаола на соответствие UTF-8
+				result = this->is(string(1, letter), flag);
+			break;
 		}
 	}
 	// Выводим результат
@@ -531,6 +536,11 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 			case static_cast <uint8_t> (check_t::NUMBER):
 				// Если символ принадлежит к цифрам
 				result = this->_symbols.isArabic(letter);
+			break;
+			// Если установлен флаг проверки на соответствие кодировки UTF-8
+			case static_cast <uint8_t> (check_t::UTF8):
+				// Выполняем проверку симаола на соответствие UTF-8
+				result = this->is(wstring(1, letter), flag);
 			break;
 		}
 	}
@@ -647,6 +657,72 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				// Если символ принадлежит к латинскому алфавиту
 				} else result = this->_symbols.isLetter(text.front());
 			} break;
+			// Если установлен флаг проверки на соответствие кодировки UTF-8
+			case static_cast <uint8_t> (check_t::UTF8): {
+				// Символ для сравнения
+				u_int cp = 0;
+				// Номер позиции для сравнения
+				uint8_t num = 0;
+				// Получаем байты для сравнения
+				const u_char * bytes = reinterpret_cast <const u_char *> (text.c_str());
+				// Выполняем перебор всех символов
+				while((* bytes) != 0x00){
+					// Выполняем проверку первой позиции
+					if(((* bytes) & 0x80) == 0x00){
+						// U+0000 to U+007F
+						// Получаем значение первой части байт
+						cp = ((* bytes) & 0x7F);
+						// Устанавливаем номер позиции
+						num = 1;
+					// Выполняем проверку второй позиции
+					} else if(((* bytes) & 0xE0) == 0xC0) {
+						// U+0080 to U+07FF
+						// Получаем значение второй части байт
+						cp = ((* bytes) & 0x1F);
+						// Устанавливаем номер позиции
+						num = 2;
+					// Выполняем проверку третей позиции
+					} else if(((* bytes) & 0xF0) == 0xE0) {
+						// U+0800 to U+FFFF
+						// Получаем значение третей части байт
+						cp = ((* bytes) & 0x0F);
+						// Устанавливаем номер позиции
+						num = 3;
+					// Выполняем проверку четвёртой позиции
+					} else if(((* bytes) & 0xF8) == 0xF0) {
+						// U+10000 to U+10FFFF
+						// Получаем значение четвёртой части байт
+						cp = ((* bytes) & 0x07);
+						// Устанавливаем номер позиции
+						num = 4;
+					// Выходим из функции
+					} else return false;
+					// Увеличиваем смещение байт
+					bytes++;
+					// Выполняем перебор всех позиций
+					for(uint8_t i = 1; i < num; ++i){
+						// Если байты в первой позиции нельзя сопоставить
+						if(((* bytes) & 0xC0) != 0x80)
+							// Выводим результат проверки
+							return false;
+						// Выполняем смещение в позиции
+						cp = (cp << 6) | ((* bytes) & 0x3F);
+						// Увеличиваем смещение байт
+						bytes++;
+					}
+					// Выполняем проверку смещения
+					if((cp > 0x10FFFF) ||
+					  ((cp <= 0x007F) && (num != 1)) ||
+					  ((cp >= 0xD800) && (cp <= 0xDFFF)) ||
+					  ((cp >= 0x0080) && (cp <= 0x07FF)  && (num != 2)) ||
+					  ((cp >= 0x0800) && (cp <= 0xFFFF)  && (num != 3)) ||
+					  ((cp >= 0x10000)&& (cp <= 0x1FFFFF) && (num != 4)))
+						// Выводим результат проверки
+						return false;
+				}
+				// Выводим результат
+				return true;
+			}
 			// Если установлен флаг проверки на число
 			case static_cast <uint8_t> (check_t::NUMBER): {
 				// Если длина слова больше 1-го символа
@@ -860,6 +936,72 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 				// Если символ принадлежит к латинскому алфавиту
 				} else result = this->_symbols.isLetter(text.front());
 			} break;
+			// Если установлен флаг проверки на соответствие кодировки UTF-8
+			case static_cast <uint8_t> (check_t::UTF8): {
+				// Символ для сравнения
+				u_int cp = 0;
+				// Номер позиции для сравнения
+				uint8_t num = 0;
+				// Получаем байты для сравнения
+				const wchar_t * bytes = reinterpret_cast <const wchar_t *> (text.c_str());
+				// Выполняем перебор всех символов
+				while((* bytes) != 0x00){
+					// Выполняем проверку первой позиции
+					if(((* bytes) & 0x80) == 0x00){
+						// U+0000 to U+007F
+						// Получаем значение первой части байт
+						cp = ((* bytes) & 0x7F);
+						// Устанавливаем номер позиции
+						num = 1;
+					// Выполняем проверку второй позиции
+					} else if(((* bytes) & 0xE0) == 0xC0) {
+						// U+0080 to U+07FF
+						// Получаем значение второй части байт
+						cp = ((* bytes) & 0x1F);
+						// Устанавливаем номер позиции
+						num = 2;
+					// Выполняем проверку третей позиции
+					} else if(((* bytes) & 0xF0) == 0xE0) {
+						// U+0800 to U+FFFF
+						// Получаем значение третей части байт
+						cp = ((* bytes) & 0x0F);
+						// Устанавливаем номер позиции
+						num = 3;
+					// Выполняем проверку четвёртой позиции
+					} else if(((* bytes) & 0xF8) == 0xF0) {
+						// U+10000 to U+10FFFF
+						// Получаем значение четвёртой части байт
+						cp = ((* bytes) & 0x07);
+						// Устанавливаем номер позиции
+						num = 4;
+					// Выходим из функции
+					} else return false;
+					// Увеличиваем смещение байт
+					bytes++;
+					// Выполняем перебор всех позиций
+					for(uint8_t i = 1; i < num; ++i){
+						// Если байты в первой позиции нельзя сопоставить
+						if(((* bytes) & 0xC0) != 0x80)
+							// Выводим результат проверки
+							return false;
+						// Выполняем смещение в позиции
+						cp = (cp << 6) | ((* bytes) & 0x3F);
+						// Увеличиваем смещение байт
+						bytes++;
+					}
+					// Выполняем проверку смещения
+					if((cp > 0x10FFFF) ||
+					  ((cp <= 0x007F) && (num != 1)) ||
+					  ((cp >= 0xD800) && (cp <= 0xDFFF)) ||
+					  ((cp >= 0x0080) && (cp <= 0x07FF)  && (num != 2)) ||
+					  ((cp >= 0x0800) && (cp <= 0xFFFF)  && (num != 3)) ||
+					  ((cp >= 0x10000)&& (cp <= 0x1FFFFF) && (num != 4)))
+						// Выводим результат проверки
+						return false;
+				}
+				// Выводим результат
+				return true;
+			}
 			// Если установлен флаг проверки на число
 			case static_cast <uint8_t> (check_t::NUMBER): {
 				// Если длина слова больше 1-го символа
@@ -1266,81 +1408,6 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 	return result;
 }
 /**
- * isUTF8 Метод проверки состоит ли текст в кодировке UTF-8
- * @param text текст для проверки
- * @return     результат проверки
- */
-bool awh::Framework::isUTF8(const string & text) const noexcept {
-	// Если текст для проверки передан
-	if(!text.empty()){
-		// Символ для сравнения
-		u_int cp = 0;
-		// Номер позиции для сравнения
-		uint8_t num = 0;
-		// Получаем байты для сравнения
-		const u_char * bytes = reinterpret_cast <const u_char *> (text.c_str());
-		// Выполняем перебор всех символов
-		while((* bytes) != 0x00){
-			// Выполняем проверку первой позиции
-			if(((* bytes) & 0x80) == 0x00){
-				// U+0000 to U+007F
-				// Получаем значение первой части байт
-				cp = ((* bytes) & 0x7F);
-				// Устанавливаем номер позиции
-				num = 1;
-			// Выполняем проверку второй позиции
-			} else if(((* bytes) & 0xE0) == 0xC0) {
-				// U+0080 to U+07FF
-				// Получаем значение второй части байт
-				cp = ((* bytes) & 0x1F);
-				// Устанавливаем номер позиции
-				num = 2;
-			// Выполняем проверку третей позиции
-			} else if(((* bytes) & 0xF0) == 0xE0) {
-				// U+0800 to U+FFFF
-				// Получаем значение третей части байт
-				cp = ((* bytes) & 0x0F);
-				// Устанавливаем номер позиции
-				num = 3;
-			// Выполняем проверку четвёртой позиции
-			} else if(((* bytes) & 0xF8) == 0xF0) {
-				// U+10000 to U+10FFFF
-				// Получаем значение четвёртой части байт
-				cp = ((* bytes) & 0x07);
-				// Устанавливаем номер позиции
-				num = 4;
-			// Выходим из функции
-			} else return false;
-			// Увеличиваем смещение байт
-			bytes++;
-			// Выполняем перебор всех позиций
-			for(uint8_t i = 1; i < num; ++i){
-				// Если байты в первой позиции нельзя сопоставить
-				if(((* bytes) & 0xC0) != 0x80)
-					// Выводим результат проверки
-					return false;
-				// Выполняем смещение в позиции
-				cp = (cp << 6) | ((* bytes) & 0x3F);
-				// Увеличиваем смещение байт
-				bytes++;
-			}
-			// Выполняем проверку смещения
-			if((cp > 0x10FFFF) ||
-			  ((cp <= 0x007F) && (num != 1)) ||
-			  ((cp >= 0xD800) && (cp <= 0xDFFF)) ||
-			  ((cp >= 0x0080) && (cp <= 0x07FF)  && (num != 2)) ||
-			  ((cp >= 0x0800) && (cp <= 0xFFFF)  && (num != 3)) ||
-			  ((cp >= 0x10000)&& (cp <= 0x1FFFFF) && (num != 4)))
-				// Выводим результат проверки
-				return false;
-		}
-		// Выводим результат
-		return true;
-	}
-	// Выводим результат проверки
-	return false;
-}
-/**
  * iconv Метод конвертирования строки кодировки
  * @param text     текст для конвертирования
  * @param codepage кодировка в которую необходимо сконвертировать текст
@@ -1360,7 +1427,7 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 				// Если требуется выполнить кодировку в автоматическом режиме
 				case static_cast <uint8_t> (codepage_t::AUTO): {
 					// Если текст передан в кодировке UTF-8
-					if(this->isUTF8(text.c_str()))
+					if(this->is(text, check_t::UTF8))
 						// Выполняем перекодирование в CP1251
 						return this->iconv(text, codepage_t::UTF8_CP1251);
 					// Выполняем перекодирование в UTF-8
@@ -1436,7 +1503,7 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 					// Если требуется выполнить кодировку в автоматическом режиме
 					case static_cast <uint8_t> (codepage_t::AUTO): {
 						// Если текст передан в кодировке UTF-8
-						if(this->isUTF8(text.c_str()))
+						if(this->is(text, check_t::UTF8))
 							// Выполняем перекодирование в CP1251
 							return this->iconv(text, codepage_t::UTF8_CP1251);
 						// Выполняем перекодирование в UTF-8
@@ -2540,7 +2607,7 @@ const std::set <string> & awh::Framework::domainZones() const noexcept {
 	return this->_nwt.zones();
 }
 /**
- * setLocale Метод установки локали
+ * setLocale Метод установки системной локали
  * @param locale локализация приложения
  */
 void awh::Framework::setLocale(const string & locale) noexcept {

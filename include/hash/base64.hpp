@@ -50,20 +50,29 @@ namespace awh {
 			 * @param mode режим работы (false - кодирование, true - декодирование)
 			 * @return     размер полученных данных
 			 */
-			const int base64(const u_char * in, char * out, u_int sin, u_int sout, const bool mode = false) const noexcept;
+			int base64(const u_char * in, char * out, u_int sin, u_int sout, const bool mode = false) const noexcept;
 		public:
 			/**
 			 * encode Метод кодирования в base64
 			 * @param str входящая строка для кодирования
 			 * @return    результирующая строка
 			 */
-			const string encode(const string & str) const noexcept;
+			string encode(const string & str) const noexcept;
 			/**
 			 * decode Метод декодирования из base64
 			 * @param str входящая строка для декодирования
 			 * @return    результирующая строка
 			 */
-			const string decode(const string & str) const noexcept;
+			string decode(const string & str) const noexcept;
+		public:
+			/**
+			 * Base64 Конструктор
+			 */
+			Base64() noexcept {}
+			/**
+			 * ~Base64 Деструктор
+			 */
+			~Base64() noexcept {}
 	} base64_t;
 };
 

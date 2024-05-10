@@ -24,7 +24,7 @@
  * @param mode режим работы (false - кодирование, true - декодирование)
  * @return     размер полученных данных
  */
-const int awh::Base64::base64(const u_char * in, char * out, u_int sin, u_int sout, const bool mode) const noexcept {
+int awh::Base64::base64(const u_char * in, char * out, u_int sin, u_int sout, const bool mode) const noexcept {
 	// Результат
 	int result = 0;
 	// Инициализируем объекты
@@ -40,16 +40,20 @@ const int awh::Base64::base64(const u_char * in, char * out, u_int sin, u_int so
 		result = BIO_write(b64, in, sin);
 		// Выполняем очистку объекта
 		BIO_flush(b64);
-		// Выполняем чтение полученного результата
-		if(result) result = BIO_read(bio, out, sout);
+		// Если запись выполнена
+		if(result)
+			// Выполняем чтение полученного результата
+			result = BIO_read(bio, out, sout);
 	// Если это декодирование
 	} else {
 		// Выполняем декодирование из base64
 		result = BIO_write(bio, in, sin);
 		// Выполняем очистку объекта
 		BIO_flush(bio);
-		// Выполняем чтение полученного результата
-		if(result) result = BIO_read(b64, out, sout);
+		// Если запись выполнена
+		if(result)
+			// Выполняем чтение полученного результата
+			result = BIO_read(b64, out, sout);
 	}
 	// Очищаем объект base64
 	BIO_free(b64);
@@ -61,7 +65,7 @@ const int awh::Base64::base64(const u_char * in, char * out, u_int sin, u_int so
  * @param str входящая строка для кодирования
  * @return    результирующая строка
  */
-const string awh::Base64::encode(const string & str) const noexcept {
+string awh::Base64::encode(const string & str) const noexcept {
 	// Результирующая строка
 	string result = "";
 	// Если строка передана
@@ -70,8 +74,10 @@ const string awh::Base64::encode(const string & str) const noexcept {
 		vector <char> buffer((4 * ((str.size() + 2) / 3)) + 1, 0);
 		// Выполняем кодирование
 		const int size = this->base64(reinterpret_cast <const u_char *> (str.c_str()), buffer.data(), str.size(), buffer.size(), false);
-		// Выводим результат
-		if(size > 0) result = string(buffer.data(), size);
+		// Если размер строки получен
+		if(size > 0)
+			// Выполняем получение строки
+			result = string(buffer.data(), size);
 	}
 	// Выводим результат
 	return result;
@@ -81,7 +87,7 @@ const string awh::Base64::encode(const string & str) const noexcept {
  * @param str входящая строка для декодирования
  * @return    результирующая строка
  */
-const string awh::Base64::decode(const string & str) const noexcept {
+string awh::Base64::decode(const string & str) const noexcept {
 	// Результирующая строка
 	string result = "";
 	// Если строка передана
@@ -90,8 +96,10 @@ const string awh::Base64::decode(const string & str) const noexcept {
 		vector <char> buffer((3 * str.size() / 4) + 1, 0);
 		// Выполняем декодирование
 		const int size = this->base64(reinterpret_cast <const u_char *> (str.c_str()), buffer.data(), str.size(), buffer.size(), true);
-		// Выводим результат
-		if(size > 0) result = string(buffer.data(), size);
+		// Если размер строки получен
+		if(size > 0)
+			// Выполняем получение строки
+			result = string(buffer.data(), size);
 	}
 	// Выводим результат
 	return result;

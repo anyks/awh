@@ -129,14 +129,15 @@ namespace awh {
 			enum class check_t : uint8_t {
 				NONE            = 0x00, // Флаг не установлен
 				URL             = 0x01, // Флаг проверки на URL адрес
-				UPPER           = 0x02, // Флаг проверки на верхний регистр
-				LOWER           = 0x03, // Флаг проверки на нижний регистр
-				SPACE           = 0x04, // Флаг проверки на пробел
-				LATIAN          = 0x05, // Флаг проверки на латинские символы
-				NUMBER          = 0x06, // Флаг проверки на число
-				DECIMAL         = 0x07, // Флаг проверки на число с плавающей точкой
-				PSEUDO_NUMBER   = 0x08, // Флаг проверки на псевдо-число
-				PRESENCE_LATIAN = 0x09  // Флаг проверки наличия латинских символов в строке
+				UTF8            = 0x02, // Флаг проверки на UTF-8
+				UPPER           = 0x03, // Флаг проверки на верхний регистр
+				LOWER           = 0x04, // Флаг проверки на нижний регистр
+				SPACE           = 0x05, // Флаг проверки на пробел
+				LATIAN          = 0x06, // Флаг проверки на латинские символы
+				NUMBER          = 0x07, // Флаг проверки на число
+				DECIMAL         = 0x08, // Флаг проверки на число с плавающей точкой
+				PSEUDO_NUMBER   = 0x09, // Флаг проверки на псевдо-число
+				PRESENCE_LATIAN = 0x0A  // Флаг проверки наличия латинских символов в строке
 			};
 		private:
 			/**
@@ -449,12 +450,6 @@ namespace awh {
 			string hash(const string & key, const string & text, const hash_t hash) const noexcept;
 		public:
 			/**
-			 * isUTF8 Метод проверки состоит ли текст в кодировке UTF-8
-			 * @param text текст для проверки
-			 * @return     результат проверки
-			 */
-			bool isUTF8(const string & text) const noexcept;
-			/**
 			 * iconv Метод конвертирования строки кодировки
 			 * @param text     текст для конвертирования
 			 * @param codepage кодировка в которую необходимо сконвертировать текст
@@ -708,7 +703,7 @@ namespace awh {
 			const std::set <string> & domainZones() const noexcept;
 		public:
 			/**
-			 * setLocale Метод установки локали
+			 * setLocale Метод установки системной локали
 			 * @param locale локализация приложения
 			 */
 			void setLocale(const string & locale = AWH_LOCALE) noexcept;
