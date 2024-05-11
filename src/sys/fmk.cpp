@@ -2303,13 +2303,13 @@ wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 }
 /**
  * setCase Метод запоминания регистра слова
- * @param pos позиция для установки регистра
- * @param cur текущее значение регистра в бинарном виде
- * @return    позиция верхнего регистра в бинарном виде
+ * @param pos   позиция для установки регистра
+ * @param start начальное значение регистра в бинарном виде
+ * @return      позиция верхнего регистра в бинарном виде
  */
-size_t awh::Framework::setCase(const size_t pos, const size_t cur) const noexcept {
+uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const noexcept {
 	// Результат работы функции
-	size_t result = cur;
+	uint64_t result = start;
 	// Если позиция передана и длина слова тоже
 	result += (1 << pos);
 	// Выводим результат

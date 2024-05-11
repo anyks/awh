@@ -609,11 +609,11 @@ namespace awh {
 		public:
 			/**
 			 * setCase Метод запоминания регистра слова
-			 * @param pos позиция для установки регистра
-			 * @param cur текущее значение регистра в бинарном виде
-			 * @return    позиция верхнего регистра в бинарном виде
+			 * @param pos   позиция для установки регистра
+			 * @param start начальное значение регистра в бинарном виде
+			 * @return      позиция верхнего регистра в бинарном виде
 			 */
-			size_t setCase(const size_t pos, const size_t cur = 0) const noexcept;
+			uint64_t setCase(const uint64_t pos, const uint64_t start = 0) const noexcept;
 			/**
 			 * countLetter Метод подсчёта количества указанной буквы в слове
 			 * @param word   слово в котором нужно подсчитать букву
