@@ -413,18 +413,18 @@ namespace awh {
 		public:
 			/**
 			 * compare Метод сравнения двух строк без учёта регистра
-			 * @param forst  первое слово
+			 * @param first  первое слово
 			 * @param second второе слово
 			 * @return       результат сравнения
 			 */
-			bool compare(const string & forst, const string & second) const noexcept;
+			bool compare(const string & first, const string & second) const noexcept;
 			/**
 			 * compare Метод сравнения двух строк без учёта регистра
-			 * @param forst  первое слово
+			 * @param first  первое слово
 			 * @param second второе слово
 			 * @return       результат сравнения
 			 */
-			bool compare(const wstring & forst, const wstring & second) const noexcept;
+			bool compare(const wstring & first, const wstring & second) const noexcept;
 		public:
 			/**
 			 * timestamp Метод получения штампа времени в указанных единицах измерения
