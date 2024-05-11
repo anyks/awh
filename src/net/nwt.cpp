@@ -21,7 +21,7 @@
  */
 void awh::NWT::zone(const string & zone) noexcept {
 	// Если зона передана и она не существует
-	if(!zone.empty() && (this->_national.count(zone) < 1) && (this->_general.count(zone) < 1))
+	if(!zone.empty() && (this->_national.find(zone) == this->_national.end()) && (this->_general.find(zone) == this->_general.end()))
 		// Добавляем зону в список
 		this->_user.emplace(zone);
 }
