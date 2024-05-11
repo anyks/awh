@@ -38,7 +38,9 @@ const set <string> & awh::NWT::zones() const noexcept {
  */
 void awh::NWT::zones(const set <string> & zones) noexcept {
 	// Если список зон не пустой
-	if(!zones.empty()) this->_user = zones;
+	if(!zones.empty())
+		// Выводим список пользовательских зон
+		this->_user = zones;
 }
 /**
  * clear Метод очистки результатов парсинга
