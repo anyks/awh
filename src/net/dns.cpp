@@ -24,17 +24,27 @@ string awh::DNS::Worker::host() const noexcept {
 	string result = "";
 	// Если список сетей установлен
 	if(!this->_network.empty()){
-		// Если количество элементов больше 1
-		if(this->_network.size() > 1){
-			// Подключаем устройство генератора
-			mt19937 generator(const_cast <dns_t *> (this->_self)->_randev());
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, this->_network.size() - 1);
-			// Получаем ip адрес
-			result = this->_network.at(dist6(generator));
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если количество элементов больше 1
+			if(this->_network.size() > 1){
+				// Подключаем устройство генератора
+				mt19937 generator(const_cast <dns_t *> (this->_self)->_randev());
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_network.size() - 1);
+				// Получаем ip адрес
+				result = this->_network.at(dist6(generator));
+			// Выводим только первый элемент
+			} else result = this->_network.front();
+		// Выполняем прехват ошибки
+		} catch(const exception & error) {
+			// Выводим сообщение об ошибке
+			this->_self->_log->print("DNS host: %s", log_t::flag_t::WARNING, error.what());
+			// Выводим только первый элемент
+			result = this->_network.front();
 		}
-		// Выводим только первый элемент
-		result = this->_network.front();
 	}
 	// Если IP-адрес не установлен
 	if(result.empty()){
@@ -129,7 +139,7 @@ vector <u_char> awh::DNS::Worker::extract(u_char * data, const size_t pos) const
 		// Перераспределяем результирующий буфер
 		result.resize(254, 0);
 		// Получаем временное значение буфера данных
-		u_char * temp = (u_char *) &data[pos];
+		u_char * temp = reinterpret_cast <u_char *> (&data[pos]);
 		// Выполняем перебор полученного буфера данных
 		while((* temp) != 0){
 			// Если найдено значение
@@ -137,7 +147,7 @@ vector <u_char> awh::DNS::Worker::extract(u_char * data, const size_t pos) const
 				// Увеличивам значение в буфере
 				++temp;
 				// Получаем новое значение буфера
-				temp = (u_char *) &data[* temp];
+				temp = reinterpret_cast <u_char *> (&data[* temp]);
 			// Если значение не найдено
 			} else {
 				// Устанавливаем новое значение буфера
@@ -921,20 +931,29 @@ void awh::DNS::cancel(const int family) noexcept {
 void awh::DNS::shuffle(const int family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Выбираем стаднарт рандомайзера
-	mt19937 generator(this->_randev());
-	// Определяем тип протокола подключения
-	switch(family){
-		// Если тип протокола подключения IPv4
-		case static_cast <int> (AF_INET):
-			// Выполняем рандомную сортировку списка DNS-серверов
-			::shuffle(this->_serversIPv4.begin(), this->_serversIPv4.end(), generator);
-		break;
-		// Если тип протокола подключения IPv6
-		case static_cast <int> (AF_INET6):
-			// Выполняем рандомную сортировку списка DNS-серверов
-			::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
-		break;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выбираем стаднарт рандомайзера
+		mt19937 generator(this->_randev());
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET):
+				// Выполняем рандомную сортировку списка DNS-серверов
+				::shuffle(this->_serversIPv4.begin(), this->_serversIPv4.end(), generator);
+			break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6):
+				// Выполняем рандомную сортировку списка DNS-серверов
+				::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
+			break;
+		}
+	// Выполняем прехват ошибки
+	} catch(const exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("DNS shuffle: %s", log_t::flag_t::WARNING, error.what());
 	}
 }
 /**
@@ -1037,12 +1056,23 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 		}
 		// Если список IP-адресов получен
 		if(!ips.empty()){
-			// Подключаем устройство генератора
-			mt19937 generator(this->_randev());
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
-			// Выполняем получение результата
-			result = std::forward <string> (ips.at(dist6(generator)));
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Подключаем устройство генератора
+				mt19937 generator(this->_randev());
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
+				// Выполняем получение результата
+				result = std::forward <string> (ips.at(dist6(generator)));
+			// Выполняем прехват ошибки
+			} catch(const exception & error) {
+				// Выводим сообщение об ошибке
+				this->_log->print("DNS cache: %s", log_t::flag_t::WARNING, error.what());
+				// Выполняем извлечение первого адреса из списка
+				result = ips.front();
+			}
 		}
 	}
 	// Выводим результат
@@ -1610,44 +1640,53 @@ string awh::DNS::server(const int family) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Результат работы функции
 	string result = "";
-	// Подключаем устройство генератора
-	mt19937 generator(this->_randev());
-	// Определяем тип протокола подключения
-	switch(family){
-		// Если тип протокола подключения IPv4
-		case static_cast <int> (AF_INET): {
-			// Временный буфер данных для преобразования IP-адреса
-			char buffer[INET_ADDRSTRLEN];
-			// Если список серверов пустой
-			if(this->_serversIPv4.empty())
-				// Устанавливаем новый список имён
-				this->replace(family);
-			// Получаем первое значение итератора
-			auto i = this->_serversIPv4.begin();
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
-			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			advance(i, dist6(generator));
-			// Выполняем получение данных IP-адреса
-			result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
-		} break;
-		// Если тип протокола подключения IPv6
-		case static_cast <int> (AF_INET6): {
-			// Временный буфер данных для преобразования IP-адреса
-			char buffer[INET6_ADDRSTRLEN];
-			// Если список серверов пустой
-			if(this->_serversIPv6.empty())
-				// Устанавливаем новый список имён
-				this->replace(family);
-			// Получаем первое значение итератора
-			auto i = this->_serversIPv6.begin();
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
-			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			advance(i, dist6(generator));
-			// Выполняем получение данных IP-адреса
-			result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
-		} break;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Подключаем устройство генератора
+		mt19937 generator(this->_randev());
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Временный буфер данных для преобразования IP-адреса
+				char buffer[INET_ADDRSTRLEN];
+				// Если список серверов пустой
+				if(this->_serversIPv4.empty())
+					// Устанавливаем новый список имён
+					this->replace(family);
+				// Получаем первое значение итератора
+				auto i = this->_serversIPv4.begin();
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
+				// Выполняем выбор нужного сервера в списке, в произвольном виде
+				advance(i, dist6(generator));
+				// Выполняем получение данных IP-адреса
+				result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
+			} break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Временный буфер данных для преобразования IP-адреса
+				char buffer[INET6_ADDRSTRLEN];
+				// Если список серверов пустой
+				if(this->_serversIPv6.empty())
+					// Устанавливаем новый список имён
+					this->replace(family);
+				// Получаем первое значение итератора
+				auto i = this->_serversIPv6.begin();
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
+				// Выполняем выбор нужного сервера в списке, в произвольном виде
+				advance(i, dist6(generator));
+				// Выполняем получение данных IP-адреса
+				result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
+			} break;
+		}
+	// Выполняем прехват ошибки
+	} catch(const exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("DNS server: %s", log_t::flag_t::WARNING, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -2338,12 +2377,23 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 				}
 				// Если список IP-адресов получен
 				if(!ips.empty()){
-					// Подключаем устройство генератора
-					mt19937 generator(this->_randev());
-					// Выполняем генерирование случайного числа
-					uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
-					// Выполняем получение результата
-					result = std::forward <string> (ips.at(dist6(generator)));
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Подключаем устройство генератора
+						mt19937 generator(this->_randev());
+						// Выполняем генерирование случайного числа
+						uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
+						// Выполняем получение результата
+						result = std::forward <string> (ips.at(dist6(generator)));
+					// Выполняем прехват ошибки
+					} catch(const exception & error) {
+						// Выводим сообщение об ошибке
+						this->_log->print("DNS host: %s", log_t::flag_t::WARNING, error.what());
+						// Выполняем извлечение первого адреса из списка
+						result = ips.front();
+					}
 				}
 			}
 		}

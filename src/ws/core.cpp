@@ -366,7 +366,7 @@ const string awh::WCore::key() const noexcept {
 		// Создаём контейнер
 		string nonce = "";
 		// Адаптер для работы с случайным распределением
-		random_device rd;
+		random_device randev;
 		// Резервируем память
 		nonce.reserve(16);
 		// Формируем равномерное распределение целых чисел в выходном инклюзивно-эксклюзивном диапазоне
@@ -374,24 +374,24 @@ const string awh::WCore::key() const noexcept {
 		// Формируем бинарный ключ из случайных значений
 		for(size_t c = 0; c < 16; c++)
 			// Выполняем формирование ключа
-			nonce += static_cast <char> (dist(rd));
+			nonce += static_cast <char> (dist(randev));
 		// Выполняем создание ключа
 		result = base64_t().encode(nonce);
 	// Выполняем прехват ошибки
 	} catch(const exception & error) {
-		// Выполняем повторно генерацию ключа
-		result = this->key();
+		// Выводим сообщение об ошибке
+		this->_log->print("WebSocket Key: %s", log_t::flag_t::WARNING, error.what());
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		#endif
+		// Выполняем повторно генерацию ключа
+		result = this->key();
 	}
 	// Выводим результат
 	return result;

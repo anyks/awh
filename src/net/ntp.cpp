@@ -24,17 +24,27 @@ string awh::NTP::Worker::host() const noexcept {
 	string result = "";
 	// Если список сетей установлен
 	if(!this->_network.empty()){
-		// Если количество элементов больше 1
-		if(this->_network.size() > 1){
-			// Подключаем устройство генератора
-			mt19937 generator(const_cast <ntp_t *> (this->_self)->_randev());
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, this->_network.size() - 1);
-			// Получаем ip адрес
-			result = this->_network.at(dist6(generator));
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если количество элементов больше 1
+			if(this->_network.size() > 1){
+				// Подключаем устройство генератора
+				mt19937 generator(const_cast <ntp_t *> (this->_self)->_randev());
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_network.size() - 1);
+				// Получаем ip адрес
+				result = this->_network.at(dist6(generator));
+			// Выводим только первый элемент
+			} else result = this->_network.front();
+		// Выполняем прехват ошибки
+		} catch(const exception & error) {
+			// Выводим сообщение об ошибке
+			this->_self->_log->print("NTP host: %s", log_t::flag_t::WARNING, error.what());
+			// Выводим только первый элемент
+			result = this->_network.front();
 		}
-		// Выводим только первый элемент
-		result = this->_network.front();
 	}
 	// Если IP-адрес не установлен
 	if(result.empty()){
@@ -240,11 +250,11 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 				return result;
 			}
 			// Если запрос на NTP-сервер успешно отправлен
-			if((bytes = ::sendto(this->_fd, (const char *) &packet, sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
+			if((bytes = ::sendto(this->_fd, reinterpret_cast <const char *> (&packet), sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
 				// Получаем объект NTP-клиента
 				ntp_t * self = const_cast <ntp_t *> (this->_self);
 				// Выполняем чтение ответа сервера
-				const int64_t bytes = ::recvfrom(this->_fd, (char *) &packet, sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
+				const int64_t bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (&packet), sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Если сокет находится в блокирующем режиме
@@ -421,20 +431,29 @@ void awh::NTP::cancel(const int family) noexcept {
 void awh::NTP::shuffle(const int family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Выбираем стаднарт рандомайзера
-	mt19937 generator(this->_randev());
-	// Определяем тип протокола подключения
-	switch(family){
-		// Если тип протокола подключения IPv4
-		case static_cast <int> (AF_INET):
-			// Выполняем рандомную сортировку списка NTP-серверов
-			::shuffle(this->_serversIPv4.begin(), this->_serversIPv4.end(), generator);
-		break;
-		// Если тип протокола подключения IPv6
-		case static_cast <int> (AF_INET6):
-			// Выполняем рандомную сортировку списка NTP-серверов
-			::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
-		break;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выбираем стаднарт рандомайзера
+		mt19937 generator(this->_randev());
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET):
+				// Выполняем рандомную сортировку списка NTP-серверов
+				::shuffle(this->_serversIPv4.begin(), this->_serversIPv4.end(), generator);
+			break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6):
+				// Выполняем рандомную сортировку списка NTP-серверов
+				::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
+			break;
+		}
+	// Выполняем прехват ошибки
+	} catch(const exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("NTP shuffle: %s", log_t::flag_t::WARNING, error.what());
 	}
 }
 /**
@@ -469,44 +488,53 @@ string awh::NTP::server(const int family) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Результат работы функции
 	string result = "";
-	// Подключаем устройство генератора
-	mt19937 generator(this->_randev());
-	// Определяем тип протокола подключения
-	switch(family){
-		// Если тип протокола подключения IPv4
-		case static_cast <int> (AF_INET): {
-			// Временный буфер данных для преобразования IP-адреса
-			char buffer[INET_ADDRSTRLEN];
-			// Если список серверов пустой
-			if(this->_serversIPv4.empty())
-				// Устанавливаем новый список имён
-				this->replace(family);
-			// Получаем первое значение итератора
-			auto i = this->_serversIPv4.begin();
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
-			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			std::advance(i, dist6(generator));
-			// Выполняем получение данных IP-адреса
-			result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
-		} break;
-		// Если тип протокола подключения IPv6
-		case static_cast <int> (AF_INET6): {
-			// Временный буфер данных для преобразования IP-адреса
-			char buffer[INET6_ADDRSTRLEN];
-			// Если список серверов пустой
-			if(this->_serversIPv6.empty())
-				// Устанавливаем новый список имён
-				this->replace(family);
-			// Получаем первое значение итератора
-			auto i = this->_serversIPv6.begin();
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
-			// Выполняем выбор нужного сервера в списке, в произвольном виде
-			std::advance(i, dist6(generator));
-			// Выполняем получение данных IP-адреса
-			result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
-		} break;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Подключаем устройство генератора
+		mt19937 generator(this->_randev());
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Временный буфер данных для преобразования IP-адреса
+				char buffer[INET_ADDRSTRLEN];
+				// Если список серверов пустой
+				if(this->_serversIPv4.empty())
+					// Устанавливаем новый список имён
+					this->replace(family);
+				// Получаем первое значение итератора
+				auto i = this->_serversIPv4.begin();
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
+				// Выполняем выбор нужного сервера в списке, в произвольном виде
+				std::advance(i, dist6(generator));
+				// Выполняем получение данных IP-адреса
+				result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
+			} break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Временный буфер данных для преобразования IP-адреса
+				char buffer[INET6_ADDRSTRLEN];
+				// Если список серверов пустой
+				if(this->_serversIPv6.empty())
+					// Устанавливаем новый список имён
+					this->replace(family);
+				// Получаем первое значение итератора
+				auto i = this->_serversIPv6.begin();
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
+				// Выполняем выбор нужного сервера в списке, в произвольном виде
+				std::advance(i, dist6(generator));
+				// Выполняем получение данных IP-адреса
+				result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
+			} break;
+		}
+	// Выполняем прехват ошибки
+	} catch(const exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("NTP server: %s", log_t::flag_t::WARNING, error.what());
 	}
 	// Выводим результат
 	return result;

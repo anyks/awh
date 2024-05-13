@@ -181,65 +181,74 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const size_t size, const bool mask) const noexcept {
 	// Если данные переданы
 	if(!payload.empty() && (buffer != nullptr) && (size > 0)){
-		// Размер смещения в буфере и размер передаваемых данных
-		uint8_t offset = 0;
-		// Если размер строки меньше 126 байт, значит строка умещается во второй байт
-		if(size < 0x7E){
-			// Устанавливаем смещение в буфере
-			offset = 2;
-			// Устанавливаем размер строки
-			payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | (0x7F & size));
-		// Если строка не помещается во второй байт
-		} else if(size < 0x10000) {
-			// Устанавливаем смещение в буфере
-			offset = 4;
-			// Заполняем второй байт максимальным значением
-			payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | (0x7F & 0x7E));
-			// Увеличиваем память ещё на два байта
-			payload.resize(offset, 0x0);
-			// Выполняем перерасчёт размера передаваемых данных
-			const uint16_t bytes = static_cast <uint64_t> (htons(static_cast <uint16_t> (size)));
-			// Устанавливаем размер строки в следующие 2 байта
-			::memcpy(payload.data() + 2, &bytes, sizeof(bytes));
-		// Если сообщение очень большого размера
-		} else {
-			// Устанавливаем смещение в буфере
-			offset = 10;
-			// Заполняем второй байт максимальным значением
-			payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | 0x7F);
-			// Увеличиваем память ещё на восемь байт
-			payload.resize(offset, 0x0);
-			// Выполняем перерасчёт размера передаваемых данных
-			const uint64_t bytes = static_cast <uint64_t> (htonl(size));
-			// Устанавливаем размер строки в следующие 8 байт
-			::memcpy(payload.data() + 2, &bytes, sizeof(bytes));
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Размер смещения в буфере и размер передаваемых данных
+			uint8_t offset = 0;
+			// Если размер строки меньше 126 байт, значит строка умещается во второй байт
+			if(size < 0x7E){
+				// Устанавливаем смещение в буфере
+				offset = 2;
+				// Устанавливаем размер строки
+				payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | (0x7F & size));
+			// Если строка не помещается во второй байт
+			} else if(size < 0x10000) {
+				// Устанавливаем смещение в буфере
+				offset = 4;
+				// Заполняем второй байт максимальным значением
+				payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | (0x7F & 0x7E));
+				// Увеличиваем память ещё на два байта
+				payload.resize(offset, 0x0);
+				// Выполняем перерасчёт размера передаваемых данных
+				const uint16_t bytes = static_cast <uint64_t> (htons(static_cast <uint16_t> (size)));
+				// Устанавливаем размер строки в следующие 2 байта
+				::memcpy(payload.data() + 2, &bytes, sizeof(bytes));
+			// Если сообщение очень большого размера
+			} else {
+				// Устанавливаем смещение в буфере
+				offset = 10;
+				// Заполняем второй байт максимальным значением
+				payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | 0x7F);
+				// Увеличиваем память ещё на восемь байт
+				payload.resize(offset, 0x0);
+				// Выполняем перерасчёт размера передаваемых данных
+				const uint64_t bytes = static_cast <uint64_t> (htonl(size));
+				// Устанавливаем размер строки в следующие 8 байт
+				::memcpy(payload.data() + 2, &bytes, sizeof(bytes));
+			}
+			// Если нужно выполнить маскировку сообщения
+			if(mask){
+				// Получаем генератор случайных чисел
+				random_device randev;
+				// Бинарные данные маски
+				vector <u_char> mask(4);
+				// Подключаем генератор к двигателю
+				mt19937 engine {randev()};
+				// Устанавливаем диапазон генератора случайных чисел
+				uniform_int_distribution <u_char> dist {0, 255};
+				// Выполняем заполнение маски случайными числами
+				generate(mask.begin(), mask.end(), [&dist, &engine]{
+					// Выполняем генерирование случайного числа
+					return dist(engine);
+				});
+				// Выполняем перебор всех байт передаваемых данных
+				for(size_t i = 0; i < size; i++)
+					// Выполняем шифрование данных
+					const_cast <char *> (buffer)[i] ^= mask[i % 4];
+				// Увеличиваем память ещё на четыре байта
+				payload.resize(offset + 4, 0x0);
+				// Устанавливаем сгенерированную маску
+				::memcpy(payload.data() + offset, mask.data(), mask.size());
+			}
+			// Выполняем копирования оставшихся данных в буфер
+			payload.insert(payload.end(), buffer, buffer + size);
+		// Выполняем прехват ошибки
+		} catch(const exception & error) {
+			// Выводим сообщение об ошибке
+			this->_log->print("WebSocket Frame: %s", log_t::flag_t::CRITICAL, error.what());
 		}
-		// Если нужно выполнить маскировку сообщения
-		if(mask){
-			// Получаем генератор случайных чисел
-			random_device device;
-			// Бинарные данные маски
-			vector <u_char> mask(4);
-			// Подключаем генератор к двигателю
-			mt19937 engine {device()};
-			// Устанавливаем диапазон генератора случайных чисел
-			uniform_int_distribution <u_char> dist {0, 255};
-			// Выполняем заполнение маски случайными числами
-			generate(mask.begin(), mask.end(), [&dist, &engine]{
-				// Выполняем генерирование случайного числа
-				return dist(engine);
-			});
-			// Выполняем перебор всех байт передаваемых данных
-			for(size_t i = 0; i < size; i++)
-				// Выполняем шифрование данных
-				const_cast <char *> (buffer)[i] ^= mask[i % 4];
-			// Увеличиваем память ещё на четыре байта
-			payload.resize(offset + 4, 0x0);
-			// Устанавливаем сгенерированную маску
-			::memcpy(payload.data() + offset, mask.data(), mask.size());
-		}
-		// Выполняем копирования оставшихся данных в буфер
-		payload.insert(payload.end(), buffer, buffer + size);
 	}
 }
 /**

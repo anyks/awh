@@ -53,17 +53,27 @@ string awh::Ping::host(const int family) const noexcept {
 	}
 	// Если список сетей установлен
 	if((network != nullptr) && !network->empty()){
-		// Если количество элементов больше 1
-		if(network->size() > 1){
-			// Подключаем устройство генератора
-			mt19937 generator(const_cast <ping_t *> (this)->_randev());
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, network->size() - 1);
-			// Получаем ip адрес
-			result = network->at(dist6(generator));
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если количество элементов больше 1
+			if(network->size() > 1){
+				// Подключаем устройство генератора
+				mt19937 generator(const_cast <ping_t *> (this)->_randev());
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, network->size() - 1);
+				// Получаем ip адрес
+				result = network->at(dist6(generator));
+			// Выводим только первый элемент
+			} else result = network->front();
+		// Выполняем прехват ошибки
+		} catch(const exception & error) {
+			// Выводим сообщение об ошибке
+			this->_log->print("Ping host: %s", log_t::flag_t::WARNING, error.what());
+			// Выводим только первый элемент
+			result = network->front();
 		}
-		// Выводим только первый элемент
-		result = network->front();
 	}
 	// Если IP-адрес не установлен
 	if(result.empty()){
@@ -125,51 +135,117 @@ uint16_t awh::Ping::checksum(const void * buffer, const size_t size) noexcept {
 int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
-	// Подключаем устройство генератора
-	mt19937 generator(this->_randev());
-	// Выполняем генерирование случайного числа
-	uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
-	// Метка отправки данных
-	Send:
-	// Создаём объект заголовков
-	struct IcmpHeader icmp{};
-	// Определяем тип подключения
-	switch(family){
-		// Для протокола IPv4
-		case AF_INET:
-			// Выполняем установку типа запроса
-			icmp.type = 8;
-		break;
-		// Для протокола IPv6
-		case AF_INET6:
-			// Выполняем установку типа запроса
-			icmp.type = 128;
-		break;
-	}
-	// Устанавливаем код запроса
-	icmp.code = 0;
-	// Устанавливаем контрольную сумму
-	icmp.checksum = 0;
-	// Устанавливаем номер последовательности
-	icmp.meta.echo.sequence = index;
-	// Устанавливаем идентификатор запроса
-	icmp.meta.echo.identifier = getpid();
-	// Устанавливаем данные полезной нагрузки
-	icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
-	// Выполняем подсчёт контрольной суммы
-	icmp.checksum = this->checksum(&icmp, sizeof(icmp));
-	// Если запрос на сервер успешно отправлен
-	if((result = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
-		// Метка повторного получения данных
-		Read:
-		// Буфер для получения данных
-		char buffer[1024];
-		// Результат полученных данных
-		auto * icmpResponseHeader = reinterpret_cast <struct IcmpHeader *> (buffer);
-		// Выполняем чтение ответа сервера
-		result = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
-		// Если данные прочитать не удалось
-		if(result <= 0){
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Подключаем устройство генератора
+		mt19937 generator(this->_randev());
+		// Выполняем генерирование случайного числа
+		uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
+		// Метка отправки данных
+		Send:
+		// Создаём объект заголовков
+		struct IcmpHeader icmp{};
+		// Определяем тип подключения
+		switch(family){
+			// Для протокола IPv4
+			case AF_INET:
+				// Выполняем установку типа запроса
+				icmp.type = 8;
+			break;
+			// Для протокола IPv6
+			case AF_INET6:
+				// Выполняем установку типа запроса
+				icmp.type = 128;
+			break;
+		}
+		// Устанавливаем код запроса
+		icmp.code = 0;
+		// Устанавливаем контрольную сумму
+		icmp.checksum = 0;
+		// Устанавливаем номер последовательности
+		icmp.meta.echo.sequence = index;
+		// Устанавливаем идентификатор запроса
+		icmp.meta.echo.identifier = getpid();
+		// Устанавливаем данные полезной нагрузки
+		icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
+		// Выполняем подсчёт контрольной суммы
+		icmp.checksum = this->checksum(&icmp, sizeof(icmp));
+		// Если запрос на сервер успешно отправлен
+		if((result = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
+			// Метка повторного получения данных
+			Read:
+			// Буфер для получения данных
+			std::array <char, 1024> buffer;
+			// Результат полученных данных
+			auto * icmpResponseHeader = reinterpret_cast <struct IcmpHeader *> (buffer.data());
+			// Выполняем чтение ответа сервера
+			result = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
+			// Если данные прочитать не удалось
+			if(result <= 0){
+				// Если сокет находится в блокирующем режиме
+				if(result < 0){
+					// Определяем тип ошибки
+					switch(AWH_ERROR()){
+						// Если ошибка не обнаружена, выходим
+						case 0: break;
+						/**
+						 * Если мы работаем не в MS Windows
+						 */
+						#if !defined(_WIN32) && !defined(_WIN64)
+							// Если нужно повторить получение данных
+							case EWOULDBLOCK:
+								// Снова пробуем получить данные
+								goto Read;
+							break;
+							// Если произведена неудачная запись в PIPE
+							case EPIPE: {
+								// Если разрешено выводить информацию в лог
+								if(this->_verb)
+									// Выводим в лог сообщение
+									this->_log->print("EPIPE", log_t::flag_t::WARNING);
+							} break;
+							// Если произведён сброс подключения
+							case ECONNRESET: {
+								// Если разрешено выводить информацию в лог
+								if(this->_verb)
+									// Выводим в лог сообщение
+									this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+							} break;
+						/**
+						 * Методы только для OS Windows
+						 */
+						#else
+							// Если нужно повторить получение данных
+							case WSAEWOULDBLOCK:
+								// Снова пробуем получить данные
+								goto Read;
+							break;
+							// Если произведён сброс подключения
+							case WSAECONNRESET: {
+								// Если разрешено выводить информацию в лог
+								if(this->_verb)
+									// Выводим в лог сообщение
+									this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+							} break;
+						#endif
+						// Для остальных ошибок
+						default: {
+							// Если разрешено выводить информацию в лог
+							if(this->_verb)
+								// Выводим в лог сообщение
+								this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str());
+						}
+					}
+					// Выполняем закрытие подключения
+					this->close();
+					// Выводим результат
+					return result;
+				}
+			}
+		// Если сообщение отправить не удалось
+		} else if(result <= 0) {
 			// Если сокет находится в блокирующем режиме
 			if(result < 0){
 				// Определяем тип ошибки
@@ -182,8 +258,8 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 					#if !defined(_WIN32) && !defined(_WIN64)
 						// Если нужно повторить получение данных
 						case EWOULDBLOCK:
-							// Снова пробуем получить данные
-							goto Read;
+							// Снова пробуем отправить данные
+							goto Send;
 						break;
 						// Если произведена неудачная запись в PIPE
 						case EPIPE: {
@@ -230,67 +306,10 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 				return result;
 			}
 		}
-	// Если сообщение отправить не удалось
-	} else if(result <= 0) {
-		// Если сокет находится в блокирующем режиме
-		if(result < 0){
-			// Определяем тип ошибки
-			switch(AWH_ERROR()){
-				// Если ошибка не обнаружена, выходим
-				case 0: break;
-				/**
-				 * Если мы работаем не в MS Windows
-				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Если нужно повторить получение данных
-					case EWOULDBLOCK:
-						// Снова пробуем отправить данные
-						goto Send;
-					break;
-					// Если произведена неудачная запись в PIPE
-					case EPIPE: {
-						// Если разрешено выводить информацию в лог
-						if(this->_verb)
-							// Выводим в лог сообщение
-							this->_log->print("EPIPE", log_t::flag_t::WARNING);
-					} break;
-					// Если произведён сброс подключения
-					case ECONNRESET: {
-						// Если разрешено выводить информацию в лог
-						if(this->_verb)
-							// Выводим в лог сообщение
-							this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-					} break;
-				/**
-				 * Методы только для OS Windows
-				 */
-				#else
-					// Если нужно повторить получение данных
-					case WSAEWOULDBLOCK:
-						// Снова пробуем получить данные
-						goto Read;
-					break;
-					// Если произведён сброс подключения
-					case WSAECONNRESET: {
-						// Если разрешено выводить информацию в лог
-						if(this->_verb)
-							// Выводим в лог сообщение
-							this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-					} break;
-				#endif
-				// Для остальных ошибок
-				default: {
-					// Если разрешено выводить информацию в лог
-					if(this->_verb)
-						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str());
-				}
-			}
-			// Выполняем закрытие подключения
-			this->close();
-			// Выводим результат
-			return result;
-		}
+	// Выполняем прехват ошибки
+	} catch(const exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("Ping send: %s", log_t::flag_t::WARNING, error.what());
 	}
 	// Выводим результат
 	return result;

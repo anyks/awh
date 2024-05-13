@@ -272,17 +272,27 @@ string awh::Engine::Address::host(const int family) const noexcept {
 	string result = "";
 	// Если список сетей установлен
 	if(!this->network.empty()){
-		// Если количество элементов больше 1
-		if(this->network.size() > 1){
-			// Подключаем устройство генератора
-			mt19937 random(const_cast <addr_t *> (this)->_randev());
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, this->network.size() - 1);
-			// Получаем ip адрес
-			result = this->network.at(dist6(random));
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если количество элементов больше 1
+			if(this->network.size() > 1){
+				// Подключаем устройство генератора
+				mt19937 random(const_cast <addr_t *> (this)->_randev());
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->network.size() - 1);
+				// Получаем ip адрес
+				result = this->network.at(dist6(random));
+			// Выводим только первый элемент
+			} else result = this->network.front();
+		// Выполняем прехват ошибки
+		} catch(const exception & error) {
+			// Выводим сообщение об ошибке
+			this->_log->print("Engine host: %s", log_t::flag_t::WARNING, error.what());
+			// Выводим только первый элемент
+			result = this->network.front();
 		}
-		// Выводим только первый элемент
-		result = this->network.front();
 	}
 	// Если IP-адрес не установлен
 	if(result.empty()){
