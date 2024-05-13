@@ -1015,7 +1015,7 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 					// Переходим по всему списку IP-адресов
 					for(auto i = ret.first; i != ret.second;){
 						// Если IP-адрес не находится в чёрном списке
-						if(!i->second.forbidden && !i->second.localhost){
+						if(!i->second.forbidden){
 							// Если время жизни кэша ещё не вышло
 							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - i->second.create) <= this->_ttl)){
 								// Выполняем формирование списка полученных IP-адресов
@@ -2119,15 +2119,15 @@ void awh::DNS::hosts(const string & filename) noexcept {
 		// Создаём объект для работы с файловой системой
 		fs_t fs(this->_fmk, this->_log);
 		// Выполняем установку адреса файла hosts
-		const string & hostsFilename = fs.realPath(filename, false);
+		const string & hosts = fs.realPath(filename, false);
 		// Если файл существует в файловой системе
-		if(fs.isFile(hostsFilename)){
+		if(fs.isFile(hosts)){
 			// Выполняем очистку списка локальных IPv4 адресов из кэша
 			this->clearCache(AF_INET, true);
 			// Выполняем очистку списка локальных IPv6 адресов из кэша
 			this->clearCache(AF_INET6, true);
 			// Выполняем чтение содержимого файла
-			fs.readFile(hostsFilename, [this](const string & entry) noexcept -> void {
+			fs.readFile(hosts, [this](const string & entry) noexcept -> void {
 				// Если запись не является комментарием
 				if(!entry.empty() && (entry.size() > 1) && (entry.front() != '#')){
 					// Хост который будем собирать
