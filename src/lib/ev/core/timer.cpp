@@ -29,9 +29,9 @@ void awh::Timer::Timeout::operator()(ev::timer & timer, int revents) noexcept {
 		this->_broker->launched = !this->_broker->launched;
 		// Выполняем остановку таймера
 		timer.stop();
+		// Выполняем функцию события таймера
+		this->_broker->fn(this->_tid, this->_delay);
 	}
-	// Выполняем функцию события таймера
-	this->_broker->fn(this->_tid, this->_delay);
 }
 /**
  * event Метод события таймера
