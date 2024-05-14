@@ -443,11 +443,6 @@ namespace awh {
 				 * @param sec интервал времени выполнения запроса в секундах
 				 */
 				void timeoutDNS(const uint8_t sec) noexcept;
-				/**
-				 * timeToLiveDNS Метод установки времени жизни DNS-кэша
-				 * @param ttl время жизни DNS-кэша в миллисекундах
-				 */
-				void timeToLiveDNS(const time_t ttl) noexcept;
 			public:
 				/**
 				 * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён

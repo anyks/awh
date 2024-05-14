@@ -755,16 +755,6 @@ void awh::client::AWH::timeoutDNS(const uint8_t sec) noexcept {
 		this->_dns.timeout(sec);
 }
 /**
- * timeToLiveDNS Метод установки времени жизни DNS-кэша
- * @param ttl время жизни DNS-кэша в миллисекундах
- */
-void awh::client::AWH::timeToLiveDNS(const time_t ttl) noexcept {
-	// Если значение времени жизни DNS-кэша передано
-	if(ttl > 0)
-		// Выполняем установку времени жизни DNS-кэша
-		this->_dns.timeToLive(ttl);
-}
-/**
  * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
  * @param prefix префикс переменной окружения для установки
  */

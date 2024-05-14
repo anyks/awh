@@ -111,7 +111,6 @@ namespace awh {
 				 * DNS Структура параметров DNS-резолвера
 				 */
 				typedef struct DNS {
-					time_t ttl;                                    // Времени жизни DNS-кэша
 					uint8_t timeout;                               // Время ожидания выполнения запроса
 					string hosts;                                  // Адрес файла с локальными хостами
 					string prefix;                                 // Префикс переменной окружения для извлечения серверов имён
@@ -119,7 +118,7 @@ namespace awh {
 					/**
 					 * DNS Конструктор
 					 */
-					DNS() noexcept : ttl(0), timeout(0), hosts{""}, prefix{""} {}
+					DNS() noexcept : timeout(0), hosts{""}, prefix{""} {}
 				} dns_t;
 				/**
 				 * Ident Структура идентификации сервиса
@@ -794,11 +793,6 @@ namespace awh {
 				 * @param sec интервал времени выполнения запроса в секундах
 				 */
 				void timeoutDNS(const uint8_t sec) noexcept;
-				/**
-				 * timeToLiveDNS Метод установки времени жизни DNS-кэша
-				 * @param ttl время жизни DNS-кэша в миллисекундах
-				 */
-				void timeToLiveDNS(const time_t ttl) noexcept;
 			public:
 				/**
 				 * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён

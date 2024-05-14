@@ -308,10 +308,6 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			if(!this->_settings.dns.prefix.empty())
 				// Выполняем установку префикса переменной окружения
 				ret.first->second->awh.prefixDNS(this->_settings.dns.prefix);
-			// Если время жизни DNS-кэша установлено
-			if(this->_settings.dns.ttl > 0)
-				// Выполняем установку времени жизни DNS-кэша
-				ret.first->second->awh.timeToLiveDNS(this->_settings.dns.ttl);
 			// Если таймаут DNS-запроса установлен
 			if(this->_settings.dns.timeout > 0)
 				// Устанавливаем таймаут DNS-запроса
@@ -1893,16 +1889,6 @@ void awh::server::Proxy::timeoutDNS(const uint8_t sec) noexcept {
 	if(sec > 0)
 		// Выполняем установку времени ожидания выполнения запроса
 		this->_settings.dns.timeout = sec;
-}
-/**
- * timeToLiveDNS Метод установки времени жизни DNS-кэша
- * @param ttl время жизни DNS-кэша в миллисекундах
- */
-void awh::server::Proxy::timeToLiveDNS(const time_t ttl) noexcept {
-	// Если время жизни DNS-кэша передано
-	if(ttl > 0)
-		// Выполняем установку время жизни DNS-кэша
-		this->_settings.dns.ttl = ttl;
 }
 /**
  * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён

@@ -116,7 +116,7 @@ namespace awh {
 			 * Server Структура сервера имён
 			 */
 			struct Server {
-				u_int port;     // Порт сервера
+				uint32_t port;  // Порт сервера
 				uint32_t ip[T]; // Буфер IP-адреса
 				/**
 				 * Server Конструктор
@@ -132,6 +132,7 @@ namespace awh {
 			 * Cache Структура кэша DNS
 			 */
 			struct Cache {
+				time_t ttl;     // Время жизни кэша
 				time_t create;  // Время создания кэша
 				bool localhost; // Флаг локального адреса
 				bool forbidden; // Флаг запрещённого адреса
@@ -139,7 +140,7 @@ namespace awh {
 				/**
 				 * Cache Конструктор
 				 */
-				Cache() noexcept : create(0), localhost(false), forbidden(false), ip{0} {}
+				Cache() noexcept : ttl(0), create(0), localhost(false), forbidden(false), ip{0} {}
 			} __attribute__((packed));
 			/**
 			 * Шаблон формата данных DNS-кэша
@@ -173,19 +174,19 @@ namespace awh {
 			 * Header Структура заголовка DNS
 			 */
 			typedef struct Header {
-				u_short id;        // Идентификатор операции
-				u_char rd : 1;     // Флаг выполнения желаемой рекурсии
-				u_char tc : 1;     // Флаг усечения сообщения если оно слишком большое
-				u_char aa : 1;     // Флаг авторитетного ответа сервера
-				u_char opcode : 4; // Опкод операции
-				u_char qr : 1;     // Тип запроса или ответа
-				u_char rcode : 4;  // Код выполнения операции
-				u_char z : 3;      // Зарезервированно для использования в будущем
-				u_char ra : 1;     // Флаг активации рекурсивных запросов на сервере
-				u_short qdcount;   // Количество записей в разделе запроса
-				u_short ancount;   // Количество записей в разделе ответа
-				u_short nscount;   // Номер имени записи ресурсов сервера
-				u_short arcount;   // Количество записей ресурсов в разделе дополнительных записей
+				uint16_t id;        // Идентификатор операции
+				uint8_t rd : 1;     // Флаг выполнения желаемой рекурсии
+				uint8_t tc : 1;     // Флаг усечения сообщения если оно слишком большое
+				uint8_t aa : 1;     // Флаг авторитетного ответа сервера
+				uint8_t opcode : 4; // Опкод операции
+				uint8_t qr : 1;     // Тип запроса или ответа
+				uint8_t rcode : 4;  // Код выполнения операции
+				uint8_t z : 3;      // Зарезервированно для использования в будущем
+				uint8_t ra : 1;     // Флаг активации рекурсивных запросов на сервере
+				uint16_t qdcount;   // Количество записей в разделе запроса
+				uint16_t ancount;   // Количество записей в разделе ответа
+				uint16_t nscount;   // Номер имени записи ресурсов сервера
+				uint16_t arcount;   // Количество записей ресурсов в разделе дополнительных записей
 				/**
 				 * Header Конструктор
 				 */
@@ -195,25 +196,25 @@ namespace awh {
 			 * QFlags Структура флагов DNS запросов
 			 */
 			typedef struct QFlags {
-				u_short qtype;  // Тип записи
-				u_short qclass; // Класс записи
+				uint16_t type; // Тип записи
+				uint16_t cls;  // Класс записи
 				/**
 				 * QFlags Конструктор
 				 */
-				QFlags() noexcept : qtype(0), qclass(0) {}
-			} qflags_t;
+				QFlags() noexcept : type(0), cls(0) {}
+			} __attribute__((packed)) q_flags_t;
 			/**
 			 * RRFlags Структура флагов DNS RRs
 			 */
 			typedef struct RRFlags {
-				u_short rtype;    // Тип записи
-				u_short rclass;   // Класс записи
-				u_int ttl;        // Время обновления
-				u_short rdlength; // Длина записи
+				uint16_t type;   // Тип записи
+				uint16_t cls;    // Класс записи
+				uint32_t ttl;    // Время обновления
+				uint16_t length; // Длина записи
 				/**
 				 * RRFlags Конструктор
 				 */
-				RRFlags() noexcept : rtype(0), rclass(0), ttl(0), rdlength(0) {}
+				RRFlags() noexcept : type(0), cls(0), ttl(0), length(0) {}
 			} rr_flags_t;
 			/**
 			 * Worker Класс воркера резолвинга
@@ -228,7 +229,7 @@ namespace awh {
 					/**
 					 * Тип запроса
 					 */
-					enum class qtype_t : uint8_t {
+					enum class q_type_t : uint8_t {
 						IP  = 0x01, // Тип запроса IP-адрес
 						PTR = 0x02  // Тип запроса PTR-адрес
 					};
@@ -243,10 +244,7 @@ namespace awh {
 					int _family;
 				private:
 					// Тип DNS-запроса
-					qtype_t _qtype;
-				private:
-					// Название искомого домена
-					string _domain;
+					q_type_t _qtype;
 				private:
 					// Объект для работы с подключениями
 					peer_t _peer;
@@ -266,25 +264,26 @@ namespace awh {
 					string host() const noexcept;
 				private:
 					/**
-					 * join Метод восстановления доменного имени
-					 * @param domain доменное имя для восстановления
-					 * @return       восстановленное доменное имя
-					 */
-					string join(const vector <u_char> & domain) const noexcept;
-					/**
 					 * split Метод разбивки доменного имени
 					 * @param domain доменное имя для разбивки
 					 * @return       разбитое доменное имя
 					 */
-					vector <u_char> split(const string & domain) const noexcept;
+					vector <uint8_t> split(const string & domain) const noexcept;
 				private:
+					/**
+					 * join Метод восстановления доменного имени
+					 * @param buffer буфер бинарных данных записи
+					 * @param size   размер буфера бинарных данных
+					 * @return       восстановленное доменное имя
+					 */
+					string join(const uint8_t * buffer, const size_t size) const noexcept;
 					/**
 					 * extract Метод извлечения записи из ответа DNS
 					 * @param data буфер данных из которого нужно извлечь запись
 					 * @param pos  позиция в буфере данных
 					 * @return     запись в текстовом виде из ответа DNS
 					 */
-					vector <u_char> extract(u_char * data, const size_t pos) const noexcept;
+					string extract(const uint8_t * data, const size_t pos) const noexcept;
 				public:
 					/**
 					 * close Метод закрытия подключения
@@ -305,11 +304,12 @@ namespace awh {
 				private:
 					/**
 					 * Метод отправки запроса на удалённый сервер DNS
+					 * @param fqdn полное доменное имя для которого выполняется отправка запроса
 					 * @param from адрес компьютера с которого выполняется запрос
 					 * @param to   адрес DNS-сервера на который выполняется запрос
 					 * @return     полученный IP-адрес
 					 */
-					string send(const string & from, const string & to) noexcept;
+					string send(const string & fqdn, const string & from, const string & to) noexcept;
 				public:
 					/**
 					 * Worker Конструктор
@@ -318,7 +318,7 @@ namespace awh {
 					 */
 					Worker(const int family, const DNS * self) noexcept :
 					 _fd(INVALID_SOCKET), _mode(false), _family(family),
-					 _qtype(qtype_t::IP), _domain{""}, _socket(self->_fmk, self->_log), _self(self) {}
+					 _qtype(q_type_t::IP), _socket(self->_fmk, self->_log), _self(self) {}
 					/**
 					 * ~Worker Деструктор
 					 */
@@ -327,9 +327,6 @@ namespace awh {
 		private:
 			// Объект для работы с IP-адресами
 			net_t _net;
-		private:
-			// Время жизни кэша в миллисекундах
-			time_t _ttl;
 		private:
 			// Таймаут ожидания выполнения запроса (в секундах)
 			uint8_t _timeout;
@@ -412,12 +409,6 @@ namespace awh {
 			void timeout(const uint8_t sec) noexcept;
 		public:
 			/**
-			 * timeToLive Метод установки времени жизни DNS-кэша
-			 * @param ttl время жизни DNS-кэша в миллисекундах
-			 */
-			void timeToLive(const time_t ttl) noexcept;
-		public:
-			/**
 			 * cache Метод получения IP-адреса из кэша
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param domain доменное имя соответствующее IP-адресу
@@ -453,17 +444,19 @@ namespace awh {
 			 * setToCache Метод добавления IP-адреса в кэш
 			 * @param domain    доменное имя соответствующее IP-адресу
 			 * @param ip        адрес для добавления к кэш
+			 * @param ttl       время жизни кэша доменного имени
 			 * @param localhost флаг обозначающий добавление локального адреса
 			 */
-			void setToCache(const string & domain, const string & ip, const bool localhost = false) noexcept;
+			void setToCache(const string & domain, const string & ip, const time_t ttl, const bool localhost = false) noexcept;
 			/**
 			 * setToCache Метод добавления IP-адреса в кэш
 			 * @param family    тип интернет-протокола AF_INET, AF_INET6
 			 * @param domain    доменное имя соответствующее IP-адресу
 			 * @param ip        адрес для добавления к кэш
+			 * @param ttl       время жизни кэша доменного имени
 			 * @param localhost флаг обозначающий добавление локального адреса
 			 */
-			void setToCache(const int family, const string & domain, const string & ip, const bool localhost = false) noexcept;
+			void setToCache(const int family, const string & domain, const string & ip, const time_t ttl, const bool localhost = false) noexcept;
 		public:
 			/**
 			 * clearBlackList Метод очистки чёрного списка
