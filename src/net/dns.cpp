@@ -88,6 +88,41 @@ vector <uint8_t> awh::DNS::Worker::split(const string & domain) const noexcept {
 	return result;
 }
 /**
+ * extract Метод извлечения записи из ответа DNS
+ * @param data буфер данных из которого нужно извлечь запись
+ * @param pos  позиция в буфере данных
+ * @return     запись в текстовом виде из ответа DNS
+ */
+string awh::DNS::Worker::extract(const uint8_t * data, const size_t pos) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если данные переданы
+	if(data != nullptr){
+		// Получаем временное значение буфера данных
+		const uint8_t * temp = reinterpret_cast <const uint8_t *> (&data[pos]);
+		// Выполняем перебор полученного буфера данных
+		while((* temp) != 0){
+			// Если найдено значение
+			if((* temp) == 0xC0){
+				// Увеличивам значение в буфере
+				++temp;
+				// Получаем новое значение буфера
+				temp = reinterpret_cast <const uint8_t *> (&data[* temp]);
+			// Если значение не найдено
+			} else {
+				// Устанавливаем новое значение буфера
+				result.append(1, * temp);
+				// Увеличивам значение в буфере
+				++temp;
+			}
+		}
+		// Устанавливаем конец строки
+		result.append(1, '\0');
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * join Метод восстановления доменного имени
  * @param buffer буфер бинарных данных записи
  * @param size   размер буфера бинарных данных
@@ -104,6 +139,10 @@ string awh::DNS::Worker::join(const uint8_t * buffer, const size_t size) const n
 		for(uint16_t i = 0; i < static_cast <uint16_t> (size); ++i){
 			// Получаем количество символов
 			length = static_cast <uint16_t> (buffer[i]);
+			// Если найдено значение
+			if(length == 0xC0)
+				// Выходим из цикла
+				break;
 			// Выполняем перебор всех символов
 			for(uint16_t j = 0; j < length; ++j){
 				// Добавляем поддомен в строку результата
@@ -125,44 +164,51 @@ string awh::DNS::Worker::join(const uint8_t * buffer, const size_t size) const n
 	return result;
 }
 /**
- * extract Метод извлечения записи из ответа DNS
- * @param data буфер данных из которого нужно извлечь запись
- * @param pos  позиция в буфере данных
- * @return     запись в текстовом виде из ответа DNS
+ * items Метод извлечения частей доменного имени
+ * @param buffer буфер бинарных данных записи
+ * @param size   размер буфера бинарных данных
+ * @return       восстановленное доменное имя
  */
-string awh::DNS::Worker::extract(const uint8_t * data, const size_t pos) const noexcept {
+vector <string> awh::DNS::Worker::items(const uint8_t * buffer, const size_t size) const noexcept {
 	// Результат работы функции
-	string result = "";
-	// Если данные переданы
-	if(data != nullptr){
-		// Устанавливаем итератор перебора
-		int j = 0;
-		// Получаем временное значение буфера данных
-		const uint8_t * temp = reinterpret_cast <const uint8_t *> (&data[pos]);
-		// Выполняем перебор полученного буфера данных
-		while((* temp) != 0){
+	vector <string> result;
+	// Если доменное имя передано
+	if((buffer != nullptr) && (size > 0)){
+		// Собрыннй текст
+		string text = "";
+		// Количество символов в слове
+		uint16_t length = 0, offset = 0;
+		// Переходим по всему доменному имени
+		for(uint16_t i = 0; i < static_cast <uint16_t> (size); ++i){
+			// Получаем количество символов
+			length = static_cast <uint16_t> (buffer[i]);
 			// Если найдено значение
-			if((* temp) == 0xC0){
-				// Увеличивам значение в буфере
-				++temp;
-				// Получаем новое значение буфера
-				temp = reinterpret_cast <const uint8_t *> (&data[* temp]);
-			// Если значение не найдено
-			} else {
-				// Устанавливаем новое значение буфера
-				result.append(1, * temp);
-				// Увеличивам значение итератора
-				++j;
-				// Увеличивам значение в буфере
-				++temp;
+			if(length == 0xC0)
+				// Выходим из цикла
+				break;
+			// Выполняем очистку собранного текста
+			text.clear();
+			// Выполняем перебор всех символов
+			for(uint16_t j = 0; j < length; ++j){
+				// Добавляем поддомен в строку результата
+				text.append(1, buffer[j + 1 + offset]);
+				// Выполняем смещение в строке
+				++i;
 			}
+			// Добавляем разделительную точку
+			result.push_back(text);
+			// Запоминаем значение смещения
+			offset = (i + 1);
+			// Если получили нулевой символ
+			if(buffer[i + 1] == 0)
+				// Выходим из цикла
+				break;
 		}
-		// Устанавливаем конец строки
-		result.append(1, '\0');
 	}
 	// Выводим результат
 	return result;
 }
+
 /**
  * close Метод закрытия подключения
  */
@@ -324,9 +370,9 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 	// Если доменное имя установлено
 	if(this->_mode && !fqdn.empty() && !from.empty() && !to.empty()){
 		// Буфер пакета данных
-		std::array <uint8_t, 65536> buffer;
+		std::array <uint8_t, BUFFER_SIZE> buffer;
 		// Выполняем зануление буфера данных
-		::memset(buffer.data(), 0, sizeof(buffer));
+		::memset(buffer.data(), 0, BUFFER_SIZE);
 		// Получаем объект заголовка
 		head_t * header = reinterpret_cast <head_t *> (buffer.data());
 		// Устанавливаем идентификатор заголовка
@@ -399,9 +445,9 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
 			this->_socket.closeOnExec(this->_fd);
 			// Устанавливаем размер буфера передачи данных на чтение
-			// this->_socket.bufferSize(this->_fd, sizeof(buffer), 1, socket_t::mode_t::READ);
+			// this->_socket.bufferSize(this->_fd, BUFFER_SIZE, 1, socket_t::mode_t::READ);
 			// Устанавливаем размер буфера передачи данных на запись
-			// this->_socket.bufferSize(this->_fd, sizeof(buffer), 1, socket_t::mode_t::WRITE);
+			// this->_socket.bufferSize(this->_fd, BUFFER_SIZE, 1, socket_t::mode_t::WRITE);
 			// Устанавливаем таймаут на получение данных из сокета
 			this->_socket.timeout(this->_fd, this->_self->_timeout * 1000, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
@@ -416,11 +462,11 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 			// Если запрос на сервер DNS успешно отправлен
 			if((bytes = ::sendto(this->_fd, reinterpret_cast <const char *> (buffer.data()), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
 				// Выполняем зануление буфера данных
-				::memset(buffer.data(), 0, sizeof(buffer));
+				::memset(buffer.data(), 0, BUFFER_SIZE);
 				// Получаем объект DNS-сервера
 				dns_t * self = const_cast <dns_t *> (this->_self);
 				// Выполняем чтение ответа сервера
-				const int64_t bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (buffer.data()), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
+				const int64_t bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (buffer.data()), BUFFER_SIZE, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Если сокет находится в блокирующем режиме
@@ -476,211 +522,450 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 					switch(header->rcode){
 						// Если операция выполнена удачно
 						case 0: {
-							// Количество полученных IP-адресов
-							uint16_t ips = 0;
-							// Получаем размер ответа
-							size_t size = sizeof(head_t);
-							// Получаем название доменного имени
-							const string & qname = this->join(buffer.data() + size,  buffer.size() - size);
-							// Увеличиваем размер буфера полученных данных
-							size += (qname.size() + 2);
-							// Создаём части флагов вопроса пакета ответа
-							rr_flags_t * rrflags = nullptr;
-							// Создаём части флагов вопроса пакета ответа
-							q_flags_t * qflags = reinterpret_cast <q_flags_t *> (&buffer[size]);
-							// Увеличиваем размер ответа
-							size += sizeof(q_flags_t);
-							// Получаем количество записей
-							const uint16_t count = (ntohs(header->ancount) + 2);
-							// Создаём список полученных типов записей
-							vector <uint32_t> type(count, 0);
-							// Получаем список названий записей
-							vector <string> name(count, "");
-							// Получаем список значений записей
-							vector <string> rdata(count, "");
+							// Список полученных записей
+							vector <item_t> answer;
+							// Список полученных серверов имён
+							vector <item_t> authority;
+							// Список полученных дополнительных записей
+							vector <item_t> additional;
+							// Список запрашиваемых доменных имён
+							vector <vector <string>> qnames;
+							// Смещение в бинарном буфере
+							size_t offset = sizeof(head_t);
+							// Выполняем перебор всех полученных элементов в разделе ответов
+							for(uint16_t i = 0; i < ntohs(header->qdcount); ++i){
+								// Выполняем извлечение списка сотава доменного имени
+								const auto & items = this->items(buffer.data() + offset,  buffer.size() - offset);
+								// Выполняем добавление в общий список запрашиваемых доменных имён
+								qnames.push_back(items);
+								// Выполняем перебор всего списка записей
+								for(auto & item : items)
+									// Считаем смещение в бинарном буфере
+									offset += (1 + item.size());
+								// Увеличиваем размер буфера полученных данных
+								offset += 1;
+								// Увеличиваем смещение в буфере
+								offset += sizeof(q_flags_t);
+							}
 							// Выполняем перебор всех полученных записей
-							for(uint16_t i = 0; i < count; ++i){
-								// Извлекаем значение полученной записи
-								const auto & record = this->extract(buffer.data(), size);
-								// Выполняем извлечение названия записи
-								name[i] = this->join(reinterpret_cast <const uint8_t *> (record.data()), record.size());
-								// Если название доменного имени полученно
-								if(!name[i].empty()){
-									// Если запрос небыл завершён, выполняем пропуск всего мусора
-									while(buffer[size] != 0xC0)
-										// Выполняем пропуска данных которые нам не нужны но переданы DNS-сервером
-										size++;
-									// Увеличиваем размер полученных данных
-									size += 2;
-									// Создаём части флагов вопроса пакета ответа
-									rrflags = reinterpret_cast <rr_flags_t *> (&buffer[size]);
-									// Увеличиваем размер ответа
-									size = ((size + sizeof(rr_flags_t)) - 2);
-									// Определяем тип записи
-									switch(ntohs(rrflags->type)){
-										// Если запись является интернет-протоколом IPv4
-										case 1:
-										// Если запись является интернет-протоколом IPv6
-										case 28: {
-											// Если ещё не все IP-адреса получены
-											if(i < ntohs(header->ancount))
-												// Увеличиваем количество полученных IP-адресов
-												ips++;
-											// Изменяем размер извлекаемых данных
-											rdata[i].resize(ntohs(rrflags->length), 0);
-											// Выполняем парсинг IP-адреса
-											for(int j = 0; j < ntohs(rrflags->length); ++j)
-												// Выполняем парсинг IP-адреса
-												rdata[i][j] = static_cast <uint8_t> (buffer[size + j]);
-											// Устанавливаем тип полученных данных
-											type[i] = ntohs(rrflags->type);
-										} break;
-										// Если мы получили сервер имён
-										case 2:
-										// Если запись является каноническим именем
-										case 5:
-										// Если запись является PTR
-										case 12: {
-											// Извлекаем значение полученной записи
-											const auto & record = this->extract(buffer.data(), size);
-											// Выполняем извлечение значение записи
-											rdata[i] = this->join(reinterpret_cast <const uint8_t *> (record.data()), record.size());
-											// Устанавливаем тип полученных данных
-											type[i] = ntohs(rrflags->type);
-										} break;
+							for(uint16_t i = 0; i < ntohs(header->ancount); ++i){
+								// Создаём новый объект полученного ответа
+								answer.push_back(item_t());
+								// Если в буфере присутствуют ещё данные
+								if(buffer[offset] != 0xC0){
+									// Выполняем извлечение списка сотава доменного имени
+									answer.back().items = this->items(buffer.data() + offset,  buffer.size() - offset);
+									// Выполняем перебор всего списка записей
+									for(auto & domain : answer.back().items)
+										// Считаем смещение в бинарном буфере
+										offset += (1 + domain.size());
+									// Если количество полученных частей доменного имени, меньше количества частей запрашиваемого доменного имени
+									if(answer.back().items.size() < qnames.back().size()){
+										// Выполняем перебор оставшихся частей доменного имени
+										for(size_t j = (qnames.back().size() - (qnames.back().size() - answer.back().items.size())); j < qnames.back().size(); j++)
+											// Добавляем недостающие части доменного имени
+											answer.back().items.push_back(qnames.back().at(j));
 									}
-									// Увеличиваем размер полученных данных
-									size += ntohs(rrflags->length);
-								// Выходим из цикла
-								} else break;
+								// Если в списке данные не присутствуют
+								} else {
+									// Извлекаем значение полученной записи
+									const auto & record = this->extract(buffer.data(), offset);
+									// Выполняем извлечение списка сотава доменного имени
+									answer.back().items = this->items(reinterpret_cast <const uint8_t *> (record.data()), record.size());
+								}
+								// Если в буфере присутствуют ещё данные
+								if(buffer[offset] != 0xC0)
+									// Увеличиваем размер буфера полученных данных на один байт
+									offset += 1;
+								// Увеличиваем размер буфера полученных данных на два байта
+								else offset += 2;
+								// Создаём части флагов вопроса пакета ответа
+								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&buffer[offset]);
+								// Увеличиваем смещение в буфере
+								offset += (sizeof(rr_flags_t) - 2);
+								// Устанавливаем время жизни записи
+								answer.back().ttl = ntohl(rrflags->ttl);
+								// Определяем тип полученной записи
+								switch(ntohs(rrflags->type)){
+									// Если запись является интернет-протоколом IPv4
+									case 1:
+									// Если запись является интернет-протоколом IPv6
+									case 28: {
+										// Устанавливаем размер извлекаемых данных
+										answer.back().record.resize(ntohs(rrflags->length), 0);
+										// Выполняем перебор полученных октетов для парсинга IP-адреса
+										for(int j = 0; j < ntohs(rrflags->length); ++j)
+											// Выполняем парсинг IP-адреса
+											answer.back().record[j] = static_cast <uint8_t> (buffer[offset++]);
+										// Устанавливаем тип полученных данных
+										answer.back().type = ntohs(rrflags->type);
+									} break;
+									// Если запись является каноническим именем
+									case 5:
+									// Если запись является PTR
+									case 12: {
+										// Извлекаем значение полученной записи
+										const auto & record = this->extract(buffer.data(), offset);
+										// Выполняем извлечение значение записи
+										answer.back().record = this->join(reinterpret_cast <const uint8_t *> (record.data()), record.size());
+										// Устанавливаем тип полученных данных
+										answer.back().type = ntohs(rrflags->type);
+										// Увеличиваем размер буфера полученных данных
+										offset += ntohs(rrflags->length);
+									} break;
+								}
+							}
+							// Выполняем перебор всех полученных NS-серверов
+							for(uint16_t i = 0; i < ntohs(header->nscount); ++i){
+								// Создаём новый объект полученного ответа
+								authority.push_back(item_t());
+								// Извлекаем значение полученной записи
+								const auto & record = this->extract(buffer.data(), offset);
+								// Выполняем извлечение списка сотава доменного имени
+								authority.back().items = this->items(reinterpret_cast <const uint8_t *> (record.data()), record.size());
+								// Если в списке присутствуют ещё данные
+								if(buffer[offset] != 0xC0)
+									// Увеличиваем размер буфера полученных данных на один байт
+									offset += 1;
+								// Увеличиваем размер буфера полученных данных на два байта
+								else offset += 2;
+								// Создаём части флагов вопроса пакета ответа
+								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&buffer[offset]);
+								// Увеличиваем смещение в буфере
+								offset += (sizeof(rr_flags_t) - 2);
+								// Устанавливаем время жизни записи
+								authority.back().ttl = ntohl(rrflags->ttl);
+								// Определяем тип полученной записи
+								switch(ntohs(rrflags->type)){
+									// Если мы получили сервер имён
+									case 2: {
+										// Извлекаем значение полученной записи
+										const auto & record = this->extract(buffer.data(), offset);
+										// Выполняем извлечение значение записи
+										authority.back().record = this->join(reinterpret_cast <const uint8_t *> (record.data()), record.size());
+										// Устанавливаем тип полученных данных
+										authority.back().type = ntohs(rrflags->type);
+									} break;
+								}
+								// Увеличиваем размер буфера полученных данных
+								offset += ntohs(rrflags->length);
+							}
+							// Выполняем перебор всех полученных дополнительных записей
+							for(uint16_t i = 0; i < ntohs(header->arcount); ++i){
+								// Создаём новый объект полученного ответа
+								additional.push_back(item_t());
+								// Извлекаем значение полученной записи
+								const auto & record = this->extract(buffer.data(), offset);
+								// Выполняем извлечение списка сотава доменного имени
+								additional.back().items = this->items(reinterpret_cast <const uint8_t *> (record.data()), record.size());
+								// Если в списке присутствуют ещё данные
+								if(buffer[offset] != 0xC0)
+									// Увеличиваем размер буфера полученных данных на один байт
+									offset += 1;
+								// Увеличиваем размер буфера полученных данных на два байта
+								else offset += 2;
+								// Создаём части флагов вопроса пакета ответа
+								rr_flags_t * rrflags = reinterpret_cast <rr_flags_t *> (&buffer[offset]);
+								// Увеличиваем смещение в буфере
+								offset += (sizeof(rr_flags_t) - 2);
+								// Устанавливаем время жизни записи
+								additional.back().ttl = ntohl(rrflags->ttl);
+								// Определяем тип полученной записи
+								switch(ntohs(rrflags->type)){
+									// Если запись является интернет-протоколом IPv4
+									case 1:
+									// Если запись является интернет-протоколом IPv6
+									case 28: {
+										// Устанавливаем размер извлекаемых данных
+										additional.back().record.resize(ntohs(rrflags->length), 0);
+										// Выполняем перебор полученных октетов для парсинга IP-адреса
+										for(int j = 0; j < ntohs(rrflags->length); ++j)
+											// Выполняем парсинг IP-адреса
+											additional.back().record[j] = static_cast <uint8_t> (buffer[offset++]);
+										// Устанавливаем тип полученных данных
+										additional.back().type = ntohs(rrflags->type);
+									} break;
+									// Если запись является каноническим именем
+									case 5:
+									// Если запись является PTR
+									case 12: {
+										// Извлекаем значение полученной записи
+										const auto & record = this->extract(buffer.data(), offset);
+										// Выполняем извлечение значение записи
+										additional.back().record = this->join(reinterpret_cast <const uint8_t *> (record.data()), record.size());
+										// Устанавливаем тип полученных данных
+										additional.back().type = ntohs(rrflags->type);
+										// Увеличиваем размер буфера полученных данных
+										offset += ntohs(rrflags->length);
+									} break;
+								}
 							}
 							// Список полученных записей
-							vector <string> records;
+							vector <string> items;
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим начальный разделитель
-								printf ("------------------------------------------------------------\n\n");
+								cout << "------------------------------------------------------------" << endl << endl;
 								// Выводим заголовок
-								printf("DNS server response:\n");
-								// Выводим название доменного имени
-								printf("QNAME: %s\n", qname.c_str());
-								// Переходим по всему списку записей
-								for(int i = 0; i < count; ++i){
-									// Если название доменного имени полученно
-									if(!name[i].empty()){
-										// Выводим название записи
-										printf("\nNAME: %s\n", name[i].c_str());
-										// Определяем тип записи
-										switch(type[i]){
-											// Если тип полученной записи NS
-											case 2: printf("NS: %s\n", rdata[i].c_str()); break;
-											// Если тип полученной записи CNAME
-											case 5: printf("CNAME: %s\n", rdata[i].c_str()); break;
-											// Если тип получения записи PTR
-											case 12: {
-												// Выводим информацию в консоль
-												printf("PTR: %s\n", rdata[i].c_str());
-												// Выполняем установку ARPA-адреса
-												if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn)){
-													// Выполняем извлечение PTR-записи
-													records.push_back(rdata[i]);
-													// Записываем данные в кэш
-													self->setToCache(this->_family, rdata[i], this->_self->_net.get(), static_cast <time_t> (ntohl(rrflags->ttl)));
-												}
-											} break;
-											// Если тип полученной записи IPv4
-											case 1:
-											// Если тип полученной записи IPv6
-											case 28: {
-												// Создаём буфер данных
-												char buffer[INET6_ADDRSTRLEN];
-												// Зануляем буфер данных
-												::memset(buffer, 0, sizeof(buffer));
-												// Получаем IP-адрес принадлежащий доменному имени
-												const string ip = ::inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
-												// Если IP-адрес получен
-												if(!ip.empty()){
-													// Если чёрный список IP-адресов получен
-													if((count == 1) || !self->isInBlackList(this->_family, name[i], ip)){
-														// Если доменный адрес соответствует IP-адресу
-														if((ips > 0) || self->_fmk->compare(name[i], fqdn)){
-															// Уменьшаем количество добавленных IP-адресов
-															ips--;
-															// Добавляем IP-адрес в список адресов
-															records.push_back(ip);
-														}
+								cout << "DNS RESPONSE:" << endl << endl;
+								// Если список запрашиваемых доменных имён получен
+								if(!qnames.empty()){
+									// Создаём буфер данных
+									char addr[INET6_ADDRSTRLEN];
+									// Выполняем перебор списка каннонических имён
+									for(auto & qname : qnames)
+										// Выводим название доменного имени
+										printf("QNAME: %s\n", self->_fmk->join(qname, ".").c_str());
+									// Если список ответов сервера получен
+									if(!answer.empty()){
+										// Доменное имя полученное из запроса
+										string name = "";
+										// Выполняем перебор всего списка ответов
+										for(auto & item : answer){
+											// Получаем название записи
+											name = self->_fmk->join(item.items, ".");
+											// Выводим название записи
+											printf("\nNAME: %s\n", name.c_str());
+											// Определяем тип записи
+											switch(item.type){
+												// Если тип полученной записи CNAME
+												case 5: printf("CNAME: %s\n", item.record.c_str()); break;
+												// Если тип получения записи PTR
+												case 12: {
+													// Выводим информацию в консоль
+													printf("PTR: %s\n", item.record.c_str());
+													// Выполняем установку ARPA-адреса
+													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn)){
+														// Выполняем извлечение PTR-записи
+														items.push_back(item.record);
 														// Записываем данные в кэш
-														self->setToCache(this->_family, name[i], ip, static_cast <time_t> (ntohl(rrflags->ttl)));
+														self->setToCache(this->_family, item.record, this->_self->_net.get(), static_cast <time_t> (item.ttl));
 													}
-													// Выводим информацию об IP-адресе
-													printf("IPv4: %s\n", ip.c_str());
-												}
-											} break;
+												} break;
+												// Если тип полученной записи IPv4
+												case 1:
+												// Если тип полученной записи IPv6
+												case 28: {
+													// Зануляем буфер данных
+													::memset(addr, 0, sizeof(addr));
+													// Получаем IP-адрес принадлежащий доменному имени
+													const string ip = ::inet_ntop(this->_family, item.record.c_str(), addr, sizeof(addr));
+													// Если IP-адрес получен
+													if(!ip.empty()){
+														// Если IP-адрес не находится в чёрном списке
+														if(!self->isInBlackList(this->_family, name, ip)){
+															// Добавляем IP-адрес в список адресов
+															items.push_back(ip);
+															// Записываем данные в кэш
+															self->setToCache(this->_family, name, ip, static_cast <time_t> (item.ttl));
+														}
+														// Определяем тип записи
+														switch(item.type){
+															// Если тип полученной записи IPv4
+															case 1: printf("IPv4: %s\n", ip.c_str()); break;
+															// Если тип полученной записи IPv6
+															case 28: printf("IPv6: %s\n", ip.c_str()); break;
+														}
+													}
+												} break;
+											}
 										}
-									// Выходим из цикла
-									} else break;
+									}
+									// Если список сервером имён получен
+									if(!authority.empty()){
+										// Доменное имя полученное из запроса
+										string name = "";
+										// Выполняем перебор всего списка ответов
+										for(auto & item : authority){
+											// Получаем название записи
+											name = self->_fmk->join(item.items, ".");
+											// Выводим название записи
+											printf("\nNAME: %s\n", name.c_str());
+											// Определяем тип записи
+											switch(item.type){
+												// Если тип полученной записи NS
+												case 2: printf("NS: %s\n", item.record.c_str()); break;
+											}
+										}
+									}
+									// Если список сервером дополнительных записей получен
+									if(!additional.empty()){
+										// Доменное имя полученное из запроса
+										string name = "";
+										// Выполняем перебор всего списка ответов
+										for(auto & item : additional){
+											// Получаем название записи
+											name = self->_fmk->join(item.items, ".");
+											// Выводим название записи
+											printf("\nNAME: %s\n", name.c_str());
+											// Определяем тип записи
+											switch(item.type){
+												// Если тип полученной записи CNAME
+												case 5: printf("CNAME: %s\n", item.record.c_str()); break;
+												// Если тип получения записи PTR
+												case 12: {
+													// Выводим информацию в консоль
+													printf("PTR: %s\n", item.record.c_str());
+													// Выполняем установку ARPA-адреса
+													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn))
+														// Записываем данные в кэш
+														self->setToCache(this->_family, item.record, this->_self->_net.get(), static_cast <time_t> (item.ttl));
+												} break;
+												// Если тип полученной записи IPv4
+												case 1:
+												// Если тип полученной записи IPv6
+												case 28: {
+													// Зануляем буфер данных
+													::memset(addr, 0, sizeof(addr));
+													// Получаем IP-адрес принадлежащий доменному имени
+													const string ip = ::inet_ntop(this->_family, item.record.c_str(), addr, sizeof(addr));
+													// Если IP-адрес получен
+													if(!ip.empty()){
+														// Если IP-адрес не находится в чёрном списке
+														if(!self->isInBlackList(this->_family, name, ip))
+															// Записываем данные в кэш
+															self->setToCache(this->_family, name, ip, static_cast <time_t> (item.ttl));
+														// Определяем тип записи
+														switch(item.type){
+															// Если тип полученной записи IPv4
+															case 1: printf("IPv4: %s\n", ip.c_str()); break;
+															// Если тип полученной записи IPv6
+															case 28: printf("IPv6: %s\n", ip.c_str()); break;
+														}
+													}
+												} break;
+											}
+										}
+									}
 								}
 								// Выводим конечный разделитель
-								printf ("\n------------------------------------------------------------\n\n");
+								cout << endl << "------------------------------------------------------------" << endl << endl;
 							/**
 							 * Если режим отладки отключён
 							 */
 							#else
-								// Создаём буфер данных
-								char buffer[INET6_ADDRSTRLEN];
-								// Переходим по всему списку записей
-								for(int i = 0; i < count; ++i){
-									// Если название доменного имени полученно
-									if(!name[i].empty()){
-										// Определяем тип записи
-										switch(type[i]){
-											// Если тип получения записи PTR
-											case 12: {
-												// Выполняем установку ARPA-адреса
-												if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn)){
-													// Выполняем извлечение PTR-записи
-													records.push_back(rdata[i]);
-													// Записываем данные в кэш
-													self->setToCache(this->_family, rdata[i], this->_self->_net.get(), static_cast <time_t> (ntohl(rrflags->ttl)));
-												}
-											} break;
-											// Если тип полученной записи IPv4
-											case 1:
-											// Если тип полученной записи IPv6
-											case 28: {
-												// Зануляем буфер данных
-												::memset(buffer, 0, sizeof(buffer));
-												// Получаем IP-адрес принадлежащий доменному имени
-												const string ip = ::inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
-												// Если IP-адрес получен
-												if(!ip.empty()){
-													// Если чёрный список IP-адресов получен
-													if((count == 1) || !self->isInBlackList(this->_family, name[i], ip)){
-														// Если доменный адрес соответствует IP-адресу
-														if((ips > 0) || self->_fmk->compare(name[i], fqdn)){
-															// Уменьшаем количество добавленных IP-адресов
-															ips--;
-															// Добавляем IP-адрес в список адресов
-															records.push_back(ip);
-														}
+								// Если список запрашиваемых доменных имён получен
+								if(!qnames.empty()){
+									// Создаём буфер данных
+									char addr[INET6_ADDRSTRLEN];
+									// Если список ответов сервера получен
+									if(!answer.empty()){
+										// Доменное имя полученное из запроса
+										string name = "";
+										// Выполняем перебор всего списка ответов
+										for(auto & item : answer){
+											// Получаем название записи
+											name = self->_fmk->join(item.items, ".");
+											// Определяем тип записи
+											switch(item.type){
+												// Если тип получения записи PTR
+												case 12: {
+													// Выполняем установку ARPA-адреса
+													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn)){
+														// Выполняем извлечение PTR-записи
+														items.push_back(item.record);
 														// Записываем данные в кэш
-														self->setToCache(this->_family, name[i], ip, static_cast <time_t> (ntohl(rrflags->ttl)));
+														self->setToCache(this->_family, item.record, this->_self->_net.get(), static_cast <time_t> (item.ttl));
 													}
-												}
-											} break;
+												} break;
+												// Если тип полученной записи IPv4
+												case 1:
+												// Если тип полученной записи IPv6
+												case 28: {
+													// Зануляем буфер данных
+													::memset(addr, 0, sizeof(addr));
+													// Получаем IP-адрес принадлежащий доменному имени
+													const string ip = ::inet_ntop(this->_family, item.record.c_str(), addr, sizeof(addr));
+													// Если IP-адрес получен
+													if(!ip.empty()){
+														// Если IP-адрес не находится в чёрном списке
+														if(!self->isInBlackList(this->_family, name, ip)){
+															// Добавляем IP-адрес в список адресов
+															items.push_back(ip);
+															// Записываем данные в кэш
+															self->setToCache(this->_family, name, ip, static_cast <time_t> (item.ttl));
+														}
+													}
+												} break;
+											}
 										}
-									// Выходим из цикла
-									} else break;
+									}
+									// Если список сервером имён получен
+									if(!authority.empty()){
+										// Доменное имя полученное из запроса
+										string name = "";
+										// Выполняем перебор всего списка ответов
+										for(auto & item : authority){
+											// Получаем название записи
+											name = self->_fmk->join(item.items, ".");
+											// Выводим название записи
+											printf("\nNAME: %s\n", name.c_str());
+											// Определяем тип записи
+											switch(item.type){
+												// Если тип полученной записи NS
+												case 2: printf("NS: %s\n", item.record.c_str()); break;
+											}
+										}
+									}
+									// Если список сервером дополнительных записей получен
+									if(!additional.empty()){
+										// Доменное имя полученное из запроса
+										string name = "";
+										// Выполняем перебор всего списка ответов
+										for(auto & item : additional){
+											// Получаем название записи
+											name = self->_fmk->join(item.items, ".");
+											// Выводим название записи
+											printf("\nNAME: %s\n", name.c_str());
+											// Определяем тип записи
+											switch(item.type){
+												// Если тип полученной записи CNAME
+												case 5: printf("CNAME: %s\n", item.record.c_str()); break;
+												// Если тип получения записи PTR
+												case 12: {
+													// Выводим информацию в консоль
+													printf("PTR: %s\n", item.record.c_str());
+													// Выполняем установку ARPA-адреса
+													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn))
+														// Записываем данные в кэш
+														self->setToCache(this->_family, item.record, this->_self->_net.get(), static_cast <time_t> (item.ttl));
+												} break;
+												// Если тип полученной записи IPv4
+												case 1:
+												// Если тип полученной записи IPv6
+												case 28: {
+													// Зануляем буфер данных
+													::memset(addr, 0, sizeof(addr));
+													// Получаем IP-адрес принадлежащий доменному имени
+													const string ip = ::inet_ntop(this->_family, item.record.c_str(), addr, sizeof(addr));
+													// Если IP-адрес получен
+													if(!ip.empty()){
+														// Если IP-адрес не находится в чёрном списке
+														if(!self->isInBlackList(this->_family, name, ip))
+															// Записываем данные в кэш
+															self->setToCache(this->_family, name, ip, static_cast <time_t> (item.ttl));
+														// Определяем тип записи
+														switch(item.type){
+															// Если тип полученной записи IPv4
+															case 1: printf("IPv4: %s\n", ip.c_str()); break;
+															// Если тип полученной записи IPv6
+															case 28: printf("IPv6: %s\n", ip.c_str()); break;
+														}
+													}
+												} break;
+											}
+										}
+									}
 								}
 							#endif
 							// Если список записей получен
-							if(!records.empty()){
+							if(!items.empty()){
 								// Если количество записей в списке больше 1-й
-								if(records.size() > 1){
+								if(items.size() > 1){
 									// Переходим по всему списку полученных записей
-									for(auto & addr : records){
+									for(auto & addr : items){
 										// Если запись не найдена в списке
 										if(self->_using.find(addr) == self->_using.end()){
 											// Выполняем установку записи
@@ -693,15 +978,15 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								// Если запись не установлена
 								if(result.empty()){
 									// Выполняем установку первой записи в списке
-									result = records.front();
+									result = items.front();
 									// Если количество записей в списке больше 1-й
-									if(records.size() > 1){
+									if(items.size() > 1){
 										// Получаем текущее значение записи
-										auto i = records.begin();
+										auto i = items.begin();
 										// Выполняем смещение итератора
 										std::advance(i, 1);
 										// Переходим по всему списку полученных записей
-										for(; i != records.end(); ++i)
+										for(; i != items.end(); ++i)
 											// Очищаем список используемых записей
 											self->_using.erase(* i);
 									}

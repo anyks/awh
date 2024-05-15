@@ -1717,6 +1717,54 @@ const wstring & awh::Framework::transform(const wstring & text, const transform_
 	return this->transform(* const_cast <wstring *> (&text), flag);
 }
 /**
+ * join Метод объединения списка строк в одну строку
+ * @param items список строк которые необходимо объединить
+ * @param delim разделитель
+ * @return      строка полученная после объединения
+ */
+string awh::Framework::join(const vector <string> & items, const string & delim) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если список строк которые необходимо объединить переданы
+	if(!items.empty()){
+		// Выполняем перебор всего списка строк
+		for(auto & item : items){
+			// Если результат ещё не сформирован
+			if(!result.empty())
+				// Выполняем добавление разделителя
+				result.append(delim);
+			// Выполняем добавление текущей строки
+			result.append(item);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * join Метод объединения списка строк в одну строку
+ * @param items список строк которые необходимо объединить
+ * @param delim разделитель
+ * @return      строка полученная после объединения
+ */
+wstring awh::Framework::join(const vector <wstring> & items, const wstring & delim) const noexcept {
+	// Результат работы функции
+	wstring result = L"";
+	// Если список строк которые необходимо объединить переданы
+	if(!items.empty()){
+		// Выполняем перебор всего списка строк
+		for(auto & item : items){
+			// Если результат ещё не сформирован
+			if(!result.empty())
+				// Выполняем добавление разделителя
+				result.append(delim);
+			// Выполняем добавление текущей строки
+			result.append(item);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * split Метод разделения строк на токены
  * @param text      строка для парсинга
  * @param delim     разделитель

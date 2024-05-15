@@ -93,6 +93,9 @@ namespace awh {
 	 */
 	typedef class DNS {
 		private:
+			// Максимальный размер буфера получаемых данных
+			static constexpr time_t BUFFER_SIZE = 0x10000;
+		private:
 			/**
 			 * Статус работы DNS-резолвера
 			 */
@@ -157,7 +160,19 @@ namespace awh {
 			// Создаём тип данных работы с DNS-серверами
 			using server_t = Server <T>;
 		private:
-			private:
+			/**
+			 * Item Структура извлекаемой записи
+			 */
+			typedef struct Item {
+				uint32_t ttl;          // Время жизни записи в секундах
+				uint32_t type;         // Тип полученной записи
+				string record;         // Данные полученной записи
+				vector <string> items; // Составные части доменного имени
+				/**
+				 * Item Конструктор
+				 */
+				Item() noexcept : ttl(0), type(0), record{""} {}
+			} item_t;
 			/**
 			 * Peer Структура подключения
 			 */
@@ -271,19 +286,27 @@ namespace awh {
 					vector <uint8_t> split(const string & domain) const noexcept;
 				private:
 					/**
-					 * join Метод восстановления доменного имени
-					 * @param buffer буфер бинарных данных записи
-					 * @param size   размер буфера бинарных данных
-					 * @return       восстановленное доменное имя
-					 */
-					string join(const uint8_t * buffer, const size_t size) const noexcept;
-					/**
 					 * extract Метод извлечения записи из ответа DNS
 					 * @param data буфер данных из которого нужно извлечь запись
 					 * @param pos  позиция в буфере данных
 					 * @return     запись в текстовом виде из ответа DNS
 					 */
 					string extract(const uint8_t * data, const size_t pos) const noexcept;
+					/**
+					 * join Метод восстановления доменного имени
+					 * @param buffer буфер бинарных данных записи
+					 * @param size   размер буфера бинарных данных
+					 * @return       восстановленное доменное имя
+					 */
+					string join(const uint8_t * buffer, const size_t size) const noexcept;
+				private:
+					/**
+					 * items Метод извлечения частей доменного имени
+					 * @param buffer буфер бинарных данных записи
+					 * @param size   размер буфера бинарных данных
+					 * @return       восстановленное доменное имя
+					 */
+					vector <string> items(const uint8_t * buffer, const size_t size) const noexcept;
 				public:
 					/**
 					 * close Метод закрытия подключения

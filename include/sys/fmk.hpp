@@ -503,6 +503,21 @@ namespace awh {
 			const wstring & transform(const wstring & text, const transform_t flag) const noexcept;
 		public:
 			/**
+			 * join Метод объединения списка строк в одну строку
+			 * @param items список строк которые необходимо объединить
+			 * @param delim разделитель
+			 * @return      строка полученная после объединения
+			 */
+			string join(const vector <string> & items, const string & delim) const noexcept;
+			/**
+			 * join Метод объединения списка строк в одну строку
+			 * @param items список строк которые необходимо объединить
+			 * @param delim разделитель
+			 * @return      строка полученная после объединения
+			 */
+			wstring join(const vector <wstring> & items, const wstring & delim) const noexcept;
+		public:
+			/**
 			 * split Метод разделения строк на токены
 			 * @param text      строка для парсинга
 			 * @param delim     разделитель

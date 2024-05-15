@@ -40,6 +40,21 @@ int main(int argc, char * argv[]){
 	dns.prefix("AWH");
 	// Выполняем установку серверов имён
 	dns.servers({"77.88.8.88", "77.88.8.2"});
+	/**
+	 * sudo tcpdump host 172.30.253.105 -A
+	 * sudo tcpdump host 77.88.8.88 or 77.88.8.2 -XX
+	 */
+	// Выполняем установку серверов имён
+	// dns.servers({"172.30.253.105"});
+	// Список локальных доменов для проведения сложного тестирования
+	// log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("GITLAB.pgr.local").c_str());
+	// log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("gitlab.pgr.LOCAL").c_str());
+	// log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("GITLAB.pgr.LOCAL").c_str());
+	// log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("gitlab.PGR.local").c_str());
+	// log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("GITLAB.PGR.local").c_str());
+	// log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("gitlab.PGR.LOCAL").c_str());
+	// log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("GITLAB.PGR.LOCAL").c_str());
+	// log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("gitlab.pgr.local").c_str());
 	// Выполняем запрос на получение первого IP-адреса
 	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("localhost").c_str());
 	// Выполняем запрос на получение второго IP-адреса
