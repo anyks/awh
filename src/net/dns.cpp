@@ -476,6 +476,8 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 					switch(header->rcode){
 						// Если операция выполнена удачно
 						case 0: {
+							// Количество полученных IP-адресов
+							uint16_t ips = 0;
 							// Получаем размер ответа
 							size_t size = sizeof(head_t);
 							// Получаем название доменного имени
@@ -520,6 +522,10 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										case 1:
 										// Если запись является интернет-протоколом IPv6
 										case 28: {
+											// Если ещё не все IP-адреса получены
+											if(i < ntohs(header->ancount))
+												// Увеличиваем количество полученных IP-адресов
+												ips++;
 											// Изменяем размер извлекаемых данных
 											rdata[i].resize(ntohs(rrflags->length), 0);
 											// Выполняем парсинг IP-адреса
@@ -599,9 +605,12 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Если чёрный список IP-адресов получен
 													if((count == 1) || !self->isInBlackList(this->_family, name[i], ip)){
 														// Если доменный адрес соответствует IP-адресу
-														if(records.empty() || self->_fmk->compare(name[i], fqdn))
+														if((ips > 0) || self->_fmk->compare(name[i], fqdn)){
+															// Уменьшаем количество добавленных IP-адресов
+															ips--;
 															// Добавляем IP-адрес в список адресов
 															records.push_back(ip);
+														}
 														// Записываем данные в кэш
 														self->setToCache(this->_family, name[i], ip, static_cast <time_t> (ntohl(rrflags->ttl)));
 													}
@@ -650,9 +659,12 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Если чёрный список IP-адресов получен
 													if((count == 1) || !self->isInBlackList(this->_family, name[i], ip)){
 														// Если доменный адрес соответствует IP-адресу
-														if(records.empty() || self->_fmk->compare(name[i], fqdn))
+														if((ips > 0) || self->_fmk->compare(name[i], fqdn)){
+															// Уменьшаем количество добавленных IP-адресов
+															ips--;
 															// Добавляем IP-адрес в список адресов
 															records.push_back(ip);
+														}
 														// Записываем данные в кэш
 														self->setToCache(this->_family, name[i], ip, static_cast <time_t> (ntohl(rrflags->ttl)));
 													}
