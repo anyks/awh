@@ -85,16 +85,9 @@ using namespace std::placeholders;
  */
 namespace awh {
 	/**
-	 * Прототип класса DNS-резолвера
-	 */
-	class DNS;
-	/**
 	 * DNS Класс DNS ресолвера
 	 */
 	typedef class DNS {
-		private:
-			// Максимальный размер буфера получаемых данных
-			static constexpr time_t BUFFER_SIZE = 0x10000;
 		private:
 			/**
 			 * Статус работы DNS-резолвера
@@ -365,6 +358,11 @@ namespace awh {
 		private:
 			// Статус работы DNS-резолвера
 			stack <status_t> _status;
+		private:
+			// Буфер промежуточный для извлечения IP-адреса
+			array <uint8_t, INET_ADDRSTRLEN> _ip;
+			// Буфер промежуточный для обмена данными с DNS-сервером
+			array <uint8_t, AWH_BUFFER_SIZE> _tmp;
 		private:
 			// Список используемых адресов
 			unordered_set <string> _using;
