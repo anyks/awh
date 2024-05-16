@@ -86,6 +86,8 @@ void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 					if(!i->second->launched){
 						// Устанавливаем флаг запуска таймера
 						i->second->launched = !i->second->launched;
+						// Устанавливаем приоритет выполнения
+						ev_set_priority(&i->second->io, 1);
 						// Устанавливаем базу событий
 						i->second->io.set(this->_dispatch.base);
 						// Устанавливаем функцию обратного вызова
@@ -98,6 +100,8 @@ void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 			} else if(!i->second->launched) {
 				// Устанавливаем флаг запуска таймера
 				i->second->launched = !i->second->launched;
+				// Устанавливаем приоритет выполнения
+				ev_set_priority(&i->second->io, 1);
 				// Устанавливаем базу событий
 				i->second->io.set(this->_dispatch.base);
 				// Устанавливаем функцию обратного вызова
