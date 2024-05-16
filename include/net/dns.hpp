@@ -361,7 +361,7 @@ namespace awh {
 			stack <status_t> _status;
 		private:
 			// Буфер промежуточный для извлечения IP-адреса
-			array <uint8_t, INET_ADDRSTRLEN> _ip;
+			array <uint8_t, INET6_ADDRSTRLEN> _ip;
 			// Буфер промежуточный для обмена данными с DNS-сервером
 			array <uint8_t, AWH_BUFFER_SIZE> _tmp;
 		private:

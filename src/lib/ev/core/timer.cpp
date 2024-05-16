@@ -43,6 +43,8 @@ void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 	auto i = this->_brokers.find(tid);
 	// Если активный брокер найден
 	if(i != this->_brokers.end()){
+		// Выполняем остановку таймера
+		i->second->io.stop();
 		// Если персистентная работа не установлена, удаляем таймер
 		if(!i->second->persist){
 			// Выполняем блокировку потока
@@ -84,6 +86,10 @@ void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 					if(!i->second->launched){
 						// Устанавливаем флаг запуска таймера
 						i->second->launched = !i->second->launched;
+						// Устанавливаем базу событий
+						i->second->io.set(this->_dispatch.base);
+						// Устанавливаем функцию обратного вызова
+						i->second->io.set(&i->second->timeout);
 						// Продолжаем работу дальше
 						i->second->io.start(delay);
 					}
@@ -92,6 +98,10 @@ void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 			} else if(!i->second->launched) {
 				// Устанавливаем флаг запуска таймера
 				i->second->launched = !i->second->launched;
+				// Устанавливаем базу событий
+				i->second->io.set(this->_dispatch.base);
+				// Устанавливаем функцию обратного вызова
+				i->second->io.set(&i->second->timeout);
 				// Продолжаем работу дальше
 				i->second->io.start(delay);
 			}
@@ -164,12 +174,14 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Получаем количество секунд
+			const float seconds = (delay / 1000.f);
 			// Выполняем блокировку потока
 			this->_mtx.lock();
 			// Получаем идентификатор таймера
 			const uint16_t tid = static_cast <uint16_t> (this->_brokers.size() + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(tid, delay / static_cast <float> (1000))));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(tid, seconds)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Получаем идентификатор таймера
@@ -185,7 +197,7 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 			// Устанавливаем функцию обратного вызова
 			ret.first->second->io.set(&ret.first->second->timeout);
 			// Запускаем работу таймера
-			ret.first->second->io.start(delay / static_cast <float> (1000));
+			ret.first->second->io.start(seconds);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -211,12 +223,14 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Получаем количество секунд
+			const float seconds = (delay / 1000.f);
 			// Выполняем блокировку потока
 			this->_mtx.lock();
 			// Получаем идентификатор таймера
 			const uint16_t tid = static_cast <uint16_t> (this->_brokers.size() + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(tid, delay / static_cast <float> (1000))));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(tid, seconds)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Получаем идентификатор таймера
@@ -234,7 +248,7 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			// Устанавливаем функцию обратного вызова
 			ret.first->second->io.set(&ret.first->second->timeout);
 			// Запускаем работу таймера
-			ret.first->second->io.start(delay / static_cast <float> (1000));
+			ret.first->second->io.start(seconds);
 		/**
 		 * Если возникает ошибка
 		 */
