@@ -20,7 +20,6 @@
  */
 #include <ctime>
 #include <mutex>
-#include <array>
 #include <thread>
 #include <cstdio>
 #include <string>
@@ -179,6 +178,52 @@ namespace awh {
 				 */
 				Peer() noexcept : size(0), client{}, server{} {}
 			} peer_t;
+			/**
+			 * Buffer Класс бинарного буфера данных
+			 */
+			typedef class Buffer {
+				public:
+					/**
+					 * Тип бинарного буфера
+					 */
+					enum class type_t : uint8_t {
+						NONE = 0x00, // Буфер не определён
+						ADDR = 0x01, // Буфер является IP-адресом
+						DATA = 0x02  // Буфер является обменником
+					};
+				private:
+					// Буфер для обмена данными с DNS-сервером
+					uint8_t _data[AWH_DATA_SIZE];
+					// Буфер для извлечения IP-адреса
+					uint8_t _addr[INET6_ADDRSTRLEN];
+				public:
+					/**
+					 * get Метод получения бинарных данных
+					 * @param type тип бинарного буфера данных
+					 * @return     бинарные данные буфера
+					 */
+					uint8_t * get(const type_t type) noexcept;
+				public:
+					/**
+					 * clear Метод очистки бинарного буфера данных
+					 * @param type   тип бинарного буфера данных
+					 * @param family тип интернет-протокола AF_INET, AF_INET6
+					 */
+					void clear(const type_t type, const int family = AF_INET6) noexcept;
+				public:
+					/**
+					 * size Метод получения размера буфера
+					 * @param type   тип бинарного буфера данных
+					 * @param family тип интернет-протокола AF_INET, AF_INET6
+					 * @return       размер бинарного буфера данных
+					 */
+					size_t size(const type_t type, const int family = AF_INET6) const noexcept;
+				public:
+					/**
+					 * Buffer Конструктор
+					 */
+					Buffer() noexcept : _data{0}, _addr{0} {}
+			} __attribute__((packed)) buffer_t;
 			/**
 			 * Header Структура заголовка DNS
 			 */
@@ -351,6 +396,9 @@ namespace awh {
 			// Префикс переменной окружения
 			string _prefix;
 		private:
+			// Буфер бинарных данных
+			buffer_t _buffer;
+		private:
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
 		private:
@@ -359,11 +407,6 @@ namespace awh {
 		private:
 			// Статус работы DNS-резолвера
 			stack <status_t> _status;
-		private:
-			// Буфер промежуточный для извлечения IP-адреса
-			array <uint8_t, INET6_ADDRSTRLEN> _ip;
-			// Буфер промежуточный для обмена данными с DNS-сервером
-			array <uint8_t, AWH_BUFFER_SIZE> _tmp;
 		private:
 			// Список используемых адресов
 			unordered_set <string> _using;

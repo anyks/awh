@@ -4460,7 +4460,7 @@ void awh::Http::encryption(const string & pass, const string & salt, const hash_
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _uri(fmk), _callbacks(log), _web(fmk, log), _auth(fmk, log), _hash(log),
- _crypted(false), _encryption(false), _precise(false), _chunk(AWH_BUFFER_CHUNK),
+ _crypted(false), _encryption(false), _precise(false), _chunk(AWH_CHUNK_SIZE),
  _state(state_t::NONE), _status(status_t::NONE), _identity(identity_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
 	// Выполняем установку идентификатора объекта

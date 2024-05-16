@@ -77,10 +77,12 @@
 #define AWH_PAYLOAD_SIZE 0xFFFFF
 // Максимальный размер окна всех хранимых данных полезной нагрузки
 #define AWH_WINDOW_SIZE 0x7FFFFFFF
+// Размер чанка буфера для чтения из файла
+#define AWH_CHUNK_SIZE 0x8000
+// Размер бинарных данных
+#define AWH_DATA_SIZE 0x10000
 // Размер бинарного буфера
 #define AWH_BUFFER_SIZE 0xFA000
-// Размер чанка буфера для чтения из файла
-#define AWH_BUFFER_CHUNK 0x8000
 // Размер буфера на чтение
 #define AWH_BUFFER_SIZE_RCV 0x10624D
 // Размер буфера на запись

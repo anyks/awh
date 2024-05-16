@@ -673,7 +673,7 @@ void awh::client::Web2::ident(const string & id, const string & name, const stri
  * @param log объект для работы с логами
  */
 awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _http2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(AWH_BUFFER_CHUNK) {
+ web_t(fmk, log), _http2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(AWH_CHUNK_SIZE) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 }
@@ -684,7 +684,7 @@ awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Web2::Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _http2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(AWH_BUFFER_CHUNK) {
+ web_t(core, fmk, log), _http2(fmk, log), _login{""}, _password{""}, _userAgent{""}, _chunkSize(AWH_CHUNK_SIZE) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 }
