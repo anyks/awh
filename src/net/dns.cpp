@@ -510,8 +510,6 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 			return result;
 		// Если сокет создан удачно и работа резолвера не остановлена
 		} else if(this->_mode) {
-			// Количество отправленных или полученных байт
-			int64_t bytes = 0;
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->_fd);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
@@ -531,12 +529,14 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 				// Выходим из функции
 				return result;
 			}
+			// Количество отправленных или полученных байт
+			int64_t bytes = 0;
 			// Если запрос на сервер DNS успешно отправлен
-			if((bytes = ::sendto(this->_fd, reinterpret_cast <const char *> (self->_buffer.get(buffer_t::type_t::DATA)), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
+			if((bytes = static_cast <int64_t> (::sendto(this->_fd, reinterpret_cast <const char *> (self->_buffer.get(buffer_t::type_t::DATA)), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
 				// Выполняем очистку буфера данных
 				self->_buffer.clear(buffer_t::type_t::DATA);
 				// Выполняем чтение ответа сервера
-				const int64_t bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::DATA)), self->_buffer.size(buffer_t::type_t::DATA), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
+				bytes = static_cast <int64_t> (::recvfrom(this->_fd, reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::DATA)), self->_buffer.size(buffer_t::type_t::DATA), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Если сокет находится в блокирующем режиме
@@ -605,7 +605,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							// Выполняем перебор всех полученных элементов в разделе ответов
 							for(uint16_t i = 0; i < ntohs(header->qdcount); ++i){
 								// Выполняем извлечение списка сотава доменного имени
-								const auto & items = this->items(self->_buffer.get(buffer_t::type_t::DATA) + offset, self->_buffer.size(buffer_t::type_t::DATA) - offset);
+								const auto & items = this->items(self->_buffer.get(buffer_t::type_t::DATA) + offset, static_cast <size_t> (bytes) - offset);
 								// Выполняем добавление в общий список запрашиваемых доменных имён
 								qnames.push_back(items);
 								// Выполняем перебор всего списка записей
@@ -624,7 +624,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								// Если в буфере присутствуют ещё данные
 								if(self->_buffer.get(buffer_t::type_t::DATA)[offset] != 0xC0){
 									// Выполняем извлечение списка сотава доменного имени
-									answer.back().items = this->items(self->_buffer.get(buffer_t::type_t::DATA) + offset, self->_buffer.size(buffer_t::type_t::DATA) - offset);
+									answer.back().items = this->items(self->_buffer.get(buffer_t::type_t::DATA) + offset, static_cast <size_t> (bytes) - offset);
 									// Выполняем перебор всего списка записей
 									for(auto & domain : answer.back().items)
 										// Считаем смещение в бинарном буфере
