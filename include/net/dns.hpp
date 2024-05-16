@@ -20,6 +20,7 @@
  */
 #include <ctime>
 #include <mutex>
+#include <array>
 #include <thread>
 #include <cstdio>
 #include <string>
