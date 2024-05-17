@@ -34,6 +34,8 @@ void awh::Event::callback(evutil_socket_t fd, short event, void * ctx) noexcept 
  * @param delay задержка времени в миллисекундах
  */
 void awh::Event::set(const time_t delay) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем время задержки в миллисекундах
 	this->_delay = delay;
 }
@@ -42,6 +44,8 @@ void awh::Event::set(const time_t delay) noexcept {
  * @param base база событий для установки
  */
 void awh::Event::set(struct event_base * base) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем базу данных событий
 	this->_base = base;
 }
@@ -51,6 +55,8 @@ void awh::Event::set(struct event_base * base) noexcept {
  * @param events список событий файлового дескриптора
  */
 void awh::Event::set(const evutil_socket_t fd, const int events) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем файловый дескриптор
 	this->_fd = fd;
 	// Устанавливаем список событий
@@ -61,6 +67,8 @@ void awh::Event::set(const evutil_socket_t fd, const int events) noexcept {
  * @param callback функция обратного вызова
  */
 void awh::Event::set(function <void (const evutil_socket_t, const int)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем функцию обратного вызова
 	this->_fn = callback;
 }
@@ -68,8 +76,12 @@ void awh::Event::set(function <void (const evutil_socket_t, const int)> callback
  * stop Метод остановки работы события
  */
 void awh::Event::stop() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа события запущена
 	if(this->_mode){
+		// Снимаем флаг запущенной работы
+		this->_mode = !this->_mode;
 		// Очищаем объект времени таймера
 		evutil_timerclear(&this->_tv);
 		// Если событие является таймаутом
@@ -78,8 +90,6 @@ void awh::Event::stop() noexcept {
 			evtimer_del(&this->_ev);
 		// Удаляем событие
 		else event_del(&this->_ev);
-		// Снимаем флаг запущенной работы
-		this->_mode = !this->_mode;
 	}
 }
 /**
@@ -87,6 +97,8 @@ void awh::Event::stop() noexcept {
  * @param delay задержка времени в миллисекундах
  */
 void awh::Event::start(const time_t delay) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Если задержка времени передана
 	if(delay > 0)
 		// Устанавливаем время задержки в миллисекундах

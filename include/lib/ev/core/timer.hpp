@@ -41,14 +41,10 @@ namespace awh {
 			 */
 			typedef class Timeout {
 				private:
-					// Задержка времени в секундах
-					float _delay;
-				private:
-					// Идентификатор таймера
-					uint16_t _tid;
-				private:
-					// Объект брокера подключения
-					Broker * _broker;
+					/**
+					 * Функция обратного вызова при срабатывании таймера
+					 */
+					function <void (void)> _callback;
 				public:
 					/**
 					 * operator Оператор [()] Получения события таймера
@@ -59,23 +55,14 @@ namespace awh {
 				public:
 					/**
 					 * Timeout Конструктор
-					 * @param tid    идентификатор таймера
-					 * @param delay  задержка времени в секундах
-					 * @param broker брокер подключения
+					 * @param callback функция обратного вызова
 					 */
-					Timeout(const uint16_t tid, const float delay, Broker * broker) noexcept :
-					 _delay(delay), _tid(tid), _broker(broker) {}
+					Timeout(function <void (void)> callback) noexcept : _callback(callback) {}
 			} timeout_t;
 			/**
 			 * Broker Класс брокера
 			 */
 			typedef class Broker {
-				public:
-					// Флаг персистентной работы
-					bool persist;
-				public:
-					// Флаг запущенного брокера
-					bool launched;
 				public:
 					// Объект события таймера
 					ev::timer io;
@@ -83,16 +70,11 @@ namespace awh {
 					// Объект таймаута
 					timeout_t timeout;
 				public:
-					// Функция обратного вызова
-					function <void (const uint16_t, const float)> fn;
-				public:
 					/**
 					 * Broker Конструктор
-					 * @param tid   идентификатор таймера
-					 * @param delay задержка времени в секундах
+					 * @param callback функция обратного вызова
 					 */
-					Broker(const uint16_t tid, const float delay) noexcept :
-					 persist(false), launched(false), timeout(tid, delay, this), fn(nullptr) {}
+					Broker(function <void (void)> callback) noexcept : timeout(callback) {}
 					/**
 					 * ~Broker Деструктор
 					 */
@@ -110,10 +92,10 @@ namespace awh {
 		private:
 			/**
 			 * event Метод события таймера
-			 * @param tid   идентификатор таймера
-			 * @param delay задержка времени в секундах
+			 * @param tid     идентификатор таймера
+			 * @param persist флаг персистентной работы
 			 */
-			void event(const uint16_t tid, const float delay) noexcept;
+			void event(const uint16_t tid, const bool persist) noexcept;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий

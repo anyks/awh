@@ -18,6 +18,7 @@
 /**
  * Стандартные модули
  */
+#include <mutex>
 #include <ctime>
 #include <string>
 #include <functional>
@@ -55,6 +56,9 @@ namespace awh {
 		private:
 			// Режим активации события
 			bool _mode;
+		private:
+			// Мютекс для блокировки основного потока
+			mutex _mtx;
 		private:
 			// Тип события
 			type_t _type;

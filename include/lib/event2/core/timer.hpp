@@ -40,9 +40,6 @@ namespace awh {
 					// Флаг персистентной работы
 					bool persist;
 				public:
-					// Флаг запущенного брокера
-					bool launched;
-				public:
 					// Объект события таймера
 					event_t event;
 				public:
@@ -50,9 +47,7 @@ namespace awh {
 					 * Broker Конструктор
 					 * @param log объект для работы с логами
 					 */
-					Broker(const log_t * log) noexcept :
-					 persist(false), launched(false),
-					 event(event_t::type_t::TIMER, log) {}
+					Broker(const log_t * log) noexcept : persist(false), event(event_t::type_t::TIMER, log) {}
 					/**
 					 * ~Broker Деструктор
 					 */

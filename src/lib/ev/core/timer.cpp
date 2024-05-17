@@ -24,29 +24,24 @@ void awh::Timer::Timeout::operator()(ev::timer & timer, int revents) noexcept {
 	// Зануляем неиспользуемые переменные
 	(void) revents;
 	// Если таймер был запущен
-	if(this->_broker->launched){
-		// Снимаем флаг запуска таймера
-		this->_broker->launched = !this->_broker->launched;
+	if(timer.is_active())
 		// Выполняем остановку таймера
 		timer.stop();
-		// Выполняем функцию события таймера
-		this->_broker->fn(this->_tid, this->_delay);
-	}
+	// Выполняем функцию обратного вызова
+	this->_callback();
 }
 /**
  * event Метод события таймера
- * @param tid   идентификатор таймера
- * @param delay задержка времени в секундах
+ * @param tid     идентификатор таймера
+ * @param persist флаг персистентной работы
  */
-void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
+void awh::Timer::event(const uint16_t tid, const bool persist) noexcept {
 	// Выполняем поиск активного брокера
 	auto i = this->_brokers.find(tid);
 	// Если активный брокер найден
 	if(i != this->_brokers.end()){
-		// Выполняем остановку таймера
-		i->second->io.stop();
-		// Если персистентная работа не установлена, удаляем таймер
-		if(!i->second->persist){
+		// Если персистентная работа не установлена
+		if(!persist){
 			// Выполняем блокировку потока
 			this->_mtx.lock();
 			// Выполняем удаление таймера
@@ -83,32 +78,14 @@ void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 				// Если активный брокер найден
 				if(i != this->_brokers.end()){
 					// Если таймер не был запущен ранее
-					if(!i->second->launched){
-						// Устанавливаем флаг запуска таймера
-						i->second->launched = !i->second->launched;
-						// Устанавливаем приоритет выполнения
-						ev_set_priority(&i->second->io, 1);
-						// Устанавливаем базу событий
-						i->second->io.set(this->_dispatch.base);
-						// Устанавливаем функцию обратного вызова
-						i->second->io.set(&i->second->timeout);
-						// Продолжаем работу дальше
-						i->second->io.start(delay);
-					}
+					if(!i->second->io.is_active())
+						// Продолжаем работу таймера
+						i->second->io.again();
 				}
 			// Если таймер не был запущен ранее
-			} else if(!i->second->launched) {
-				// Устанавливаем флаг запуска таймера
-				i->second->launched = !i->second->launched;
-				// Устанавливаем приоритет выполнения
-				ev_set_priority(&i->second->io, 1);
-				// Устанавливаем базу событий
-				i->second->io.set(this->_dispatch.base);
-				// Устанавливаем функцию обратного вызова
-				i->second->io.set(&i->second->timeout);
-				// Продолжаем работу дальше
-				i->second->io.start(delay);
-			}
+			} else if(!i->second->io.is_active())
+				// Продолжаем работу таймера
+				i->second->io.again();
 		}
 	}
 }
@@ -145,12 +122,9 @@ void awh::Timer::clear() noexcept {
 		// Выполняем перебор всех активных брокеров
 		for(auto i = this->_brokers.begin(); i != this->_brokers.end();){
 			// Если таймер был запущен
-			if(i->second->launched){
-				// Снимаем флаг запуска таймера
-				i->second->launched = !i->second->launched;
+			if(i->second->io.is_active())
 				// Выполняем остановку активного брокера
 				i->second->io.stop();
-			}
 			// Если функция обратного вызова существует
 			if(this->_callbacks.is(static_cast <uint64_t> (i->first)))
 				// Выполняем удаление функции обратного вызова
@@ -172,12 +146,9 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 	// Если активный брокер найден
 	if(i != this->_brokers.end()){
 		// Если таймер был запущен
-		if(i->second->launched){
-			// Снимаем флаг запуска таймера
-			i->second->launched = !i->second->launched;
+		if(i->second->io.is_active())
 			// Выполняем остановку активного брокера
 			i->second->io.stop();
-		}
 		// Если функция обратного вызова существует
 		if(this->_callbacks.is(static_cast <uint64_t> (tid)))
 			// Выполняем удаление функции обратного вызова
@@ -192,38 +163,30 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
  * @return      идентификатор таймера
  */
 uint16_t awh::Timer::timeout(const time_t delay) noexcept {
-	// Результат работы функции
-	uint16_t result = 0;
 	// Если данные переданы
 	if((static_cast <struct ev_loop *> (this->_dispatch.base) != nullptr) && (delay > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Получаем количество секунд
-			const float seconds = (delay / 1000.f);
 			// Выполняем блокировку потока
 			this->_mtx.lock();
 			// Получаем идентификатор таймера
 			const uint16_t tid = static_cast <uint16_t> (this->_brokers.size() + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(tid, seconds)));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(std::bind(&timer_t::event, this, tid, false))));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
-			// Получаем идентификатор таймера
-			result = ret.first->first;
 			// Устанавливаем приоритет выполнения
 			ev_set_priority(&ret.first->second->io, 1);
-			// Устанавливаем флаг запуска таймера
-			ret.first->second->launched = true;
-			// Устанавливаем функцию обратного вызова
-			ret.first->second->fn = std::bind(&timer_t::event, this, _1, _2);
 			// Устанавливаем базу событий
 			ret.first->second->io.set(this->_dispatch.base);
 			// Устанавливаем функцию обратного вызова
 			ret.first->second->io.set(&ret.first->second->timeout);
 			// Запускаем работу таймера
-			ret.first->second->io.start(seconds);
+			ret.first->second->io.start(delay / 1000.f);
+			// Выводим идентификатор таймера
+			return ret.first->first;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -233,7 +196,7 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return 0;
 }
 /**
  * interval Метод создания интервала
@@ -241,40 +204,32 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
  * @return      идентификатор таймера
  */
 uint16_t awh::Timer::interval(const time_t delay) noexcept {
-	// Результат работы функции
-	uint16_t result = 0;
 	// Если данные переданы
 	if((static_cast <struct ev_loop *> (this->_dispatch.base) != nullptr) && (delay > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Получаем количество секунд
-			const float seconds = (delay / 1000.f);
 			// Выполняем блокировку потока
 			this->_mtx.lock();
 			// Получаем идентификатор таймера
 			const uint16_t tid = static_cast <uint16_t> (this->_brokers.size() + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(tid, seconds)));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(std::bind(&timer_t::event, this, tid, true))));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
-			// Получаем идентификатор таймера
-			result = ret.first->first;
 			// Устанавливаем приоритет выполнения
 			ev_set_priority(&ret.first->second->io, 1);
-			// Устанавливаем флаг персистентной работы
-			ret.first->second->persist = true;
-			// Устанавливаем флаг запуска таймера
-			ret.first->second->launched = true;
-			// Устанавливаем функцию обратного вызова
-			ret.first->second->fn = std::bind(&timer_t::event, this, _1, _2);
+			// Получаем количество секунд
+			const float seconds = (delay / 1000.f);
 			// Устанавливаем базу событий
 			ret.first->second->io.set(this->_dispatch.base);
 			// Устанавливаем функцию обратного вызова
 			ret.first->second->io.set(&ret.first->second->timeout);
 			// Запускаем работу таймера
-			ret.first->second->io.start(seconds);
+			ret.first->second->io.start(seconds, seconds);
+			// Выводим идентификатор таймера
+			return ret.first->first;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -284,7 +239,7 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return 0;
 }
 /**
  * ~Timer Деструктор
