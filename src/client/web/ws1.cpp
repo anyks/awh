@@ -761,12 +761,12 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 						this->pong(string(payload.begin(), payload.end()));
 					break;
 					// Если ответом является PONG
-					case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
+					case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
 						// Если идентификатор брокера совпадает
 						if(::memcmp(::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
 							// Обновляем контрольную точку
 							this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-					break;
+					} break;
 					// Если ответом является TEXT
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
 					// Если ответом является BINARY

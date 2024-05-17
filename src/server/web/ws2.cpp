@@ -453,12 +453,12 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												this->pong(bid, string(payload.begin(), payload.end()));
 											break;
 											// Если ответом является PONG
-											case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG):
+											case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
 												// Если идентификатор брокера совпадает
 												if(::memcmp(::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
 													// Обновляем контрольную точку
 													options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-											break;
+											} break;
 											// Если ответом является TEXT
 											case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
 											// Если ответом является BINARY
