@@ -69,6 +69,19 @@ namespace awh {
 			map <uint16_t, unique_ptr <broker_t>> _brokers;
 		private:
 			/**
+			 * launching Метод вызова при активации базы событий
+			 * @param mode   флаг работы с сетевым протоколом
+			 * @param status флаг вывода события статуса
+			 */
+			void launching(const bool mode, const bool status) noexcept;
+			/**
+			 * closedown Метод вызова при деакцтивации базы событий
+			 * @param mode   флаг работы с сетевым протоколом
+			 * @param status флаг вывода события статуса
+			 */
+			void closedown(const bool mode, const bool status) noexcept;
+		private:
+			/**
 			 * event Метод события таймера
 			 * @param tid   идентификатор таймера
 			 * @param fd    файловый дескриптор (сокет)

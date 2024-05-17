@@ -113,6 +113,28 @@ void awh::Timer::event(const uint16_t tid, const float delay) noexcept {
 	}
 }
 /**
+ * launching Метод вызова при активации базы событий
+ * @param mode   флаг работы с сетевым протоколом
+ * @param status флаг вывода события статуса
+ */
+void awh::Timer::launching(const bool mode, const bool status) noexcept {
+	// Выполняем функцию в базовом модуле
+	core_t::launching(mode, status);
+}
+/**
+ * closedown Метод вызова при деакцтивации базы событий
+ * @param mode   флаг работы с сетевым протоколом
+ * @param status флаг вывода события статуса
+ */
+void awh::Timer::closedown(const bool mode, const bool status) noexcept {
+	// Выполняем функцию в базовом модуле
+	core_t::closedown(mode, status);
+	// Если требуется закрыть подключение
+	if(mode)
+		// Выполняем остановку всех таймеров
+		this->clear();
+}
+/**
  * clear Метод очистки всех таймеров
  */
 void awh::Timer::clear() noexcept {

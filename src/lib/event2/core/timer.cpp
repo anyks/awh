@@ -16,6 +16,28 @@
 #include <lib/event2/core/timer.hpp>
 
 /**
+ * launching Метод вызова при активации базы событий
+ * @param mode   флаг работы с сетевым протоколом
+ * @param status флаг вывода события статуса
+ */
+void awh::Timer::launching(const bool mode, const bool status) noexcept {
+	// Выполняем функцию в базовом модуле
+	core_t::launching(mode, status);
+}
+/**
+ * closedown Метод вызова при деакцтивации базы событий
+ * @param mode   флаг работы с сетевым протоколом
+ * @param status флаг вывода события статуса
+ */
+void awh::Timer::closedown(const bool mode, const bool status) noexcept {
+	// Выполняем функцию в базовом модуле
+	core_t::closedown(mode, status);
+	// Если требуется закрыть подключение
+	if(mode)
+		// Выполняем остановку всех таймеров
+		this->clear();
+}
+/**
  * event Метод события таймера
  * @param tid   идентификатор таймера
  * @param fd    файловый дескриптор (сокет)

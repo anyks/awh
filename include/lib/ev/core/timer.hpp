@@ -114,6 +114,19 @@ namespace awh {
 			 * @param delay задержка времени в секундах
 			 */
 			void event(const uint16_t tid, const float delay) noexcept;
+		private:
+			/**
+			 * launching Метод вызова при активации базы событий
+			 * @param mode   флаг работы с сетевым протоколом
+			 * @param status флаг вывода события статуса
+			 */
+			void launching(const bool mode, const bool status) noexcept;
+			/**
+			 * closedown Метод вызова при деакцтивации базы событий
+			 * @param mode   флаг работы с сетевым протоколом
+			 * @param status флаг вывода события статуса
+			 */
+			void closedown(const bool mode, const bool status) noexcept;
 		public:
 			/**
 			 * clear Метод очистки всех таймеров
