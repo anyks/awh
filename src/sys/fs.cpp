@@ -79,7 +79,7 @@ bool awh::FS::isLink(const string & addr) const noexcept {
 	return (this->type(addr, false) == type_t::LINK);
 }
 /**
- * istype Метод определяющая тип файловой системы по адресу
+ * type Метод определяющая тип файловой системы по адресу
  * @param addr   адрес дирректории
  * @param actual флаг проверки актуальных файлов
  * @return       тип файловой системы

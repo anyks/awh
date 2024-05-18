@@ -146,7 +146,7 @@ namespace awh {
 			bool isLink(const string & addr) const noexcept;
 		public:
 			/**
-			 * istype Метод определяющая тип файловой системы по адресу
+			 * type Метод определяющая тип файловой системы по адресу
 			 * @param addr   адрес дирректории
 			 * @param actual флаг проверки актуальных файлов
 			 * @return       тип файловой системы
