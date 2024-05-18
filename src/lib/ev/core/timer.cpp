@@ -28,7 +28,7 @@ void awh::Timer::Timeout::operator()(ev::timer & timer, int revents) noexcept {
 		// Выполняем остановку таймера
 		timer.stop();
 	// Выполняем функцию обратного вызова
-	this->_callback();
+	((static_cast <timer_t *> (this->_ctx))->*_callback)(this->_tid, this->_persist);
 }
 /**
  * event Метод события таймера
@@ -172,9 +172,9 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 			// Выполняем блокировку потока
 			this->_mtx.lock();
 			// Получаем идентификатор таймера
-			const uint16_t tid = static_cast <uint16_t> (this->_brokers.size() + 1);
+			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(std::bind(&timer_t::event, this, tid, false))));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(tid, false, this, &timer_t::event)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем приоритет выполнения
@@ -213,9 +213,9 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			// Выполняем блокировку потока
 			this->_mtx.lock();
 			// Получаем идентификатор таймера
-			const uint16_t tid = static_cast <uint16_t> (this->_brokers.size() + 1);
+			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(std::bind(&timer_t::event, this, tid, true))));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(tid, true, this, &timer_t::event)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем приоритет выполнения

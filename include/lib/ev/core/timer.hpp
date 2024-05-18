@@ -33,18 +33,26 @@ namespace awh {
 	typedef class Timer : public awh::core_t {
 		private:
 			/**
-			 * Broker Прототип класса брокера подключения
+			 * Тип данных функции обратного вызова
 			 */
-			class Broker;
+			typedef void (Timer::*callback_t) (const uint16_t, const bool);
+		private:
 			/**
 			 * Timeout Класс таймаута
 			 */
 			typedef class Timeout {
 				private:
-					/**
-					 * Функция обратного вызова при срабатывании таймера
-					 */
-					function <void (void)> _callback;
+					// Идентификатор таймера
+					uint16_t _tid;
+				private:
+					// Флаг персистентного вызова
+					bool _persist;
+				private:
+					// Родительский контекст
+					Timer * _ctx;
+				private:
+					// Функция обратного вызова
+					callback_t _callback;
 				public:
 					/**
 					 * operator Оператор [()] Получения события таймера
@@ -55,9 +63,13 @@ namespace awh {
 				public:
 					/**
 					 * Timeout Конструктор
+					 * @param tid      идентификатор таймера
+					 * @param persist  флаг персистентного вызова
+					 * @param ctx      родительский контекст
 					 * @param callback функция обратного вызова
 					 */
-					Timeout(function <void (void)> callback) noexcept : _callback(callback) {}
+					Timeout(const uint16_t tid, const bool persist, Timer * ctx, callback_t callback) noexcept :
+					 _tid(tid), _persist(persist), _ctx(ctx), _callback(callback) {}
 			} timeout_t;
 			/**
 			 * Broker Класс брокера
@@ -72,9 +84,13 @@ namespace awh {
 				public:
 					/**
 					 * Broker Конструктор
+					 * @param tid      идентификатор таймера
+					 * @param persist  флаг персистентного вызова
+					 * @param ctx      родительский контекст
 					 * @param callback функция обратного вызова
 					 */
-					Broker(function <void (void)> callback) noexcept : timeout(callback) {}
+					Broker(const uint16_t tid, const bool persist, Timer * ctx, callback_t callback) noexcept :
+					 timeout(tid, persist, ctx, callback) {}
 					/**
 					 * ~Broker Деструктор
 					 */
