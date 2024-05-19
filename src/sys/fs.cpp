@@ -608,7 +608,10 @@ int awh::FS::delPath(const string & path) const noexcept {
 											count = this->delPath(address);
 										// Если дочерний элемент является файлом то удаляем его
 										else count = _wunlink(this->_fmk->convert(address).c_str());
-									}
+									// Если путь является символьной ссылкой
+									} else if(this->isLink(address))
+										// Выполняем удаление символьной ссылки
+										count = _wunlink(this->_fmk->convert(address).c_str());
 								/**
 								 * Выполняем работу для Unix
 								 */
@@ -621,7 +624,10 @@ int awh::FS::delPath(const string & path) const noexcept {
 											count = this->delPath(address);
 										// Если дочерний элемент является файлом то удаляем его
 										else count = ::unlink(address.c_str());
-									}
+									// Если путь является символьной ссылкой
+									} else if(this->isLink(address))
+										// Выполняем удаление символьной ссылки
+										count = ::unlink(address.c_str());
 								#endif
 								// Запоминаем количество дочерних элементов
 								result = count;
@@ -675,7 +681,7 @@ int awh::FS::delPath(const string & path) const noexcept {
 			} break;
 		}
 		// Если путь является символьной ссылкой
-		if(this->type(path, false) == type_t::LINK){
+		if(this->isLink(path)){
 			/**
 			 * Выполняем работу для Windows
 			 */
