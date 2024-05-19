@@ -529,131 +529,168 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
 int awh::FS::delPath(const string & path) const noexcept {
 	// Результат работы функции
 	int result = -1;
-	// Если адрес каталога и расширение файлов переданы
-	if(!path.empty() && this->isDir(path)){
-		/**
-		 * Выполняем работу для Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Открываем указанный каталог
-			_WDIR * dir = _wopendir(this->_fmk->convert(path).c_str());
-		/**
-		 * Выполняем работу для Unix
-		 */
-		#else
-			// Открываем указанный каталог
-			DIR * dir = ::opendir(path.c_str());
-		#endif
-			// Если каталог открыт
-			if(dir != nullptr){
-				// Устанавливаем количество дочерних элементов
-				result = 0;
+	// Если адрес передан
+	if(!path.empty()){
+		// Определяем тип пути
+		switch(static_cast <uint8_t> (this->type(path))){
+			// Если переданный путь является каталогом
+			case static_cast <uint8_t> (type_t::DIR): {
 				/**
 				 * Выполняем работу для Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
-					// Структура проверка статистики
-					struct _stat info;
-					// Создаем указатель на содержимое каталога
-					struct _wdirent * ptr = nullptr;
-					// Выполняем чтение содержимого каталога
-					while(!result && (ptr = _wreaddir(dir))){
+					// Открываем указанный каталог
+					_WDIR * dir = _wopendir(this->_fmk->convert(path).c_str());
 				/**
 				 * Выполняем работу для Unix
 				 */
 				#else
-					// Структура проверка статистики
-					struct stat info;
-					// Создаем указатель на содержимое каталога
-					struct dirent * ptr = nullptr;
-					// Выполняем чтение содержимого каталога
-					while(!result && (ptr = ::readdir(dir))){
+					// Открываем указанный каталог
+					DIR * dir = ::opendir(path.c_str());
 				#endif
-						// Количество найденных элементов
-						int count = -1;
+					// Если каталог открыт
+					if(dir != nullptr){
+						// Устанавливаем количество дочерних элементов
+						result = 0;
 						/**
 						 * Выполняем работу для Windows
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
-							// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-							if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
-								// Выполняем пропуск каталога
-								continue;
-							// Получаем адрес в виде строки
-							const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
+							// Структура проверка статистики
+							struct _stat info;
+							// Создаем указатель на содержимое каталога
+							struct _wdirent * ptr = nullptr;
+							// Выполняем чтение содержимого каталога
+							while(!result && (ptr = _wreaddir(dir))){
 						/**
 						 * Выполняем работу для Unix
 						 */
 						#else
-							// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-							if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
-								// Выполняем пропуск каталога
-								continue;
-							// Получаем адрес каталога
-							const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+							// Структура проверка статистики
+							struct stat info;
+							// Создаем указатель на содержимое каталога
+							struct dirent * ptr = nullptr;
+							// Выполняем чтение содержимого каталога
+							while(!result && (ptr = ::readdir(dir))){
 						#endif
+								// Количество найденных элементов
+								int count = -1;
+								/**
+								 * Выполняем работу для Windows
+								 */
+								#if defined(_WIN32) || defined(_WIN64)
+									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+									if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
+										// Выполняем пропуск каталога
+										continue;
+									// Получаем адрес в виде строки
+									const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
+								/**
+								 * Выполняем работу для Unix
+								 */
+								#else
+									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+									if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+										// Выполняем пропуск каталога
+										continue;
+									// Получаем адрес каталога
+									const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+								#endif
+								/**
+								 * Выполняем работу для Windows
+								 */
+								#if defined(_WIN32) || defined(_WIN64)
+									// Если статистика извлечена
+									if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
+										// Если дочерний элемент является дирректорией
+										if(S_ISDIR(info.st_mode))
+											// Выполняем удаление подкаталогов
+											count = this->delPath(address);
+										// Если дочерний элемент является файлом то удаляем его
+										else count = _wunlink(this->_fmk->convert(address).c_str());
+									}
+								/**
+								 * Выполняем работу для Unix
+								 */
+								#else
+									// Если статистика извлечена
+									if(!::stat(address.c_str(), &info)){
+										// Если дочерний элемент является дирректорией
+										if(S_ISDIR(info.st_mode))
+											// Выполняем удаление подкаталогов
+											count = this->delPath(address);
+										// Если дочерний элемент является файлом то удаляем его
+										else count = ::unlink(address.c_str());
+									}
+								#endif
+								// Запоминаем количество дочерних элементов
+								result = count;
+						}
 						/**
 						 * Выполняем работу для Windows
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
-							// Если статистика извлечена
-							if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
-								// Если дочерний элемент является дирректорией
-								if(S_ISDIR(info.st_mode))
-									// Выполняем удаление подкаталогов
-									count = this->delPath(address);
-								// Если дочерний элемент является файлом то удаляем его
-								else count = _wunlink(this->_fmk->convert(address).c_str());
-							}
+							// Закрываем открытый каталог
+							_wclosedir(dir);
 						/**
 						 * Выполняем работу для Unix
 						 */
 						#else
-							// Если статистика извлечена
-							if(!::stat(address.c_str(), &info)){
-								// Если дочерний элемент является дирректорией
-								if(S_ISDIR(info.st_mode))
-									// Выполняем удаление подкаталогов
-									count = this->delPath(address);
-								// Если дочерний элемент является файлом то удаляем его
-								else count = ::unlink(address.c_str());
-							}
+							// Закрываем открытый каталог
+							::closedir(dir);
 						#endif
-						// Запоминаем количество дочерних элементов
-						result = count;
-				}
+					}
+					// Удаляем последний каталог
+					if(!result){
+						/**
+						 * Выполняем работу для Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Получаем количество дочерних элементов
+							result = _wrmdir(this->_fmk->convert(path).c_str());
+						/**
+						 * Выполняем работу для Unix
+						 */
+						#else
+							// Получаем количество дочерних элементов
+							result = ::rmdir(path.c_str());
+						#endif
+					}
+			} break;
+			// Если переданный путь является файлом
+			case static_cast <uint8_t> (type_t::FILE): {
 				/**
 				 * Выполняем работу для Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
-					// Закрываем открытый каталог
-					_wclosedir(dir);
+					// Выполняем удаление переданного пути
+					result = _wunlink(this->_fmk->convert(path).c_str());
 				/**
 				 * Выполняем работу для Unix
 				 */
 				#else
-					// Закрываем открытый каталог
-					::closedir(dir);
+					// Выполняем удаление переданного пути
+					result = ::unlink(path.c_str());
 				#endif
-			}
-			// Удаляем последний каталог
-			if(!result){
-				/**
-				 * Выполняем работу для Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Получаем количество дочерних элементов
-					result = _wrmdir(this->_fmk->convert(path).c_str());
-				/**
-				 * Выполняем работу для Unix
-				 */
-				#else
-					// Получаем количество дочерних элементов
-					result = ::rmdir(path.c_str());
-				#endif
-			}
-	// Выводим сообщение об ошибке
-	} else this->_log->print("Path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
+			} break;
+		}
+		// Если путь является символьной ссылкой
+		if(this->type(path, false) == type_t::LINK){
+			/**
+			 * Выполняем работу для Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем удаление переданного пути
+				result = _wunlink(this->_fmk->convert(path).c_str());
+			/**
+			 * Выполняем работу для Unix
+			 */
+			#else
+				// Выполняем удаление переданного пути
+				result = ::unlink(path.c_str());
+			#endif
+		}
+	}
 	// Выводим результат
 	return result;
 }
