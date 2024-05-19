@@ -1453,11 +1453,11 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
  * readDir Метод рекурсивного получения файлов во всех подкаталогах
  * @param path     путь до каталога
  * @param ext      расширение файла по которому идет фильтрация
- * @param recurs   флаг рекурсивного перебора каталогов
+ * @param rec      флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
  * @param actual   флаг проверки актуальных файлов
  */
-void awh::FS::readDir(const string & path, const string & ext, const bool recurs, function <void (const string &)> callback, const bool actual) const noexcept {
+void awh::FS::readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback, const bool actual) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
 		/**
@@ -1469,11 +1469,11 @@ void awh::FS::readDir(const string & path, const string & ext, const bool recurs
 		function <void (const string &, const string &, const bool)> readFn;
 		/**
 		 * readFn Функция запроса файлов в каталоге
-		 * @param path   путь до каталога
-		 * @param ext    расширение файла по которому идет фильтрация
-		 * @param recurs флаг рекурсивного перебора каталогов
+		 * @param path путь до каталога
+		 * @param ext  расширение файла по которому идет фильтрация
+		 * @param rec  флаг рекурсивного перебора каталогов
 		 */
-		readFn = [&](const string & path, const string & ext, const bool recurs) noexcept -> void {
+		readFn = [&](const string & path, const string & ext, const bool rec) noexcept -> void {
 			/**
 			 * Выполняем работу для Windows
 			 */
@@ -1547,9 +1547,9 @@ void awh::FS::readDir(const string & path, const string & ext, const bool recurs
 									// Если дочерний элемент является дирректорией
 									if(S_ISDIR(info.st_mode)){
 										// Продолжаем обработку следующих каталогов
-										if(recurs)
+										if(rec)
 											// Выполняем функцию обратного вызова
-											readFn(address, ext, recurs);
+											readFn(address, ext, rec);
 										// Выводим данные каталога как он есть
 										else callback(this->realPath(address, actual));
 									// Если дочерний элемент является файлом и расширение файла указано то выводим его
@@ -1582,7 +1582,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool recurs
 				}
 		};
 		// Запрашиваем данные первого каталога
-		readFn(path, ext, recurs);
+		readFn(path, ext, rec);
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }
@@ -1590,15 +1590,15 @@ void awh::FS::readDir(const string & path, const string & ext, const bool recurs
  * readPath Метод рекурсивного чтения файлов во всех подкаталогах
  * @param path     путь до каталога
  * @param ext      расширение файла по которому идет фильтрация
- * @param recurs   флаг рекурсивного перебора каталогов
+ * @param rec      флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
  * @param actual   флаг проверки актуальных файлов
  */
-void awh::FS::readPath(const string & path, const string & ext, const bool recurs, function <void (const string &, const string &)> callback, const bool actual) const noexcept {
+void awh::FS::readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback, const bool actual) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
 		// Переходим по всему списку файлов в каталоге
-		this->readDir(path, ext, recurs, [&](const string & filename) noexcept -> void {
+		this->readDir(path, ext, rec, [&](const string & filename) noexcept -> void {
 			// Выполняем считывание всех строк текста
 			this->readFile2(filename, [&](const string & text) noexcept -> void {
 				// Если текст получен

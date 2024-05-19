@@ -275,20 +275,20 @@ namespace awh {
 			 * readDir Метод рекурсивного получения файлов во всех подкаталогах
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param recurs   флаг рекурсивного перебора каталогов
+			 * @param rec      флаг рекурсивного перебора каталогов
 			 * @param callback функция обратного вызова
 			 * @param actual   флаг проверки актуальных файлов
 			 */
-			void readDir(const string & path, const string & ext, const bool recurs, function <void (const string &)> callback, const bool actual = true) const noexcept;
+			void readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback, const bool actual = true) const noexcept;
 			/**
 			 * readPath Метод рекурсивного чтения файлов во всех подкаталогах
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
-			 * @param recurs   флаг рекурсивного перебора каталогов
+			 * @param rec      флаг рекурсивного перебора каталогов
 			 * @param callback функция обратного вызова
 			 * @param actual   флаг проверки актуальных файлов
 			 */
-			void readPath(const string & path, const string & ext, const bool recurs, function <void (const string &, const string &)> callback, const bool actual = true) const noexcept;
+			void readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback, const bool actual = true) const noexcept;
 		public:
 			/**
 			 * FS конструктор
