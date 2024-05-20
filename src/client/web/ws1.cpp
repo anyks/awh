@@ -477,11 +477,11 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (this->_core != nullptr)){
 		// Если разрешено выполнять пинги
-		if(this->_pinging){
+		if(this->_pinging && !this->_close){
 			// Получаем текущий штамп времени
 			const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 			// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-			if(this->_close || ((stamp - this->_point) >= this->_waitPong)){
+			if((stamp - this->_point) >= this->_waitPong){
 				// Создаём сообщение
 				this->_mess = ws::mess_t(1005, "PING response not received");
 				// Выполняем отправку сообщения об ошибке

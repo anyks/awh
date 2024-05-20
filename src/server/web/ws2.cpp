@@ -1137,30 +1137,33 @@ void awh::server::Websocket2::pinging(const uint16_t tid) noexcept {
 		if(this->_pinging){
 			// Выполняем перебор всех активных клиентов
 			for(auto & item : this->_scheme.get()){
-				// Если переключение протокола на HTTP/2 не выполнено
-				if(item.second->proto != engine_t::proto_t::HTTP2)
-					// Выполняем переброс события пинга в модуль Websocket
-					this->_ws1.pinging(tid);
-				// Если переключение протокола на HTTP/2 выполнено
-				else if(item.second->allow.receive) {
-					// Если рукопожатие выполнено
-					if(item.second->shake){
-						// Получаем текущий штамп времени
-						const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-						// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-						if(item.second->close || ((stamp - item.second->point) >= this->_waitPong)){
-							// Создаём сообщение
-							item.second->mess = ws::mess_t(1005, "PING response not received");
-							// Отправляем серверу сообщение
-							this->sendError(item.first, item.second->mess);
-						// Если время с предыдущего пинга прошло больше половины времени пинга
-						} else if((stamp - item.second->sendPing) > (PING_INTERVAL / 2))
-							// Отправляем запрос брокеру
-							this->ping(item.first, ::to_string(item.first));
-					// Если рукопожатие не выполнено и пинг не прошёл
-					} else if(!web2_t::ping(item.first))
-						// Выполняем закрытие подключения
-						web2_t::close(item.first);
+				// Если подключение клиента активно
+				if(!item.second->close){
+					// Если переключение протокола на HTTP/2 не выполнено
+					if(item.second->proto != engine_t::proto_t::HTTP2)
+						// Выполняем переброс события пинга в модуль Websocket
+						this->_ws1.pinging(tid);
+					// Если переключение протокола на HTTP/2 выполнено
+					else if(item.second->allow.receive) {
+						// Если рукопожатие выполнено
+						if(item.second->shake){
+							// Получаем текущий штамп времени
+							const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							// Если брокер не ответил на пинг больше двух интервалов, отключаем его
+							if((stamp - item.second->point) >= this->_waitPong){
+								// Создаём сообщение
+								item.second->mess = ws::mess_t(1005, "PING response not received");
+								// Отправляем серверу сообщение
+								this->sendError(item.first, item.second->mess);
+							// Если время с предыдущего пинга прошло больше половины времени пинга
+							} else if((stamp - item.second->sendPing) > (PING_INTERVAL / 2))
+								// Отправляем запрос брокеру
+								this->ping(item.first, ::to_string(item.first));
+						// Если рукопожатие не выполнено и пинг не прошёл
+						} else if(!web2_t::ping(item.first))
+							// Выполняем закрытие подключения
+							web2_t::close(item.first);
+					}
 				}
 			}
 		}
