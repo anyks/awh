@@ -126,7 +126,7 @@ bool awh::Engine::Address::list() noexcept {
 			// Выполняем слушать порт сервера
 			if(!(result = (::listen(this->fd, SOMAXCONN) == 0))){
 				// Выводим сообщени об активном сервисе
-				this->_log->print("Listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				// Выходим из функции
 				return result;
 			}
@@ -147,7 +147,7 @@ bool awh::Engine::Address::list() noexcept {
 					// Если BIO не создано, выходим
 					if(this->_bio == nullptr){
 						// Выводим в лог информацию
-						this->_log->print("Unable to create BIO for SCTP protocol", log_t::flag_t::CRITICAL);
+						this->_log->print("SCTP protocol: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -337,10 +337,12 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 	::memcpy(&this->_peer.server, &addr._peer.server, sizeof(struct sockaddr_storage));
 	// Выполняем бинд на сокет
 	if((this->_peer.size > 0) && (::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) < 0)){
+		// Получаем код ошибки
+		const int error = AWH_ERROR();
 		// Хост подключённого клиента
 		const string & client = this->_ifnet.ip(reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.client.ss_family);
 		// Выводим в лог сообщение
-		this->_log->print("Bind client for UDP protocol [%s]", log_t::flag_t::CRITICAL, client.c_str());
+		this->_log->print("%s CLIENT=[%s]", log_t::flag_t::CRITICAL, this->_socket.message(error).c_str(), client.c_str());
 		// Выходим
 		return false;
 	}
@@ -546,7 +548,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Если сокет не создан то выходим
 			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS)){
 				// Выводим сообщение в консоль
-				this->_log->print("Creating socket %s", log_t::flag_t::CRITICAL, unixsocket.c_str());
+				this->_log->print("%s UNIXSOCKET=%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str(), unixsocket.c_str());
 				// Выходим
 				return;
 			}
@@ -639,7 +641,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 							// Выполняем бинд на сокет
 							if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), size) < 0)
 								// Выводим в лог сообщение
-								this->_log->print("Bind network for client [%s]", log_t::flag_t::CRITICAL, clientName.c_str());
+								this->_log->print("%s CLIENT=[%s]", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str(), clientName.c_str());
 						}
 					}
 				} break;
@@ -651,7 +653,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				// Выполняем бинд на сокет
 				if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), size) < 0){
 					// Выводим в лог сообщение
-					this->_log->print("Bind network for server [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
+					this->_log->print("%s UNIXSOCKET=%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str(), unixsocket.c_str());
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				}
@@ -784,7 +786,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если тип сети не определен
 				default: {
 					// Выводим сообщение в консоль
-					this->_log->print("Network not allow from server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
+					this->_log->print("Network not allow from server [%s:%u]", log_t::flag_t::CRITICAL, ip.c_str(), port);
 					// Выходим
 					return;
 				}
@@ -794,7 +796,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 			// Если сокет не создан то выходим
 			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS)){
 				// Выводим сообщение в консоль
-				this->_log->print("Creating socket to server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
+				this->_log->print("%s [%s:%u]", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str(), ip.c_str(), port);
 				// Выходим
 				return;
 			}
@@ -860,7 +862,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Выполняем бинд на сокет
 					if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) < 0){
 						// Выводим в лог сообщение
-						this->_log->print("Bind network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+						this->_log->print("%s SERVER=[%s]", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str(), host.c_str());
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -870,7 +872,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Выполняем бинд на сокет
 					if(::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0)
 						// Выводим в лог сообщение
-						this->_log->print("Bind network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+						this->_log->print("%s CLIENT=[%s]", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str(), host.c_str());
 				} break;
 			}
 		}
