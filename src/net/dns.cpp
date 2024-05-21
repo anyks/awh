@@ -506,6 +506,8 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 		if(this->_mode && (this->_fd == INVALID_SOCKET)){
 			// Выводим в лог сообщение
 			this->_self->_log->print("File descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
+			// Выполняем закрытие подключения
+			this->close();
 			// Выходим из приложения
 			return result;
 		// Если сокет создан удачно и работа резолвера не остановлена
@@ -526,6 +528,8 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 			if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
 				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
+				// Выполняем закрытие подключения
+				this->close();
 				// Выходим из функции
 				return result;
 			}
@@ -539,6 +543,8 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 				bytes = static_cast <int64_t> (::recvfrom(this->_fd, reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::DATA)), self->_buffer.size(buffer_t::type_t::DATA), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
+					// Выполняем закрытие подключения
+					this->close();
 					// Если сокет находится в блокирующем режиме
 					if(bytes < 0){
 						// Определяем тип ошибки
@@ -576,16 +582,15 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 						}
 					}
 					// Если работа резолвера ещё не остановлена
-					if(this->_mode){
-						// Выполняем закрытие подключения
-						this->close();
+					if(this->_mode)
 						// Замораживаем поток на период времени в 10ms
 						this_thread::sleep_for(10ms);
-					}
 					// Выполняем попытку получить IP-адрес с другого сервера
 					return result;
 				// Если данные получены удачно
 				} else {
+					// Выполняем закрытие подключения
+					this->close();
 					// Получаем объект заголовка
 					head_t * header = reinterpret_cast <head_t *> (self->_buffer.get(buffer_t::type_t::DATA));
 					// Определяем код выполнения операции
@@ -1193,6 +1198,8 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 					return result;
 			// Если сообщение отправить не удалось
 			} else if(bytes <= 0) {
+				// Выполняем закрытие подключения
+				this->close();
 				// Если сокет находится в блокирующем режиме
 				if(bytes < 0){
 					// Определяем тип ошибки
@@ -1230,8 +1237,6 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 					}
 				}
 			}
-			// Выполняем закрытие подключения
-			this->close();
 		}
 	}
 	// Выводим результат
