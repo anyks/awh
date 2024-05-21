@@ -224,12 +224,12 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 		if(this->_mode && (this->_fd == INVALID_SOCKET)){
 			// Выводим в лог сообщение
 			this->_self->_log->print("File descriptor needed for the NTP request could not be allocated", log_t::flag_t::WARNING);
+			// Выполняем закрытие подключения
+			this->close();
 			// Выходим из приложения
 			return result;
 		// Если сокет создан удачно и работа резолвера не остановлена
 		} else if(this->_mode) {
-			// Количество отправленных или полученных байт
-			int64_t bytes = 0;
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->_fd);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
@@ -246,15 +246,21 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 			if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
 				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
+				// Выполняем закрытие подключения
+				this->close();
 				// Выходим из функции
 				return result;
 			}
+			// Количество отправленных или полученных байт
+			int64_t bytes = 0;
 			// Если запрос на NTP-сервер успешно отправлен
-			if((bytes = ::sendto(this->_fd, reinterpret_cast <const char *> (&packet), sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
+			if((bytes = static_cast <int64_t> (::sendto(this->_fd, reinterpret_cast <const char *> (&packet), sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
 				// Получаем объект NTP-клиента
 				ntp_t * self = const_cast <ntp_t *> (this->_self);
 				// Выполняем чтение ответа сервера
-				const int64_t bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (&packet), sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
+				bytes = static_cast <int64_t> (::recvfrom(this->_fd, reinterpret_cast <char *> (&packet), sizeof(packet), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
+				// Выполняем закрытие подключения
+				this->close();
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Если сокет находится в блокирующем режиме
@@ -294,12 +300,9 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 						}
 					}
 					// Если работа резолвера ещё не остановлена
-					if(this->_mode){
-						// Выполняем закрытие подключения
-						this->close();
+					if(this->_mode)
 						// Замораживаем поток на период времени в 10ms
 						this_thread::sleep_for(10ms);
-					}
 					// Выполняем попытку получить IP-адрес с другого сервера
 					return result;
 				// Если данные получены удачно
@@ -327,6 +330,8 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 					return result;
 			// Если сообщение отправить не удалось
 			} else if(bytes <= 0) {
+				// Выполняем закрытие подключения
+				this->close();
 				// Если сокет находится в блокирующем режиме
 				if(bytes < 0){
 					// Определяем тип ошибки
@@ -364,8 +369,6 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 					}
 				}
 			}
-			// Выполняем закрытие подключения
-			this->close();
 		}
 	}
 	// Выводим результат

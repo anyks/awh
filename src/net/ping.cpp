@@ -173,7 +173,7 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 		// Выполняем подсчёт контрольной суммы
 		icmp.checksum = this->checksum(&icmp, sizeof(icmp));
 		// Если запрос на сервер успешно отправлен
-		if((result = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size)) > 0){
+		if((result = static_cast <int64_t> (::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
 			// Метка повторного получения данных
 			Read:
 			// Буфер для получения данных
@@ -181,7 +181,7 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 			// Результат полученных данных
 			auto * icmpResponseHeader = reinterpret_cast <struct IcmpHeader *> (buffer.data());
 			// Выполняем чтение ответа сервера
-			result = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size);
+			result = static_cast <int64_t> (::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
 			// Если данные прочитать не удалось
 			if(result <= 0){
 				// Если сокет находится в блокирующем режиме
@@ -238,8 +238,6 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 								this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str());
 						}
 					}
-					// Выполняем закрытие подключения
-					this->close();
 					// Выводим результат
 					return result;
 				}
@@ -300,8 +298,6 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 							this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message(AWH_ERROR()).c_str());
 					}
 				}
-				// Выполняем закрытие подключения
-				this->close();
 				// Выводим результат
 				return result;
 			}
@@ -587,6 +583,8 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 			}
 			// Если сокет не создан создан и работа резолвера не остановлена
 			if(this->_mode && (this->_fd == INVALID_SOCKET)){
+				// Выполняем закрытие подключения
+				this->close();
 				// Если разрешено выводить информацию в лог
 				if(this->_verb)
 					// Выводим в лог сообщение
@@ -610,9 +608,12 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 				// Устанавливаем таймаут на запись данных в сокет
 				this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
 				// Выполняем бинд на сокет
-				if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0)
+				if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
+					// Выполняем закрытие подключения
+					this->close();
 					// Выводим в лог сообщение
 					this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+				}
 				// Выполняем отправку отправку запросов до тех пор пока не остановят
 				while(this->_mode){
 					// Запоминаем текущее значение времени в миллисекундах
@@ -620,9 +621,12 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					// Выполняем запрос на сервер
 					const int64_t bytes = this->send(family, index);
 					// Если данные прочитать не удалось
-					if(bytes <= 0)
+					if(bytes <= 0){
+						// Выполняем закрытие подключения
+						this->close();
 						// Выводим результат
 						return;
+					}
 					// Выполняем подсчёт количество прошедшего времени
 					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
 					// Если разрешено выводить информацию в лог
