@@ -1038,23 +1038,6 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 											}
 										}
 									}
-									// Если список сервером имён получен
-									if(!authority.empty()){
-										// Доменное имя полученное из запроса
-										string name = "";
-										// Выполняем перебор всего списка ответов
-										for(auto & item : authority){
-											// Получаем название записи
-											name = self->_fmk->join(item.items, ".");
-											// Выводим название записи
-											printf("\nNAME: %s\n", name.c_str());
-											// Определяем тип записи
-											switch(item.type){
-												// Если тип полученной записи NS
-												case 2: printf("NS: %s\n", item.record.c_str()); break;
-											}
-										}
-									}
 									// Если список сервером дополнительных записей получен
 									if(!additional.empty()){
 										// Доменное имя полученное из запроса
@@ -1063,16 +1046,10 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										for(auto & item : additional){
 											// Получаем название записи
 											name = self->_fmk->join(item.items, ".");
-											// Выводим название записи
-											printf("\nNAME: %s\n", name.c_str());
 											// Определяем тип записи
 											switch(item.type){
-												// Если тип полученной записи CNAME
-												case 5: printf("CNAME: %s\n", item.record.c_str()); break;
 												// Если тип получения записи PTR
 												case 12: {
-													// Выводим информацию в консоль
-													printf("PTR: %s\n", item.record.c_str());
 													// Выполняем установку ARPA-адреса
 													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn))
 														// Записываем данные в кэш
@@ -1117,13 +1094,6 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 														if(!self->isInBlackList(family, name, ip))
 															// Записываем данные в кэш
 															self->setToCache(family, name, ip, static_cast <time_t> (item.ttl));
-														// Определяем тип записи
-														switch(item.type){
-															// Если тип полученной записи IPv4
-															case 1: printf("IPv4: %s\n", ip.c_str()); break;
-															// Если тип полученной записи IPv6
-															case 28: printf("IPv6: %s\n", ip.c_str()); break;
-														}
 													}
 												} break;
 											}
