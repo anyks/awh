@@ -110,7 +110,7 @@ string awh::DNS::Worker::host() const noexcept {
 			// Выводим только первый элемент
 			} else result = this->_network.front();
 		// Выполняем прехват ошибки
-		} catch(const exception & error) {
+		} catch(const runtime_error & error) {
 			// Выводим сообщение об ошибке
 			this->_self->_log->print("DNS host: %s", log_t::flag_t::WARNING, error.what());
 			// Выводим только первый элемент
@@ -1415,7 +1415,7 @@ void awh::DNS::shuffle(const int family) noexcept {
 			break;
 		}
 	// Выполняем прехват ошибки
-	} catch(const exception & error) {
+	} catch(const runtime_error & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("DNS shuffle: %s", log_t::flag_t::WARNING, error.what());
 	}
@@ -1525,7 +1525,7 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 				// Выполняем получение результата
 				result = std::forward <string> (ips.at(dist6(generator)));
 			// Выполняем прехват ошибки
-			} catch(const exception & error) {
+			} catch(const runtime_error & error) {
 				// Выводим сообщение об ошибке
 				this->_log->print("DNS cache: %s", log_t::flag_t::WARNING, error.what());
 				// Выполняем извлечение первого адреса из списка
@@ -2152,7 +2152,7 @@ string awh::DNS::server(const int family) noexcept {
 			} break;
 		}
 	// Выполняем прехват ошибки
-	} catch(const exception & error) {
+	} catch(const runtime_error & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("DNS server: %s", log_t::flag_t::WARNING, error.what());
 	}
@@ -2856,7 +2856,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 						// Выполняем получение результата
 						result = std::forward <string> (ips.at(dist6(generator)));
 					// Выполняем прехват ошибки
-					} catch(const exception & error) {
+					} catch(const runtime_error & error) {
 						// Выводим сообщение об ошибке
 						this->_log->print("DNS host: %s", log_t::flag_t::WARNING, error.what());
 						// Выполняем извлечение первого адреса из списка
