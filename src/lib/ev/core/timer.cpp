@@ -153,8 +153,14 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 		if(this->_callbacks.is(static_cast <uint64_t> (tid)))
 			// Выполняем удаление функции обратного вызова
 			this->_callbacks.erase(static_cast <uint64_t> (tid));
-		// Выполняем удаление таймера
-		this->_brokers.erase(i);
+		{
+			// Выполняем поиск активного брокера
+			auto i = this->_brokers.find(tid);
+			// Если активный брокер найден
+			if(i != this->_brokers.end())
+				// Выполняем удаление таймера
+				this->_brokers.erase(i);
+		}
 	}
 }
 /**
