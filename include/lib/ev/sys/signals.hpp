@@ -66,6 +66,7 @@ namespace awh {
 					ev::sig sigint;  // Перехватчик сигнала SIGINT
 					ev::sig sigfpe;  // Перехватчик сигнала SIGFPE
 					ev::sig sigill;  // Перехватчик сигнала SIGILL
+					ev::sig sigbus;  // Перехватчик сигнала SIGBUS
 					ev::sig sigterm; // Перехватчик сигнала SIGTERM
 					ev::sig sigabrt; // Перехватчик сигнала SIGABRT
 					ev::sig sigsegv; // Перехватчик сигнала SIGSEGV
@@ -83,6 +84,7 @@ namespace awh {
 					SignalHandlerPointer sigint;  // Перехватчик сигнала SIGINT
 					SignalHandlerPointer sigfpe;  // Перехватчик сигнала SIGFPE
 					SignalHandlerPointer sigill;  // Перехватчик сигнала SIGILL
+					SignalHandlerPointer sigbus;  // Перехватчик сигнала SIGBUS
 					SignalHandlerPointer sigterm; // Перехватчик сигнала SIGTERM
 					SignalHandlerPointer sigabrt; // Перехватчик сигнала SIGABRT
 					SignalHandlerPointer sigsegv; // Перехватчик сигнала SIGSEGV

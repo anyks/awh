@@ -62,6 +62,7 @@ namespace awh {
 					event_t sigint;  // Перехватчик сигнала SIGINT
 					event_t sigfpe;  // Перехватчик сигнала SIGFPE
 					event_t sigill;  // Перехватчик сигнала SIGILL
+					event_t sigbus;  // Перехватчик сигнала SIGBUS
 					event_t sigterm; // Перехватчик сигнала SIGTERM
 					event_t sigabrt; // Перехватчик сигнала SIGABRT
 					event_t sigsegv; // Перехватчик сигнала SIGSEGV
@@ -73,6 +74,7 @@ namespace awh {
 					 sigint(event_t::type_t::SIGNAL, log),
 					 sigfpe(event_t::type_t::SIGNAL, log),
 					 sigill(event_t::type_t::SIGNAL, log),
+					 sigbus(event_t::type_t::SIGNAL, log),
 					 sigterm(event_t::type_t::SIGNAL, log),
 					 sigabrt(event_t::type_t::SIGNAL, log),
 					 sigsegv(event_t::type_t::SIGNAL, log) {}
@@ -90,6 +92,7 @@ namespace awh {
 					SignalHandlerPointer sigint;  // Перехватчик сигнала SIGINT
 					SignalHandlerPointer sigfpe;  // Перехватчик сигнала SIGFPE
 					SignalHandlerPointer sigill;  // Перехватчик сигнала SIGILL
+					SignalHandlerPointer sigbus;  // Перехватчик сигнала SIGBUS
 					SignalHandlerPointer sigterm; // Перехватчик сигнала SIGTERM
 					SignalHandlerPointer sigabrt; // Перехватчик сигнала SIGABRT
 					SignalHandlerPointer sigsegv; // Перехватчик сигнала SIGSEGV
@@ -141,6 +144,12 @@ namespace awh {
 				 * @param event возникшее событие
 				 */
 				void illCallback(evutil_socket_t fd, short event) noexcept;
+				/**
+				 * busCallback Функция обработки информационных сигналов SIGBUS
+				 * @param fd    файловый дескриптор (сокет)
+				 * @param event возникшее событие
+				 */
+				void busCallback(evutil_socket_t fd, short event) noexcept;
 				/**
 				 * termCallback Функция обработки информационных сигналов SIGTERM
 				 * @param fd    файловый дескриптор (сокет)

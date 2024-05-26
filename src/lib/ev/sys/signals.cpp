@@ -83,6 +83,8 @@ void awh::Signals::stop() noexcept {
 			this->_ev.sigfpe.stop();
 			// Выполняем остановку перехвата сигнала SIGILL
 			this->_ev.sigill.stop();
+			// Выполняем остановку перехвата сигнала SIGBUS
+			this->_ev.sigbus.stop();
 			// Выполняем остановку перехвата сигнала SIGTERM
 			this->_ev.sigterm.stop();
 			// Выполняем остановку перехвата сигнала SIGABRT
@@ -99,6 +101,8 @@ void awh::Signals::stop() noexcept {
 			this->_ev.sigfpe = signal(SIGFPE, nullptr);
 			// Выполняем остановку перехвата сигнала SIGILL
 			this->_ev.sigill = signal(SIGILL, nullptr);
+			// Выполняем остановку перехвата сигнала SIGBUS
+			this->_ev.sigbus = signal(SIGBUS, nullptr);
 			// Выполняем остановку перехвата сигнала SIGTERM
 			this->_ev.sigterm = signal(SIGTERM, nullptr);
 			// Выполняем остановку перехвата сигнала SIGABRT
@@ -126,6 +130,7 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigint.set(this->_base);
 			this->_ev.sigfpe.set(this->_base);
 			this->_ev.sigill.set(this->_base);
+			this->_ev.sigbus.set(this->_base);
 			this->_ev.sigterm.set(this->_base);
 			this->_ev.sigabrt.set(this->_base);
 			this->_ev.sigsegv.set(this->_base);
@@ -133,6 +138,7 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigint.set <sig_t, &sig_t::signal> (this);
 			this->_ev.sigfpe.set <sig_t, &sig_t::signal> (this);
 			this->_ev.sigill.set <sig_t, &sig_t::signal> (this);
+			this->_ev.sigbus.set <sig_t, &sig_t::signal> (this);
 			this->_ev.sigterm.set <sig_t, &sig_t::signal> (this);
 			this->_ev.sigabrt.set <sig_t, &sig_t::signal> (this);
 			this->_ev.sigsegv.set <sig_t, &sig_t::signal> (this);
@@ -140,6 +146,7 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigint.start(SIGINT);
 			this->_ev.sigfpe.start(SIGFPE);
 			this->_ev.sigill.start(SIGILL);
+			this->_ev.sigbus.start(SIGBUS);
 			this->_ev.sigterm.start(SIGTERM);
 			this->_ev.sigabrt.start(SIGABRT);
 			this->_ev.sigsegv.start(SIGSEGV);
@@ -155,6 +162,8 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigfpe = signal(SIGFPE, signalHandler);
 			// Создаём обработчик сигнала для SIGILL
 			this->_ev.sigill = signal(SIGILL, signalHandler);
+			// Создаём обработчик сигнала для SIGBUS
+			this->_ev.sigbus = signal(SIGBUS, signalHandler);
 			// Создаём обработчик сигнала для SIGTERM
 			this->_ev.sigterm = signal(SIGTERM, signalHandler);
 			// Создаём обработчик сигнала для SIGABRT

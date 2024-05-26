@@ -67,6 +67,17 @@ void awh::Signals::callback(const int sig) noexcept {
 		std::thread(&sig_t::callback, this, SIGILL).detach();
 	}
 	/**
+	 * busCallback Функция обработки информационных сигналов SIGBUS
+	 * @param fd    файловый дескриптор (сокет)
+	 * @param event возникшее событие
+	 */
+	void awh::Signals::busCallback(evutil_socket_t fd, short event) noexcept {
+		// Выполняем игнорирование сигнала
+		::signal(SIGBUS, SIG_IGN);
+		// Выполняем функцию обратного вызова
+		std::thread(&sig_t::callback, this, SIGBUS).detach();
+	}
+	/**
 	 * termCallback Функция обработки информационных сигналов SIGTERM
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event возникшее событие
@@ -136,6 +147,8 @@ void awh::Signals::stop() noexcept {
 			this->_ev.sigfpe.stop();
 			// Выполняем остановку перехвата сигнала SIGILL
 			this->_ev.sigill.stop();
+			// Выполняем остановку перехвата сигнала SIGBUS
+			this->_ev.sigbus.stop();
 			// Выполняем остановку перехвата сигнала SIGTERM
 			this->_ev.sigterm.stop();
 			// Выполняем остановку перехвата сигнала SIGABRT
@@ -152,6 +165,8 @@ void awh::Signals::stop() noexcept {
 			this->_ev.sigfpe = signal(SIGFPE, nullptr);
 			// Выполняем остановку перехвата сигнала SIGILL
 			this->_ev.sigill = signal(SIGILL, nullptr);
+			// Выполняем остановку перехвата сигнала SIGBUS
+			this->_ev.sigbus = signal(SIGBUS, nullptr);
 			// Выполняем остановку перехвата сигнала SIGTERM
 			this->_ev.sigterm = signal(SIGTERM, nullptr);
 			// Выполняем остановку перехвата сигнала SIGABRT
@@ -179,6 +194,7 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigint.set(this->_base);
 			this->_ev.sigfpe.set(this->_base);
 			this->_ev.sigill.set(this->_base);
+			this->_ev.sigbus.set(this->_base);
 			this->_ev.sigterm.set(this->_base);
 			this->_ev.sigabrt.set(this->_base);
 			this->_ev.sigsegv.set(this->_base);
@@ -186,6 +202,7 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigint.set(-1, SIGINT);
 			this->_ev.sigfpe.set(-1, SIGFPE);
 			this->_ev.sigill.set(-1, SIGILL);
+			this->_ev.sigbus.set(-1, SIGBUS);
 			this->_ev.sigterm.set(-1, SIGTERM);
 			this->_ev.sigabrt.set(-1, SIGABRT);
 			this->_ev.sigsegv.set(-1, SIGSEGV);
@@ -193,6 +210,7 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigint.set(std::bind(&sig_t::intCallback, this, _1, _2));
 			this->_ev.sigfpe.set(std::bind(&sig_t::fpeCallback, this, _1, _2));
 			this->_ev.sigill.set(std::bind(&sig_t::illCallback, this, _1, _2));
+			this->_ev.sigbus.set(std::bind(&sig_t::busCallback, this, _1, _2));
 			this->_ev.sigterm.set(std::bind(&sig_t::termCallback, this, _1, _2));
 			this->_ev.sigabrt.set(std::bind(&sig_t::abrtCallback, this, _1, _2));
 			this->_ev.sigsegv.set(std::bind(&sig_t::segvCallback, this, _1, _2));
@@ -200,6 +218,7 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigint.start();
 			this->_ev.sigfpe.start();
 			this->_ev.sigill.start();
+			this->_ev.sigbus.start();
 			this->_ev.sigterm.start();
 			this->_ev.sigabrt.start();
 			this->_ev.sigsegv.start();
@@ -215,6 +234,8 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigfpe = signal(SIGFPE, signalHandler);
 			// Создаём обработчик сигнала для SIGILL
 			this->_ev.sigill = signal(SIGILL, signalHandler);
+			// Создаём обработчик сигнала для SIGBUS
+			this->_ev.sigbus = signal(SIGBUS, signalHandler);
 			// Создаём обработчик сигнала для SIGTERM
 			this->_ev.sigterm = signal(SIGTERM, signalHandler);
 			// Создаём обработчик сигнала для SIGABRT
