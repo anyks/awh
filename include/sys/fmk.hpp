@@ -743,7 +743,7 @@ namespace awh {
 			 * @param tm     объект даты
 			 * @return       результат работы
 			 */
-			string strpTime(const string & str, const string & format, struct tm * tm) const noexcept;
+			string strpTime(const string & str, const string & format, struct tm & tm) const noexcept;
 		public:
 			/**
 			 * time2str Метод преобразования UnixTimestamp в строку

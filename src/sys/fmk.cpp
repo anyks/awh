@@ -2785,11 +2785,11 @@ string awh::Framework::time2abbr(const time_t date) const noexcept {
  * @param tm     объект даты
  * @return       результат работы
  */
-string awh::Framework::strpTime(const string & str, const string & format, struct tm * tm) const noexcept {
+string awh::Framework::strpTime(const string & str, const string & format, struct tm & tm) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
-	if(!str.empty() && !format.empty() && (tm != nullptr)){
+	if(!str.empty() && !format.empty()){
 		/*
 		 * Разве стандартная библиотека C++ не хороша? std::get_time определен таким образом,
 		 * что его параметры формата были точно такие же, как у strptime.
@@ -2798,18 +2798,17 @@ string awh::Framework::strpTime(const string & str, const string & format, struc
 		 * но это все ещё намного проще. Чем любая из версий в любой из стандартных библиотек C.
 		 */
 		// Создаём строковый поток
-		istringstream input(str.c_str());
+		std::istringstream input(str.c_str());
 		// Устанавливаем текущую локаль
 		input.imbue(this->_locale);
+		// Зануляем структуру
+		::memset(&tm, 0, sizeof(struct tm));
 		// Извлекаем время локали
-		input >> get_time(tm, format.c_str());
+		input >> std::get_time(&tm, format.c_str());
 		// Если время получено
-		if(!input.fail()){
-			// Получаем указатель на строку
-			const char * s = str.c_str();
+		if(!input.fail())
 			// Если всё удачно, выводим время
-			result = reinterpret_cast <const char *> (s + input.tellg());
-		}
+			result = reinterpret_cast <const char *> (str.c_str() + input.tellg());
 	}
 	// Выводим результат
 	return result;
@@ -2824,9 +2823,9 @@ string awh::Framework::time2str(const time_t date, const string & format) const 
 	// Буфер с данными
 	char buffer[255];
 	// Создаем структуру времени
-	struct tm * tm = localtime(&date);
+	struct tm * tm = ::localtime(&date);
 	// Зануляем буфер
-	memset(buffer, 0, sizeof(buffer));
+	::memset(buffer, 0, sizeof(buffer));
 	// Выполняем парсинг даты
 	strftime(buffer, sizeof(buffer), format.c_str(), tm);
 	// Выводим результат
@@ -2845,12 +2844,10 @@ time_t awh::Framework::str2time(const string & date, const string & format) cons
 	if(!date.empty() && !format.empty()){
 		// Создаем структуру времени
 		struct tm tm;
-		// Зануляем структуру
-		memset(&tm, 0, sizeof(struct tm));
 		// Выполняем парсинг даты
-		this->strpTime(date, format, &tm);
+		this->strpTime(date, format, tm);
 		// Выводим результат
-		result = mktime(&tm);
+		result = ::mktime(&tm);
 	}
 	// Выводим результат
 	return result;
