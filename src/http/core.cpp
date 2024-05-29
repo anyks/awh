@@ -2118,18 +2118,16 @@ void awh::Http::response(const web_t::res_t & res) noexcept {
  * @return      штамп времени в текстовом виде
  */
 const string awh::Http::date(const time_t stamp) const noexcept {
-	// Создаём буфер данных
-	char buffer[1000];
+	// Создаём объект потока
+	std::stringstream transTime;
 	// Получаем текущее время
-	time_t date = (stamp > 0 ? stamp : ::time(nullptr));
+	time_t date = (stamp > 0 ? stamp : std::time(nullptr));
 	// Извлекаем текущее время
-	struct tm tm = (* ::gmtime(&date));
-	// Зануляем буфер
-	::memset(buffer, 0, sizeof(buffer));
-	// Получаем формат времени
-	::strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", &tm);
-	// Выводим результат
-	return buffer;
+	std::tm * tm = std::gmtime(&date);
+	// Выполняем извлечение даты
+	transTime << std::put_time(tm, "%a, %d %b %Y %H:%M:%S GMT");
+	// Выводим полученное значение даты
+	return transTime.str();
 }
 /**
  * message Метод получения HTTP сообщения

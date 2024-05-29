@@ -142,6 +142,13 @@ namespace awh {
 			 * @param payload объект полезной нагрузки
 			 */
 			void receiving(const payload_t & payload) const noexcept;
+		private:
+			/**
+			 * components Метод извлечения компонента адреса файла
+			 * @param filename адрес где находится файл
+			 * @return         параметры компонента (адрес, название файла без расширения)
+			 */
+			std::pair <string, string> components(const string & filename) const noexcept;
 		public:
 			/**
 			 * print Метод вывода текстовой информации в консоль или файл

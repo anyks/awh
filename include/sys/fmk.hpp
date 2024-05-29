@@ -736,14 +736,15 @@ namespace awh {
 			 * @return     строка содержащая аббревиатуру даты
 			 */
 			string time2abbr(const time_t date) const noexcept;
+		public:
 			/**
 			 * strpTime Метод получения Unix TimeStamp из строки
-			 * @param str    строка с датой
-			 * @param format форматы даты
-			 * @param tm     объект даты
-			 * @return       результат работы
+			 * @param date    строка даты
+			 * @param format1 форматы даты из которой нужно получить дату
+			 * @param format2 форматы даты в который нужно перевести дату
+			 * @return        результат работы
 			 */
-			string strpTime(const string & str, const string & format, struct tm & tm) const noexcept;
+			string strpTime(const string & date, const string & format1, const string & format2) const noexcept;
 		public:
 			/**
 			 * time2str Метод преобразования UnixTimestamp в строку

@@ -2662,12 +2662,13 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 	// Устанавливаем локаль
 	if(!locale.empty()){
 		// Создаём новую локаль
-		std::locale loc(locale.c_str());
+		// std::locale loc(locale.c_str());
 		// Устанавливапм локализацию приложения
 		::setlocale(LC_CTYPE, locale.c_str());
 		::setlocale(LC_COLLATE, locale.c_str());
 		// Устанавливаем локаль системы
-		this->_locale = std::locale::global(loc);
+		// this->_locale = std::locale::global(loc);
+		this->_locale = std::locale(locale.c_str());
 		/**
 		 * Устанавливаем типы данных для Windows
 		 */
@@ -2780,16 +2781,16 @@ string awh::Framework::time2abbr(const time_t date) const noexcept {
 }
 /**
  * strpTime Метод получения Unix TimeStamp из строки
- * @param str    строка с датой
- * @param format форматы даты
- * @param tm     объект даты
- * @return       результат работы
+ * @param date    строка даты
+ * @param format1 форматы даты из которой нужно получить дату
+ * @param format2 форматы даты в который нужно перевести дату
+ * @return        результат работы
  */
-string awh::Framework::strpTime(const string & str, const string & format, struct tm & tm) const noexcept {
+string awh::Framework::strpTime(const string & date, const string & format1, const string & format2) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
-	if(!str.empty() && !format.empty()){
+	if(!date.empty() && !format1.empty()){
 		/*
 		 * Разве стандартная библиотека C++ не хороша? std::get_time определен таким образом,
 		 * что его параметры формата были точно такие же, как у strptime.
@@ -2797,18 +2798,25 @@ string awh::Framework::strpTime(const string & str, const string & format, struc
 		 * и мы также должны убедиться, что мы возвращаем правильные вещи, если это не удаётся или если это удаётся,
 		 * но это все ещё намного проще. Чем любая из версий в любой из стандартных библиотек C.
 		 */
+		// Создаем структуру времени
+		std::tm tm = {};
 		// Создаём строковый поток
-		std::istringstream input(str.c_str());
+		std::istringstream input(date.c_str());
 		// Устанавливаем текущую локаль
 		input.imbue(this->_locale);
 		// Зануляем структуру
-		::memset(&tm, 0, sizeof(struct tm));
+		::memset(&tm, 0, sizeof(std::tm));
 		// Извлекаем время локали
-		input >> std::get_time(&tm, format.c_str());
+		input >> std::get_time(&tm, format1.c_str());
 		// Если время получено
-		if(!input.fail())
-			// Если всё удачно, выводим время
-			result = reinterpret_cast <const char *> (str.c_str() + input.tellg());
+		if(!input.fail() && !format2.empty()){
+			// Создаём объект потока
+			std::stringstream transTime;
+			// Выполняем извлечение даты
+			transTime << std::put_time(&tm, format2.c_str());
+			// Выводим полученное значение даты
+			result = transTime.str();
+		}
 	}
 	// Выводим результат
 	return result;
@@ -2820,16 +2828,14 @@ string awh::Framework::strpTime(const string & str, const string & format, struc
  * @return       строка содержащая дату
  */
 string awh::Framework::time2str(const time_t date, const string & format) const noexcept {
-	// Буфер с данными
-	char buffer[255];
+	// Создаём объект потока
+	std::stringstream transTime;
 	// Создаем структуру времени
-	struct tm * tm = ::localtime(&date);
-	// Зануляем буфер
-	::memset(buffer, 0, sizeof(buffer));
-	// Выполняем парсинг даты
-	strftime(buffer, sizeof(buffer), format.c_str(), tm);
-	// Выводим результат
-	return string(buffer);
+	std::tm * tm = std::localtime(&date);
+	// Выполняем извлечение даты
+	transTime << std::put_time(tm, format.c_str());
+	// Выводим полученное значение даты
+	return transTime.str();
 }
 /**
  * str2time Метод перевода строки в UnixTimestamp
@@ -2843,11 +2849,15 @@ time_t awh::Framework::str2time(const string & date, const string & format) cons
 	// Если данные переданы
 	if(!date.empty() && !format.empty()){
 		// Создаем структуру времени
-		struct tm tm;
-		// Выполняем парсинг даты
-		this->strpTime(date, format, tm);
+		std::tm tm = {};
+		// Создаём строковый поток
+		std::istringstream input(date.c_str());
+		// Устанавливаем текущую локаль
+		input.imbue(this->_locale);
+		// Извлекаем время локали
+		input >> std::get_time(&tm, format.c_str());
 		// Выводим результат
-		result = ::mktime(&tm);
+		result = std::mktime(&tm);
 	}
 	// Выводим результат
 	return result;
