@@ -56,7 +56,7 @@ namespace awh {
 			} wrk_t;
 		private:
 			// Мютекс для блокировки потока
-			mutex _mtx;
+			mutable mutex _mtx;
 		private:
 			// Список активных воркеров таймера
 			map <uint32_t, unique_ptr <wrk_t>> _timers;
@@ -69,12 +69,14 @@ namespace awh {
 			bool checkInputData(const uint32_t tid) const noexcept {
 				// Результат работы функции
 				bool result = true;
+				// Выполняем блокировку потока
+				const lock_guard <mutex> lock(this->_mtx);
 				// Выполняем поиск идентификатор таймера
-				auto it = this->_timers.find(tid);
+				auto i = this->_timers.find(tid);
 				// Если идентификатор таймера в списке существует
-				if(it != this->_timers.end())
+				if(i != this->_timers.end())
 					// Выполняем установку флага остановки таймера
-					result = it->second->stop;
+					result = i->second->stop;
 				// Выводим результат
 				return result;
 			}
@@ -105,36 +107,36 @@ namespace awh {
 					 */
 					try {
 						// Выполняем поиск нашего таймера
-						auto it = this->_timers.find(tid);
+						auto i = this->_timers.find(tid);
 						// Если таймер найден
-						if(it != this->_timers.end()){
+						if(i != this->_timers.end()){
 							// Выполняем блокировку уникальным мютексом
-							unique_lock <mutex> lock(it->second->mtx);
+							unique_lock <mutex> lock(i->second->mtx);
 							// Выполняем ожидание на поступление новых заданий
-							it->second->cv.wait_for(lock, chrono::milliseconds(it->second->delay), std::bind(&Timer::checkInputData, this, tid));
+							i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), std::bind(&Timer::checkInputData, this, tid));
 						}{
 							// Выполняем поиск нашего таймера
-							auto it = this->_timers.find(tid);
+							auto i = this->_timers.find(tid);
 							// Если идентификатор таймера в списке существует и остановка не подтверждена
-							if((it != this->_timers.end()) && !it->second->stop){
+							if((i != this->_timers.end()) && !i->second->stop){
 								// Выполняем функцию обратного вызова
-								it->second->callback();
+								i->second->callback();
 								{
 									// Выполняем блокировку потока
 									const lock_guard <mutex> lock(this->_mtx);
 									// Выполняем поиск нашего таймера
-									auto it = this->_timers.find(tid);
+									auto i = this->_timers.find(tid);
 									// Если идентификатор таймера в списке существует и остановка не подтверждена
-									if(it != this->_timers.end())
+									if(i != this->_timers.end())
 										// Выполняем удаление идентификатора таймера
-										this->_timers.erase(it);
+										this->_timers.erase(i);
 								}
 							// Если была выполнена остановка
-							} else if(it != this->_timers.end()) {
+							} else if(i != this->_timers.end()) {
 								// Выполняем блокировку потока
 								const lock_guard <mutex> lock(this->_mtx);
 								// Выполняем удаление идентификатора таймера
-								this->_timers.erase(it);
+								this->_timers.erase(i);
 							}
 						}
 					/**
@@ -144,11 +146,11 @@ namespace awh {
 						// Выполняем блокировку потока
 						const lock_guard <mutex> lock(this->_mtx);
 						// Выполняем поиск идентификатор таймера
-						auto it = this->_timers.find(tid);
+						auto i = this->_timers.find(tid);
 						// Если идентификатор таймера в списке существует
-						if(it != this->_timers.end())
+						if(i != this->_timers.end())
 							// Выполняем удаление идентификатора таймера
-							this->_timers.erase(it);
+							this->_timers.erase(i);
 					}
 				}).detach();
 				// Выводим результат
@@ -182,26 +184,26 @@ namespace awh {
 						// Создаём бесконечный цикл
 						for(;;){
 							// Выполняем поиск нашего таймера
-							auto it = this->_timers.find(tid);
+							auto i = this->_timers.find(tid);
 							// Если таймер найден
-							if(it != this->_timers.end()){
+							if(i != this->_timers.end()){
 								// Выполняем блокировку уникальным мютексом
-								unique_lock <mutex> lock(it->second->mtx);
+								unique_lock <mutex> lock(i->second->mtx);
 								// Выполняем ожидание на поступление новых заданий
-								it->second->cv.wait_for(lock, chrono::milliseconds(it->second->delay), std::bind(&Timer::checkInputData, this, tid));
+								i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), std::bind(&Timer::checkInputData, this, tid));
 							}{
 								// Выполняем поиск идентификатор таймера
-								auto it = this->_timers.find(tid);
+								auto i = this->_timers.find(tid);
 								// Если идентификатор таймера в списке существует и остановка не подтверждена
-								if((it != this->_timers.end()) && !it->second->stop)
+								if((i != this->_timers.end()) && !i->second->stop)
 									// Выполняем функцию обратного вызова
-									it->second->callback();
+									i->second->callback();
 								// Если была выполнена остановка
-								else if(it != this->_timers.end()) {
+								else if(i != this->_timers.end()) {
 									// Выполняем блокировку потока
 									const lock_guard <mutex> lock(this->_mtx);
 									// Выполняем удаление идентификатора таймера
-									this->_timers.erase(it);
+									this->_timers.erase(i);
 									// Выходим из цикла
 									break;
 								}
@@ -214,11 +216,11 @@ namespace awh {
 						// Выполняем блокировку потока
 						const lock_guard <mutex> lock(this->_mtx);
 						// Выполняем поиск идентификатор таймера
-						auto it = this->_timers.find(tid);
+						auto i = this->_timers.find(tid);
 						// Если идентификатор таймера в списке существует
-						if(it != this->_timers.end())
+						if(i != this->_timers.end())
 							// Выполняем удаление идентификатора таймера
-							this->_timers.erase(it);
+							this->_timers.erase(i);
 					}
 				}).detach();
 				// Выводим результат
@@ -232,13 +234,13 @@ namespace awh {
 				// Выполняем блокировку потока
 				const lock_guard <mutex> lock(this->_mtx);
 				// Выполняем поиск идентификатор таймера
-				auto it = this->_timers.find(tid);
+				auto i = this->_timers.find(tid);
 				// Если идентификатор таймера в списке существует
-				if(it != this->_timers.end()){
+				if(i != this->_timers.end()){
 					// Выполняем установку флага остановки таймера
-					it->second->stop = true;
+					i->second->stop = true;
 					// Отправляем сообщение, что данные записаны
-					it->second->cv.notify_one();
+					i->second->cv.notify_one();
 				}
 			}
 			/**
@@ -259,6 +261,8 @@ namespace awh {
 						timer.second->cv.notify_one();
 					}
 				}
+				// Дожидаемся пока все таймеры будут удалены
+				while(!this->_timers.empty());
 			}
 	} timer_t;
 };
