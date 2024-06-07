@@ -171,6 +171,17 @@ namespace awh {
 			void mode(const set <mode_t> & mode) noexcept;
 		public:
 			/**
+			 * format Метод извлечения установленного формата лога
+			 * @return формат лога для извлечения
+			 */
+			const string & format() const noexcept;
+			/**
+			 * format Метод установки формата даты и времени для вывода лога
+			 * @param format формат даты и времени для вывода лога
+			 */
+			void format(const string & format) noexcept;
+		public:
+			/**
 			 * async Метод установки флага асинхронного режима работы
 			 * @param mode флаг асинхронного режима работы
 			 */
@@ -190,11 +201,6 @@ namespace awh {
 			 * @param level уровень логирования для установки
 			 */
 			void level(const level_t level) noexcept;
-			/**
-			 * format Метод установки формата даты и времени для вывода лога
-			 * @param format формат даты и времени для вывода лога
-			 */
-			void format(const string & format) noexcept;
 			/**
 			 * filename Метод установки файла для сохранения логов
 			 * @param filename адрес файла для сохранения логов

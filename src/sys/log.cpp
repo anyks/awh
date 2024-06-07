@@ -464,6 +464,22 @@ void awh::Log::mode(const set <mode_t> & mode) noexcept {
 	this->_mode = mode;
 }
 /**
+ * format Метод извлечения установленного формата лога
+ * @return формат лога для извлечения
+ */
+const string & awh::Log::format() const noexcept {
+	// Выводим установленный формат
+	return this->_format;
+}
+/**
+ * format Метод установки формата даты и времени для вывода лога
+ * @param format формат даты и времени для вывода лога
+ */
+void awh::Log::format(const string & format) noexcept {
+	// Устанавливаем формат даты и времени для вывода лога
+	this->_format = format;
+}
+/**
  * async Метод установки флага асинхронного режима работы
  * @param mode флаг асинхронного режима работы
  */
@@ -496,14 +512,6 @@ void awh::Log::level(const level_t level) noexcept {
 	this->_level = level;
 }
 /**
- * format Метод установки формата даты и времени для вывода лога
- * @param format формат даты и времени для вывода лога
- */
-void awh::Log::format(const string & format) noexcept {
-	// Устанавливаем формат даты и времени для вывода лога
-	this->_format = format;
-}
-/**
  * filename Метод установки файла для сохранения логов
  * @param filename адрес файла для сохранения логов
  */
@@ -526,10 +534,10 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  */
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
  _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE),
- _level(level_t::ALL), _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
- _filename(filename), _child(nullptr), _fn(nullptr), _fmk(fmk) {
+ _level(level_t::ALL), _name{AWH_SHORT_NAME}, _format{DATE_FORMAT},
+ _filename{filename}, _child(nullptr), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
-	this->_pid = getpid();
+	this->_pid = ::getpid();
 	// Выполняем разрешение на вывод всех видов логов
 	this->_mode = {mode_t::FILE, mode_t::CONSOLE, mode_t::DEFERRED};
 }
