@@ -175,9 +175,9 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 				}
 				// Выполняем запись в файл
 				WriteFile(file, static_cast <LPCVOID> (logData.data()), static_cast <DWORD> (logData.size()), 0, nullptr);
+				// Выполняем закрытие файла
+				CloseHandle(file);
 			}
-			// Выполняем закрытие файла
-			CloseHandle(file);
 			// Выполняем ротацию логов
 			this->rotate();
 		/**

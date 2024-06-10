@@ -143,13 +143,14 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 				// Создаём объект работы с файлом
 				HANDLE file = CreateFileW(this->_fmk->convert(addr).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 				// Если открыть файл открыт нормально
-				if(file != INVALID_HANDLE_VALUE)
+				if(file != INVALID_HANDLE_VALUE){
 					// Если файл является сокетом
 					if(GetFileType(file) == FILE_TYPE_PIPE)
 						// Получаем тип файловой системы
 						result = type_t::SOCK;
-				// Выполняем закрытие файла
-				CloseHandle(file);
+					// Выполняем закрытие файла
+					CloseHandle(file);
+				}
 			#endif
 			/**
 			 * Если операционной системой является MacOS X
@@ -251,11 +252,12 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 						// Создаём объект работы с файлом
 						HANDLE file = CreateFileW(this->_fmk->convert(path).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 						// Если открыть файл открыт нормально
-						if(file != INVALID_HANDLE_VALUE)
+						if(file != INVALID_HANDLE_VALUE){
 							// Получаем размер файла
 							result = static_cast <uintmax_t> (GetFileSize(file, nullptr));
-						// Выполняем закрытие файла
-						CloseHandle(file);
+							// Выполняем закрытие файла
+							CloseHandle(file);
+						}
 					/**
 					 * Выполняем работу для Unix
 					 */
@@ -1444,9 +1446,9 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 					ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
 					// Выполняем чтение данных из буфера
 					readFn(buffer);
+					// Выполняем закрытие файла
+					CloseHandle(file);
 				}
-				// Выполняем закрытие файла
-				CloseHandle(file);
 			/**
 			 * Выполняем работу для Unix
 			 */
