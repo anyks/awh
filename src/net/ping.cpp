@@ -143,8 +143,6 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 		mt19937 generator(this->_randev());
 		// Выполняем генерирование случайного числа
 		uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
-		// Метка отправки данных
-		Send:
 		// Создаём объект заголовков
 		struct IcmpHeader icmp{};
 		// Определяем тип подключения
@@ -174,8 +172,6 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 		icmp.checksum = this->checksum(&icmp, sizeof(icmp));
 		// Если запрос на сервер успешно отправлен
 		if((result = static_cast <int64_t> (::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
-			// Метка повторного получения данных
-			Read:
 			// Буфер для получения данных
 			std::array <char, 1024> buffer;
 			// Результат полученных данных
@@ -194,11 +190,6 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 						 * Если мы работаем не в MS Windows
 						 */
 						#if !defined(_WIN32) && !defined(_WIN64)
-							// Если нужно повторить получение данных
-							case EWOULDBLOCK:
-								// Снова пробуем получить данные
-								goto Read;
-							break;
 							// Если произведена неудачная запись в PIPE
 							case EPIPE: {
 								// Если разрешено выводить информацию в лог
@@ -217,11 +208,6 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 						 * Методы только для OS Windows
 						 */
 						#else
-							// Если нужно повторить получение данных
-							case WSAEWOULDBLOCK:
-								// Снова пробуем получить данные
-								goto Read;
-							break;
 							// Если произведён сброс подключения
 							case WSAECONNRESET: {
 								// Если разрешено выводить информацию в лог
@@ -254,11 +240,6 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 					 * Если мы работаем не в MS Windows
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
-						// Если нужно повторить получение данных
-						case EWOULDBLOCK:
-							// Снова пробуем отправить данные
-							goto Send;
-						break;
 						// Если произведена неудачная запись в PIPE
 						case EPIPE: {
 							// Если разрешено выводить информацию в лог
@@ -277,11 +258,6 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 					 * Методы только для OS Windows
 					 */
 					#else
-						// Если нужно повторить получение данных
-						case WSAEWOULDBLOCK:
-							// Снова пробуем получить данные
-							goto Read;
-						break;
 						// Если произведён сброс подключения
 						case WSAECONNRESET: {
 							// Если разрешено выводить информацию в лог
