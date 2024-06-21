@@ -46,13 +46,8 @@ if [ -n "$1" ]; then
 		clean_submodule "pcre2"
 		clean_submodule "libev"
 		clean_submodule "libev-win"
-		clean_submodule "ngtcp2"
-		# clean_submodule "c-ares"
-		clean_submodule "libxml2"
 		clean_submodule "openssl"
-		# clean_submodule "nghttp3"
 		clean_submodule "nghttp2"
-		# clean_submodule "jansson"
 		clean_submodule "jemalloc"
 		clean_submodule "libevent"
 
@@ -1413,75 +1408,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Сборка LibXML2
-src="$ROOT/submodules/libxml2"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** AWH LibXML2 ******\n"
-	cd "$src" || exit 1
-
-	# Версия LibXML2
-	VER="2.12.6"
-
-	# Выполняем удаление предыдущей закаченной версии
-	git tag -d v${VER}
-	# Закачиваем все изменения
-	git fetch --all
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Выполняем жесткое переключение на master
-	git reset --hard origin/master
-	# Переключаемся на master
-	git checkout master
-	# Выполняем обновление данных
-	git pull origin master
-	# Удаляем старую ветку
-	git branch -D v${VER}-branch
-	# Выполняем переключение на указанную версию
-	git checkout -b v${VER}-branch v${VER}
-
-	# Создаём каталог сборки
-	mkdir -p "build" || exit 1
-	# Переходим в каталог
-	cd "build" || exit 1
-
-	# Удаляем старый файл кэша
-	rm -rf "$src/build/CMakeCache.txt"
-
-	# Выполняем конфигурацию проекта
-	if [[ $OS = "Windows" ]]; then
-		cmake \
-		 -DBUILD_SHARED_LIBS="OFF" \
-		 -DLIBXML2_WITH_LZMA="OFF" \
-		 -DLIBXML2_WITH_ZLIB="OFF" \
-		 -DLIBXML2_WITH_ICONV="OFF" \
-		 -DLIBXML2_WITH_PYTHON="OFF" \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_SYSTEM_NAME=Windows \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -G "MSYS Makefiles" \
-		 .. || exit 1
-	else
-		cmake \
-		 -DBUILD_SHARED_LIBS="OFF" \
-		 -DLIBXML2_WITH_LZMA="OFF" \
-		 -DLIBXML2_WITH_ZLIB="OFF" \
-		 -DLIBXML2_WITH_ICONV="OFF" \
-		 -DLIBXML2_WITH_PYTHON="OFF" \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 .. || exit 1
-	fi
-
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
-	# Выполняем установку проекта
-	make install || exit 1
-
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
-fi
-
 # Если операцинная система не относится к MS Windows
 if [[ ! $OS = "Windows" ]]; then
 	# Сборка JeMalloc
@@ -1549,211 +1475,6 @@ if [[ ! $OS = "Windows" ]]; then
 	fi
 fi
 
-## Сборка NgHttp3
-#src="$ROOT/submodules/nghttp3"
-#if [ ! -f "$src/.stamp_done" ]; then
-#	printf "\n****** NgHttp3 ******\n"
-#	cd "$src" || exit 1
-#
-#	# Версия NgHttp3
-#	VER="1.3.0"
-#
-#	# Переключаемся на main
-#	git checkout main
-#	# Выполняем удаление предыдущей закаченной версии
-#	git tag -d v${VER}
-#	# Закачиваем все теги
-#	git fetch --all --tags
-#	# Удаляем старую ветку
-#	git branch -D v${VER}-branch
-#	# Выполняем переключение на указанную версию
-#	git checkout -b v${VER}-branch v${VER}
-#
-#	# Каталог для сборки
-#	build="out"
-#
-#	# Создаём каталог сборки
-#	mkdir -p ${build} || exit 1
-#	# Переходим в каталог
-#	cd ${build} || exit 1
-#
-#	# Удаляем старый файл кэша
-#	rm -rf ./CMakeCache.txt
-#
-#	# Деактивируем режим отладки
-#	ENABLE_DEBUG="OFF"
-#	# Деактивируем сборку отладочной информации
-#	BUILD_TYPE="Release"
-#
-#	# Если режим отладки активирован
-#	if [[ $DEBUG = "yes" ]]; then
-#		# Активируем режим отладки
-#		ENABLE_DEBUG="ON"
-#		# Активируем сборку отладочной информации
-#		BUILD_TYPE="Debug"
-#	fi
-#
-#	# Выполняем конфигурацию проекта
-#	if [[ $OS = "Windows" ]]; then
-#		cmake \
-#		 -DCMAKE_SYSTEM_NAME="Windows" \
-#		 -DENABLE_STATIC_CRT="ON" \
-#		 -DENABLE_EXAMPLES="OFF" \
-#		 -DENABLE_LIB_ONLY="ON" \
-#		 -DENABLE_STATIC_LIB="ON" \
-#		 -DENABLE_SHARED_LIB="OFF" \
-#		 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-#		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-#		 -G "MSYS Makefiles" \
-#		 .. || exit 1
-#	else
-#		cmake \
-#		 -DENABLE_EXAMPLES="OFF" \
-#		 -DENABLE_LIB_ONLY="ON" \
-#		 -DENABLE_STATIC_LIB="ON" \
-#		 -DENABLE_SHARED_LIB="OFF" \
-#		 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-#		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-#		 .. || exit 1
-#	fi
-#
-#	# Выполняем сборку на всех логических ядрах
-#	make -j"$numproc" || exit 1
-#	# Выполняем установку проекта
-#	make install || exit 1
-#
-#	# Помечаем флагом, что сборка и установка произведена
-#	touch "$src/.stamp_done"
-#	cd "$ROOT" || exit 1
-#fi
-
-# Сборка NgTCP2
-src="$ROOT/submodules/ngtcp2"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** NgTCP2 ******\n"
-	cd "$src" || exit 1
-
-	# Версия NgTCP2
-	VER="1.5.0"
-
-	# Переключаемся на main
-	git checkout main
-	# Выполняем удаление предыдущей закаченной версии
-	git tag -d v${VER}
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Удаляем старую ветку
-	git branch -D v${VER}-branch
-	# Выполняем переключение на указанную версию
-	git checkout -b v${VER}-branch v${VER}
-
-	# Каталог для сборки
-	build="out"
-
-	# Создаём каталог сборки
-	mkdir -p ${build} || exit 1
-	# Переходим в каталог
-	cd ${build} || exit 1
-
-	# Удаляем старый файл кэша
-	rm -rf ./CMakeCache.txt
-
-	# Деактивируем режим отладки
-	ENABLE_DEBUG="OFF"
-	# Деактивируем сборку отладочной информации
-	BUILD_TYPE="Release"
-
-	# Если режим отладки активирован
-	if [[ $DEBUG = "yes" ]]; then
-		# Активируем режим отладки
-		ENABLE_DEBUG="ON"
-		# Активируем сборку отладочной информации
-		BUILD_TYPE="Debug"
-	fi
-
-	### Для подключения NgHTTP3
-	# -DLIBNGHTTP3_LIBRARY="$PREFIX/lib"
-	# -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include"
-
-	# Выполняем конфигурацию проекта
-	if [[ $OS = "Windows" ]]; then
-		# Если нужно собрать модуль LibEvent2
-		if [[ $LIBEVENT2 = "yes" ]]; then
-			cmake \
-			 -DCMAKE_SYSTEM_NAME="Windows" \
-			 -DENABLE_STATIC_LIB="ON" \
-			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_JEMALLOC="OFF" \
-			 -DENABLE_OPENSSL="ON" \
-			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
-			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			 -G "MSYS Makefiles" \
-			 .. || exit 1
-		# Если нужно собрать модуль LibEv
-		else
-			cmake \
-			 -DCMAKE_SYSTEM_NAME="Windows" \
-			 -DENABLE_STATIC_LIB="ON" \
-			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_JEMALLOC="OFF" \
-			 -DENABLE_OPENSSL="ON" \
-			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
-			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			 -DLIBEV_LIBRARY="$PREFIX/lib" \
-		 	 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
-			 -G "MSYS Makefiles" \
-			 .. || exit 1
-		fi
-	else
-		# Если нужно собрать модуль LibEvent2
-		if [[ $LIBEVENT2 = "yes" ]]; then
-			cmake \
-			 -DENABLE_STATIC_LIB="ON" \
-			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_JEMALLOC="ON" \
-			 -DENABLE_OPENSSL="ON" \
-			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
-			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 .. || exit 1
-		# Если нужно собрать модуль LibEv
-		else
-			cmake \
-			 -DENABLE_STATIC_LIB="ON" \
-			 -DENABLE_SHARED_LIB="OFF" \
-			 -DENABLE_JEMALLOC="ON" \
-			 -DENABLE_OPENSSL="ON" \
-			 -DHAVE_LIBEVENT_OPENSSL="OFF" \
-			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DLIBEV_LIBRARY="$PREFIX/lib" \
-			 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
-			 .. || exit 1
-		fi
-	fi
-
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
-	# Выполняем установку проекта
-	make install || exit 1
-
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
-fi
-
 # Сборка NgHttp2
 src="$ROOT/submodules/nghttp2"
 if [ ! -f "$src/.stamp_done" ]; then
@@ -1798,16 +1519,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		BUILD_TYPE="Debug"
 	fi
 
-	### Для подключения NgHTTP3
-	# -DLIBNGHTTP3_LIBRARY="$PREFIX/lib"
-	# -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include"
-
-	### Зависимости которые нежелательны в связи с дублированием функционала
-	# -DLIBCARES_LIBRARIES="$PREFIX/lib"
-	# -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares"
-	# -DJANSSON_LIBRARIES="$PREFIX/lib"
-	# -DJANSSON_INCLUDE_DIR="$PREFIX/include/jansson"
-
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		cmake \
@@ -1816,7 +1527,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DENABLE_APP="OFF" \
 		 -DENABLE_DOC="OFF" \
 		 -DWITH_MRUBY="OFF" \
-		 -DWITH_LIBXML2="ON" \
+		 -DWITH_LIBXML2="OFF" \
 		 -DWITH_LIBBPF="OFF" \
 		 -DWITH_NEVERBLEED="OFF" \
 		 -DENABLE_HTTP3="OFF" \
@@ -1833,10 +1544,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-		 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
-		 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
-		 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
-		 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
 		 -G "MSYS Makefiles" \
 		 .. || exit 1
 	else
@@ -1844,7 +1551,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DENABLE_APP="OFF" \
 		 -DENABLE_DOC="OFF" \
 		 -DWITH_MRUBY="OFF" \
-		 -DWITH_LIBXML2="ON" \
+		 -DWITH_LIBXML2="OFF" \
 		 -DWITH_LIBBPF="OFF" \
 		 -DWITH_NEVERBLEED="OFF" \
 		 -DENABLE_HTTP3="OFF" \
@@ -1861,12 +1568,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-		 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
-		 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
 		 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
 		 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
-		 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
-		 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
 		.. || exit 1
 	fi
 

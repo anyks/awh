@@ -19,10 +19,7 @@ find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${CMAKE_SOURCE_DIR}/thi
 find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
 find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/pcre2 NO_DEFAULT_PATH)
-find_path(NGTCP2_INCLUDE_DIR NAMES ngtcp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/ngtcp2 NO_DEFAULT_PATH)
 find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp2 NO_DEFAULT_PATH)
-#find_path(NGHTTP3_INCLUDE_DIR NAMES nghttp3.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp3 NO_DEFAULT_PATH)
-find_path(XML_INCLUDE_DIR NAMES libxml/xmlmemory.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/libxml2 NO_DEFAULT_PATH)
 
 # Если операцинная система не относится к MS Windows
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -81,10 +78,7 @@ if(CMAKE_BUILD_EVENT2)
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
                 JEMALLOC_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 IDN2_INCLUDE_DIR
                 ICONV_INCLUDE_DIR
@@ -111,10 +105,7 @@ if(CMAKE_BUILD_EVENT2)
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
                 JEMALLOC_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 IDN2_INCLUDE_DIR
                 ICONV_INCLUDE_DIR
@@ -138,10 +129,7 @@ if(CMAKE_BUILD_EVENT2)
             ${OPENSSL_INCLUDE_DIR}
             ${PCRE_INCLUDE_DIR}
             ${JEMALLOC_INCLUDE_DIR}
-            ${NGTCP2_INCLUDE_DIR}
             ${NGHTTP2_INCLUDE_DIR}
-            #${NGHTTP3_INCLUDE_DIR}
-            ${XML_INCLUDE_DIR}
             ${JSON_INCLUDE_DIR}
             ${IDN2_INCLUDE_DIR}
             ${ICONV_INCLUDE_DIR}
@@ -170,10 +158,7 @@ if(CMAKE_BUILD_EVENT2)
                 CITY_INCLUDE_DIR
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 LIBEVENT_INCLUDE_DIR
 
@@ -197,10 +182,7 @@ if(CMAKE_BUILD_EVENT2)
                 CITY_INCLUDE_DIR
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 LIBEVENT_INCLUDE_DIR
 
@@ -221,10 +203,7 @@ if(CMAKE_BUILD_EVENT2)
             ${CITY_INCLUDE_DIR}
             ${OPENSSL_INCLUDE_DIR}
             ${PCRE_INCLUDE_DIR}
-            ${NGTCP2_INCLUDE_DIR}
             ${NGHTTP2_INCLUDE_DIR}
-            #${NGHTTP3_INCLUDE_DIR}
-            ${XML_INCLUDE_DIR}
             ${JSON_INCLUDE_DIR}
             ${LIBEVENT_INCLUDE_DIR}
         )
@@ -250,10 +229,7 @@ if(CMAKE_BUILD_EVENT2)
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
                 JEMALLOC_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 LIBEVENT_INCLUDE_DIR
 
@@ -278,10 +254,7 @@ if(CMAKE_BUILD_EVENT2)
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
                 JEMALLOC_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 LIBEVENT_INCLUDE_DIR
 
@@ -303,10 +276,7 @@ if(CMAKE_BUILD_EVENT2)
             ${OPENSSL_INCLUDE_DIR}
             ${PCRE_INCLUDE_DIR}
             ${JEMALLOC_INCLUDE_DIR}
-            ${NGTCP2_INCLUDE_DIR}
             ${NGHTTP2_INCLUDE_DIR}
-            #${NGHTTP3_INCLUDE_DIR}
-            ${XML_INCLUDE_DIR}
             ${JSON_INCLUDE_DIR}
             ${LIBEVENT_INCLUDE_DIR}
         )
@@ -335,10 +305,7 @@ else(CMAKE_BUILD_EVENT2)
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
                 JEMALLOC_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 IDN2_INCLUDE_DIR
                 ICONV_INCLUDE_DIR
@@ -367,10 +334,7 @@ else(CMAKE_BUILD_EVENT2)
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
                 JEMALLOC_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 IDN2_INCLUDE_DIR
                 ICONV_INCLUDE_DIR
@@ -396,10 +360,7 @@ else(CMAKE_BUILD_EVENT2)
             ${OPENSSL_INCLUDE_DIR}
             ${PCRE_INCLUDE_DIR}
             ${JEMALLOC_INCLUDE_DIR}
-            ${NGTCP2_INCLUDE_DIR}
             ${NGHTTP2_INCLUDE_DIR}
-            #${NGHTTP3_INCLUDE_DIR}
-            ${XML_INCLUDE_DIR}
             ${JSON_INCLUDE_DIR}
             ${IDN2_INCLUDE_DIR}
             ${ICONV_INCLUDE_DIR}
@@ -428,10 +389,7 @@ else(CMAKE_BUILD_EVENT2)
                 CITY_INCLUDE_DIR
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 LIBEV_EV_INCLUDE_DIR
                 LIBEV_EVPP_INCLUDE_DIR
@@ -457,10 +415,7 @@ else(CMAKE_BUILD_EVENT2)
                 CITY_INCLUDE_DIR
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 LIBEV_EV_INCLUDE_DIR
                 LIBEV_EVPP_INCLUDE_DIR
@@ -483,10 +438,7 @@ else(CMAKE_BUILD_EVENT2)
             ${CITY_INCLUDE_DIR}
             ${OPENSSL_INCLUDE_DIR}
             ${PCRE_INCLUDE_DIR}
-            ${NGTCP2_INCLUDE_DIR}
             ${NGHTTP2_INCLUDE_DIR}
-            #${NGHTTP3_INCLUDE_DIR}
-            ${XML_INCLUDE_DIR}
             ${JSON_INCLUDE_DIR}
             ${LIBEV_EV_INCLUDE_DIR}
         )
@@ -512,10 +464,7 @@ else(CMAKE_BUILD_EVENT2)
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
                 JEMALLOC_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 LIBEV_EV_INCLUDE_DIR
                 LIBEV_EVPP_INCLUDE_DIR
@@ -542,10 +491,7 @@ else(CMAKE_BUILD_EVENT2)
                 OPENSSL_INCLUDE_DIR
                 PCRE_INCLUDE_DIR
                 JEMALLOC_INCLUDE_DIR
-                NGTCP2_INCLUDE_DIR
                 NGHTTP2_INCLUDE_DIR
-                #NGHTTP3_INCLUDE_DIR
-                XML_INCLUDE_DIR
                 JSON_INCLUDE_DIR
                 LIBEV_EV_INCLUDE_DIR
                 LIBEV_EVPP_INCLUDE_DIR
@@ -569,10 +515,7 @@ else(CMAKE_BUILD_EVENT2)
             ${OPENSSL_INCLUDE_DIR}
             ${PCRE_INCLUDE_DIR}
             ${JEMALLOC_INCLUDE_DIR}
-            ${NGTCP2_INCLUDE_DIR}
             ${NGHTTP2_INCLUDE_DIR}
-            #${NGHTTP3_INCLUDE_DIR}
-            ${XML_INCLUDE_DIR}
             ${JSON_INCLUDE_DIR}
             ${LIBEV_EV_INCLUDE_DIR}
         )
@@ -595,14 +538,11 @@ install(DIRECTORY "${AWH_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/incl
 install(DIRECTORY "${JSON_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hpp")
 install(DIRECTORY "${LZ4_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BZ2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${XML_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZSTD_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${LZMA_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${NGTCP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-#install(DIRECTORY "${NGHTTP3_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${CITY_INCLUDE_DIR}/cityhash" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
