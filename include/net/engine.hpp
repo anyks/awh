@@ -224,6 +224,16 @@ namespace awh {
 					const log_t * _log;
 				private:
 					/**
+					 * Если операционной системой является Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Объект данных запроса
+						WSADATA _wsaData;
+						// Флаг инициализации WinSocksAPI
+						bool _winSockInit;
+					#endif
+				private:
+					/**
 					 * close Метод закрытия подключения
 					 */
 					bool close() noexcept;
