@@ -276,6 +276,11 @@ set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
 set(CLIENT_APP_NAME client)
 set(SERVER_APP_NAME server)
+
+
+set(SERVER_TEST_APP_NAME test_srv)
+set(CLIENT_TEST_APP_NAME test_cli)
+
 set(WS_CLIENT_APP_NAME wsClient)
 set(WS_SERVER_APP_NAME wsServer)
 set(WEB_CLIENT_APP_NAME webClient)
@@ -326,6 +331,10 @@ endif(CMAKE_SHARED_BUILD_LIB)
     add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp ${RES_FILES})
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
+
+    add_executable(${SERVER_TEST_APP_NAME} sample/test_srv.cpp ${RES_FILES})
+    add_executable(${CLIENT_TEST_APP_NAME} sample/test_cli.cpp ${RES_FILES})
+
 # Если операционной системой является Linux, FreeBSD, MacOS X
 else()
     # Выполняем создание демонстрационных приложений
@@ -343,6 +352,10 @@ else()
     add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp)
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp)
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp)
+
+    add_executable(${SERVER_TEST_APP_NAME} sample/test_srv.cpp)
+    add_executable(${CLIENT_TEST_APP_NAME} sample/test_cli.cpp)
+
 endif()
 
 # Если нужно собрать и динамическую библиотеку
@@ -789,6 +802,26 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+
+
+        # Выполняем сборку тестового отладочного сервера
+        target_link_libraries(
+            ${SERVER_TEST_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку тестового отладочного клиента
+        target_link_libraries(
+            ${CLIENT_TEST_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
     # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
     elseif(CMAKE_BUILD_IDN)
 
@@ -904,6 +937,23 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+
+        # Выполняем сборку тестового отладочного сервера
+        target_link_libraries(
+            ${SERVER_TEST_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку тестового отладочного клиента
+        target_link_libraries(
+            ${CLIENT_TEST_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${AWH_IDN}
+        )
+
     # Если операционной системой является Linux, FreeBSD, MacOS X
     else()
 
@@ -1001,6 +1051,20 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+        )
+
+        # Выполняем сборку тестового отладочного сервера
+        target_link_libraries(
+            ${SERVER_TEST_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+        )
+
+        # Выполняем сборку тестового отладочного клиента
+        target_link_libraries(
+            ${CLIENT_TEST_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )

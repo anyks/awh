@@ -19,6 +19,8 @@
  * Стандартные модули
  */
 #include <map>
+#include <set>
+#include <ctime>
 #include <mutex>
 #include <thread>
 #include <chrono>
@@ -55,9 +57,18 @@ using namespace std;
  */
 namespace awh {
 	/**
+	 * Event Прототип класса события AWHEvent
+	 */
+	class Event;
+	/**
 	 * Base Класс базы событий
 	 */
 	typedef class Base {
+		private:
+			/**
+			 * Event Устанавливаем дружбу с модулем события
+			 */
+			friend class Event;
 		public:
 			/**
 			 * Тип режима получения события
@@ -92,13 +103,6 @@ namespace awh {
 				SOCKET fd;
 				// Функция обратного вызова
 				callback_t callback;
-				/**
-				 * Если это FreeBSD или MacOS X
-				 */
-				#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(_WIN32) || defined(_WIN64)
-					// Список индексов типов события
-					std::map <event_type_t, size_t> indexes;
-				#endif
 				// Список соответствия типов событий режиму работы
 				std::map <event_type_t, event_mode_t> mode;
 				/**
@@ -162,8 +166,6 @@ namespace awh {
 		private:
 			// Список отслеживаемых участников
 			std::map <SOCKET, item_t> _items;
-			// Список индексов файловых дескрипторов
-			std::multimap <SOCKET, size_t> _indexes;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -192,11 +194,10 @@ namespace awh {
 			/**
 			 * add Метод добавления файлового дескриптора в базу событий
 			 * @param fd       файловый дескриптор для добавления
-			 * @param type     тип отслеживаемого события
 			 * @param callback функция обратного вызова при получении события
 			 * @return         результат работы функции
 			 */
-			bool add(const SOCKET fd, const event_type_t type, callback_t callback = nullptr) noexcept;
+			bool add(const SOCKET fd, callback_t callback = nullptr) noexcept;
 		private:
 			/**
 			 * mode Метод установки режима работы модуля
@@ -264,6 +265,82 @@ namespace awh {
 			 */
 			~Base() noexcept;
 	} base_t;
+	/**
+	 * Event Класс события AWHEvent
+	 */
+	typedef class Event {
+		private:
+			// Мютекс для блокировки основного потока
+			mutex _mtx;
+		private:
+			// Режим активации события
+			bool _mode;
+		private:
+			// Файловый дескриптор
+			SOCKET _fd;
+		private:
+			// Функция обратного вызова
+			base_t::callback_t _callback;
+		private:
+			// База данных событий
+			base_t * _base;
+		private:
+			// Создаём объект фреймворка
+			const fmk_t * _fmk;
+			// Создаём объект работы с логами
+			const log_t * _log;
+		public:
+			/**
+			 * set Метод установки базы событий
+			 * @param base база событий для установки
+			 */
+			void set(base_t * base) noexcept;
+			/**
+			 * set Метод установки файлового дескриптора и списка событий
+			 * @param fd файловый дескриптор для установки
+			 */
+			void set(const SOCKET fd) noexcept;
+			/**
+			 * set Метод установки функции обратного вызова
+			 * @param callback функция обратного вызова
+			 */
+			void set(base_t::callback_t callback) noexcept;
+		public:
+			/**
+			 * Метод удаления типа события
+			 * @param type тип события для удаления
+			 */
+			void del(const base_t::event_type_t type) noexcept;
+		public:
+			/**
+			 * mode Метод установки режима работы модуля
+			 * @param type тип событий модуля для которого требуется сменить режим работы
+			 * @param mode флаг режима работы модуля
+			 * @return     результат работы функции
+			 */
+			bool mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept;
+		public:
+			/**
+			 * stop Метод остановки работы события
+			 */
+			void stop() noexcept;
+			/**
+			 * start Метод запуска работы события
+			 */
+			void start() noexcept;
+		public:
+			/**
+			 * Event Конструктор
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 */
+			Event(const fmk_t * fmk, const log_t * log) noexcept :
+			 _mode(false), _fd(INVALID_SOCKET), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
+			/**
+			 * ~Event Деструктор
+			 */
+			~Event() noexcept;
+	} event_t;
 };
 
 #endif // __AWH_EVENTS__
