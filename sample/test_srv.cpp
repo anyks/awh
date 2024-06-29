@@ -31,175 +31,6 @@ struct Peer {
 
 int fd = -1;
 
-static bool noSigILL() noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Создаем структуру активации сигнала
-	struct sigaction act;
-	// Зануляем структуру
-	::memset(&act, 0, sizeof(act));
-	// Устанавливаем макрос игнорирования сигнала
-	act.sa_handler = SIG_IGN;
-	// Устанавливаем флаги перезагрузки
-	act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
-	// Устанавливаем блокировку сигнала
-	if(!(result = !static_cast <bool> (::sigaction(SIGILL, &act, nullptr))))
-		// Выводим в лог информацию
-		printf("Warning: cannot set SIG_IGN on signal SIGILL [%s]", ::strerror(errno));
-	// Все удачно
-	return result;
-}
-
-static bool noSigPIPE(const int fd) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Устанавливаем параметр
-	const int on = 1;
-	// Устанавливаем SO_NOSIGPIPE
-	if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on)))))
-		// Выводим в лог информацию
-		printf("Warning: cannot set SO_NOSIGPIPE option on SOCKET=%d [%s]", fd, ::strerror(errno));
-	// Выводим результат
-	return result;
-}
-
-static bool keepAlive(const int fd, const int cnt, const int idle, const int intvl) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Устанавливаем параметр
-	int keepAlive = 1;
-	// Активация постоянного подключения
-	if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(keepAlive))))){
-		// Выводим в лог информацию
-		printf("Warning: cannot set SO_KEEPALIVE option on SOCKET=%d [%s]", fd, ::strerror(errno));
-		// Выходим из функции
-		return result;
-	}
-	// Максимальное количество попыток
-	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
-		// Выводим в лог информацию
-		printf("Warning: cannot set TCP_KEEPCNT option on SOCKET=%d [%s]", fd, ::strerror(errno));
-		// Выходим из функции
-		return result;
-	}
-	/**
-	 * Если мы работаем в MacOS X
-	 */
-	#ifdef __APPLE__
-		// Время через которое происходит проверка подключения
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
-			// Выводим в лог информацию
-			printf("Warning: cannot set TCP_KEEPALIVE option on SOCKET=%d [%s]", fd, ::strerror(errno));
-			// Выходим из функции
-			return result;
-		}
-	/**
-	 * Если мы работаем в FreeBSD или Linux
-	 */
-	#elif __linux__ || __FreeBSD__
-		// Время через которое происходит проверка подключения
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
-			// Выводим в лог информацию
-			printf("Warning: cannot set TCP_KEEPIDLE option on SOCKET=%d [%s]", fd, ::strerror(errno));
-			// Выходим из функции
-			return result;
-		}
-	#endif
-	// Время между попытками
-	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))))
-		// Выводим в лог информацию
-		printf("Warning: cannot set TCP_KEEPINTVL option on SOCKET=%d [%s]", fd, ::strerror(errno));
-	// Выводим результат
-	return result;
-}
-
-/**
- * reuseable Метод разрешающая повторно использовать сокет после его удаления
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
- */
-static bool reuseable(const int fd) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Устанавливаем параметр
-	const int on = 1;
-	// Разрешаем повторно использовать тот же host:port после отключения
-	if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on))))){
-		// Выводим в лог информацию
-		printf("Warning: cannot set SO_REUSEADDR option on SOCKET=%d [%s]", fd, ::strerror(errno));
-		// Выходим из функции
-		return result;
-	}
-	/**
-	 * Если операционная система не является Linux
-	 */
-	#if !defined(__linux__)
-		// Разрешаем повторно использовать тот же host:port после отключения
-		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&on), sizeof(on)))))
-			// Выводим в лог информацию
-			printf("Warning: cannot set SO_REUSEPORT option on SOCKET=%d [%s]", fd, ::strerror(errno));
-	#endif
-	// Выводим результат
-	return result;
-}
-
-static int bufferSize(const int fd, const bool mode = true) noexcept {
-	// Результат работы функции
-	int result = 0;
-	// Размер результата
-	socklen_t size = sizeof(result);
-	// Если необходимо получить размер буфера на чтение
-	if(mode){
-		// Считываем установленный размер буфера
-		if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&result), &size)))
-			// Выводим в лог информацию
-			printf("Warning: get buffer read size wrong on SOCKET=%d [%s]", fd, ::strerror(errno));
-	// Если необходимо получить размер буфера на запись
-	} else {
-		// Считываем установленный размер буфера
-		if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&result), &size)))
-			// Выводим в лог информацию
-			printf("Warning: get buffer write size wrong on SOCKET=%d [%s]", fd, ::strerror(errno));
-	}
-	// Выводим результат
-	return result;
-}
-
-static bool blocking(const int fd, const bool mode = true) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Флаги файлового дескриптора
-	int flags = 0;		
-	// Получаем флаги файлового дескриптора
-	if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
-		// Выводим в лог информацию
-		printf("Warning: cannot get BLOCK option on SOCKET=%d [%s]", fd, ::strerror(errno));
-		// Выходим из функции
-		return result;
-	}
-	// Если необходимо перевести сокет в блокирующий режим
-	if(mode){
-		// Если флаг уже установлен
-		if(flags & O_NONBLOCK){
-			// Устанавливаем неблокирующий режим
-			if(!(result = (::fcntl(fd, F_SETFL, flags ^ O_NONBLOCK) >= 0)))
-				// Выводим в лог информацию
-				printf("Warning: cannot set BLOCK option on SOCKET=%d [%s]", fd, ::strerror(errno));
-		}
-	// Если необходимо перевести сокет в неблокирующий режим
-	} else {
-		// Если флаг ещё не установлен
-		if(!(flags & O_NONBLOCK)){
-			// Устанавливаем неблокирующий режим
-			if(!(result = (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) >= 0)))
-				// Выводим в лог информацию
-				printf("Warning: cannot set NON_BLOCK option on SOCKET=%d [%s]", fd, ::strerror(errno));
-		}
-	}
-	// Выводим результат
-	return result;
-}
-
 static string get_host(const int family) noexcept {
 	// Определяем тип подключения
 	switch(family){
@@ -212,7 +43,7 @@ static string get_host(const int family) noexcept {
 	return "";
 }
 
-static bool accept(const int sock, const int family) noexcept {
+static bool accept(const int sock, const int family, socket_t * mod) noexcept {
 	// Заполняем структуру клиента нулями
 	::memset(&peer.client, 0, sizeof(peer.client));
 	// Определяем тип подключения
@@ -257,15 +88,15 @@ static bool accept(const int sock, const int family) noexcept {
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Выполняем игнорирование сигнала неверной инструкции процессора
-			noSigILL();
+			mod->noSigILL();
 			// Отключаем сигнал записи в оборванное подключение
-			noSigPIPE(fd);
+			mod->noSigPIPE(fd);
 			// Активируем KeepAlive
-			keepAlive(fd, 3, 1, 2);
+			mod->keepAlive(fd, 3, 1, 2);
 			// Устанавливаем разрешение на повторное использование сокета
-			reuseable(fd);
+			mod->reuseable(fd);
 			// Переводим сокет в не блокирующий режим
-			blocking(fd, false);
+			mod->blocking(fd, socket_t::mode_t::DISABLE);
 		} break;
 	}
 	// Выводим результат
@@ -460,7 +291,7 @@ static bool listing(int fd) noexcept {
 	return result;
 }
 
-static void init(const string & ip, const u_int port, const int family) noexcept {
+static void init(const string & ip, const u_int port, const int family, socket_t * mod) noexcept {
 	// Если IP адрес передан
 	if(!ip.empty() && (port <= 65535)){
 		// Если список сетевых интерфейсов установлен
@@ -544,9 +375,9 @@ static void init(const string & ip, const u_int port, const int family) noexcept
 				return;
 			}
 			// Выполняем игнорирование сигнала неверной инструкции процессора
-			noSigILL();
+			mod->noSigILL();
 			// Отключаем сигнал записи в оборванное подключение
-			noSigPIPE(fd);
+			mod->noSigPIPE(fd);
 			/*
 			// Включаем отображение сети IPv4 в IPv6
 			if(family == AF_INET6)
@@ -554,9 +385,9 @@ static void init(const string & ip, const u_int port, const int family) noexcept
 				onlyIPv6(fd, onlyV6 ? socket_t::mode_t::ENABLE : socket_t::mode_t::DISABLE);
 			*/
 			// Переводим сокет в не блокирующий режим
-			blocking(fd, false);
+			mod->blocking(fd, socket_t::mode_t::DISABLE);
 			// Устанавливаем разрешение на повторное использование сокета
-			reuseable(fd);
+			mod->reuseable(fd);
 			// Выполняем бинд на сокет
 			if(::bind(fd, reinterpret_cast <struct sockaddr *> (&peer.server), peer.size) < 0){
 				// Выводим в лог сообщение
@@ -584,7 +415,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	init("127.0.0.1", 2222, AF_INET);
+	socket_t mod(&fmk, &log);
+
+	init("127.0.0.1", 2222, AF_INET, &mod);
 
 	const int sock = fd;
 
@@ -598,7 +431,7 @@ int main(int argc, char * argv[]){
 		event_t client(&fmk, &log);
 
 		auto acceptFn = [&](const SOCKET sock, const base_t::event_type_t event) noexcept -> void {
-			if(accept(sock, AF_INET)){
+			if(accept(sock, AF_INET, &mod)){
 				cout << " Accept " << sock << " to " << fd << endl;
 
 				client.set(fd);
@@ -620,7 +453,7 @@ int main(int argc, char * argv[]){
 				case static_cast <uint8_t> (base_t::event_type_t::READ): {
 					cout << " Read " << fd << endl;
 
-					ssize_t size = bufferSize(fd);
+					ssize_t size = mod.bufferSize(fd, socket_t::mode_t::READ);
 
 					char * buffer = new char[size];
 
