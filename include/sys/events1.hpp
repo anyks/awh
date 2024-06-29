@@ -108,7 +108,7 @@ namespace awh {
 				/**
 				 * Item Конструктор
 				 */
-				Item() noexcept : fd(-1), callback(nullptr) {}
+				Item() noexcept : fd(INVALID_SOCKET), callback(nullptr) {}
 			} item_t;
 		private:
 			// Флаг запуска работы базы событий

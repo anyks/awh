@@ -78,7 +78,7 @@ void awh::Base::init(const bool mode) noexcept {
 		 */
 		#elif __linux__
 			// Выполняем инициализацию EPoll
-			if((this->_efd = epoll_create(this->_maxCount)) == -1){
+			if((this->_efd = epoll_create(this->_maxCount)) == INVALID_SOCKET){
 				// Выводим сообщение об ошибке
 				this->_log->print("Events base is not init: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 				// Выходим принудительно из приложения
@@ -91,7 +91,7 @@ void awh::Base::init(const bool mode) noexcept {
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Выполняем инициализацию Kqueue
-			if((this->_kq = kqueue()) == -1){
+			if((this->_kq = kqueue()) == INVALID_SOCKET){
 				// Выводим сообщение об ошибке
 				this->_log->print("Events base is not init: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 				// Выходим принудительно из приложения
@@ -134,7 +134,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
-	if(fd > -1){
+	if(fd != INVALID_SOCKET){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -160,7 +160,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 							// Выполняем закрытие подключения
 							::closesocket(j->fd);
 							// Выполняем сброс файлового дескриптора
-							j->fd = -1;
+							j->fd = INVALID_SOCKET;
 							// Выполняем удаление события из списка отслеживания
 							this->_fds.erase(j);
 							// Выходим из цикла
@@ -294,7 +294,7 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
-	if(fd > -1){
+	if(fd != INVALID_SOCKET){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -624,7 +624,7 @@ bool awh::Base::add(const SOCKET fd, callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
-	if(fd > -1){
+	if(fd != INVALID_SOCKET){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -775,7 +775,7 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
-	if(fd > -1){
+	if(fd != INVALID_SOCKET){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1028,7 +1028,7 @@ void awh::Base::clear() noexcept {
 				// Выполняем закрытие подключения
 				::closesocket(i->fd);
 				// Выполняем сброс файлового дескриптора
-				i->fd = -1;
+				i->fd = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
 				i = this->_fds.erase(i);
 			}
@@ -1216,7 +1216,7 @@ void awh::Base::start() noexcept {
 										// Если дисконнекта не получилось
 										} else {
 											// Если в сокете появились данные для чтения
-											if(this->_fds.at(i).revents & POLLIN) {
+											if((i < this->_fds.size()) && (this->_fds.at(i).revents & POLLIN)){
 												// Получаем файловый дескриптор
 												SOCKET fd = this->_fds.at(i).fd;
 												// Выполняем поиск указанной записи
@@ -1236,7 +1236,7 @@ void awh::Base::start() noexcept {
 												} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
 											}
 											// Если сокет доступен для записи
-											if(this->_fds.at(i).revents & POLLOUT){
+											if((i < this->_fds.size()) && (this->_fds.at(i).revents & POLLOUT)){
 												// Получаем файловый дескриптор
 												SOCKET fd = this->_fds.at(i).fd;
 												// Выполняем поиск указанной записи
@@ -1256,8 +1256,10 @@ void awh::Base::start() noexcept {
 												} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
 											}
 										}
-										// Обнуляем количество событий
-										this->_fds.at(i).revents = 0;
+										// Если записей достаточно в списке
+										if(i < this->_fds.size())
+											// Обнуляем количество событий
+											this->_fds.at(i).revents = 0;
 									// Выходим из цикла
 									} else break;
 								}
@@ -1324,7 +1326,7 @@ void awh::Base::start() noexcept {
 										// Если дисконнекта не получилось
 										} else {
 											// Если в сокете появились данные для чтения
-											if(this->_events.at(i).events & EPOLLIN){
+											if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLIN)){
 												// Получаем объект текущего события
 												item_t * item = reinterpret_cast <item_t *> (this->_events.at(i).data.ptr);
 												// Если объект текущего события получен
@@ -1342,7 +1344,7 @@ void awh::Base::start() noexcept {
 												} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, item->fd);
 											}
 											// Если сокет доступен для записи
-											if(this->_events.at(i).events & EPOLLOUT){
+											if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLOUT)){
 												// Получаем объект текущего события
 												item_t * item = reinterpret_cast <item_t *> (this->_events.at(i).data.ptr);
 												// Если объект текущего события получен
@@ -1426,7 +1428,7 @@ void awh::Base::start() noexcept {
 										// Если дисконнекта не получилось
 										} else {
 											// Если в сокете появились данные для чтения
-											if(this->_events.at(i).filter & EVFILT_READ){
+											if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).filter & EVFILT_READ)){
 												// Получаем объект текущего события
 												item_t * item = reinterpret_cast <item_t *> (this->_events.at(i).udata);
 												// Если объект текущего события получен
@@ -1444,7 +1446,7 @@ void awh::Base::start() noexcept {
 												} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, item->fd);
 											}
 											// Если сокет доступен для записи
-											if(this->_events.at(i).filter & EVFILT_WRITE){
+											if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).filter & EVFILT_WRITE)){
 												// Получаем объект текущего события
 												item_t * item = reinterpret_cast <item_t *> (this->_events.at(i).udata);
 												// Если объект текущего события получен
@@ -1635,7 +1637,7 @@ void awh::Event1::del(const base_t::event_type_t type) noexcept {
 	// Если работа события запущена
 	if((this->_base != nullptr) && this->_mode){
 		// Если событие является стандартным
-		if(this->_fd > -1)
+		if(this->_fd != INVALID_SOCKET)
 			// Выполняем удаление события
 			this->_base->del(this->_fd, type);
 		// Выводим сообщение об ошибке
@@ -1652,7 +1654,7 @@ bool awh::Event1::mode(const base_t::event_type_t type, const base_t::event_mode
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа базы событий активированна
-	if((this->_base != nullptr) && (this->_fd > -1))
+	if((this->_base != nullptr) && (this->_fd != INVALID_SOCKET))
 		// Выполняем установку режима работы модуля
 		return this->_base->mode(this->_fd, type, mode);
 	// Сообщаем, что режим работы не установлен
@@ -1667,7 +1669,7 @@ void awh::Event1::stop() noexcept {
 	// Если работа события запущена
 	if((this->_base != nullptr) && this->_mode){
 		// Если событие является стандартным
-		if(this->_fd > -1){
+		if(this->_fd != INVALID_SOCKET){
 			// Снимаем флаг запущенной работы
 			this->_mode = !this->_mode;
 			// Выполняем удаление всех событий
@@ -1685,7 +1687,7 @@ void awh::Event1::start() noexcept {
 	// Если работа события ещё не запущена
 	if(!this->_mode && (this->_base != nullptr)){
 		// Если событие является стандартным
-		if(this->_fd > -1){
+		if(this->_fd != INVALID_SOCKET){
 			// Устанавливаем флаг запущенной работы
 			this->_mode = !this->_mode;
 			// Выполняем добавление события в базу событий
