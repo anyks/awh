@@ -92,7 +92,6 @@ namespace awh {
 					SignalHandlerPointer sigint;  // Перехватчик сигнала SIGINT
 					SignalHandlerPointer sigfpe;  // Перехватчик сигнала SIGFPE
 					SignalHandlerPointer sigill;  // Перехватчик сигнала SIGILL
-					SignalHandlerPointer sigbus;  // Перехватчик сигнала SIGBUS
 					SignalHandlerPointer sigterm; // Перехватчик сигнала SIGTERM
 					SignalHandlerPointer sigabrt; // Перехватчик сигнала SIGABRT
 					SignalHandlerPointer sigsegv; // Перехватчик сигнала SIGSEGV

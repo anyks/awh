@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
-#include <sys/events.hpp>
+#include <sys/events1.hpp>
 
 /**
  * Если операционной системой является Windows
@@ -664,7 +664,7 @@ bool awh::Base::add(const SOCKET fd, callback_t callback) noexcept {
 							// Выполняем установку функции обратного вызова
 							ret.first->second.callback = callback;
 						// Устанавливаем файловый дескриптор в список для отслеживания
-						this->_fds.push_back(WSAPOLLFD);
+						this->_fds.push_back((WSAPOLLFD){});
 						// Выполняем установку файлового дескриптора
 						this->_fds.back().fd = fd;
 						// Выводим результат добавления
@@ -1599,7 +1599,7 @@ awh::Base::~Base() noexcept {
  * set Метод установки базы событий
  * @param base база событий для установки
  */
-void awh::Event::set(base_t * base) noexcept {
+void awh::Event1::set(base_t * base) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем базу данных событий
@@ -1609,7 +1609,7 @@ void awh::Event::set(base_t * base) noexcept {
  * set Метод установки файлового дескриптора и списка событий
  * @param fd файловый дескриптор для установки
  */
-void awh::Event::set(const SOCKET fd) noexcept {
+void awh::Event1::set(const SOCKET fd) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем файловый дескриптор
@@ -1619,7 +1619,7 @@ void awh::Event::set(const SOCKET fd) noexcept {
  * set Метод установки функции обратного вызова
  * @param callback функция обратного вызова
  */
-void awh::Event::set(base_t::callback_t callback) noexcept {
+void awh::Event1::set(base_t::callback_t callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем функцию обратного вызова
@@ -1629,7 +1629,7 @@ void awh::Event::set(base_t::callback_t callback) noexcept {
  * Метод удаления типа события
  * @param type тип события для удаления
  */
-void awh::Event::del(const base_t::event_type_t type) noexcept {
+void awh::Event1::del(const base_t::event_type_t type) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа события запущена
@@ -1648,7 +1648,7 @@ void awh::Event::del(const base_t::event_type_t type) noexcept {
  * @param mode флаг режима работы модуля
  * @return     результат работы функции
  */
-bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept {
+bool awh::Event1::mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа базы событий активированна
@@ -1661,7 +1661,7 @@ bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_
 /**
  * stop Метод остановки работы события
  */
-void awh::Event::stop() noexcept {
+void awh::Event1::stop() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа события запущена
@@ -1679,7 +1679,7 @@ void awh::Event::stop() noexcept {
 /**
  * start Метод запуска работы события
  */
-void awh::Event::start() noexcept {
+void awh::Event1::start() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа события ещё не запущена
@@ -1699,7 +1699,7 @@ void awh::Event::start() noexcept {
 /**
  * ~Event Деструктор
  */
-awh::Event::~Event() noexcept {
+awh::Event1::~Event1() noexcept {
 	// Выполняем остановку работы события
 	this->stop();
 }

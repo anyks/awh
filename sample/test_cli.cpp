@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/events.hpp>
+#include <sys/events1.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -30,6 +30,68 @@ struct Peer {
 } peer;
 
 int fd = 0;
+
+/**
+ * Методы только для OS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * convert Метод конвертирования строки utf-8 в строку
+	 * @param str строка utf-8 для конвертирования
+	 * @return    обычная строка
+	 */
+	static string convert(const wstring & str) noexcept {
+		// Результат работы функции
+		string result = "";
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если строка передана
+			if(!str.empty()){
+				// Если используется BOOST
+				#ifdef USE_BOOST_CONVERT
+					// Объявляем конвертер
+					using boost::locale::conv::utf_to_utf;
+					// Выполняем конвертирование в utf-8 строку
+					result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
+				// Если нужно использовать стандартную библиотеку
+				#else
+					// Устанавливаем тип для конвертера UTF-8
+					using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
+					// Объявляем конвертер
+					wstring_convert <convert_type, wchar_t> conv;
+					// wstring_convert <codecvt_utf8 <wchar_t>> conv;
+					// Выполняем конвертирование в utf-8 строку
+					result = conv.to_bytes(str);
+				#endif
+			}
+		// Если возникает ошибка
+		} catch(const range_error & error) {
+			/* Пропускаем возникшую ошибку */
+		}
+		// Выводим результат
+		return result;
+	}
+
+	/**
+	 * message Метод получения текста описания ошибки
+	 * @param code код ошибки для получения сообщения
+	 * @return     текст сообщения описания кода ошибки
+	 */
+	static string message(const int32_t code = 0) noexcept {
+		// Если код ошибки не передан
+		if(code == 0)
+			// Выполняем получение кода ошибки
+			const_cast <int32_t &> (code) = WSAGetLastError();
+		// Создаём буфер сообщения ошибки
+		wchar_t message[256] = {0};
+		// Выполняем формирование текста ошибки
+		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, message, 256, 0);
+		// Выводим текст полученной ошибки
+		return convert(message);
+	}
+#endif
 
 static string get_host(const int family) noexcept {
 	// Определяем тип подключения
@@ -89,65 +151,125 @@ static int64_t read(char * buffer, const size_t size) noexcept {
 					// Если операция не поддерживается сокетом
 					case EOPNOTSUPP:
 				#endif
-				// Если сработало событие таймаута
-				case ETIME:
-				// Если ошибка протокола
-				case EPROTO:
-				// Если в буфере закончились данные
-				case ENOBUFS:
-				// Если операция не поддерживается сокетом
-				case ENOTSUP:
-				// Если сеть отключена
-				case ENETDOWN:
-				// Если сокет не является сокетом
-				case ENOTSOCK:
-				// Если сокет не подключён
-				case ENOTCONN:
-				// Если хост не существует
-				case EHOSTDOWN:
-				// Если сокет отключён
-				case ESHUTDOWN:
-				// Если произведён сброс подключения
-				case ETIMEDOUT:
-				// Если подключение сброшено
-				case ENETRESET:
-				// Если операция отменена
-				case ECANCELED:
-				// Если подключение сброшено
-				case ECONNRESET:
-				// Если протокол повреждён для сокета
-				case EPROTOTYPE:
-				// Если протокол не поддерживается
-				case ENOPROTOOPT:
-				// Если сеть недоступна
-				case ENETUNREACH:
-				// Если протокол не поддерживается
-				case EPFNOSUPPORT:
-				// Если протокол подключения не поддерживается
-				case EAFNOSUPPORT:
-				// Если роутинг к хосту не существует
-				case EHOSTUNREACH:
-				// Если подключение оборванно
-				case ECONNABORTED:
-				// Если требуется адрес назначения
-				case EDESTADDRREQ:
-				// Если в соединении отказанно
-				case ECONNREFUSED:
-				// Если тип сокета не поддерживается
-				case ESOCKTNOSUPPORT:
-				// Если протокол не поддерживается
-				case EPROTONOSUPPORT: {
-					// Выводим в лог сообщение
-					printf("Warning read: %s", ::strerror(errno));
+				/**
+				 * Методы только для nix-подобных систем
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если сработало событие таймаута
+					case ETIME:
+					// Если ошибка протокола
+					case EPROTO:
+					// Если в буфере закончились данные
+					case ENOBUFS:
+					// Если операция не поддерживается сокетом
+					case ENOTSUP:
+					// Если сеть отключена
+					case ENETDOWN:
+					// Если сокет не является сокетом
+					case ENOTSOCK:
+					// Если сокет не подключён
+					case ENOTCONN:
+					// Если хост не существует
+					case EHOSTDOWN:
+					// Если сокет отключён
+					case ESHUTDOWN:
+					// Если произведён сброс подключения
+					case ETIMEDOUT:
+					// Если подключение сброшено
+					case ENETRESET:
+					// Если операция отменена
+					case ECANCELED:
+					// Если подключение сброшено
+					case ECONNRESET:
+					// Если протокол повреждён для сокета
+					case EPROTOTYPE:
+					// Если протокол не поддерживается
+					case ENOPROTOOPT:
+					// Если сеть недоступна
+					case ENETUNREACH:
+					// Если протокол не поддерживается
+					case EPFNOSUPPORT:
+					// Если протокол подключения не поддерживается
+					case EAFNOSUPPORT:
+					// Если роутинг к хосту не существует
+					case EHOSTUNREACH:
+					// Если подключение оборванно
+					case ECONNABORTED:
+					// Если требуется адрес назначения
+					case EDESTADDRREQ:
+					// Если в соединении отказанно
+					case ECONNREFUSED:
+					// Если тип сокета не поддерживается
+					case ESOCKTNOSUPPORT:
+					// Если протокол не поддерживается
+					case EPROTONOSUPPORT: {
+						// Выводим в лог сообщение
+						printf("Warning read: %s", ::strerror(errno));
+				#else
+					// Если в буфере закончились данные
+					case WSAENOBUFS:
+					// Если сеть отключена
+					case WSAENETDOWN:
+					// Если сокет не является сокетом
+					case WSAENOTSOCK:
+					// Если сокет не подключён
+					case WSAENOTCONN:
+					// Если произведён сброс подключения
+					case WSAETIMEDOUT:
+					// Если сокет отключён
+					case WSAESHUTDOWN:
+					// Если хост не существует
+					case WSAEHOSTDOWN:
+					// Если подключение сброшено
+					case WSAENETRESET:
+					// Если протокол повреждён для сокета
+					case WSAEPROTOTYPE:
+					// Если подключение сброшено
+					case WSAECONNRESET:
+					// Если операция не поддерживается сокетом
+					case WSAEOPNOTSUPP:
+					// Если протокол не поддерживается
+					case WSAENOPROTOOPT:
+					// Если сеть недоступна
+					case WSAENETUNREACH:
+					// Если протокол не поддерживается
+					case WSAEPFNOSUPPORT:
+					// Если протокол подключения не поддерживается
+					case WSAEAFNOSUPPORT:
+					// Если роутинг к хосту не существует
+					case WSAEHOSTUNREACH:
+					// Если подключение оборванно
+					case WSAECONNABORTED:
+					// Если требуется адрес назначения
+					case WSAEDESTADDRREQ:
+					// Если в соединении отказанно
+					case WSAECONNREFUSED:
+					// Если тип сокета не поддерживается
+					case WSAESOCKTNOSUPPORT:
+					// Если протокол не поддерживается
+					case WSAEPROTONOSUPPORT: {
+						// Выводим в лог сообщение
+						printf("Warning read: %s", message().c_str());
+				#endif
 					// Требуем завершения работы
 					result = 0;
 				} break;
 				// Для остальных ошибок
 				default: {
-					// Если защищённый режим работы запрещён
-					if((errno == EWOULDBLOCK) || (errno == EINTR))
-						// Выполняем пропуск попытки
-						return -1;
+					/**
+					 * Методы только для nix-подобных систем
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Если защищённый режим работы запрещён
+						if((errno == EWOULDBLOCK) || (errno == EINTR))
+							// Выполняем пропуск попытки
+							return -1;
+					#else
+						// Если защищённый режим работы запрещён
+						if((WSAGetLastError() == EWOULDBLOCK) || (WSAGetLastError() == EINTR))
+							// Выполняем пропуск попытки
+							return -1;
+					#endif
 				}
 			}
 		}
@@ -176,65 +298,125 @@ static int64_t write(const char * buffer, const size_t size) noexcept {
 					// Если операция не поддерживается сокетом
 					case EOPNOTSUPP:
 				#endif
-				// Если сработало событие таймаута
-				case ETIME:
-				// Если ошибка протокола
-				case EPROTO:
-				// Если в буфере закончились данные
-				case ENOBUFS:
-				// Если операция не поддерживается сокетом
-				case ENOTSUP:
-				// Если сеть отключена
-				case ENETDOWN:
-				// Если сокет не является сокетом
-				case ENOTSOCK:
-				// Если сокет не подключён
-				case ENOTCONN:
-				// Если хост не существует
-				case EHOSTDOWN:
-				// Если сокет отключён
-				case ESHUTDOWN:
-				// Если произведён сброс подключения
-				case ETIMEDOUT:
-				// Если подключение сброшено
-				case ENETRESET:
-				// Если операция отменена
-				case ECANCELED:
-				// Если подключение сброшено
-				case ECONNRESET:
-				// Если протокол повреждён для сокета
-				case EPROTOTYPE:
-				// Если протокол не поддерживается
-				case ENOPROTOOPT:
-				// Если сеть недоступна
-				case ENETUNREACH:
-				// Если протокол не поддерживается
-				case EPFNOSUPPORT:
-				// Если протокол подключения не поддерживается
-				case EAFNOSUPPORT:
-				// Если роутинг к хосту не существует
-				case EHOSTUNREACH:
-				// Если подключение оборванно
-				case ECONNABORTED:
-				// Если требуется адрес назначения
-				case EDESTADDRREQ:
-				// Если в соединении отказанно
-				case ECONNREFUSED:
-				// Если тип сокета не поддерживается
-				case ESOCKTNOSUPPORT:
-				// Если протокол не поддерживается
-				case EPROTONOSUPPORT: {
-					// Выводим в лог сообщение
-					printf("Warning write: %s", ::strerror(errno));
+				/**
+				 * Методы только для nix-подобных систем
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если сработало событие таймаута
+					case ETIME:
+					// Если ошибка протокола
+					case EPROTO:
+					// Если в буфере закончились данные
+					case ENOBUFS:
+					// Если операция не поддерживается сокетом
+					case ENOTSUP:
+					// Если сеть отключена
+					case ENETDOWN:
+					// Если сокет не является сокетом
+					case ENOTSOCK:
+					// Если сокет не подключён
+					case ENOTCONN:
+					// Если хост не существует
+					case EHOSTDOWN:
+					// Если сокет отключён
+					case ESHUTDOWN:
+					// Если произведён сброс подключения
+					case ETIMEDOUT:
+					// Если подключение сброшено
+					case ENETRESET:
+					// Если операция отменена
+					case ECANCELED:
+					// Если подключение сброшено
+					case ECONNRESET:
+					// Если протокол повреждён для сокета
+					case EPROTOTYPE:
+					// Если протокол не поддерживается
+					case ENOPROTOOPT:
+					// Если сеть недоступна
+					case ENETUNREACH:
+					// Если протокол не поддерживается
+					case EPFNOSUPPORT:
+					// Если протокол подключения не поддерживается
+					case EAFNOSUPPORT:
+					// Если роутинг к хосту не существует
+					case EHOSTUNREACH:
+					// Если подключение оборванно
+					case ECONNABORTED:
+					// Если требуется адрес назначения
+					case EDESTADDRREQ:
+					// Если в соединении отказанно
+					case ECONNREFUSED:
+					// Если тип сокета не поддерживается
+					case ESOCKTNOSUPPORT:
+					// Если протокол не поддерживается
+					case EPROTONOSUPPORT: {
+						// Выводим в лог сообщение
+						printf("Warning write: %s", ::strerror(errno));
+				#else
+					// Если в буфере закончились данные
+					case WSAENOBUFS:
+					// Если сеть отключена
+					case WSAENETDOWN:
+					// Если сокет не является сокетом
+					case WSAENOTSOCK:
+					// Если сокет не подключён
+					case WSAENOTCONN:
+					// Если произведён сброс подключения
+					case WSAETIMEDOUT:
+					// Если сокет отключён
+					case WSAESHUTDOWN:
+					// Если хост не существует
+					case WSAEHOSTDOWN:
+					// Если подключение сброшено
+					case WSAENETRESET:
+					// Если протокол повреждён для сокета
+					case WSAEPROTOTYPE:
+					// Если подключение сброшено
+					case WSAECONNRESET:
+					// Если операция не поддерживается сокетом
+					case WSAEOPNOTSUPP:
+					// Если протокол не поддерживается
+					case WSAENOPROTOOPT:
+					// Если сеть недоступна
+					case WSAENETUNREACH:
+					// Если протокол не поддерживается
+					case WSAEPFNOSUPPORT:
+					// Если протокол подключения не поддерживается
+					case WSAEAFNOSUPPORT:
+					// Если роутинг к хосту не существует
+					case WSAEHOSTUNREACH:
+					// Если подключение оборванно
+					case WSAECONNABORTED:
+					// Если требуется адрес назначения
+					case WSAEDESTADDRREQ:
+					// Если в соединении отказанно
+					case WSAECONNREFUSED:
+					// Если тип сокета не поддерживается
+					case WSAESOCKTNOSUPPORT:
+					// Если протокол не поддерживается
+					case WSAEPROTONOSUPPORT: {
+						// Выводим в лог сообщение
+						printf("Warning write: %s", message().c_str());
+				#endif
 					// Требуем завершения работы
 					result = 0;
 				} break;
 				// Для остальных ошибок
 				default: {
-					// Если защищённый режим работы запрещён
-					if((errno == EWOULDBLOCK) || (errno == EINTR))
-						// Выполняем пропуск попытки
-						return -1;
+					/**
+					 * Методы только для nix-подобных систем
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Если защищённый режим работы запрещён
+						if((errno == EWOULDBLOCK) || (errno == EINTR))
+							// Выполняем пропуск попытки
+							return -1;
+					#else
+						// Если защищённый режим работы запрещён
+						if((WSAGetLastError() == EWOULDBLOCK) || (WSAGetLastError() == EINTR))
+							// Выполняем пропуск попытки
+							return -1;
+					#endif
 				}
 			}
 		}
@@ -331,23 +513,45 @@ static void init(const string & ip, const u_int port, const int family, socket_t
 			fd = ::socket(family, SOCK_STREAM, IPPROTO_TCP);
 			// Если сокет не создан то выходим
 			if((fd == INVALID_SOCKET) || (fd >= MAX_SOCKETS)){
-				// Выводим сообщение в консоль
-				printf("Error: %s [%s:%u]", ::strerror(errno), ip.c_str(), port);
+				/**
+				 * Методы только для nix-подобных систем
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Выводим сообщение в консоль
+					printf("Error: %s [%s:%u]", ::strerror(errno), ip.c_str(), port);
+				#else
+					// Выводим сообщени об активном сервисе
+					printf("Error: %s [%s:%u]", message().c_str(), ip.c_str(), port);
+				#endif
 				// Выходим
 				return;
 			}
-			// Выполняем игнорирование сигнала неверной инструкции процессора
-			mod->noSigILL();
-			// Отключаем сигнал записи в оборванное подключение
-			mod->noSigPIPE(fd);
+			/**
+			 * Методы только для nix-подобных систем
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Выполняем игнорирование сигнала неверной инструкции процессора
+				mod->noSigILL();
+				// Отключаем сигнал записи в оборванное подключение
+				mod->noSigPIPE(fd);
+			#endif
 			// Активируем KeepAlive
 			mod->keepAlive(fd, 3, 1, 2);
 			// Устанавливаем разрешение на повторное использование сокета
 			mod->reuseable(fd);
 			// Выполняем бинд на сокет
-			if(::bind(fd, reinterpret_cast <struct sockaddr *> (&peer.client), peer.size) < 0)
-				// Выводим в лог сообщение
-				printf("Error: %s CLIENT=[%s]", ::strerror(errno), host.c_str());
+			if(::bind(fd, reinterpret_cast <struct sockaddr *> (&peer.client), peer.size) < 0){
+				/**
+				 * Методы только для nix-подобных систем
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Выводим в лог сообщение
+					printf("Error: %s CLIENT=[%s]", ::strerror(errno), host.c_str());
+				#else
+					// Выводим в лог сообщение
+					printf("Error: %s CLIENT=[%s]", message().c_str(), host.c_str());
+				#endif
+			}
 		}
 	}
 }
@@ -368,6 +572,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 
+	base_t base(&fmk, &log);
+
 	socket_t mod(&fmk, &log);
 
 	init("127.0.0.1", 2222, AF_INET, &mod);
@@ -375,9 +581,7 @@ int main(int argc, char * argv[]){
 	if(connect()){
 		cout << " Is Connected " << endl;
 
-		base_t base(&fmk, &log);
-
-		event_t event(&fmk, &log);
+		event1_t event(&fmk, &log);
 
 		auto processFn = [&](const SOCKET fd, const base_t::event_type_t type) noexcept -> void {
 			// Определяем тип события

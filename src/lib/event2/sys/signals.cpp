@@ -165,8 +165,6 @@ void awh::Signals::stop() noexcept {
 			this->_ev.sigfpe = signal(SIGFPE, nullptr);
 			// Выполняем остановку перехвата сигнала SIGILL
 			this->_ev.sigill = signal(SIGILL, nullptr);
-			// Выполняем остановку перехвата сигнала SIGBUS
-			this->_ev.sigbus = signal(SIGBUS, nullptr);
 			// Выполняем остановку перехвата сигнала SIGTERM
 			this->_ev.sigterm = signal(SIGTERM, nullptr);
 			// Выполняем остановку перехвата сигнала SIGABRT
@@ -234,8 +232,6 @@ void awh::Signals::start() noexcept {
 			this->_ev.sigfpe = signal(SIGFPE, signalHandler);
 			// Создаём обработчик сигнала для SIGILL
 			this->_ev.sigill = signal(SIGILL, signalHandler);
-			// Создаём обработчик сигнала для SIGBUS
-			this->_ev.sigbus = signal(SIGBUS, signalHandler);
 			// Создаём обработчик сигнала для SIGTERM
 			this->_ev.sigterm = signal(SIGTERM, signalHandler);
 			// Создаём обработчик сигнала для SIGABRT

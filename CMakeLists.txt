@@ -205,7 +205,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/events.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/events1.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"

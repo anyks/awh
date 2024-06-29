@@ -59,7 +59,7 @@ namespace awh {
 	/**
 	 * Event Прототип класса события AWHEvent
 	 */
-	class Event;
+	class Event1;
 	/**
 	 * Base Класс базы событий
 	 */
@@ -68,7 +68,7 @@ namespace awh {
 			/**
 			 * Event Устанавливаем дружбу с модулем события
 			 */
-			friend class Event;
+			friend class Event1;
 		public:
 			/**
 			 * Тип режима получения события
@@ -268,7 +268,7 @@ namespace awh {
 	/**
 	 * Event Класс события AWHEvent
 	 */
-	typedef class Event {
+	typedef class Event1 {
 		private:
 			// Мютекс для блокировки основного потока
 			mutex _mtx;
@@ -330,17 +330,17 @@ namespace awh {
 			void start() noexcept;
 		public:
 			/**
-			 * Event Конструктор
+			 * Event1 Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Event(const fmk_t * fmk, const log_t * log) noexcept :
+			Event1(const fmk_t * fmk, const log_t * log) noexcept :
 			 _mode(false), _fd(INVALID_SOCKET), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
-			 * ~Event Деструктор
+			 * ~Event1 Деструктор
 			 */
-			~Event() noexcept;
-	} event_t;
+			~Event1() noexcept;
+	} event1_t;
 };
 
 #endif // __AWH_EVENTS__
