@@ -619,9 +619,9 @@ int main(int argc, char * argv[]){
 			}
 		};
 
-		event.set(fd);
-		event.set(&base);
-		event.set(processFn);
+		event = fd;
+		event = &base;
+		event = processFn;
 		event.start();
 		event.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
 		event.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);

@@ -323,7 +323,7 @@ namespace awh {
 			 */
 			void set(base_t * base) noexcept;
 			/**
-			 * set Метод установки файлового дескриптора и списка событий
+			 * set Метод установки файлового дескриптора
 			 * @param fd файловый дескриптор для установки
 			 */
 			void set(const SOCKET fd) noexcept;
@@ -360,6 +360,31 @@ namespace awh {
 			 * start Метод запуска работы события
 			 */
 			void start() noexcept;
+		public:
+			/**
+			 * Оператор [=] для установки базы событий
+			 * @param base база событий для установки
+			 * @return     текущий объект
+			 */
+			Event1 & operator = (base_t * base) noexcept;
+			/**
+			 * Оператор [=] для установки файлового дескриптора
+			 * @param fd файловый дескриптор для установки
+			 * @return   текущий объект
+			 */
+			Event1 & operator = (const SOCKET fd) noexcept;
+			/**
+			 * Оператор [=] для установки задержки времени таймера
+			 * @param delay задержка времени в миллисекундах
+			 * @return      текущий объект
+			 */
+			Event1 & operator = (const time_t delay) noexcept;
+			/**
+			 * Оператор [=] для установки функции обратного вызова
+			 * @param callback функция обратного вызова
+			 * @return         текущий объект
+			 */
+			Event1 & operator = (base_t::callback_t callback) noexcept;
 		public:
 			/**
 			 * Event Конструктор

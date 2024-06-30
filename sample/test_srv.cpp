@@ -668,7 +668,7 @@ int main(int argc, char * argv[]){
 			if(accept(sock, AF_INET, &mod)){
 				cout << " Accept " << sock << " to " << fd << endl;
 
-				client.set(fd);
+				client = fd;
 				client.start();
 
 				index = 0;
@@ -728,17 +728,17 @@ int main(int argc, char * argv[]){
 
 		
 
-		client.set(&base);
-		client.set(processFn);
+		client = &base;
+		client = processFn;
 
-		server.set(&base);
-		server.set(acceptFn);
-		server.set(sock);
+		server = &base;
+		server = acceptFn;
+		server = sock;
 		server.start();
 
-		timer.set(&base);
-		timer.set(timerFn);
-		timer.set(static_cast <time_t> (5000));
+		timer = &base;
+		timer = timerFn;
+		timer = static_cast <time_t> (5000);
 		timer.start();
 
 		timer.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);

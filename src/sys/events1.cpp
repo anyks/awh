@@ -1807,7 +1807,7 @@ void awh::Event1::set(base_t * base) noexcept {
 	this->_base = base;
 }
 /**
- * set Метод установки файлового дескриптора и списка событий
+ * set Метод установки файлового дескриптора
  * @param fd файловый дескриптор для установки
  */
 void awh::Event1::set(const SOCKET fd) noexcept {
@@ -1906,6 +1906,50 @@ void awh::Event1::start() noexcept {
 		// Выводим сообщение об ошибке
 		} else this->_log->print("File descriptor is not init", log_t::flag_t::WARNING);
 	}
+}
+/**
+ * Оператор [=] для установки базы событий
+ * @param base база событий для установки
+ * @return     текущий объект
+ */
+awh::Event1 & awh::Event1::operator = (base_t * base) noexcept {
+	// Выполняем установку базы событий
+	this->set(base);
+	// Возвращаем текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] для установки файлового дескриптора
+ * @param fd файловый дескриптор для установки
+ * @return   текущий объект
+ */
+awh::Event1 & awh::Event1::operator = (const SOCKET fd) noexcept {
+	// Выполняем установку файлового дескриптора
+	this->set(fd);
+	// Возвращаем текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] для установки задержки времени таймера
+ * @param delay задержка времени в миллисекундах
+ * @return      текущий объект
+ */
+awh::Event1 & awh::Event1::operator = (const time_t delay) noexcept {
+	// Выполняем установку задержки времени таймера
+	this->set(delay);
+	// Возвращаем текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] для установки функции обратного вызова
+ * @param callback функция обратного вызова
+ * @return         текущий объект
+ */
+awh::Event1 & awh::Event1::operator = (base_t::callback_t callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->set(callback);
+	// Возвращаем текущий объект
+	return (* this);
 }
 /**
  * ~Event Деструктор
