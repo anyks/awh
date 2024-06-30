@@ -102,6 +102,8 @@ namespace awh {
 			typedef struct Item {
 				// Отслеживаемый файловый дескриптор
 				SOCKET fd;
+				// Начальное время запуска
+				time_t date;
 				// Задержка времени таймера
 				time_t delay;
 				// Функция обратного вызова
@@ -111,7 +113,7 @@ namespace awh {
 				/**
 				 * Item Конструктор
 				 */
-				Item() noexcept : fd(INVALID_SOCKET), delay(0), callback(nullptr) {}
+				Item() noexcept : fd(INVALID_SOCKET), date(0), delay(0), callback(nullptr) {}
 			} item_t;
 		private:
 			// Флаг запуска работы базы событий
@@ -169,11 +171,29 @@ namespace awh {
 		private:
 			// Список отслеживаемых участников
 			std::map <SOCKET, item_t> _items;
+			/**
+			 * Если это Linux
+			 */
+			#if defined(__linux__)
+				// Список активных таймеров
+				std::map <SOCKET, struct epoll_event *> _timers;
+			/**
+			 * Если это FreeBSD или MacOS X
+			 */
+			#elif __APPLE__ || __MACH__ || __FreeBSD__
+				// Список активных таймеров
+				std::map <SOCKET, struct kevent *> _timers;
+			#endif
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
 			const log_t * _log;
+		private:
+			/**
+			 * redistribution Метод перераспределения таймеров
+			 */
+			void redistribution() noexcept;
 		private:
 			/**
 			 * init Метод инициализации базы событий
