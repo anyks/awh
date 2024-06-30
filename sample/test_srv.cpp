@@ -664,7 +664,6 @@ int main(int argc, char * argv[]){
 		};
 
 		auto acceptFn = [&](const SOCKET sock, const base_t::event_type_t event) noexcept -> void {
-			
 			if(accept(sock, AF_INET, &mod)){
 				cout << " Accept " << sock << " to " << fd << endl;
 
