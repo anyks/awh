@@ -230,6 +230,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/node.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/timer2.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/cluster.cpp"

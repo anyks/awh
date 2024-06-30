@@ -645,8 +645,21 @@ int main(int argc, char * argv[]){
 
 		event1_t server(&fmk, &log);
 		event1_t client(&fmk, &log);
+		event1_t timer(&fmk, &log);
+
+		chrono::nanoseconds etalon = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+
+		auto timerFn = [&](const SOCKET sock, const base_t::event_type_t event) noexcept -> void {
+
+			chrono::nanoseconds current = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+						
+			cout << " TIMEOUT " << sock << " == " << ((current.count() - etalon.count()) / 1000000000) << endl;
+
+			etalon = current;
+		};
 
 		auto acceptFn = [&](const SOCKET sock, const base_t::event_type_t event) noexcept -> void {
+			
 			if(accept(sock, AF_INET, &mod)){
 				cout << " Accept " << sock << " to " << fd << endl;
 
@@ -705,6 +718,8 @@ int main(int argc, char * argv[]){
 			}
 		};
 
+		
+
 		client.set(&base);
 		client.set(processFn);
 
@@ -713,7 +728,16 @@ int main(int argc, char * argv[]){
 		server.set(sock);
 		server.start();
 
+		timer.set(&base);
+		timer.set(timerFn);
+		timer.set(static_cast <time_t> (2000));
+		timer.start();
+
+		timer.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
+
 		server.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+
+		
 
 		base.start();
 

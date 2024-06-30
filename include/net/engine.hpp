@@ -148,9 +148,9 @@ namespace awh {
 			 * KeepAlive Структура с параметрами для постоянного подключения
 			 */
 			typedef struct KeepAlive {
-				int cnt;   // Максимальное количество попыток
-				int idle;  // Интервал времени в секундах через которое происходит проверка подключения
-				int intvl; // Интервал времени в секундах между попытками
+				int32_t cnt;   // Максимальное количество попыток
+				int32_t idle;  // Интервал времени в секундах через которое происходит проверка подключения
+				int32_t intvl; // Интервал времени в секундах между попытками
 				/**
 				 * KeepAlive Конструктор
 				 */
@@ -180,9 +180,9 @@ namespace awh {
 					SOCKET fd;
 				private:
 					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
-					int _type;
+					int32_t _type;
 					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
-					int _protocol;
+					int32_t _protocol;
 				private:
 					// Флаг асинхронного режима работы сокета
 					bool _async;
@@ -193,7 +193,7 @@ namespace awh {
 					status_t status;
 				public:
 					// Порт клиента
-					u_int port;
+					uint32_t port;
 					// Адрес интернет подключения и аппаратный
 					string ip, mac;
 				public:
@@ -264,7 +264,7 @@ namespace awh {
 					 * @param family семейство сокета (AF_INET / AF_INET6)
 					 * @return       хост компьютера с которого производится запрос
 					 */
-					string host(const int family) const noexcept;
+					string host(const int32_t family) const noexcept;
 				public:
 					/**
 					 * attach Метод прикрепления клиента к серверу
@@ -284,14 +284,14 @@ namespace awh {
 					 * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
 					 * @return       результат выполнения операции
 					 */
-					bool accept(const SOCKET fd, const int family) noexcept;
+					bool accept(const SOCKET fd, const int32_t family) noexcept;
 				public:
 					/**
 					 * sonet Метод установки параметров сокета
 					 * @param type     тип сокета (SOCK_STREAM / SOCK_DGRAM)
 					 * @param protocol протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
 					 */
-					void sonet(const int type = SOCK_STREAM, const int protocol = IPPROTO_TCP) noexcept;
+					void sonet(const int32_t type = SOCK_STREAM, const int32_t protocol = IPPROTO_TCP) noexcept;
 				public:
 					/**
 					 * init Метод инициализации адресного пространства сокета
@@ -308,7 +308,7 @@ namespace awh {
 					 * @param onlyV6 флаг разрешающий использовать только IPv6 подключение
 					 * @return       параметры подключения к серверу
 					 */
-					void init(const string & ip, const u_int port, const int family, const type_t type, const bool onlyV6 = false) noexcept;
+					void init(const string & ip, const uint32_t port, const int32_t family, const type_t type, const bool onlyV6 = false) noexcept;
 				public:
 					/**
 					 * Address Конструктор
@@ -402,7 +402,7 @@ namespace awh {
 					 * @param status статус ошибки
 					 * @return       нужно ли завершить работу
 					 */
-					bool error(const int status) const noexcept;
+					bool error(const int32_t status) const noexcept;
 				public:
 					/**
 					 * clear Метод очистки контекста
@@ -480,18 +480,25 @@ namespace awh {
 					bool timeout(const time_t msec, const method_t method) noexcept;
 				public:
 					/**
+					 * availability Метод проверки количества находящихся байт в сокете
+					 * @param method метод для выполнения операции
+					 * @return       количество байт в сокете
+					 */
+					u_long availability(const method_t method) const noexcept;
+				public:
+					/**
 					 * buffer Метод получения размеров буфера
 					 * @param method метод для выполнения операции с буфером
 					 * @return       размер буфера
 					 */
-					int buffer(const method_t method) const noexcept;
+					int32_t buffer(const method_t method) const noexcept;
 					/**
 					 * buffer Метод установки размеров буфера
 					 * @param read  размер буфера на чтение
 					 * @param write размер буфера на запись
 					 * @return      результат работы функции
 					 */
-					bool buffer(const int read, const int write) noexcept;
+					bool buffer(const int32_t read, const int32_t write) noexcept;
 				private:
 					/**
 					 * selectProto Метод выполнения выбора следующего протокола
@@ -503,7 +510,7 @@ namespace awh {
 					 * @param keySize размер ключа для копирования
 					 * @return        результат переключения протокола
 					 */
-					bool selectProto(u_char ** out, u_char * outSize, const u_char * in, u_int inSize, const char * key, u_int keySize) const noexcept;
+					bool selectProto(u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, const char * key, uint32_t keySize) const noexcept;
 				public:
 					/**
 					 * Context Конструктор
@@ -609,14 +616,14 @@ namespace awh {
 			 * @param x509 данные сертификата
 			 * @return     результат проверки
 			 */
-			static int verifyCert(const int ok, X509_STORE_CTX * x509) noexcept;
+			static int32_t verifyCert(const int32_t ok, X509_STORE_CTX * x509) noexcept;
 			/**
 			 * verifyHost Функция обратного вызова для проверки валидности хоста
 			 * @param x509 данные сертификата
 			 * @param ctx  передаваемый контекст
 			 * @return     результат проверки
 			 */
-			static int verifyHost(X509_STORE_CTX * x509, void * ctx = nullptr) noexcept;
+			static int32_t verifyHost(X509_STORE_CTX * x509, void * ctx = nullptr) noexcept;
 		private:
 			/**
 			 * OpenSSL собран без следующих переговорщиков по протоколам
@@ -630,7 +637,7 @@ namespace awh {
 				 * @param ctx  передаваемый контекст
 				 * @return     результат переключения протокола
 				 */
-				static int nextProto(SSL * ssl, const u_char ** data, u_int * len, void * ctx = nullptr) noexcept;
+				static int32_t nextProto(SSL * ssl, const u_char ** data, uint32_t * len, void * ctx = nullptr) noexcept;
 				/**
 				 * selectNextProtoClient Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
 				 * @param ssl     объект SSL
@@ -641,7 +648,7 @@ namespace awh {
 				 * @param ctx     передаваемый контекст
 				 * @return        результат выбора протокола
 				 */
-				static int selectNextProtoClient(SSL * ssl, u_char ** out, u_char * outSize, const u_char * in, u_int inSize, void * ctx = nullptr) noexcept;
+				static int32_t selectNextProtoClient(SSL * ssl, u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, void * ctx = nullptr) noexcept;
 			#endif // !OPENSSL_NO_NEXTPROTONEG
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 1.0.2
@@ -657,7 +664,7 @@ namespace awh {
 				 * @param ctx     передаваемый контекст
 				 * @return        результат выбора протокола
 				 */
-				static int selectNextProtoServer(SSL * ssl, const u_char ** out, u_char * outSize, const u_char * in, u_int inSize, void * ctx = nullptr) noexcept;
+				static int32_t selectNextProtoServer(SSL * ssl, const u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, void * ctx = nullptr) noexcept;
 			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 		private:
 			/**
@@ -667,7 +674,7 @@ namespace awh {
 			 * @param size   количество символов
 			 * @return       результат проверки
 			 */
-			static int generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept;
+			static int32_t generateCookie(SSL * ssl, u_char * cookie, uint32_t * size) noexcept;
 			/**
 			 * verifyCookie Функция обратного вызова для проверки куков
 			 * @param ssl    объект SSL
@@ -675,7 +682,7 @@ namespace awh {
 			 * @param size   количество символов
 			 * @return       результат проверки
 			 */
-			static int verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noexcept;
+			static int32_t verifyCookie(SSL * ssl, const u_char * cookie, uint32_t size) noexcept;
 			/**
 			 * generateCookie Функция обратного вызова для генерации куков
 			 * @param ssl    объект SSL
@@ -683,7 +690,7 @@ namespace awh {
 			 * @param size   количество символов
 			 * @return       результат проверки
 			 */
-			static int generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * size) noexcept;
+			static int32_t generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * size) noexcept;
 			/**
 			 * verifyCookie Функция обратного вызова для проверки куков
 			 * @param ssl    объект SSL
@@ -691,7 +698,7 @@ namespace awh {
 			 * @param size   количество символов
 			 * @return       результат проверки
 			 */
-			static int verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t size) noexcept;
+			static int32_t verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t size) noexcept;
 		private:
 			/**
 			 * matchesCommonName Метод проверки доменного имени по данным из сертификата

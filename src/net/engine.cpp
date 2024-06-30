@@ -267,7 +267,7 @@ bool awh::Engine::Address::connect() noexcept {
  * @param family семейство сокета (AF_INET / AF_INET6)
  * @return       хост компьютера с которого производится запрос
  */
-string awh::Engine::Address::host(const int family) const noexcept {
+string awh::Engine::Address::host(const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если список сетей установлен
@@ -338,7 +338,7 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 	// Выполняем бинд на сокет
 	if((this->_peer.size > 0) && (::bind(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) < 0)){
 		// Получаем код ошибки
-		const int error = AWH_ERROR();
+		const int32_t error = AWH_ERROR();
 		// Хост подключённого клиента
 		const string & client = this->_ifnet.ip(reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.client.ss_family);
 		// Выводим в лог сообщение
@@ -371,7 +371,7 @@ bool awh::Engine::Address::accept(Address & addr) noexcept {
  * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
  * @return       результат выполнения операции
  */
-bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
+bool awh::Engine::Address::accept(const SOCKET fd, const int32_t family) noexcept {
 	// Устанавливаем статус отключения
 	this->status = status_t::DISCONNECTED;
 	// Заполняем структуру клиента нулями
@@ -518,7 +518,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
  * @param type     тип сокета (SOCK_STREAM / SOCK_DGRAM)
  * @param protocol протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
  */
-void awh::Engine::Address::sonet(const int type, const int protocol) noexcept {
+void awh::Engine::Address::sonet(const int32_t type, const int32_t protocol) noexcept {
 	// Устанавливаем тип сокета
 	this->_type = type;
 	// Устанавливаем протокол сокета
@@ -670,7 +670,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
  * @param onlyV6 флаг разрешающий использовать только IPv6 подключение
  * @return       параметры подключения к серверу
  */
-void awh::Engine::Address::init(const string & ip, const u_int port, const int family, const type_t type, const bool onlyV6) noexcept {
+void awh::Engine::Address::init(const string & ip, const uint32_t port, const int32_t family, const type_t type, const bool onlyV6) noexcept {
 	// Если IP адрес передан
 	if(!ip.empty() && (port <= 65535) && !this->network.empty()){
 		// Если список сетевых интерфейсов установлен
@@ -890,11 +890,11 @@ awh::Engine::Address::~Address() noexcept {
  * @param status статус ошибки
  * @return       нужно ли завершить работу
  */
-bool awh::Engine::Context::error(const int status) const noexcept {
+bool awh::Engine::Context::error(const int32_t status) const noexcept {
 	// Если защищённый режим работы разрешён
 	if(this->_encrypted){
 		// Получаем данные описание ошибки
-		const int error = SSL_get_error(this->_ssl, status);
+		const int32_t error = SSL_get_error(this->_ssl, status);
 		// Определяем тип ошибки
 		switch(error){
 			// Если сертификат неизвестный
@@ -1369,7 +1369,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Выполняем извлечение события
 					BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_RCVINFO, sizeof(info), &info);
 					// Выводим в лог информационное сообщение
-					this->_log->print("Read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+					this->_log->print("Read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int32_t> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 				}
 			#endif
 		}
@@ -1683,7 +1683,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Выполняем извлечение события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
-							this->_log->print("Wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, static_cast <int> (result), info.snd_sid, info.snd_ppid);
+							this->_log->print("Wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, static_cast <int32_t> (result), info.snd_sid, info.snd_ppid);
 						} break;
 						// Если статус установлен как разрешение подключения к серверу
 						case static_cast <uint8_t> (addr_t::status_t::ACCEPTED): {
@@ -1694,7 +1694,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Выполняем извлечение события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
-							this->_log->print("Wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+							this->_log->print("Wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int32_t> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 						} break;
 					}
 				}
@@ -1918,13 +1918,43 @@ bool awh::Engine::Context::timeout(const time_t msec, const method_t method) noe
 	return false;
 }
 /**
+ * availability Метод проверки количества находящихся байт в сокете
+ * @param method метод для выполнения операции
+ * @return       количество байт в сокете
+ */
+u_long awh::Engine::Context::availability(const method_t method) const noexcept {
+	// Результат работы функции
+	int32_t result = 0;
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Если защищённый режим работы разрешён
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Определяем метод для работы с буфером
+			switch(static_cast <uint8_t> (method)){
+				// Если метод чтения
+				case static_cast <uint8_t> (method_t::READ):
+					// Получаем размер данных в буфере для чтения
+					result = this->_addr->_socket.availability(this->_addr->fd, socket_t::mode_t::READ);
+				break;
+				// Если метод записи
+				case static_cast <uint8_t> (method_t::WRITE):
+					// Получаем размер буфере для записи
+					result = this->_addr->_socket.availability(this->_addr->fd, socket_t::mode_t::WRITE);
+				break;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * buffer Метод получения размеров буфера
  * @param method метод для выполнения операции с буфером
  * @return       размер буфера
  */
-int awh::Engine::Context::buffer(const method_t method) const noexcept {
+int32_t awh::Engine::Context::buffer(const method_t method) const noexcept {
 	// Результат работы функции
-	int result = 0;
+	int32_t result = 0;
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
@@ -1959,7 +1989,7 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
  * @param write размер буфера на запись
  * @return      результат работы функции
  */
-bool awh::Engine::Context::buffer(const int read, const int write) noexcept {
+bool awh::Engine::Context::buffer(const int32_t read, const int32_t write) noexcept {
 	// Если адрес присвоен
 	if((this->_addr != nullptr) && (read > 0) && (write > 0)){
 		// Если сокет удачно инициализирован
@@ -1991,9 +2021,9 @@ bool awh::Engine::Context::buffer(const int read, const int write) noexcept {
  * @param keySize размер ключа для копирования
  * @return        результат переключения протокола
  */
-bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_char * in, u_int inSize, const char * key, u_int keySize) const noexcept {
+bool awh::Engine::Context::selectProto(u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, const char * key, uint32_t keySize) const noexcept {
 	// Выполняем перебор всех данных в входящем буфере
-	for(u_int i = 0; (i + keySize) <= inSize; i += (u_int) (in[i] + 1)){
+	for(uint32_t i = 0; (i + keySize) <= inSize; i += (uint32_t) (in[i] + 1)){
 		// Если данные ключа скопированны удачно
 		if(::memcmp(&in[i], key, keySize) == 0){
 			// Выполняем установку размеров исходящего буфера
@@ -2250,15 +2280,15 @@ bool awh::Engine::certHostcheck(const string & host, const string & patt) const 
  * @param x509 данные сертификата
  * @return     результат проверки
  */
-int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
+int32_t awh::Engine::verifyCert(const int32_t ok, X509_STORE_CTX * x509) noexcept {
 	// Буфер данных для получения данных
 	char buffer[256];
 	// Если проверка не выполнена
 	if(!ok){
 		// Получаем данные ошибки
-		int error = X509_STORE_CTX_get_error(x509);
+		int32_t error = X509_STORE_CTX_get_error(x509);
 		// Получаем глубину ошибки
-		int depth = X509_STORE_CTX_get_error_depth(x509);
+		int32_t depth = X509_STORE_CTX_get_error_depth(x509);
 		// Выполняем извлечение сертификата
 		X509 * cert = X509_STORE_CTX_get_current_cert(x509);
 		// Выводим начальный разделитель
@@ -2289,7 +2319,7 @@ int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
  * @param ctx  передаваемый контекст
  * @return     результат проверки
  */
-int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
+int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	// Если объекты переданы верно
 	if((x509 != nullptr) && (ctx != nullptr)){
 		// Буфер данных сертификатов из хранилища
@@ -2299,7 +2329,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		// Ошибка проверки сертификата
 		string status = "X509VerifyCertFailed";
 		// Выполняем проверку сертификата
-		const int ok = X509_verify_cert(x509);
+		const int32_t ok = X509_verify_cert(x509);
 		// Запрашиваем данные сертификата
 		X509 * cert = X509_STORE_CTX_get_current_cert(x509);
 		// Результат проверки домена
@@ -2353,7 +2383,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	 * @param ctx  передаваемый контекст
 	 * @return     результат переключения протокола
 	 */
-	int awh::Engine::nextProto(SSL * ssl, const u_char ** data, u_int * len, void * ctx) noexcept {
+	int32_t awh::Engine::nextProto(SSL * ssl, const u_char ** data, uint32_t * len, void * ctx) noexcept {
 		// Если объекты переданы верно
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
@@ -2361,7 +2391,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Выполняем установку буфера данных
 			(* data) = reinterpret_cast <ctx_t *> (ctx)->protocols.data();
 			// Выполняем установку размер буфера данных протокола
-			(* len) = static_cast <u_int> (reinterpret_cast <ctx_t *> (ctx)->protocols.size());
+			(* len) = static_cast <uint32_t> (reinterpret_cast <ctx_t *> (ctx)->protocols.size());
 			// Выводим результат
 			return SSL_TLSEXT_ERR_OK;
 		}
@@ -2378,7 +2408,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	 * @param ctx     передаваемый контекст
 	 * @return        результат выбора протокола
 	 */
-	int awh::Engine::selectNextProtoClient(SSL * ssl, u_char ** out, u_char * outSize, const u_char * in, u_int inSize, void * ctx) noexcept {
+	int32_t awh::Engine::selectNextProtoClient(SSL * ssl, u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, void * ctx) noexcept {
 		// Если объекты переданы верно
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
@@ -2416,7 +2446,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	 * @param ctx     передаваемый контекст
 	 * @return        результат выбора протокола
 	 */
-	int awh::Engine::selectNextProtoServer(SSL * ssl, const u_char ** out, u_char * outSize, const u_char * in, u_int inSize, void * ctx) noexcept {
+	int32_t awh::Engine::selectNextProtoServer(SSL * ssl, const u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, void * ctx) noexcept {
 		// Если объекты переданы верно
 		if((ssl != nullptr) && (ctx != nullptr)){
 			// Блокируем неиспользуемую переменную
@@ -2446,9 +2476,9 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
  * @param size   количество символов
  * @return       результат проверки
  */
-int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept {
+int32_t awh::Engine::generateCookie(SSL * ssl, u_char * cookie, uint32_t * size) noexcept {
 	// Смещение в буфере и размер сгенерированных печенок
-	u_int offset = 0, length = 0;
+	uint32_t offset = 0, length = 0;
 	// Буфер под генерацию печенок
 	u_char result[EVP_MAX_MD_SIZE];
 	// Создаём объединение адресов
@@ -2536,9 +2566,9 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
  * @param size   количество символов
  * @return       результат проверки
  */
-int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noexcept {
+int32_t awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, uint32_t size) noexcept {
 	// Смещение в буфере и размер сгенерированных печенок
-	u_int offset = 0, length = 0;
+	uint32_t offset = 0, length = 0;
 	// Буфер под генерацию печенок
 	u_char result[EVP_MAX_MD_SIZE];
 	// Создаём объединение адресов
@@ -2618,11 +2648,11 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
  * @param size   количество символов
  * @return       результат проверки
  */
-int awh::Engine::generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * size) noexcept {
+int32_t awh::Engine::generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * size) noexcept {
 	// Размер буфера с печенками
-	u_int length = 0;
+	uint32_t length = 0;
 	// Выполняем генерацию печенок
-	const int result = generateCookie(ssl, cookie, &length);
+	const int32_t result = generateCookie(ssl, cookie, &length);
 	// Получаем размер буфера с печенками
 	(* size) = length;
 	// Выводим результат работы функции
@@ -2635,9 +2665,9 @@ int awh::Engine::generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * si
  * @param size   количество символов
  * @return       результат проверки
  */
-int awh::Engine::verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t size) noexcept {
+int32_t awh::Engine::verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t size) noexcept {
 	// Выполняем проверку печенок
-	return verifyCookie(ssl, cookie, static_cast <u_int> (size));
+	return verifyCookie(ssl, cookie, static_cast <uint32_t> (size));
 }
 /**
  * matchesCommonName Метод проверки доменного имени по данным из сертификата
@@ -2651,7 +2681,7 @@ awh::Engine::validate_t awh::Engine::matchesCommonName(const string & host, cons
 	// Если данные переданы
 	if(!host.empty() && (cert != nullptr)){
 		// Получаем индекс имени по NID
-		const int cnl = X509_NAME_get_index_by_NID(X509_get_subject_name(const_cast <X509 *> (cert)), NID_commonName, -1);
+		const int32_t cnl = X509_NAME_get_index_by_NID(X509_get_subject_name(const_cast <X509 *> (cert)), NID_commonName, -1);
 		// Если индекс не получен тогда выходим
 		if(cnl < 0)
 			// Выводим сформированную ошибку
@@ -2700,9 +2730,9 @@ awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host, const
 			// Выполняем формирвоание ошибки
 			return validate_t::NoSANPresent;
 		// Получаем количество имен
-		const int sanNamesNb = sk_GENERAL_NAME_num(sn);
+		const int32_t sanNamesNb = sk_GENERAL_NAME_num(sn);
 		// Переходим по всему списку
-		for(int i = 0; i < sanNamesNb; i++){
+		for(int32_t i = 0; i < sanNamesNb; i++){
 			// Получаем имя из списка
 			const GENERAL_NAME * cn = sk_GENERAL_NAME_value(sn, i);
 			// Проверяем тип имени
@@ -2858,9 +2888,9 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 				 * @param name  название параметра сертификата
 				 * @return      результат проверки
 				 */
-				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) noexcept -> int {
+				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) noexcept -> int32_t {
 					// Результат работы функции
-					int result = 0;
+					int32_t result = 0;
 					// Если объекты переданы верно
 					if((store != nullptr) && (name != nullptr)){
 						// Контекст сертификата
@@ -3052,7 +3082,7 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 				// Если протокол соответствует HTTP/3
 				case static_cast <uint8_t> (proto_t::HTTP3): {
 					// Размер строки протокола
-					u_int size = 0;
+					uint32_t size = 0;
 					// Строка протокола для сравнения
 					const u_char * alpn = nullptr;
 					/**
@@ -3217,7 +3247,7 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 				// Выполняем установку доступных протоколов передачи данных
-				SSL_CTX_set_alpn_protos(target._ctx, target.protocols.data(), static_cast <u_int> (target.protocols.size()));
+				SSL_CTX_set_alpn_protos(target._ctx, target.protocols.data(), static_cast <uint32_t> (target.protocols.size()));
 			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 		} break;
 		// Если приложение является сервером

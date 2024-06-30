@@ -32,7 +32,7 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
-	#define SOCKET int
+	#define SOCKET int32_t
 	#define INVALID_SOCKET -1
 #endif
 
@@ -64,6 +64,7 @@
 	#include <csignal>
 	#include <fcntl.h>
 	#include <unistd.h>
+	#include <sys/ioctl.h>
 	#include <sys/types.h>
 	#include <arpa/inet.h>
 	#include <sys/socket.h>
@@ -210,7 +211,7 @@ namespace awh {
 			 * @param ttl    время жизни файлового дескриптора в секундах (сокета)
 			 * @return       результат установки времени жизни
 			 */
-			bool timeToLive(const int family, const SOCKET fd, const int ttl) const noexcept;
+			bool timeToLive(const int32_t family, const SOCKET fd, const int32_t ttl) const noexcept;
 		public:
 			/**
 			 * keepAlive Метод устанавливает постоянное подключение на сокет
@@ -220,23 +221,38 @@ namespace awh {
 			 * @param intvl время между попытками
 			 * @return      результат работы функции
 			 */
-			bool keepAlive(const SOCKET fd, const int cnt = 0, const int idle = 0, const int intvl = 0) const noexcept;
+			bool keepAlive(const SOCKET fd, const int32_t cnt = 0, const int32_t idle = 0, const int32_t intvl = 0) const noexcept;
+		public:
+			/**
+			 * listen Метод проверки сокета на прослушиваемость
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат проверки сокета
+			 */
+			bool listen(const SOCKET fd) const noexcept;
+		public:
+			/**
+			 * availability Метод проверки количества находящихся байт в сокете
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param mode режим проверки типа сокета
+			 * @return     запрашиваемый размер буфера
+			 */
+			u_long availability(const SOCKET fd, const mode_t mode) const noexcept;
 		public:
 			/**
 			 * bufferSize Метод получения размера буфера
 			 * @param fd   файловый дескриптор (сокет)
-			 * @param mode режим установки типа сокета
+			 * @param mode режим проверки типа сокета
 			 * @return     запрашиваемый размер буфера
 			 */
-			int bufferSize(const SOCKET fd, const mode_t mode) const noexcept;
+			int32_t bufferSize(const SOCKET fd, const mode_t mode) const noexcept;
 			/**
 			 * bufferSize Метод установки размеров буфера
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param size устанавливаемый размер буфера
-			 * @param mode режим установки типа сокета
+			 * @param mode режим проверки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool bufferSize(const SOCKET fd, const int size, const mode_t mode) const noexcept;
+			bool bufferSize(const SOCKET fd, const int32_t size, const mode_t mode) const noexcept;
 		public:
 			/**
 			 * Socket Конструктор

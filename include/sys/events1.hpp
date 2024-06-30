@@ -84,7 +84,8 @@ namespace awh {
 				NONE  = 0x00, // Тип активного события не установлено
 				CLOSE = 0x01, // Активное событие закрытия подключения
 				READ  = 0x02, // Активное событие доступности данных на чтение
-				WRITE = 0x03  // Активное событие доступности сокета на запись
+				WRITE = 0x03, // Активное событие доступности сокета на запись
+				TIMER = 0x04  // Активное событие таймера в миллисекундах
 			};
 		private:
 			// Максимальное количество отслеживаемых сокетов
@@ -101,6 +102,8 @@ namespace awh {
 			typedef struct Item {
 				// Отслеживаемый файловый дескриптор
 				SOCKET fd;
+				// Задержка времени таймера
+				time_t delay;
 				// Функция обратного вызова
 				callback_t callback;
 				// Список соответствия типов событий режиму работы
@@ -108,7 +111,7 @@ namespace awh {
 				/**
 				 * Item Конструктор
 				 */
-				Item() noexcept : fd(INVALID_SOCKET), callback(nullptr) {}
+				Item() noexcept : fd(INVALID_SOCKET), delay(0), callback(nullptr) {}
 			} item_t;
 		private:
 			// Флаг запуска работы базы событий
@@ -195,9 +198,10 @@ namespace awh {
 			 * add Метод добавления файлового дескриптора в базу событий
 			 * @param fd       файловый дескриптор для добавления
 			 * @param callback функция обратного вызова при получении события
+			 * @param delay    задержка времени для создания таймеров
 			 * @return         результат работы функции
 			 */
-			bool add(const SOCKET fd, callback_t callback = nullptr) noexcept;
+			bool add(SOCKET & fd, callback_t callback = nullptr, const time_t delay = 0) noexcept;
 		private:
 			/**
 			 * mode Метод установки режима работы модуля
@@ -279,6 +283,9 @@ namespace awh {
 			// Файловый дескриптор
 			SOCKET _fd;
 		private:
+			// Задержка времени таймера
+			time_t _delay;
+		private:
 			// Функция обратного вызова
 			base_t::callback_t _callback;
 		private:
@@ -300,6 +307,11 @@ namespace awh {
 			 * @param fd файловый дескриптор для установки
 			 */
 			void set(const SOCKET fd) noexcept;
+			/**
+			 * set Метод установки задержки времени таймера
+			 * @param delay задержка времени в миллисекундах
+			 */
+			void set(const time_t delay) noexcept;
 			/**
 			 * set Метод установки функции обратного вызова
 			 * @param callback функция обратного вызова
@@ -330,14 +342,15 @@ namespace awh {
 			void start() noexcept;
 		public:
 			/**
-			 * Event1 Конструктор
+			 * Event Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Event1(const fmk_t * fmk, const log_t * log) noexcept :
-			 _mode(false), _fd(INVALID_SOCKET), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
+			 _mode(false), _fd(INVALID_SOCKET), _delay(0),
+			 _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
-			 * ~Event1 Деструктор
+			 * ~Event Деструктор
 			 */
 			~Event1() noexcept;
 	} event1_t;

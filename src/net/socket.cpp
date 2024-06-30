@@ -121,7 +121,7 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__
 		// Устанавливаем параметр
-		const int on = 1;
+		const int32_t on = 1;
 		// Устанавливаем SO_NOSIGPIPE
 		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on))))){
 			/**
@@ -149,7 +149,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем параметр
-		const int on = 1;
+		const int32_t on = 1;
 		// Разрешаем повторно использовать тот же host:port после отключения
 		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on))))){
 			/**
@@ -165,7 +165,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 	 */
 	#else
 		// Устанавливаем параметр
-		const int on = 1;
+		const int32_t on = 1;
 		// Разрешаем повторно использовать тот же host:port после отключения
 		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on))))){
 			/**
@@ -210,7 +210,7 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Флаги файлового дескриптора
-		int flags = 0;
+		int32_t flags = 0;
 		// Получаем флаги файлового дескриптора 
 		if(!(result = ((flags = ::fcntl(fd, F_GETFD, nullptr)) >= 0))){
 			/**
@@ -253,7 +253,7 @@ bool awh::Socket::blocking(const SOCKET fd) const noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Флаги файлового дескриптора
-		int flags = 0;
+		int32_t flags = 0;
 		// Получаем флаги файлового дескриптора
 		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
 			/**
@@ -321,7 +321,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 	 */
 	#else
 		// Флаги файлового дескриптора
-		int flags = 0;		
+		int32_t flags = 0;		
 		// Получаем флаги файлового дескриптора
 		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
 			/**
@@ -387,7 +387,7 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 	 */
 	#ifdef __linux__
 		// Флаг активации или деактивации алгоритма TCP/CORK
-		int flag = -1;
+		int32_t flag = -1;
 		// Определяем режим установки типа сокета
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо активировать алгоритм TCP/CORK
@@ -416,7 +416,7 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__
 		// Флаг активации или деактивации алгоритма TCP/CORK
-		int flag = -1;
+		int32_t flag = -1;
 		// Определяем режим установки типа сокета
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо активировать алгоритм TCP/CORK
@@ -452,7 +452,7 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
  */
 bool awh::Socket::nodelay(const SOCKET fd, const mode_t mode) const noexcept {
 	// Флаг активации или деактивации алгоритма TCP/NODELAY
-	int flag = -1;
+	int32_t flag = -1;
 	// Результат работы функции
 	bool result = false;
 	// Определяем режим установки типа сокета
@@ -548,7 +548,7 @@ bool awh::Socket::onlyIPv6(const SOCKET fd, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Устанавливаем параметр
-	const u_int on = static_cast <u_int> (mode == mode_t::ENABLE);
+	const uint32_t on = static_cast <uint32_t> (mode == mode_t::ENABLE);
 	// Разрешаем повторно использовать тот же host:port после отключения
 	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&on), sizeof(on))))){
 		/**
@@ -577,7 +577,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем время таймаута в миллисекундах
-		const u_int timeout = static_cast <u_int> (msec);
+		const uint32_t timeout = static_cast <uint32_t> (msec);
 		// Определяем флаг блокировки
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо установить таймаут на чтение
@@ -657,13 +657,13 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
  * @param ttl    время жизни файлового дескриптора в секундах (сокета)
  * @return       результат установки времени жизни
  */
-bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) const noexcept {
+bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_t ttl) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем тип протокола интернета
 	switch(family){
 		// Если тип протокола подключения IPv4
-		case static_cast <int> (AF_INET): {
+		case static_cast <int32_t> (AF_INET): {
 			/**
 			 * Если мы работаем в MacOS X
 			 */
@@ -685,7 +685,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 			 */
 			#elif defined(_WIN32) || defined(_WIN64)
 				// Выполняем получение размер TTL по умолчанию
-				const int mode = (ttl <= 0 ? 128 : ttl);
+				const int32_t mode = (ttl <= 0 ? 128 : ttl);
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
 				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
 					/**
@@ -715,7 +715,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 			#endif
 		} break;
 		// Если тип протокола подключения IPv6
-		case static_cast <int> (AF_INET6): {
+		case static_cast <int32_t> (AF_INET6): {
 			/**
 			 * Если мы работаем в MacOS X
 			 */
@@ -737,7 +737,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 			 */
 			#elif defined(_WIN32) || defined(_WIN64)
 				// Выполняем получение размер TTL по умолчанию
-				const int mode = (ttl <= 0 ? 128 : ttl);
+				const int32_t mode = (ttl <= 0 ? 128 : ttl);
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
 				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
 					/**
@@ -778,7 +778,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
  * @param intvl время между попытками
  * @return      результат работы функции
  */
-bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, const int intvl) const noexcept {
+bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -802,9 +802,9 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 			}
 		}{
 			// Флаг получения устанавливаемой опции KeepAlive
-			int option = 0;
+			int32_t option = 0;
 			// Устанавливаем размер опции для чтения
-			int size = sizeof(option);
+			int32_t size = sizeof(option);
 			// Если мы получили ошибку, выходим сообщение
 			if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <char *> (&option), &size)))){
 				/**
@@ -840,7 +840,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 	 */
 	#else
 		// Устанавливаем параметр
-		int keepAlive = 1;
+		int32_t keepAlive = 1;
 		// Активация постоянного подключения
 		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(keepAlive))))){
 			/**
@@ -913,14 +913,120 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 	return result;
 }
 /**
- * bufferSize Метод получения размера буфера
+ * listen Метод проверки сокета на прослушиваемость
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат проверки сокета
+ */
+bool awh::Socket::listen(const SOCKET fd) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	{
+		// Флаг получения устанавливаемой опции KeepAlive
+		int32_t option = 0;
+		// Устанавливаем размер опции для чтения
+		uint32_t size = sizeof(option);
+		// Если мы получили ошибку, выходим сообщение
+		if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ACCEPTCONN, reinterpret_cast <char *> (&option), &size)))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в лог информацию
+				this->_log->print("Getsockopt for SO_ACCEPTCONN failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+			#endif
+			// Выходим из функции
+			return result;
+		}
+		// Устанавливаем результат
+		result = (option > 0);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * availability Метод проверки количества находящихся байт в сокете
  * @param fd   файловый дескриптор (сокет)
- * @param mode режим установки типа сокета
+ * @param mode режим проверки типа сокета
  * @return     запрашиваемый размер буфера
  */
-int awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
+u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexcept {
 	// Результат работы функции
-	int result = 0;
+	u_long result = 0;
+	// Если сокет не является прослушиваемым
+	if(!this->listen(fd)){
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Определяем флаг блокировки
+			switch(static_cast <uint8_t> (mode)){
+				// Если необходимо получить размер буфера на чтение
+				case static_cast <uint8_t> (mode_t::READ): {
+					// Выполняем получения количества байт в сокете
+					if(static_cast <bool> (::ioctlsocket(fd, FIONREAD, &result))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим в лог информацию
+							this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						#endif
+					}
+				} break;
+			}
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Получаем количество байт находящихся в сокете
+			int32_t bytes = 0;
+			// Определяем флаг блокировки
+			switch(static_cast <uint8_t> (mode)){
+				// Если необходимо получить размер буфера на чтение
+				case static_cast <uint8_t> (mode_t::READ): {
+					// Выполняем получения количества байт в сокете
+					if(static_cast <bool> (::ioctl(fd, FIONREAD, &bytes))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим в лог информацию
+							this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						#endif
+					}
+				} break;
+				// Если необходимо получить размер буфера на запись
+				case static_cast <uint8_t> (mode_t::WRITE): {
+					// Выполняем получения количества байт в сокете
+					if(static_cast <bool> (::ioctl(fd, TIOCOUTQ, &bytes))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим в лог информацию
+							this->_log->print("Cannot set TIOCOUTQ option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						#endif
+					}
+				} break;
+			}
+			// Если количество полученных байт больше нуля
+			if(bytes > 0)
+				// Устанавливаем полученный результат
+				result = static_cast <u_long> (bytes);
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * bufferSize Метод получения размера буфера
+ * @param fd   файловый дескриптор (сокет)
+ * @param mode режим проверки типа сокета
+ * @return     запрашиваемый размер буфера
+ */
+int32_t awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
+	// Результат работы функции
+	int32_t result = 0;
 	// Размер результата
 	socklen_t size = sizeof(result);
 	// Определяем флаг блокировки
@@ -959,10 +1065,10 @@ int awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
  * bufferSize Метод установки размеров буфера
  * @param fd   файловый дескриптор (сокет)
  * @param size устанавливаемый размер буфера
- * @param mode режим установки типа сокета
+ * @param mode режим проверки типа сокета
  * @return     результат работы функции
  */
-bool awh::Socket::bufferSize(const SOCKET fd, const int size, const mode_t mode) const noexcept {
+bool awh::Socket::bufferSize(const SOCKET fd, const int32_t size, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем размер массива опции
@@ -972,7 +1078,7 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const mode_t mode)
 		// Если необходимо установить размер буфера на чтение
 		case static_cast <uint8_t> (mode_t::READ): {
 			// Получаем количество байт для установки
-			u_int bytes = (size > 0 ? size : AWH_BUFFER_SIZE_RCV);
+			uint32_t bytes = (size > 0 ? size : AWH_BUFFER_SIZE_RCV);
 			// Если размер буфера установлен
 			if(bytes > 0){
 				// Время между попытками
@@ -1002,7 +1108,7 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const mode_t mode)
 		// Если необходимо установить размер буфера на запись
 		case static_cast <uint8_t> (mode_t::WRITE): {
 			// Получаем количество байт для установки
-			u_int bytes = (size > 0 ? size : AWH_BUFFER_SIZE_SND);
+			uint32_t bytes = (size > 0 ? size : AWH_BUFFER_SIZE_SND);
 			// Если размер буфера установлен
 			if(bytes > 0){
 				// Время между попытками
