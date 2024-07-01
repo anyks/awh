@@ -1729,8 +1729,6 @@ void awh::Base::start() noexcept {
 													if(j != this->_timers.end()){
 														// Выполняем смену режима работы отлова события
 														EV_SET(j->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
-														// Выполняем отключение параметров события произошедшего в данный момент времени
-														EV_SET(&this->_events.at(i), fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
 														// Если функция обратного вызова установлена
 														if(item->callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -1749,7 +1747,7 @@ void awh::Base::start() noexcept {
 														}
 													}
 												// Выполняем редистрибюцию
-												} else this->redistribution();
+												}// else this->redistribution();
 												// Если в сокете появились данные для чтения
 												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_READ)){
 													// Если функция обратного вызова установлена
