@@ -64,20 +64,9 @@
 						// Определяем вышло ли время выделенное для ожидания
 						const bool timed = (((i->second->data > elapsed) ? (i->second->data - elapsed) : 0) == 0);
 						// Если время вышло
-						if(timed){
+						if(timed)
 							// Выполняем смену режима работы отлова события
 							EV_SET(i->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
-							// Выполняем поиск файлового дескриптора из списка событий
-							for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
-								// Если файловый дескриптор найден
-								if(j->ident == fd){
-									// Выполняем смену режима работы отлова события
-									EV_SET(&(* j), fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
-									// Выходим из цикла
-									break;
-								}
-							}
-						}
 						// Если функция обратного вызова установлена
 						if(timed && (item->callback != nullptr)){
 							// Выполняем поиск события таймера присутствует в базе событий
