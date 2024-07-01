@@ -309,10 +309,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 					// Если файловый дескриптор найден
 					if((erased = (j->ident == fd))){
-						// Если событие является таймером
-						if(reinterpret_cast <item_t *> (j->udata)->delay > 0){
+						// Выполняем поиск таймера если он есть
+						auto k = this->_timers.find(j->ident);
+						// Если таймер найден в списке таймеров
+						if(k != this->_timers.end()){
 							// Выполняем удаление активного таймера
-							this->_timers.erase(j->ident);
+							this->_timers.erase(k);
 							// Выполняем удаление события таймера
 							EV_SET(&(* j), j->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
 						// Если событие является обычным
@@ -333,10 +335,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 					if(j->ident == fd){
 						// Если событие ещё не удалено из базы событий
 						if(!erased){
-							// Если событие является таймером
-							if(reinterpret_cast <item_t *> (j->udata)->delay > 0){
+							// Выполняем поиск таймера если он есть
+							auto k = this->_timers.find(j->ident);
+							// Если таймер найден в списке таймеров
+							if(k != this->_timers.end()){
 								// Выполняем удаление активного таймера
-								this->_timers.erase(j->ident);
+								this->_timers.erase(k);
 								// Выполняем удаление события таймера
 								EV_SET(&(* j), j->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
 							// Если событие является обычным
@@ -719,10 +723,12 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 						for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
 							// Если файловый дескриптор найден
 							if(k->ident == fd){
-								// Если событие является таймером
-								if(reinterpret_cast <item_t *> (k->udata)->delay > 0){
+								// Выполняем поиск таймера если он есть
+								auto l = this->_timers.find(k->ident);
+								// Если таймер найден в списке таймеров
+								if(l != this->_timers.end()){
 									// Выполняем удаление активного таймера
-									this->_timers.erase(k->ident);
+									this->_timers.erase(l);
 									// Выполняем удаление события таймера
 									EV_SET(&(* k), k->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
 									// Выполняем закрытие подключения
@@ -1310,10 +1316,12 @@ void awh::Base::clear() noexcept {
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_events.begin(); i != this->_events.end();){
-				// Если событие является таймером
-				if(reinterpret_cast <item_t *> (i->udata)->delay > 0){
+				// Выполняем поиск таймера если он есть
+				auto j = this->_timers.find(i->ident);
+				// Если таймер найден в списке таймеров
+				if(j != this->_timers.end()){
 					// Выполняем удаление активного таймера
-					this->_timers.erase(i->ident);
+					this->_timers.erase(j);
 					// Выполняем удаление события таймера
 					EV_SET(&(* i), i->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
 				// Если событие является обычным
@@ -1327,10 +1335,12 @@ void awh::Base::clear() noexcept {
 			}
 			// Выполняем поиск файлового дескриптора из списка изменений
 			for(auto i = this->_change.begin(); i != this->_change.end();){
-				// Если событие является таймером
-				if(reinterpret_cast <item_t *> (i->udata)->delay > 0){
+				// Выполняем поиск таймера если он есть
+				auto j = this->_timers.find(i->ident);
+				// Если таймер найден в списке таймеров
+				if(j != this->_timers.end()){
 					// Выполняем удаление активного таймера
-					this->_timers.erase(i->ident);
+					this->_timers.erase(j);
 					// Выполняем удаление события таймера
 					EV_SET(&(* i), i->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
 				// Если событие является обычным
