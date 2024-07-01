@@ -63,6 +63,10 @@
 						const time_t elapsed = (this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS) - item->date);
 						// Определяем вышло ли время выделенное для ожидания
 						const bool timed = (((i->second->data > elapsed) ? (i->second->data - elapsed) : 0) == 0);
+						// Если время вышло
+						if(timed)
+							// Выполняем смену режима работы отлова события
+							EV_SET(i->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
 						// Если функция обратного вызова установлена
 						if(timed && (item->callback != nullptr)){
 							// Выполняем поиск события таймера присутствует в базе событий
@@ -90,8 +94,8 @@
 									j->second->data -= elapsed;
 								// Если время уже вышло
 								else
-									// Выполняем сброс всего счётчика времени
-									j->second->data = (item->delay * 1000000);
+									// Выполняем смену режима работы отлова события
+									EV_SET(j->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_ENABLE, NOTE_NSECONDS, item->delay * 1000000, item);
 								// Увеличиваем значение текущего индекса
 								index++;
 								// Выполняем смещение в цикле
@@ -1580,9 +1584,9 @@ void awh::Base::start() noexcept {
 												// Если функция обратного вызова установлена
 												if(item->callback != nullptr){
 													// Выполняем поиск события на отключение присутствует в базе событий
-													auto k = item->mode.find(event_type_t::CLOSE);
+													auto j = item->mode.find(event_type_t::CLOSE);
 													// Если событие найдено и оно активированно
-													if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+													if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
 														item->callback(item->fd, event_type_t::CLOSE);
 												}
@@ -1601,9 +1605,9 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события таймера присутствует в базе событий
-														auto k = item->mode.find(event_type_t::TIMER);
+														auto j = item->mode.find(event_type_t::TIMER);
 														// Если событие найдено и оно активированно
-														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
 															item->callback(fd, event_type_t::TIMER);
 													}
@@ -1622,9 +1626,9 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на получение данных присутствует в базе событий
-														auto k = item->mode.find(event_type_t::READ);
+														auto j = item->mode.find(event_type_t::READ);
 														// Если событие найдено и оно активированно
-														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
 															item->callback(fd, event_type_t::READ);
 													}
@@ -1634,9 +1638,9 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на запись данных присутствует в базе событий
-														auto k = item->mode.find(event_type_t::WRITE);
+														auto j = item->mode.find(event_type_t::WRITE);
 														// Если событие найдено и оно активированно
-														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
 															item->callback(fd, event_type_t::WRITE);
 													}
@@ -1701,9 +1705,9 @@ void awh::Base::start() noexcept {
 												// Если функция обратного вызова установлена
 												if(item->callback != nullptr){
 													// Выполняем поиск события на отключение присутствует в базе событий
-													auto k = item->mode.find(event_type_t::CLOSE);
+													auto j = item->mode.find(event_type_t::CLOSE);
 													// Если событие найдено и оно активированно
-													if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+													if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
 														item->callback(item->fd, event_type_t::CLOSE);
 												}
@@ -1749,9 +1753,9 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на получение данных присутствует в базе событий
-														auto k = item->mode.find(event_type_t::READ);
+														auto j = item->mode.find(event_type_t::READ);
 														// Если событие найдено и оно активированно
-														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
 															item->callback(fd, event_type_t::READ);
 													}
@@ -1761,9 +1765,9 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на запись данных присутствует в базе событий
-														auto k = item->mode.find(event_type_t::WRITE);
+														auto j = item->mode.find(event_type_t::WRITE);
 														// Если событие найдено и оно активированно
-														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
 															item->callback(fd, event_type_t::WRITE);
 													}
