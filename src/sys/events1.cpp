@@ -1721,6 +1721,8 @@ void awh::Base::start() noexcept {
 											if(item != nullptr){
 												// Получаем значение текущего идентификатора
 												const SOCKET fd = item->fd;
+												
+												/*
 												// Если событие является таймером
 												if(item->delay > 0){
 													// Выполняем поиск активного таймера
@@ -1747,7 +1749,12 @@ void awh::Base::start() noexcept {
 														}
 													}
 												// Выполняем редистрибюцию
-												}// else this->redistribution();
+												} else this->redistribution();
+												*/
+											
+												// Выполняем редистрибюцию
+												this->redistribution();
+
 												// Если в сокете появились данные для чтения
 												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_READ)){
 													// Если функция обратного вызова установлена
