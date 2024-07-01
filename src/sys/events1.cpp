@@ -1725,7 +1725,7 @@ void awh::Base::start() noexcept {
 												// Если событие является таймером
 												if(item->delay > 0)
 													// Выполняем смену режима работы отлова события
-													EV_SET(this->_events.at(i), fd, EVFILT_TIMER, EV_ADD | EV_CLEAR, 0, 0, 0);
+													EV_SET(&this->_events.at(i), fd, EVFILT_TIMER, EV_ADD | EV_CLEAR, 0, 0, 0);
 												
 												/*
 												// Если событие является таймером
