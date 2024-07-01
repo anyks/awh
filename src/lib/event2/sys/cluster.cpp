@@ -339,14 +339,14 @@
 								data.buffer.assign(i->second->buffer.data(), i->second->buffer.data() + i->second->message.size);
 								// Если асинхронный режим работы активирован
 								if(this->async){
-									// Выполняем запуск работы дочернего процесса
-									this->startChild();
+									// Выполняем запуск работы скрина
+									this->_screen.start();
 									// Выполняем отправку полученных данных
-									this->_child->send(std::move(data));
+									this->_screen = std::move(data);
 								// Если асинхронный режим работы деактивирован
 								} else {
 									// Выполняем остановку работы дочернего процесса
-									this->stopChild();
+									this->_screen.stop();
 									// Выполняем отправку полученных данных напрямую
 									this->callback(std::move(data));
 								}
@@ -432,14 +432,14 @@
 									data.buffer.assign(i->second->buffer.data(), i->second->buffer.data() + i->second->message.size);
 									// Если асинхронный режим работы активирован
 									if(this->async){
-										// Выполняем запуск работы дочернего процесса
-										this->startChild();
+										// Выполняем запуск работы скрина
+										this->_screen.start();
 										// Выполняем отправку полученных данных
-										this->_child->send(std::move(data));
+										this->_screen = std::move(data);
 									// Если асинхронный режим работы деактивирован
 									} else {
 										// Выполняем остановку работы дочернего процесса
-										this->stopChild();
+										this->_screen.stop();
 										// Выполняем отправку полученных данных напрямую
 										this->callback(std::move(data));
 									}
@@ -463,34 +463,22 @@
 	}
 #endif
 /**
- * Если операционной системой не является Windows
+ * Worker Конструктор
+ * @param log объект для работы с логами
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+awh::Cluster::Worker::Worker(const log_t * log) noexcept :
+ wid(0), async(false), working(false), restart(false),
+ count(1), _buffer{0}, cluster(nullptr),
+ _screen(Screen <data_t>::health_t::DEAD), _log(log) {
 	/**
-	 * stopChild Метод остановки работы дочернего процесса
+	 * Если операционной системой не является Windows
 	 */
-	void awh::Cluster::Worker::stopChild() noexcept {
-		// Если объект дочерних потоков создан
-		if(this->_child != nullptr){
-			// Удаляем его
-			delete this->_child;
-			// Выполняем зануление объекта дочернего потока
-			this->_child = nullptr;
-		}
-	}
-	/**
-	 * startChild Метод запуска работы дочернего процесса
-	 */
-	void awh::Cluster::Worker::startChild() noexcept {
-		// Если объект дочерних потоков ещё не создан
-		if(this->_child == nullptr){
-			// Выполняем создание объекта дочернего потока
-			this->_child = new child_t <data_t> ();
-			// Выполняем установку функции обратного вызова при получении сообщения
-			this->_child->on(std::bind(&worker_t::callback, this, _1));
-		}
-	}
-#endif
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем установку функции обратного вызова при получении сообщения
+		this->_screen = std::bind(&worker_t::callback, this, _1);
+	#endif
+}
+/**
 /**
  * ~Worker Деструктор
  */
@@ -500,7 +488,7 @@ awh::Cluster::Worker::~Worker() noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем остановку работы дочернего процесса
-		this->stopChild();
+		this->_screen.stop();
 	#endif
 }
 /**

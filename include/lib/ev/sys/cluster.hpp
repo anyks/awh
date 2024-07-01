@@ -38,7 +38,7 @@
 #include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <sys/child.hpp>
+#include <sys/screen.hpp>
 #include <sys/buffer.hpp>
 #include <net/socket.hpp>
 
@@ -165,8 +165,8 @@ namespace awh {
 					// Родительский объект кластера
 					Cluster * cluster;
 				private:
-					// Объект для работы с дочерним потоком
-					child_t <data_t> * _child;
+					// Объект для работы с скрином
+					screen_t <data_t> _screen;
 				private:
 					// Полезная нагрузка полученная в сообщениях
 					map <pid_t, unique_ptr <payload_t>> _payload;
@@ -222,26 +222,10 @@ namespace awh {
 					#endif
 				public:
 					/**
-					 * Если операционной системой не является Windows
-					 */
-					#if !defined(_WIN32) && !defined(_WIN64)
-						/**
-						 * stopChild Метод остановки работы дочернего процесса
-						 */
-						void stopChild() noexcept;
-						/**
-						 * startChild Метод запуска работы дочернего процесса
-						 */
-						void startChild() noexcept;
-					#endif
-				public:
-					/**
 					 * Worker Конструктор
 					 * @param log объект для работы с логами
 					 */
-					Worker(const log_t * log) noexcept :
-					 wid(0), async(false), working(false), restart(false),
-					 count(1), _buffer{0}, cluster(nullptr), _child(nullptr), _log(log) {}
+					Worker(const log_t * log) noexcept;
 					/**
 					 * ~Worker Деструктор
 					 */

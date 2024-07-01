@@ -36,7 +36,7 @@
  * Наши модули
  */
 #include <sys/fmk.hpp>
-#include <sys/child.hpp>
+#include <sys/screen.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -124,7 +124,7 @@ namespace awh {
 			mutable set <pid_t> _initialized;
 		private:
 			// Объект работы с дочерними потоками
-			mutable child_t <payload_t> * _child;
+			mutable screen_t <payload_t> _screen;
 		private:
 			// Функция обратного вызова которая срабатывает при появлении лога
 			function <void (const flag_t, const string &)> _fn;

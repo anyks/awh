@@ -374,26 +374,24 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 					// Если идентификатор процесса является дочерним
 					if(pid != this->_pid){
 						// Если процесс ещё не инициализирован и дочерний поток уже создан
-						if((this->_child != nullptr) && (this->_initialized.count(pid) < 1)){
-							// Выполняем удаление оюъекта дочернего потока
-							delete this->_child;
-							// Выполняем зануление дочернего потока
-							this->_child = nullptr;
+						if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+							// Выполняем остановку скрина
+							this->_screen.stop();
 							// Выполняем очистку списка инициализированных процессов
 							this->_initialized.clear();
 						}
 					}
 					// Если дочерний поток не создан
-					if(this->_child == nullptr){
-						// Выполняем создание дочернего потока
-						this->_child = new child_t <payload_t> ();
+					if(!static_cast <bool> (this->_screen)){
 						// Выполняем установку функцию обратного вызова
-						this->_child->on(std::bind(&log_t::receiving, this, _1));
+						this->_screen = std::bind(&log_t::receiving, this, _1);
 						// Выполняем инициализацию текущего процесса
 						this->_initialized.emplace(pid);
+						// Запускаем работу скрина
+						this->_screen.start();
 					}
 					// Выполняем отправку сообщения дочернему потоку
-					this->_child->send(std::move(payload));
+					this->_screen = std::move(payload);
 				// Выполняем вывод полученного лога
 				} else this->receiving(std::move(payload));
 			}
@@ -429,27 +427,25 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 				const pid_t pid = getpid();
 				// Если идентификатор процесса является дочерним
 				if(pid != this->_pid){
-					// Если процесс ещё не инициализирован и дочерний поток уже создан
-					if((this->_child != nullptr) && (this->_initialized.count(pid) < 1)){
-						// Выполняем удаление оюъекта дочернего потока
-						delete this->_child;
-						// Выполняем зануление дочернего потока
-						this->_child = nullptr;
+					// Если процесс ещё не инициализирован, а скрин уже запущен
+					if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+						// Выполняем остановку скрина
+						this->_screen.stop();
 						// Выполняем очистку списка инициализированных процессов
 						this->_initialized.clear();
 					}
 				}
 				// Если дочерний поток не создан
-				if(this->_child == nullptr){
-					// Выполняем создание дочернего потока
-					this->_child = new child_t <payload_t> ();
+				if(!static_cast <bool> (this->_screen)){
 					// Выполняем установку функцию обратного вызова
-					this->_child->on(std::bind(&log_t::receiving, this, _1));
+					this->_screen = std::bind(&log_t::receiving, this, _1);
 					// Выполняем инициализацию текущего процесса
 					this->_initialized.emplace(pid);
+					// Запускаем работу скрина
+					this->_screen.start();
 				}
 				// Выполняем отправку сообщения дочернему потоку
-				this->_child->send(std::move(payload));
+				this->_screen = std::move(payload);
 			// Выполняем вывод полученного лога
 			} else this->receiving(std::move(payload));
 		}
@@ -535,7 +531,7 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
  _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE),
  _level(level_t::ALL), _name{AWH_SHORT_NAME}, _format{DATE_FORMAT},
- _filename{filename}, _child(nullptr), _fn(nullptr), _fmk(fmk) {
+ _filename{filename}, _screen(Screen <payload_t>::health_t::DEAD), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = ::getpid();
 	// Выполняем разрешение на вывод всех видов логов
@@ -546,7 +542,7 @@ awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
  */
 awh::Log::~Log() noexcept {
 	// Если объект работы с дочерним потоком создан, удаляем
-	if(this->_child != nullptr)
-		// Удаляем объект работы с дочерним потоком
-		delete this->_child;
+	if(static_cast <bool> (this->_screen))
+		// Останавливаем работу скрина
+		this->_screen.stop();
 }
