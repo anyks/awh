@@ -1734,13 +1734,13 @@ void awh::Base::start() noexcept {
 												// Если событие является таймером
 												if(item->delay > 0)
 													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
-													EV_SET(&this->_events.at(i), fd, EVFILT_TIMER, EV_ADD | EV_CLEAR, 0, 0, 0);
+													EV_SET(&this->_events.at(i), fd, EVFILT_TIMER, EV_DELETE | EV_CLEAR, 0, 0, 0);
 												// Выполняем редистрибюцию
 												this->redistribution();
 												// Если в сокете появились данные для чтения
 												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_READ)){
 													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
-													EV_SET(&this->_events.at(i), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, 0);
+													EV_SET(&this->_events.at(i), fd, EVFILT_READ, EV_DELETE | EV_CLEAR, 0, 0, 0);
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на получение данных присутствует в базе событий
@@ -1754,7 +1754,7 @@ void awh::Base::start() noexcept {
 												// Если сокет доступен для записи
 												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_WRITE)){
 													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
-													EV_SET(&this->_events.at(i), fd, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, 0);
+													EV_SET(&this->_events.at(i), fd, EVFILT_WRITE, EV_DELETE | EV_CLEAR, 0, 0, 0);
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на запись данных присутствует в базе событий
