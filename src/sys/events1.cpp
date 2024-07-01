@@ -1719,21 +1719,28 @@ void awh::Base::start() noexcept {
 												const SOCKET fd = item->fd;
 												// Если событие является таймером
 												if(item->delay > 0){
-													// Если функция обратного вызова установлена
-													if(item->callback != nullptr){
-														// Выполняем поиск события таймера присутствует в базе событий
-														auto k = item->mode.find(event_type_t::TIMER);
-														// Если событие найдено и оно активированно
-														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
-															// Выполняем функцию обратного вызова
-															item->callback(fd, event_type_t::TIMER);
-													}
-													// Если таймер не был удалён в функции обратного вызова
-													if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident)){
-														// Выполняем сброс всего счётчика времени
-														this->_events.at(i).data = (item->delay * 1000000);
-														// Обновляем значение текущей даты
-														item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+													// Выполняем поиск активного таймера
+													auto j = this->_timers.find(fd);
+													// Если активный таймер найден в списке
+													if(j != this->_timers.end()){
+														// Выполняем смену режима работы отлова события
+														EV_SET(j->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
+														// Если функция обратного вызова установлена
+														if(item->callback != nullptr){
+															// Выполняем поиск события таймера присутствует в базе событий
+															auto k = item->mode.find(event_type_t::TIMER);
+															// Если событие найдено и оно активированно
+															if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+																// Выполняем функцию обратного вызова
+																item->callback(fd, event_type_t::TIMER);
+														}
+														// Если таймер не был удалён в функции обратного вызова
+														if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident)){
+															// Обновляем значение текущей даты
+															item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+															// Выполняем смену режима работы отлова события
+															EV_SET(j->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_ENABLE, NOTE_NSECONDS, item->delay * 1000000, item);
+														}
 													}
 												// Выполняем редистрибюцию
 												} else this->redistribution();
