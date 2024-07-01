@@ -72,30 +72,33 @@
 								// Выполняем функцию обратного вызова
 								item->callback(item->fd, event_type_t::TIMER);
 						}
-						// Выполняем поиск идентификатор файлового дескриптора
-						auto k = this->_timers.find(fd);
-						// Если таймер найден в списке
-						if(k != this->_timers.end()){
-							// Обновляем значение текущей даты
-							item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
-							// Если время ещё не вышло
-							if(!timed)
-								// Выполняем установку оставшегося времени
-								i->second->data -= elapsed;
-							// Если время уже вышло
-							else
-								// Выполняем сброс всего счётчика времени
-								i->second->data = (item->delay * 1000000);
-							// Увеличиваем значение текущего индекса
-							index++;
-							// Выполняем смещение в цикле
-							++i;
 						// Если таймеров в списке больше нет
-						} else if(this->_timers.empty())
+						if(this->_timers.empty())
 							// Выходим из цикла
 							break;
-						// Продолжаем перебор дальше
-						else i = std::next(this->_timers.begin(), index);
+						// Если список таймеров ещё не пустой
+						else {
+							// Выполняем поиск идентификатор файлового дескриптора
+							auto j = this->_timers.find(fd);
+							// Если таймер найден в списке
+							if(j != this->_timers.end()){
+								// Обновляем значение текущей даты
+								item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+								// Если время ещё не вышло
+								if(!timed)
+									// Выполняем установку оставшегося времени
+									j->second->data -= elapsed;
+								// Если время уже вышло
+								else
+									// Выполняем сброс всего счётчика времени
+									j->second->data = (item->delay * 1000000);
+								// Увеличиваем значение текущего индекса
+								index++;
+								// Выполняем смещение в цикле
+								++i;
+							// Продолжаем перебор дальше
+							} else i = std::next(this->_timers.begin(), index);
+						}
 					// Выводим сообщение об ошибке
 					} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, i->second->ident);
 				}
@@ -1595,8 +1598,6 @@ void awh::Base::start() noexcept {
 												const SOCKET fd = item->fd;
 												// Если событие является таймером
 												if(item->delay > 0){
-													// Обновляем значение текущей даты
-													item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события таймера присутствует в базе событий
@@ -1608,6 +1609,8 @@ void awh::Base::start() noexcept {
 													}
 													// Если удаление таймера в функции обратного вызова не выполненно
 													if((static_cast <size_t> (i) < this->_events.size()) && (fd == reinterpret_cast <item_t *> (this->_events.at(i).data.ptr)->fd)){
+														// Обновляем значение текущей даты
+														item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 														// Выполняем активацию таймера
 														if(::timerfd_settime(fd, 0, &item->timer, 0) == -1)
 															// Выводим сообщение об ошибке
@@ -1714,8 +1717,26 @@ void awh::Base::start() noexcept {
 											if(item != nullptr){
 												// Получаем значение текущего идентификатора
 												const SOCKET fd = item->fd;
+												// Если событие является таймером
+												if(item->delay > 0){
+													// Если функция обратного вызова установлена
+													if(item->callback != nullptr){
+														// Выполняем поиск события таймера присутствует в базе событий
+														auto k = item->mode.find(event_type_t::TIMER);
+														// Если событие найдено и оно активированно
+														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+															// Выполняем функцию обратного вызова
+															item->callback(fd, event_type_t::TIMER);
+													}
+													// Если таймер не был удалён в функции обратного вызова
+													if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident)){
+														// Выполняем сброс всего счётчика времени
+														this->_events.at(i).data = (item->delay * 1000000);
+														// Обновляем значение текущей даты
+														item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+													}
 												// Выполняем редистрибюцию
-												this->redistribution();
+												} else this->redistribution();
 												// Если в сокете появились данные для чтения
 												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_READ)){
 													// Если функция обратного вызова установлена
