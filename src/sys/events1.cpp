@@ -64,9 +64,20 @@
 						// Определяем вышло ли время выделенное для ожидания
 						const bool timed = (((i->second->data > elapsed) ? (i->second->data - elapsed) : 0) == 0);
 						// Если время вышло
-						if(timed)
+						if(timed){
 							// Выполняем смену режима работы отлова события
 							EV_SET(i->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
+							// Выполняем поиск файлового дескриптора из списка событий
+							for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
+								// Если файловый дескриптор найден
+								if(j->ident == fd){
+									// Выполняем смену режима работы отлова события
+									EV_SET(&(* j), fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
+									// Выходим из цикла
+									break;
+								}
+							}
+						}
 						// Если функция обратного вызова установлена
 						if(timed && (item->callback != nullptr)){
 							// Выполняем поиск события таймера присутствует в базе событий
@@ -1721,47 +1732,16 @@ void awh::Base::start() noexcept {
 											if(item != nullptr){
 												// Получаем значение текущего идентификатора
 												const SOCKET fd = item->fd;
-
 												// Если событие является таймером
 												if(item->delay > 0)
-													// Выполняем смену режима работы отлова события
+													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
 													EV_SET(&this->_events.at(i), fd, EVFILT_TIMER, EV_ADD | EV_CLEAR, 0, 0, 0);
-												
-												/*
-												// Если событие является таймером
-												if(item->delay > 0){
-													// Выполняем поиск активного таймера
-													auto j = this->_timers.find(fd);
-													// Если активный таймер найден в списке
-													if(j != this->_timers.end()){
-														// Выполняем смену режима работы отлова события
-														EV_SET(j->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
-														// Если функция обратного вызова установлена
-														if(item->callback != nullptr){
-															// Выполняем поиск события таймера присутствует в базе событий
-															auto k = item->mode.find(event_type_t::TIMER);
-															// Если событие найдено и оно активированно
-															if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
-																// Выполняем функцию обратного вызова
-																item->callback(fd, event_type_t::TIMER);
-														}
-														// Если таймер не был удалён в функции обратного вызова
-														if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident)){
-															// Обновляем значение текущей даты
-															item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
-															// Выполняем смену режима работы отлова события
-															EV_SET(j->second, fd, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_ENABLE, NOTE_NSECONDS, item->delay * 1000000, item);
-														}
-													}
-												// Выполняем редистрибюцию
-												} else this->redistribution();
-												*/
-
 												// Выполняем редистрибюцию
 												this->redistribution();
-
 												// Если в сокете появились данные для чтения
 												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_READ)){
+													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
+													EV_SET(&this->_events.at(i), fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, 0);
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на получение данных присутствует в базе событий
@@ -1774,6 +1754,8 @@ void awh::Base::start() noexcept {
 												}
 												// Если сокет доступен для записи
 												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_WRITE)){
+													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
+													EV_SET(&this->_events.at(i), fd, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, 0);
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на запись данных присутствует в базе событий
