@@ -20,6 +20,7 @@
  */
 #include <map>
 #include <set>
+#include <cmath>
 #include <ctime>
 #include <mutex>
 #include <thread>
@@ -34,6 +35,7 @@
 #if __linux__
 	// Подключаем модуль EPoll
 	#include <sys/epoll.h>
+	#include <sys/timerfd.h>
 /**
  * Если это FreeBSD или MacOS X
  */
@@ -106,6 +108,13 @@ namespace awh {
 				time_t date;
 				// Задержка времени таймера
 				time_t delay;
+				/**
+				 * Если это Linux
+				 */
+				#if __linux__
+					// Параметры таймера
+					struct itimerspec timer;
+				#endif
 				// Функция обратного вызова
 				callback_t callback;
 				// Список соответствия типов событий режиму работы
@@ -172,15 +181,9 @@ namespace awh {
 			// Список отслеживаемых участников
 			std::map <SOCKET, item_t> _items;
 			/**
-			 * Если это Linux
-			 */
-			#if defined(__linux__)
-				// Список активных таймеров
-				std::map <SOCKET, struct epoll_event *> _timers;
-			/**
 			 * Если это FreeBSD или MacOS X
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__
+			#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
 				// Список активных таймеров
 				std::map <SOCKET, struct kevent *> _timers;
 			#endif
@@ -191,9 +194,14 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * redistribution Метод перераспределения таймеров
+			 * Если это FreeBSD или MacOS X
 			 */
-			void redistribution() noexcept;
+			#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
+				/**
+				 * redistribution Метод перераспределения таймеров
+				 */
+				void redistribution() noexcept;
+			#endif
 		private:
 			/**
 			 * init Метод инициализации базы событий

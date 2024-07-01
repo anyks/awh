@@ -37,26 +37,20 @@
 		// Сообщаем, что WinSocksAPI уже инициализирован
 		return true;
 	}
-#endif
 /**
- * redistribution Метод перераспределения таймеров
+ * Если это FreeBSD или MacOS X
  */
-void awh::Base::redistribution() noexcept {
-	// Если список активных таймеров не пустой
-	if(!this->_timers.empty()){
-		// Значение текущего индекса
-		size_t index = 0;
-		// Выполняем перебор всего списка активных таймеров
-		for(auto i = this->_timers.begin(); i != this->_timers.end();){
-			/**
-			 * Если это Linux
-			 */
-			#if defined(__linux__)
-				
-			/**
-			 * Если это FreeBSD или MacOS X
-			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__
+#elif __APPLE__ || __MACH__ || __FreeBSD__
+	/**
+	 * redistribution Метод перераспределения таймеров
+	 */
+	void awh::Base::redistribution() noexcept {
+		// Если список активных таймеров не пустой
+		if(!this->_timers.empty()){
+			// Значение текущего индекса
+			size_t index = 0;
+			// Выполняем перебор всего списка активных таймеров
+			for(auto i = this->_timers.begin(); i != this->_timers.end();){
 				// Если событие пришло от таймера
 				if(i->second->filter & EVFILT_TIMER){
 					// Получаем объект текущего события
@@ -105,10 +99,10 @@ void awh::Base::redistribution() noexcept {
 					// Выводим сообщение об ошибке
 					} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, i->second->ident);
 				}
-			#endif
+			}
 		}
 	}
-}
+#endif
 /**
  * init Метод инициализации базы событий
  * @param mode флаг инициализации
@@ -508,6 +502,11 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 							if((erased = (reinterpret_cast <item_t *> (k->data.ptr)->fd == fd))){
 								// Определяем тип переданного события
 								switch(static_cast <uint8_t> (type)){
+									// Если событие установлено как таймер
+									case static_cast <uint8_t> (event_type_t::TIMER):
+										// Выполняем удаление флагов отслеживания таймера
+										k->events ^= (EPOLLIN | EPOLLET);
+									break;
 									// Если событие установлено как отслеживание закрытия подключения
 									case static_cast <uint8_t> (event_type_t::CLOSE):
 										// Выполняем удаление флагов отслеживания закрытия подключения
@@ -541,6 +540,10 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 										// Выводим сообщение об ошибке
 										this->_log->print("Remove event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, reinterpret_cast <item_t *> (k->data.ptr)->fd, this->_socket.message().c_str());
 								}
+								// Если событие является таймером
+								if(reinterpret_cast <item_t *> (k->data.ptr)->delay > 0)
+									// Выполняем закрытие подключения
+									::close(reinterpret_cast <item_t *> (k->data.ptr)->fd);
 								// Выходим из цикла
 								break;
 							}
@@ -556,6 +559,10 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 						for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
 							// Если файловый дескриптор найден
 							if(reinterpret_cast <item_t *> (k->data.ptr)->fd == fd){
+								// Если событие является таймером
+								if(reinterpret_cast <item_t *> (k->data.ptr)->delay > 0)
+									// Выполняем закрытие подключения
+									::close(reinterpret_cast <item_t *> (k->data.ptr)->fd);
 								// Выполняем удаление события из списка событий
 								this->_events.erase(k);
 								// Выходим из цикла
@@ -810,16 +817,56 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay) noexce
 							i->second.callback = callback;
 					// Если файлового дескриптора в базе событий нет
 					} else {
+						// Если нам необходимо создать таймер
+						if(delay > 0){
+							// Выполняем создание нового таймера
+							fd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+							// Если таймер не создан
+							if(fd == INVALID_SOCKET){
+								// Выводим сообщение об ошибке
+								this->_log->print("Add event timer to event base: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								// Выходим из функции
+								return result;
+							}
+						}
 						// Выполняем добавление в список параметров для отслеживания
 						auto ret = this->_items.emplace(fd, item_t());
+						// Если нам необходимо создать таймер
+						if(delay > 0){
+							// Получаем переданное количество секунд с дробной частью
+							const double seconds = (delay / static_cast <double> (1000));
+							// Получаем количество остатка наносекунд
+							const uint64_t nanoSeconds = ((seconds >= 1.) ? (::fmod(seconds, static_cast <int32_t> (seconds)) * 1000000000) : (seconds * 1000000000));
+							// Выполняем установку задержки времени таймера
+							ret.first->second.delay = delay;
+							// Выполняем установку событий таймера
+							ret.first->second.mode.emplace(event_type_t::TIMER, event_mode_t::DISABLED);
+							// Выполняем установку количества наносекунд для начального таймера
+							ret.first->second.timer.it_value.tv_nsec = nanoSeconds;
+							// Выполняем установку количества секунд для начального таймера
+							ret.first->second.timer.it_value.tv_sec = static_cast <uint32_t> (seconds);
+							// Выполняем установку количества наносекунд для повторяющегося таймера
+							ret.first->second.timer.it_interval.tv_nsec = nanoSeconds;
+							// Выполняем установку количества секунд для повторяющегося таймера
+							ret.first->second.timer.it_interval.tv_sec = static_cast <uint32_t> (seconds);
+							// Выполняем активацию таймера
+							if(::timerfd_settime(fd, 0, &ret.first->second.timer, 0) == -1){
+								// Выводим сообщение об ошибке
+								this->_log->print("Activation event timer in event base: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								// Выходим из функции
+								return result;
+							}
+						// Если необходимо создать обычное событие
+						} else {
+							// Выключаем установку событий модуля
+							ret.first->second.mode = {
+								{event_type_t::READ, event_mode_t::DISABLED},
+								{event_type_t::WRITE, event_mode_t::DISABLED},
+								{event_type_t::CLOSE, event_mode_t::DISABLED}
+							};
+						}
 						// Выполняем установку файлового дескриптора
 						ret.first->second.fd = fd;
-						// Выключаем установку событий модуля
-						ret.first->second.mode = {
-							{event_type_t::READ, event_mode_t::DISABLED},
-							{event_type_t::WRITE, event_mode_t::DISABLED},
-							{event_type_t::CLOSE, event_mode_t::DISABLED}
-						};
 						// Если функция обратного вызова передана
 						if(callback != nullptr)
 							// Выполняем установку функции обратного вызова
@@ -852,9 +899,17 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay) noexce
 					// Если файлового дескриптора в базе событий нет
 					} else {
 						// Если нам необходимо создать таймер
-						if(delay > 0)
+						if(delay > 0){
 							// Выполняем установку файлового дескриптора таймера
 							fd = ::socket(AF_INET, SOCK_STREAM, 0);
+							// Если таймер не создан
+							if(fd == INVALID_SOCKET){
+								// Выводим сообщение об ошибке
+								this->_log->print("Add event timer to event base: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								// Выходим из функции
+								return result;
+							}
+						}
 						// Выполняем добавление в список параметров для отслеживания
 						auto ret = this->_items.emplace(fd, item_t());
 						// Если нам необходимо создать таймер
@@ -994,6 +1049,32 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 							if(reinterpret_cast <item_t *> (k->data.ptr)->fd == fd){
 								// Определяем тип события
 								switch(static_cast <uint8_t> (type)){
+									// Если событие установлено как таймер
+									case static_cast <uint8_t> (event_type_t::TIMER): {
+										// Определяем режим работы модуля
+										switch(static_cast <uint8_t> (mode)){
+											// Если нужно активировать событие таймера
+											case static_cast <uint8_t> (event_mode_t::ENABLED): {
+												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events |= (EPOLLIN | EPOLLET);
+												// Выполняем изменение параметров события
+												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+													// Выводим сообщение об ошибке
+													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												// Получаем текущее значение даты
+												i->second.date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+											} break;
+											// Если нужно деактивировать событие таймера
+											case static_cast <uint8_t> (event_mode_t::DISABLED): {
+												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events ^= (EPOLLIN | EPOLLET);
+												// Выполняем изменение параметров события
+												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+													// Выводим сообщение об ошибке
+													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+											} break;
+										}
+									} break;
 									// Если событие установлено как отслеживание закрытия подключения
 									case static_cast <uint8_t> (event_type_t::CLOSE): {
 										// Определяем режим работы модуля
@@ -1472,13 +1553,11 @@ void awh::Base::start() noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->print("Event base dispatch: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 							// Если сработал таймаут
-							else if(poll == 0) {
-								// Выполняем блокировку потока
-								const lock_guard <std::recursive_mutex> lock(this->_mtx);
-								// Выполняем редистрибюцию
-								this->redistribution();
+							else if(poll == 0)
+								// Компенсируем условие
+								poll = 0;
 							// Если опрос прошёл успешно
-							} else {
+							else {
 								// Выполняем блокировку потока
 								const lock_guard <std::recursive_mutex> lock(this->_mtx);
 								// Выполняем перебор всех событий в которых мы получили изменения
@@ -1514,13 +1593,8 @@ void awh::Base::start() noexcept {
 											if(item != nullptr){
 												// Получаем значение текущего идентификатора
 												const SOCKET fd = item->fd;
-												// Если событие не является таймером
-												if(item->delay == 0)
-													// Выполняем редистрибюцию
-													this->redistribution();
-												/*
 												// Если событие является таймером
-												else if(this->_events.at(i).events & EPOLLTIMER) {
+												if(item->delay > 0){
 													// Обновляем значение текущей даты
 													item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 													// Если функция обратного вызова установлена
@@ -1532,10 +1606,16 @@ void awh::Base::start() noexcept {
 															// Выполняем функцию обратного вызова
 															item->callback(fd, event_type_t::TIMER);
 													}
+													// Если удаление таймера в функции обратного вызова не выполненно
+													if((static_cast <size_t> (i) < this->_events.size()) && (fd == reinterpret_cast <item_t *> (this->_events.at(i).data.ptr)->fd)){
+														// Выполняем активацию таймера
+														if(::timerfd_settime(fd, 0, &item->timer, 0) == -1)
+															// Выводим сообщение об ошибке
+															this->_log->print("Activation event timer in event base: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													}
 												}
-												*/
 												// Если в сокете появились данные для чтения
-												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).data.fd) && (this->_events.at(i).events & EPOLLIN)){
+												if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLIN) && (fd == reinterpret_cast <item_t *> (this->_events.at(i).data.ptr)->fd)){
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на получение данных присутствует в базе событий
@@ -1547,7 +1627,7 @@ void awh::Base::start() noexcept {
 													}
 												}
 												// Если сокет доступен для записи
-												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).data.fd) && (this->_events.at(i).events & EPOLLOUT)){
+												if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLOUT) && (fd == reinterpret_cast <item_t *> (this->_events.at(i).data.ptr)->fd)){
 													// Если функция обратного вызова установлена
 													if(item->callback != nullptr){
 														// Выполняем поиск события на запись данных присутствует в базе событий
