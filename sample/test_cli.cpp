@@ -581,7 +581,7 @@ int main(int argc, char * argv[]){
 	if(connect()){
 		cout << " Is Connected " << endl;
 
-		event1_t event(&fmk, &log);
+		event1_t event(event1_t::type_t::EVENT, &fmk, &log);
 
 		auto processFn = [&](const SOCKET fd, const base_t::event_type_t type) noexcept -> void {
 			// Определяем тип события

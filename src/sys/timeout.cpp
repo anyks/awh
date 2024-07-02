@@ -1,5 +1,5 @@
 /**
- * @file: tmos.cpp
+ * @file: timeout.cpp
  * @date: 2024-07-02
  * @license: GPL-3.0
  *
@@ -15,12 +15,12 @@
 /**
  * Подключаем заголовочный файл
  */
-#include <sys/tmos.hpp>
+#include <sys/timeout.hpp>
 
 /**
  * trigger Метод обработки событий триггера
  */
-void awh::TimerOfScreen::trigger() noexcept {
+void awh::Timeout::trigger() noexcept {
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
@@ -31,24 +31,50 @@ void awh::TimerOfScreen::trigger() noexcept {
 		time_t elapsed = 0;
 		// Выполняем перебор всего списка таймеров
 		for(auto i = this->_timers.begin(); i != this->_timers.end();){
+			// Получаем файловый дескриптор
+			fd = i->second;
 			// Определяем сколько прошло времени
 			elapsed = (this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS) - this->_date);
 			// Если время вышло
 			if(elapsed >= i->first){
-				// Выполняем запись в сокет данных
-				::write(i->second, &i->second, sizeof(i->second));
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
+				// Выполняем удаление идентификатора таймера
+				this->_ids.erase(fd);
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем запись в сокет данных
+					::_write(fd, &fd, sizeof(fd));
+				/**
+				 * Методя для всех остальных операционных систем
+				 */
+				#else
+					// Выполняем запись в сокет данных
+					::write(fd, &fd, sizeof(fd));
+				#endif
 			// Выходим из цикла
 			} else {
-				// Получаем файловый дескриптор
-				fd = i->second;
 				// Если времени больше не усталось
 				if((elapsed = (i->first - elapsed)) == 0){
-					// Выполняем запись в сокет данных
-					::write(i->second, &i->second, sizeof(i->second));
 					// Выполняем удаление значение таймера
 					i = this->_timers.erase(i);
+					// Выполняем удаление идентификатора таймера
+					this->_ids.erase(fd);
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем запись в сокет данных
+						::_write(fd, &fd, sizeof(fd));
+					/**
+					 * Методя для всех остальных операционных систем
+					 */
+					#else
+						// Выполняем запись в сокет данных
+						::write(fd, &fd, sizeof(fd));
+					#endif
 				// Выполняем замену таймера в списке
 				} else {
 					// Выполняем удаление значение таймера
@@ -64,8 +90,12 @@ void awh::TimerOfScreen::trigger() noexcept {
 		this->_date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
-		// Выполняем смену времени таймера
-		this->_screen = static_cast <time_t> (this->_timers.begin()->first);
+		// Если список таймеров не пустой и время задержки выше 0
+		if(!this->_timers.empty() && (this->_timers.begin()->first > 0))
+			// Выполняем смену времени таймера
+			this->_screen = static_cast <time_t> (this->_timers.begin()->first);
+		// Устанавливаем таймаут по умолчанию
+		else this->_screen.timeout();
 	// Устанавливаем таймаут по умолчанию
 	} else this->_screen.timeout();
 }
@@ -73,7 +103,7 @@ void awh::TimerOfScreen::trigger() noexcept {
  * process Метод обработки процесса добавления таймеров
  * @param data данные таймера для добавления
  */
-void awh::TimerOfScreen::process(const data_t data) noexcept {
+void awh::Timeout::process(const data_t data) noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.lock();
 	// Если список таймеров не пустой
@@ -84,24 +114,50 @@ void awh::TimerOfScreen::process(const data_t data) noexcept {
 		time_t elapsed = 0;
 		// Выполняем перебор всего списка таймеров
 		for(auto i = this->_timers.begin(); i != this->_timers.end();){
+			// Получаем файловый дескриптор
+			fd = i->second;
 			// Определяем сколько прошло времени
 			elapsed = (this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS) - this->_date);
 			// Если время вышло
 			if(elapsed >= i->first){
-				// Выполняем запись в сокет данных
-				::write(i->second, &i->second, sizeof(i->second));
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
+				// Выполняем удаление идентификатора таймера
+				this->_ids.erase(fd);
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем запись в сокет данных
+					::_write(fd, &fd, sizeof(fd));
+				/**
+				 * Методя для всех остальных операционных систем
+				 */
+				#else
+					// Выполняем запись в сокет данных
+					::write(fd, &fd, sizeof(fd));
+				#endif
 			// Выходим из цикла
 			} else {
-				// Получаем файловый дескриптор
-				fd = i->second;
 				// Если времени больше не усталось
 				if((elapsed = (i->first - elapsed)) == 0){
-					// Выполняем запись в сокет данных
-					::write(i->second, &i->second, sizeof(i->second));
 					// Выполняем удаление значение таймера
 					i = this->_timers.erase(i);
+					// Выполняем удаление идентификатора таймера
+					this->_ids.erase(fd);
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем запись в сокет данных
+						::_write(fd, &fd, sizeof(fd));
+					/**
+					 * Методя для всех остальных операционных систем
+					 */
+					#else
+						// Выполняем запись в сокет данных
+						::write(fd, &fd, sizeof(fd));
+					#endif
 				// Выполняем замену таймера в списке
 				} else {
 					// Выполняем удаление значение таймера
@@ -114,16 +170,19 @@ void awh::TimerOfScreen::process(const data_t data) noexcept {
 			}
 		}
 	}
-	// Выполняем добавления нового таймера
-	auto i = this->_timers.emplace(data.delay, data.fd);
-	// Делаем сокет неблокирующим
-	this->_socket.blocking(i->second, socket_t::mode_t::DISABLE);
+	// Если сокет таймера ещё не добавлен
+	if(this->_ids.find(data.fd) == this->_ids.end()){
+		// Выполняем добавления нового таймера
+		auto i = this->_timers.emplace(data.delay, data.fd);
+		// Делаем сокет неблокирующим
+		this->_socket.blocking(i->second, socket_t::mode_t::DISABLE);
+	}
 	// Запоминаем текущее значение даты
 	this->_date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 	// Выполняем разблокировку потока
 	this->_mtx.unlock();
-	// Если время задержки выше 0
-	if(this->_timers.begin()->first > 0)
+	// Если список таймеров не пустой и время задержки выше 0
+	if(!this->_timers.empty() && (this->_timers.begin()->first > 0))
 		// Выполняем смену времени таймера
 		this->_screen = static_cast <time_t> (this->_timers.begin()->first);
 	// Устанавливаем таймаут по умолчанию
@@ -132,14 +191,14 @@ void awh::TimerOfScreen::process(const data_t data) noexcept {
 /**
  * stop Метод остановки работы таймера
  */
-void awh::TimerOfScreen::stop() noexcept {
+void awh::Timeout::stop() noexcept {
 	// Выполняем остановку работы экрана
 	this->_screen.stop();
 }
 /**
  * start Метод запуска работы таймера
  */
-void awh::TimerOfScreen::start() noexcept {
+void awh::Timeout::start() noexcept {
 	// Выполняем запуск работы экрана
 	this->_screen.start();
 }
@@ -147,7 +206,7 @@ void awh::TimerOfScreen::start() noexcept {
  * del Метод удаления таймера
  * @param fd файловый дескриптор таймера
  */
-void awh::TimerOfScreen::del(const SOCKET fd) noexcept {
+void awh::Timeout::del(const SOCKET fd) noexcept {
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
@@ -156,6 +215,8 @@ void awh::TimerOfScreen::del(const SOCKET fd) noexcept {
 		for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
 			// Если таймер найден
 			if(i->second == fd){
+				// Выполняем удаление идентификатора таймера
+				this->_ids.erase(fd);
 				// Выполняем удаление таймера
 				this->_timers.erase(i);
 				// Выходим из цикла
@@ -165,11 +226,11 @@ void awh::TimerOfScreen::del(const SOCKET fd) noexcept {
 	}
 }
 /**
- * add Метод добавления таймера
+ * set Метод установки таймера
  * @param fd    файловый дескриптор таймера
  * @param delay задержка времени в наносекундах
  */
-void awh::TimerOfScreen::add(const SOCKET fd, const time_t delay) noexcept {
+void awh::Timeout::set(const SOCKET fd, const time_t delay) noexcept {
 	// Создаём объект даты для передачи
 	data_t data;
 	// Устанавливаем файловый дескриптор
@@ -180,21 +241,21 @@ void awh::TimerOfScreen::add(const SOCKET fd, const time_t delay) noexcept {
 	this->_screen = data;
 }
 /**
- * TimerOfScreen Конструктор
+ * Timeout Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::TimerOfScreen::TimerOfScreen(const fmk_t * fmk, const log_t * log) noexcept :
+awh::Timeout::Timeout(const fmk_t * fmk, const log_t * log) noexcept :
  _date(0), _socket(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk), _log(log) {
 	// Выполняем добавление функции обратного вызова триггера
-	this->_screen = static_cast <function <void (void)>> (std::bind(&tmos_t::trigger, this));
+	this->_screen = static_cast <function <void (void)>> (std::bind(&timeout_t::trigger, this));
 	// Выполняем добавление функции обратного вызова процесса обработки
-	this->_screen = static_cast <function <void (const data_t)>> (std::bind(&tmos_t::process, this, _1));
+	this->_screen = static_cast <function <void (const data_t)>> (std::bind(&timeout_t::process, this, _1));
 }
 /**
- * ~TimerOfScreen Деструктор
+ * ~Timeout Деструктор
  */
-awh::TimerOfScreen::~TimerOfScreen() noexcept {
+awh::Timeout::~Timeout() noexcept {
 	// Выполняем остановку работы экрана
 	this->_screen.stop();
 }

@@ -1,5 +1,5 @@
 /**
- * @file: tmos.hpp
+ * @file: timeout.hpp
  * @date: 2024-07-03
  * @license: GPL-3.0
  *
@@ -12,13 +12,14 @@
  * @copyright: Copyright © 2024
  */
 
-#ifndef __AWH_TIMER_OF_SCREEN__
-#define __AWH_TIMER_OF_SCREEN__
+#ifndef __AWH_TIMEOUT__
+#define __AWH_TIMEOUT__
 
 /**
  * Стандартные модули
  */
 #include <map>
+#include <set>
 #include <mutex>
 
 /**
@@ -35,9 +36,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * TimerOfScreen Класс для работы с таймером в экране
+	 * Timeout Класс для работы с таймером в экране
 	 */
-	typedef class TimerOfScreen {
+	typedef class Timeout {
 		private:
 			/**
 			 * Data структура обмена данными
@@ -65,6 +66,8 @@ namespace awh {
 			// Объект экрана для работы в дочернем потоке
 			screen_t <data_t> _screen;
 		private:
+			// Список существующих таймеров
+			std::set <SOCKET> _ids;
 			// Список активных таймеров
 			multimap <time_t, SOCKET> _timers;
 		private:
@@ -98,23 +101,23 @@ namespace awh {
 			 */
 			void del(const SOCKET fd) noexcept;
 			/**
-			 * add Метод добавления таймера
+			 * set Метод установки таймера
 			 * @param fd    файловый дескриптор таймера
 			 * @param delay задержка времени в наносекундах
 			 */
-			void add(const SOCKET fd, const time_t delay) noexcept;
+			void set(const SOCKET fd, const time_t delay) noexcept;
 		public:
 			/**
-			 * TimerOfScreen Конструктор
+			 * Timeout Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			TimerOfScreen(const fmk_t * fmk, const log_t * log) noexcept;
+			Timeout(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~TimerOfScreen Деструктор
+			 * ~Timeout Деструктор
 			 */
-			~TimerOfScreen() noexcept;
-	} tmos_t;
+			~Timeout() noexcept;
+	} timeout_t;
 };
 
-#endif // __AWH_TIMER_OF_SCREEN__
+#endif // __AWH_TIMEOUT__

@@ -643,11 +643,11 @@ int main(int argc, char * argv[]){
 
 		cout << " *********** LISTING " << sock << endl;
 
-		event1_t server(&fmk, &log);
-		event1_t client(&fmk, &log);
-		event1_t timer(&fmk, &log);
-
-		event1_t timer2(&fmk, &log);
+		event1_t server(event1_t::type_t::EVENT, &fmk, &log);
+		event1_t client(event1_t::type_t::EVENT, &fmk, &log);
+		
+		event1_t timer(event1_t::type_t::TIMER, &fmk, &log);
+		event1_t timer2(event1_t::type_t::TIMER, &fmk, &log);
 
 		size_t index = 0;
 
@@ -749,12 +749,12 @@ int main(int argc, char * argv[]){
 
 		timer = &base;
 		timer = timerFn;
-		timer = static_cast <time_t> (5000);
+		timer.timeout(static_cast <time_t> (5000), true);
 		timer.start();
 
 		timer2 = &base;
 		timer2 = timer2Fn;
-		timer2 = static_cast <time_t> (23000);
+		timer2.timeout(static_cast <time_t> (23000), true);
 		timer2.start();
 
 		timer.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);

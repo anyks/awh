@@ -47,8 +47,8 @@
 /**
  * Наши модули
  */
-#include <sys/tmos.hpp>
 #include <net/socket.hpp>
+#include <sys/timeout.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
@@ -103,8 +103,8 @@ namespace awh {
 			typedef struct Item {
 				// Отслеживаемый файловый дескриптор
 				SOCKET fd;
-				// Начальное время запуска
-				time_t date;
+				// Флаг активации серийного таймера
+				bool series;
 				// Задержка времени таймера
 				time_t delay;
 				/**
@@ -113,10 +113,13 @@ namespace awh {
 				#if __linux__
 					// Параметры таймера
 					struct itimerspec timer;
+				/**
+				 * Если это FreeBSD, MacOS X или MS Windows
+				 */
+				#elif __APPLE__ || __MACH__ || __FreeBSD__ || _WIN32 || _WIN64
+					// Файловые дескрипторы таймеров
+					SOCKET timer = INVALID_SOCKET;
 				#endif
-
-				SOCKET fds[2];
-
 				// Функция обратного вызова
 				callback_t callback;
 				// Список соответствия типов событий режиму работы
@@ -124,7 +127,7 @@ namespace awh {
 				/**
 				 * Item Конструктор
 				 */
-				Item() noexcept : fd(INVALID_SOCKET), date(0), delay(0), fds{INVALID_SOCKET,INVALID_SOCKET}, callback(nullptr) {}
+				Item() noexcept : fd(INVALID_SOCKET), series(false), delay(0), callback(nullptr) {}
 			} item_t;
 		private:
 			// Флаг запуска работы базы событий
@@ -137,7 +140,7 @@ namespace awh {
 			bool _launched;
 		private:
 			// Таймаут времени блокировки базы событий
-			int32_t _timeout;
+			int32_t _baseDelay;
 		private:
 			// Максимальное количество обрабатываемых сокетов
 			uint32_t _maxCount;
@@ -174,39 +177,22 @@ namespace awh {
 				std::vector <struct kevent> _events;
 			#endif
 		private:
-			// Объект работы с таймерами скрина
-			tmos_t _tmos;
-		private:
 			// Объект работы с сокетами
 			socket_t _socket;
+		private:
+			// Объект работы с таймерами скрина
+			timeout_t _timeout;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
 		private:
 			// Список отслеживаемых участников
 			std::map <SOCKET, item_t> _items;
-			/**
-			 * Если это FreeBSD или MacOS X
-			 */
-			#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
-				// Список активных таймеров
-				std::map <SOCKET, struct kevent *> _timers;
-			#endif
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
 			const log_t * _log;
-		private:
-			/**
-			 * Если это FreeBSD или MacOS X
-			 */
-			#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
-				/**
-				 * redistribution Метод перераспределения таймеров
-				 */
-				void redistribution() noexcept;
-			#endif
 		private:
 			/**
 			 * init Метод инициализации базы событий
@@ -227,14 +213,16 @@ namespace awh {
 			 * @return     результат работы функции
 			 */
 			bool del(const SOCKET fd, const event_type_t type) noexcept;
+		private:
 			/**
 			 * add Метод добавления файлового дескриптора в базу событий
 			 * @param fd       файловый дескриптор для добавления
 			 * @param callback функция обратного вызова при получении события
 			 * @param delay    задержка времени для создания таймеров
+			 * @param series   флаг серийного таймаута
 			 * @return         результат работы функции
 			 */
-			bool add(SOCKET & fd, callback_t callback = nullptr, const time_t delay = 0) noexcept;
+			bool add(SOCKET & fd, callback_t callback = nullptr, const time_t delay = 0, const bool series = false) noexcept;
 		private:
 			/**
 			 * mode Метод установки режима работы модуля
@@ -306,6 +294,15 @@ namespace awh {
 	 * Event Класс события AWHEvent
 	 */
 	typedef class Event1 {
+		public:
+			/**
+			 * Типы события
+			 */
+			enum class type_t : uint8_t {
+				NONE  = 0x00, // Тип события не установлен
+				EVENT = 0x01, // Тип события обычное
+				TIMER = 0x02  // Тип события таймер
+			};
 		private:
 			// Мютекс для блокировки основного потока
 			mutex _mtx;
@@ -313,8 +310,14 @@ namespace awh {
 			// Режим активации события
 			bool _mode;
 		private:
+			// Флаг активации серийного таймера
+			bool _series;
+		private:
 			// Файловый дескриптор
 			SOCKET _fd;
+		private:
+			// Тип события таймера
+			type_t _type;
 		private:
 			// Задержка времени таймера
 			time_t _delay;
@@ -331,6 +334,12 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
+			 * type Метод получения типа события
+			 * @return установленный тип события
+			 */
+			type_t type() const noexcept;
+		public:
+			/**
 			 * set Метод установки базы событий
 			 * @param base база событий для установки
 			 */
@@ -340,11 +349,6 @@ namespace awh {
 			 * @param fd файловый дескриптор для установки
 			 */
 			void set(const SOCKET fd) noexcept;
-			/**
-			 * set Метод установки задержки времени таймера
-			 * @param delay задержка времени в миллисекундах
-			 */
-			void set(const time_t delay) noexcept;
 			/**
 			 * set Метод установки функции обратного вызова
 			 * @param callback функция обратного вызова
@@ -356,6 +360,13 @@ namespace awh {
 			 * @param type тип события для удаления
 			 */
 			void del(const base_t::event_type_t type) noexcept;
+		public:
+			/**
+			 * timeout Метод установки задержки времени таймера
+			 * @param delay  задержка времени в миллисекундах
+			 * @param series флаг серийного таймаута
+			 */
+			void timeout(const time_t delay, const bool series = false) noexcept;
 		public:
 			/**
 			 * mode Метод установки режима работы модуля
@@ -401,12 +412,13 @@ namespace awh {
 		public:
 			/**
 			 * Event Конструктор
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
+			 * @param type тип события
+			 * @param fmk  объект фреймворка
+			 * @param log  объект для работы с логами
 			 */
-			Event1(const fmk_t * fmk, const log_t * log) noexcept :
-			 _mode(false), _fd(INVALID_SOCKET), _delay(0),
-			 _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
+			Event1(const type_t type, const fmk_t * fmk, const log_t * log) noexcept :
+			 _mode(false), _series(false), _fd(INVALID_SOCKET), _type(type),
+			 _delay(0), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Event Деструктор
 			 */
