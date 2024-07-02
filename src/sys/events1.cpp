@@ -848,7 +848,7 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём список файловых десркипторов для инициализации
-							SOCKET fds[2];
+							int32_t fds[2];
 							// Выполняем инициализацию таймера
 							if(::_pipe(fds, sizeof(SOCKET), O_BINARY) == INVALID_SOCKET){
 								// Выводим сообщение об ошибке
@@ -1001,7 +1001,7 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём список файловых десркипторов для инициализации
-							SOCKET fds[2];
+							int32_t fds[2];
 							// Выполняем инициализацию таймера
 							if(::pipe(fds) == INVALID_SOCKET){
 								// Выводим сообщение об ошибке
@@ -1664,12 +1664,12 @@ void awh::Base::start() noexcept {
 																// Выполняем поиск события таймера присутствует в базе событий
 																auto k = j->second.mode.find(event_type_t::TIMER);
 																// Если событие найдено и оно активированно
-																if((k != j->second.end()) && (k->second == event_mode_t::ENABLED))
+																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем функцию обратного вызова
 																	j->second.callback(fd, event_type_t::TIMER);
 															}
 															// Если удаление таймера в функции обратного вызова не выполненно
-															if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_fds.at(i).fd)){
+															if((static_cast <size_t> (i) < this->_fds.size()) && (fd == this->_fds.at(i).fd)){
 																// Если таймер установлен как серийный
 																if(j->second.series){
 																	// Выполняем поиск события таймера присутствует в базе событий
