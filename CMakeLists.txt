@@ -204,6 +204,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/tmos.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/events1.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/core.cpp"

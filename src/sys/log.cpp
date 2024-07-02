@@ -384,7 +384,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 					// Если дочерний поток не создан
 					if(!static_cast <bool> (this->_screen)){
 						// Выполняем установку функцию обратного вызова
-						this->_screen = std::bind(&log_t::receiving, this, _1);
+						this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
 						// Выполняем инициализацию текущего процесса
 						this->_initialized.emplace(pid);
 						// Запускаем работу скрина
@@ -438,7 +438,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 				// Если дочерний поток не создан
 				if(!static_cast <bool> (this->_screen)){
 					// Выполняем установку функцию обратного вызова
-					this->_screen = std::bind(&log_t::receiving, this, _1);
+					this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
 					// Выполняем инициализацию текущего процесса
 					this->_initialized.emplace(pid);
 					// Запускаем работу скрина

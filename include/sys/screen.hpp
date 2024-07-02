@@ -15,6 +15,9 @@
 #ifndef __AWH_SCREEN__
 #define __AWH_SCREEN__
 
+/**
+ * Стандартные модули
+ */
 #include <queue>
 #include <mutex>
 #include <ctime>
@@ -208,7 +211,7 @@ namespace awh {
 			 * timeout Метод установки таймаута в наносекундах
 			 * @param delay значение таймаута для установки в наносекундах
 			 */
-			void timeout(const time_t delay) noexcept {
+			void timeout(const time_t delay = TIMEOUT) noexcept {
 				// Выполняем блокировку потока
 				const lock_guard <mutex> lock(this->_mtx2);
 				// Выполняем установку задержки времени

@@ -475,7 +475,7 @@ awh::Cluster::Worker::Worker(const log_t * log) noexcept :
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем установку функции обратного вызова при получении сообщения
-		this->_screen = std::bind(&worker_t::callback, this, _1);
+		this->_screen = static_cast <function <void (const data_t &)>> (std::bind(&worker_t::callback, this, _1));
 	#endif
 }
 /**

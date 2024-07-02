@@ -47,8 +47,7 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
+#include <sys/tmos.hpp>
 #include <net/socket.hpp>
 
 // Устанавливаем область видимости
@@ -115,6 +114,9 @@ namespace awh {
 					// Параметры таймера
 					struct itimerspec timer;
 				#endif
+
+				SOCKET fds[2];
+
 				// Функция обратного вызова
 				callback_t callback;
 				// Список соответствия типов событий режиму работы
@@ -122,7 +124,7 @@ namespace awh {
 				/**
 				 * Item Конструктор
 				 */
-				Item() noexcept : fd(INVALID_SOCKET), date(0), delay(0), callback(nullptr) {}
+				Item() noexcept : fd(INVALID_SOCKET), date(0), delay(0), fds{INVALID_SOCKET,INVALID_SOCKET}, callback(nullptr) {}
 			} item_t;
 		private:
 			// Флаг запуска работы базы событий
@@ -171,6 +173,9 @@ namespace awh {
 				// Список активных событий
 				std::vector <struct kevent> _events;
 			#endif
+		private:
+			// Объект работы с таймерами скрина
+			tmos_t _tmos;
 		private:
 			// Объект работы с сокетами
 			socket_t _socket;

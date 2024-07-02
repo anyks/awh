@@ -316,11 +316,11 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 							// Выполняем удаление активного таймера
 							this->_timers.erase(k);
 							// Выполняем удаление события таймера
-							EV_SET(&(* j), j->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+							EV_SET(&(* j), j->ident, EVFILT_TIMER, EV_DELETE, 0, 0, 0);
 						// Если событие является обычным
 						} else
 							// Выполняем удаление объекта события
-							EV_SET(&(* j), j->ident, EVFILT_READ | EVFILT_WRITE, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+							EV_SET(&(* j), j->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 						// Выполняем закрытие подключения
 						::close(j->ident);
 						// Выполняем удаление события из списка отслеживания
@@ -342,11 +342,11 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 								// Выполняем удаление активного таймера
 								this->_timers.erase(k);
 								// Выполняем удаление события таймера
-								EV_SET(&(* j), j->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+								EV_SET(&(* j), j->ident, EVFILT_TIMER, EV_DELETE, 0, 0, 0);
 							// Если событие является обычным
 							} else
 								// Выполняем удаление объекта события
-								EV_SET(&(* j), j->ident, EVFILT_READ | EVFILT_WRITE, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+								EV_SET(&(* j), j->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 							// Выполняем закрытие подключения
 							::close(j->ident);
 						}
@@ -627,7 +627,7 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 										// Выполняем удаление активного таймера
 										this->_timers.erase(k->ident);
 										// Выполняем удаление работы события
-										EV_SET(&(* k), k->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+										EV_SET(&(* k), k->ident, EVFILT_TIMER, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
 										::close(k->ident);
 										// Выполняем удаление типа события
@@ -659,7 +659,7 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 									// Если файловый дескриптор найден
 									if((erased = (k->ident == fd))){
 										// Выполняем удаление работы события
-										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE | EV_DISABLE, 0, 0, &i->second);
+										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, &i->second);
 										// Если событие на запись включено
 										if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED)
 											// Выполняем активацию события на запись
@@ -695,7 +695,7 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 									// Если файловый дескриптор найден
 									if((erased = (k->ident == fd))){
 										// Выполняем удаление работы события
-										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE | EV_DISABLE, 0, 0, &i->second);
+										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, &i->second);
 										// Если событие на чтение включено
 										if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED)
 											// Выполняем активацию события на чтение
@@ -730,11 +730,11 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 									// Выполняем удаление активного таймера
 									this->_timers.erase(l);
 									// Выполняем удаление события таймера
-									EV_SET(&(* k), k->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+									EV_SET(&(* k), k->ident, EVFILT_TIMER, EV_DELETE, 0, 0, 0);
 									// Выполняем закрытие подключения
 									::close(k->ident);
 								// Выполняем полное удаление события из базы событий
-								} else EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DISABLE | EV_CLEAR | EV_DELETE, 0, 0, 0);
+								} else EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 								// Выполняем удаление события из списка событий
 								this->_events.erase(k);
 								// Выходим из цикла
@@ -915,6 +915,8 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay) noexce
 						if(delay > 0){
 							// Выполняем установку файлового дескриптора таймера
 							fd = ::socket(AF_INET, SOCK_STREAM, 0);
+							// Делаем сокет неблокирующим
+							this->_socket.blocking(fd, socket_t::mode_t::DISABLE);
 							// Если таймер не создан
 							if(fd == INVALID_SOCKET){
 								// Выводим сообщение об ошибке
@@ -1181,19 +1183,47 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие работы таймера
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
+
+												
+
+												if(::pipe(i->second.fds) == 0){
+													this->_tmos.add(i->second.fds[1], i->second.delay * 1000000);
+													// Выполняем смену режима работы отлова события
+													EV_SET(&(* k), i->second.fds[0], EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
+												}
+												
+												
+
+												
+												
+												/*
 												// Выполняем установку активного таймера
 												this->_timers.emplace(k->ident, &(* k));
 												// Получаем текущее значение даты
 												i->second.date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 												// Выполняем смену режима работы отлова события
 												EV_SET(&(* k), k->ident, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_ENABLE, NOTE_NSECONDS, i->second.delay * 1000000, &i->second);
+												*/
+
 											} break;
 											// Если нужно деактивировать событие работы таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
+												
+												/*
 												// Выполняем удаление активного таймера
 												this->_timers.erase(k->ident);
 												// Выполняем смену режима работы отлова события
 												EV_SET(&(* k), k->ident, EVFILT_TIMER, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, 0);
+												*/
+
+												// Выполняем смену режима работы отлова события
+												EV_SET(&(* k), i->second.fds[0], EVFILT_READ, EV_DELETE, 0, 0, &i->second);
+
+												this->_tmos.del(i->second.fds[1]);
+
+												::close(i->second.fds[0]);
+												::close(i->second.fds[1]);
+
 											} break;
 										}
 									} break;
@@ -1204,7 +1234,7 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 											// Если нужно активировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::ENABLED):
 												// Выполняем смену режима работы отлова события
-												EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &i->second);
+												EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
 											break;
 											// Если нужно деактивировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -1213,7 +1243,7 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 												// Если событие на запись включено
 												if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED)
 													// Выполняем активацию события на запись
-													EV_SET(&(* k), k->ident, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &i->second);
+													EV_SET(&(* k), k->ident, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
 											} break;
 										}
 									} break;
@@ -1224,7 +1254,7 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 											// Если нужно активировать событие записи в сокет
 											case static_cast <uint8_t> (event_mode_t::ENABLED):
 												// Выполняем смену режима работы отлова события
-												EV_SET(&(* k), k->ident, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &i->second);
+												EV_SET(&(* k), k->ident, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
 											break;
 											// Если нужно деактивировать событие записи в сокет
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -1233,7 +1263,7 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 												// Если событие на чтение включено
 												if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED)
 													// Выполняем активацию события на чтение
-													EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &i->second);
+													EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
 											} break;
 										}
 									} break;
@@ -1323,11 +1353,11 @@ void awh::Base::clear() noexcept {
 					// Выполняем удаление активного таймера
 					this->_timers.erase(j);
 					// Выполняем удаление события таймера
-					EV_SET(&(* i), i->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+					EV_SET(&(* i), i->ident, EVFILT_TIMER, EV_DELETE, 0, 0, 0);
 				// Если событие является обычным
 				} else
 					// Выполняем удаление объекта события
-					EV_SET(&(* i), i->ident, EVFILT_READ | EVFILT_WRITE, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+					EV_SET(&(* i), i->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 				// Выполняем закрытие подключения
 				::close(i->ident);
 				// Выполняем удаление события из списка отслеживания
@@ -1342,11 +1372,11 @@ void awh::Base::clear() noexcept {
 					// Выполняем удаление активного таймера
 					this->_timers.erase(j);
 					// Выполняем удаление события таймера
-					EV_SET(&(* i), i->ident, EVFILT_TIMER, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+					EV_SET(&(* i), i->ident, EVFILT_TIMER, EV_DELETE, 0, 0, 0);
 				// Если событие является обычным
 				} else
 					// Выполняем удаление объекта события
-					EV_SET(&(* i), i->ident, EVFILT_READ | EVFILT_WRITE, EV_CLEAR | EV_DISABLE | EV_DELETE, 0, 0, 0);
+					EV_SET(&(* i), i->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 				// Выполняем закрытие подключения
 				::close(i->ident);
 				// Выполняем удаление события из списка изменений
@@ -1437,6 +1467,8 @@ void awh::Base::start() noexcept {
 					timeout.tv_nsec = (((this->_timeout % 1000) * 1000) * 1000000);
 				}
 			#endif
+			// Запускаем работу таймеров скрина
+			this->_tmos.start();
 			// Устанавливаем флаг запущенного опроса базы событий
 			this->_launched = this->_mode;
 			// Выполняем запуск базы события
@@ -1630,29 +1662,31 @@ void awh::Base::start() noexcept {
 															// Выводим сообщение об ошибке
 															this->_log->print("Activation event timer in event base: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													}
-												}
-												// Если в сокете появились данные для чтения
-												if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLIN) && (fd == reinterpret_cast <item_t *> (this->_events.at(i).data.ptr)->fd)){
-													// Если функция обратного вызова установлена
-													if(item->callback != nullptr){
-														// Выполняем поиск события на получение данных присутствует в базе событий
-														auto j = item->mode.find(event_type_t::READ);
-														// Если событие найдено и оно активированно
-														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
-															// Выполняем функцию обратного вызова
-															item->callback(fd, event_type_t::READ);
+												// Если событие не является таймером
+												} else {
+													// Если в сокете появились данные для чтения
+													if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLIN) && (fd == reinterpret_cast <item_t *> (this->_events.at(i).data.ptr)->fd)){
+														// Если функция обратного вызова установлена
+														if(item->callback != nullptr){
+															// Выполняем поиск события на получение данных присутствует в базе событий
+															auto j = item->mode.find(event_type_t::READ);
+															// Если событие найдено и оно активированно
+															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
+																// Выполняем функцию обратного вызова
+																item->callback(fd, event_type_t::READ);
+														}
 													}
-												}
-												// Если сокет доступен для записи
-												if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLOUT) && (fd == reinterpret_cast <item_t *> (this->_events.at(i).data.ptr)->fd)){
-													// Если функция обратного вызова установлена
-													if(item->callback != nullptr){
-														// Выполняем поиск события на запись данных присутствует в базе событий
-														auto j = item->mode.find(event_type_t::WRITE);
-														// Если событие найдено и оно активированно
-														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
-															// Выполняем функцию обратного вызова
-															item->callback(fd, event_type_t::WRITE);
+													// Если сокет доступен для записи
+													if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLOUT) && (fd == reinterpret_cast <item_t *> (this->_events.at(i).data.ptr)->fd)){
+														// Если функция обратного вызова установлена
+														if(item->callback != nullptr){
+															// Выполняем поиск события на запись данных присутствует в базе событий
+															auto j = item->mode.find(event_type_t::WRITE);
+															// Если событие найдено и оно активированно
+															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
+																// Выполняем функцию обратного вызова
+																item->callback(fd, event_type_t::WRITE);
+														}
 													}
 												}
 											// Выводим сообщение об ошибке
@@ -1731,38 +1765,62 @@ void awh::Base::start() noexcept {
 											if(item != nullptr){
 												// Получаем значение текущего идентификатора
 												const SOCKET fd = item->fd;
-												// Если событие является таймером
-												if(item->delay > 0)
-													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
-													EV_SET(&this->_events.at(i), fd, EVFILT_TIMER, EV_DELETE | EV_CLEAR, 0, 0, 0);
+
+												/*
 												// Выполняем редистрибюцию
 												this->redistribution();
-												// Если в сокете появились данные для чтения
-												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_READ)){
-													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
-													EV_SET(&this->_events.at(i), fd, EVFILT_READ, EV_DELETE | EV_CLEAR, 0, 0, 0);
-													// Если функция обратного вызова установлена
-													if(item->callback != nullptr){
-														// Выполняем поиск события на получение данных присутствует в базе событий
-														auto j = item->mode.find(event_type_t::READ);
-														// Если событие найдено и оно активированно
-														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
-															// Выполняем функцию обратного вызова
-															item->callback(fd, event_type_t::READ);
+												*/
+
+												// Если событие является таймером
+												if(item->delay > 0){
+													
+													SOCKET tmp = 0;
+													if(::read(item->fds[0], &tmp, sizeof(tmp)) > 0){
+
+														SOCKET sock = this->_events.at(i).ident;
+													
+														// Если функция обратного вызова установлена
+														if(item->callback != nullptr){
+															// Выполняем поиск события таймера присутствует в базе событий
+															auto j = item->mode.find(event_type_t::TIMER);
+															// Если событие найдено и оно активированно
+															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
+																// Выполняем функцию обратного вызова
+																item->callback(fd, event_type_t::TIMER);
+														}
+														// Если удаление таймера в функции обратного вызова не выполненно
+														if((static_cast <size_t> (i) < this->_events.size()) && (sock == this->_events.at(i).ident)){
+															// Обновляем значение текущей даты
+															item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+															
+															this->_tmos.add(item->fds[1], item->delay * 1000000);
+														}
 													}
-												}
-												// Если сокет доступен для записи
-												if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_WRITE)){
-													// Выполняем очистку значения текущего события, чтобы оно не повторялось вновь
-													EV_SET(&this->_events.at(i), fd, EVFILT_WRITE, EV_DELETE | EV_CLEAR, 0, 0, 0);
-													// Если функция обратного вызова установлена
-													if(item->callback != nullptr){
-														// Выполняем поиск события на запись данных присутствует в базе событий
-														auto j = item->mode.find(event_type_t::WRITE);
-														// Если событие найдено и оно активированно
-														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
-															// Выполняем функцию обратного вызова
-															item->callback(fd, event_type_t::WRITE);
+												// Если событие не является таймером
+												} else {
+													// Если в сокете появились данные для чтения
+													if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_READ)){
+														// Если функция обратного вызова установлена
+														if(item->callback != nullptr){
+															// Выполняем поиск события на получение данных присутствует в базе событий
+															auto j = item->mode.find(event_type_t::READ);
+															// Если событие найдено и оно активированно
+															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
+																// Выполняем функцию обратного вызова
+																item->callback(fd, event_type_t::READ);
+														}
+													}
+													// Если сокет доступен для записи
+													if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_WRITE)){
+														// Если функция обратного вызова установлена
+														if(item->callback != nullptr){
+															// Выполняем поиск события на запись данных присутствует в базе событий
+															auto j = item->mode.find(event_type_t::WRITE);
+															// Если событие найдено и оно активированно
+															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
+																// Выполняем функцию обратного вызова
+																item->callback(fd, event_type_t::WRITE);
+														}
 													}
 												}
 											// Выводим сообщение об ошибке
@@ -1786,6 +1844,8 @@ void awh::Base::start() noexcept {
 					}
 				#endif
 			}
+			// Останавливаем работу таймеров скрина
+			this->_tmos.stop();
 			// Снимаем флаг запущенного опроса базы событий
 			this->_launched = this->_mode;
 		/**
@@ -1890,7 +1950,8 @@ void awh::Base::frequency(const uint32_t msec) noexcept {
  * @param count максимальное количество обрабатываемых сокетов
  */
 awh::Base::Base(const fmk_t * fmk, const log_t * log, const uint32_t count) noexcept :
- _mode(false), _easily(false), _locker(false), _launched(false), _timeout(-1), _maxCount(count), _socket(fmk, log), _fmk(fmk), _log(log) {
+ _mode(false), _easily(false), _locker(false), _launched(false), _timeout(-1),
+ _maxCount(count), _tmos(fmk, log), _socket(fmk, log), _fmk(fmk), _log(log) {
 	// Выполняем инициализацию базы событий
 	this->init(true);
 }

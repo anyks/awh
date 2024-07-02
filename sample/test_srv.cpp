@@ -647,20 +647,32 @@ int main(int argc, char * argv[]){
 		event1_t client(&fmk, &log);
 		event1_t timer(&fmk, &log);
 
+		event1_t timer2(&fmk, &log);
+
 		size_t index = 0;
 
-		chrono::nanoseconds etalon = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+		chrono::nanoseconds etalon1 = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+		chrono::nanoseconds etalon2 = etalon1;
 
 		auto timerFn = [&](const SOCKET sock, const base_t::event_type_t event) noexcept -> void {
 
 			chrono::nanoseconds current = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
 						
-			cout << " TIMEOUT " << sock << " == " << ((current.count() - etalon.count()) / 1000000000) << endl;
+			cout << " TIMEOUT " << sock << " == " << ((current.count() - etalon1.count()) / 1000000000) << endl;
 
-			etalon = current;
+			etalon1 = current;
 
 			if(index++ > 10)
 				timer.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::DISABLED);
+		};
+
+		auto timer2Fn = [&](const SOCKET sock, const base_t::event_type_t event) noexcept -> void {
+
+			chrono::nanoseconds current = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+						
+			cout << " TIMEOUT " << sock << " == " << ((current.count() - etalon2.count()) / 1000000000) << endl;
+
+			etalon2 = current;
 		};
 
 		auto acceptFn = [&](const SOCKET sock, const base_t::event_type_t event) noexcept -> void {
@@ -740,7 +752,13 @@ int main(int argc, char * argv[]){
 		timer = static_cast <time_t> (5000);
 		timer.start();
 
+		timer2 = &base;
+		timer2 = timer2Fn;
+		timer2 = static_cast <time_t> (23000);
+		timer2.start();
+
 		timer.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
+		timer2.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
 
 		server.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 
