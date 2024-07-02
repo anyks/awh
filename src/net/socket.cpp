@@ -804,7 +804,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			// Флаг получения устанавливаемой опции KeepAlive
 			int32_t option = 0;
 			// Устанавливаем размер опции для чтения
-			int32_t size = sizeof(option);
+			socklen_t size = sizeof(option);
 			// Если мы получили ошибку, выходим сообщение
 			if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <char *> (&option), &size)))){
 				/**
@@ -924,7 +924,7 @@ bool awh::Socket::listen(const SOCKET fd) const noexcept {
 		// Флаг получения устанавливаемой опции KeepAlive
 		int32_t option = 0;
 		// Устанавливаем размер опции для чтения
-		uint32_t size = sizeof(option);
+		socklen_t size = sizeof(option);
 		// Если мы получили ошибку, выходим сообщение
 		if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ACCEPTCONN, reinterpret_cast <char *> (&option), &size)))){
 			/**
