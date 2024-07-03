@@ -29,7 +29,7 @@ struct Peer {
 	Peer() noexcept : size(0), client{}, server{} {}
 } peer;
 
-int fd = -1;
+SOCKET fd = -1;
 
 /**
  * Методы только для OS Windows
@@ -637,7 +637,7 @@ int main(int argc, char * argv[]){
 
 	init("127.0.0.1", 2222, AF_INET, &mod);
 
-	const int sock = fd;
+	const SOCKET sock = fd;
 
 	if(listing(sock)){
 
@@ -645,7 +645,7 @@ int main(int argc, char * argv[]){
 
 		event1_t server(event1_t::type_t::EVENT, &fmk, &log);
 		event1_t client(event1_t::type_t::EVENT, &fmk, &log);
-		
+
 		event1_t timer(event1_t::type_t::TIMER, &fmk, &log);
 		event1_t timer2(event1_t::type_t::TIMER, &fmk, &log);
 

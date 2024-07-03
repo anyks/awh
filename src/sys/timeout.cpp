@@ -39,42 +39,30 @@ void awh::Timeout::trigger() noexcept {
 			if(elapsed >= i->first){
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
-				// Выполняем удаление идентификатора таймера
-				this->_ids.erase(fd);
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем поиск файловый дескриптор
+				auto j = this->_fds.find(fd);
+				// Если файловый дескриптор найден в списке
+				if(j != this->_fds.end()){
 					// Выполняем запись в сокет данных
-					::_write(fd, &fd, sizeof(fd));
-				/**
-				 * Методя для всех остальных операционных систем
-				 */
-				#else
-					// Выполняем запись в сокет данных
-					::write(fd, &fd, sizeof(fd));
-				#endif
+					this->_pipe.write(fd, &elapsed, sizeof(elapsed), j->second);
+					// Выполняем удаление идентификатора таймера
+					this->_fds.erase(j);
+				}
 			// Выходим из цикла
 			} else {
 				// Если времени больше не усталось
 				if((elapsed = (i->first - elapsed)) == 0){
 					// Выполняем удаление значение таймера
 					i = this->_timers.erase(i);
-					// Выполняем удаление идентификатора таймера
-					this->_ids.erase(fd);
-					/**
-					 * Методы только для OS Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем поиск файловый дескриптор
+					auto j = this->_fds.find(fd);
+					// Если файловый дескриптор найден в списке
+					if(j != this->_fds.end()){
 						// Выполняем запись в сокет данных
-						::_write(fd, &fd, sizeof(fd));
-					/**
-					 * Методя для всех остальных операционных систем
-					 */
-					#else
-						// Выполняем запись в сокет данных
-						::write(fd, &fd, sizeof(fd));
-					#endif
+						this->_pipe.write(fd, &elapsed, sizeof(elapsed), j->second);
+						// Выполняем удаление идентификатора таймера
+						this->_fds.erase(j);
+					}
 				// Выполняем замену таймера в списке
 				} else {
 					// Выполняем удаление значение таймера
@@ -122,42 +110,30 @@ void awh::Timeout::process(const data_t data) noexcept {
 			if(elapsed >= i->first){
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
-				// Выполняем удаление идентификатора таймера
-				this->_ids.erase(fd);
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем поиск файловый дескриптор
+				auto j = this->_fds.find(fd);
+				// Если файловый дескриптор найден в списке
+				if(j != this->_fds.end()){
 					// Выполняем запись в сокет данных
-					::_write(fd, &fd, sizeof(fd));
-				/**
-				 * Методя для всех остальных операционных систем
-				 */
-				#else
-					// Выполняем запись в сокет данных
-					::write(fd, &fd, sizeof(fd));
-				#endif
+					this->_pipe.write(fd, &elapsed, sizeof(elapsed), j->second);
+					// Выполняем удаление идентификатора таймера
+					this->_fds.erase(j);
+				}
 			// Выходим из цикла
 			} else {
 				// Если времени больше не усталось
 				if((elapsed = (i->first - elapsed)) == 0){
 					// Выполняем удаление значение таймера
 					i = this->_timers.erase(i);
-					// Выполняем удаление идентификатора таймера
-					this->_ids.erase(fd);
-					/**
-					 * Методы только для OS Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем поиск файловый дескриптор
+					auto j = this->_fds.find(fd);
+					// Если файловый дескриптор найден в списке
+					if(j != this->_fds.end()){
 						// Выполняем запись в сокет данных
-						::_write(fd, &fd, sizeof(fd));
-					/**
-					 * Методя для всех остальных операционных систем
-					 */
-					#else
-						// Выполняем запись в сокет данных
-						::write(fd, &fd, sizeof(fd));
-					#endif
+						this->_pipe.write(fd, &elapsed, sizeof(elapsed), j->second);
+						// Выполняем удаление идентификатора таймера
+						this->_fds.erase(j);
+					}
 				// Выполняем замену таймера в списке
 				} else {
 					// Выполняем удаление значение таймера
@@ -171,11 +147,11 @@ void awh::Timeout::process(const data_t data) noexcept {
 		}
 	}
 	// Если сокет таймера ещё не добавлен
-	if(this->_ids.find(data.fd) == this->_ids.end()){
+	if(this->_fds.find(data.fd) == this->_fds.end()){
+		// Выполняем добавление файлового дескриптора в список
+		this->_fds.emplace(data.fd, data.port);
 		// Выполняем добавления нового таймера
-		auto i = this->_timers.emplace(data.delay, data.fd);
-		// Делаем сокет неблокирующим
-		this->_socket.blocking(i->second, socket_t::mode_t::DISABLE);
+		this->_timers.emplace(data.delay, data.fd);
 	}
 	// Запоминаем текущее значение даты
 	this->_date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
@@ -216,7 +192,7 @@ void awh::Timeout::del(const SOCKET fd) noexcept {
 			// Если таймер найден
 			if(i->second == fd){
 				// Выполняем удаление идентификатора таймера
-				this->_ids.erase(fd);
+				this->_fds.erase(fd);
 				// Выполняем удаление таймера
 				this->_timers.erase(i);
 				// Выходим из цикла
@@ -229,12 +205,15 @@ void awh::Timeout::del(const SOCKET fd) noexcept {
  * set Метод установки таймера
  * @param fd    файловый дескриптор таймера
  * @param delay задержка времени в наносекундах
+ * @param port  порт сервера на который нужно отправить ответ
  */
-void awh::Timeout::set(const SOCKET fd, const time_t delay) noexcept {
+void awh::Timeout::set(const SOCKET fd, const time_t delay, const uint32_t port) noexcept {
 	// Создаём объект даты для передачи
 	data_t data;
 	// Устанавливаем файловый дескриптор
 	data.fd = fd;
+	// Выполняем установку порта
+	data.port = port;
 	// Устанавливаем задержку времени в наносекундах
 	data.delay = delay;
 	// Выполняем отправку события экрану
@@ -246,7 +225,20 @@ void awh::Timeout::set(const SOCKET fd, const time_t delay) noexcept {
  * @param log объект для работы с логами
  */
 awh::Timeout::Timeout(const fmk_t * fmk, const log_t * log) noexcept :
- _date(0), _socket(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk), _log(log) {
+ _date(0), _pipe(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk), _log(log) {
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Устанавливаем тип пайпа
+		this->_pipe.type(pipe_t::type_t::NETWORK);
+	/**
+	 * Методы для всех остальных операционных систем
+	 */
+	#else
+		// Устанавливаем тип пайпа
+		this->_pipe.type(pipe_t::type_t::NATIVE);
+	#endif
 	// Выполняем добавление функции обратного вызова триггера
 	this->_screen = static_cast <function <void (void)>> (std::bind(&timeout_t::trigger, this));
 	// Выполняем добавление функции обратного вызова процесса обработки

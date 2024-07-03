@@ -47,7 +47,6 @@
 /**
  * Наши модули
  */
-#include <net/socket.hpp>
 #include <sys/timeout.hpp>
 
 // Устанавливаем область видимости
@@ -108,15 +107,25 @@ namespace awh {
 				// Задержка времени таймера
 				time_t delay;
 				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Объект работы с пайпом
+					shared_ptr <pipe_t> pipe;
+					// Файловые дескрипторы таймеров
+					SOCKET timer = INVALID_SOCKET;
+				/**
 				 * Если это Linux
 				 */
-				#if __linux__
+				#elif __linux__
 					// Параметры таймера
 					struct itimerspec timer;
 				/**
-				 * Если это FreeBSD, MacOS X или MS Windows
+				 * Если это FreeBSD или MacOS X
 				 */
-				#elif __APPLE__ || __MACH__ || __FreeBSD__ || _WIN32 || _WIN64
+				#elif __APPLE__ || __MACH__ || __FreeBSD__
+					// Объект работы с пайпом
+					shared_ptr <pipe_t> pipe;
 					// Файловые дескрипторы таймеров
 					SOCKET timer = INVALID_SOCKET;
 				#endif

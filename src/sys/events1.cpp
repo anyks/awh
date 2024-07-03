@@ -847,21 +847,22 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 						item_t * item = nullptr;
 						// Если нам необходимо создать таймер
 						if(delay > 0){
-							// Создаём список файловых десркипторов для инициализации
-							int32_t fds[2];
+							// Создаём объект пайпа
+							auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+							// Устанавливаем тип пайпа
+							pipe->type(pipe_t::type_t::NETWORK);
+							// Выполняем создание сокетов
+							auto fds = pipe->create();
 							// Выполняем инициализацию таймера
-							if(::_pipe(fds, sizeof(SOCKET), O_BINARY) == INVALID_SOCKET){
-								// Выводим сообщение об ошибке
-								this->_log->print("Add event timer to event base: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
 								// Выходим из функции
 								return result;
-							}
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
-							// Делаем сокет неблокирующим
-							this->_socket.blocking(fd, socket_t::mode_t::DISABLE);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_items.emplace(fd, item_t());
+							// Выполняем установку объекта пайпа
+							ret.first->second.pipe = pipe;
 							// Выполняем установку файлового дескриптора таймера
 							ret.first->second.timer = fds[1];
 							// Выполняем установку задержки времени таймера
@@ -1000,21 +1001,24 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 						item_t * item = nullptr;
 						// Если нам необходимо создать таймер
 						if(delay > 0){
-							// Создаём список файловых десркипторов для инициализации
-							int32_t fds[2];
+							// Создаём объект пайпа
+							auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+							// Устанавливаем тип пайпа
+							pipe->type(pipe_t::type_t::NATIVE);
+							// Выполняем создание сокетов
+							auto fds = pipe->create();
 							// Выполняем инициализацию таймера
-							if(::pipe(fds) == INVALID_SOCKET){
-								// Выводим сообщение об ошибке
-								this->_log->print("Add event timer to event base: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
 								// Выходим из функции
 								return result;
-							}
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
 							// Делаем сокет неблокирующим
 							this->_socket.blocking(fd, socket_t::mode_t::DISABLE);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_items.emplace(fd, item_t());
+							// Выполняем установку объекта пайпа
+							ret.first->second.pipe = pipe;
 							// Выполняем установку файлового дескриптора таймера
 							ret.first->second.timer = fds[1];
 							// Выполняем установку задержки времени таймера
@@ -1123,7 +1127,7 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLIN;
 												// Выполняем активацию таймера на указанное время
-												this->_timeout.set(i->second.timer, i->second.delay * 1000000);
+												this->_timeout.set(i->second.timer, i->second.delay * 1000000, i->second.pipe->port());
 											} break;
 											// Если нужно деактивировать событие работы таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -1653,12 +1657,12 @@ void awh::Base::start() noexcept {
 												if(j != this->_items.end()){
 													// Если событие является таймером
 													if(j->second.delay > 0){
-														// Устанавливаем временное значение буфера
-														SOCKET buffer = 0;
 														// Количество прочитанных байт
 														int32_t bytes = -1;
+														// Устанавливаем временное значение буфера
+														vector <char> buffer(sizeof(time_t), 0);
 														// Если чтение выполнено удачно
-														if((bytes = ::_read(fd, &buffer, sizeof(buffer))) > 0){
+														if((bytes = j->second.pipe->read(fd, buffer.data(), buffer.size())) > 0){
 															// Если функция обратного вызова установлена
 															if(j->second.callback != nullptr){
 																// Выполняем поиск события таймера присутствует в базе событий
@@ -1677,7 +1681,7 @@ void awh::Base::start() noexcept {
 																	// Если событие найдено и оно активированно
 																	if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																		// Выполняем активацию таймера на указанное время
-																		this->_timeout.set(j->second.timer, j->second.delay * 1000000);
+																		this->_timeout.set(j->second.timer, j->second.delay * 1000000, j->second.pipe->port());
 																}
 															}
 														// Выполняем закрытие подключения
@@ -1929,12 +1933,12 @@ void awh::Base::start() noexcept {
 												const SOCKET fd = item->fd;
 												// Если событие является таймером
 												if(item->delay > 0){
-													// Устанавливаем временное значение буфера
-													SOCKET buffer = 0;
 													// Количество прочитанных байт
-													int32_t bytes = -1; 
+													int32_t bytes = -1;
+													// Устанавливаем временное значение буфера
+													vector <char> buffer(sizeof(time_t), 0);
 													// Если чтение выполнено удачно
-													if((bytes = ::read(fd, &buffer, sizeof(buffer))) > 0){
+													if((bytes = item->pipe->read(fd, buffer.data(), buffer.size())) > 0){
 														// Если функция обратного вызова установлена
 														if(item->callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий

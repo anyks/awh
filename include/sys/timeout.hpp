@@ -19,14 +19,13 @@
  * Стандартные модули
  */
 #include <map>
-#include <set>
 #include <mutex>
 
 /**
  * Наши модули
  */
+#include <sys/pipe.hpp>
 #include <sys/screen.hpp>
-#include <net/socket.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -48,10 +47,12 @@ namespace awh {
 				SOCKET fd;
 				// Время задержки работы таймера
 				time_t delay;
+				// Порт на который нужно отправить
+				uint32_t port;
 				/**
 				 * Data Конструктор
 				 */
-				Data() noexcept : fd(INVALID_SOCKET), delay(0) {}
+				Data() noexcept : fd(INVALID_SOCKET), delay(0), port(0) {}
 			} __attribute__((packed)) data_t;
 		private:
 			// Мютекс для блокировки потока
@@ -60,14 +61,25 @@ namespace awh {
 			// Контрольная точка даты
 			time_t _date;
 		private:
-			// Объект для работы с сокетами
-			socket_t _socket;
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Объект работы с пайпом
+				pipe_t _pipe;
+			/**
+			 * Методы для всех остальных операционных систем
+			 */
+			#else
+				// Объект работы с пайпом
+				pipe_t _pipe;
+			#endif
 		private:
 			// Объект экрана для работы в дочернем потоке
 			screen_t <data_t> _screen;
 		private:
-			// Список существующих таймеров
-			std::set <SOCKET> _ids;
+			// Список существующих файловых дескрипторов
+			std::map <SOCKET, uint32_t> _fds;
 			// Список активных таймеров
 			multimap <time_t, SOCKET> _timers;
 		private:
@@ -104,8 +116,9 @@ namespace awh {
 			 * set Метод установки таймера
 			 * @param fd    файловый дескриптор таймера
 			 * @param delay задержка времени в наносекундах
+			 * @param port  порт сервера на который нужно отправить ответ
 			 */
-			void set(const SOCKET fd, const time_t delay) noexcept;
+			void set(const SOCKET fd, const time_t delay, const uint32_t port = 0) noexcept;
 		public:
 			/**
 			 * Timeout Конструктор

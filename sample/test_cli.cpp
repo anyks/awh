@@ -29,7 +29,7 @@ struct Peer {
 	Peer() noexcept : size(0), client{}, server{} {}
 } peer;
 
-int fd = 0;
+SOCKET fd = 0;
 
 /**
  * Методы только для OS Windows
