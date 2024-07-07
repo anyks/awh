@@ -390,7 +390,7 @@ void awh::Core::rebase() noexcept {
 		// Если обработка сигналов включена
 		if(this->_signals == scheme_t::mode_t::ENABLED){
 			// Выполняем установку новой базы событий
-			this->_sig.base(this->_dispatch.base);
+			// this->_sig.base(this->_dispatch.base);
 			// Выполняем запуск отслеживания сигналов
 			this->_sig.start();
 		}
@@ -632,7 +632,7 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _mode(false), _verb(true), _cores(0),
- _callbacks(log), _dispatch(log), _sig(_dispatch.base),
+ _callbacks(log), _dispatch(log), /*_sig(_dispatch.base),*/
  _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {
 	// Выполняем установку функции активации базы событий

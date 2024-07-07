@@ -771,6 +771,51 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 	return result;
 }
 /**
+ * isBind Метод проверки на занятость порта
+ * @param family тип протокола интернета AF_INET или AF_INET6
+ * @param type   тип сокета SOCK_DGRAM или SOCK_STREAM
+ * @param port   номер порта для проверки
+ * @return       результат проверки
+ */
+bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_t port) const noexcept {
+	// Резульатат работы функции
+	bool result = false;
+	// Если порт установлен
+	if(port > 0){
+		// Создаём объект подключения
+		sockaddr_in sd;
+		// Устанавливаем семейство интернет-подключения
+		sd.sin_family = family;
+		// Присваиваем петлевой адрес подключения
+		sd.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		// Выполняем создание файлового дескриптора (сокета)
+		const SOCKET fd = ::socket(family, type, 0);
+		// Если сокет создан продолжаем работу
+		if(fd != INVALID_SOCKET){
+			// Устанавливаем порт
+			sd.sin_port = htons(port);
+			// Выполняем биндинг порта
+			result = (::bind(fd, reinterpret_cast <struct sockaddr *> (&sd), sizeof(sd)) != INVALID_SOCKET);
+		// Выводим сообщение об ошибке
+		} else this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->message(AWH_ERROR()).c_str());
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Закрываем файловый дескриптор
+			::closesocket(fd);
+		/**
+		 * Методы для всех остальных операционных систем
+		 */
+		#else
+			// Закрываем файловый дескриптор
+			::close(fd);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return result;
+}
+/**
  * keepAlive Метод устанавливает постоянное подключение на сокет
  * @param fd    файловый дескриптор (сокет)
  * @param cnt   максимальное количество попыток

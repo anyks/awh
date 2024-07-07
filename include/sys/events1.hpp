@@ -112,8 +112,6 @@ namespace awh {
 				#if defined(_WIN32) || defined(_WIN64)
 					// Объект работы с пайпом
 					shared_ptr <pipe_t> pipe;
-					// Файловые дескрипторы таймеров
-					SOCKET timer = INVALID_SOCKET;
 				/**
 				 * Если это Linux
 				 */

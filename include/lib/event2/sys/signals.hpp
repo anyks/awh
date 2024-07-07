@@ -59,13 +59,13 @@ namespace awh {
 				 * Event Структура событий сигналов
 				 */
 				typedef struct Events {
-					event_t sigint;  // Перехватчик сигнала SIGINT
 					event_t sigfpe;  // Перехватчик сигнала SIGFPE
 					event_t sigill;  // Перехватчик сигнала SIGILL
 					event_t sigbus;  // Перехватчик сигнала SIGBUS
-					event_t sigterm; // Перехватчик сигнала SIGTERM
+					event_t sigint;  // Перехватчик сигнала SIGINT
 					event_t sigabrt; // Перехватчик сигнала SIGABRT
 					event_t sigsegv; // Перехватчик сигнала SIGSEGV
+					event_t sigterm; // Перехватчик сигнала SIGTERM
 					/**
 					 * Events Конструктор
 					 * @param log объект для работы с логами

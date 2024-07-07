@@ -232,8 +232,6 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						if(i->second.delay > 0){
 							// Выполняем закрытие подключения
 							::_close(i->second.fd);
-							// Выполняем закрытие таймера
-							::_close(i->second.timer);
 							// Выполняем сброс файлового дескриптора
 							j->fd = INVALID_SOCKET;
 						// Если событие является обычным
@@ -446,8 +444,6 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 										k->revents = 0;
 										// Выполняем закрытие подключения
 										::_close(i->second.fd);
-										// Выполняем закрытие таймера
-										::_close(i->second.timer);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -854,7 +850,7 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 							// Выполняем создание сокетов
 							auto fds = pipe->create();
 							// Выполняем инициализацию таймера
-							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
+							if(fds[0] == INVALID_SOCKET)
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
@@ -863,8 +859,6 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 							auto ret = this->_items.emplace(fd, item_t());
 							// Выполняем установку объекта пайпа
 							ret.first->second.pipe = pipe;
-							// Выполняем установку файлового дескриптора таймера
-							ret.first->second.timer = fds[1];
 							// Выполняем установку задержки времени таймера
 							ret.first->second.delay = delay;
 							// Выполняем установку флага серийной работы таймера
@@ -1127,14 +1121,14 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLIN;
 												// Выполняем активацию таймера на указанное время
-												this->_timeout.set(i->second.timer, i->second.delay * 1000000, i->second.pipe->port());
+												this->_timeout.set(i->second.fd, i->second.delay * 1000000, i->second.pipe->port());
 											} break;
 											// Если нужно деактивировать событие работы таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= POLLIN;
 												// Выполняем деактивацию таймера
-												this->_timeout.del(i->second.timer);
+												this->_timeout.del(i->second.fd);
 											} break;
 										}
 									} break;
@@ -1411,8 +1405,6 @@ void awh::Base::clear() noexcept {
 					if(j->second.delay > 0){
 						// Выполняем закрытие подключения
 						::_close(j->second.fd);
-						// Выполняем закрытие таймера
-						::_close(j->second.timer);
 						// Выполняем сброс файлового дескриптора
 						i->fd = INVALID_SOCKET;
 					// Если событие является обычным
@@ -1681,15 +1673,13 @@ void awh::Base::start() noexcept {
 																	// Если событие найдено и оно активированно
 																	if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																		// Выполняем активацию таймера на указанное время
-																		this->_timeout.set(j->second.timer, j->second.delay * 1000000, j->second.pipe->port());
+																		this->_timeout.set(j->second.fd, j->second.delay * 1000000, j->second.pipe->port());
 																}
 															}
 														// Выполняем закрытие подключения
 														} else if(bytes == 0) {
 															// Закрываем полностью подключение
 															::_close(j->second.fd);
-															// Выполняем закрытие таймера
-															::_close(j->second.timer);
 															// Выполняем сброс файлового дескриптора
 															this->_fds.at(i).fd = INVALID_SOCKET;
 														}

@@ -214,6 +214,15 @@ namespace awh {
 			bool timeToLive(const int32_t family, const SOCKET fd, const int32_t ttl) const noexcept;
 		public:
 			/**
+			 * isBind Метод проверки на занятость порта
+			 * @param family тип протокола интернета AF_INET или AF_INET6
+			 * @param type   тип сокета SOCK_DGRAM или SOCK_STREAM
+			 * @param port   номер порта для проверки
+			 * @return       результат проверки
+			 */
+			bool isBind(const int32_t family, const int32_t type, const uint32_t port) const noexcept;
+		public:
+			/**
 			 * keepAlive Метод устанавливает постоянное подключение на сокет
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param cnt   максимальное количество попыток

@@ -177,7 +177,6 @@ if(CMAKE_BUILD_EVENT2)
      # Выполняем подключение исходников для LibEvent2
      set(SOURCE_FILES
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/events.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/signals.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/cluster.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/scheme/core.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/core/core.cpp"
@@ -187,7 +186,6 @@ if(CMAKE_BUILD_EVENT2)
 else(CMAKE_BUILD_EVENT2)
     # Выполняем подключение исходников для LibEv
     set(SOURCE_FILES
-        "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/signals.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/cluster.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/scheme/core.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/core/core.cpp"
@@ -208,6 +206,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/events1.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/timeout.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"

@@ -57,8 +57,8 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 				if(::_pipe(fds, sizeof(time_t), O_BINARY) == INVALID_SOCKET){
 					// Выводим сообщение об ошибке
 					this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-					// Выходим из функции
-					return result;
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
 				}
 				// Выполняем установку сокета на чтение
 				result[0] = static_cast <SOCKET> (fds[0]);
@@ -72,8 +72,8 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 				if(::pipe(result.data()) == INVALID_SOCKET){
 					// Выводим сообщение об ошибке
 					this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-					// Выходим из функции
-					return result;
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
 				}
 			#endif
 			// Делаем сокет неблокирующим
@@ -81,55 +81,39 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 		} break;
 		// Если тип пайпа соответствует UDP-серверу
 		case static_cast <uint8_t> (type_t::NETWORK): {
-			// Подключаем устройство генератора
-			mt19937 generator(this->_randev());
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(49152, 65535);
-			// Выполняем получение порта
-			this->_port = dist6(generator);
-			// Если сокет не создан создан и работа резолвера не остановлена
-			if((result[1] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET){
-				// Выводим сообщение об ошибке
-				this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-				// Выходим из приложения
-				return result;
-			}
-			// Если сокет не создан создан и работа резолвера не остановлена
+			/**
+			 * Выполняем генерацию порта
+			 */
+			do {
+				// Подключаем устройство генератора
+				mt19937 generator(this->_randev());
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(49152, 65535);
+				// Выполняем получение порта
+				this->_port = dist6(generator);
+			// Если такой порт уже был ранее сгенерирован, пробуем ещё раз
+			} while(!this->_socket.isBind(AF_INET, SOCK_DGRAM, this->_port));
+			// Если сокет не создан выводим сообщение об ошибке
 			if((result[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET){
 				// Выводим сообщение об ошибке
 				this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Выполняем закрытие подключения сокета клиента
-					::closesocket(result[1]);
-				/**
-				 * Методы для всех остальных операционных систем
-				 */
-				#else
-					// Выполняем закрытие подключения сокета клиента
-					::close(result[1]);
-				#endif
 				// Выходим из приложения
-				return result;
+				::exit(EXIT_FAILURE);
 			}
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(result[0]);
-			// Устанавливаем разрешение на повторное использование сокета
-			this->_socket.reuseable(result[1]);
 			// Переводим сокет в не блокирующий режим
 			this->_socket.blocking(result[0], socket_t::mode_t::DISABLE);
 			// Зануляем объект сервера
 			::memset(&this->_peer.server, 0, sizeof(this->_peer.server));
 			// Устанавливаем протокол интернета
 			this->_peer.server.sin_family = AF_INET;
-			// Устанавливаем адрес для удаленного подключения
-			this->_peer.server.sin_addr.s_addr = 16777343;
 			// Устанавливаем порт для локального подключения
 			this->_peer.server.sin_port = htons(this->_port);
+			// Устанавливаем адрес для удаленного подключения
+			this->_peer.server.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 			// Выполняем бинд на сокет
-			if(::bind(result[0], reinterpret_cast <struct sockaddr *> (&this->_peer.server), sizeof(this->_peer.server)) < 0){
+			if(::bind(result[0], reinterpret_cast <struct sockaddr *> (&this->_peer.server), sizeof(this->_peer.server)) == INVALID_SOCKET){
 				// Выводим в лог сообщение
 				this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				// Выходим из приложения
@@ -222,7 +206,7 @@ int64_t awh::PIPE::write(const SOCKET fd, const void * buffer, const size_t size
 				// Устанавливаем порт для локального подключения
 				this->_peer.client.sin_port = htons(port);
 				// Устанавливаем адрес для удаленного подключения
-				this->_peer.client.sin_addr.s_addr = 16777343;
+				this->_peer.client.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 				// Выполняем отправку буфера данных клиенту
 				return static_cast <int64_t> (::sendto(fd, reinterpret_cast <const char *> (buffer), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.client), length));
 			}

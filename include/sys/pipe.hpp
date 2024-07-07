@@ -18,6 +18,7 @@
 /**
  * Стандартные модули
  */
+#include <set>
 #include <ctime>
 #include <array>
 #include <vector>
