@@ -1,6 +1,6 @@
 /**
  * @file: timer.cpp
- * @date: 2024-03-10
+ * @date: 2024-07-15
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <lib/event2/core/timer.hpp>
+#include <core/timer.hpp>
 
 /**
  * launching Метод вызова при активации базы событий
@@ -43,58 +43,65 @@ void awh::Timer::closedown(const bool mode, const bool status) noexcept {
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
-void awh::Timer::event(const uint16_t tid, const evutil_socket_t fd, const short event) noexcept {
+void awh::Timer::event(const uint16_t tid, const SOCKET fd, const base_t::event_type_t event) noexcept {
 	// Блокируем неиспользуемые переменные
 	(void) fd;
-	(void) event;
-	// Выполняем поиск активного брокера
-	auto i = this->_brokers.find(tid);
-	// Если активный брокер найден
-	if(i != this->_brokers.end()){
-		// Выполняем остановку активного брокера
-		i->second->event.stop();
-		// Если персистентная работа не установлена, удаляем таймер
-		if(!i->second->persist){
-			// Выполняем блокировку потока
-			this->_mtx.lock();
-			// Выполняем удаление таймера
-			this->_brokers.erase(i);
-			// Выполняем разблокировку потока
-			this->_mtx.unlock();
-			// Если функция обратного вызова существует
-			if(this->_callbacks.is(static_cast <uint64_t> (tid))){
-				// Объект работы с функциями обратного вызова
-				fn_t callback(this->_log);
-				// Копируем функции обратного вызова
-				callback = this->_callbacks;
-				// Выполняем блокировку потока
-				this->_mtx.lock();
-				// Выполняем удаление функции обратного вызова
-				this->_callbacks.erase(static_cast <uint64_t> (tid));
-				// Выполняем разблокировку потока
-				this->_mtx.unlock();
-				// Выполняем функцию обратного вызова
-				callback.bind(static_cast <uint64_t> (tid));
-			}
-		// Если нужно продолжить работу таймера
-		} else {
-			// Если функция обратного вызова существует
-			if(this->_callbacks.is(static_cast <uint64_t> (tid))){
-				// Объект работы с функциями обратного вызова
-				fn_t callback(this->_log);
-				// Копируем функции обратного вызова
-				callback = this->_callbacks;
-				// Выполняем функцию обратного вызова
-				callback.bind(static_cast <uint64_t> (tid));
-				// Выполняем поиск активного брокера
-				auto i = this->_brokers.find(tid);
-				// Если активный брокер найден
-				if(i != this->_brokers.end())
+	// Определяем тип события
+	switch(static_cast <uint8_t> (event)){
+		// Если выполняется событие таймера
+		case static_cast <uint8_t> (base_t::event_type_t::TIMER): {
+			// Выполняем поиск активного брокера
+			auto i = this->_brokers.find(tid);
+			// Если активный брокер найден
+			if(i != this->_brokers.end()){
+				// Выполняем деактивацию работы таймера
+				i->second->event.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::DISABLED);
+				// Если персистентная работа не установлена, удаляем таймер
+				if(!i->second->persist){
+					// Выполняем остановку активного брокера
+					i->second->event.stop();
+					// Выполняем блокировку потока
+					this->_mtx.lock();
+					// Выполняем удаление таймера
+					this->_brokers.erase(i);
+					// Выполняем разблокировку потока
+					this->_mtx.unlock();
+					// Если функция обратного вызова существует
+					if(this->_callbacks.is(static_cast <uint64_t> (tid))){
+						// Объект работы с функциями обратного вызова
+						fn_t callback(this->_log);
+						// Копируем функции обратного вызова
+						callback = this->_callbacks;
+						// Выполняем блокировку потока
+						this->_mtx.lock();
+						// Выполняем удаление функции обратного вызова
+						this->_callbacks.erase(static_cast <uint64_t> (tid));
+						// Выполняем разблокировку потока
+						this->_mtx.unlock();
+						// Выполняем функцию обратного вызова
+						callback.bind(static_cast <uint64_t> (tid));
+					}
+				// Если нужно продолжить работу таймера
+				} else {
+					// Если функция обратного вызова существует
+					if(this->_callbacks.is(static_cast <uint64_t> (tid))){
+						// Объект работы с функциями обратного вызова
+						fn_t callback(this->_log);
+						// Копируем функции обратного вызова
+						callback = this->_callbacks;
+						// Выполняем функцию обратного вызова
+						callback.bind(static_cast <uint64_t> (tid));
+						// Выполняем поиск активного брокера
+						auto i = this->_brokers.find(tid);
+						// Если активный брокер найден
+						if(i != this->_brokers.end())
+							// Продолжаем работу дальше
+							i->second->event.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
 					// Продолжаем работу дальше
-					i->second->event.start();
-			// Продолжаем работу дальше
-			} else i->second->event.start();
-		}
+					} else i->second->event.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
+				}
+			}
+		} break;
 	}
 }
 /**
@@ -162,17 +169,19 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 			// Получаем идентификатор таймера
 			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_log)));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
-			// Устанавливаем тип таймера
-			ret.first->second->event.set(-1, EV_TIMEOUT);
+			// Устанавливаем время задержки таймера
+			ret.first->second->event.timeout(delay);
 			// Устанавливаем базу данных событий
-			ret.first->second->event.set(this->_dispatch.base);
+			ret.first->second->event = this->_dispatch.base;
 			// Устанавливаем функцию обратного вызова
-			ret.first->second->event.set(std::bind(&timer_t::event, this, ret.first->first, _1, _2));
+			ret.first->second->event = std::bind(&timer_t::event, this, ret.first->first, _1, _2);
 			// Выполняем запуск работы таймера
-			ret.first->second->event.start(delay);
+			ret.first->second->event.start();
+			// Выполняем запуск работы таймера
+			ret.first->second->event.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
 			// Выводим идентификатор таймера
 			return ret.first->first;
 		/**
@@ -203,19 +212,21 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			// Получаем идентификатор таймера
 			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_log)));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем флаг персистентной работы
 			ret.first->second->persist = true;
-			// Устанавливаем тип таймера
-			ret.first->second->event.set(-1, EV_TIMEOUT);
+			// Устанавливаем время задержки таймера
+			ret.first->second->event.timeout(delay);
 			// Устанавливаем базу данных событий
-			ret.first->second->event.set(this->_dispatch.base);
+			ret.first->second->event = this->_dispatch.base;
 			// Устанавливаем функцию обратного вызова
-			ret.first->second->event.set(std::bind(&timer_t::event, this, ret.first->first, _1, _2));
+			ret.first->second->event = std::bind(&timer_t::event, this, ret.first->first, _1, _2);
 			// Выполняем запуск работы таймера
-			ret.first->second->event.start(delay);
+			ret.first->second->event.start();
+			// Выполняем запуск работы таймера
+			ret.first->second->event.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
 			// Выводим идентификатор таймера
 			return ret.first->first;
 		/**

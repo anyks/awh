@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/events1.hpp>
+#include <sys/events.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -643,11 +643,11 @@ int main(int argc, char * argv[]){
 
 		cout << " *********** LISTING " << sock << endl;
 
-		event1_t server(event1_t::type_t::EVENT, &fmk, &log);
-		event1_t client(event1_t::type_t::EVENT, &fmk, &log);
+		event_t server(event_t::type_t::EVENT, &fmk, &log);
+		event_t client(event_t::type_t::EVENT, &fmk, &log);
 
-		event1_t timer(event1_t::type_t::TIMER, &fmk, &log);
-		event1_t timer2(event1_t::type_t::TIMER, &fmk, &log);
+		event_t timer(event_t::type_t::TIMER, &fmk, &log);
+		event_t timer2(event_t::type_t::TIMER, &fmk, &log);
 
 		size_t index = 0;
 

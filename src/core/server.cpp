@@ -130,10 +130,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 								// Активируем получение данных с клиента
 								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
-								// Активируем ожидание записи данных
-								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
-								// Останавливаем ожидание записи данных
-								ret.first->second->_bev.events.write.stop();
+								// Деактивируем ожидание записи данных
+								ret.first->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 								// Выполняем создание буфера полезной нагрузки
 								this->createBuffer(ret.first->second->id());
 								// Если функция обратного вызова установлена
@@ -495,12 +493,12 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 								// Выполняем установку функции обратного вызова на отправку сообщений
 								ret.first->second->callback <void (const uint64_t)> ("write", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::write), this, _1));
+								// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
+								ret.first->second->callback <void (const uint64_t)> ("close", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, _1));
 								// Активируем получение данных с клиента
 								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
-								// Активируем ожидание записи данных
-								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
-								// Останавливаем ожидание записи данных
-								ret.first->second->_bev.events.write.stop();
+								// Деактивируем ожидание записи данных
+								ret.first->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 								// Выполняем создание буфера полезной нагрузки
 								this->createBuffer(ret.first->second->id());
 								// Если функция обратного вызова установлена
@@ -565,7 +563,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 				// Останавливаем событие подключения клиента
-				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::CONNECT);
+				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 				// Выполняем ожидание входящих подключений
 				if(this->_engine.wait(broker->_ectx)){
 					// Устанавливаем параметры сокета
@@ -818,12 +816,12 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							broker->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 							// Выполняем установку функции обратного вызова на отправку сообщений
 							broker->callback <void (const uint64_t)> ("write", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::write), this, _1));
+							// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
+							broker->callback <void (const uint64_t)> ("close", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, _1));
 							// Активируем получение данных с клиента
 							broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
-							// Активируем ожидание записи данных
-							broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
-							// Останавливаем ожидание записи данных
-							broker->_bev.events.write.stop();
+							// Деактивируем ожидание записи данных
+							broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 							// Выполняем создание буфера полезной нагрузки
 							this->createBuffer(broker->id());
 							// Если функция обратного вызова установлена
@@ -970,7 +968,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 									// Выполняем установку базы событий
 									i->second->base(this->_dispatch.base);
 									// Активируем получение данных с клиента
-									i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+									i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 								// Если брокер не существует
 								} else {
 									/**
@@ -988,9 +986,9 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 										// Выполняем установку базы событий
 										ret.first->second->base(this->_dispatch.base);
 										// Выполняем установку функции обратного вызова на получении сообщений
-										ret.first->second->callback <void (const SOCKET, const uint16_t)> ("accept", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, _1, _2));
+										ret.first->second->callback <void (const uint64_t)> ("read", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, shm->_addr.fd, sid));
 										// Активируем получение данных с клиента
-										ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+										ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 									/**
 									 * Если возникает ошибка
 									 */
@@ -1015,7 +1013,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 					// Если активный брокер найден
 					if(i != this->_brokers.end())
 						// Деактивируем получение данных с клиента
-						i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
+						i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 				}
 			} break;
 		}
@@ -1063,8 +1061,6 @@ void awh::server::Core::disable(const uint64_t bid) noexcept {
 		const_cast <scheme_t::broker_t *> (broker)->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 		// Останавливаем событие запись данных
 		const_cast <scheme_t::broker_t *> (broker)->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
-		// Выполняем блокировку на чтение/запись данных
-		const_cast <scheme_t::broker_t *> (broker)->_bev.locked = scheme_t::locked_t();
 	}
 }
 /**
@@ -1122,9 +1118,9 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 					this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 				}
 				// Выполняем установку функции обратного вызова на получении сообщений
-				ret.first->second->callback <void (const uint64_t)> ("connect", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
+				ret.first->second->callback <void (const uint64_t)> ("write", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
 				// Запускаем событие подключения клиента
-				ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::CONNECT);
+				ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
 			/**
 			 * Если возникает ошибка
 			 */
@@ -1277,7 +1273,7 @@ void awh::server::Core::remove() noexcept {
 		// Переходим по всему списку брокера
 		for(auto i = this->_brokers.begin(); i != this->_brokers.end();){
 			// Активируем получение данных с клиента
-			i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
+			i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 			// Выполняем удаление брокера подключения
 			i = this->_brokers.erase(i);
 		}
@@ -1462,7 +1458,7 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 			// Если брокерактивного подключения получен
 			if(j != this->_brokers.end()){
 				// Активируем получение данных с клиента
-				j->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::ACCEPT);
+				j->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 				// Выполняем удаление брокера подключения
 				this->_brokers.erase(j);
 			}
@@ -1873,7 +1869,7 @@ bool awh::server::Core::send(const char * buffer, const size_t size, const uint6
 			// Если сокет подключения активен
 			if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
 				// Запускаем ожидание записи данных
-				broker->_bev.events.write.start();
+				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
 		}
 	}
 	// Сообщаем, что отправить сообщение неудалось
@@ -1970,22 +1966,8 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
 			if(i != this->_schemes.end()){
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					/**
-					 * Если используется модуль LibEv
-					 */
-					#if defined(AWH_EV)
-						// Если подключение ещё существует
-						if(this->has(bid))
-							// Останавливаем чтение данных
-							broker->_bev.events.read.stop();
-					#endif
-				#endif
 				// Если подключение выполнено и чтение данных разрешено
-				if(!broker->_bev.locked.read && (broker->_payload.size > 0)){
+				if(broker->_payload.size > 0){
 					// Определяем тип сокета
 					switch(static_cast <uint8_t> (this->_settings.sonet)){
 						// Если тип сокета установлен как DTLS
@@ -2007,20 +1989,6 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						// Выполняем закрытие подключения
 						this->close(bid);
 				}
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					/**
-					 * Если используется модуль LibEv
-					 */
-					#if defined(AWH_EV)
-						// Если подключение ещё существует
-						if(this->has(bid))
-							// Продолжаем чтение данных дальше
-							broker->_bev.events.read.start();
-					#endif
-				#endif
 			// Если схема сети не существует
 			} else {
 				// Выводим сообщение в лог, о таймауте подключения
@@ -2074,12 +2042,12 @@ void awh::server::Core::write(const uint64_t bid) noexcept {
 					// Если сокет подключения активен
 					if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
 						// Запускаем ожидание записи данных
-						broker->_bev.events.write.start();
+						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
 				}
 			// Если данных для отправки больше нет и сокет подключения активен
 			} else if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
 				// Останавливаем детектирования возможности записи в сокет
-				broker->_bev.events.write.stop();
+				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 		}
 	}
 }
@@ -2100,7 +2068,7 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 		// Если сокет подключения активен
 		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
 			// Останавливаем детектирования возможности записи в сокет
-			broker->_bev.events.write.stop();
+			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 			// Выполняем поиск идентификатора схемы сети
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
@@ -2320,7 +2288,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 										// Выполняем установку базы событий
 										i->second->base(this->_dispatch.base);
 										// Активируем получение данных с клиента
-										i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+										i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 									// Если брокер не существует
 									} else {
 										/**
@@ -2338,9 +2306,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int fa
 											// Выполняем установку базы событий
 											ret.first->second->base(this->_dispatch.base);
 											// Выполняем установку функции обратного вызова на получении сообщений
-											ret.first->second->callback <void (const SOCKET, const uint16_t)> ("accept", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, _1, _2));
+											ret.first->second->callback <void (const uint64_t)> ("read", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, shm->_addr.fd, sid));
 											// Активируем получение данных с клиента
-											ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::ACCEPT);
+											ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 										/**
 										 * Если возникает ошибка
 										 */

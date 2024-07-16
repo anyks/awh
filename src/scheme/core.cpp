@@ -1,6 +1,6 @@
 /**
  * @file: core.cpp
- * @date: 2024-03-08
+ * @date: 2024-07-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <lib/event2/scheme/core.hpp>
+#include <scheme/core.hpp>
 
 /**
  * id Метод извлечения идентификатора брокера
@@ -102,8 +102,8 @@ void awh::Scheme::Broker::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("read", callbacks);
 	// Выполняем установку функции обратного вызова при готовности сокета к записи
 	this->_callbacks.set("write", callbacks);
-	// Выполняем установку функции обратного вызова при выполнении подключения к серверу
-	this->_callbacks.set("connect", callbacks);
+	// Выполняем установку функции обратного вызова при отключении сокета
+	this->_callbacks.set("close", callbacks);
 	// Выполняем установку функции обратного вызова при срабатывании таймаута
 	this->_callbacks.set("timeout", callbacks);
 }
@@ -118,86 +118,36 @@ void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
 	this->_sonet = sonet;
 }
 /**
- * read Метод вызова при чтении данных с сокета
+ * callback Метод вызова при получении события сокета
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
-void awh::Scheme::Broker::read(const evutil_socket_t fd, const short event) noexcept {
-	// Зануляем неиспользуемые переменные
-	(void) fd;
-	(void) event;
-	// Если разрешено выполнять чтения данных из сокета и функция обратного вызова установлена
-	if(!this->_bev.locked.read && this->_callbacks.is("read"))
-		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const uint64_t)> ("read", this->_id);
-}
-/**
- * write Метод вызова при активации сокета на запись данных
- * @param fd    файловый дескриптор (сокет)
- * @param event произошедшее событие
- */
-void awh::Scheme::Broker::write(const evutil_socket_t fd, const short event) noexcept {
-	// Зануляем неиспользуемые переменные
-	(void) fd;
-	(void) event;
-	// Если разрешено выполнять запись данных в сокет и функция обратного вызова установлена
-	if(!this->_bev.locked.write && this->_callbacks.is("write"))
-		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const uint64_t)> ("write", this->_id);
-}
-/**
- * accept Метод вызова при подключении к серверу
- * @param fd    файловый дескриптор (сокет)
- * @param event произошедшее событие
- */
-void awh::Scheme::Broker::accept(const evutil_socket_t fd, const short event) noexcept {
-	// Зануляем неиспользуемые переменные
-	(void) event;
-	// Если функция обратного вызова установлена
-	if(this->_callbacks.is("accept"))
-		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const SOCKET, const uint16_t)> ("accept", static_cast <SOCKET> (fd), this->_sid);
-}
-/**
- * connect Метод вызова при подключении к серверу
- * @param fd    файловый дескриптор (сокет)
- * @param event произошедшее событие
- */
-void awh::Scheme::Broker::connect(const evutil_socket_t fd, const short event) noexcept {
-	// Зануляем неиспользуемые переменные
-	(void) fd;
-	(void) event;
-	// Выполняем блокировку потока
-	this->_mtx.lock();
-	// Удаляем событие коннекта
-	this->_bev.events.connect.stop();
-	// Выполняем разблокировку потока
-	this->_mtx.unlock();
-	// Если функция обратного вызова установлена
-	if(this->_callbacks.is("connect"))
-		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const uint64_t)> ("connect", this->_id);
-}
-/**
- * lockup Метод блокировки метода режима работы
- * @param mode   флаг блокировки метода
- * @param method метод режима работы
- */
-void awh::Scheme::Broker::lockup(const mode_t mode, const engine_t::method_t method) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
-	// Определяем метод режима работы
-	switch(static_cast <uint8_t> (method)){
-		// Режим работы ЧТЕНИЕ
-		case static_cast <uint8_t> (engine_t::method_t::READ):
-			// Запрещаем получение данных
-			this->_bev.locked.read = (mode == mode_t::DISABLED);
-		break;
-		// Режим работы ЗАПИСЬ
-		case static_cast <uint8_t> (engine_t::method_t::WRITE):
-			// Запрещаем чтение данных
-			this->_bev.locked.write = (mode == mode_t::DISABLED);
-		break;
+void awh::Scheme::Broker::callback(const SOCKET fd, const base_t::event_type_t event) noexcept {
+	// Определяем тип события
+	switch(static_cast <uint8_t> (event)){
+		// Если выполняется событие закрытие подключения
+		case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
+			// Выполняем остановку работы события
+			this->_event.stop();
+			// Если функция обратного вызова на закратие подключения установлена
+			if(this->_callbacks.is("close"))
+				// Выполняем функцию обратного вызова
+				this->_callbacks.call <void (const uint64_t)> ("close", this->_id);
+		} break;
+		// Если выполняется событие чтения данных с сокета
+		case static_cast <uint8_t> (base_t::event_type_t::READ): {
+			// Если функция обратного вызова на чтение данных с сокета установлена
+			if(this->_callbacks.is("read"))
+				// Выполняем функцию обратного вызова
+				this->_callbacks.call <void (const uint64_t)> ("read", this->_id);
+		} break;
+		// Если выполняется событие записи данных с сокета
+		case static_cast <uint8_t> (base_t::event_type_t::WRITE): {
+			// Если функция обратного вызова на запись данных в сокет установлена
+			if(this->_callbacks.is("write"))
+				// Выполняем функцию обратного вызова
+				this->_callbacks.call <void (const uint64_t)> ("write", this->_id);
+		} break;
 	}
 }
 /**
@@ -218,26 +168,24 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 				switch(static_cast <uint8_t> (mode)){
 					// Если установлен сигнал активации сокета
 					case static_cast <uint8_t> (mode_t::ENABLED): {
-						// Разрешаем чтение данных из сокета
-						this->_bev.locked.read = false;
 						// Устанавливаем базу данных событий
-						this->_bev.events.read.set(this->_base);
+						this->_event = this->_base;
 						// Устанавливаем тип события
-						this->_bev.events.read.set(this->_addr.fd, EV_READ | EV_PERSIST);
+						this->_event = this->_addr.fd;
 						// Устанавливаем функцию обратного вызова
-						this->_bev.events.read.set(std::bind(&awh::scheme_t::broker_t::read, this, _1, _2));
+						this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
 						// Выполняем запуск работы события
-						this->_bev.events.read.start();
+						this->_event.start();
+						// Выполняем активацию работы события
+						this->_event.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 						// Выполняем установку таймаута ожидания
 						this->_ectx.timeout(this->_timeouts.read * 1000, engine_t::method_t::READ);
 					} break;
 					// Если установлен сигнал деактивации сокета
-					case static_cast <uint8_t> (mode_t::DISABLED): {
-						// Запрещаем чтение данных из сокета
-						this->_bev.locked.read = true;
-						// Останавливаем работу события
-						this->_bev.events.read.stop();
-					} break;
+					case static_cast <uint8_t> (mode_t::DISABLED):
+						// Выполняем деактивацию работы события
+						this->_event.mode(base_t::event_type_t::READ, base_t::event_mode_t::DISABLED);
+					break;
 				}
 			} break;
 			// Если передано событие подписки на запись
@@ -246,71 +194,23 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 				switch(static_cast <uint8_t> (mode)){
 					// Если установлен сигнал активации сокета
 					case static_cast <uint8_t> (mode_t::ENABLED): {
-						// Разрешаем запись данных из сокета
-						this->_bev.locked.write = false;
 						// Устанавливаем базу данных событий
-						this->_bev.events.write.set(this->_base);
+						this->_event = this->_base;
 						// Устанавливаем тип события
-						this->_bev.events.write.set(this->_addr.fd, EV_WRITE | EV_PERSIST);
+						this->_event = this->_addr.fd;
 						// Устанавливаем функцию обратного вызова
-						this->_bev.events.write.set(std::bind(&awh::scheme_t::broker_t::write, this, _1, _2));
+						this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
 						// Выполняем запуск работы события
-						this->_bev.events.write.start();
+						this->_event.start();
+						// Выполняем активацию работы события
+						this->_event.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
 						// Выполняем установку таймаута ожидания
 						this->_ectx.timeout(this->_timeouts.write * 1000, engine_t::method_t::WRITE);
 					} break;
 					// Если установлен сигнал деактивации сокета
-					case static_cast <uint8_t> (mode_t::DISABLED): {
-						// Запрещаем записи данных в сокет
-						this->_bev.locked.write = true;
-						// Останавливаем работу события
-						this->_bev.events.write.stop();
-					} break;
-				}
-			} break;
-			// Если передано событие подписки на запросы подключения
-			case static_cast <uint8_t> (engine_t::method_t::ACCEPT): {
-				// Определяем сигнал сокета
-				switch(static_cast <uint8_t> (mode)){
-					// Если установлен сигнал активации сокета
-					case static_cast <uint8_t> (mode_t::ENABLED): {
-						// Устанавливаем базу данных событий
-						this->_bev.events.accept.set(this->_base);
-						// Устанавливаем тип события
-						this->_bev.events.accept.set(this->_addr.fd, EV_READ | EV_PERSIST);
-						// Устанавливаем функцию обратного вызова
-						this->_bev.events.accept.set(std::bind(&awh::scheme_t::broker_t::accept, this, _1, _2));
-						// Выполняем запуск работы события
-						this->_bev.events.accept.start();
-					} break;
-					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED):
-						// Останавливаем работу события
-						this->_bev.events.accept.stop();
-					break;
-				}
-			} break;
-			// Если передано событие подписки на подключение
-			case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
-				// Определяем сигнал сокета
-				switch(static_cast <uint8_t> (mode)){
-					// Если установлен сигнал активации сокета
-					case static_cast <uint8_t> (mode_t::ENABLED): {
-						// Устанавливаем базу данных событий
-						this->_bev.events.connect.set(this->_base);
-						// Устанавливаем тип события
-						this->_bev.events.connect.set(this->_addr.fd, EV_WRITE);
-						// Устанавливаем функцию обратного вызова
-						this->_bev.events.connect.set(std::bind(&awh::scheme_t::broker_t::connect, this, _1, _2));
-						// Выполняем запуск работы события
-						this->_bev.events.connect.start();
-						// Выполняем установку таймаута ожидания
-						this->_ectx.timeout(this->_timeouts.connect * 1000, engine_t::method_t::WRITE);
-					} break;
-					// Если установлен сигнал деактивации сокета
-					case static_cast <uint8_t> (mode_t::DISABLED):
-						// Останавливаем работу события
-						this->_bev.events.connect.stop();
+						// Выполняем деактивацию работы события
+						this->_event.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
 					break;
 				}
 			} break;
@@ -348,7 +248,7 @@ void awh::Scheme::Broker::timeout(const time_t seconds, const engine_t::method_t
  * base Метод установки базы событий
  * @param base база событий для установки
  */
-void awh::Scheme::Broker::base(struct event_base * base) noexcept {
+void awh::Scheme::Broker::base(base_t * base) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Выполняем установку базы событий
@@ -359,7 +259,7 @@ void awh::Scheme::Broker::base(struct event_base * base) noexcept {
  * @param base база событий для установки
  * @return     текущий объект
  */
-awh::Scheme::Broker & awh::Scheme::Broker::operator = (struct event_base * base) noexcept {
+awh::Scheme::Broker & awh::Scheme::Broker::operator = (base_t * base) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Выполняем установку базы событий
@@ -375,8 +275,9 @@ awh::Scheme::Broker & awh::Scheme::Broker::operator = (struct event_base * base)
  * @param log  объект для работы с логами
  */
 awh::Scheme::Broker::Broker(const uint16_t sid, const fmk_t * fmk, const log_t * log) noexcept :
- _id(0), _sid(sid), _ip{""}, _mac{""}, _port(0), _bev(log), _sonet(sonet_t::TCP),
- _callbacks(log), _ectx(fmk, log), _addr(fmk, log), _fmk(fmk), _log(log), _base(nullptr) {
+ _id(0), _sid(sid), _ip{""}, _mac{""}, _port(0), _sonet(sonet_t::TCP),
+ _event(event_t::type_t::EVENT, fmk, log), _callbacks(log), _ectx(fmk, log),
+ _addr(fmk, log), _fmk(fmk), _log(log), _base(nullptr) {
 	// Устанавливаем идентификатор брокера
 	this->_id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 }

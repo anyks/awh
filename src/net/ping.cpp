@@ -165,7 +165,7 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 		// Устанавливаем номер последовательности
 		icmp.meta.echo.sequence = index;
 		// Устанавливаем идентификатор запроса
-		icmp.meta.echo.identifier = getpid();
+		icmp.meta.echo.identifier = ::getpid();
 		// Устанавливаем данные полезной нагрузки
 		icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
 		// Выполняем подсчёт контрольной суммы
@@ -503,7 +503,7 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					 */
 					#else
 						// Если пользователь является привилигированным
-						if(getuid())
+						if(::getuid())
 							// Создаём сокет подключения
 							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
 						// Создаём сокет подключения
@@ -549,7 +549,7 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 					 */
 					#else
 						// Если пользователь является привилигированным
-						if(getuid())
+						if(::getuid())
 							// Создаём сокет подключения
 							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
 						// Создаём сокет подключения
@@ -822,7 +822,7 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					 */
 					#else
 						// Если пользователь является привилигированным
-						if(getuid())
+						if(::getuid())
 							// Создаём сокет подключения
 							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
 						// Создаём сокет подключения
@@ -868,7 +868,7 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 					 */
 					#else
 						// Если пользователь является привилигированным
-						if(getuid())
+						if(::getuid())
 							// Создаём сокет подключения
 							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
 						// Создаём сокет подключения

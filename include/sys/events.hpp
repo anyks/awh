@@ -59,7 +59,7 @@ namespace awh {
 	/**
 	 * Event Прототип класса события AWHEvent
 	 */
-	class Event1;
+	class Event;
 	/**
 	 * Base Класс базы событий
 	 */
@@ -68,7 +68,7 @@ namespace awh {
 			/**
 			 * Event Устанавливаем дружбу с модулем события
 			 */
-			friend class Event1;
+			friend class Event;
 		public:
 			/**
 			 * Тип режима получения события
@@ -300,7 +300,7 @@ namespace awh {
 	/**
 	 * Event Класс события AWHEvent
 	 */
-	typedef class Event1 {
+	typedef class Event {
 		public:
 			/**
 			 * Типы события
@@ -397,25 +397,25 @@ namespace awh {
 			 * @param base база событий для установки
 			 * @return     текущий объект
 			 */
-			Event1 & operator = (base_t * base) noexcept;
+			Event & operator = (base_t * base) noexcept;
 			/**
 			 * Оператор [=] для установки файлового дескриптора
 			 * @param fd файловый дескриптор для установки
 			 * @return   текущий объект
 			 */
-			Event1 & operator = (const SOCKET fd) noexcept;
+			Event & operator = (const SOCKET fd) noexcept;
 			/**
 			 * Оператор [=] для установки задержки времени таймера
 			 * @param delay задержка времени в миллисекундах
 			 * @return      текущий объект
 			 */
-			Event1 & operator = (const time_t delay) noexcept;
+			Event & operator = (const time_t delay) noexcept;
 			/**
 			 * Оператор [=] для установки функции обратного вызова
 			 * @param callback функция обратного вызова
 			 * @return         текущий объект
 			 */
-			Event1 & operator = (base_t::callback_t callback) noexcept;
+			Event & operator = (base_t::callback_t callback) noexcept;
 		public:
 			/**
 			 * Event Конструктор
@@ -423,14 +423,14 @@ namespace awh {
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Event1(const type_t type, const fmk_t * fmk, const log_t * log) noexcept :
+			Event(const type_t type, const fmk_t * fmk, const log_t * log) noexcept :
 			 _mode(false), _series(false), _fd(INVALID_SOCKET), _type(type),
 			 _delay(0), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Event Деструктор
 			 */
-			~Event1() noexcept;
-	} event1_t;
+			~Event() noexcept;
+	} event_t;
 };
 
 #endif // __AWH_EVENTS__

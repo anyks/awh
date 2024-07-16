@@ -38,6 +38,7 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Выполняем инициализацию подключения
 	const double result = ping.ping("api.telegram.org", 10);
+	// const double result = ping.ping("127.0.0.1", 10);
 	// Выводим результат пинга
 	log.print("PING result=%f", log_t::flag_t::INFO, result);
 	// Выводим результат

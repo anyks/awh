@@ -172,27 +172,6 @@ include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 
-# Сборка модуля AWH_EVENT2
-if(CMAKE_BUILD_EVENT2)
-     # Выполняем подключение исходников для LibEvent2
-     set(SOURCE_FILES
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/events.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/cluster.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/scheme/core.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/core/core.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/core/timer.cpp"
-    )
-# Сборка модуля AWH_EV
-else(CMAKE_BUILD_EVENT2)
-    # Выполняем подключение исходников для LibEv
-    set(SOURCE_FILES
-        "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/cluster.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/ev/scheme/core.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/ev/core/core.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/ev/core/timer.cpp"
-    )
-endif(CMAKE_BUILD_EVENT2)
-
 # Выполняем подключение исходников
 set(SOURCE_FILES
     "${SOURCE_FILES}"
@@ -204,7 +183,8 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/pipe.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/events1.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/events.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/timeout.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/core.cpp"
@@ -230,8 +210,9 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/node.cpp"
-    #"${CMAKE_SOURCE_DIR}/src/core/timer2.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/timer.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/cluster.cpp"
@@ -258,6 +239,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/web2.cpp"

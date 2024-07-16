@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
-#include <sys/events1.hpp>
+#include <sys/events.hpp>
 
 /**
  * Если операционной системой является Windows
@@ -1633,8 +1633,10 @@ void awh::Base::start() noexcept {
 														// Выполняем функцию обратного вызова
 														j->second.callback(fd, event_type_t::CLOSE);
 												}
-											// Выводим сообщение об ошибке
-											} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
+											// Если файловый дескриптор не нулевой
+											} else if(fd > 0)
+												// Выводим сообщение об ошибке
+												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
 										// Если дисконнекта не получилось
 										} else {
 											// Получаем файловый дескриптор
@@ -1695,8 +1697,10 @@ void awh::Base::start() noexcept {
 																j->second.callback(fd, event_type_t::READ);
 														}
 													}
-												// Выводим сообщение об ошибке
-												} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
+												// Если файловый дескриптор не нулевой
+												} else if(fd > 0)
+													// Выводим сообщение об ошибке
+													this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
 											}
 											// Если сокет доступен для записи
 											if((i < this->_fds.size()) && ((fd == this->_fds.at(i).fd) || (fd == INVALID_SOCKET)) && (this->_fds.at(i).revents & POLLOUT)){
@@ -1715,8 +1719,10 @@ void awh::Base::start() noexcept {
 															// Выполняем функцию обратного вызова
 															j->second.callback(fd, event_type_t::WRITE);
 													}
-												// Выводим сообщение об ошибке
-												} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
+												// Если файловый дескриптор не нулевой
+												} else if(fd > 0)
+													// Выводим сообщение об ошибке
+													this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
 											}
 										}
 										// Если записей достаточно в списке
@@ -1784,8 +1790,10 @@ void awh::Base::start() noexcept {
 														// Выполняем функцию обратного вызова
 														item->callback(item->fd, event_type_t::CLOSE);
 												}
-											// Выводим сообщение об ошибке
-											} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
+											// Если файловый дескриптор не нулевой
+											} else if(this->_events.at(i).data.fd > 0)
+												// Выводим сообщение об ошибке
+												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
 										// Если дисконнекта не получилось
 										} else {
 											// Получаем объект текущего события
@@ -1847,8 +1855,10 @@ void awh::Base::start() noexcept {
 														}
 													}
 												}
-											// Выводим сообщение об ошибке
-											} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
+											// Если файловый дескриптор не нулевой
+											} else if(this->_events.at(i).data.fd > 0)
+												// Выводим сообщение об ошибке
+												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
 										}
 									// Выходим из цикла
 									} else break;
@@ -1911,8 +1921,10 @@ void awh::Base::start() noexcept {
 														// Выполняем функцию обратного вызова
 														item->callback(item->fd, event_type_t::CLOSE);
 												}
-											// Выводим сообщение об ошибке
-											} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
+											// Если файловый дескриптор не нулевой
+											} else if(this->_events.at(i).ident > 0)
+												// Выводим сообщение об ошибке
+												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
 										// Если дисконнекта не получилось
 										} else {
 											// Получаем объект текущего события
@@ -1986,8 +1998,10 @@ void awh::Base::start() noexcept {
 														}
 													}
 												}
-											// Выводим сообщение об ошибке
-											} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
+											// Если файловый дескриптор не нулевой
+											} else if(this->_events.at(i).ident > 0)
+												// Выводим сообщение об ошибке
+												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
 										}
 									// Выходим из цикла
 									} else break;
@@ -2129,7 +2143,7 @@ awh::Base::~Base() noexcept {
  * type Метод получения типа события
  * @return установленный тип события
  */
-awh::Event1::type_t awh::Event1::type() const noexcept {
+awh::Event::type_t awh::Event::type() const noexcept {
 	// Выводим тип установленного события
 	return this->_type;
 }
@@ -2137,7 +2151,7 @@ awh::Event1::type_t awh::Event1::type() const noexcept {
  * set Метод установки базы событий
  * @param base база событий для установки
  */
-void awh::Event1::set(base_t * base) noexcept {
+void awh::Event::set(base_t * base) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем базу данных событий
@@ -2147,7 +2161,7 @@ void awh::Event1::set(base_t * base) noexcept {
  * set Метод установки файлового дескриптора
  * @param fd файловый дескриптор для установки
  */
-void awh::Event1::set(const SOCKET fd) noexcept {
+void awh::Event::set(const SOCKET fd) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Определяем тип установленного события
@@ -2168,7 +2182,7 @@ void awh::Event1::set(const SOCKET fd) noexcept {
  * set Метод установки функции обратного вызова
  * @param callback функция обратного вызова
  */
-void awh::Event1::set(base_t::callback_t callback) noexcept {
+void awh::Event::set(base_t::callback_t callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Устанавливаем функцию обратного вызова
@@ -2178,7 +2192,7 @@ void awh::Event1::set(base_t::callback_t callback) noexcept {
  * Метод удаления типа события
  * @param type тип события для удаления
  */
-void awh::Event1::del(const base_t::event_type_t type) noexcept {
+void awh::Event::del(const base_t::event_type_t type) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа события запущена
@@ -2196,7 +2210,7 @@ void awh::Event1::del(const base_t::event_type_t type) noexcept {
  * @param delay  задержка времени в миллисекундах
  * @param series флаг серийного таймаута
  */
-void awh::Event1::timeout(const time_t delay, const bool series) noexcept {
+void awh::Event::timeout(const time_t delay, const bool series) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Определяем тип установленного события
@@ -2221,7 +2235,7 @@ void awh::Event1::timeout(const time_t delay, const bool series) noexcept {
  * @param mode флаг режима работы модуля
  * @return     результат работы функции
  */
-bool awh::Event1::mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept {
+bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа базы событий активированна
@@ -2234,7 +2248,7 @@ bool awh::Event1::mode(const base_t::event_type_t type, const base_t::event_mode
 /**
  * stop Метод остановки работы события
  */
-void awh::Event1::stop() noexcept {
+void awh::Event::stop() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа события запущена
@@ -2252,7 +2266,7 @@ void awh::Event1::stop() noexcept {
 /**
  * start Метод запуска работы события
  */
-void awh::Event1::start() noexcept {
+void awh::Event::start() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если работа события ещё не запущена
@@ -2287,7 +2301,7 @@ void awh::Event1::start() noexcept {
  * @param base база событий для установки
  * @return     текущий объект
  */
-awh::Event1 & awh::Event1::operator = (base_t * base) noexcept {
+awh::Event & awh::Event::operator = (base_t * base) noexcept {
 	// Выполняем установку базы событий
 	this->set(base);
 	// Возвращаем текущий объект
@@ -2298,7 +2312,7 @@ awh::Event1 & awh::Event1::operator = (base_t * base) noexcept {
  * @param fd файловый дескриптор для установки
  * @return   текущий объект
  */
-awh::Event1 & awh::Event1::operator = (const SOCKET fd) noexcept {
+awh::Event & awh::Event::operator = (const SOCKET fd) noexcept {
 	// Выполняем установку файлового дескриптора
 	this->set(fd);
 	// Возвращаем текущий объект
@@ -2309,7 +2323,7 @@ awh::Event1 & awh::Event1::operator = (const SOCKET fd) noexcept {
  * @param delay задержка времени в миллисекундах
  * @return      текущий объект
  */
-awh::Event1 & awh::Event1::operator = (const time_t delay) noexcept {
+awh::Event & awh::Event::operator = (const time_t delay) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Определяем тип установленного события
@@ -2333,7 +2347,7 @@ awh::Event1 & awh::Event1::operator = (const time_t delay) noexcept {
  * @param callback функция обратного вызова
  * @return         текущий объект
  */
-awh::Event1 & awh::Event1::operator = (base_t::callback_t callback) noexcept {
+awh::Event & awh::Event::operator = (base_t::callback_t callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->set(callback);
 	// Возвращаем текущий объект
@@ -2342,7 +2356,7 @@ awh::Event1 & awh::Event1::operator = (base_t::callback_t callback) noexcept {
 /**
  * ~Event Деструктор
  */
-awh::Event1::~Event1() noexcept {
+awh::Event::~Event() noexcept {
 	// Выполняем остановку работы события
 	this->stop();
 }

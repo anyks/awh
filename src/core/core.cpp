@@ -1,6 +1,6 @@
 /**
  * @file: core.cpp
- * @date: 2024-03-07
+ * @date: 2024-07-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -13,29 +13,8 @@
  */
 
 // Подключаем заголовочный файл
-#include <lib/event2/core/core.hpp>
+#include <core/core.hpp>
 
-/**
- * Если операционной системой является Windows
- */
-#if defined(_WIN32) || defined(_WIN64)
-	/**
-	 * winsockInitialized Метод проверки на инициализацию WinSocksAPI
-	 * @return результат проверки
-	 */
-	static bool winsockInitialized() noexcept {
-		// Выполняем создание сокета
-		SOCKET fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		// Если сокет не создан
-		if(fd == INVALID_SOCKET)
-			// Сообщаем, что сокет не создан а значит WinSocksAPI не инициализирован
-			return false;
-		// Выполняем закрытие открытого сокета
-		closesocket(fd);
-		// Сообщаем, что WinSocksAPI уже инициализирован
-		return true;
-	}
-#endif
 /**
  * kick Метод отправки пинка
  */
@@ -45,7 +24,7 @@ void awh::Core::Dispatch::kick() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем остановку всех событий
-		event_base_loopbreak(this->base);
+		this->base->kick();
 	}
 }
 /**
@@ -58,8 +37,8 @@ void awh::Core::Dispatch::stop() noexcept {
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Снимаем флаг работы модуля
 		this->_work = !this->_work;
-		// Выполняем пинок
-		this->kick();
+		// Выполняем остановку базы событий
+		this->base->stop();
 	// Если модуль не инициализирован
 	} else if(!this->_init) {
 		// Если функция обратного вызова установлена
@@ -84,31 +63,8 @@ void awh::Core::Dispatch::start() noexcept {
 		if(this->_launching != nullptr)
 			// Выполняем запуск функции активации базы событий
 			this->_launching(true, true);
-		// Выполняем чтение базы событий пока это разрешено
-		while(this->_work){
-			// Если база событий проинициализированна
-			if(this->_init && !this->_freeze){
-				/**
-				 * Выполняем обработку ошибки
-				 */
-				try {
-					// Если не нужно использовать простой режим чтения
-					if(!this->_easy)
-						// Выполняем чтение базы событий
-						event_base_dispatch(this->base);
-					// Выполняем чтение базы событий в простом режиме
-					else event_base_loop(this->base, EVLOOP_ONCE | EVLOOP_NONBLOCK);
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const exception & error) {
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				}
-			}
-			// Замораживаем поток на период времени частоты обновления базы событий
-			this_thread::sleep_for(this->_freq);
-		}
+		// Выполняем запуск базы событий
+		this->base->start();
 		// Если функция обратного вызова установлена
 		if(this->_closedown != nullptr)
 			// Выполняем остановку функции активации базы событий
@@ -142,7 +98,7 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 		// Удаляем объект базы событий
 		if(this->base != nullptr){
 			// Удаляем объект базы событий
-			event_base_free(this->base);
+			delete this->base;
 			// Выполняем зануление базы событий
 			this->base = nullptr;
 		}
@@ -153,7 +109,7 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Создаем новую базу событий
-		this->base = event_base_new();
+		this->base = new base_t(this->_fmk, this->_log);
 		// Активируем флаг виртуальной базы событий
 		this->_virt = !this->_virt;
 		// Выполняем разблокировку чтения данных
@@ -184,10 +140,10 @@ void awh::Core::Dispatch::rebase() noexcept {
 		}
 		// Удаляем объект базы событий
 		if(this->base != nullptr)
-			// Удаляем объект базы событий
-			event_base_free(this->base);
+			// Выполняем пересоздание базы событий
+			this->base->rebase();
 		// Создаем новую базу событий
-		this->base = event_base_new();
+		else this->base = new base_t(this->_fmk, this->_log);
 		// Выполняем разблокировку чтения данных
 		this->_init = !this->_virt;
 	}
@@ -202,11 +158,11 @@ void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем фриз получения данных
-		this->_freeze = mode;
+		this->base->freeze(mode);
 		// Если запрещено использовать простое чтение базы событий
-		if(this->_freeze)
-			// Завершаем работу базы событий
-			event_base_loopbreak(this->base);
+		if(mode)
+			// Выполняем пинок
+			this->kick();
 	}
 }
 /**
@@ -217,7 +173,7 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Устанавливаем флаг активации простого чтения базы событий
-	this->_easy = mode;
+	this->base->easily(mode);
 	// Выполняем пинок
 	this->kick();
 }
@@ -230,12 +186,8 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
 	if(this->_init){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
-		// Если количество миллисекунд передано больше 0
-		if((this->_easy = (msec > 0)))
-			// Устанавливаем частоту обновления базы событий
-			this->_freq = chrono::milliseconds(msec);
-		// Выполняем сброс частоты обновления базы событий
-		else this->_freq = 10ms;
+		// Устанавливаем частоту обновления базы событий
+		this->base->frequency(msec);
 	}
 }
 /**
@@ -260,35 +212,12 @@ void awh::Core::Dispatch::on(const status_t status, function <void (const bool, 
 }
 /**
  * Dispatch Конструктор
+ * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Core::Dispatch::Dispatch(const log_t * log) noexcept :
- _easy(false), _work(false), _init(false), _virt(false), _freeze(false),
- _freq(10ms), base(nullptr), _launching(nullptr), _closedown(nullptr), _log(log) {
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Если WinSocksAPI ещё не инициализирована
-		if(!(this->_winSockInit = winsockInitialized())){
-			// Идентификатор ошибки
-			int error = 0;
-			// Выполняем инициализацию сетевого контекста
-			if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
-				// Очищаем сетевой контекст
-				WSACleanup();
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			}
-			// Выполняем проверку версии WinSocket
-			if((2 != LOBYTE(this->_wsaData.wVersion)) || (2 != HIBYTE(this->_wsaData.wVersion))){
-				// Очищаем сетевой контекст
-				WSACleanup();
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			}
-		}
-	#endif
+awh::Core::Dispatch::Dispatch(const fmk_t * fmk, const log_t * log) noexcept :
+ _work(false), _init(false), _virt(false), base(nullptr),
+ _launching(nullptr), _closedown(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем инициализацию базы событий
 	this->rebase();
 }
@@ -301,19 +230,10 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 		// Если база событий не является виртуальной
 		if(!this->_virt && (this->base != nullptr)){
 			// Удаляем объект базы событий
-			event_base_free(this->base);
+			delete this->base;
 			// Выполняем зануление базы событий
 			this->base = nullptr;
 		}
-		/**
-		 * Если операционной системой является MS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Если WinSocksAPI была инициализированна в этой базе событий
-			if(!this->_winSockInit)
-				// Очищаем сетевой контекст
-				WSACleanup();
-		#endif
 	}
 }
 /**
@@ -384,12 +304,9 @@ void awh::Core::rebase() noexcept {
 		// Выполняем пересоздание базы событий
 		this->_dispatch.rebase();
 		// Если обработка сигналов включена
-		if(this->_signals == scheme_t::mode_t::ENABLED){
-			// Выполняем установку новой базы событий
-			this->_sig.base(this->_dispatch.base);
+		if(this->_signals == scheme_t::mode_t::ENABLED)
 			// Выполняем запуск отслеживания сигналов
 			this->_sig.start();
-		}
 		// Выполняем запуск работы
 		this->start();
 	}
@@ -641,8 +558,8 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
  * @param log объект для работы с логами
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _mode(false), _verb(true), _cores(0),
- _callbacks(log), _dispatch(log), _sig(_dispatch.base, log),
+ _pid(::getpid()), _mode(false), _verb(true),
+ _cores(0), _callbacks(log), _dispatch(fmk, log),
  _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {
 	// Выполняем установку функции активации базы событий
