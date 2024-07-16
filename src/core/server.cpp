@@ -547,23 +547,10 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 			auto j = shm->_brokers.find(bid);
 			// Если брокер подключения получен
 			if(j != shm->_brokers.end()){
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Идентификатор ошибки подключения
-					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != WSAEWOULDBLOCK) && (AWH_ERROR() != WSAEINVAL));
-				/**
-				 * Для всех остальных операционных систем
-				 */
-				#else
-					// Если нужно попытаться ещё раз отправить сообщение
-					const bool error = ((AWH_ERROR() > 0) && (AWH_ERROR() != EWOULDBLOCK) && (AWH_ERROR() != EINVAL));
-				#endif
 				// Получаем бъект активного брокера подключения
 				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 				// Останавливаем событие подключения клиента
-				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 				// Выполняем ожидание входящих подключений
 				if(this->_engine.wait(broker->_ectx)){
 					// Устанавливаем параметры сокета
@@ -832,45 +819,27 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							auto i = this->_timers.find(sid);
 							// Если таймер найден
 							if(i != this->_timers.end()){
-								// Выполняем создание нового таймаута на 10 миллисекунд
-								const uint16_t tid = i->second->timeout(10);
+								// Выполняем создание нового таймаута на 100 миллисекунд
+								const uint16_t tid = i->second->timeout(100);
 								// Выполняем добавление функции обратного вызова
 								i->second->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid));
 							}
 						}
 					// Подключение не установлено
 					} else {
+						// Получаем текст полученной ошибки
+						const string & message = this->_socket.message(AWH_ERROR());
 						// Выводим сообщение об ошибке
-						this->_log->print("Accepting failed, PID=%d", log_t::flag_t::WARNING, ::getpid());
+						this->_log->print("%s, PID=%d", log_t::flag_t::WARNING, message.c_str(), ::getpid());
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
+							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("%s, PID=%d", message.c_str(), ::getpid()));
+						// Выполняем удаление объекта подключения
+						this->close(bid);
 					}
-				// Если обнаружена ошибка сокета
-				} else if(error) {
-					// Получаем текст полученной ошибки
-					const string & message = this->_socket.message(AWH_ERROR());
-					// Выводим сообщение об ошибке
-					this->_log->print("%s, PID=%d", log_t::flag_t::CRITICAL, message.c_str(), ::getpid());
-					// Если функция обратного вызова установлена
-					if(this->_callbacks.is("error"))
-						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("%s, PID=%d", message.c_str(), ::getpid()));
-					// Выполняем удаление объекта подключения
-					this->close(bid);
-				// Запускаем таймер вновь на 100мс
-				} else {
-					// Выполняем поиск таймера
-					auto i = this->_timers.find(sid);
-					// Если таймер найден
-					if(i != this->_timers.end()){
-						// Выполняем создание нового таймаута на 10 миллисекунд
-						const uint16_t tid = i->second->timeout(10);
-						// Выполняем добавление функции обратного вызова
-						i->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid));
-					}
-				}
+				// Выполняем повторную попытку
+				} else this->accept(sid, bid);
 			}
 		}
 	}
@@ -1118,9 +1087,9 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 					this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
 				}
 				// Выполняем установку функции обратного вызова на получении сообщений
-				ret.first->second->callback <void (const uint64_t)> ("write", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
+				ret.first->second->callback <void (const uint64_t)> ("read", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
 				// Запускаем событие подключения клиента
-				ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+				ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 			/**
 			 * Если возникает ошибка
 			 */
