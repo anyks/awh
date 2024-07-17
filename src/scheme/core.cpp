@@ -178,6 +178,8 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						this->_event.start();
 						// Выполняем активацию работы события
 						this->_event.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+						// Выполняем активацию события закрытий подключения
+						this->_event.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						// Выполняем установку таймаута ожидания
 						this->_ectx.timeout(this->_timeouts.read * 1000, engine_t::method_t::READ);
 					} break;
@@ -204,6 +206,8 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						this->_event.start();
 						// Выполняем активацию работы события
 						this->_event.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
+						// Выполняем активацию события закрытий подключения
+						this->_event.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						// Выполняем установку таймаута ожидания
 						this->_ectx.timeout(this->_timeouts.write * 1000, engine_t::method_t::WRITE);
 					} break;

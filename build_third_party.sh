@@ -12,9 +12,6 @@ IDN="no"
 # Флаг активации режима отладки
 DEBUG="no"
 
-# Флаг активации сборки LibEvent2
-LIBEVENT2="no"
-
 if [[ $OS =~ "MINGW64" ]]; then
 	OS="Windows"
 fi
@@ -44,12 +41,9 @@ if [ -n "$1" ]; then
 		clean_submodule "brotli"
 		# Очищаем подпроекты
 		clean_submodule "pcre2"
-		clean_submodule "libev"
-		clean_submodule "libev-win"
 		clean_submodule "openssl"
 		clean_submodule "nghttp2"
 		clean_submodule "jemalloc"
-		clean_submodule "libevent"
 
 		# Если операционная система не является Windows
 		if [[ ! $OS = "Windows" ]]; then
@@ -80,40 +74,9 @@ if [ -n "$1" ]; then
 			IDN="yes"
 		fi
 
-		if [[ -n "$2" ]] && [[ $2 = "--event2" ]]; then
-			LIBEVENT2="yes"
-		fi
-		if [[ -n "$3" ]] && [[ $3 = "--event2" ]]; then
-			LIBEVENT2="yes"
-		fi
-
 	elif [ $1 = "--idn" ]; then
 
 		IDN="yes"
-
-		if [[ -n "$2" ]] && [[ $2 = "--debug" ]]; then
-			DEBUG="yes"
-		fi
-		if [[ -n "$3" ]] && [[ $3 = "--debug" ]]; then
-			DEBUG="yes"
-		fi
-		if [[ -n "$2" ]] && [[ $2 = "--event2" ]]; then
-			LIBEVENT2="yes"
-		fi
-		if [[ -n "$3" ]] && [[ $3 = "--event2" ]]; then
-			LIBEVENT2="yes"
-		fi
-
-	elif [ $1 = "--event2" ]; then
-
-		LIBEVENT2="yes"
-		
-		if [[ -n "$2" ]] && [[ $2 = "--idn" ]]; then
-			IDN="yes"
-		fi
-		if [[ -n "$3" ]] && [[ $3 = "--idn" ]]; then
-			IDN="yes"
-		fi
 
 		if [[ -n "$2" ]] && [[ $2 = "--debug" ]]; then
 			DEBUG="yes"
@@ -839,169 +802,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
 	cd "$ROOT" || exit 1
-fi
-
-# Если нужно собрать модуль LibEvent2
-if [[ $LIBEVENT2 = "yes" ]]; then
-	# Сборка LibEvent2
-	src="$ROOT/submodules/libevent"
-	if [ ! -f "$src/.stamp_done" ]; then
-		printf "\n****** LibEvent2 ******\n"
-		cd "$src" || exit 1
-
-		# Версия LibEvent2
-		VER="2.1.12"
-
-		# Переключаемся на master
-		git checkout master
-		# Выполняем удаление предыдущей закаченной версии
-		git tag -d release-${VER}-stable
-		# Закачиваем все теги
-		git fetch --all --tags
-		# Удаляем старую ветку
-		git branch -D v${VER}-branch
-		# Выполняем переключение на указанную версию
-		git checkout -b v${VER}-branch release-${VER}-stable
-
-		# Создаём каталог сборки
-		mkdir -p "build" || exit 1
-		# Переходим в каталог
-		cd "build" || exit 1
-
-		# Удаляем старый файл кэша
-		rm -rf ./CMakeCache.txt
-
-		# Выполняем конфигурацию проекта
-		if [[ $OS = "Windows" ]]; then
-			cmake \
-			 -DCMAKE_C_COMPILER="gcc" \
-			 -DCMAKE_BUILD_TYPE="Release" \
-			 -DCMAKE_SYSTEM_NAME="Windows" \
-			 -DEVENT__LIBRARY_TYPE="STATIC" \
-			 -DEVENT__DISABLE_DEBUG_MODE="ON" \
-			 -DEVENT__DISABLE_BENCHMARK="ON" \
-			 -DEVENT__DISABLE_SAMPLES="ON" \
-			 -DEVENT__DISABLE_TESTS="ON" \
-			 -DEVENT__DISABLE_THREAD_SUPPORT="ON" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DOPENSSL_ROOT_DIR="$PREFIX" \
-			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			 -G "MSYS Makefiles" \
-			 .. || exit 1
-		else
-			cmake \
-			 -DEVENT__LIBRARY_TYPE="STATIC" \
-			 -DEVENT__DISABLE_DEBUG_MODE="ON" \
-			 -DEVENT__DISABLE_BENCHMARK="ON" \
-			 -DEVENT__DISABLE_SAMPLES="ON" \
-			 -DEVENT__DISABLE_TESTS="ON" \
-			 -DEVENT__DISABLE_THREAD_SUPPORT="ON" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			 -DOPENSSL_ROOT_DIR="$PREFIX" \
-			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			 .. || exit 1
-		fi
-
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-		# Выполняем установку проекта
-		make install || exit 1
-
-		# Создаём каталог LibEvent2
-		mkdir "$PREFIX/include/libevent2"
-
-		# Производим установку заголовочных файлов по нужному пути
-		for i in $(ls "$PREFIX/include" | grep "ev.*\.h$");
-		do
-			echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/libevent2/$i\""
-			mv "$PREFIX/include/$i" "$PREFIX/include/libevent2/$i" || exit 1
-		done
-
-		# Переносим остальные заголовочные файлы
-		mv "$PREFIX/include/event2" "$PREFIX/include/libevent2"/
-
-		# Помечаем флагом, что сборка и установка произведена
-		touch "$src/.stamp_done"
-		cd "$ROOT" || exit 1
-	fi
-# Если нужно собрать модуль LibEv
-else
-	# Если операционной системой является Windows
-	if [ $OS = "Windows" ]; then # Windows
-		# Сборка LibEv под Windows
-		src="$ROOT/submodules/libev-win"
-		if [ ! -f "$src/.stamp_done" ]; then
-			printf "\n****** LibEv ******\n"
-			cd "$src" || exit 1
-
-			# Применяем патч
-			apply_patch "libev-win" "libev.patch"
-
-			# Создаём каталог сборки
-			mkdir -p "build" || exit 1
-			# Переходим в каталог
-			cd "build" || exit 1
-
-			# Удаляем старый файл кэша
-			rm -rf ./CMakeCache.txt
-
-			# Выполняем конфигурацию проекта
-			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
-			 -DCMAKE_SYSTEM_NAME="Windows" \
-			 -G "MSYS Makefiles" \
-			 .. || exit 1
-
-			# Выполняем сборку на всех логических ядрах
-			make -j"$numproc" || exit 1
-
-			# Производим установку библиотеки по нужному пути
-			echo "Install \"$src/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
-			${INSTALL_CMD} "$src/build/liblibev_static.a" "$PREFIX/lib/libev.a" || exit 1
-
-			# Производим установку заголовочных файлов по нужному пути
-			for i in $(ls "$src" | grep \\.h$);
-			do
-				echo "Install \"$src/$i\" to \"$PREFIX/include/libev/$i\""
-				${INSTALL_CMD} "$src/$i" "$PREFIX/include/libev/$i" || exit 1
-			done
-
-			# Помечаем флагом, что сборка и установка произведена
-			touch "$src/.stamp_done"
-			cd "$ROOT" || exit 1
-		fi
-	# Для всех остальных версий операционных систем
-	else
-		# Сборка LibEv
-		src="$ROOT/submodules/libev"
-		if [ ! -f "$src/.stamp_done" ]; then
-			printf "\n****** LibEv ******\n"
-			cd "$src" || exit 1
-
-			# Выполняем конфигурирование сборки
-			./configure \
-			 --with-pic=use \
-			 --enable-static="ON" \
-			 --enable-shared="OFF" \
-			 --prefix=$PREFIX \
-			 --includedir="$PREFIX/include/libev" \
-			 --libdir="$PREFIX/lib"
-
-			# Применяем патч
-			apply_patch "libev" "libev.patch"
-			
-			# Выполняем сборку проекта
-			make -j"$numproc" || exit 1
-			# Выполняем установку проекта
-			make install || exit 1
-
-			# Помечаем флагом, что сборка и установка произведена
-			touch "$src/.stamp_done"
-			cd "$ROOT" || exit 1
-		fi
-	fi
 fi
 
 # Если нужно собрать модуль IDN и операционная система не является Windows

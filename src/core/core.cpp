@@ -85,43 +85,56 @@ void awh::Core::Dispatch::start() noexcept {
  * @param mode флаг активации
  */
 void awh::Core::Dispatch::virt(const bool mode) noexcept {
-	// Если требуется активировать базу событий как виртуальную
-	if(mode && !this->_virt){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
-		// Выполняем блокировку чтения данных
-		this->_init = false;
-		// Если работа уже запущена
-		if(this->_work)
-			// Выполняем пинок
-			this->kick();
-		// Удаляем объект базы событий
-		if(this->base != nullptr){
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если требуется активировать базу событий как виртуальную
+		if(mode && !this->_virt){
+			// Выполняем блокировку потока
+			const lock_guard <recursive_mutex> lock(this->_mtx);
+			// Выполняем блокировку чтения данных
+			this->_init = false;
+			// Если работа уже запущена
+			if(this->_work)
+				// Выполняем пинок
+				this->kick();
 			// Удаляем объект базы событий
-			delete this->base;
-			// Выполняем зануление базы событий
-			this->base = nullptr;
-		}
-		// Активируем флаг виртуальной базы событий
-		this->_virt = !this->_virt;
-	// Если требуется деактивировать базу событий как виртуальную
-	} else if(!mode && this->_virt) {
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
-		// Создаем новую базу событий
-		this->base = new base_t(this->_fmk, this->_log);
-		// Активируем флаг виртуальной базы событий
-		this->_virt = !this->_virt;
-		// Выполняем разблокировку чтения данных
-		this->_init = !this->_virt;
-	// Если производится переключение на виртуальную базу событий но она уже виртуальная
-	} else if(mode && this->_virt)
-		// Выводим сообщение об ошибке
-		this->_log->print("Cannot make the event database virtual because i is already virtual", log_t::flag_t::WARNING);
-	// Если производится переход с виртуальной базы данных на обычную но она уже обычная
-	else if(!mode && !this->_virt)
-		// Выводим сообщение об ошибке
-		this->_log->print("Cannot switch from a virtual event database to a real one, since i is no longer virtual", log_t::flag_t::WARNING);
+			if(this->base != nullptr){
+				// Удаляем объект базы событий
+				delete this->base;
+				// Выполняем зануление базы событий
+				this->base = nullptr;
+			}
+			// Активируем флаг виртуальной базы событий
+			this->_virt = !this->_virt;
+		// Если требуется деактивировать базу событий как виртуальную
+		} else if(!mode && this->_virt) {
+			// Выполняем блокировку потока
+			const lock_guard <recursive_mutex> lock(this->_mtx);
+			// Создаем новую базу событий
+			this->base = new base_t(this->_fmk, this->_log);
+			// Активируем флаг виртуальной базы событий
+			this->_virt = !this->_virt;
+			// Выполняем разблокировку чтения данных
+			this->_init = !this->_virt;
+		// Если производится переключение на виртуальную базу событий но она уже виртуальная
+		} else if(mode && this->_virt)
+			// Выводим сообщение об ошибке
+			this->_log->print("Cannot make the event database virtual because i is already virtual", log_t::flag_t::WARNING);
+		// Если производится переход с виртуальной базы данных на обычную но она уже обычная
+		else if(!mode && !this->_virt)
+			// Выводим сообщение об ошибке
+			this->_log->print("Cannot switch from a virtual event database to a real one, since i is no longer virtual", log_t::flag_t::WARNING);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const bad_alloc &) {
+		// Выводим в лог сообщение
+		this->_log->print("Memory allocation error for event base", log_t::flag_t::CRITICAL);
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
+	}
 }
 /**
  * rebase Метод пересоздания базы событий
@@ -129,23 +142,36 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 void awh::Core::Dispatch::rebase() noexcept {
 	// Если требуется активировать базу событий как виртуальную
 	if(!this->_virt){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
-		// Если работа уже запущена
-		if(this->_work){
-			// Выполняем блокировку чтения данных
-			this->_init = false;
-			// Выполняем пинок
-			this->kick();
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем блокировку потока
+			const lock_guard <recursive_mutex> lock(this->_mtx);
+			// Если работа уже запущена
+			if(this->_work){
+				// Выполняем блокировку чтения данных
+				this->_init = false;
+				// Выполняем пинок
+				this->kick();
+			}
+			// Удаляем объект базы событий
+			if(this->base != nullptr)
+				// Выполняем пересоздание базы событий
+				this->base->rebase();
+			// Создаем новую базу событий
+			else this->base = new base_t(this->_fmk, this->_log);
+			// Выполняем разблокировку чтения данных
+			this->_init = !this->_virt;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выводим в лог сообщение
+			this->_log->print("Memory allocation error for event base", log_t::flag_t::CRITICAL);
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
 		}
-		// Удаляем объект базы событий
-		if(this->base != nullptr)
-			// Выполняем пересоздание базы событий
-			this->base->rebase();
-		// Создаем новую базу событий
-		else this->base = new base_t(this->_fmk, this->_log);
-		// Выполняем разблокировку чтения данных
-		this->_init = !this->_virt;
 	}
 }
 /**

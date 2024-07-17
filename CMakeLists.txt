@@ -28,19 +28,6 @@ else(CMAKE_BUILD_IDN)
     message(STATUS "Build AWH IDN: NO\n")
 endif(CMAKE_BUILD_IDN)
 
-# Сборка модуля AWH_EVENT2
-if(CMAKE_BUILD_EVENT2)
-    add_compile_definitions(AWH_EVENT2)
-    message(STATUS "Build AWH LIBEV: NO\n")
-    message(STATUS "Build AWH LIBEVENT2: YES\n")
-# Сборка модуля AWH_EV
-else(CMAKE_BUILD_EVENT2)
-    set(CMAKE_BUILD_EV "YES")
-    add_compile_definitions(AWH_EV)
-    message(STATUS "Build AWH LIBEV: YES\n")
-    message(STATUS "Build AWH LIBEVENT2: NO\n")
-endif(CMAKE_BUILD_EVENT2)
-
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 
@@ -141,27 +128,12 @@ if(Dependence_FOUND)
     # Если операцинная система не относится к MS Windows
     if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         message(STATUS "JeMalloc include dir found: " ${JEMALLOC_INCLUDE_DIR})
+        # Сборка модуля AWH_IDN
+        if(CMAKE_BUILD_IDN)
+            message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})
+            message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
+        endif()
     endif()
-
-    # Сборка модуля AWH_EVENT2
-    if(CMAKE_BUILD_EVENT2)
-        # Сборка модуля AWH_IDN, если операционной системой не является Windows
-        if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-            message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})
-            message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
-        endif()
-        message(STATUS "LibEvent2 include dir found: " ${LIBEVENT_INCLUDE_DIR})
-    # Сборка модуля AWH_EV
-    else(CMAKE_BUILD_EVENT2)
-        # Сборка модуля AWH_IDN, если операционной системой не является Windows
-        if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-            message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})
-            message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
-        endif()
-        message(STATUS "LibEv EV include dir found: " ${LIBEV_EV_INCLUDE_DIR})
-        message(STATUS "LibEv EV++ include dir found: " ${LIBEV_EVPP_INCLUDE_DIR})
-        message(STATUS "LibEv EVENT include dir found: " ${LIBEV_EVENT_INCLUDE_DIR})
-    endif(CMAKE_BUILD_EVENT2)
 else(Dependence_FOUND)
     message(FATAL_ERROR "Dependence not found")
 endif(Dependence_FOUND)
@@ -260,11 +232,6 @@ set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
 set(CLIENT_APP_NAME client)
 set(SERVER_APP_NAME server)
-
-
-set(SERVER_TEST_APP_NAME test_srv)
-set(CLIENT_TEST_APP_NAME test_cli)
-
 set(WS_CLIENT_APP_NAME wsClient)
 set(WS_SERVER_APP_NAME wsServer)
 set(WEB_CLIENT_APP_NAME webClient)
@@ -315,10 +282,6 @@ endif(CMAKE_SHARED_BUILD_LIB)
     add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp ${RES_FILES})
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
-
-    add_executable(${SERVER_TEST_APP_NAME} sample/test_srv.cpp ${RES_FILES})
-    add_executable(${CLIENT_TEST_APP_NAME} sample/test_cli.cpp ${RES_FILES})
-
 # Если операционной системой является Linux, FreeBSD, MacOS X
 else()
     # Выполняем создание демонстрационных приложений
@@ -336,10 +299,6 @@ else()
     add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp)
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp)
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp)
-
-    add_executable(${SERVER_TEST_APP_NAME} sample/test_srv.cpp)
-    add_executable(${CLIENT_TEST_APP_NAME} sample/test_cli.cpp)
-
 endif()
 
 # Если нужно собрать и динамическую библиотеку
@@ -786,26 +745,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-
-
-        # Выполняем сборку тестового отладочного сервера
-        target_link_libraries(
-            ${SERVER_TEST_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку тестового отладочного клиента
-        target_link_libraries(
-            ${CLIENT_TEST_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
-
     # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
     elseif(CMAKE_BUILD_IDN)
 
@@ -921,23 +860,6 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-
-        # Выполняем сборку тестового отладочного сервера
-        target_link_libraries(
-            ${SERVER_TEST_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку тестового отладочного клиента
-        target_link_libraries(
-            ${CLIENT_TEST_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${AWH_IDN}
-        )
-
     # Если операционной системой является Linux, FreeBSD, MacOS X
     else()
 
@@ -1035,20 +957,6 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-        )
-
-        # Выполняем сборку тестового отладочного сервера
-        target_link_libraries(
-            ${SERVER_TEST_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-        )
-
-        # Выполняем сборку тестового отладочного клиента
-        target_link_libraries(
-            ${CLIENT_TEST_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )

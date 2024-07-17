@@ -27,9 +27,6 @@
 - [LibIdn2](https://www.gnu.org/software/libidn)
 - [JeMalloc](https://jemalloc.net)
 - [NgHttp2](https://nghttp2.org/documentation/)
-- [LibEv](http://software.schmorp.de/pkg/libev.html)
-- [Libev-Win](https://github.com/disenone/libev-win)
-- [LibEvent2](https://libevent.org)
 - [NLohmann::json](https://json.nlohmann.me)
 
 ## To build and launch the project
