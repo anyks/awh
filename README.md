@@ -109,7 +109,7 @@ $ pacman -S mingw-w64-x86_64-dlfcn
 
 ### Build third party for MS Windows
 ```bash
-$ ./build_third_party.sh --event2
+$ ./build_third_party.sh
 ```
 
 #### Project build
@@ -121,7 +121,6 @@ $ cd ./build
 $ cmake \
  -G "MSYS Makefiles" \
  -DCMAKE_BUILD_IDN=YES \
- -DCMAKE_BUILD_EVENT2=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  -DCMAKE_SHARED_BUILD_LIB=YES \
