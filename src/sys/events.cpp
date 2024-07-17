@@ -1054,6 +1054,8 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 							::memset(&this->_events.back(), 0, sizeof(this->_events.back()));
 							// Устанавливаем идентификатор файлового дескриптора
 							this->_change.back().ident = fd;
+							// Выполняем смену режима работы отлова события
+							EV_SET(&this->_change.back(), this->_change.back().ident, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, item);
 						}
 					}
 				#endif
@@ -1634,9 +1636,14 @@ void awh::Base::start() noexcept {
 														j->second.callback(fd, event_type_t::CLOSE);
 												}
 											// Если файловый дескриптор не нулевой
-											} else if(fd > 0)
+											} else if(fd > 0) {
+												// Если мы получили ошибку
+												if(this->_fds.at(i).revents & POLLERR)
+													// Выводим сообщение об ошибке
+													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
 												// Выводим сообщение об ошибке
-												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
+												else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
+											}
 										// Если дисконнекта не получилось
 										} else {
 											// Получаем файловый дескриптор
@@ -1791,9 +1798,14 @@ void awh::Base::start() noexcept {
 														item->callback(item->fd, event_type_t::CLOSE);
 												}
 											// Если файловый дескриптор не нулевой
-											} else if(this->_events.at(i).data.fd > 0)
+											} else if(this->_events.at(i).data.fd > 0) {
+												// Если мы получили ошибку
+												if(this->_events.at(i).events & EPOLLERR)
+													// Выводим сообщение об ошибке
+													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), this->_events.at(i).data.fd);
 												// Выводим сообщение об ошибке
-												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
+												else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
+											}
 										// Если дисконнекта не получилось
 										} else {
 											// Получаем объект текущего события
@@ -1922,9 +1934,14 @@ void awh::Base::start() noexcept {
 														item->callback(item->fd, event_type_t::CLOSE);
 												}
 											// Если файловый дескриптор не нулевой
-											} else if(this->_events.at(i).ident > 0)
+											} else if(this->_events.at(i).ident > 0) {
+												// Если мы получили ошибку
+												if(this->_events.at(i).flags & EV_ERROR)
+													// Выводим сообщение об ошибке
+													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message(this->_events.at(i).data).c_str(), this->_events.at(i).ident);
 												// Выводим сообщение об ошибке
-												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
+												else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
+											}
 										// Если дисконнекта не получилось
 										} else {
 											// Получаем объект текущего события

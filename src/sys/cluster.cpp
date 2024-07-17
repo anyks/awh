@@ -671,8 +671,12 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Добавляем в список дочерних процессов, идентификатор процесса
 							this->_pids.emplace(pid, index);
 							{
-								// Выполняем активацию базы событий
-								this->_base->rebase();
+								// Если база событий уже существует
+								if(this->_base != nullptr)
+									// Выполняем удаление базы событий
+									delete this->_base;
+								// Выполняем создание новой базы событий
+								this->_base = new base_t(this->_fmk, this->_log);
 								// Получаем объект текущего брокера
 								broker_t * broker = j->second.at(index).get();
 								// Выполняем перебор всего списка брокеров
@@ -693,6 +697,10 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 										::close(j->second.at(i)->mfds[1]);
 									}
 								}
+								// Делаем сокет на чтение неблокирующим
+								this->_socket.blocking(broker->cfds[0], socket_t::mode_t::DISABLE);
+								// Делаем сокет на запись неблокирующим
+								this->_socket.blocking(broker->mfds[1], socket_t::mode_t::DISABLE);
 								// Устанавливаем идентификатор процесса
 								broker->pid = pid;
 								// Устанавливаем время начала жизни процесса
@@ -749,6 +757,10 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						::close(broker->mfds[1]);
 						// Закрываем файловый дескриптор на чтение из дочернего процесса
 						::close(broker->cfds[0]);
+						// Делаем сокет на чтение неблокирующим
+						this->_socket.blocking(broker->mfds[0], socket_t::mode_t::DISABLE);
+						// Делаем сокет на запись неблокирующим
+						this->_socket.blocking(broker->cfds[1], socket_t::mode_t::DISABLE);
 						// Устанавливаем PID-процесса
 						broker->pid = pid;
 						// Устанавливаем время начала жизни процесса
@@ -923,7 +935,7 @@ void awh::Cluster::emplace(const uint16_t wid, const char * buffer, const size_t
 					// Если индекс брокера найден
 					if(j != this->_pids.end())
 						// Запускаем ожидание записи данных
-						i->second.at(j->second)->send.start();
+						i->second.at(j->second)->send.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
 				}
 			/**
 			 * Если возникает ошибка

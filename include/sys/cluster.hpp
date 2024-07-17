@@ -258,7 +258,9 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Broker(const fmk_t * fmk, const log_t * log) noexcept :
-					 end(false), pid(0), mfds{0,0}, cfds{0,0}, date(0),
+					 end(false), pid(::getpid()),
+					 mfds{INVALID_SOCKET,INVALID_SOCKET},
+					 cfds{INVALID_SOCKET,INVALID_SOCKET}, date(0),
 					 mess(awh::event_t::type_t::EVENT, fmk, log),
 					 send(awh::event_t::type_t::EVENT, fmk, log) {}
 					/**
