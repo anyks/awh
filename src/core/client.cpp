@@ -682,8 +682,6 @@ void awh::client::Core::disable(const uint64_t bid) noexcept {
 		const_cast <scheme_t::broker_t *> (broker)->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 		// Останавливаем событие запись данных
 		const_cast <scheme_t::broker_t *> (broker)->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
-		// Останавливаем событие подключения к серверу
-		const_cast <scheme_t::broker_t *> (broker)->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::CONNECT);
 	}
 }
 /**
@@ -1145,8 +1143,6 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 				// Останавливаем запись данных
 				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
-				// Активируем ожидание подключения
-				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::CONNECT);
 			}
 		}
 	}
@@ -1328,18 +1324,8 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
-					// Определяем тип сокета
-					switch(static_cast <uint8_t> (this->_settings.sonet)){
-						// Если тип сокета установлен как TCP/IP
-						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-						// Если тип сокета установлен как TCP/IP TLS
-						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-						// Если тип сокета установлен как SCTP
-						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-							// Переводим сокет в блокирующий режим
-							broker->_ectx.blocking(engine_t::mode_t::ENABLE);
-						break;
-					}
+					// Выполняем отключение приёма данных на этот сокет
+					broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 					/**
 					 * Выполняем чтение данных с сокета
 					 */
@@ -1360,18 +1346,6 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 							const int64_t bytes = broker->_ectx.read(broker->_payload.data.get(), broker->_payload.size);
 							// Если данные получены
 							if(bytes > 0){
-								// Определяем тип сокета
-								switch(static_cast <uint8_t> (this->_settings.sonet)){
-									// Если тип сокета установлен как TCP/IP
-									case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-									// Если тип сокета установлен как TCP/IP TLS
-									case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-									// Если тип сокета установлен как SCTP
-									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-										// Переводим сокет в неблокирующий режим
-										broker->_ectx.blocking(engine_t::mode_t::DISABLE);
-									break;
-								}
 								// Если подключение производится через, прокси-сервер
 								if(shm->isProxy()){
 									// Если функция обратного вызова для вывода записи существует
@@ -1395,6 +1369,10 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 						} else break;
 					// Выполняем чтение до тех пор, пока всё не прочитаем
 					} while(this->has(bid));
+					// Если подключение ещё не разорванно
+					if(this->has(bid))
+						// Выполняем активацию отслеживания получения данных с этого сокета
+						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 				// Если подключение завершено
 				} else {
 					// Останавливаем чтение данных

@@ -127,8 +127,6 @@ void awh::Scheme::Broker::callback(const SOCKET fd, const base_t::event_type_t e
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие закрытие подключения
 		case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
-			// Выполняем остановку работы события
-			this->_event.stop();
 			// Если функция обратного вызова на закратие подключения установлена
 			if(this->_callbacks.is("close"))
 				// Выполняем функцию обратного вызова
