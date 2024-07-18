@@ -1144,6 +1144,16 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							result = BIO_read(this->_bio, buffer, size);
 						break;
 					}
+				// Если произошла ошибка чтения данных
+				} else {
+					// Получаем данные описание ошибки
+					const int32_t error = SSL_get_error(this->_ssl, result);
+					// Если ошибка получена
+					if(error != 0)
+						// Выводим в лог сообщение
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+					// Устанавливаем результат отключения подключения
+					result = 0;
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
@@ -1436,6 +1446,16 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							result = BIO_write(this->_bio, buffer, size);
 						break;
 					}
+				// Если произошла ошибка записи данных
+				} else {
+					// Получаем данные описание ошибки
+					const int32_t error = SSL_get_error(this->_ssl, result);
+					// Если ошибка получена
+					if(error != 0)
+						// Выводим в лог сообщение
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+					// Устанавливаем результат отключения подключения
+					result = 0;
 				}
 			}
 		// Выполняем отправку сообщения в сокет

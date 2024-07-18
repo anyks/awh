@@ -997,69 +997,66 @@ bool awh::Socket::listen(const SOCKET fd) const noexcept {
 u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexcept {
 	// Результат работы функции
 	u_long result = 0;
-	// Если сокет не является прослушиваемым
-	if(!this->listen(fd)){
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Определяем флаг блокировки
-			switch(static_cast <uint8_t> (mode)){
-				// Если необходимо получить размер буфера на чтение
-				case static_cast <uint8_t> (mode_t::READ): {
-					// Выполняем получения количества байт в сокете
-					if(static_cast <bool> (::ioctlsocket(fd, FIONREAD, &result))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим в лог информацию
-							this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-						#endif
-					}
-				} break;
-			}
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Получаем количество байт находящихся в сокете
-			int32_t bytes = 0;
-			// Определяем флаг блокировки
-			switch(static_cast <uint8_t> (mode)){
-				// Если необходимо получить размер буфера на чтение
-				case static_cast <uint8_t> (mode_t::READ): {
-					// Выполняем получения количества байт в сокете
-					if(static_cast <bool> (::ioctl(fd, FIONREAD, &bytes))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим в лог информацию
-							this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-						#endif
-					}
-				} break;
-				// Если необходимо получить размер буфера на запись
-				case static_cast <uint8_t> (mode_t::WRITE): {
-					// Выполняем получения количества байт в сокете
-					if(static_cast <bool> (::ioctl(fd, TIOCOUTQ, &bytes))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим в лог информацию
-							this->_log->print("Cannot set TIOCOUTQ option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-						#endif
-					}
-				} break;
-			}
-			// Если количество полученных байт больше нуля
-			if(bytes > 0)
-				// Устанавливаем полученный результат
-				result = static_cast <u_long> (bytes);
-		#endif
-	}
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Определяем флаг блокировки
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо получить размер буфера на чтение
+			case static_cast <uint8_t> (mode_t::READ): {
+				// Выполняем получения количества байт в сокете
+				if(static_cast <bool> (::ioctlsocket(fd, FIONREAD, &result))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим в лог информацию
+						this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					#endif
+				}
+			} break;
+		}
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Получаем количество байт находящихся в сокете
+		int32_t bytes = 0;
+		// Определяем флаг блокировки
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо получить размер буфера на чтение
+			case static_cast <uint8_t> (mode_t::READ): {
+				// Выполняем получения количества байт в сокете
+				if(static_cast <bool> (::ioctl(fd, FIONREAD, &bytes))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим в лог информацию
+						this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					#endif
+				}
+			} break;
+			// Если необходимо получить размер буфера на запись
+			case static_cast <uint8_t> (mode_t::WRITE): {
+				// Выполняем получения количества байт в сокете
+				if(static_cast <bool> (::ioctl(fd, TIOCOUTQ, &bytes))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим в лог информацию
+						this->_log->print("Cannot set TIOCOUTQ option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					#endif
+				}
+			} break;
+		}
+		// Если количество полученных байт больше нуля
+		if(bytes > 0)
+			// Устанавливаем полученный результат
+			result = static_cast <u_long> (bytes);
+	#endif
 	// Выводим результат
 	return result;
 }
