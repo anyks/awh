@@ -2121,7 +2121,7 @@ void awh::Base::start() noexcept {
 															// Выполняем поиск файлового дескриптора в базе событий
 															j = this->_items.find(fd);
 															// Если файловый дескриптор есть в базе событий
-															if(j != this->_items.end() && (item == &j->second))
+															if((j != this->_items.end()) && (item == &j->second))
 																// Удаляем файловый дескриптор из базы событий
 																this->del(fd);
 														}
