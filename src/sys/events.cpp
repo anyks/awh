@@ -151,7 +151,7 @@ void awh::Base::init(const bool mode) noexcept {
 		 */
 		#elif __linux__
 			// Выполняем инициализацию EPoll
-			if((this->_efd = epoll_create(this->_maxCount)) == INVALID_SOCKET){
+			if((this->_efd = ::epoll_create(this->_maxCount)) == INVALID_SOCKET){
 				// Выводим сообщение об ошибке
 				this->_log->print("Events base is not init: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 				// Выходим принудительно из приложения
@@ -269,9 +269,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 					// Если файловый дескриптор найден
 					if(reinterpret_cast <item_t *> (j->data.ptr)->fd == fd){
 						// Выполняем изменение параметров события
-						if(!(result = erased = (epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <item_t *> (j->data.ptr)->fd, &(* j)) == 0)))
-							// Выводим сообщение об ошибке
-							this->_log->print("Remove event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, reinterpret_cast <item_t *> (j->data.ptr)->fd, this->_socket.message().c_str());
+						result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <item_t *> (j->data.ptr)->fd, &(* j)) == 0);
 						// Выполняем закрытие подключения
 						::close(reinterpret_cast <item_t *> (j->data.ptr)->fd);
 						// Выполняем удаление события из списка отслеживания
@@ -287,9 +285,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						// Если событие ещё не удалено из базы событий
 						if(!erased){
 							// Выполняем изменение параметров события
-							if(!(result = (epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <item_t *> (j->data.ptr)->fd, &(* j)) == 0)))
-								// Выводим сообщение об ошибке
-								this->_log->print("Remove event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, reinterpret_cast <item_t *> (j->data.ptr)->fd, this->_socket.message().c_str());
+							result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <item_t *> (j->data.ptr)->fd, &(* j)) == 0);
 							// Выполняем закрытие подключения
 							::close(reinterpret_cast <item_t *> (j->data.ptr)->fd);
 						}
@@ -584,18 +580,11 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 								// Если список режимов событий пустой
 								if(i->second.mode.empty()){
 									// Выполняем изменение параметров события
-									if(!(result = (epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <item_t *> (k->data.ptr)->fd, &(* k)) == 0)))
-										// Выводим сообщение об ошибке
-										this->_log->print("Remove event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, reinterpret_cast <item_t *> (k->data.ptr)->fd, this->_socket.message().c_str());
+									result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <item_t *> (k->data.ptr)->fd, &(* k)) == 0);
 									// Выполняем удаление события из списка изменений
 									this->_change.erase(k);
-								// Если список режимов не пустой
-								} else {
-									// Выполняем изменение параметров события
-									if(!(result = (epoll_ctl(this->_efd, EPOLL_CTL_MOD, reinterpret_cast <item_t *> (k->data.ptr)->fd, &(* k)) == 0)))
-										// Выводим сообщение об ошибке
-										this->_log->print("Remove event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, reinterpret_cast <item_t *> (k->data.ptr)->fd, this->_socket.message().c_str());
-								}
+								// Выполняем изменение параметров события
+								} else result = (::epoll_ctl(this->_efd, EPOLL_CTL_MOD, reinterpret_cast <item_t *> (k->data.ptr)->fd, &(* k)) == 0);
 								// Если событие является таймером
 								if(reinterpret_cast <item_t *> (k->data.ptr)->delay > 0)
 									// Выполняем закрытие подключения
@@ -973,7 +962,7 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 						// Выполняем установку указателя на основное событие
 						this->_change.back().data.ptr = &ret.first->second;
 						// Выполняем изменение параметров события
-						if(!(result = (epoll_ctl(this->_efd, EPOLL_CTL_ADD, fd, &this->_change.back()) == 0)))
+						if(!(result = (::epoll_ctl(this->_efd, EPOLL_CTL_ADD, fd, &this->_change.back()) == 0)))
 							// Выводим сообщение об ошибке
 							this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 					}
@@ -1190,18 +1179,18 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= (EPOLLIN | EPOLLET);
 												// Выполняем изменение параметров события
-												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
 													// Выводим сообщение об ошибке
-													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+													this->_log->print("Mode enable event TIMER for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 											} break;
 											// Если нужно деактивировать событие таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= (EPOLLIN | EPOLLET);
 												// Выполняем изменение параметров события
-												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
 													// Выводим сообщение об ошибке
-													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+													this->_log->print("Mode disable event TIMER for SOCKET=%d", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 											} break;
 										}
 									} break;
@@ -1214,18 +1203,18 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 												// Выполняем установку флагов отслеживания закрытия подключения
 												k->events |= (EPOLLRDHUP | EPOLLHUP);
 												// Выполняем изменение параметров события
-												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
 													// Выводим сообщение об ошибке
-													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+													this->_log->print("Mode enable event CLOSE for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 											} break;
 											// Если нужно деактивировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Выполняем удаление флагов отслеживания закрытия подключения
 												k->events ^= (EPOLLRDHUP | EPOLLHUP);
 												// Выполняем изменение параметров события
-												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
 													// Выводим сообщение об ошибке
-													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+													this->_log->print("Mode disable event CLOSE for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 											} break;
 										}
 									} break;
@@ -1238,18 +1227,18 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= EPOLLIN;
 												// Выполняем изменение параметров события
-												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
 													// Выводим сообщение об ошибке
-													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+													this->_log->print("Mode enable event READ for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 											} break;
 											// Если нужно деактивировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= EPOLLIN;
 												// Выполняем изменение параметров события
-												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
 													// Выводим сообщение об ошибке
-													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+													this->_log->print("Mode disable event READ for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 											} break;
 										}
 									} break;
@@ -1262,18 +1251,18 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 												// Устанавливаем флаг отслеживания записи данных в сокет
 												k->events |= EPOLLOUT;
 												// Выполняем изменение параметров события
-												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
 													// Выводим сообщение об ошибке
-													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+													this->_log->print("Mode enable event WRITE for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 											} break;
 											// Если нужно деактивировать событие записи в сокет
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Снимаем флаг ожидания готовности файлового дескриптора на запись
 												k->events ^= EPOLLOUT;
 												// Выполняем изменение параметров события
-												if(epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
 													// Выводим сообщение об ошибке
-													this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+													this->_log->print("Mode disable event WRITE for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
 											} break;
 										}
 									} break;
@@ -1427,9 +1416,7 @@ void awh::Base::clear() noexcept {
 			// Выполняем поиск файлового дескриптора из списка изменений
 			for(auto i = this->_change.begin(); i != this->_change.end();){
 				// Выполняем изменение параметров события
-				if(epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <item_t *> (i->data.ptr)->fd, &(* i)) != 0)
-					// Выводим сообщение об ошибке
-					this->_log->print("Remove event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, reinterpret_cast <item_t *> (i->data.ptr)->fd, this->_socket.message().c_str());
+				::epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <item_t *> (i->data.ptr)->fd, &(* i));
 				// Выполняем закрытие подключения
 				::close(reinterpret_cast <item_t *> (i->data.ptr)->fd);
 				// Выполняем удаление события из списка изменений
@@ -1794,7 +1781,7 @@ void awh::Base::start() noexcept {
 						// Если в списке достаточно событий для опроса
 						if(!this->_change.empty()){
 							// Выполняем опрос базы событий
-							poll = epoll_wait(this->_efd, this->_events.data(), this->_maxCount, (!this->_easily ? this->_baseDelay : 0));
+							poll = ::epoll_wait(this->_efd, this->_events.data(), this->_maxCount, (!this->_easily ? this->_baseDelay : 0));
 							// Если мы получили ошибку
 							if(poll == INVALID_SOCKET)
 								// Выводим сообщение об ошибке
