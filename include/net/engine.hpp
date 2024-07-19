@@ -400,9 +400,9 @@ namespace awh {
 					/**
 					 * error Метод вывода информации об ошибке
 					 * @param status статус ошибки
-					 * @return       нужно ли завершить работу
+					 * @return       результат работы фукнции
 					 */
-					bool error(const int32_t status) const noexcept;
+					int32_t error(const int32_t status) const noexcept;
 				public:
 					/**
 					 * clear Метод очистки контекста

@@ -888,60 +888,78 @@ awh::Engine::Address::~Address() noexcept {
 /**
  * error Метод вывода информации об ошибке
  * @param status статус ошибки
- * @return       нужно ли завершить работу
+ * @return       результат работы фукнции
  */
-bool awh::Engine::Context::error(const int32_t status) const noexcept {
+int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
+	// Результат работы функции
+	int32_t result = -1;
 	// Если защищённый режим работы разрешён
 	if(this->_encrypted){
 		// Получаем данные описание ошибки
-		const int32_t error = SSL_get_error(this->_ssl, status);
-		// Определяем тип ошибки
+		int32_t error = SSL_get_error(this->_ssl, status);
+		// Определяем тип полученной ошибки
 		switch(error){
-			// Если сертификат неизвестный
-			case SSL_ERROR_SSL:
-				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-			break;
-			// Если был возвращён ноль
-			case SSL_ERROR_ZERO_RETURN: {
-				// Если удалённая сторона произвела закрытие подключения
-				if(SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)
-					// Выводим в лог сообщение
-					this->_log->print("Remote side closed the connection", log_t::flag_t::INFO);
+			// Если мы получили ошибку
+			case SSL_ERROR_SSL: {
+				// Устанавливаем результат отключения подключения
+				result = 0;
+				// Запоминаем код ошибки
+				error = ERR_get_error();
+				/**
+				 * Выполняем извлечение остальных ошибок
+				 */
+				do {
+					// Выводим в лог сообщение полученной ошибки
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+				// Если ещё есть ошибки
+				} while((error = ERR_get_error()));
+				// Выводим в лог сообщение общее сообщение ошибки
+				this->_log->print("%s", log_t::flag_t::WARNING, SSL_state_string(this->_ssl));
 			} break;
-			// Если произошла ошибка вызова
+			// Если мы получили ошибку системного вызова
 			case SSL_ERROR_SYSCALL: {
-				// Получаем данные описание ошибки
-				u_long error = ERR_get_error();
-				// Если ошибка получена
-				if(error != 0){
-					// Выводим в лог сообщение
+				// Устанавливаем результат отключения подключения
+				result = 0;
+				// Запоминаем код ошибки
+				error = ERR_get_error();
+				/**
+				 * Выполняем извлечение остальных ошибок
+				 */
+				do {
+					// Выводим в лог сообщение полученной ошибки
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-					/**
-					 * Выполняем извлечение остальных ошибок
-					 */
-					do {
-						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-					// Если ещё есть ошибки
-					} while((error = ERR_get_error()));
-				// Если данные записаны неверно
-				} else if((status == -1) && (AWH_ERROR() != 0))
-					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message(AWH_ERROR()).c_str());
+				// Если ещё есть ошибки
+				} while((error = ERR_get_error()));
+				// Выводим в лог сообщение общее сообщение ошибки
+				this->_log->print("%s", log_t::flag_t::WARNING, SSL_state_string(this->_ssl));
+				// Выводим в лог сообщение
+				this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 			} break;
-			// Для всех остальных ошибок
-			default: {
-				// Получаем данные описание ошибки
-				u_long error = 0;
-				// Выполняем чтение ошибок OpenSSL
-				while((error = ERR_get_error()))
-					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-			}
+			// Если нам было возвращено значение 0
+			case SSL_ERROR_ZERO_RETURN:
+				// Устанавливаем результат отключения подключения
+				result = 0;
+			break;
+			// Если данные прочитаны не полностью
+			case SSL_ERROR_WANT_READ:
+			// Если данные записаны не полностью
+			case SSL_ERROR_WANT_WRITE:
+			// Если происходит асинхронная обработка
+			case SSL_ERROR_WANT_ASYNC:
+			// Если асинхронное задание небыло выполненно
+			case SSL_ERROR_WANT_ASYNC_JOB:
+			// Если необходимо подождать подключения клиента
+			case SSL_ERROR_WANT_ACCEPT:
+			// Если необходимо подождать подключения к серверу
+			case SSL_ERROR_WANT_CONNECT:
+			// Если обмен сертификатами не выполнен
+			case SSL_ERROR_WANT_X509_LOOKUP:
+			// Если операция не была завершена
+			case SSL_ERROR_WANT_CLIENT_HELLO_CB:
+				// Устанавливаем результат, что нужно попытаться позже
+				result = -1;
+			break;
 		}
-		// Выводим результат
-		return (error != 0);
 	// Если произошла ошибка
 	} else if(status < 0) {
 		// Определяем тип ошибки
@@ -955,30 +973,35 @@ bool awh::Engine::Context::error(const int32_t status) const noexcept {
 				// Если произведена неудачная запись в PIPE
 				case EPIPE:
 				// Если произведён сброс подключения
-				case ECONNRESET:
+				case ECONNRESET: {
+					// Устанавливаем результат отключения подключения
+					result = 0;
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
-				break;
+				} break;
 			/**
 			 * Методы только для OS Windows
 			 */
 			#else
 				// Если произведён сброс подключения
-				case WSAECONNRESET:
+				case WSAECONNRESET: {
+					// Устанавливаем результат отключения подключения
+					result = 0;
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
-				break;
+				} break;
 			#endif
 			// Для остальных ошибок
-			default:
+			default: {
+				// Устанавливаем результат отключения подключения
+				result = 0;
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message().c_str());
+			}
 		}
-		// Выводим результат
-		return (AWH_ERROR() != 0);
 	}
-	// Завершение работы не требуется
-	return false;
+	// Выводим значение результата
+	return result;
 }
 /**
  * clear Метод очистки контекста
@@ -1145,22 +1168,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						break;
 					}
 				// Если произошла ошибка чтения данных
-				} else {
-					// Получаем данные описание ошибки
-					const int32_t error = SSL_get_error(this->_ssl, result);
-					
-					cout << " --------- " << error << " == " << SSL_ERROR_SSL << " == " << SSL_ERROR_SYSCALL << " == " << SSL_ERROR_ZERO_RETURN << " == " << SSL_ERROR_WANT_CONNECT << " == " << SSL_ERROR_WANT_ACCEPT << " == " << SSL_ERROR_WANT_X509_LOOKUP << " == " << SSL_ERROR_WANT_ASYNC << " == " << SSL_ERROR_WANT_ASYNC_JOB << " == " << SSL_ERROR_WANT_CLIENT_HELLO_CB << " == " << SSL_ERROR_WANT_READ << " == " << SSL_ERROR_WANT_WRITE << endl;
-					
-					// Если ошибка получена
-					if(error == SSL_ERROR_SSL){
-						// Устанавливаем результат отключения подключения
-						result = 0;
-						// Выводим в лог сообщение полученной ошибки
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
-					}
-					// Выводим в лог сообщение общее сообщение ошибки
-					this->_log->print("%s", log_t::flag_t::WARNING, SSL_state_string(this->_ssl));
-				}
+				} else result = this->error(result);
 			}
 		// Выполняем чтение из буфера данных стандартным образом
 		} else {
@@ -1340,9 +1348,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							// Выполняем пропуск попытки
 							return -1;
 						// Иначе выводим сообщение об ошибке
-						else if(this->error(result))
-							// Требуем завершения работы
-							result = 0;
+						else result = this->error(result);
 					/**
 					 * Методы только для OS Windows
 					 */
@@ -1361,9 +1367,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							return -1;
 					#endif
 					// Иначе выводим сообщение об ошибке
-					else if(this->error(result))
-						// Требуем завершения работы
-						result = 0;
+					else result = this->error(result);
 				}
 			}
 			// Если произошло отключение
@@ -1453,19 +1457,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						break;
 					}
 				// Если произошла ошибка чтения данных
-				} else {
-					// Получаем данные описание ошибки
-					const int32_t error = SSL_get_error(this->_ssl, result);
-					// Если ошибка получена
-					if(error == SSL_ERROR_SSL){
-						// Устанавливаем результат отключения подключения
-						result = 0;
-						// Выводим в лог сообщение полученной ошибки
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
-					}
-					// Выводим в лог сообщение общее сообщение ошибки
-					this->_log->print("%s", log_t::flag_t::WARNING, SSL_state_string(this->_ssl));
-				}
+				} else result = this->error(result);
 			}
 		// Выполняем отправку сообщения в сокет
 		} else {
@@ -1663,9 +1655,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Выполняем пропуск попытки
 							return -1;
 						// Иначе выводим сообщение об ошибке
-						else if(this->error(result))
-							// Требуем завершения работы
-							result = 0;
+						else result = this->error(result);
 					/**
 					 * Методы только для OS Windows
 					 */
@@ -1684,9 +1674,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							return -1;
 					#endif
 					// Иначе выводим сообщение об ошибке
-					else if(this->error(result))
-						// Требуем завершения работы
-						result = 0;
+					else result = this->error(result);
 				}
 			}
 			// Если произошло отключение
