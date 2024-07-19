@@ -1149,7 +1149,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Получаем данные описание ошибки
 					const int32_t error = SSL_get_error(this->_ssl, result);
 					
-					cout << " --------- " << error << " == " << SSL_ERROR_SSL << endl;
+					cout << " --------- " << error << " == " << SSL_ERROR_SSL << " == " << SSL_ERROR_SYSCALL << " == " << SSL_ERROR_ZERO_RETURN << " == " << SSL_ERROR_WANT_CONNECT << " == " << SSL_ERROR_WANT_ACCEPT << " == " << SSL_ERROR_WANT_X509_LOOKUP << " == " << SSL_ERROR_WANT_ASYNC << " == " << SSL_ERROR_WANT_ASYNC_JOB << " == " << SSL_ERROR_WANT_CLIENT_HELLO_CB << " == " << SSL_ERROR_WANT_READ << " == " << SSL_ERROR_WANT_WRITE << endl;
 					
 					// Если ошибка получена
 					if(error == SSL_ERROR_SSL){
