@@ -1829,7 +1829,7 @@ void awh::Base::start() noexcept {
 												// Выполняем поиск файлового дескриптора в базе событий
 												auto i = this->_items.find(fd);
 												// Если файловый дескриптор есть в базе событий
-												if(i != this->_items.end() && (item == &i->second))
+												if((i != this->_items.end()) && (item == &i->second))
 													// Удаляем файловый дескриптор из базы событий
 													this->del(fd);
 											// Если файловый дескриптор не нулевой
@@ -1886,7 +1886,7 @@ void awh::Base::start() noexcept {
 														// Выполняем поиск файлового дескриптора в базе событий
 														auto i = this->_items.find(fd);
 														// Если файловый дескриптор есть в базе событий
-														if(i != this->_items.end() && (item == &i->second)){
+														if((i != this->_items.end()) && (item == &i->second)){
 															// Если функция обратного вызова установлена
 															if(i->second.callback != nullptr){
 																// Выполняем поиск события на запись данных присутствует в базе событий
@@ -1903,7 +1903,7 @@ void awh::Base::start() noexcept {
 														// Выполняем поиск файлового дескриптора в базе событий
 														auto i = this->_items.find(fd);
 														// Если файловый дескриптор есть в базе событий
-														if(i != this->_items.end() && (item == &i->second)){
+														if((i != this->_items.end()) && (item == &i->second)){
 															// Если функция обратного вызова установлена
 															if(i->second.callback != nullptr){
 																// Выполняем поиск события на отключение присутствует в базе событий
@@ -1916,7 +1916,7 @@ void awh::Base::start() noexcept {
 															// Выполняем поиск файлового дескриптора в базе событий
 															i = this->_items.find(fd);
 															// Если файловый дескриптор есть в базе событий
-															if(i != this->_items.end() && (item == &i->second))
+															if((i != this->_items.end()) && (item == &i->second))
 																// Удаляем файловый дескриптор из базы событий
 																this->del(fd);
 														}
