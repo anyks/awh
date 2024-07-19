@@ -127,6 +127,8 @@ void awh::Scheme::Broker::callback(const SOCKET fd, const base_t::event_type_t e
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие закрытие подключения
 		case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
+			// Выполняем остановку работы события
+			this->_event.stop();
 			// Если функция обратного вызова на закратие подключения установлена
 			if(this->_callbacks.is("close"))
 				// Выполняем функцию обратного вызова
@@ -282,6 +284,13 @@ awh::Scheme::Broker::Broker(const uint16_t sid, const fmk_t * fmk, const log_t *
  _addr(fmk, log), _fmk(fmk), _log(log), _base(nullptr) {
 	// Устанавливаем идентификатор брокера
 	this->_id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+}
+/**
+ * ~Broker Деструктор
+ */
+awh::Scheme::Broker::~Broker() noexcept {
+	// Выполняем остановку работы события
+	this->_event.stop();
 }
 /**
  * clear Метод очистки

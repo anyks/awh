@@ -54,8 +54,6 @@ void awh::Timer::event(const uint16_t tid, const SOCKET fd, const base_t::event_
 			auto i = this->_brokers.find(tid);
 			// Если активный брокер найден
 			if(i != this->_brokers.end()){
-				// Выполняем деактивацию работы таймера
-				i->second->event.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::DISABLED);
 				// Если персистентная работа не установлена, удаляем таймер
 				if(!i->second->persist){
 					// Выполняем остановку активного брокера
@@ -81,24 +79,14 @@ void awh::Timer::event(const uint16_t tid, const SOCKET fd, const base_t::event_
 						// Выполняем функцию обратного вызова
 						callback.bind(static_cast <uint64_t> (tid));
 					}
-				// Если нужно продолжить работу таймера
-				} else {
-					// Если функция обратного вызова существует
-					if(this->_callbacks.is(static_cast <uint64_t> (tid))){
-						// Объект работы с функциями обратного вызова
-						fn_t callback(this->_log);
-						// Копируем функции обратного вызова
-						callback = this->_callbacks;
-						// Выполняем функцию обратного вызова
-						callback.bind(static_cast <uint64_t> (tid));
-						// Выполняем поиск активного брокера
-						auto i = this->_brokers.find(tid);
-						// Если активный брокер найден
-						if(i != this->_brokers.end())
-							// Продолжаем работу дальше
-							i->second->event.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
-					// Продолжаем работу дальше
-					} else i->second->event.mode(base_t::event_type_t::TIMER, base_t::event_mode_t::ENABLED);
+				// Если функция обратного вызова существует
+				} else if(this->_callbacks.is(static_cast <uint64_t> (tid))) {
+					// Объект работы с функциями обратного вызова
+					fn_t callback(this->_log);
+					// Копируем функции обратного вызова
+					callback = this->_callbacks;
+					// Выполняем функцию обратного вызова
+					callback.bind(static_cast <uint64_t> (tid));
 				}
 			}
 		} break;
@@ -218,7 +206,7 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			// Устанавливаем флаг персистентной работы
 			ret.first->second->persist = true;
 			// Устанавливаем время задержки таймера
-			ret.first->second->event.timeout(delay);
+			ret.first->second->event.timeout(delay, true);
 			// Устанавливаем базу данных событий
 			ret.first->second->event = this->_dispatch.base;
 			// Устанавливаем функцию обратного вызова

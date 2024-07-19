@@ -77,8 +77,8 @@ class Executor {
 					this->_is = this->_ts;
 					// Выводим информацию в лог
 					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
-					// Устанавливаем задержку времени на 10 секунд
-					uint16_t tid = timer->timeout(10000);
+					// Устанавливаем задержку времени на 12 секунд
+					uint16_t tid = timer->timeout(12000);
 					// Выполняем добавление функции обратного вызова
 					timer->set <void (const uint16_t)> (tid, std::bind(&Executor::timeout, this, tid));
 					// Устанавливаем задержку времени на 5 секунд

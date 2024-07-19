@@ -839,7 +839,17 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 						this->close(bid);
 					}
 				// Выполняем повторную попытку
-				} else this->accept(sid, bid);
+				} else {
+					// Выполняем поиск таймера
+					auto i = this->_timers.find(sid);
+					// Если таймер найден
+					if(i != this->_timers.end()){
+						// Выполняем создание нового таймаута на 10 миллисекунд
+						const uint16_t tid = i->second->timeout(10);
+						// Выполняем добавление функции обратного вызова
+						i->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid));
+					}
+				}
 			}
 		}
 	}

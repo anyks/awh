@@ -80,11 +80,14 @@ void awh::Node::remove(const uint64_t bid) noexcept {
 			// Если идентификатор схемы сети найден
 			if(j != this->_schemes.end()){
 				// Выполняем поиск брокера подключений
-				auto k = j->second->_brokers.find(i->first);
+				auto k = const_cast <scheme_t *> (j->second)->_brokers.find(i->first);
 				// Если брокер подключения найден, удаляем его
-				if(k != j->second->_brokers.end())
+				if(k != const_cast <scheme_t *> (j->second)->_brokers.end()){
+					// Выполняем очистку брокера
+					k->second.reset(nullptr);
 					// Выполняем удаление брокера подключения
 					const_cast <scheme_t *> (j->second)->_brokers.erase(k);
+				}
 			}
 			// Выполняем удаление очереди полезной нагрузки
 			this->_payloads.erase(i->first);

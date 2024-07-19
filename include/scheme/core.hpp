@@ -321,7 +321,7 @@ namespace awh {
 					/**
 					 * ~Broker Деструктор
 					 */
-					~Broker() noexcept {}
+					~Broker() noexcept;
 			} broker_t;
 		public:
 			// Идентификатор родительской схемы

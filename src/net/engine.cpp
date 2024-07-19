@@ -36,9 +36,9 @@ bool awh::Engine::Address::close() noexcept {
 			// Если тип сокета не диграммы
 			if(this->_type != SOCK_DGRAM)
 				// Запрещаем работу с сокетом
-				shutdown(this->fd, SD_BOTH);
+				::shutdown(this->fd, SD_BOTH);
 			// Выполняем закрытие сокета
-			closesocket(this->fd);
+			::closesocket(this->fd);
 		/**
 		 * Если операционной системой является Nix-подобная
 		 */
@@ -46,7 +46,7 @@ bool awh::Engine::Address::close() noexcept {
 			// Если тип сокета не диграммы
 			if(this->_type != SOCK_DGRAM)
 				// Запрещаем работу с сокетом
-				shutdown(this->fd, SHUT_RDWR);
+				::shutdown(this->fd, SHUT_RDWR);
 			// Выполняем закрытие сокета
 			::close(this->fd);
 		#endif
@@ -3053,7 +3053,7 @@ bool awh::Engine::wait(ctx_t & target) noexcept {
 			::memset(&target._addr->_peer.client, 0, sizeof(struct sockaddr_storage));
 			// Выполняем ожидание подключения
 			return (DTLSv1_listen(target._ssl, reinterpret_cast <BIO_ADDR *> (&target._addr->_peer.client)) > 0);
-		} break;
+		}
 	}
 	// Сообщаем, что ничего не обработано
 	return false;
