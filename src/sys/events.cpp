@@ -694,8 +694,10 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 									if((erased = (k->ident == fd))){
 										// Выполняем удаление работы события
 										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, &i->second);
-										// Если событие на запись включено
-										if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED)
+										// Выполняем поиск типа события
+										auto l = i->second.mode.find(event_type_t::WRITE);
+										// Если режим записи данных найден и он активирован
+										if((l != i->second.mode.end()) && (l->second == event_mode_t::ENABLED))
 											// Выполняем активацию события на запись
 											EV_SET(&(* k), k->ident, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
 										// Выполняем удаление типа события
@@ -730,8 +732,10 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 									if((erased = (k->ident == fd))){
 										// Выполняем удаление работы события
 										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, &i->second);
-										// Если событие на чтение включено
-										if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED)
+										// Выполняем поиск типа события
+										auto l = i->second.mode.find(event_type_t::READ);
+										// Если режим чтения данных найден и он активирован
+										if((l != i->second.mode.end()) && (l->second == event_mode_t::ENABLED))
 											// Выполняем активацию события на чтение
 											EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
 										// Выполняем удаление типа события
