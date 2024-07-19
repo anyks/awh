@@ -200,6 +200,8 @@ int main(int argc, char * argv[]){
 	client::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log);
+	// Активируем протокол интернета IPv6
+	// core.family(scheme_t::family_t::IPV6);
 	// Устанавливаем активный протокол подключения
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
