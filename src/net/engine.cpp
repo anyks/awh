@@ -1149,13 +1149,14 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Получаем данные описание ошибки
 					const int32_t error = SSL_get_error(this->_ssl, result);
 					// Если ошибка получена
-					if(error == SSL_ERROR_SSL)
+					if(error == SSL_ERROR_SSL){
+						// Устанавливаем результат отключения подключения
+						result = 0;
 						// Выводим в лог сообщение полученной ошибки
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					}
 					// Выводим в лог сообщение общее сообщение ошибки
-					this->_log->print("%s", log_t::flag_t::CRITICAL, SSL_state_string(this->_ssl));
-					// Устанавливаем результат отключения подключения
-					result = 0;
+					this->_log->print("%s", log_t::flag_t::WARNING, SSL_state_string(this->_ssl));
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
@@ -1453,13 +1454,14 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					// Получаем данные описание ошибки
 					const int32_t error = SSL_get_error(this->_ssl, result);
 					// Если ошибка получена
-					if(error == SSL_ERROR_SSL)
+					if(error == SSL_ERROR_SSL){
+						// Устанавливаем результат отключения подключения
+						result = 0;
 						// Выводим в лог сообщение полученной ошибки
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					}
 					// Выводим в лог сообщение общее сообщение ошибки
-					this->_log->print("%s", log_t::flag_t::CRITICAL, SSL_state_string(this->_ssl));
-					// Устанавливаем результат отключения подключения
-					result = 0;
+					this->_log->print("%s", log_t::flag_t::WARNING, SSL_state_string(this->_ssl));
 				}
 			}
 		// Выполняем отправку сообщения в сокет
