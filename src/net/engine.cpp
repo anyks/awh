@@ -1148,6 +1148,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				} else {
 					// Получаем данные описание ошибки
 					const int32_t error = SSL_get_error(this->_ssl, result);
+					
+					cout << " --------- " << error << " == " << SSL_ERROR_SSL << endl;
+					
 					// Если ошибка получена
 					if(error == SSL_ERROR_SSL){
 						// Устанавливаем результат отключения подключения
