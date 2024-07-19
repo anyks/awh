@@ -905,16 +905,16 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 				result = 0;
 				// Запоминаем код ошибки
 				error = ERR_get_error();
+				// Получаем текст общего сообщения
+				const string state = SSL_state_string(this->_ssl);
 				/**
 				 * Выполняем извлечение остальных ошибок
 				 */
 				do {
 					// Выводим в лог сообщение полученной ошибки
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+					this->_log->print("%s: %s", log_t::flag_t::CRITICAL, state.c_str(), ERR_error_string(error, nullptr));
 				// Если ещё есть ошибки
 				} while((error = ERR_get_error()));
-				// Выводим в лог сообщение общее сообщение ошибки
-				this->_log->print("%s", log_t::flag_t::WARNING, SSL_state_string(this->_ssl));
 			} break;
 			// Если мы получили ошибку системного вызова
 			case SSL_ERROR_SYSCALL: {
@@ -922,16 +922,16 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 				result = 0;
 				// Запоминаем код ошибки
 				error = ERR_get_error();
+				// Получаем текст общего сообщения
+				const string state = SSL_state_string(this->_ssl);
 				/**
 				 * Выполняем извлечение остальных ошибок
 				 */
 				do {
 					// Выводим в лог сообщение полученной ошибки
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+					this->_log->print("%s: %s", log_t::flag_t::CRITICAL, state.c_str(), ERR_error_string(error, nullptr));
 				// Если ещё есть ошибки
 				} while((error = ERR_get_error()));
-				// Выводим в лог сообщение общее сообщение ошибки
-				this->_log->print("%s", log_t::flag_t::WARNING, SSL_state_string(this->_ssl));
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 			} break;
