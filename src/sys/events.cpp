@@ -200,10 +200,11 @@ void awh::Base::init(const bool mode) noexcept {
 }
 /**
  * del Метод удаления файлового дескриптора из базы событий для всех событий
+ * @param id идентификатор записи
  * @param fd файловый дескриптор для удаления
  * @return   результат работы функции
  */
-bool awh::Base::del(const SOCKET fd) noexcept {
+bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -219,7 +220,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_items.find(fd);
 			// Если файловый дескриптор есть в базе событий
-			if((result = (i != this->_items.end()))){
+			if((result = (i != this->_items.end()) && (i->second.id == id))){
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				// Выполняем поиск файлового дескриптора из списка событий
@@ -259,7 +260,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_items.find(fd);
 			// Если файловый дескриптор есть в базе событий
-			if((result = (i != this->_items.end()))){
+			if((result = (i != this->_items.end()) && (i->second.id == id))){
 				// Флаг удалённого события из базы событий
 				bool erased = false;
 				// Выполняем блокировку чтения базы событий
@@ -267,7 +268,8 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 					// Если файловый дескриптор найден
-					if(reinterpret_cast <item_t *> (j->data.ptr) == &i->second){
+					if((reinterpret_cast <item_t *> (j->data.ptr) == &i->second) &&
+					   (reinterpret_cast <item_t *> (j->data.ptr)->id == id)){
 						// Выполняем изменение параметров события
 						result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.fd, &(* j)) == 0);
 						// Выполняем закрытие подключения
@@ -281,7 +283,8 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 				// Выполняем поиск файлового дескриптора из списка изменений
 				for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
 					// Если файловый дескриптор найден
-					if(reinterpret_cast <item_t *> (j->data.ptr) == &i->second){
+					if((reinterpret_cast <item_t *> (j->data.ptr) == &i->second) &&
+					   (reinterpret_cast <item_t *> (j->data.ptr)->id == id)){
 						// Если событие ещё не удалено из базы событий
 						if(!erased){
 							// Выполняем изменение параметров события
@@ -307,7 +310,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_items.find(fd);
 			// Если файловый дескриптор есть в базе событий
-			if((result = (i != this->_items.end()))){
+			if((result = (i != this->_items.end()) && (i->second.id == id))){
 				// Флаг удалённого события из базы событий
 				bool erased = false;
 				// Выполняем блокировку чтения базы событий
@@ -383,11 +386,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 }
 /**
  * del Метод удаления файлового дескриптора из базы событий для указанного события
+ * @param id   идентификатор записи
  * @param fd   файловый дескриптор для удаления
  * @param type тип отслеживаемого события
  * @return     результат работы функции
  */
-bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
+bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
@@ -405,7 +409,7 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 				// Выполняем поиск файлового дескриптора в базе событий
 				auto i = this->_items.find(fd);
 				// Если файловый дескриптор есть в базе событий
-				if((result = (i != this->_items.end()))){
+				if((result = (i != this->_items.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
 					this->_locker = true;
 					// Определяем тип переданного события
@@ -537,7 +541,7 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 				// Выполняем поиск файлового дескриптора в базе событий
 				auto i = this->_items.find(fd);
 				// Если файловый дескриптор есть в базе событий
-				if((result = (i != this->_items.end()))){
+				if((result = (i != this->_items.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
 					this->_locker = true;
 					// Выполняем поиск типа события и его режим работы
@@ -603,7 +607,8 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 						// Выполняем поиск файлового дескриптора из списка событий
 						for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
 							// Если файловый дескриптор найден
-							if(reinterpret_cast <item_t *> (k->data.ptr) == &i->second){
+							if((reinterpret_cast <item_t *> (k->data.ptr) == &i->second) &&
+							   (reinterpret_cast <item_t *> (k->data.ptr)->id == id)){
 								// Если событие является таймером
 								if(i->second.delay > 0)
 									// Выполняем закрытие подключения
@@ -627,7 +632,7 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 				// Выполняем поиск файлового дескриптора в базе событий
 				auto i = this->_items.find(fd);
 				// Если файловый дескриптор есть в базе событий
-				if((result = (i != this->_items.end()))){
+				if((result = (i != this->_items.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
 					this->_locker = true;
 					// Определяем тип переданного события
@@ -797,13 +802,14 @@ bool awh::Base::del(const SOCKET fd, const event_type_t type) noexcept {
 }
 /**
  * add Метод добавления файлового дескриптора в базу событий
+ * @param id       идентификатор записи
  * @param fd       файловый дескриптор для добавления
  * @param callback функция обратного вызова при получении события
  * @param delay    задержка времени для создания таймеров
  * @param series   флаг серийного таймаута
  * @return         результат работы функции
  */
-bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const bool series) noexcept {
+bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const time_t delay, const bool series) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
@@ -825,7 +831,7 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 					// Выполняем поиск файлового дескриптора в базе событий
 					auto i = this->_items.find(fd);
 					// Если файловый дескриптор есть в базе событий
-					if((result = (i != this->_items.end()))){
+					if((result = (i != this->_items.end()) && (i->second.id == id))){
 						// Если функция обратного вызова передана
 						if(callback != nullptr)
 							// Выполняем установку функции обратного вызова
@@ -877,6 +883,8 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 						if((result = (item != nullptr))){
 							// Выполняем установку файлового дескриптора события
 							item->fd = fd;
+							// Устанавливаем идентификатор записи
+							item->id = id;
 							// Если функция обратного вызова передана
 							if(callback != nullptr)
 								// Выполняем установку функции обратного вызова
@@ -894,7 +902,7 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 					// Выполняем поиск файлового дескриптора в базе событий
 					auto i = this->_items.find(fd);
 					// Если файловый дескриптор есть в базе событий
-					if((result = (i != this->_items.end()))){
+					if((result = (i != this->_items.end()) && (i->second.id == id))){
 						// Если функция обратного вызова передана
 						if(callback != nullptr)
 							// Выполняем установку функции обратного вызова
@@ -962,6 +970,8 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 						}
 						// Выполняем установку файлового дескриптора
 						ret.first->second.fd = fd;
+						// Устанавливаем идентификатор записи
+						ret.first->second.id = id;
 						// Если функция обратного вызова передана
 						if(callback != nullptr)
 							// Выполняем установку функции обратного вызова
@@ -986,7 +996,7 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 					// Выполняем поиск файлового дескриптора в базе событий
 					auto i = this->_items.find(fd);
 					// Если файловый дескриптор есть в базе событий
-					if((result = (i != this->_items.end()))){
+					if((result = (i != this->_items.end()) && (i->second.id == id))){
 						// Если функция обратного вызова передана
 						if(callback != nullptr)
 							// Выполняем установку функции обратного вызова
@@ -1042,6 +1052,8 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 						if((result = (item != nullptr))){
 							// Выполняем установку файлового дескриптора события
 							item->fd = fd;
+							// Устанавливаем идентификатор записи
+							item->id = id;
 							// Если функция обратного вызова передана
 							if(callback != nullptr)
 								// Выполняем установку функции обратного вызова
@@ -1078,12 +1090,13 @@ bool awh::Base::add(SOCKET & fd, callback_t callback, const time_t delay, const 
 }
 /**
  * mode Метод установки режима работы модуля
+ * @param id   идентификатор записи
  * @param fd   файловый дескриптор для установки режима работы
  * @param type тип событий модуля для которого требуется сменить режим работы
  * @param mode флаг режима работы модуля
  * @return     результат работы функции
  */
-bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_t mode) noexcept {
+bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type, const event_mode_t mode) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
@@ -1097,7 +1110,7 @@ bool awh::Base::mode(const SOCKET fd, const event_type_t type, const event_mode_
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_items.find(fd);
 			// Если файловый дескриптор есть в базе событий
-			if(i != this->_items.end()){
+			if((i != this->_items.end()) && (i->second.id == id)){
 				// Выполняем поиск события модуля
 				auto j = i->second.mode.find(type);
 				// Если событие для изменения режима работы модуля найдено
@@ -1616,6 +1629,8 @@ void awh::Base::start() noexcept {
 									if(i < this->_fds.size()){
 										// Если произошла ошибка сокета
 										if(this->_fds.at(i).revents & POLLERR){
+											// Обнуляем количество событий
+											this->_fds.at(i).revents = 0;
 											// Получаем файловый дескриптор
 											SOCKET fd = this->_fds.at(i).fd;
 											// Выводим сообщение об ошибке
@@ -1626,28 +1641,26 @@ void awh::Base::start() noexcept {
 											if(j != this->_items.end()){
 												// Если функция обратного вызова установлена
 												if(j->second.callback != nullptr){
+													// Получаем функцию обратного вызова
+													auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
 													// Выполняем поиск события на отключение присутствует в базе событий
 													auto k = j->second.mode.find(event_type_t::CLOSE);
 													// Если событие найдено и оно активированно
-													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
+														// Удаляем файловый дескриптор из базы событий
+														this->del(j->second.id, fd);
 														// Выполняем функцию обратного вызова
-														j->second.callback(fd, event_type_t::CLOSE);
+														callback();
+														// Продолжаем обход дальше
+														continue;
+													}
 												}
-												// Если файловый дескриптор ещё существует в списке
-												if((i < this->_fds.size()) && (fd == this->_fds.at(i).fd))
-													// Удаляем файловый дескриптор из базы событий
-													this->del(fd);
+												// Удаляем файловый дескриптор из базы событий
+												this->del(j->second.id, fd);
 											// Если файловый дескриптор не нулевой
-											} else if(fd > 0) {
+											} else if(fd > 0)
 												// Выводим сообщение об ошибке
 												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
-												// Удаляем файловый дескриптор из базы событий
-												this->del(fd);
-											}
-											// Если записей достаточно в списке
-											if((i < this->_fds.size()) && (fd == this->_fds.at(i).fd))
-												// Обнуляем количество событий
-												this->_fds.at(i).revents = 0;
 										// Если ошибки не обнаруженно
 										} else {
 											// Получаем файловый дескриптор
@@ -1737,6 +1750,8 @@ void awh::Base::start() noexcept {
 											}
 											// Если подключение сокета было закрыто
 											if((i < this->_fds.size()) && ((fd == this->_fds.at(i).fd) || (fd == INVALID_SOCKET)) && (this->_fds.at(i).revents & POLLHUP)){
+												// Обнуляем количество событий
+												this->_fds.at(i).revents = 0;
 												// Получаем файловый дескриптор
 												fd = this->_fds.at(i).fd;
 												// Выполняем поиск указанной записи
@@ -1745,27 +1760,28 @@ void awh::Base::start() noexcept {
 												if(j != this->_items.end()){
 													// Если функция обратного вызова установлена
 													if(j->second.callback != nullptr){
+														// Получаем функцию обратного вызова
+														auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
 														// Выполняем поиск события на отключение присутствует в базе событий
 														auto k = j->second.mode.find(event_type_t::CLOSE);
 														// Если событие найдено и оно активированно
-														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
+															// Удаляем файловый дескриптор из базы событий
+															this->del(j->second.id, fd);
 															// Выполняем функцию обратного вызова
-															j->second.callback(fd, event_type_t::CLOSE);
+															callback();
+															// Продолжаем обход дальше
+															continue;
+														}
 													}
-													// Если файловый дескриптор ещё существует в списке
-													if((i < this->_fds.size()) && (fd == this->_fds.at(i).fd))
-														// Удаляем файловый дескриптор из базы событий
-														this->del(fd);
+													// Удаляем файловый дескриптор из базы событий
+													this->del(j->second.id, fd);
 												// Если файловый дескриптор не нулевой
-												} else if(fd > 0) {
+												} else if(fd > 0)
 													// Выводим сообщение об ошибке
 													this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
-													// Удаляем файловый дескриптор из базы событий
-													this->del(fd);
-												}
-											}
 											// Если записей достаточно в списке
-											if((i < this->_fds.size()) && (fd == this->_fds.at(i).fd))
+											} else if((i < this->_fds.size()) && (fd == this->_fds.at(i).fd))
 												// Обнуляем количество событий
 												this->_fds.at(i).revents = 0;
 										}
@@ -1823,27 +1839,28 @@ void awh::Base::start() noexcept {
 												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
 												// Если функция обратного вызова установлена
 												if(item->callback != nullptr){
+													// Получаем функцию обратного вызова
+													auto callback = std::bind(item->callback, fd, event_type_t::CLOSE);
 													// Выполняем поиск события на отключение присутствует в базе событий
 													auto j = item->mode.find(event_type_t::CLOSE);
 													// Если событие найдено и оно активированно
-													if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
+													if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED)){
+														// Удаляем файловый дескриптор из базы событий
+														this->del(item->id, fd);
 														// Выполняем функцию обратного вызова
-														item->callback(fd, event_type_t::CLOSE);
+														callback();
+														// Продолжаем обход дальше
+														continue;
+													}
 												}
-												// Выполняем поиск файлового дескриптора в базе событий
-												auto i = this->_items.find(fd);
-												// Если файловый дескриптор есть в базе событий
-												if((i != this->_items.end()) && (item == &i->second))
-													// Удаляем файловый дескриптор из базы событий
-													this->del(fd);
+												// Удаляем файловый дескриптор из базы событий
+												this->del(item->id, fd);
 											// Если файловый дескриптор не нулевой
 											} else if(this->_events.at(i).data.fd > 0) {
 												// Получаем значение текущего идентификатора
 												const SOCKET fd = this->_events.at(i).data.fd;
 												// Выводим сообщение об ошибке
 												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
-												// Удаляем файловый дескриптор из базы событий
-												this->del(fd);
 											}
 										// Если ошибки не обнаруженно
 										} else {
@@ -1910,19 +1927,22 @@ void awh::Base::start() noexcept {
 														if((i != this->_items.end()) && (item == &i->second)){
 															// Если функция обратного вызова установлена
 															if(i->second.callback != nullptr){
+																// Получаем функцию обратного вызова
+																auto callback = std::bind(i->second.callback, fd, event_type_t::CLOSE);
 																// Выполняем поиск события на отключение присутствует в базе событий
 																auto j = i->second.mode.find(event_type_t::CLOSE);
 																// Если событие найдено и оно активированно
-																if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED))
+																if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED)){
+																	// Удаляем файловый дескриптор из базы событий
+																	this->del(i->second.id, fd);
 																	// Выполняем функцию обратного вызова
-																	i->second.callback(fd, event_type_t::CLOSE);
+																	callback();
+																	// Продолжаем обход дальше
+																	continue;
+																}
 															}
-															// Выполняем поиск файлового дескриптора в базе событий
-															i = this->_items.find(fd);
-															// Если файловый дескриптор есть в базе событий
-															if((i != this->_items.end()) && (item == &i->second))
-																// Удаляем файловый дескриптор из базы событий
-																this->del(fd);
+															// Удаляем файловый дескриптор из базы событий
+															this->del(i->second.id, fd);
 														}
 													}
 												}
@@ -1987,27 +2007,28 @@ void awh::Base::start() noexcept {
 												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message(this->_events.at(i).data).c_str(), fd);
 												// Если функция обратного вызова установлена
 												if(item->callback != nullptr){
+													// Получаем функцию обратного вызова
+													auto callback = std::bind(item->callback, fd, event_type_t::CLOSE);
 													// Выполняем поиск события на отключение присутствует в базе событий
 													auto k = item->mode.find(event_type_t::CLOSE);
 													// Если событие найдено и оно активированно
-													if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+													if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED)){
+														// Удаляем файловый дескриптор из базы событий
+														this->del(item->id, fd);
 														// Выполняем функцию обратного вызова
-														item->callback(fd, event_type_t::CLOSE);
+														callback();
+														// Продолжаем обход дальше
+														continue;
+													}
 												}
-												// Выполняем поиск файлового дескриптора в базе событий
-												j = this->_items.find(fd);
-												// Если файловый дескриптор есть в базе событий
-												if((j != this->_items.end()) && (item == &j->second))
-													// Удаляем файловый дескриптор из базы событий
-													this->del(fd);
+												// Удаляем файловый дескриптор из базы событий
+												this->del(item->id, fd);
 											// Если файловый дескриптор не нулевой
 											} else if(this->_events.at(i).ident > 0) {
 												// Получаем значение текущего идентификатора
 												const SOCKET fd = this->_events.at(i).ident;
 												// Выводим сообщение об ошибке
 												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message(this->_events.at(i).data).c_str(), fd);
-												// Удаляем файловый дескриптор из базы событий
-												this->del(fd);
 											}
 										// Если ошибки не обнаруженно
 										} else {
@@ -2101,19 +2122,22 @@ void awh::Base::start() noexcept {
 														if((j != this->_items.end()) && (item == &j->second)){
 															// Если функция обратного вызова установлена
 															if(item->callback != nullptr){
+																// Получаем функцию обратного вызова
+																auto callback = std::bind(item->callback, fd, event_type_t::CLOSE);
 																// Выполняем поиск события на отключение присутствует в базе событий
 																auto k = item->mode.find(event_type_t::CLOSE);
 																// Если событие найдено и оно активированно
-																if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+																if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED)){
+																	// Удаляем файловый дескриптор из базы событий
+																	this->del(item->id, fd);
 																	// Выполняем функцию обратного вызова
-																	item->callback(fd, event_type_t::CLOSE);
+																	callback();
+																	// Продолжаем обход дальше
+																	continue;
+																}
 															}
-															// Выполняем поиск файлового дескриптора в базе событий
-															j = this->_items.find(fd);
-															// Если файловый дескриптор есть в базе событий
-															if((j != this->_items.end()) && (item == &j->second))
-																// Удаляем файловый дескриптор из базы событий
-																this->del(fd);
+															// Удаляем файловый дескриптор из базы событий
+															this->del(item->id, fd);
 														}
 													}
 												}
@@ -2191,7 +2215,7 @@ void awh::Base::rebase() noexcept {
 			// Выполняем перебор всего списка активных событий
 			for(auto & item : items){
 				// Выполняем добавление события в базу событий
-				if(!this->add(item.second.fd, item.second.callback))
+				if(!this->add(item.second.id, item.second.fd, item.second.callback))
 					// Выводим сообщение что событие не вышло активировать
 					this->_log->print("Failed activate event for SOCKET=%d", log_t::flag_t::WARNING, item.second.fd);
 			}
@@ -2331,7 +2355,7 @@ void awh::Event::del(const base_t::event_type_t type) noexcept {
 		// Если событие является стандартным
 		if((this->_fd != INVALID_SOCKET) || (this->_delay > 0))
 			// Выполняем удаление события
-			this->_base->del(this->_fd, type);
+			this->_base->del(this->_id, this->_fd, type);
 		// Выводим сообщение об ошибке
 		else this->_log->print("File descriptor is not init", log_t::flag_t::WARNING);
 	}
@@ -2372,7 +2396,7 @@ bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_
 	// Если работа базы событий активированна
 	if((this->_base != nullptr) && ((this->_fd != INVALID_SOCKET) || (this->_delay > 0)))
 		// Выполняем установку режима работы модуля
-		return this->_base->mode(this->_fd, type, mode);
+		return this->_base->mode(this->_id, this->_fd, type, mode);
 	// Сообщаем, что режим работы не установлен
 	return false;
 }
@@ -2389,10 +2413,10 @@ void awh::Event::stop() noexcept {
 			// Снимаем флаг запущенной работы
 			this->_mode = !this->_mode;
 			// Выполняем удаление всех событий
-			this->_base->del(this->_fd, base_t::event_type_t::READ);
-			this->_base->del(this->_fd, base_t::event_type_t::TIMER);
-			this->_base->del(this->_fd, base_t::event_type_t::WRITE);
-			this->_base->del(this->_fd, base_t::event_type_t::CLOSE);
+			this->_base->del(this->_id, this->_fd, base_t::event_type_t::READ);
+			this->_base->del(this->_id, this->_fd, base_t::event_type_t::TIMER);
+			this->_base->del(this->_id, this->_fd, base_t::event_type_t::WRITE);
+			this->_base->del(this->_id, this->_fd, base_t::event_type_t::CLOSE);
 		// Выводим сообщение об ошибке
 		} else this->_log->print("File descriptor is not init", log_t::flag_t::WARNING);
 	}
@@ -2409,19 +2433,21 @@ void awh::Event::start() noexcept {
 		if((this->_fd != INVALID_SOCKET) || (this->_delay > 0)){
 			// Устанавливаем флаг запущенной работы
 			this->_mode = !this->_mode;
+			// Выполняем генерацию идентификатора записи
+			this->_id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 			// Определяем тип установленного события
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если тип является обычным событием
 				case static_cast <uint8_t> (type_t::EVENT): {
 					// Выполняем добавление события в базу событий
-					if(!this->_base->add(this->_fd, this->_callback))
+					if(!this->_base->add(this->_id, this->_fd, this->_callback))
 						// Выводим сообщение что событие не вышло активировать
 						this->_log->print("Failed activate event for SOCKET=%d", log_t::flag_t::WARNING, this->_fd);
 				} break;
 				// Если тип события является таймером
 				case static_cast <uint8_t> (type_t::TIMER): {
 					// Выполняем добавление события в базу событий
-					if(!this->_base->add(this->_fd, this->_callback, this->_delay, this->_series))
+					if(!this->_base->add(this->_id, this->_fd, this->_callback, this->_delay, this->_series))
 						// Выводим сообщение что событие не вышло активировать
 						this->_log->print("Failed activate timer", log_t::flag_t::WARNING);
 				} break;

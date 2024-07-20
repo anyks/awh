@@ -3144,7 +3144,8 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 									return proto_t::HTTP1_1;
 							break;
 						}
-					}
+					// Устанавливаем активный протокол
+					} else return proto_t::HTTP1_1;
 				} break;
 			}
 		}

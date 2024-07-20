@@ -102,6 +102,8 @@ namespace awh {
 			typedef struct Item {
 				// Отслеживаемый файловый дескриптор
 				SOCKET fd;
+				// Идентификатор записи
+				uint64_t id;
 				// Флаг активации серийного таймера
 				bool series;
 				// Задержка времени таймера
@@ -134,7 +136,7 @@ namespace awh {
 				/**
 				 * Item Конструктор
 				 */
-				Item() noexcept : fd(INVALID_SOCKET), series(false), delay(0), callback(nullptr) {}
+				Item() noexcept : fd(INVALID_SOCKET), id(0), series(false), delay(0), callback(nullptr) {}
 			} item_t;
 		private:
 			// Флаг запуска работы базы событий
@@ -209,36 +211,40 @@ namespace awh {
 		private:
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий для всех событий
+			 * @param id идентификатор записи
 			 * @param fd файловый дескриптор для удаления
 			 * @return   результат работы функции
 			 */
-			bool del(const SOCKET fd) noexcept;
+			bool del(const uint64_t id, const SOCKET fd) noexcept;
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий для указанного события
+			 * @param id   идентификатор записи
 			 * @param fd   файловый дескриптор для удаления
 			 * @param type тип отслеживаемого события
 			 * @return     результат работы функции
 			 */
-			bool del(const SOCKET fd, const event_type_t type) noexcept;
+			bool del(const uint64_t id, const SOCKET fd, const event_type_t type) noexcept;
 		private:
 			/**
 			 * add Метод добавления файлового дескриптора в базу событий
+			 * @param id       идентификатор записи
 			 * @param fd       файловый дескриптор для добавления
 			 * @param callback функция обратного вызова при получении события
 			 * @param delay    задержка времени для создания таймеров
 			 * @param series   флаг серийного таймаута
 			 * @return         результат работы функции
 			 */
-			bool add(SOCKET & fd, callback_t callback = nullptr, const time_t delay = 0, const bool series = false) noexcept;
+			bool add(const uint64_t id, SOCKET & fd, callback_t callback = nullptr, const time_t delay = 0, const bool series = false) noexcept;
 		private:
 			/**
 			 * mode Метод установки режима работы модуля
+			 * @param id   идентификатор записи
 			 * @param fd   файловый дескриптор для установки режима работы
 			 * @param type тип событий модуля для которого требуется сменить режим работы
 			 * @param mode флаг режима работы модуля
 			 * @return     результат работы функции
 			 */
-			bool mode(const SOCKET fd, const event_type_t type, const event_mode_t mode) noexcept;
+			bool mode(const uint64_t id, const SOCKET fd, const event_type_t type, const event_mode_t mode) noexcept;
 		public:
 			/**
 			 * launched Метод проверки запущена ли в данный момент база событий
@@ -322,6 +328,9 @@ namespace awh {
 		private:
 			// Файловый дескриптор
 			SOCKET _fd;
+		private:
+			// Идентификатор события
+			uint64_t _id;
 		private:
 			// Тип события таймера
 			type_t _type;
@@ -424,7 +433,7 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Event(const type_t type, const fmk_t * fmk, const log_t * log) noexcept :
-			 _mode(false), _series(false), _fd(INVALID_SOCKET), _type(type),
+			 _mode(false), _series(false), _fd(INVALID_SOCKET), _id(0), _type(type),
 			 _delay(0), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Event Деструктор
