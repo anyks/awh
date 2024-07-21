@@ -297,8 +297,13 @@ namespace awh {
 			// Объект работы с сокетами
 			socket_t _socket;
 		private:
-			// Объект перехвата сигнала
-			struct sigaction _sa;
+			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Объект перехвата сигнала
+				struct sigaction _sa;
+			#endif
 		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;

@@ -1633,8 +1633,10 @@ void awh::Base::start() noexcept {
 											this->_fds.at(i).revents = 0;
 											// Получаем файловый дескриптор
 											SOCKET fd = this->_fds.at(i).fd;
-											// Выводим сообщение об ошибке
-											this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
+											// Если мы реально получили ошибку
+											if(WSAGetLastError() > 0)
+												// Выводим сообщение об ошибке
+												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
 											// Выполняем поиск указанной записи
 											auto j = this->_items.find(fd);
 											// Если сокет в списке найден
