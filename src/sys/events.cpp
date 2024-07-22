@@ -1623,16 +1623,111 @@ void awh::Base::start() noexcept {
 								const lock_guard <std::recursive_mutex> lock(this->_mtx);
 								// Получаем количество файловых дескрипторов для проверки
 								count = this->_fds.size();
+								// Идентификатор события
+								uint64_t id = 0;
+								// Файловый дескриптор события
+								SOCKET fd = INVALID_SOCKET;
+								// Флаги статусов полученного сокета
+								bool isRead = false, isWrite = false, isClose = false, isError = false;
 								// Выполняем перебор всех файловых дескрипторов
 								for(size_t i = 0; i < count; i++){
 									// Если записей достаточно в списке
 									if(i < this->_fds.size()){
-										// Если произошла ошибка сокета
-										if(this->_fds.at(i).revents & POLLERR){
-											// Обнуляем количество событий
-											this->_fds.at(i).revents = 0;
-											// Получаем файловый дескриптор
-											SOCKET fd = this->_fds.at(i).fd;
+										// Зануляем идентификатор события
+										id = 0;
+										// Получаем файловый дескриптор
+										fd = this->_fds.at(i).fd;
+										// Получаем флаг достуности чтения из сокета
+										isRead = (this->_fds.at(i).revents & POLLIN);
+										// Получаем флаг доступности сокета на запись
+										isWrite = (this->_fds.at(i).revents & POLLOUT);
+										// Получаем флаг получения ошибки сокета
+										isError = (this->_fds.at(i).revents & POLLERR);
+										// Получаем флаг закрытия подключения
+										isClose = (this->_fds.at(i).revents & POLLHUP);
+										// Обнуляем количество событий
+										this->_fds.at(i).revents = 0;
+										// Если флаг на чтение данных из сокета установлен
+										if(isRead){
+											// Выполняем поиск указанной записи
+											auto j = this->_items.find(fd);
+											// Если сокет в списке найден
+											if(j != this->_items.end()){
+												// Получаем идентификатор события
+												id = j->second.id;
+												// Если событие является таймером
+												if(j->second.delay > 0){
+													// Количество прочитанных байт
+													int32_t bytes = -1;
+													// Устанавливаем временное значение буфера
+													vector <char> buffer(sizeof(time_t), 0);
+													// Если чтение выполнено удачно
+													if((bytes = j->second.pipe->read(fd, buffer.data(), buffer.size())) > 0){
+														// Если функция обратного вызова установлена
+														if(j->second.callback != nullptr){
+															// Выполняем поиск события таймера присутствует в базе событий
+															auto k = j->second.mode.find(event_type_t::TIMER);
+															// Если событие найдено и оно активированно
+															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+																// Выполняем функцию обратного вызова
+																j->second.callback(fd, event_type_t::TIMER);
+														}
+														// Выполняем поиск указанной записи
+														j = this->_items.find(fd);
+														// Если сокет в списке найден
+														if((j != this->_items.end()) && (id == j->second.id)){
+															// Если таймер установлен как серийный
+															if(j->second.series){
+																// Выполняем поиск события таймера присутствует в базе событий
+																auto k = j->second.mode.find(event_type_t::TIMER);
+																// Если событие найдено и оно активированно
+																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+																	// Выполняем активацию таймера на указанное время
+																	this->_timeout.set(j->second.fd, j->second.delay * 1000000, j->second.pipe->port());
+															}
+														}
+													// Выполняем закрытие подключения
+													} else if(bytes == 0)
+														// Удаляем файловый дескриптор из базы событий
+														this->del(j->second.id, j->second.fd);
+												// Если событие не является таймером
+												} else {
+													// Если функция обратного вызова установлена
+													if(j->second.callback != nullptr){
+														// Выполняем поиск события на получение данных присутствует в базе событий
+														auto k = j->second.mode.find(event_type_t::READ);
+														// Если событие найдено и оно активированно
+														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+															// Выполняем функцию обратного вызова
+															j->second.callback(fd, event_type_t::READ);
+													}
+												}
+											// Если файловый дескриптор не нулевой
+											} else if(fd > 0)
+												// Выводим сообщение об ошибке
+												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
+										}
+										// Если сокет доступен для записи
+										if(isWrite){
+											// Выполняем поиск указанной записи
+											auto j = this->_items.find(fd);
+											// Если сокет в списке найден
+											if((j != this->_items.end()) && ((id == j->second.id) || (id == 0))){
+												// Получаем идентификатор события
+												id = j->second.id;
+												// Если функция обратного вызова установлена
+												if(j->second.callback != nullptr){
+													// Выполняем поиск события на запись данных присутствует в базе событий
+													auto k = j->second.mode.find(event_type_t::WRITE);
+													// Если событие найдено и оно активированно
+													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+														// Выполняем функцию обратного вызова
+														j->second.callback(fd, event_type_t::WRITE);
+												}
+											}
+										}
+										// Если сокет отключился или произошла ошибка
+										if(isClose || isError){
 											// Если мы реально получили ошибку
 											if(WSAGetLastError() > 0)
 												// Выводим сообщение об ошибке
@@ -1640,7 +1735,9 @@ void awh::Base::start() noexcept {
 											// Выполняем поиск указанной записи
 											auto j = this->_items.find(fd);
 											// Если сокет в списке найден
-											if(j != this->_items.end()){
+											if((j != this->_items.end()) && ((id == j->second.id) || (id == 0))){
+												// Получаем идентификатор события
+												id = j->second.id;
 												// Если функция обратного вызова установлена
 												if(j->second.callback != nullptr){
 													// Получаем функцию обратного вызова
@@ -1659,133 +1756,7 @@ void awh::Base::start() noexcept {
 												}
 												// Удаляем файловый дескриптор из базы событий
 												this->del(j->second.id, fd);
-											// Если файловый дескриптор не нулевой
-											} else if(fd > 0)
-												// Выводим сообщение об ошибке
-												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
-										// Если ошибки не обнаруженно
-										} else {
-											// Получаем файловый дескриптор
-											SOCKET fd = INVALID_SOCKET;
-											// Если в сокете появились данные для чтения
-											if((i < this->_fds.size()) && (this->_fds.at(i).revents & POLLIN)){
-												// Получаем файловый дескриптор
-												fd = this->_fds.at(i).fd;
-												// Выполняем поиск указанной записи
-												auto j = this->_items.find(fd);
-												// Если сокет в списке найден
-												if(j != this->_items.end()){
-													// Если событие является таймером
-													if(j->second.delay > 0){
-														// Количество прочитанных байт
-														int32_t bytes = -1;
-														// Устанавливаем временное значение буфера
-														vector <char> buffer(sizeof(time_t), 0);
-														// Если чтение выполнено удачно
-														if((bytes = j->second.pipe->read(fd, buffer.data(), buffer.size())) > 0){
-															// Если функция обратного вызова установлена
-															if(j->second.callback != nullptr){
-																// Выполняем поиск события таймера присутствует в базе событий
-																auto k = j->second.mode.find(event_type_t::TIMER);
-																// Если событие найдено и оно активированно
-																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
-																	// Выполняем функцию обратного вызова
-																	j->second.callback(fd, event_type_t::TIMER);
-															}
-															// Если удаление таймера в функции обратного вызова не выполненно
-															if((static_cast <size_t> (i) < this->_fds.size()) && (fd == this->_fds.at(i).fd)){
-																// Если таймер установлен как серийный
-																if(j->second.series){
-																	// Выполняем поиск события таймера присутствует в базе событий
-																	auto k = j->second.mode.find(event_type_t::TIMER);
-																	// Если событие найдено и оно активированно
-																	if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
-																		// Выполняем активацию таймера на указанное время
-																		this->_timeout.set(j->second.fd, j->second.delay * 1000000, j->second.pipe->port());
-																}
-															}
-														// Выполняем закрытие подключения
-														} else if(bytes == 0) {
-															// Закрываем полностью подключение
-															::_close(j->second.fd);
-															// Выполняем сброс файлового дескриптора
-															this->_fds.at(i).fd = INVALID_SOCKET;
-														}
-													// Если событие не является таймером
-													} else {
-														// Если функция обратного вызова установлена
-														if(j->second.callback != nullptr){
-															// Выполняем поиск события на получение данных присутствует в базе событий
-															auto k = j->second.mode.find(event_type_t::READ);
-															// Если событие найдено и оно активированно
-															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
-																// Выполняем функцию обратного вызова
-																j->second.callback(fd, event_type_t::READ);
-														}
-													}
-												// Если файловый дескриптор не нулевой
-												} else if(fd > 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
 											}
-											// Если сокет доступен для записи
-											if((i < this->_fds.size()) && ((fd == this->_fds.at(i).fd) || (fd == INVALID_SOCKET)) && (this->_fds.at(i).revents & POLLOUT)){
-												// Получаем файловый дескриптор
-												fd = this->_fds.at(i).fd;
-												// Выполняем поиск указанной записи
-												auto j = this->_items.find(fd);
-												// Если сокет в списке найден
-												if(j != this->_items.end()){
-													// Если функция обратного вызова установлена
-													if(j->second.callback != nullptr){
-														// Выполняем поиск события на запись данных присутствует в базе событий
-														auto k = j->second.mode.find(event_type_t::WRITE);
-														// Если событие найдено и оно активированно
-														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
-															// Выполняем функцию обратного вызова
-															j->second.callback(fd, event_type_t::WRITE);
-													}
-												// Если файловый дескриптор не нулевой
-												} else if(fd > 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
-											}
-											// Если подключение сокета было закрыто
-											if((i < this->_fds.size()) && ((fd == this->_fds.at(i).fd) || (fd == INVALID_SOCKET)) && (this->_fds.at(i).revents & POLLHUP)){
-												// Обнуляем количество событий
-												this->_fds.at(i).revents = 0;
-												// Получаем файловый дескриптор
-												fd = this->_fds.at(i).fd;
-												// Выполняем поиск указанной записи
-												auto j = this->_items.find(fd);
-												// Если сокет в списке найден
-												if(j != this->_items.end()){
-													// Если функция обратного вызова установлена
-													if(j->second.callback != nullptr){
-														// Получаем функцию обратного вызова
-														auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
-														// Выполняем поиск события на отключение присутствует в базе событий
-														auto k = j->second.mode.find(event_type_t::CLOSE);
-														// Если событие найдено и оно активированно
-														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
-															// Удаляем файловый дескриптор из базы событий
-															this->del(j->second.id, fd);
-															// Выполняем функцию обратного вызова
-															callback();
-															// Продолжаем обход дальше
-															continue;
-														}
-													}
-													// Удаляем файловый дескриптор из базы событий
-													this->del(j->second.id, fd);
-												// Если файловый дескриптор не нулевой
-												} else if(fd > 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
-											// Если записей достаточно в списке
-											} else if((i < this->_fds.size()) && (fd == this->_fds.at(i).fd))
-												// Обнуляем количество событий
-												this->_fds.at(i).revents = 0;
 										}
 									// Выходим из цикла
 									} else break;
@@ -1825,53 +1796,34 @@ void awh::Base::start() noexcept {
 							else {
 								// Выполняем блокировку потока
 								const lock_guard <std::recursive_mutex> lock(this->_mtx);
+								// Идентификатор события
+								uint64_t id = 0;
+								// Файловый дескриптор события
+								SOCKET fd = INVALID_SOCKET;
+								// Флаги статусов полученного сокета
+								bool isRead = false, isWrite = false, isClose = false, isError = false;
 								// Выполняем перебор всех событий в которых мы получили изменения
 								for(int32_t i = 0; i < poll; i++){
 									// Если записей достаточно в списке
 									if(static_cast <size_t> (i) < this->_events.size()){
-										// Если произошла ошибка сокета
-										if(this->_events.at(i).events & EPOLLERR){
-											// Получаем объект текущего события
-											item_t * item = reinterpret_cast <item_t *> (this->_events.at(i).data.ptr);
-											// Если объект текущего события получен
-											if(item != nullptr){
-												// Получаем значение текущего идентификатора
-												const SOCKET fd = item->fd;
-												// Выводим сообщение об ошибке
-												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
-												// Если функция обратного вызова установлена
-												if(item->callback != nullptr){
-													// Получаем функцию обратного вызова
-													auto callback = std::bind(item->callback, fd, event_type_t::CLOSE);
-													// Выполняем поиск события на отключение присутствует в базе событий
-													auto j = item->mode.find(event_type_t::CLOSE);
-													// Если событие найдено и оно активированно
-													if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED)){
-														// Удаляем файловый дескриптор из базы событий
-														this->del(item->id, fd);
-														// Выполняем функцию обратного вызова
-														callback();
-														// Продолжаем обход дальше
-														continue;
-													}
-												}
-												// Удаляем файловый дескриптор из базы событий
-												this->del(item->id, fd);
-											// Если файловый дескриптор не нулевой
-											} else if(this->_events.at(i).data.fd > 0) {
-												// Получаем значение текущего идентификатора
-												const SOCKET fd = this->_events.at(i).data.fd;
-												// Выводим сообщение об ошибке
-												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
-											}
-										// Если ошибки не обнаруженно
-										} else {
-											// Получаем объект текущего события
-											item_t * item = reinterpret_cast <item_t *> (this->_events.at(i).data.ptr);
-											// Если объект текущего события получен
-											if(item != nullptr){
-												// Получаем значение текущего идентификатора
-												const SOCKET fd = item->fd;
+										// Получаем флаг достуности чтения из сокета
+										isRead = (this->_events.at(i).events & EPOLLIN);
+										// Получаем флаг доступности сокета на запись
+										isWrite = (this->_events.at(i).events & EPOLLOUT);
+										// Получаем флаг получения ошибки сокета
+										isError = (this->_events.at(i).events & EPOLLERR);
+										// Получаем флаг закрытия подключения
+										isClose = (this->_events.at(i).events & (EPOLLRDHUP | EPOLLHUP));
+										// Получаем объект текущего события
+										item_t * item = reinterpret_cast <item_t *> (this->_events.at(i).data.ptr);
+										// Если объект текущего события получен
+										if(item != nullptr){
+											// Получаем идентификатор события
+											id = item->id;
+											// Получаем значение текущего идентификатора
+											fd = item->fd;
+											// Если в сокете появились данные для чтения
+											if(isRead){
 												// Если событие является таймером
 												if(item->delay > 0){
 													// Количество сработок таймера
@@ -1879,7 +1831,7 @@ void awh::Base::start() noexcept {
 													// Количество прочитанных байт
 													int32_t bytes = -1;
 													// Если чтение выполнено удачно
-													if((bytes = ::read(fd, &value, sizeof(value))) > 0){
+													if((bytes = ::read(item->fd, &value, sizeof(value))) > 0){
 														// Если функция обратного вызова установлена
 														if(item->callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -1887,72 +1839,73 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																item->callback(fd, event_type_t::TIMER);
+																item->callback(item->fd, event_type_t::TIMER);
 														}
 													}
 												// Если событие не является таймером
 												} else {
-													// Если в сокете появились данные для чтения
-													if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLIN) && (this->_items.find(fd) != this->_items.end())){
-														// Если функция обратного вызова установлена
-														if(item->callback != nullptr){
-															// Выполняем поиск события на получение данных присутствует в базе событий
-															auto j = item->mode.find(event_type_t::READ);
-															// Если событие найдено и оно активированно
-															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
-																// Выполняем функцию обратного вызова
-																item->callback(fd, event_type_t::READ);
-														}
-													}
-													// Если сокет доступен для записи
-													if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & EPOLLOUT) && (this->_items.find(fd) != this->_items.end())){
-														// Выполняем поиск файлового дескриптора в базе событий
-														auto i = this->_items.find(fd);
-														// Если файловый дескриптор есть в базе событий
-														if((i != this->_items.end()) && (item == &i->second)){
-															// Если функция обратного вызова установлена
-															if(i->second.callback != nullptr){
-																// Выполняем поиск события на запись данных присутствует в базе событий
-																auto j = i->second.mode.find(event_type_t::WRITE);
-																// Если событие найдено и оно активированно
-																if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED))
-																	// Выполняем функцию обратного вызова
-																	i->second.callback(fd, event_type_t::WRITE);
-															}
-														}
-													}
-													// Если подключение сокета было закрыто
-													if((static_cast <size_t> (i) < this->_events.size()) && (this->_events.at(i).events & (EPOLLRDHUP | EPOLLHUP)) && (this->_items.find(fd) != this->_items.end())){
-														// Выполняем поиск файлового дескриптора в базе событий
-														auto i = this->_items.find(fd);
-														// Если файловый дескриптор есть в базе событий
-														if((i != this->_items.end()) && (item == &i->second)){
-															// Если функция обратного вызова установлена
-															if(i->second.callback != nullptr){
-																// Получаем функцию обратного вызова
-																auto callback = std::bind(i->second.callback, fd, event_type_t::CLOSE);
-																// Выполняем поиск события на отключение присутствует в базе событий
-																auto j = i->second.mode.find(event_type_t::CLOSE);
-																// Если событие найдено и оно активированно
-																if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED)){
-																	// Удаляем файловый дескриптор из базы событий
-																	this->del(i->second.id, fd);
-																	// Выполняем функцию обратного вызова
-																	callback();
-																	// Продолжаем обход дальше
-																	continue;
-																}
-															}
-															// Удаляем файловый дескриптор из базы событий
-															this->del(i->second.id, fd);
-														}
+													// Если функция обратного вызова установлена
+													if(item->callback != nullptr){
+														// Выполняем поиск события на получение данных присутствует в базе событий
+														auto j = item->mode.find(event_type_t::READ);
+														// Если событие найдено и оно активированно
+														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
+															// Выполняем функцию обратного вызова
+															item->callback(item->fd, event_type_t::READ);
 													}
 												}
-											// Если файловый дескриптор не нулевой
-											} else if(this->_events.at(i).data.fd > 0)
-												// Выводим сообщение об ошибке
-												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
-										}
+											}
+											// Если сокет доступен для записи
+											if(isWrite){
+												// Выполняем поиск файлового дескриптора в базе событий
+												auto i = this->_items.find(fd);
+												// Если файловый дескриптор есть в базе событий
+												if((i != this->_items.end()) && (id == i->second.id)){
+													// Если функция обратного вызова установлена
+													if(i->second.callback != nullptr){
+														// Выполняем поиск события на запись данных присутствует в базе событий
+														auto j = i->second.mode.find(event_type_t::WRITE);
+														// Если событие найдено и оно активированно
+														if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED))
+															// Выполняем функцию обратного вызова
+															i->second.callback(i->second.fd, event_type_t::WRITE);
+													}
+												}
+											}
+											// Если сокет отключился или произошла ошибка
+											if(isClose || isError){
+												// Если была вызвана ошибка
+												if(isError)
+													// Выводим сообщение об ошибке
+													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
+												// Выполняем поиск файлового дескриптора в базе событий
+												auto i = this->_items.find(fd);
+												// Если файловый дескриптор есть в базе событий
+												if((i != this->_items.end()) && (id == i->second.id)){
+													// Если функция обратного вызова установлена
+													if(i->second.callback != nullptr){
+														// Получаем функцию обратного вызова
+														auto callback = std::bind(i->second.callback, i->second.fd, event_type_t::CLOSE);
+														// Выполняем поиск события на отключение присутствует в базе событий
+														auto j = i->second.mode.find(event_type_t::CLOSE);
+														// Если событие найдено и оно активированно
+														if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED)){
+															// Удаляем файловый дескриптор из базы событий
+															this->del(i->second.id, i->second.fd);
+															// Выполняем функцию обратного вызова
+															callback();
+															// Продолжаем обход дальше
+															continue;
+														}
+													}
+													// Удаляем файловый дескриптор из базы событий
+													this->del(i->second.id, i->second.fd);
+												}
+											}
+										// Если файловый дескриптор не нулевой
+										} else if(this->_events.at(i).data.fd > 0)
+											// Выводим сообщение об ошибке
+											this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
 									// Выходим из цикла
 									} else break;
 								}
@@ -1991,57 +1944,40 @@ void awh::Base::start() noexcept {
 							else {
 								// Выполняем блокировку потока
 								const lock_guard <std::recursive_mutex> lock(this->_mtx);
+								// Идентификатор события
+								uint64_t id = 0;
+								// Код ошибки полученный от ядра
+								int32_t code = 0;
+								// Файловый дескриптор события
+								SOCKET fd = INVALID_SOCKET;
+								// Флаги статусов полученного сокета
+								bool isRead = false, isWrite = false, isClose = false, isError = false;
 								// Выполняем перебор всех событий в которых мы получили изменения
 								for(int32_t i = 0; i < poll; i++){
 									// Если записей достаточно в списке
 									if(static_cast <size_t> (i) < this->_events.size()){
-										// Если произошла ошибка сокета
-										if(this->_events.at(i).flags & EV_ERROR){
-											// Выполняем поиск файлового дескриптора в базе событий
-											auto j = this->_items.find(this->_events.at(i).ident);
-											// Если файловый дескриптор есть в базе событий
-											if(j != this->_items.end()){
-												// Получаем объект текущего события
-												item_t * item = &j->second;
-												// Получаем значение текущего идентификатора
-												const SOCKET fd = item->fd;
-												// Выводим сообщение об ошибке
-												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message(this->_events.at(i).data).c_str(), fd);
-												// Если функция обратного вызова установлена
-												if(item->callback != nullptr){
-													// Получаем функцию обратного вызова
-													auto callback = std::bind(item->callback, fd, event_type_t::CLOSE);
-													// Выполняем поиск события на отключение присутствует в базе событий
-													auto k = item->mode.find(event_type_t::CLOSE);
-													// Если событие найдено и оно активированно
-													if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED)){
-														// Удаляем файловый дескриптор из базы событий
-														this->del(item->id, fd);
-														// Выполняем функцию обратного вызова
-														callback();
-														// Продолжаем обход дальше
-														continue;
-													}
-												}
-												// Удаляем файловый дескриптор из базы событий
-												this->del(item->id, fd);
-											// Если файловый дескриптор не нулевой
-											} else if(this->_events.at(i).ident > 0) {
-												// Получаем значение текущего идентификатора
-												const SOCKET fd = this->_events.at(i).ident;
-												// Выводим сообщение об ошибке
-												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message(this->_events.at(i).data).c_str(), fd);
-											}
-										// Если ошибки не обнаруженно
-										} else {
-											// Выполняем поиск файлового дескриптора в базе событий
-											auto j = this->_items.find(this->_events.at(i).ident);
-											// Если файловый дескриптор есть в базе событий
-											if(j != this->_items.end()){
-												// Получаем объект текущего события
-												item_t * item = &j->second;
-												// Получаем значение текущего идентификатора
-												const SOCKET fd = item->fd;
+										// Получаем код ошибки переданный ядром
+										code = this->_events.at(i).data;
+										// Получаем флаг закрытия подключения
+										isClose = (this->_events.at(i).flags & EV_EOF);
+										// Получаем флаг получения ошибки сокета
+										isError = (this->_events.at(i).flags & EV_ERROR);
+										// Получаем флаг достуности чтения из сокета
+										isRead = (this->_events.at(i).filter & EVFILT_READ);
+										// Получаем флаг доступности сокета на запись
+										isWrite = (this->_events.at(i).filter & EVFILT_WRITE);
+										// Выполняем поиск файлового дескриптора в базе событий
+										auto j = this->_items.find(this->_events.at(i).ident);
+										// Если файловый дескриптор есть в базе событий
+										if(j != this->_items.end()){
+											// Получаем объект текущего события
+											item_t * item = &j->second;
+											// Получаем идентификатор события
+											id = item->id;
+											// Получаем значение текущего идентификатора
+											fd = item->fd;
+											// Если в сокете появились данные для чтения
+											if(isRead){
 												// Если событие является таймером
 												if(item->delay > 0){
 													// Количество прочитанных байт
@@ -2049,7 +1985,7 @@ void awh::Base::start() noexcept {
 													// Устанавливаем временное значение буфера
 													vector <char> buffer(sizeof(time_t), 0);
 													// Если чтение выполнено удачно
-													if((bytes = item->pipe->read(fd, buffer.data(), buffer.size())) > 0){
+													if((bytes = item->pipe->read(item->fd, buffer.data(), buffer.size())) > 0){
 														// Если функция обратного вызова установлена
 														if(item->callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -2057,97 +1993,90 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																item->callback(fd, event_type_t::TIMER);
+																item->callback(item->fd, event_type_t::TIMER);
 														}
-														// Если удаление таймера в функции обратного вызова не выполненно
-														if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident)){
-															// Выполняем поиск файлового дескриптора в базе событий
-															j = this->_items.find(fd);
-															// Если файловый дескриптор есть в базе событий
-															if((j != this->_items.end()) && (item == &j->second)){
-																// Если таймер установлен как серийный
-																if(item->series){
-																	// Выполняем поиск события таймера присутствует в базе событий
-																	auto k = item->mode.find(event_type_t::TIMER);
-																	// Если событие найдено и оно активированно
-																	if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
-																		// Выполняем активацию таймера на указанное время
-																		this->_timeout.set(item->timer, item->delay * 1000000);
-																}
+														// Выполняем поиск файлового дескриптора в базе событий
+														j = this->_items.find(fd);
+														// Если файловый дескриптор есть в базе событий
+														if((j != this->_items.end()) && (id == j->second.id)){
+															// Если таймер установлен как серийный
+															if(j->second.series){
+																// Выполняем поиск события таймера присутствует в базе событий
+																auto k = j->second.mode.find(event_type_t::TIMER);
+																// Если событие найдено и оно активированно
+																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+																	// Выполняем активацию таймера на указанное время
+																	this->_timeout.set(j->second.timer, j->second.delay * 1000000);
 															}
 														}
 													// Выполняем закрытие подключения
-													} else if(bytes == 0) {
-														// Закрываем полностью подключение
-														::close(item->fd);
-														// Выполняем закрытие таймера
-														::close(item->timer);
-														// Выполняем удаление объекта события
-														EV_SET(&this->_events.at(i), fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
-													}
+													} else if(bytes == 0)
+														// Удаляем файловый дескриптор из базы событий
+														this->del(item->id, item->fd);
 												// Если событие не является таймером
 												} else {
-													// Если в сокете появились данные для чтения
-													if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_READ)){
-														// Если функция обратного вызова установлена
-														if(item->callback != nullptr){
-															// Выполняем поиск события на получение данных присутствует в базе событий
-															auto k = item->mode.find(event_type_t::READ);
-															// Если событие найдено и оно активированно
-															if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
-																// Выполняем функцию обратного вызова
-																item->callback(fd, event_type_t::READ);
-														}
-													}
-													// Если сокет доступен для записи
-													if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).filter & EVFILT_WRITE)){
-														// Выполняем поиск файлового дескриптора в базе событий
-														j = this->_items.find(fd);
-														// Если файловый дескриптор есть в базе событий
-														if((j != this->_items.end()) && (item == &j->second)){
-															// Если функция обратного вызова установлена
-															if(item->callback != nullptr){
-																// Выполняем поиск события на запись данных присутствует в базе событий
-																auto k = item->mode.find(event_type_t::WRITE);
-																// Если событие найдено и оно активированно
-																if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
-																	// Выполняем функцию обратного вызова
-																	item->callback(fd, event_type_t::WRITE);
-															}
-														}
-													}
-													// Если подключение сокета было закрыто
-													if((static_cast <size_t> (i) < this->_events.size()) && (fd == this->_events.at(i).ident) && (this->_events.at(i).flags & EV_EOF)){
-														// Выполняем поиск файлового дескриптора в базе событий
-														j = this->_items.find(fd);
-														// Если файловый дескриптор есть в базе событий
-														if((j != this->_items.end()) && (item == &j->second)){
-															// Если функция обратного вызова установлена
-															if(item->callback != nullptr){
-																// Получаем функцию обратного вызова
-																auto callback = std::bind(item->callback, fd, event_type_t::CLOSE);
-																// Выполняем поиск события на отключение присутствует в базе событий
-																auto k = item->mode.find(event_type_t::CLOSE);
-																// Если событие найдено и оно активированно
-																if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED)){
-																	// Удаляем файловый дескриптор из базы событий
-																	this->del(item->id, fd);
-																	// Выполняем функцию обратного вызова
-																	callback();
-																	// Продолжаем обход дальше
-																	continue;
-																}
-															}
-															// Удаляем файловый дескриптор из базы событий
-															this->del(item->id, fd);
-														}
+													// Если функция обратного вызова установлена
+													if(item->callback != nullptr){
+														// Выполняем поиск события на получение данных присутствует в базе событий
+														auto k = item->mode.find(event_type_t::READ);
+														// Если событие найдено и оно активированно
+														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
+															// Выполняем функцию обратного вызова
+															item->callback(fd, event_type_t::READ);
 													}
 												}
-											// Если файловый дескриптор не нулевой
-											} else if(this->_events.at(i).ident > 0)
-												// Выводим сообщение об ошибке
-												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
-										}
+											}
+											// Если сокет доступен для записи
+											if(isWrite){
+												// Выполняем поиск файлового дескриптора в базе событий
+												j = this->_items.find(fd);
+												// Если файловый дескриптор есть в базе событий
+												if((j != this->_items.end()) && (id == j->second.id)){
+													// Если функция обратного вызова установлена
+													if(j->second.callback != nullptr){
+														// Выполняем поиск события на запись данных присутствует в базе событий
+														auto k = j->second.mode.find(event_type_t::WRITE);
+														// Если событие найдено и оно активированно
+														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+															// Выполняем функцию обратного вызова
+															j->second.callback(j->second.fd, event_type_t::WRITE);
+													}
+												}
+											}
+											// Если сокет отключился или произошла ошибка
+											if(isClose || isError){
+												// Если была вызвана ошибка
+												if(isError)
+													// Выводим сообщение об ошибке
+													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message(code).c_str(), fd);
+												// Выполняем поиск файлового дескриптора в базе событий
+												j = this->_items.find(fd);
+												// Если файловый дескриптор есть в базе событий
+												if((j != this->_items.end()) && (id == j->second.id)){
+													// Если функция обратного вызова установлена
+													if(j->second.callback != nullptr){
+														// Получаем функцию обратного вызова
+														auto callback = std::bind(j->second.callback, j->second.fd, event_type_t::CLOSE);
+														// Выполняем поиск события на отключение присутствует в базе событий
+														auto k = j->second.mode.find(event_type_t::CLOSE);
+														// Если событие найдено и оно активированно
+														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
+															// Удаляем файловый дескриптор из базы событий
+															this->del(j->second.id, j->second.fd);
+															// Выполняем функцию обратного вызова
+															callback();
+															// Продолжаем обход дальше
+															continue;
+														}
+													}
+													// Удаляем файловый дескриптор из базы событий
+													this->del(j->second.id, j->second.fd);
+												}
+											}
+										// Если файловый дескриптор не нулевой
+										} else if(this->_events.at(i).ident > 0)
+											// Выводим сообщение об ошибке
+											this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
 									// Выходим из цикла
 									} else break;
 								}
