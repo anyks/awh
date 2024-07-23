@@ -1169,6 +1169,10 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					}
 				// Если произошла ошибка чтения данных
 				} else result = this->error(result);
+				// Если нужно отключиться, выходим
+				if(result == 0)
+					// Выводим полученный результат
+					return result;
 			}
 		// Выполняем чтение из буфера данных стандартным образом
 		} else {
@@ -1458,6 +1462,10 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					}
 				// Если произошла ошибка чтения данных
 				} else result = this->error(result);
+				// Если нужно отключиться, выходим
+				if(result == 0)
+					// Выводим полученный результат
+					return result;
 			}
 		// Выполняем отправку сообщения в сокет
 		} else {
