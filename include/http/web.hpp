@@ -165,7 +165,7 @@ namespace awh {
 			 */
 			typedef struct Response : public provider_t {
 				// Код ответа сервера
-				u_int code;
+				uint32_t code;
 				// Сообщение сервера
 				string message;
 				/**
@@ -176,7 +176,7 @@ namespace awh {
 				 * Response Конструктор
 				 * @param code код ответа сервера
 				 */
-				Response(const u_int code) noexcept : provider_t(), code(code), message{""} {}
+				Response(const uint32_t code) noexcept : provider_t(), code(code), message{""} {}
 				/**
 				 * Response Конструктор
 				 * @param version версия протокола
@@ -192,13 +192,13 @@ namespace awh {
 				 * @param version версия протокола
 				 * @param code    код ответа сервера
 				 */
-				Response(const float version, const u_int code) noexcept : provider_t(version), code(code), message{""} {}
+				Response(const float version, const uint32_t code) noexcept : provider_t(version), code(code), message{""} {}
 				/**
 				 * Response Конструктор
 				 * @param code    код ответа сервера
 				 * @param message сообщение сервера
 				 */
-				Response(const u_int code, const string & message) noexcept : provider_t(), code(code), message(message) {}
+				Response(const uint32_t code, const string & message) noexcept : provider_t(), code(code), message(message) {}
 				/**
 				 * Response Конструктор
 				 * @param version версия протокола
@@ -211,7 +211,7 @@ namespace awh {
 				 * @param code    код ответа сервера
 				 * @param message сообщение сервера
 				 */
-				Response(const float version, const u_int code, const string & message) noexcept : provider_t(version), code(code), message(message) {}
+				Response(const float version, const uint32_t code, const string & message) noexcept : provider_t(version), code(code), message(message) {}
 			} res_t;
 		private:
 			/**

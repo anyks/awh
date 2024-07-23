@@ -99,9 +99,9 @@ namespace awh {
 				 * KeepAlive Структура параметров жизни подключения
 				 */
 				typedef struct KeepAlive {
-					int cnt;   // Максимальное количество попыток
-					int idle;  // Интервал времени в секундах через которое происходит проверка подключения
-					int intvl; // Интервал времени в секундах между попытками
+					int32_t cnt;   // Максимальное количество попыток
+					int32_t idle;  // Интервал времени в секундах через которое происходит проверка подключения
+					int32_t intvl; // Интервал времени в секундах между попытками
 					/**
 					 * KeepAlive Конструктор
 					 */
@@ -312,7 +312,7 @@ namespace awh {
 				 * @param port порт подключения
 				 * @return     результат проверки
 				 */
-				bool acceptEvents(const string & ip, const string & mac, const u_int port) noexcept;
+				bool acceptEvents(const string & ip, const string & mac, const uint32_t port) noexcept;
 			private:
 				/**
 				 * available Метод получения событий освобождения памяти буфера полезной нагрузки
@@ -364,7 +364,7 @@ namespace awh {
 				 * @param code    код ответа сервера
 				 * @param message сообщение ответа сервера
 				 */
-				void responseClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message) noexcept;
+				void responseClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message) noexcept;
 			private:
 				/**
 				 * activeServer Метод идентификации активности на Web сервере (для сервера)
@@ -397,7 +397,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param entity  тело ответа клиенту с сервера
 				 */
-				void entityClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity) noexcept;
+				void entityClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity) noexcept;
 			private:
 				/**
 				 * headersServer Метод получения заголовков запроса с клиента на сервере
@@ -417,7 +417,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param headers заголовки HTTP-ответа
 				 */
-				void headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+				void headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * pushClient Метод получения заголовков выполненного запроса (PUSH HTTP/2)
@@ -492,7 +492,7 @@ namespace awh {
 				 * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
 				 * @param family     тип протокола интернета (IPV4 / IPV6 / NIX)
 				 */
-				void init(const u_int port = SERVER_PROXY_PORT, const string & host = "", const http_t::compressor_t compressor = http_t::compressor_t::NONE, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+				void init(const uint32_t port = SERVER_PROXY_PORT, const string & host = "", const http_t::compressor_t compressor = http_t::compressor_t::NONE, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -538,7 +538,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				u_int port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint64_t bid) const noexcept;
 				/**
 				 * ip Метод получения IP-адреса брокера
 				 * @param bid идентификатор брокера
@@ -583,7 +583,7 @@ namespace awh {
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const u_short total) noexcept;
+				void total(const uint16_t total) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля
@@ -710,19 +710,19 @@ namespace awh {
 				void hosts(const broker_t broker, const string & filename) noexcept;
 			public:
 				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param broker      брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				void compressors(const broker_t broker, const vector <http_t::compressor_t> & compressors) noexcept;
+				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 				 * @param cnt    максимальное количество попыток
 				 * @param idle   интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl  интервал времени в секундах между попытками
 				 */
-				void keepAlive(const broker_t broker, const int cnt, const int idle, const int intvl) noexcept;
-				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
-				 * @param broker      брокер для которого устанавливаются настройки (CLIENT/SERVER)
-				 * @param compressors список поддерживаемых компрессоров
-				 */
-				void compressors(const broker_t broker, const vector <http_t::compressor_t> & compressors) noexcept;
+				void keepAlive(const broker_t broker, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд

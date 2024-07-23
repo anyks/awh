@@ -1484,7 +1484,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			// Если данные порта являются числом
 			if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
 				// Выполняем установку порта сервера
-				request.url.port = static_cast <u_int> (::stoi(port));
+				request.url.port = static_cast <uint32_t> (::stoi(port));
 				// Выполняем получение хоста сервера
 				request.url.host = request.url.host.substr(0, pos);
 				// Если порт установлен как 443
@@ -1524,7 +1524,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		// Устанавливаем версию протокола
 		response.version = 2.0f;
 		// Выполняем установку статуса ответа
-		response.code = static_cast <u_int> (::stoi(val));
+		response.code = static_cast <uint32_t> (::stoi(val));
 		// Выполняем формирование текста ответа
 		response.message = this->message(response.code);
 		// Выполняем сохранение параметров ответа
@@ -2134,7 +2134,7 @@ const string awh::Http::date(const time_t stamp) const noexcept {
  * @param code код сообщения для получение
  * @return     соответствующее коду HTTP сообщение
  */
-const string & awh::Http::message(const u_int code) const noexcept {
+const string & awh::Http::message(const uint32_t code) const noexcept {
 	/**
 	 * Подробнее: https://developer.mozilla.org/ru/docs/Web/HTTP/Status
 	 */
@@ -2969,7 +2969,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_crypted)
 									// Устанавливаем X-AWH-Encryption
-									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_hash.cipher())));
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_compressors.current)){
 									// Если нужно сжать тело методом LZ4
@@ -3023,7 +3023,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
-									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_hash.cipher())));
 								// Устанавливаем Content-Encoding если не передан
 								if(!this->is(suite_t::BLACK, "Content-Encoding")){
 									// Определяем метод компрессии полезной нагрузки
@@ -3079,7 +3079,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
 							if((this->_te.chunking = (this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))))
 								// Устанавливаем X-AWH-Encryption
-								request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+								request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_hash.cipher())));
 							// Устанавливаем Content-Encoding если заголовок есть в запросе
 							if(available[10] && !this->is(suite_t::BLACK, "Content-Encoding")){
 								// Определяем метод компрессии полезной нагрузки
@@ -3352,7 +3352,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_crypted)
 									// Устанавливаем X-AWH-Encryption
-									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_hash.cipher())));
 								{
 									// Название компрессора
 									string compressor = "";
@@ -3411,7 +3411,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "X-AWH-Encryption"))
 									// Устанавливаем X-AWH-Encryption
-									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->_hash.cipher())));
+									response.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_hash.cipher())));
 								{
 									// Название компрессора
 									string compressor = "";
@@ -3867,7 +3867,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_crypted)
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_compressors.current)){
 									// Если нужно сжать тело методом LZ4
@@ -3913,7 +3913,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 								// Устанавливаем Content-Encoding если не передан
 								if(!this->is(suite_t::BLACK, "content-encoding")){
 									// Определяем метод компрессии полезной нагрузки
@@ -3961,7 +3961,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
 							if((this->_te.chunking = (this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))))
 								// Устанавливаем X-AWH-Encryption
-								result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+								result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 							// Устанавливаем Content-Encoding если заголовок есть в запросе
 							if(available[10] && !this->is(suite_t::BLACK, "content-encoding")){
 								// Определяем метод компрессии полезной нагрузки
@@ -4191,7 +4191,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_crypted)
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_compressors.current)){
 									// Если полезная нагрузка сжата методом LZ4
@@ -4241,7 +4241,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <u_short> (this->_hash.cipher()))));
+									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 								// Устанавливаем Content-Encoding если не передан
 								if(!this->is(suite_t::BLACK, "content-encoding")){
 									// Определяем метод компрессии полезной нагрузки

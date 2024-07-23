@@ -155,7 +155,7 @@ namespace awh {
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const u_int port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
+				void init(const uint32_t port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
@@ -190,7 +190,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * send Метод отправки данных в бинарном виде клиенту
@@ -208,7 +208,7 @@ namespace awh {
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const uint64_t bid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
+				void send(const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -221,7 +221,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				u_int port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint64_t bid) const noexcept;
 				/**
 				 * agent Метод извлечения агента клиента
 				 * @param bid идентификатор брокера
@@ -302,24 +302,24 @@ namespace awh {
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const u_short total) noexcept;
+				void total(const uint16_t total) noexcept;
 				/**
 				 * segmentSize Метод установки размеров сегментов фрейма
 				 * @param size минимальный размер сегмента
 				 */
 				void segmentSize(const size_t size) noexcept;
 				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
+				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
-				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
-				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
-				 * @param compressors список поддерживаемых компрессоров
-				 */
-				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
+				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

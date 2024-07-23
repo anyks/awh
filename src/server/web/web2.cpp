@@ -49,17 +49,17 @@ void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid) no
 			// Создаём локальный контейнер функций обратного вызова
 			fn_t callbacks(this->_log);
 			// Выполняем установку функции обратного вызова начала открытии потока
-			callbacks.set <int (const int32_t)> ("begin", std::bind(&web2_t::beginSignal, this, _1, bid));
+			callbacks.set <int32_t (const int32_t)> ("begin", std::bind(&web2_t::beginSignal, this, _1, bid));
 			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
 			callbacks.set <void (const uint8_t *, const size_t)> ("send", std::bind(&web2_t::sendSignal, this, bid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			callbacks.set <int (const int32_t, const http2_t::error_t)> ("close", std::bind(&web2_t::closedSignal, this, _1, bid, _2));
+			callbacks.set <int32_t (const int32_t, const http2_t::error_t)> ("close", std::bind(&web2_t::closedSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			callbacks.set <int (const int32_t, const uint8_t *, const size_t)> ("chunk", std::bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
+			callbacks.set <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", std::bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
-			callbacks.set <int (const int32_t, const string &, const string &)> ("header", std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
+			callbacks.set <int32_t (const int32_t, const string &, const string &)> ("header", std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма
-			callbacks.set <int (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
+			callbacks.set <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Устанавливаем функцию обработки вызова на событие получения ошибок

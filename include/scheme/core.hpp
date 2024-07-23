@@ -152,7 +152,7 @@ namespace awh {
 					// Мак адрес подключившегося клиента
 					string _mac;
 					// Порт интернет-подключения клиента
-					u_int _port;
+					uint32_t _port;
 				private:
 					// Тип сокета подключения
 					sonet_t _sonet;
@@ -198,12 +198,12 @@ namespace awh {
 					 * port Метод извлечения порта подключения
 					 * @return установленный порт подключения
 					 */
-					u_int port() const noexcept;
+					uint32_t port() const noexcept;
 					/**
 					 * port Метод установки порта подключения
 					 * @param порт подключения для установки
 					 */
-					void port(const u_int port) noexcept;
+					void port(const uint32_t port) noexcept;
 				public:
 					/**
 					 * ip Метод извлечения IP-адреса
@@ -361,7 +361,7 @@ namespace awh {
 			 * @param bid идентификатор брокера
 			 * @return   порт подключения брокера
 			 */
-			u_int port(const uint64_t bid) const noexcept;
+			uint32_t port(const uint64_t bid) const noexcept;
 			/**
 			 * ip Метод получения IP-адреса брокера
 			 * @param bid идентификатор брокера

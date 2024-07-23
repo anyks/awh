@@ -227,7 +227,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Получаем порт подключения клиента
 								broker->port(broker->_addr.port);
 								// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-								if((this->_callbacks.is("accept")) && !this->_callbacks.call <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
+								if((this->_callbacks.is("accept")) && !this->_callbacks.call <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
 									// Если порт установлен
 									if(broker->port() > 0){
 										// Определяем тип протокола подключения
@@ -578,7 +578,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							// Получаем порт подключения клиента
 							broker->port(broker->_addr.port);
 							// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-							if((this->_callbacks.is("accept")) && !this->_callbacks.call <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
+							if((this->_callbacks.is("accept")) && !this->_callbacks.call <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
 								// Если порт установлен
 								if(broker->port() > 0){
 									// Определяем тип протокола подключения
@@ -1736,7 +1736,7 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
  * @param sid идентификатор схемы сети
  * @return    порт сервера который он прослушивает
  */
-u_int awh::server::Core::port(const uint16_t sid) const noexcept {
+uint32_t awh::server::Core::port(const uint16_t sid) const noexcept {
 	// Выполняем поиск идентификатора схемы сети
 	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
@@ -2083,7 +2083,7 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 					break;
 				}
 				// Получаем максимальный размер буфера
-				const int max = broker->_ectx.buffer(engine_t::method_t::WRITE);
+				const int32_t max = broker->_ectx.buffer(engine_t::method_t::WRITE);
 				// Если в буфере нет места
 				if(max > 0){
 					// Определяем тип сокета
@@ -2160,7 +2160,7 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::server::Core::work(const uint16_t sid, const string & ip, const int family) noexcept {
+void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_t family) noexcept {
 	// Если идентификатор схемы сети передан
 	if(this->has(sid)){
 		// Выполняем поиск идентификатора схемы сети
@@ -2401,7 +2401,7 @@ void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
  * @param sid   идентификатор схемы сети
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::Core::total(const uint16_t sid, const u_short total) noexcept {
+void awh::server::Core::total(const uint16_t sid, const uint16_t total) noexcept {
 	// Если идентификатор схемы сети передан
 	if(this->has(sid)){
 		// Выполняем блокировку потока
@@ -2527,7 +2527,7 @@ void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t 
  * @param port порт сервера
  * @param host хост сервера
  */
-void awh::server::Core::init(const uint16_t sid, const u_int port, const string & host) noexcept {
+void awh::server::Core::init(const uint16_t sid, const uint32_t port, const string & host) noexcept {
 	// Если идентификатор схемы сети передан
 	if(this->has(sid)){
 		// Выполняем поиск идентификатора схемы сети
@@ -2655,8 +2655,8 @@ void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const
 			case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 				// Устанавливаем размер буфера
 				broker->_ectx.buffer(
-					static_cast <int> (!read.empty() ? this->_fmk->sizeBuffer(read) : AWH_BUFFER_SIZE_RCV),
-					static_cast <int> (!write.empty() ? this->_fmk->sizeBuffer(write) : AWH_BUFFER_SIZE_SND)
+					static_cast <int32_t> (!read.empty() ? this->_fmk->sizeBuffer(read) : AWH_BUFFER_SIZE_RCV),
+					static_cast <int32_t> (!write.empty() ? this->_fmk->sizeBuffer(write) : AWH_BUFFER_SIZE_SND)
 				);
 			break;
 			// Если тип сокета установлен как UDP
@@ -2668,9 +2668,9 @@ void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const
 					// Получаем объект схемы сети
 					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 					// Выполняем установку размера буфера сокета для чтения данных
-					this->_socket.bufferSize(shm->_addr.fd, static_cast <int> (!read.empty() ? this->_fmk->sizeBuffer(read) : AWH_BUFFER_SIZE_RCV), socket_t::mode_t::READ);
+					this->_socket.bufferSize(shm->_addr.fd, static_cast <int32_t> (!read.empty() ? this->_fmk->sizeBuffer(read) : AWH_BUFFER_SIZE_RCV), socket_t::mode_t::READ);
 					// Выполняем установку размера буфера сокета для записи данных
-					this->_socket.bufferSize(shm->_addr.fd, static_cast <int> (!write.empty() ? this->_fmk->sizeBuffer(write) : AWH_BUFFER_SIZE_SND), socket_t::mode_t::WRITE);
+					this->_socket.bufferSize(shm->_addr.fd, static_cast <int32_t> (!write.empty() ? this->_fmk->sizeBuffer(write) : AWH_BUFFER_SIZE_SND), socket_t::mode_t::WRITE);
 				}
 			} break;
 		}

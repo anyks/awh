@@ -19,7 +19,7 @@
  * getIPAddresses Метод извлечения IP адресов
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
-void awh::IfNet::getIPAddresses(const int family) noexcept {
+void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 	/**
 	 * Если операционной системой является MacOS X или FreeBSD
 	 */
@@ -33,7 +33,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
 		if(fd == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
@@ -111,7 +111,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
 		if(fd == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
@@ -271,7 +271,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
  * getHWAddresses Метод извлечения MAC адресов
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
-void awh::IfNet::getHWAddresses(const int family) noexcept {
+void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 	/**
 	 * Если операционной системой является MacOS X или FreeBSD
 	 */
@@ -285,7 +285,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
 		if(fd == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
@@ -317,7 +317,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 				// Заполняем нуляем наши буферы
 				::memset(temp, 0, sizeof(temp));
 				// Инициализируем все октеты
-				int a = 0, b = 0, c = 0, d = 0, e = 0, f = 0;
+				int32_t a = 0, b = 0, c = 0, d = 0, e = 0, f = 0;
 				// Получаем сетевой интерфейс
 				struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (&ifr->ifr_addr);
 				// Копируем MAC адрес из сетевого интерфейса
@@ -349,7 +349,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
 		if(fd == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
@@ -474,7 +474,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
  * Метод закрытие подключения
  * @param fd файловый дескриптор (сокет)
  */
-void awh::IfNet::close(const int fd) const noexcept {
+void awh::IfNet::close(const int32_t fd) const noexcept {
 	// Если файловый дескриптор подключён
 	if(fd != INVALID_SOCKET){
 		/**
@@ -482,7 +482,7 @@ void awh::IfNet::close(const int fd) const noexcept {
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие сокета
-			closesocket(fd);
+			::closesocket(fd);
 		/**
 		 * Если операционной системой является Nix-подобная
 		 */
@@ -600,7 +600,7 @@ const string awh::IfNet::name(const string & eth) const noexcept {
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       аппаратный адрес сетевого интерфейса клиента
  */
-const string awh::IfNet::mac(const string & ip, const int family) const noexcept {
+const string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если IP адрес передан
@@ -612,7 +612,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если запрашиваемый адрес IPv6
 			if(family == AF_INET6){
 				// Создаём массив параметров сетевого интерфейса
-				int mib[6];
+				int32_t mib[6];
 				// Размер буфера данных
 				size_t size = 0;
 				// Создаём объект подключения
@@ -674,9 +674,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 							// Проверяем вид интерфейса, если интерфейс локальный и скоуп-ID не установлен
 							if((IN6_IS_ADDR_LINKLOCAL(in6) || IN6_IS_ADDR_MC_LINKLOCAL(in6)) && (sin->sin6_scope_id == 0)){
 								// Принудительно устанавливаем скоуп-ID
-								sin->sin6_scope_id = static_cast <u_int32_t> (ntohs(* reinterpret_cast <u_short *> (&in6->s6_addr[2])));
+								sin->sin6_scope_id = static_cast <uint32_t> (ntohs(* reinterpret_cast <uint16_t *> (&in6->s6_addr[2])));
 								// Выполняем зануление третьего хексета
-								(* reinterpret_cast <u_short *> (&in6->s6_addr[2])) = 0;
+								(* reinterpret_cast <uint16_t *> (&in6->s6_addr[2])) = 0;
 							}
 						}
 					#endif
@@ -715,7 +715,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если запрашиваемый адрес IPv4
 			} else if(family == AF_INET) {
 				// Создаём массив параметров сетевого интерфейса
-				int mib[6];
+				int32_t mib[6];
 				// Размер буфера данных
 				size_t size = 0;
 				// Параметры итератора в буфере
@@ -821,7 +821,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					return result;
 				}
 				// Выделяем сокет для подключения
-				const int fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
+				const SOCKET fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
 				// Если файловый дескриптор не создан, выходим
 				if(fd == INVALID_SOCKET){
 					// Выводим сообщение об ошибке
@@ -936,7 +936,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					return result;
 				}
 				// Выделяем сокет для подключения
-				const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+				const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 				// Если файловый дескриптор не создан, выходим
 				if(fd == INVALID_SOCKET){
 					// Выводим сообщение об ошибке
@@ -1064,7 +1064,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Заполняем буфер данными текущего адреса IPv6
 					inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
 					// Переходим по всему списку подключений
-					for(u_int i = 0; static_cast <u_int> (i) < pipTable->NumEntries; i++){
+					for(uint32_t i = 0; static_cast <uint32_t> (i) < pipTable->NumEntries; i++){
 						// Заполняем нуляем наши буферы
 						::memset(host, 0, INET6_ADDRSTRLEN);
 						// Запрашиваем данные ip адреса
@@ -1189,7 +1189,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       данные мак адреса
  */
-const string awh::IfNet::mac(struct sockaddr * sin, const int family) const noexcept {
+const string awh::IfNet::mac(struct sockaddr * sin, const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
@@ -1234,11 +1234,11 @@ const string awh::IfNet::mac(struct sockaddr * sin, const int family) const noex
  * ip Метод получения основного IP адреса на сервере
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
-const string awh::IfNet::ip(const int family) const noexcept {
+const string awh::IfNet::ip(const int32_t family) const noexcept {
 	// Результат рарботы функции
 	string result = "";
 	// Создаем сокет
-	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+	const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если сокет создан
 	if(fd != INVALID_SOCKET){
 		// Определяем тип интернет протокола
@@ -1258,7 +1258,7 @@ const string awh::IfNet::ip(const int family) const noexcept {
 				// Указываем адрес DNS сервера
 				serv.sin_addr.s_addr = inet_addr(dns.front().c_str());
 				// Выполняем подключение к серверу
-				int conn = ::connect(fd, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
+				int32_t conn = ::connect(fd, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
 				// Если подключение удачное
 				if(conn > -1){
 					// Создаем структуру имени
@@ -1295,7 +1295,7 @@ const string awh::IfNet::ip(const int family) const noexcept {
 				// Указываем адреса
 				inet_pton(family, dns.front().c_str(), &serv.sin6_addr);
 				// Выполняем подключение к серверу
-				int conn = ::connect(fd, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
+				int32_t conn = ::connect(fd, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
 				// Если подключение удачное
 				if(conn > -1){
 					// Создаем структуру имени
@@ -1330,7 +1330,7 @@ const string awh::IfNet::ip(const int family) const noexcept {
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       IP адрес соответствующий сетевому интерфейсу
  */
-const string & awh::IfNet::ip(const string & eth, const int family) const noexcept {
+const string & awh::IfNet::ip(const string & eth, const int32_t family) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Если сетевой интерфейс получен
@@ -1366,7 +1366,7 @@ const string & awh::IfNet::ip(const string & eth, const int family) const noexce
  * @param family тип интернет протокола
  * @return       данные ip адреса
  */
-const string awh::IfNet::ip(struct sockaddr * sin, const int family) const noexcept {
+const string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы

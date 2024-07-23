@@ -269,7 +269,7 @@ void awh::server::Websocket2::callbacksEvents(const fn_t::event_t event, const u
  * @param bid идентификатор брокера
  * @return    статус полученных данных
  */
-int awh::server::Websocket2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
+int32_t awh::server::Websocket2::beginSignal(const int32_t sid, const uint64_t bid) noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -297,7 +297,7 @@ int awh::server::Websocket2::beginSignal(const int32_t sid, const uint64_t bid) 
  * @param error флаг ошибки если присутствует
  * @return      статус полученных данных
  */
-int awh::server::Websocket2::closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept {
+int32_t awh::server::Websocket2::closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept {
 	// Если разрешено выполнить остановку
 	if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE))
 		// Выполняем закрытие подключения
@@ -317,7 +317,7 @@ int awh::server::Websocket2::closedSignal(const int32_t sid, const uint64_t bid,
  * @param val данные значения заголовка
  * @return    статус полученных данных
  */
-int awh::server::Websocket2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
+int32_t awh::server::Websocket2::headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -340,7 +340,7 @@ int awh::server::Websocket2::headerSignal(const int32_t sid, const uint64_t bid,
  * @param size   размер полученного буфера данных чанка
  * @return       статус полученных данных
  */
-int awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
+int32_t awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept {
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -386,7 +386,7 @@ int awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t bid, 
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
+int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
@@ -592,7 +592,7 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 							// Если рукопожатие не выполнено
 							if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 								// Ответ клиенту по умолчанию успешный
-								awh::web_t::res_t response(2.0f, static_cast <u_int> (200));
+								awh::web_t::res_t response(2.0f, static_cast <uint32_t> (200));
 								/**
 								 * Если включён режим отладки
 								 */
@@ -625,7 +625,7 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 											// Проверяем версию протокола
 											if(!options->http.check(ws_core_t::flag_t::VERSION)){
 												// Получаем бинарные данные REST запроса
-												response = awh::web_t::res_t(2.0f, static_cast <u_int> (505), "Unsupported protocol version");
+												response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (505), "Unsupported protocol version");
 												// Завершаем работу
 												break;
 											}
@@ -727,17 +727,17 @@ int awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, 
 												// Завершаем работу
 												return 0;
 											// Формируем ответ, что произошла внутренняя ошибка сервера
-											} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (500));
+											} else response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (500));
 										// Формируем ответ, что страница не доступна
-										} else response = awh::web_t::res_t(2.0f, static_cast <u_int> (403), "Handshake failed");
+										} else response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (403), "Handshake failed");
 									} break;
 									// Если запрос неудачный
 									case static_cast <uint8_t> (http_t::status_t::FAULT):
 										// Формируем ответ на запрос об авторизации
-										response = awh::web_t::res_t(2.0f, static_cast <u_int> (401));
+										response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (401));
 									break;
 									// Если результат определить не получилось
-									default: response = awh::web_t::res_t(2.0f, static_cast <u_int> (506), "Unknown request");
+									default: response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (506), "Unknown request");
 								}
 								// Выполняем очистку HTTP-парсера
 								options->http.clear();
@@ -880,7 +880,7 @@ void awh::server::Websocket2::error(const uint64_t bid, const ws::mess_t & messa
 			// Если функция обратного вызова при получении ошибки Websocket установлена
 			if(this->_callbacks.is("errorWebsocket"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", bid, message.code, message.text);
+				this->_callbacks.call <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", bid, message.code, message.text);
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -1186,7 +1186,7 @@ void awh::server::Websocket2::init(const string & socket, const vector <http_t::
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Websocket2::init(const u_int port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
+void awh::server::Websocket2::init(const uint32_t port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем писок поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
 	// Выполняем инициализацию родительского объекта
@@ -1473,7 +1473,7 @@ void awh::server::Websocket2::callbacks(const fn_t & callbacks) noexcept {
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-u_int awh::server::Websocket2::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::Websocket2::port(const uint64_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.port(bid);
 }
@@ -1674,7 +1674,7 @@ void awh::server::Websocket2::multiThreads(const uint16_t count, const bool mode
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::Websocket2::total(const u_short total) noexcept {
+void awh::server::Websocket2::total(const uint16_t total) noexcept {
 	// Если объект сетевого ядра инициализирован
 	if(this->_core != nullptr)
 		// Устанавливаем максимальное количество одновременных подключений
@@ -1707,26 +1707,26 @@ void awh::server::Websocket2::segmentSize(const size_t size) noexcept {
 	else this->_settings.emplace(http2_t::settings_t::FRAME_SIZE, static_cast <uint32_t> (this->_frameSize));
 }
 /**
- * keepAlive Метод установки жизни подключения
- * @param cnt   максимальное количество попыток
- * @param idle  интервал времени в секундах через которое происходит проверка подключения
- * @param intvl интервал времени в секундах между попытками
- */
-void awh::server::Websocket2::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
-	// Выполняем установку максимального количества попыток
-	this->_scheme.keepAlive.cnt = cnt;
-	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-	this->_scheme.keepAlive.idle = idle;
-	// Выполняем установку интервала времени в секундах между попытками
-	this->_scheme.keepAlive.intvl = intvl;
-}
-/**
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::server::Websocket2::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем список поддерживаемых компрессоров
 	this->_scheme.compressors = compressors;
+}
+/**
+ * keepAlive Метод установки жизни подключения
+ * @param cnt   максимальное количество попыток
+ * @param idle  интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl интервал времени в секундах между попытками
+ */
+void awh::server::Websocket2::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Выполняем установку максимального количества попыток
+	this->_scheme.keepAlive.cnt = cnt;
+	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
+	this->_scheme.keepAlive.idle = idle;
+	// Выполняем установку интервала времени в секундах между попытками
+	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
  * mode Метод установки флагов настроек модуля
@@ -1808,7 +1808,7 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 		// Устанавливаем функцию записи данных
 		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
 		// Добавляем событие аццепта брокера
-		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -2015,7 +2015,7 @@ awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * f
 	// Устанавливаем функцию записи данных
 	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 }
 /**
  * ~Websocket2 Деструктор

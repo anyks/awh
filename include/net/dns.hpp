@@ -36,7 +36,7 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
-	#define SOCKET int
+	#define SOCKET int32_t
 	#define INVALID_SOCKET -1
 #endif
 
@@ -209,7 +209,7 @@ namespace awh {
 					 * @param type   тип бинарного буфера данных
 					 * @param family тип интернет-протокола AF_INET, AF_INET6
 					 */
-					void clear(const type_t type, const int family = AF_INET6) noexcept;
+					void clear(const type_t type, const int32_t family = AF_INET6) noexcept;
 				public:
 					/**
 					 * size Метод получения размера буфера
@@ -217,7 +217,7 @@ namespace awh {
 					 * @param family тип интернет-протокола AF_INET, AF_INET6
 					 * @return       размер бинарного буфера данных
 					 */
-					size_t size(const type_t type, const int family = AF_INET6) const noexcept;
+					size_t size(const type_t type, const int32_t family = AF_INET6) const noexcept;
 				public:
 					/**
 					 * Buffer Конструктор
@@ -295,7 +295,7 @@ namespace awh {
 					bool _mode;
 				private:
 					// Тип протокола интернета AF_INET или AF_INET6
-					int _family;
+					int32_t _family;
 				private:
 					// Тип DNS-запроса
 					q_type_t _qtype;
@@ -378,7 +378,7 @@ namespace awh {
 					 * @param family тип протокола интернета AF_INET или AF_INET6
 					 * @param self   объект DNS-резолвера
 					 */
-					Worker(const int family, const DNS * self) noexcept :
+					Worker(const int32_t family, const DNS * self) noexcept :
 					 _fd(INVALID_SOCKET), _mode(false), _family(family),
 					 _qtype(q_type_t::IP), _socket(self->_fmk, self->_log), _self(self) {}
 					/**
@@ -459,13 +459,13 @@ namespace awh {
 			 * cancel Метод отмены выполнения запроса
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 */
-			void cancel(const int family) noexcept;
+			void cancel(const int32_t family) noexcept;
 		public:
 			/**
 			 * shuffle Метод пересортировки серверов DNS
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 */
-			void shuffle(const int family) noexcept;
+			void shuffle(const int32_t family) noexcept;
 		public:
 			/**
 			 * timeout Метод установки времени ожидания выполнения запроса
@@ -479,7 +479,7 @@ namespace awh {
 			 * @param domain доменное имя соответствующее IP-адресу
 			 * @return       IP-адрес находящийся в кэше
 			 */
-			string cache(const int family, const string & domain) noexcept;
+			string cache(const int32_t family, const string & domain) noexcept;
 		public:
 			/**
 			 * clearCache Метод очистки кэша для указанного доменного имени
@@ -491,7 +491,7 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param domain доменное имя для которого выполняется очистка кэша
 			 */
-			void clearCache(const int family, const string & domain) noexcept;
+			void clearCache(const int32_t family, const string & domain) noexcept;
 		public:
 			/**
 			 * clearCache Метод очистки кэша
@@ -503,7 +503,7 @@ namespace awh {
 			 * @param family    тип интернет-протокола AF_INET, AF_INET6
 			 * @param localhost флаг обозначающий добавление локального адреса
 			 */
-			void clearCache(const int family, const bool localhost = false) noexcept;
+			void clearCache(const int32_t family, const bool localhost = false) noexcept;
 		public:
 			/**
 			 * setToCache Метод добавления IP-адреса в кэш
@@ -521,7 +521,7 @@ namespace awh {
 			 * @param ttl       время жизни кэша доменного имени
 			 * @param localhost флаг обозначающий добавление локального адреса
 			 */
-			void setToCache(const int family, const string & domain, const string & ip, const time_t ttl, const bool localhost = false) noexcept;
+			void setToCache(const int32_t family, const string & domain, const string & ip, const time_t ttl, const bool localhost = false) noexcept;
 		public:
 			/**
 			 * clearBlackList Метод очистки чёрного списка
@@ -533,7 +533,7 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param domain доменное имя для которого очищается чёрный список
 			 */
-			void clearBlackList(const int family, const string & domain) noexcept;
+			void clearBlackList(const int32_t family, const string & domain) noexcept;
 		public:
 			/**
 			 * delInBlackList Метод удаления IP-адреса из чёрного списока
@@ -547,7 +547,7 @@ namespace awh {
 			 * @param domain доменное имя соответствующее IP-адресу
 			 * @param ip     адрес для удаления из чёрного списка
 			 */
-			void delInBlackList(const int family, const string & domain, const string & ip) noexcept;
+			void delInBlackList(const int32_t family, const string & domain, const string & ip) noexcept;
 		public:
 			/**
 			 * setToBlackList Метод добавления IP-адреса в чёрный список
@@ -561,7 +561,7 @@ namespace awh {
 			 * @param domain доменное имя соответствующее IP-адресу
 			 * @param ip     адрес для добавления в чёрный список
 			 */
-			void setToBlackList(const int family, const string & domain, const string & ip) noexcept;
+			void setToBlackList(const int32_t family, const string & domain, const string & ip) noexcept;
 		public:
 			/**
 			 * isInBlackList Метод проверки наличия IP-адреса в чёрном списке
@@ -577,14 +577,14 @@ namespace awh {
 			 * @param ip     адрес для проверки наличия в чёрном списке
 			 * @return       результат проверки наличия IP-адреса в чёрном списке
 			 */
-			bool isInBlackList(const int family, const string & domain, const string & ip) const noexcept;
+			bool isInBlackList(const int32_t family, const string & domain, const string & ip) const noexcept;
 		public:
 			/**
 			 * server Метод получения данных сервера имён
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @return       запрошенный сервер имён
 			 */
-			string server(const int family) noexcept;
+			string server(const int32_t family) noexcept;
 		public:
 			/**
 			 * server Метод добавления сервера DNS
@@ -596,7 +596,7 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param server адрес DNS-сервера
 			 */
-			void server(const int family, const string & server) noexcept;
+			void server(const int32_t family, const string & server) noexcept;
 		public:
 			/**
 			 * servers Метод добавления серверов DNS
@@ -608,7 +608,7 @@ namespace awh {
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param servers адреса DNS-серверов
 			 */
-			void servers(const int family, const vector <string> & servers) noexcept;
+			void servers(const int32_t family, const vector <string> & servers) noexcept;
 		public:
 			/**
 			 * replace Метод замены существующих серверов DNS
@@ -620,7 +620,7 @@ namespace awh {
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param servers адреса DNS-серверов
 			 */
-			void replace(const int family, const vector <string> & servers = {}) noexcept;
+			void replace(const int32_t family, const vector <string> & servers = {}) noexcept;
 		public:
 			/**
 			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
@@ -632,7 +632,7 @@ namespace awh {
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param network IP-адреса сетевых плат
 			 */
-			void network(const int family, const vector <string> & network) noexcept;
+			void network(const int32_t family, const vector <string> & network) noexcept;
 		public:
 			/**
 			 * prefix Метод установки префикса переменной окружения
@@ -658,7 +658,7 @@ namespace awh {
 			 * @param name   название сервера
 			 * @return       полученный IP-адрес
 			 */
-			string host(const int family, const string & name) noexcept;
+			string host(const int32_t family, const string & name) noexcept;
 		public:
 			/**
 			 * resolve Метод ресолвинга домена
@@ -672,7 +672,7 @@ namespace awh {
 			 * @param host   хост сервера
 			 * @return       полученный IP-адрес
 			 */
-			string resolve(const int family, const string & host) noexcept;
+			string resolve(const int32_t family, const string & host) noexcept;
 		public:
 			/**
 			 * search Метод поиска доменного имени соответствующего IP-адресу
@@ -686,7 +686,7 @@ namespace awh {
 			 * @param ip     адрес для поиска доменного имени
 			 * @return       список найденных доменных имён
 			 */
-			vector <string> search(const int family, const string & ip) noexcept;
+			vector <string> search(const int32_t family, const string & ip) noexcept;
 		public:
 			/**
 			 * DNS Конструктор

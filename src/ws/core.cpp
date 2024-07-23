@@ -281,13 +281,13 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 					// Если нужно сформировать данные запроса
 					case static_cast <uint8_t> (process_t::REQUEST): {
 						// Если размер скользящего окна клиента установлен как максимальный
-						if(this->_client.wbit == static_cast <short> (GZIP_MAX_WBITS))
+						if(this->_client.wbit == static_cast <int16_t> (GZIP_MAX_WBITS))
 							// Добавляем максимальный размер скользящего окна
 							extensions.push_back({"client_max_window_bits"});
 						// Выполняем установку указанного размера скользящего окна
 						else extensions.push_back({this->_fmk->format("client_max_window_bits=%u", this->_client.wbit)});
 						// Если размер скользящего окна сервера установлен как максимальный
-						if(this->_server.wbit == static_cast <short> (GZIP_MAX_WBITS))
+						if(this->_server.wbit == static_cast <int16_t> (GZIP_MAX_WBITS))
 							// Добавляем максимальный размер скользящего окна
 							extensions.push_back({"server_max_window_bits"});
 						// Выполняем установку указанного размера скользящего окна сервера
@@ -306,7 +306,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 		// Если данные должны быть зашифрованны
 		if(this->_encryption)
 			// Выполняем установку указанного метода шифрования
-			extensions.push_back({this->_fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->_hash.cipher()))});
+			extensions.push_back({this->_fmk->format("permessage-encrypt=%u", static_cast <uint16_t> (this->_hash.cipher()))});
 		// Если список расширений не пустой
 		if(!this->_extensions.empty())
 			// Добавляем к списку расширений пользовательские расширения
@@ -370,7 +370,7 @@ const string awh::WCore::key() const noexcept {
 		// Резервируем память
 		nonce.reserve(16);
 		// Формируем равномерное распределение целых чисел в выходном инклюзивно-эксклюзивном диапазоне
-		uniform_int_distribution <u_short> dist(0, 255);
+		uniform_int_distribution <uint16_t> dist(0, 255);
 		// Формируем бинарный ключ из случайных значений
 		for(size_t c = 0; c < 16; c++)
 			// Выполняем формирование ключа
@@ -605,7 +605,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем размер скользящего окна
-					this->_client.wbit = static_cast <short> (::stoi(extension.substr(23)));
+					this->_client.wbit = static_cast <int16_t> (::stoi(extension.substr(23)));
 					// Если размер скользящего окна установлен неправильно
 					if((this->_client.wbit < GZIP_MIN_WBITS) || (this->_client.wbit > GZIP_MAX_WBITS)){
 						// Выводим сообщение об ошибке
@@ -619,7 +619,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Устанавливаем размер скользящего окна
-					this->_client.wbit = static_cast <short> (::stoi(extension.substr(23)));
+					this->_client.wbit = static_cast <int16_t> (::stoi(extension.substr(23)));
 					// Если размер скользящего окна установлен слишком маленький
 					if(this->_client.wbit < GZIP_MIN_WBITS)
 						// Выполняем корректировку размера скользящего окна
@@ -652,7 +652,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
 					// Устанавливаем размер скользящего окна
-					this->_server.wbit = static_cast <short> (::stoi(extension.substr(23)));
+					this->_server.wbit = static_cast <int16_t> (::stoi(extension.substr(23)));
 					// Если размер скользящего окна установлен неправильно
 					if((this->_server.wbit < GZIP_MIN_WBITS) || (this->_server.wbit > GZIP_MAX_WBITS)){
 						// Выводим сообщение об ошибке
@@ -666,7 +666,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				// Если флаг текущего модуля соответствует серверу
 				case static_cast <uint8_t> (web_t::hid_t::SERVER): {
 					// Устанавливаем размер скользящего окна
-					this->_server.wbit = static_cast <short> (::stoi(extension.substr(23)));
+					this->_server.wbit = static_cast <int16_t> (::stoi(extension.substr(23)));
 					// Если размер скользящего окна установлен слишком маленький
 					if(this->_server.wbit < GZIP_MIN_WBITS)
 						// Выполняем корректировку размера скользящего окна
@@ -1181,7 +1181,7 @@ bool awh::WCore::check(const flag_t flag) noexcept {
  * @param hid тип модуля
  * @return    размер скользящего окна
  */
-short awh::WCore::wbit(const web_t::hid_t hid) const noexcept {
+int16_t awh::WCore::wbit(const web_t::hid_t hid) const noexcept {
 	// Определяем флаг типа текущего модуля
 	switch(static_cast <uint8_t> (hid)){
 		// Если флаг текущего модуля соответствует клиенту

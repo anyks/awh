@@ -94,7 +94,7 @@ namespace awh {
 				} payload_t;
 			private:
 				// Порт сервера
-				u_int _port;
+				uint32_t _port;
 				// Хости сервера
 				string _host;
 				// unix-сокет сервера
@@ -147,7 +147,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @return     результат разрешения к подключению клиента
 				 */
-				bool acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept;
+				bool acceptEvents(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * connectClientEvents Метод обратного вызова при подключении
@@ -220,7 +220,7 @@ namespace awh {
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
-				void init(const u_int port = 1080, const string & host = "") noexcept;
+				void init(const uint32_t port = 1080, const string & host = "") noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -266,7 +266,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				u_int port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint64_t bid) const noexcept;
 				/**
 				 * ip Метод получения IP-адреса брокера
 				 * @param bid идентификатор брокера
@@ -328,7 +328,7 @@ namespace awh {
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const u_short total) noexcept;
+				void total(const uint16_t total) noexcept;
 			public:
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
@@ -354,13 +354,6 @@ namespace awh {
 				 */
 				void ipV6only(const bool mode) noexcept;
 				/**
-				 * keepAlive Метод установки жизни подключения
-				 * @param cnt   максимальное количество попыток
-				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
-				 * @param intvl интервал времени в секундах между попытками
-				 */
-				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
-				/**
 				 * sonet Метод установки типа сокета подключения
 				 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 				 */
@@ -370,6 +363,13 @@ namespace awh {
 				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 				 */
 				void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+				/**
+				 * keepAlive Метод установки жизни подключения
+				 * @param cnt   максимальное количество попыток
+				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
+				 * @param intvl интервал времени в секундах между попытками
+				 */
+				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 				/**
 				 * bandwidth Метод установки пропускной способности сети
 				 * @param bid   идентификатор брокера

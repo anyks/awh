@@ -101,7 +101,7 @@ bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
 		// Создаём объект матчинга
 		regmatch_t match[1];
 		// Выполняем разбор регулярного выражения
-		const int error = pcre2_regexec(&exp._reg, text.c_str(), 1, match, REG_NOTEMPTY);
+		const int32_t error = pcre2_regexec(&exp._reg, text.c_str(), 1, match, REG_NOTEMPTY);
 		// Если возникла ошибка
 		if(!(result = (error == 0))){
 			// Создаём буфер данных для извлечения данных ошибки
@@ -140,7 +140,7 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
 			// Создаём объект матчинга
 			unique_ptr <regmatch_t []> match(new regmatch_t [exp._reg.re_nsub + 1]);
 			// Выполняем разбор регулярного выражения
-			const int error = pcre2_regexec(&exp._reg, str, exp._reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
+			const int32_t error = pcre2_regexec(&exp._reg, str, exp._reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
 			// Если возникла ошибка
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
@@ -188,7 +188,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 	// Если регулярное выражение передано
 	if(!pattern.empty()){
 		// Список основных опций
-		int option = 0;
+		int32_t option = 0;
 		// Если опции переданы
 		if(!options.empty()){
 			// Выполняем перебор всех переданных опций
@@ -234,7 +234,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 			}
 		}
 		// Выполняем компиляцию регулярного выражения
-		const int error = pcre2_regcomp(&result._reg, pattern.c_str(), option);
+		const int32_t error = pcre2_regcomp(&result._reg, pattern.c_str(), option);
 		// Если возникла ошибка компиляции
 		if(!(result._mode = (error == 0))){
 			// Создаём буфер данных для извлечения данных ошибки

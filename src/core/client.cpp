@@ -1520,7 +1520,7 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 						break;
 					}
 					// Получаем максимальный размер буфера
-					const int max = broker->_ectx.buffer(engine_t::method_t::WRITE);
+					const int32_t max = broker->_ectx.buffer(engine_t::method_t::WRITE);
 					// Если в буфере нет места
 					if(max > 0){
 						// Определяем тип сокета
@@ -1617,7 +1617,7 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::client::Core::work(const uint16_t sid, const string & ip, const int family) noexcept {
+void awh::client::Core::work(const uint16_t sid, const string & ip, const int32_t family) noexcept {
 	// Выполняем поиск идентификатора схемы сети
 	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден

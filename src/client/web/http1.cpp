@@ -214,7 +214,7 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 									// Выполняем функцию обратного вызова
 									this->_callbacks.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, rid, direct_t::RECV);
 								// Получаем параметры запроса
-								const u_int code = this->_http.response().code;
+								const uint32_t code = this->_http.response().code;
 								// Выполняем очистку параметров HTTP-запроса
 								this->_http.clear();
 								// Выполняем сброс состояния HTTP-парсера
@@ -419,7 +419,7 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid) noexce
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  */
-void awh::client::Http1::response(const uint64_t bid, const u_int code, const string & message) noexcept {
+void awh::client::Http1::response(const uint64_t bid, const uint32_t code, const string & message) noexcept {
 	// Выполняем неиспользуемую переменную
 	(void) bid;
 	// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
@@ -427,7 +427,7 @@ void awh::client::Http1::response(const uint64_t bid, const u_int code, const st
 		// Выполняем получение первого запроса
 		auto i = this->_requests.begin();
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", i->first, i->second.id, code, message);
+		this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", i->first, i->second.id, code, message);
 	}
 }
 /**
@@ -454,7 +454,7 @@ void awh::client::Http1::header(const uint64_t bid, const string & key, const st
  * @param message сообщение ответа сервера
  * @param headers заголовки ответа сервера
  */
-void awh::client::Http1::headers(const uint64_t bid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::Http1::headers(const uint64_t bid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем неиспользуемую переменную
 	(void) bid;
 	// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
@@ -462,7 +462,7 @@ void awh::client::Http1::headers(const uint64_t bid, const u_int code, const str
 		// Выполняем получение первого запроса
 		auto i = this->_requests.begin();
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", i->first, i->second.id, code, message, headers);
+		this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", i->first, i->second.id, code, message, headers);
 	}
 }
 /**
@@ -704,11 +704,11 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(this->_callbacks.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 				// Устанавливаем размер стопбайт
@@ -739,11 +739,11 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 				if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 					// Устанавливаем полученную функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(this->_callbacks.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 			}
@@ -760,11 +760,11 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 		if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 			// Устанавливаем полученную функцию обратного вызова
-			this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
+			this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity"), sid, i->second.id, response.code, response.message, this->_http.body());
 		// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 		if(this->_callbacks.is("complete"))
 			// Выполняем функцию обратного вызова
-			this->_resultCallback.set <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const u_int, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+			this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 		// Выполняем завершение запроса
 		this->result(sid);
 	}
@@ -1449,13 +1449,13 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&http1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
-	this->_http.callback <void (const uint64_t, const u_int, const string &)> ("response", std::bind(&http1_t::response, this, _1, _2, _3));
+	this->_http.callback <void (const uint64_t, const uint32_t, const string &)> ("response", std::bind(&http1_t::response, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&http1_t::chunking, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http1_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
-	this->_http.callback <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&http1_t::headers, this, _1, _2, _3, _4));
+	this->_http.callback <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&http1_t::headers, this, _1, _2, _3, _4));
 }
 /**
  * Http1 Конструктор
@@ -1470,13 +1470,13 @@ awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const 
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&http1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
-	this->_http.callback <void (const uint64_t, const u_int, const string &)> ("response", std::bind(&http1_t::response, this, _1, _2, _3));
+	this->_http.callback <void (const uint64_t, const uint32_t, const string &)> ("response", std::bind(&http1_t::response, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&http1_t::chunking, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http1_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
-	this->_http.callback <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&http1_t::headers, this, _1, _2, _3, _4));
+	this->_http.callback <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&http1_t::headers, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
 	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
 }

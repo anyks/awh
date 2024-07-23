@@ -56,7 +56,7 @@ namespace awh {
 			 * Uri Структура ответа
 			 */
 			typedef struct Uri {
-				u_int port;    // Порт запроса если существует
+				uint32_t port;    // Порт запроса если существует
 				types_t type;  // Тип URI
 				string uri;    // Полный URI
 				string host;   // Хост URL адреса

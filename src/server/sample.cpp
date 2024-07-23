@@ -151,7 +151,7 @@ void awh::server::Sample::writeCallback(const char * buffer, const size_t size, 
  * @param sid  идентификатор схемы сети
  * @return     результат разрешения к подключению брокера
  */
-bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept {
+bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
@@ -159,7 +159,7 @@ bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, 
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("accept"))
 			// Выводим функцию обратного вызова
-			return this->_callbacks.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
+			return this->_callbacks.call <bool (const string &, const string &, const uint32_t)> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение брокеру
 	return result;
@@ -229,7 +229,7 @@ void awh::server::Sample::init(const string & socket) noexcept {
  * @param port порт сервера
  * @param host хост сервера
  */
-void awh::server::Sample::init(const u_int port, const string & host) noexcept {
+void awh::server::Sample::init(const uint32_t port, const string & host) noexcept {
 	// Устанавливаем порт сервера
 	this->_port = port;
 	// Устанавливаем хост сервера
@@ -279,7 +279,7 @@ void awh::server::Sample::send(const uint64_t bid, const char * buffer, const si
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-u_int awh::server::Sample::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::Sample::port(const uint64_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.port(bid);
 }
@@ -369,7 +369,7 @@ void awh::server::Sample::waitTimeDetect(const time_t read, const time_t write) 
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::Sample::total(const u_short total) noexcept {
+void awh::server::Sample::total(const uint16_t total) noexcept {
 	// Устанавливаем максимальное количество одновременных подключений
 	const_cast <server::core_t *> (this->_core)->total(this->_scheme.id, total);
 }
@@ -391,7 +391,7 @@ void awh::server::Sample::mode(const set <flag_t> & flags) noexcept {
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
  */
-void awh::server::Sample::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
+void awh::server::Sample::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Выполняем установку максимального количества попыток
 	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
@@ -406,7 +406,7 @@ void awh::server::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _alive(false), _pinging(true), _complete(true),
+ _pid(::getpid()), _alive(false), _pinging(true), _complete(true),
  _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log), _callbacks(log),
  _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
@@ -426,5 +426,5 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 	// Устанавливаем функцию записи данных
 	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&sample_t::writeCallback, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const u_int, const uint64_t)> ("accept", std::bind(&sample_t::acceptCallback, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&sample_t::acceptCallback, this, _1, _2, _3, _4));
 }

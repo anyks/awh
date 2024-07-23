@@ -191,7 +191,7 @@ namespace awh {
 			/**
 			 * signal Метод вывода полученного сигнала
 			 */
-			void signal(const int signal) noexcept;
+			void signal(const int32_t signal) noexcept;
 		public:
 			/**
 			 * rebase Метод пересоздания базы событий

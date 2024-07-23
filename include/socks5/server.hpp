@@ -45,9 +45,9 @@ namespace awh {
 				 * Server Структура параметров запрашиваемого сервера
 				 */
 				typedef struct Server {
-					int family;  // Тип хоста сервера IPv4/IPv6
-					u_int port;  // Порт сервера
-					string host; // Хост сервера
+					int32_t family; // Тип хоста сервера IPv4/IPv6
+					uint32_t port;  // Порт сервера
+					string host;    // Хост сервера
 					/**
 					 * Server Конструктор
 					 */

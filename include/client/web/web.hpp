@@ -119,7 +119,7 @@ namespace awh {
 					int32_t sid;  // Идентификатор потока HTTP/2
 					bool mode;    // Флаг активации работы прокси-сервера
 					bool connect; // Флаг применения метода CONNECT
-					u_int answer; // Статус ответа прокси-сервера
+					uint32_t answer; // Статус ответа прокси-сервера
 					/**
 					 * Proxy Конструктор
 					 */
@@ -439,17 +439,17 @@ namespace awh {
 				 */
 				virtual void core(const client::core_t * core) noexcept;
 				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				void compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept;
+				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
-				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
-				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
-				 * @param compressors список поддерживаемых компрессоров
-				 */
-				void compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept;
+				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля
@@ -578,7 +578,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept;
+				int32_t frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
 				 * @param sid    идентификатор потока
@@ -587,7 +587,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
+				virtual int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
 			protected:
 				/**
 				 * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
@@ -596,7 +596,7 @@ namespace awh {
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				int chunkProxySignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
+				int32_t chunkProxySignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
 				 * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
 				 * @param sid    идентификатор потока
@@ -604,20 +604,20 @@ namespace awh {
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				virtual int chunkSignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
+				virtual int32_t chunkSignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
 			protected:
 				/**
 				 * beginProxySignal Метод начала получения фрейма заголовков HTTP/2 прокси-сервера
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
-				int beginProxySignal(const int32_t sid) noexcept;
+				int32_t beginProxySignal(const int32_t sid) noexcept;
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
-				virtual int beginSignal(const int32_t sid) noexcept = 0;
+				virtual int32_t beginSignal(const int32_t sid) noexcept = 0;
 			protected:
 				/**
 				 * streamClosedSignal Метод завершения работы потока
@@ -625,7 +625,7 @@ namespace awh {
 				 * @param error флаг ошибки если присутствует
 				 * @return      статус полученных данных
 				 */
-				virtual int closedSignal(const int32_t sid, const http2_t::error_t error) noexcept = 0;
+				virtual int32_t closedSignal(const int32_t sid, const http2_t::error_t error) noexcept = 0;
 			protected:
 				/**
 				 * headerProxySignal Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера
@@ -634,7 +634,7 @@ namespace awh {
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				int headerProxySignal(const int32_t sid, const string & key, const string & val) noexcept;
+				int32_t headerProxySignal(const int32_t sid, const string & key, const string & val) noexcept;
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
 				 * @param sid идентификатор потока
@@ -642,7 +642,7 @@ namespace awh {
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				virtual int headerSignal(const int32_t sid, const string & key, const string & val) noexcept = 0;
+				virtual int32_t headerSignal(const int32_t sid, const string & key, const string & val) noexcept = 0;
 			protected:
 				/**
 				 * statusEvent Метод обратного вызова при активации ядра сервера

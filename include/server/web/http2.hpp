@@ -115,7 +115,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    статус полученных данных
 				 */
-				int beginSignal(const int32_t sid, const uint64_t bid) noexcept;
+				int32_t beginSignal(const int32_t sid, const uint64_t bid) noexcept;
 				/**
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
@@ -123,7 +123,7 @@ namespace awh {
 				 * @param error флаг ошибки если присутствует
 				 * @return      статус полученных данных
 				 */
-				int closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept;
+				int32_t closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept;
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
 				 * @param sid идентификатор потока
@@ -132,7 +132,7 @@ namespace awh {
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
+				int32_t headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
 				/**
 				 * chunkSignal Метод обратного вызова при получении чанка HTTP/2
 				 * @param sid    идентификатор потока
@@ -141,7 +141,7 @@ namespace awh {
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				int chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept;
+				int32_t chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
 				 * @param sid    идентификатор потока
@@ -151,7 +151,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
@@ -219,7 +219,7 @@ namespace awh {
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const u_int port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
+				void init(const uint32_t port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
@@ -272,7 +272,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 				/**
 				 * send Метод отправки сообщения брокеру
 				 * @param sid     идентификатор потока HTTP
@@ -282,7 +282,7 @@ namespace awh {
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const int32_t sid, const uint64_t bid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
+				void send(const int32_t sid, const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
@@ -360,7 +360,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				u_int port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint64_t bid) const noexcept;
 				/**
 				 * agent Метод извлечения агента клиента
 				 * @param bid идентификатор брокера
@@ -441,24 +441,24 @@ namespace awh {
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const u_short total) noexcept;
+				void total(const uint16_t total) noexcept;
 				/**
 				 * segmentSize Метод установки размеров сегментов фрейма
 				 * @param size минимальный размер сегмента
 				 */
 				void segmentSize(const size_t size) noexcept;
 				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
+				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
-				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
-				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
-				 * @param compressors список поддерживаемых компрессоров
-				 */
-				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
+				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

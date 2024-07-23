@@ -28,7 +28,7 @@
 	 * @param pid    идентификатор упавшего процесса
 	 * @param status статус остановившегося процесса
 	 */
-	void awh::Cluster::Worker::process(const pid_t pid, const int status) noexcept {
+	void awh::Cluster::Worker::process(const pid_t pid, const int32_t status) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->mtx);
 		// Выполняем поиск брокера
@@ -95,7 +95,7 @@
 		// Идентификатор упавшего процесса
 		pid_t pid = 0;
 		// Статус упавшего процесса
-		int status = 0;
+		int32_t status = 0;
 		// Выполняем получение идентификатора упавшего процесса
 		while((pid = waitpid(-1, &status, WNOHANG)) > 0){
 			// Если работа процесса завершена
@@ -176,7 +176,7 @@
 						}
 					}
 					// Размер входящих сообщений
-					const int bytes = ::read(fd, this->_buffer, sizeof(this->_buffer));
+					const int32_t bytes = ::read(fd, this->_buffer, sizeof(this->_buffer));
 					// Если сообщение получено полностью
 					if(bytes != 0){
 						// Если данные прочитанны правильно
@@ -273,7 +273,7 @@
 							return;
 						}
 						// Размер входящих сообщений
-						const int bytes = ::read(fd, this->_buffer, sizeof(this->_buffer));
+						const int32_t bytes = ::read(fd, this->_buffer, sizeof(this->_buffer));
 						// Если сообщение получено полностью
 						if(bytes != 0){
 							// Если данные прочитанны правильно

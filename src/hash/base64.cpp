@@ -24,9 +24,9 @@
  * @param mode режим работы (false - кодирование, true - декодирование)
  * @return     размер полученных данных
  */
-int awh::Base64::base64(const u_char * in, char * out, u_int sin, u_int sout, const bool mode) const noexcept {
+int32_t awh::Base64::base64(const u_char * in, char * out, uint32_t sin, uint32_t sout, const bool mode) const noexcept {
 	// Результат
-	int result = 0;
+	int32_t result = 0;
 	// Инициализируем объекты
 	BIO * b64 = BIO_new(BIO_f_base64());
 	BIO * bio = BIO_new(BIO_s_mem());
@@ -73,7 +73,7 @@ string awh::Base64::encode(const string & str) const noexcept {
 		// Буфер для кодирования
 		vector <char> buffer((4 * ((str.size() + 2) / 3)) + 1, 0);
 		// Выполняем кодирование
-		const int size = this->base64(reinterpret_cast <const u_char *> (str.c_str()), buffer.data(), str.size(), buffer.size(), false);
+		const int32_t size = this->base64(reinterpret_cast <const u_char *> (str.c_str()), buffer.data(), str.size(), buffer.size(), false);
 		// Если размер строки получен
 		if(size > 0)
 			// Выполняем получение строки
@@ -95,7 +95,7 @@ string awh::Base64::decode(const string & str) const noexcept {
 		// Буфер для декодирования
 		vector <char> buffer((3 * str.size() / 4) + 1, 0);
 		// Выполняем декодирование
-		const int size = this->base64(reinterpret_cast <const u_char *> (str.c_str()), buffer.data(), str.size(), buffer.size(), true);
+		const int32_t size = this->base64(reinterpret_cast <const u_char *> (str.c_str()), buffer.data(), str.size(), buffer.size(), true);
 		// Если размер строки получен
 		if(size > 0)
 			// Выполняем получение строки

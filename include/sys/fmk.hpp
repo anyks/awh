@@ -595,20 +595,20 @@ namespace awh {
 			 * @param word римское число
 			 * @return     арабское число
 			 */
-			u_short rome2arabic(const string & word) const noexcept;
+			uint16_t rome2arabic(const string & word) const noexcept;
 			/**
 			 * rome2arabic Метод перевода римских цифр в арабские
 			 * @param word римское число
 			 * @return     арабское число
 			 */
-			u_short rome2arabic(const wstring & word) const noexcept;
+			uint16_t rome2arabic(const wstring & word) const noexcept;
 		public:
 			/**
 			 * arabic2rome Метод перевода арабских чисел в римские
 			 * @param number арабское число от 1 до 4999
 			 * @return       римское число
 			 */
-			wstring arabic2rome(const u_int number) const noexcept;
+			wstring arabic2rome(const uint32_t number) const noexcept;
 			/**
 			 * arabic2rome Метод перевода арабских чисел в римские
 			 * @param word арабское число от 1 до 4999

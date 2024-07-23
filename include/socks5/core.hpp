@@ -213,7 +213,7 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       бинарный буфер IP адреса
 			 */
-			vector <char> ipToHex(const string & ip, const int family = AF_INET) const noexcept;
+			vector <char> ipToHex(const string & ip, const int32_t family = AF_INET) const noexcept;
 			/**
 			 * hexToIp Метод конвертации бинарного буфера в IP адрес
 			 * @param buffer бинарный буфер для конвертации
@@ -221,7 +221,7 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       IP адрес в виде строки
 			 */
-			string hexToIp(const char * buffer, const size_t size, const int family = AF_INET) const noexcept;
+			string hexToIp(const char * buffer, const size_t size, const int32_t family = AF_INET) const noexcept;
 		protected:
 			/**
 			 * text Метод установки в буфер текстовых данных

@@ -65,7 +65,7 @@ namespace awh {
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				void init(const u_int port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
+				void init(const uint32_t port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
@@ -122,7 +122,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				u_int port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint64_t bid) const noexcept;
 				/**
 				 * ip Метод получения IP-адреса брокера
 				 * @param bid идентификатор брокера
@@ -197,7 +197,7 @@ namespace awh {
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const u_short total) noexcept;
+				void total(const uint16_t total) noexcept;
 				/**
 				 * segmentSize Метод установки размеров сегментов фрейма
 				 * @param size минимальный размер сегмента
@@ -210,17 +210,17 @@ namespace awh {
 				 */
 				void hosts(const string & filename) noexcept;
 				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
+				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
-				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
-				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
-				 * @param compressors список поддерживаемых компрессоров
-				 */
-				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
+				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля

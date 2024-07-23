@@ -33,7 +33,7 @@
  * @param family семейство сокета (AF_INET / AF_INET6)
  * @return       хост компьютера с которого производится запрос
  */
-string awh::Ping::host(const int family) const noexcept {
+string awh::Ping::host(const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Список адресов сетевых карт
@@ -132,7 +132,7 @@ uint16_t awh::Ping::checksum(const void * buffer, const size_t size) noexcept {
  * @param index  индекс последовательности
  * @return       количество прочитанных байт
  */
-int64_t awh::Ping::send(const int family, const size_t index) noexcept {
+int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	/**
@@ -400,7 +400,7 @@ void awh::Ping::ping(const string & host) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param host   хост для выполнения пинга
  */
-void awh::Ping::ping(const int family, const string & host) noexcept {
+void awh::Ping::ping(const int32_t family, const string & host) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если хост передан и пинг ещё не активирован
@@ -449,7 +449,7 @@ void awh::Ping::ping(const int family, const string & host) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param ip     адрес для выполнения пинга
  */
-void awh::Ping::_work(const int family, const string & ip) noexcept {
+void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -710,7 +710,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
  * @param count  количество итераций
  * @return       количество миллисекунд ответа хоста
  */
-double awh::Ping::ping(const int family, const string & host, const uint16_t count) noexcept {
+double awh::Ping::ping(const int32_t family, const string & host, const uint16_t count) noexcept {
 	// Результат работы функции
 	double result = 0.0;
 	// Выполняем блокировку потока
@@ -766,7 +766,7 @@ double awh::Ping::ping(const int family, const string & host, const uint16_t cou
  * @param count  количество итераций
  * @return       количество миллисекунд ответа хоста
  */
-double awh::Ping::_ping(const int family, const string & ip, const uint16_t count) noexcept {
+double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t count) noexcept {
 	// Результат работы функции
 	double result = 0.0;
 	// Выполняем блокировку потока
@@ -1049,7 +1049,7 @@ void awh::Ping::network(const vector <string> & network) noexcept {
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param network IP-адреса сетевых плат
  */
-void awh::Ping::network(const int family, const vector <string> & network) noexcept {
+void awh::Ping::network(const int32_t family, const vector <string> & network) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -1063,12 +1063,12 @@ void awh::Ping::network(const int family, const vector <string> & network) noexc
 				// Определяем тип передаваемого IP-адреса
 				switch(family){
 					// Если IP-адрес является IPv4 адресом
-					case static_cast <int> (AF_INET):
+					case static_cast <int32_t> (AF_INET):
 						// Выполняем добавление полученного хоста в список
 						this->_networkIPv4.push_back(host);
 					break;
 					// Если IP-адрес является IPv6 адресом
-					case static_cast <int> (AF_INET6):
+					case static_cast <int32_t> (AF_INET6):
 						// Выполняем добавление полученного хоста в список
 						this->_networkIPv6.push_back(host);
 					break;

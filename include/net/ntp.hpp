@@ -35,7 +35,7 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
-	#define SOCKET int
+	#define SOCKET int32_t
 	#define INVALID_SOCKET -1
 #endif
 
@@ -118,7 +118,7 @@ namespace awh {
 			 * Server Структура сервера имён
 			 */
 			struct Server {
-				u_int port;     // Порт сервера
+				uint32_t port;     // Порт сервера
 				uint32_t ip[T]; // Буфер IP-адреса
 				/**
 				 * Server Конструктор
@@ -211,7 +211,7 @@ namespace awh {
 					bool _mode;
 				private:
 					// Тип протокола интернета AF_INET или AF_INET6
-					int _family;
+					int32_t _family;
 				private:
 					// Объект для работы с подключениями
 					peer_t _peer;
@@ -259,7 +259,7 @@ namespace awh {
 					 * @param family тип протокола интернета AF_INET или AF_INET6
 					 * @param self   объект NTP-клиента
 					 */
-					Worker(const int family, const NTP * self) noexcept :
+					Worker(const int32_t family, const NTP * self) noexcept :
 					 _fd(INVALID_SOCKET), _mode(false), _family(family),
 					 _socket(self->_fmk, self->_log), _self(self) {}
 					/**
@@ -316,13 +316,13 @@ namespace awh {
 			 * cancel Метод отмены выполнения запроса
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 */
-			void cancel(const int family) noexcept;
+			void cancel(const int32_t family) noexcept;
 		public:
 			/**
 			 * shuffle Метод пересортировки серверов NTP
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 */
-			void shuffle(const int family) noexcept;
+			void shuffle(const int32_t family) noexcept;
 		public:
 			/**
 			 * timeout Метод установки времени ожидания выполнения запроса
@@ -341,7 +341,7 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @return       запрошенный NTP-сервер
 			 */
-			string server(const int family) noexcept;
+			string server(const int32_t family) noexcept;
 		public:
 			/**
 			 * server Метод добавления NTP-сервера
@@ -353,7 +353,7 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param server адрес NTP-сервера
 			 */
-			void server(const int family, const string & server) noexcept;
+			void server(const int32_t family, const string & server) noexcept;
 		public:
 			/**
 			 * servers Метод добавления NTP-серверов
@@ -365,7 +365,7 @@ namespace awh {
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param servers адреса NTP-серверов
 			 */
-			void servers(const int family, const vector <string> & servers) noexcept;
+			void servers(const int32_t family, const vector <string> & servers) noexcept;
 		public:
 			/**
 			 * replace Метод замены существующих NTP-серверов
@@ -377,7 +377,7 @@ namespace awh {
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param servers адреса NTP-серверов
 			 */
-			void replace(const int family, const vector <string> & servers = {}) noexcept;
+			void replace(const int32_t family, const vector <string> & servers = {}) noexcept;
 		public:
 			/**
 			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
@@ -389,7 +389,7 @@ namespace awh {
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param network IP-адреса сетевых плат
 			 */
-			void network(const int family, const vector <string> & network) noexcept;
+			void network(const int32_t family, const vector <string> & network) noexcept;
 		public:
 			/**
 			 * request Метод выполнение получения времени с NTP-сервера
@@ -401,7 +401,7 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @return       полученный UnixTimeStamp
 			 */
-			time_t request(const int family) noexcept;
+			time_t request(const int32_t family) noexcept;
 		public:
 			/**
 			 * NTP Конструктор

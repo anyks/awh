@@ -300,7 +300,7 @@ string awh::URI::encode(const string & str) const noexcept {
 			// Переводим символы в верхний регистр
 			escaped << uppercase;
 			// Записываем в поток, код символа
-			escaped << '%' << setw(2) << static_cast <u_int> (c);
+			escaped << '%' << setw(2) << static_cast <uint32_t> (c);
 			// Убираем верхний регистр
 			escaped << nouppercase;
 		}
@@ -320,10 +320,10 @@ string awh::URI::decode(const string & str) const noexcept {
 	string result = "";
 	// Если строка передана
 	if(!str.empty()){
-		// Код символа
-		int ii;
 		// Символ строки
-		char ch;
+		char ch = 0;
+		// Код символа
+		int32_t ii = 0;
 		// Переходим по всей длине строки
 		for(size_t i = 0; i < str.length(); i++){
 			// Если это не проценты
@@ -383,7 +383,7 @@ string awh::URI::url(const url_t & url) const noexcept {
 				// Формируем параметры авторизации
 				auth = (!url.pass.empty() ? this->_fmk->format("%s:%s@", url.user.c_str(), url.pass.c_str()) : this->_fmk->format("%s@", url.user.c_str()));
 			// Порт сервера для URL-запроса
-			u_int port = url.port;
+			uint32_t port = url.port;
 			// Определяем указанный порт
 			switch(port){
 				// Если указан 25 порт
@@ -462,7 +462,7 @@ string awh::URI::origin(const url_t & url) const noexcept {
 			}
 		}
 		// Порт сервера для URL-запроса
-		u_int port = url.port;
+		uint32_t port = url.port;
 		// Определяем указанный порт
 		switch(port){
 			// Если указан 25 порт

@@ -202,7 +202,7 @@ namespace awh {
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
 				 */
-				void work(const uint16_t sid, const string & ip, const int family) noexcept;
+				void work(const uint16_t sid, const string & ip, const int32_t family) noexcept;
 			public:
 				/**
 				 * Core Конструктор

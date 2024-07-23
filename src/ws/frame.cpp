@@ -498,7 +498,7 @@ vector <char> awh::ws::Frame::set(const head_t & head, const char * buffer, cons
 				(head.rsv[0] ? 0x40 : 0x0) |
 				(head.rsv[1] ? 0x20 : 0x0) |
 				(head.rsv[2] ? 0x10 : 0x0) |
-				(0x0F & static_cast <int> (head.optcode))
+				(0x0F & static_cast <int32_t> (head.optcode))
 			)
 		), 0x0
 	};

@@ -25,9 +25,9 @@ bool awh::Hash::init() const {
 	// Создаем тип шифрования
 	const EVP_CIPHER * cipher = EVP_enc_null();
 	// Определяем длину шифрования
-	switch(static_cast <u_short> (this->_cipher)){
+	switch(static_cast <uint16_t> (this->_cipher)){
 		// Устанавливаем шифрование в 128
-		case static_cast <u_short> (cipher_t::AES128): {
+		case static_cast <uint16_t> (cipher_t::AES128): {
 			// Устанавливаем размер массива IV
 			ivSize = 8;
 			// Устанавливаем размер массива KEY
@@ -36,7 +36,7 @@ bool awh::Hash::init() const {
 			cipher = EVP_aes_128_ecb();
 		} break;
 		// Устанавливаем шифрование в 192
-		case static_cast <u_short> (cipher_t::AES192): {
+		case static_cast <uint16_t> (cipher_t::AES192): {
 			// Устанавливаем размер массива IV
 			ivSize = 12;
 			// Устанавливаем размер массива KEY
@@ -45,7 +45,7 @@ bool awh::Hash::init() const {
 			cipher = EVP_aes_192_ecb();
 		} break;
 		// Устанавливаем шифрование в 256
-		case static_cast <u_short> (cipher_t::AES256): {
+		case static_cast <uint16_t> (cipher_t::AES256): {
 			// Устанавливаем размер массива IV
 			ivSize = 16;
 			// Устанавливаем размер массива KEY
@@ -69,7 +69,7 @@ bool awh::Hash::init() const {
 	vector <u_char> key(EVP_CIPHER_CTX_key_length(ctx), 0);
 	*/
 	// Выполняем инициализацию ключа
-	const int ok = EVP_BytesToKey(
+	const int32_t ok = EVP_BytesToKey(
 		cipher, EVP_sha256(),
 		(this->_salt.empty() ? nullptr : reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_salt.data())),
 		reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_pass.data()),
@@ -82,7 +82,7 @@ bool awh::Hash::init() const {
 		// Выходим из функции
 		return false;
 	// Устанавливаем ключ шифрования
-	const int res = AES_set_encrypt_key(key.data(), key.size() * 8, &this->_key);
+	const int32_t res = AES_set_encrypt_key(key.data(), key.size() * 8, &this->_key);
 	// Если установка ключа не произошло
 	if(res != 0)
 		// Выходим из функции
@@ -399,7 +399,7 @@ vector <char> awh::Hash::gzip(const char * buffer, const size_t size, const even
 			// Если необходимо выполнить компрессию данных
 			case static_cast <uint8_t> (event_t::COMPRESS): {
 				// Результирующий размер данных
-				int rv = Z_OK;
+				int32_t rv = Z_OK;
 				// Если поток инициализировать не удалось, выходим
 				if(::deflateInit2(&zs, this->_level[1], Z_DEFLATED, this->_wbit | 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
 					// Указываем размер входного буфера
@@ -440,7 +440,7 @@ vector <char> awh::Hash::gzip(const char * buffer, const size_t size, const even
 			// Если необходимо выполнить декомпрессию данных
 			case static_cast <uint8_t> (event_t::DECOMPRESS): {
 				// Результирующий размер данных
-				int rv = Z_OK;
+				int32_t rv = Z_OK;
 				// Если поток инициализировать не удалось, выходим
 				if(::inflateInit2(&zs, this->_wbit | 16) == Z_OK){
 					// Указываем размер входного буфера
@@ -502,7 +502,7 @@ vector <char> awh::Hash::bzip2(const char * buffer, const size_t size, const eve
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
 		// Результат выполнения компрессии
-		int rv = BZ_OK;
+		int32_t rv = BZ_OK;
 		// Выполняем создание объекта потока
 		bz_stream stream;
 		// Выполняем зануление параметров потока
@@ -713,7 +713,7 @@ vector <char> awh::Hash::deflate(const char * buffer, const size_t size, const e
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
 		// Результат проверки декомпрессии
-		int rv = Z_OK;
+		int32_t rv = Z_OK;
 		// Создаем поток zip
 		z_stream zs = {0};
 		// Обнуляем структуру
@@ -849,7 +849,7 @@ vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) const n
 			// Выполняем инициализацию AES
 			if(this->init()){
 				// Максимальный размер считываемых данных
-				int chunk = 0;
+				int32_t chunk = 0;
 				// Размер буфера полученных данных
 				size_t count = 0;
 				// Определяем размер данных для считывания
@@ -897,7 +897,7 @@ vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) const n
 			// Выполняем инициализацию AES
 			if(this->init()){
 				// Максимальный размер считываемых данных
-				int chunk = 0;
+				int32_t chunk = 0;
 				// Размер буфера полученных данных
 				size_t count = 0;
 				// Определяем размер данных для считывания
@@ -1025,21 +1025,13 @@ vector <char> awh::Hash::decompress(const char * buffer, const size_t size, cons
  * wbit Метод установки размера скользящего окна
  * @param wbit размер скользящего окна
  */
-void awh::Hash::wbit(const short wbit) noexcept {
+void awh::Hash::wbit(const int16_t wbit) noexcept {
 	// Устанавливаем размер скользящего окна
 	this->_wbit = wbit;
 	// Выполняем пересборку контекстов LZ77 для компрессии
 	this->takeoverCompress(this->_takeOverCompress);
 	// Выполняем пересборку контекстов LZ77 для декомпрессии
 	this->takeoverDecompress(this->_takeOverDecompress);
-}
-/**
- * round Метод установки количества раундов шифрования
- * @param round количество раундов шифрования
- */
-void awh::Hash::round(const int round) noexcept {
-	// Устанавливаем количество раундов шифрования
-	this->_rounds = round;
 }
 /**
  * salt Метод установки соли шифрования
@@ -1056,6 +1048,14 @@ void awh::Hash::salt(const string & salt) noexcept {
 void awh::Hash::pass(const string & pass) noexcept {
 	// Если пароль передан
 	this->_pass = pass;
+}
+/**
+ * round Метод установки количества раундов шифрования
+ * @param round количество раундов шифрования
+ */
+void awh::Hash::round(const int32_t round) noexcept {
+	// Устанавливаем количество раундов шифрования
+	this->_rounds = round;
 }
 /**
  * level Метод установки уровня компрессии

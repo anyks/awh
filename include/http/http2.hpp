@@ -234,7 +234,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+			static int32_t begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
 			 * create Функция обратного вызова при создании фрейма
 			 * @param session объект сессии
@@ -242,7 +242,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int create(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept;
+			static int32_t create(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept;
 			/**
 			 * frameRecv Функция обратного вызова при получении фрейма
 			 * @param session объект сессии
@@ -250,7 +250,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+			static int32_t frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
 			 * frameSend Функция обратного вызова при отправки фрейма
 			 * @param session объект сессии
@@ -258,7 +258,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+			static int32_t frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
 			 * close Функция закрытия подключения
 			 * @param session объект сессии
@@ -267,7 +267,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
+			static int32_t close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
 			/**
 			 * error Функция обратного вызова при получении ошибок
 			 * @param session объект сессии
@@ -277,7 +277,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int error(nghttp2_session * session, const int code, const char * msg, const size_t size, void * ctx) noexcept;
+			static int32_t error(nghttp2_session * session, const int32_t code, const char * msg, const size_t size, void * ctx) noexcept;
 			/**
 			 * chunk Функция обратного вызова при получении чанка
 			 * @param session объект сессии
@@ -288,7 +288,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
+			static int32_t chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
 			/**
 			 * header Функция обратного вызова при получении заголовка
 			 * @param session объект сессии
@@ -301,7 +301,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        статус обработки полученных данных
 			 */
-			static int header(nghttp2_session * session, const nghttp2_frame * frame, nghttp2_rcbuf * name, nghttp2_rcbuf * value, const uint8_t flags, void * ctx) noexcept;
+			static int32_t header(nghttp2_session * session, const nghttp2_frame * frame, nghttp2_rcbuf * name, nghttp2_rcbuf * value, const uint8_t flags, void * ctx) noexcept;
 		private:
 			/**
 			 * send Функция обратного вызова при подготовки данных для отправки
@@ -312,7 +312,7 @@ namespace awh {
 			 * @param ctx     передаваемый промежуточный контекст
 			 * @return        количество отправленных байт
 			 */
-			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
+			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int32_t flags, void * ctx) noexcept;
 			/**
 			 * send Функция отправки подготовленного буфера данных по сети
 			 * @param session объект сессии

@@ -65,7 +65,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callbacks.is("entityClient"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entityClient", this->_id, this->_res.code, this->_res.message, this->_body);
+									this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_res.code, this->_res.message, this->_body);
 							} break;
 							// Если мы работаем с сервером
 							case static_cast <uint8_t> (hid_t::SERVER): {
@@ -328,7 +328,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callbacks.is("entityClient"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const uint64_t, const u_int, const string &, const vector <char> &)> ("entityClient", this->_id, this->_res.code, this->_res.message, this->_body);
+							this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_res.code, this->_res.message, this->_body);
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (hid_t::SERVER): {
@@ -400,7 +400,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callbacks.is("headersResponse"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_res.code, this->_res.message, this->_headers);
+								this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_res.code, this->_res.message, this->_headers);
 						} break;
 						// Если мы работаем с сервером
 						case static_cast <uint8_t> (hid_t::SERVER): {
@@ -484,11 +484,11 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Получаем сообщение ответа
 										this->_res.message.assign(buffer + (this->_pos[1] + 1), size - (this->_pos[1] + 1));
 										// Получаем код ответа
-										this->_res.code = static_cast <u_int> (::stoi(string(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1))));
+										this->_res.code = static_cast <uint32_t> (::stoi(string(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1))));
 										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 										if(this->_callbacks.is("response"))
 											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const uint64_t, const u_int, const string &)> ("response", this->_id, this->_res.code, this->_res.message);
+											this->_callbacks.call <void (const uint64_t, const uint32_t, const string &)> ("response", this->_id, this->_res.code, this->_res.message);
 									// Если данные пришли неправильные
 									} else {
 										// Выполняем очистку всех ранее полученных данных
@@ -608,7 +608,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Если данные порта являются числом
 										if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
 											// Выполняем установку порта сервера
-											this->_req.url.port = static_cast <u_int> (::stoi(port));
+											this->_req.url.port = static_cast <uint32_t> (::stoi(port));
 											// Выполняем получение хоста сервера
 											this->_req.url.host = this->_req.url.host.substr(0, pos);
 											// Если порт установлен как 443

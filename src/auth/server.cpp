@@ -295,9 +295,9 @@ awh::server::Auth::operator std::string() noexcept {
 							stale = "TRUE";
 					}
 					// Определяем алгоритм шифрования
-					switch(static_cast <u_short> (this->_digest.hash)){
+					switch(static_cast <uint16_t> (this->_digest.hash)){
 						// Если алгоритм шифрования MD5
-						case static_cast <u_short> (hash_t::MD5): {
+						case static_cast <uint16_t> (hash_t::MD5): {
 							// Устанавливаем тип шифрования
 							algorithm = "MD5";
 							// Выполняем создание ключа клиента
@@ -310,7 +310,7 @@ awh::server::Auth::operator std::string() noexcept {
 								this->_digest.opaque = this->_fmk->hash(AWH_SITE, fmk_t::hash_t::MD5);
 						} break;
 						// Если алгоритм шифрования SHA1
-						case static_cast <u_short> (hash_t::SHA1): {
+						case static_cast <uint16_t> (hash_t::SHA1): {
 							// Устанавливаем тип шифрования
 							algorithm = "SHA1";
 							// Выполняем создание ключа клиента
@@ -323,7 +323,7 @@ awh::server::Auth::operator std::string() noexcept {
 								this->_digest.opaque = this->_fmk->hash(AWH_SITE, fmk_t::hash_t::SHA1);
 						} break;
 						// Если алгоритм шифрования SHA256
-						case static_cast <u_short> (hash_t::SHA256): {
+						case static_cast <uint16_t> (hash_t::SHA256): {
 							// Устанавливаем тип шифрования
 							algorithm = "SHA256";
 							// Выполняем создание ключа клиента
@@ -336,7 +336,7 @@ awh::server::Auth::operator std::string() noexcept {
 								this->_digest.opaque = this->_fmk->hash(AWH_SITE, fmk_t::hash_t::SHA256);
 						} break;
 						// Если алгоритм шифрования SHA512
-						case static_cast <u_short> (hash_t::SHA512): {
+						case static_cast <uint16_t> (hash_t::SHA512): {
 							// Устанавливаем тип шифрования
 							algorithm = "SHA512";
 							// Выполняем создание ключа клиента

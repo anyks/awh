@@ -34,7 +34,7 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
-	#define SOCKET int
+	#define SOCKET int32_t
 	#define INVALID_SOCKET -1
 #endif
 
@@ -197,7 +197,7 @@ namespace awh {
 			 * @param family семейство сокета (AF_INET / AF_INET6)
 			 * @return       хост компьютера с которого производится запрос
 			 */
-			string host(const int family) const noexcept;
+			string host(const int32_t family) const noexcept;
 		private:
 			/**
 			 * checksum Метод подсчёта контрольной суммы
@@ -213,7 +213,7 @@ namespace awh {
 			 * @param index  индекс последовательности
 			 * @return       количество прочитанных байт
 			 */
-			int64_t send(const int family, const size_t index) noexcept;
+			int64_t send(const int32_t family, const size_t index) noexcept;
 		public:
 			/**
 			 * close Метод закрытия подключения
@@ -241,14 +241,14 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param host   хост для выполнения пинга
 			 */
-			void ping(const int family, const string & host) noexcept;
+			void ping(const int32_t family, const string & host) noexcept;
 		private:
 			/**
 			 * _work Метод запуска пинга IP-адреса в асинхронном режиме
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param ip     адрес для выполнения пинга
 			 */
-			void _work(const int family, const string & ip) noexcept;
+			void _work(const int32_t family, const string & ip) noexcept;
 		public:
 			/**
 			 * ping Метод запуска пинга хоста в синхронном режиме
@@ -264,7 +264,7 @@ namespace awh {
 			 * @param count  количество итераций
 			 * @return       количество миллисекунд ответа хоста
 			 */
-			double ping(const int family, const string & host, const uint16_t count) noexcept;
+			double ping(const int32_t family, const string & host, const uint16_t count) noexcept;
 		private:
 			/**
 			 * _ping Метод запуска пинга IP-адреса в синхронном режиме
@@ -273,7 +273,7 @@ namespace awh {
 			 * @param count  количество итераций
 			 * @return       количество миллисекунд ответа хоста
 			 */
-			double _ping(const int family, const string & ip, const uint16_t count) noexcept;
+			double _ping(const int32_t family, const string & ip, const uint16_t count) noexcept;
 		public:
 			/**
 			 * verbose Метод разрешающий/запрещающий выводить информационных сообщений
@@ -303,7 +303,7 @@ namespace awh {
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param network IP-адреса сетевых плат
 			 */
-			void network(const int family, const vector <string> & network) noexcept;
+			void network(const int32_t family, const vector <string> & network) noexcept;
 		public:
 			/**
 			 * timeout Метод установки таймаутов в миллисекундах

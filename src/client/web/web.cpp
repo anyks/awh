@@ -200,7 +200,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							// Если рукопожатие не выполнено
 							} else {
 								// Устанавливаем код ответа
-								const u_int code = this->_scheme.proxy.socks5.code();
+								const uint32_t code = this->_scheme.proxy.socks5.code();
 								// Устанавливаем сообщение ответа
 								const string & message = this->_scheme.proxy.socks5.message(code);
 								/**
@@ -220,7 +220,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 								if(this->_callbacks.is("response"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", 1, 0, code, message);
+									this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", 1, 0, code, message);
 								// Завершаем работу
 								const_cast <client::core_t *> (this->_core)->close(bid);
 								// Завершаем работу
@@ -325,19 +325,19 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 							if(this->_callbacks.is("response"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", 1, 0, response.code, response.message);
+								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", 1, 0, response.code, response.message);
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callbacks.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
+								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", 1, 0, response.code, response.message, this->_scheme.proxy.http.body());
+								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", 1, 0, response.code, response.message, this->_scheme.proxy.http.body());
 							// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 							if(this->_callbacks.is("complete"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", 1, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
+								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", 1, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
 							// Завершаем работу
 							const_cast <client::core_t *> (this->_core)->close(bid);
 							// Завершаем работу
@@ -706,26 +706,26 @@ void awh::client::Web::core(const client::core_t * core) noexcept {
 	}
 }
 /**
- * keepAlive Метод установки жизни подключения
- * @param cnt   максимальное количество попыток
- * @param idle  интервал времени в секундах через которое происходит проверка подключения
- * @param intvl интервал времени в секундах между попытками
- */
-void awh::client::Web::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
-	// Выполняем установку максимального количества попыток
-	this->_scheme.keepAlive.cnt = cnt;
-	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-	this->_scheme.keepAlive.idle = idle;
-	// Выполняем установку интервала времени в секундах между попытками
-	this->_scheme.keepAlive.intvl = intvl;
-}
-/**
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::client::Web::compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем список поддерживаемых компрессоров
 	this->_compressors = compressors;
+}
+/**
+ * keepAlive Метод установки жизни подключения
+ * @param cnt   максимальное количество попыток
+ * @param idle  интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl интервал времени в секундах между попытками
+ */
+void awh::client::Web::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Выполняем установку максимального количества попыток
+	this->_scheme.keepAlive.cnt = cnt;
+	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
+	this->_scheme.keepAlive.idle = idle;
+	// Выполняем установку интервала времени в секундах между попытками
+	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
  * userAgent Метод установки User-Agent для HTTP-запроса

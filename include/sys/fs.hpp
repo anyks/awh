@@ -173,7 +173,7 @@ namespace awh {
 			 * @param path полный путь для удаления
 			 * @return     количество дочерних элементов
 			 */
-			int delPath(const string & path) const noexcept;
+			int32_t delPath(const string & path) const noexcept;
 		public:
 			/**
 			 * realPath Метод извлечения реального адреса

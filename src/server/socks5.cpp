@@ -36,13 +36,13 @@ void awh::server::ProxySocks5::openEvents(const uint16_t sid) noexcept {
  * @param sid  идентификатор схемы сети
  * @return     результат разрешения к подключению клиента
  */
-bool awh::server::ProxySocks5::acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept {
+bool awh::server::ProxySocks5::acceptEvents(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if(!ip.empty() && !mac.empty() && (sid > 0)){
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("accept"))
 			// Выводим функцию обратного вызова
-			return this->_callbacks.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
+			return this->_callbacks.call <bool (const string &, const string &, const uint32_t)> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение клиенту
 	return false;
@@ -520,7 +520,7 @@ void awh::server::ProxySocks5::init(const string & socket) noexcept {
  * @param port порт сервера
  * @param host хост сервера
  */
-void awh::server::ProxySocks5::init(const u_int port, const string & host) noexcept {
+void awh::server::ProxySocks5::init(const uint32_t port, const string & host) noexcept {
 	// Устанавливаем порт сервера
 	this->_port = port;
 	// Устанавливаем хост сервера
@@ -558,7 +558,7 @@ void awh::server::ProxySocks5::callbacks(const fn_t & callbacks) noexcept {
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-u_int awh::server::ProxySocks5::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::ProxySocks5::port(const uint64_t bid) const noexcept {
 	// Выводим результат
 	return this->_scheme.port(bid);
 }
@@ -657,7 +657,7 @@ void awh::server::ProxySocks5::waitTimeDetect(const time_t read, const time_t wr
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::ProxySocks5::total(const u_short total) noexcept {
+void awh::server::ProxySocks5::total(const uint16_t total) noexcept {
 	// Устанавливаем максимальное количество одновременных подключений
 	this->_core.total(this->_scheme.id, total);
 }
@@ -695,20 +695,6 @@ void awh::server::ProxySocks5::ipV6only(const bool mode) noexcept {
 	this->_core.ipV6only(mode);
 }
 /**
- * keepAlive Метод установки жизни подключения
- * @param cnt   максимальное количество попыток
- * @param idle  интервал времени в секундах через которое происходит проверка подключения
- * @param intvl интервал времени в секундах между попытками
- */
-void awh::server::ProxySocks5::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
-	// Выполняем установку максимального количества попыток
-	this->_scheme.keepAlive.cnt = cnt;
-	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-	this->_scheme.keepAlive.idle = idle;
-	// Выполняем установку интервала времени в секундах между попытками
-	this->_scheme.keepAlive.intvl = intvl;
-}
-/**
  * sonet Метод установки типа сокета подключения
  * @param sonet тип сокета подключения (TCP / UDP / SCTP)
  */
@@ -723,6 +709,20 @@ void awh::server::ProxySocks5::sonet(const scheme_t::sonet_t sonet) noexcept {
 void awh::server::ProxySocks5::family(const scheme_t::family_t family) noexcept {
 	// Устанавливаем тип протокола интернета
 	this->_core.family(family);
+}
+/**
+ * keepAlive Метод установки жизни подключения
+ * @param cnt   максимальное количество попыток
+ * @param idle  интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl интервал времени в секундах между попытками
+ */
+void awh::server::ProxySocks5::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Выполняем установку максимального количества попыток
+	this->_scheme.keepAlive.cnt = cnt;
+	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
+	this->_scheme.keepAlive.idle = idle;
+	// Выполняем установку интервала времени в секундах между попытками
+	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
  * bandwidth Метод установки пропускной способности сети
@@ -798,7 +798,7 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	// Устанавливаем событие отключения
 	this->_core.callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&proxy_socks5_t::disconnectEvents, this, broker_t::SERVER, _1, 0, _2));
 	// Добавляем событие аццепта брокера
-	this->_core.callback <bool (const string &, const string &, const u_int, const uint16_t)> ("accept", std::bind(&proxy_socks5_t::acceptEvents, this, _1, _2, _3, _4));
+	this->_core.callback <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", std::bind(&proxy_socks5_t::acceptEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию чтения данных
 	this->_core.callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&proxy_socks5_t::readEvents, this, broker_t::SERVER, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных

@@ -370,7 +370,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				// Если асинхронный режим работы активирован
 				if(this->_async){
 					// Получаем идентификатор текущего процесса
-					const pid_t pid = getpid();
+					const pid_t pid = ::getpid();
 					// Если идентификатор процесса является дочерним
 					if(pid != this->_pid){
 						// Если процесс ещё не инициализирован и дочерний поток уже создан
@@ -424,7 +424,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			// Если асинхронный режим работы активирован
 			if(this->_async){
 				// Получаем идентификатор текущего процесса
-				const pid_t pid = getpid();
+				const pid_t pid = ::getpid();
 				// Если идентификатор процесса является дочерним
 				if(pid != this->_pid){
 					// Если процесс ещё не инициализирован, а скрин уже запущен

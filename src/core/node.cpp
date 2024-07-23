@@ -692,8 +692,8 @@ void awh::Node::bandwidth(const uint64_t bid, const string & read, const string 
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Устанавливаем размер буфера
 		broker->_ectx.buffer(
-			static_cast <int> (!read.empty() ? this->_fmk->sizeBuffer(read) : AWH_BUFFER_SIZE_RCV),
-			static_cast <int> (!write.empty() ? this->_fmk->sizeBuffer(write) : AWH_BUFFER_SIZE_SND)
+			static_cast <int32_t> (!read.empty() ? this->_fmk->sizeBuffer(read) : AWH_BUFFER_SIZE_RCV),
+			static_cast <int32_t> (!write.empty() ? this->_fmk->sizeBuffer(write) : AWH_BUFFER_SIZE_SND)
 		);
 		// Выполняем создание буфера полезной нагрузки
 		this->createBuffer(bid);

@@ -150,7 +150,7 @@ namespace awh {
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
-				void init(const u_int port, const string & host) noexcept;
+				void init(const uint32_t port, const string & host) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -237,7 +237,7 @@ namespace awh {
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
-				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
 				 * Sample Конструктор

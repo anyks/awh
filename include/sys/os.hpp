@@ -49,12 +49,9 @@
 	/**
 	 * Заменяем типы данных
 	 */
-	#define uid_t uint16_t         // unsigned short
-	#define gid_t uint16_t         // unsigned short
-	#define u_int uint32_t         // unsigned int
-	#define u_char unsigned char   // unsigned char
-	#define u_short unsigned short // unsigned short
-	#define __uint64_t uint64_t    // unsigned int 64
+	#define uid_t uint16_t       // unsigned short
+	#define gid_t uint16_t       // unsigned short
+	#define u_char unsigned char // unsigned char
 	/**
 	 * Заменяем вызов функции
 	 */

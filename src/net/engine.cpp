@@ -2534,7 +2534,7 @@ int32_t awh::Engine::generateCookie(SSL * ssl, u_char * cookie, uint32_t * size)
 		default: OPENSSL_assert(0);
 	}
 	// Увеличиваем смещение на размер буфера входящих данных
-	offset += sizeof(u_short);
+	offset += sizeof(uint16_t);
 	// Выполняем выделение память для буфера данных
 	u_char * buffer = reinterpret_cast <u_char *> (OPENSSL_malloc(offset));
 	// Если память для буфера данных не выделена
@@ -2551,16 +2551,16 @@ int32_t awh::Engine::generateCookie(SSL * ssl, u_char * cookie, uint32_t * size)
 		// Для протокола IPv4
 		case AF_INET: {
 			// Выполняем чтение в буфер данных данные порта
-			::memcpy(buffer, &peer.s4.sin_port, sizeof(u_short));
+			::memcpy(buffer, &peer.s4.sin_port, sizeof(uint16_t));
 			// Выполняем чтение в буфер данных данные структуры подключения
 			::memcpy(buffer + sizeof(peer.s4.sin_port), &peer.s4.sin_addr, sizeof(struct in_addr));
 		} break;
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Выполняем чтение в буфер данных данные порта
-			::memcpy(buffer, &peer.s6.sin6_port, sizeof(u_short));
+			::memcpy(buffer, &peer.s6.sin6_port, sizeof(uint16_t));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			::memcpy(buffer + sizeof(u_short), &peer.s6.sin6_addr, sizeof(struct in6_addr));
+			::memcpy(buffer + sizeof(uint16_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
 		} break;
 		// Если производится работа с другими протоколами, выходим
 		default: OPENSSL_assert(0);
@@ -2616,7 +2616,7 @@ int32_t awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, uint32_t siz
 		default: OPENSSL_assert(0);
 	}
 	// Увеличиваем смещение на размер буфера входящих данных
-	offset += sizeof(u_short);
+	offset += sizeof(uint16_t);
 	// Выполняем выделение память для буфера данных
 	u_char * buffer = reinterpret_cast <u_char *> (OPENSSL_malloc(offset));
 	// Если память для буфера данных не выделена
@@ -2633,16 +2633,16 @@ int32_t awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, uint32_t siz
 		// Для протокола IPv4
 		case AF_INET: {
 			// Выполняем чтение в буфер данных данные порта
-			::memcpy(buffer, &peer.s4.sin_port, sizeof(u_short));
+			::memcpy(buffer, &peer.s4.sin_port, sizeof(uint16_t));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			::memcpy(buffer + sizeof(u_short), &peer.s4.sin_addr, sizeof(struct in_addr));
+			::memcpy(buffer + sizeof(uint16_t), &peer.s4.sin_addr, sizeof(struct in_addr));
 		} break;
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Выполняем чтение в буфер данных данные порта
-			::memcpy(buffer, &peer.s6.sin6_port, sizeof(u_short));
+			::memcpy(buffer, &peer.s6.sin6_port, sizeof(uint16_t));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			::memcpy(buffer + sizeof(u_short), &peer.s6.sin6_addr, sizeof(struct in6_addr));
+			::memcpy(buffer + sizeof(uint16_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
 		} break;
 		// Если производится работа с другими протоколами, выходим
 		default: OPENSSL_assert(0);
@@ -3405,7 +3405,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 			}
 			// Получаем идентификатор процесса
-			const pid_t pid = getpid();
+			const pid_t pid = ::getpid();
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
@@ -3718,7 +3718,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			// Если приложение является сервером
 			if(type == type_t::SERVER){
 				// Получаем идентификатор процесса
-				const pid_t pid = getpid();
+				const pid_t pid = ::getpid();
 				// Если протоколом является HTTP, выполняем переключение на него
 				switch(static_cast <uint8_t> (target._proto)){
 					// Если протокол соответствует SPDY/1

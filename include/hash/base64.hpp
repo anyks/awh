@@ -50,7 +50,7 @@ namespace awh {
 			 * @param mode режим работы (false - кодирование, true - декодирование)
 			 * @return     размер полученных данных
 			 */
-			int base64(const u_char * in, char * out, u_int sin, u_int sout, const bool mode = false) const noexcept;
+			int32_t base64(const u_char * in, char * out, uint32_t sin, uint32_t sout, const bool mode = false) const noexcept;
 		public:
 			/**
 			 * encode Метод кодирования в base64

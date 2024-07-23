@@ -70,7 +70,7 @@ namespace awh {
 				bool _complete;
 			private:
 				// Порт сервера
-				u_int _port;
+				uint32_t _port;
 				// Хости сервера
 				string _host;
 			private:
@@ -144,7 +144,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @return     результат разрешения к подключению брокера
 				 */
-				bool acceptCallback(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept;
+				bool acceptCallback(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключившихся клиентов
@@ -167,7 +167,7 @@ namespace awh {
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
-				void init(const u_int port, const string & host = "") noexcept;
+				void init(const uint32_t port, const string & host = "") noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -221,7 +221,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				u_int port(const uint64_t bid) const noexcept;
+				uint32_t port(const uint64_t bid) const noexcept;
 				/**
 				 * ip Метод получения IP-адреса брокера
 				 * @param bid идентификатор брокера
@@ -273,7 +273,7 @@ namespace awh {
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const u_short total) noexcept;
+				void total(const uint16_t total) noexcept;
 				/**
 				 * mode Метод установки флага модуля
 				 * @param flag флаг модуля для установки
@@ -285,7 +285,7 @@ namespace awh {
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
-				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
 				 * Sample Конструктор

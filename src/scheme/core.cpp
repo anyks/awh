@@ -35,7 +35,7 @@ uint16_t awh::Scheme::Broker::sid() const noexcept {
  * port Метод извлечения порта подключения
  * @return установленный порт подключения
  */
-u_int awh::Scheme::Broker::port() const noexcept {
+uint32_t awh::Scheme::Broker::port() const noexcept {
 	// Извлекаем установленный порт сервера
 	return this->_port;
 }
@@ -43,7 +43,7 @@ u_int awh::Scheme::Broker::port() const noexcept {
  * port Метод установки порта подключения
  * @param порт подключения для установки
  */
-void awh::Scheme::Broker::port(const u_int port) noexcept {
+void awh::Scheme::Broker::port(const uint32_t port) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если порт передан
@@ -324,9 +324,9 @@ SOCKET awh::Scheme::socket(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return   порт подключения брокера
  */
-u_int awh::Scheme::port(const uint64_t bid) const noexcept {
+uint32_t awh::Scheme::port(const uint64_t bid) const noexcept {
 	// Результат работы функции
-	u_int result = 0;
+	uint32_t result = 0;
 	// Если идентификатор брокера передан
 	if(bid > 0){
 		// Выполняем поиск брокера

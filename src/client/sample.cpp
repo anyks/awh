@@ -162,7 +162,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
  * @param port порт сервера
  * @param host хост сервера
  */
-void awh::client::Sample::init(const u_int port, const string & host) noexcept {
+void awh::client::Sample::init(const uint32_t port, const string & host) noexcept {
 	// Если параметры подключения переданы
 	if((port > 0) && !host.empty()){
 		// Устанавливаем порт сервера
@@ -294,7 +294,7 @@ void awh::client::Sample::mode(const set <flag_t> & flags) noexcept {
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
  */
-void awh::client::Sample::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
+void awh::client::Sample::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Выполняем установку максимального количества попыток
 	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения

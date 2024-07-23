@@ -169,7 +169,7 @@ namespace awh {
 			 */
 			#elif __linux__
 				// Идентификатор активного EPoll
-				int _efd;
+				int32_t _efd;
 				// Список активных изменений событий
 				std::vector <struct epoll_event> _change;
 				// Список активных событий
@@ -179,7 +179,7 @@ namespace awh {
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__
 				// Идентификатор активного kqueue
-				int _kq;
+				int32_t _kq;
 				// Список активных изменений событий
 				std::vector <struct kevent> _change;
 				// Список активных событий

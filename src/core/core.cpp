@@ -265,7 +265,7 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 /**
  * signal Метод вывода полученного сигнала
  */
-void awh::Core::signal(const int signal) noexcept {
+void awh::Core::signal(const int32_t signal) noexcept {
 	// Если процесс является дочерним
 	if(this->_pid != ::getpid()){
 		// Определяем тип сигнала
@@ -310,7 +310,7 @@ void awh::Core::signal(const int signal) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("crash"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const int)> ("crash", signal);
+			this->_callbacks.call <void (const int32_t)> ("crash", signal);
 		// Выходим из приложения
 		else ::exit(signal);
 	}

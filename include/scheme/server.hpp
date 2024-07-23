@@ -48,10 +48,10 @@ namespace awh {
 				engine_t::addr_t _addr;
 			protected:
 				// Максимальное количество одновременных подключений
-				u_int _total;
+				uint32_t _total;
 			protected:
 				// Порт сервера
-				u_int _port;
+				uint32_t _port;
 				// Хост сервера
 				string _host;
 			public:

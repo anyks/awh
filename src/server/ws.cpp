@@ -39,7 +39,7 @@ void awh::server::Websocket::init(const string & socket, const vector <http_t::c
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Websocket::init(const u_int port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
+void awh::server::Websocket::init(const uint32_t port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Выполняем инициализацию Websocket-сервера
 	this->_ws.init(port, host, compressors);
 }
@@ -76,7 +76,7 @@ void awh::server::Websocket::callbacks(const fn_t & callbacks) noexcept {
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-u_int awh::server::Websocket::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::Websocket::port(const uint64_t bid) const noexcept {
 	// Выполняем извлечение порта брокера
 	return this->_ws.port(bid);
 }
@@ -183,7 +183,7 @@ void awh::server::Websocket::multiThreads(const uint16_t count, const bool mode)
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::Websocket::total(const u_short total) noexcept {
+void awh::server::Websocket::total(const uint16_t total) noexcept {
 	// Выполняем установку максимального количества одновременных подключений
 	this->_ws.total(total);
 }
@@ -206,22 +206,22 @@ void awh::server::Websocket::hosts(const string & filename) noexcept {
 		this->_dns.hosts(filename);
 }
 /**
- * keepAlive Метод установки жизни подключения
- * @param cnt   максимальное количество попыток
- * @param idle  интервал времени в секундах через которое происходит проверка подключения
- * @param intvl интервал времени в секундах между попытками
- */
-void awh::server::Websocket::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
-	// Выполняем установку жизни подключения
-	this->_ws.keepAlive(cnt, idle, intvl);
-}
-/**
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::server::Websocket::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
 	// Выполняем установку список поддерживаемых компрессоров
 	this->_ws.compressors(compressors);
+}
+/**
+ * keepAlive Метод установки жизни подключения
+ * @param cnt   максимальное количество попыток
+ * @param idle  интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl интервал времени в секундах между попытками
+ */
+void awh::server::Websocket::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Выполняем установку жизни подключения
+	this->_ws.keepAlive(cnt, idle, intvl);
 }
 /**
  * mode Метод установки флагов настроек модуля

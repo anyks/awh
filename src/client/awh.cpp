@@ -455,7 +455,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		this->callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", [this](const int32_t sid, const uint64_t rid, const u_int code, const string & message) noexcept -> void {
+		this->callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", [this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & message) noexcept -> void {
 			// Блокируем пустые переменные
 			(void) sid;
 			(void) rid;
@@ -491,7 +491,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 * @param body    данные полученного тела сообщения
 		 * @param data    данные полученных заголовков сообщения
 		 */
-		this->callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", [&entity, &headers, this](const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & body, const unordered_multimap <string, string> & data) noexcept -> void {
+		this->callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", [&entity, &headers, this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & body, const unordered_multimap <string, string> & data) noexcept -> void {
 			// Блокируем пустую переменную
 			(void) sid;
 			(void) rid;
@@ -683,22 +683,22 @@ void awh::client::AWH::user(const string & login, const string & password) noexc
 	this->_http.user(login, password);
 }
 /**
- * keepAlive Метод установки жизни подключения
- * @param cnt   максимальное количество попыток
- * @param idle  интервал времени в секундах через которое происходит проверка подключения
- * @param intvl интервал времени в секундах между попытками
- */
-void awh::client::AWH::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
-	// Выполняем установку жизни подключения
-	this->_http.keepAlive(cnt, idle, intvl);
-}
-/**
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::client::AWH::compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Выполняем установку списка поддерживаемых компрессоров
 	this->_http.compressors(compressors);
+}
+/**
+ * keepAlive Метод установки жизни подключения
+ * @param cnt   максимальное количество попыток
+ * @param idle  интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl интервал времени в секундах между попытками
+ */
+void awh::client::AWH::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Выполняем установку жизни подключения
+	this->_http.keepAlive(cnt, idle, intvl);
 }
 /**
  * multiThreads Метод активации многопоточности в Websocket

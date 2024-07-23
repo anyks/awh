@@ -202,22 +202,22 @@ void awh::client::Websocket::user(const string & login, const string & password)
 	this->_ws.user(login, password);
 }
 /**
- * keepAlive Метод установки жизни подключения
- * @param cnt   максимальное количество попыток
- * @param idle  интервал времени в секундах через которое происходит проверка подключения
- * @param intvl интервал времени в секундах между попытками
- */
-void awh::client::Websocket::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
-	// Выполняем установку жизни подключения
-	this->_ws.keepAlive(cnt, idle, intvl);
-}
-/**
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::client::Websocket::compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Выполняем установку списка поддерживаемых компрессоров
 	this->_ws.compressors(compressors);
+}
+/**
+ * keepAlive Метод установки жизни подключения
+ * @param cnt   максимальное количество попыток
+ * @param idle  интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl интервал времени в секундах между попытками
+ */
+void awh::client::Websocket::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Выполняем установку жизни подключения
+	this->_ws.keepAlive(cnt, idle, intvl);
 }
 /**
  * multiThreads Метод активации многопоточности в Websocket

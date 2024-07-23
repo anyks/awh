@@ -193,7 +193,7 @@ namespace awh {
 						 * @param pid    идентификатор упавшего процесса
 						 * @param status статус остановившегося процесса
 						 */
-						void process(const pid_t pid, const int status) noexcept;
+						void process(const pid_t pid, const int32_t status) noexcept;
 						/**
 						 * child Функция фильтр перехватчика сигналов
 						 * @param signal номер сигнала полученного системой
@@ -247,8 +247,8 @@ namespace awh {
 				typedef struct Broker {
 					bool end;          // Флаг завершения работы процессом
 					pid_t pid;         // Пид активного процесса
-					int mfds[2];       // Список файловых дескрипторов родительского процесса
-					int cfds[2];       // Список файловых дескрипторов дочернего процесса
+					SOCKET mfds[2];    // Список файловых дескрипторов родительского процесса
+					SOCKET cfds[2];    // Список файловых дескрипторов дочернего процесса
 					time_t date;       // Время начала жизни процесса
 					awh::event_t mess; // Объект события на получения сообщений
 					awh::event_t send; // Объект события на отправку сообщений
@@ -518,7 +518,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _trackCrash(true), _callbacks(log),
+			 _pid(::getpid()), _trackCrash(true), _callbacks(log),
 			 _socket(fmk, log), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
@@ -527,7 +527,7 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Cluster(base_t * base, const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _trackCrash(true), _callbacks(log),
+			 _pid(::getpid()), _trackCrash(true), _callbacks(log),
 			 _socket(fmk, log), _base(base), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Cluster Деструктор

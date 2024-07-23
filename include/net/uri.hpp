@@ -74,7 +74,7 @@ namespace awh {
 			 * Params Структура параметров URI
 			 */
 			typedef struct Params {
-				u_int port;  // Порт
+				uint32_t port;  // Порт
 				string host; // Хост
 				string user; // Пользователь
 				string pass; // Пароль
@@ -89,10 +89,10 @@ namespace awh {
 			typedef class URL {
 				public:
 					// Порт сервера
-					u_int port;
+					uint32_t port;
 				public:
 					// Тип протокола интернета AF_INET или AF_INET6
-					int family;
+					int32_t family;
 				public:
 					string ip;   // IP-адрес сервера
 					string host; // Хост сервера

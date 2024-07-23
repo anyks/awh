@@ -96,7 +96,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 			// Структура проверка статистики
 			struct _stat info;
 			// Выполняем извлечение данных статистики
-			const int status = _wstat(this->_fmk->convert(addr).c_str(), &info);
+			const int32_t status = _wstat(this->_fmk->convert(addr).c_str(), &info);
 		/**
 		 * Выполняем работу для Unix
 		 */
@@ -104,7 +104,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 			// Структура проверка статистики
 			struct stat info;
 			// Выполняем извлечение данных статистики
-			const int status = ::stat(addr.c_str(), &info);
+			const int32_t status = ::stat(addr.c_str(), &info);
 		#endif
 		// Если тип определён
 		if(status == 0){
@@ -265,7 +265,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 						// Структура проверка статистики
 						struct stat info;
 						// Выполняем извлечение данных статистики
-						const int status = ::stat(path.c_str(), &info);
+						const int32_t status = ::stat(path.c_str(), &info);
 						// Если тип определён
 						if(status == 0)
 							// Выводим размер файла
@@ -528,9 +528,9 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
  * @param path полный путь для удаления
  * @return     количество дочерних элементов
  */
-int awh::FS::delPath(const string & path) const noexcept {
+int32_t awh::FS::delPath(const string & path) const noexcept {
 	// Результат работы функции
-	int result = -1;
+	int32_t result = -1;
 	// Если адрес передан
 	if(!path.empty()){
 		// Определяем тип пути
@@ -576,7 +576,7 @@ int awh::FS::delPath(const string & path) const noexcept {
 							while(!result && (ptr = ::readdir(dir))){
 						#endif
 								// Количество найденных элементов
-								int count = -1;
+								int32_t count = -1;
 								/**
 								 * Выполняем работу для Windows
 								 */
@@ -766,7 +766,7 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 									// Если полный адрес ярлыка извлечён
 									if(SUCCEEDED(hres)){
 										// Определяем размер полученных данных
-										const int size = WideCharToMultiByte(CP_UTF8, 0, achPath, -1, 0, 0, 0, 0);
+										const int32_t size = WideCharToMultiByte(CP_UTF8, 0, achPath, -1, 0, 0, 0, 0);
 										// Если размер извлекаемых данных получен
 										if(size > 0){
 											// Выполняем выделение памяти для результирующего буфера
@@ -1291,7 +1291,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 		// Если адрес файла передан
 		if(!filename.empty() && this->isFile(filename)){
 			// Файловый дескриптор файла
-			int fd = -1;
+			int32_t fd = -1;
 			// Структура статистики файла
 			struct stat info;
 			// Если файл не открыт

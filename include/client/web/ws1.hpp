@@ -79,7 +79,7 @@ namespace awh {
 				 * Partner Структура партнёра
 				 */
 				typedef struct Partner {
-					short wbit;    // Размер скользящего окна
+					int16_t wbit;  // Размер скользящего окна
 					bool takeover; // Флаг скользящего контекста сжатия
 					/**
 					 * Partner Конструктор
@@ -196,7 +196,7 @@ namespace awh {
 				 * @param code    код ответа сервера
 				 * @param message сообщение ответа сервера
 				 */
-				void response(const uint64_t bid, const u_int code, const string & message) noexcept;
+				void response(const uint64_t bid, const uint32_t code, const string & message) noexcept;
 			private:
 				/**
 				 * header Метод получения заголовка
@@ -212,7 +212,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param headers заголовки ответа сервера
 				 */
-				void headers(const uint64_t bid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+				void headers(const uint64_t bid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков

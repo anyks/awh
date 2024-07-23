@@ -410,18 +410,18 @@ bool awh::NTP::clear() noexcept {
  * cancel Метод отмены выполнения запроса
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::NTP::cancel(const int family) noexcept {
+void awh::NTP::cancel(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Определяем тип протокола подключения
 	switch(family){
 		// Если тип протокола подключения IPv4
-		case static_cast <int> (AF_INET):
+		case static_cast <int32_t> (AF_INET):
 			// Выполняем отмену резолвинга домена
 			this->_workerIPv4->cancel();
 		break;
 		// Если тип протокола подключения IPv6
-		case static_cast <int> (AF_INET6):
+		case static_cast <int32_t> (AF_INET6):
 			// Выполняем отмену резолвинга домена
 			this->_workerIPv6->cancel();
 		break;
@@ -431,7 +431,7 @@ void awh::NTP::cancel(const int family) noexcept {
  * shuffle Метод пересортировки серверов NTP
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::NTP::shuffle(const int family) noexcept {
+void awh::NTP::shuffle(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	/**
@@ -443,12 +443,12 @@ void awh::NTP::shuffle(const int family) noexcept {
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET):
+			case static_cast <int32_t> (AF_INET):
 				// Выполняем рандомную сортировку списка NTP-серверов
 				::shuffle(this->_serversIPv4.begin(), this->_serversIPv4.end(), generator);
 			break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6):
+			case static_cast <int32_t> (AF_INET6):
 				// Выполняем рандомную сортировку списка NTP-серверов
 				::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
 			break;
@@ -486,7 +486,7 @@ void awh::NTP::ns(const vector <string> & servers) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @return       запрошенный NTP-сервер
  */
-string awh::NTP::server(const int family) noexcept {
+string awh::NTP::server(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Результат работы функции
@@ -500,7 +500,7 @@ string awh::NTP::server(const int family) noexcept {
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Временный буфер данных для преобразования IP-адреса
 				char buffer[INET_ADDRSTRLEN];
 				// Если список серверов пустой
@@ -517,7 +517,7 @@ string awh::NTP::server(const int family) noexcept {
 				result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
 			} break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Временный буфер данных для преобразования IP-адреса
 				char buffer[INET6_ADDRSTRLEN];
 				// Если список серверов пустой
@@ -571,7 +571,7 @@ void awh::NTP::server(const string & server) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param server адрес NTP-сервера
  */
-void awh::NTP::server(const int family, const string & server) noexcept {
+void awh::NTP::server(const int32_t family, const string & server) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -581,7 +581,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 		// Если адрес сервера передан
 		if(!server.empty()){
 			// Порт переданного сервера
-			u_int port = 123;
+			uint32_t port = 123;
 			// Хост переданного сервера
 			string host = "";
 			// Определяем тип передаваемого сервера
@@ -603,7 +603,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						// Извлекаем хост сервера имён
 						host = server.substr(0, pos);
 						// Извлекаем порт сервера имён
-						port = static_cast <u_int> (::stoi(server.substr(pos + 1)));
+						port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
 					// Извлекаем хост сервера имён
 					} else host = server;
 				} break;
@@ -618,7 +618,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 							// Извлекаем хост сервера имён
 							host = server.substr(1, pos - 1);
 							// Запоминаем полученный порт
-							port = static_cast <u_int> (::stoi(server.substr(pos + 2)));
+							port = static_cast <uint32_t> (::stoi(server.substr(pos + 2)));
 						// Заполняем полученный сервер
 						} else if(server.back() == ']')
 							// Извлекаем хост сервера имён
@@ -637,7 +637,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						// Извлекаем хост сервера имён
 						host = server.substr(0, pos);
 						// Извлекаем порт сервера имён
-						port = static_cast <u_int> (::stoi(server.substr(pos + 1)));
+						port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
 					// Извлекаем хост сервера имён
 					} else host = server;
 					// Выполняем получение IP адрес хоста доменного имени
@@ -658,7 +658,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						// Извлекаем хост сервера имён
 						host = this->_dns.host(family, server.substr(0, pos));
 						// Извлекаем порт сервера имён
-						port = static_cast <u_int> (::stoi(server.substr(pos + 1)));
+						port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
 					// Извлекаем хост сервера имён
 					} else host = this->_dns.host(family, server);
 				}
@@ -668,7 +668,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 				// Определяем тип протокола подключения
 				switch(family){
 					// Если тип протокола подключения IPv4
-					case static_cast <int> (AF_INET): {
+					case static_cast <int32_t> (AF_INET): {
 						// Создаём объект сервера NTP
 						server_t <1> server;
 						// Запоминаем полученный порт
@@ -694,7 +694,7 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						}
 					} break;
 					// Если тип протокола подключения IPv6
-					case static_cast <int> (AF_INET6): {
+					case static_cast <int32_t> (AF_INET6): {
 						// Создаём объект сервера NTP
 						server_t <4> server;
 						// Запоминаем полученный порт
@@ -777,7 +777,7 @@ void awh::NTP::servers(const vector <string> & servers) noexcept {
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param servers адреса NTP-серверов
  */
-void awh::NTP::servers(const int family, const vector <string> & servers) noexcept {
+void awh::NTP::servers(const int32_t family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
@@ -848,7 +848,7 @@ void awh::NTP::replace(const vector <string> & servers) noexcept {
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param servers адреса NTP-серверов
  */
-void awh::NTP::replace(const int family, const vector <string> & servers) noexcept {
+void awh::NTP::replace(const int32_t family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -858,12 +858,12 @@ void awh::NTP::replace(const int family, const vector <string> & servers) noexce
 		// Определяем тип подключения
 		switch(family){
 			// Для протокола IPv4
-			case static_cast <int> (AF_INET):
+			case static_cast <int32_t> (AF_INET):
 				// Выполняем очистку списка NTP-серверов
 				this->_serversIPv4.clear();
 			break;
 			// Для протокола IPv6
-			case static_cast <int> (AF_INET6):
+			case static_cast <int32_t> (AF_INET6):
 				// Выполняем очистку списка NTP-серверов
 				this->_serversIPv6.clear();
 			break;
@@ -879,12 +879,12 @@ void awh::NTP::replace(const int family, const vector <string> & servers) noexce
 			// Определяем тип подключения
 			switch(family){
 				// Для протокола IPv4
-				case static_cast <int> (AF_INET):
+				case static_cast <int32_t> (AF_INET):
 					// Устанавливаем список серверов
 					servers = IPV4_NTP;
 				break;
 				// Для протокола IPv6
-				case static_cast <int> (AF_INET6):
+				case static_cast <int32_t> (AF_INET6):
 					// Устанавливаем список серверов
 					servers = IPV6_NTP;
 				break;
@@ -961,7 +961,7 @@ void awh::NTP::network(const vector <string> & network) noexcept {
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param network IP-адреса сетевых плат
  */
-void awh::NTP::network(const int family, const vector <string> & network) noexcept {
+void awh::NTP::network(const int32_t family, const vector <string> & network) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -977,12 +977,12 @@ void awh::NTP::network(const int family, const vector <string> & network) noexce
 				// Определяем тип передаваемого IP-адреса
 				switch(family){
 					// Если IP-адрес является IPv4 адресом
-					case static_cast <int> (AF_INET):
+					case static_cast <int32_t> (AF_INET):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv4->_network.push_back(host);
 					break;
 					// Если IP-адрес является IPv6 адресом
-					case static_cast <int> (AF_INET6):
+					case static_cast <int32_t> (AF_INET6):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv6->_network.push_back(host);
 					break;
@@ -1012,7 +1012,7 @@ time_t awh::NTP::request() noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @return       полученный UnixTimeStamp
  */
-time_t awh::NTP::request(const int family) noexcept {
+time_t awh::NTP::request(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -1022,7 +1022,7 @@ time_t awh::NTP::request(const int family) noexcept {
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Если список NTP-серверов пустой
 				if(this->_serversIPv4.empty())
 					// Устанавливаем список серверов IPv4
@@ -1031,7 +1031,7 @@ time_t awh::NTP::request(const int family) noexcept {
 				return this->_workerIPv4->request();
 			}
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Если список NTP-серверов пустой
 				if(this->_serversIPv6.empty())
 					// Устанавливаем список серверов IPv6

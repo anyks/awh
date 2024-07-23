@@ -75,7 +75,7 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
  * @param sid  идентификатор схемы сети
  * @return     результат разрешения к подключению брокера
  */
-bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept {
+bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
@@ -83,7 +83,7 @@ bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("accept"))
 			// Выполняем функцию обратного вызова
-			return this->_callbacks.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
+			return this->_callbacks.call <bool (const string &, const string &, const uint32_t)> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение брокеру
 	return result;
@@ -241,7 +241,7 @@ void awh::server::Web::init(const string & socket, const vector <http_t::compres
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Web::init(const u_int port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
+void awh::server::Web::init(const uint32_t port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Отключаем неиспользуемую переменную
 	(void) compressors;
 	// Устанавливаем порт сервера
@@ -447,7 +447,7 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
+ _pid(::getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
  _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
@@ -462,7 +462,7 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
+ _pid(::getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
  _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера

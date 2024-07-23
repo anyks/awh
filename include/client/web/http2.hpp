@@ -138,7 +138,7 @@ namespace awh {
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				int chunkSignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
+				int32_t chunkSignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
 				 * @param sid    идентификатор потока
@@ -147,7 +147,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * closedSignal Метод завершения работы потока
@@ -155,14 +155,14 @@ namespace awh {
 				 * @param error флаг ошибки если присутствует
 				 * @return      статус полученных данных
 				 */
-				int closedSignal(const int32_t sid, const awh::http2_t::error_t error) noexcept;
+				int32_t closedSignal(const int32_t sid, const awh::http2_t::error_t error) noexcept;
 			private:
 				/**
 				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
-				int beginSignal(const int32_t sid) noexcept;
+				int32_t beginSignal(const int32_t sid) noexcept;
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
 				 * @param sid идентификатор потока
@@ -170,7 +170,7 @@ namespace awh {
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				int headerSignal(const int32_t sid, const string & key, const string & val) noexcept;
+				int32_t headerSignal(const int32_t sid, const string & key, const string & val) noexcept;
 			private:
 				/**
 				 * end Метод завершения работы потока

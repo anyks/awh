@@ -194,7 +194,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @return    порт сервера который он прослушивает
 				 */
-				u_int port(const uint16_t sid) const noexcept;
+				uint32_t port(const uint16_t sid) const noexcept;
 				/**
 				 * host Метод получения хоста сервера
 				 * @param sid идентификатор схемы сети
@@ -268,7 +268,7 @@ namespace awh {
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
 				 */
-				void work(const uint16_t sid, const string & ip, const int family) noexcept;
+				void work(const uint16_t sid, const string & ip, const int32_t family) noexcept;
 			public:
 				/**
 				 * ipV6only Метод установки флага использования только сети IPv6
@@ -287,7 +287,7 @@ namespace awh {
 				 * @param sid   идентификатор схемы сети
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const uint16_t sid, const u_short total) noexcept;
+				void total(const uint16_t sid, const uint16_t total) noexcept;
 			public:
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
@@ -318,7 +318,7 @@ namespace awh {
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
-				void init(const uint16_t sid, const u_int port, const string & host = "") noexcept;
+				void init(const uint16_t sid, const uint32_t port, const string & host = "") noexcept;
 			public:
 				/**
 				 * bandwidth Метод установки пропускной способности сети

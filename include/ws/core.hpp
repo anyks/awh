@@ -43,11 +43,11 @@ namespace awh {
 	typedef class WCore : public http_t {
 		protected:
 			// Версия протокола WebSocket
-			static constexpr u_short WS_VERSION = 13;
+			static constexpr uint16_t WS_VERSION = 13;
 			// Размер минимального значения окна для сжатия данных GZIP
-			static constexpr short GZIP_MIN_WBITS = 8;
+			static constexpr int16_t GZIP_MIN_WBITS = 8;
 			// Размер максимального значения окна для сжатия данных GZIP
-			static constexpr short GZIP_MAX_WBITS = 15;
+			static constexpr int16_t GZIP_MAX_WBITS = 15;
 		public:
 			/**
 			 * Флаги проверок переключения протокола
@@ -63,7 +63,7 @@ namespace awh {
 			 * Partner Структура партнёра
 			 */
 			typedef struct Partner {
-				short wbit;    // Размер скользящего окна
+				int16_t wbit;  // Размер скользящего окна
 				bool takeover; // Флаг скользящего контекста сжатия
 				/**
 				 * Partner Конструктор
@@ -215,7 +215,7 @@ namespace awh {
 			 * @param hid тип текущего модуля
 			 * @return    размер скользящего окна
 			 */
-			short wbit(const web_t::hid_t hid) const noexcept;
+			int16_t wbit(const web_t::hid_t hid) const noexcept;
 		public:
 			/**
 			 * reject Метод создания отрицательного ответа

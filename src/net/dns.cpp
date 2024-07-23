@@ -40,7 +40,7 @@ uint8_t * awh::DNS::Buffer::get(const type_t type) noexcept {
  * @param type   тип бинарного буфера данных
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::DNS::Buffer::clear(const type_t type, const int family) noexcept {
+void awh::DNS::Buffer::clear(const type_t type, const int32_t family) noexcept {
 	// Определяем тип бинарного буфера
 	switch(static_cast <uint8_t> (type)){
 		// Если нужно выполнить очистку буфера для обмена данными с DNS-сервером
@@ -61,7 +61,7 @@ void awh::DNS::Buffer::clear(const type_t type, const int family) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @return       размер бинарного буфера данных
  */
-size_t awh::DNS::Buffer::size(const type_t type, const int family) const noexcept {
+size_t awh::DNS::Buffer::size(const type_t type, const int32_t family) const noexcept {
 	// Определяем тип бинарного буфера
 	switch(static_cast <uint8_t> (type)){
 		// Если нужно выполнить получение размера для обмена данными с DNS-сервером
@@ -669,7 +669,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Устанавливаем размер извлекаемых данных
 										answer.back().record.resize(ntohs(rrflags->length), 0);
 										// Выполняем перебор полученных октетов для парсинга IP-адреса
-										for(int j = 0; j < ntohs(rrflags->length); ++j)
+										for(int32_t j = 0; j < ntohs(rrflags->length); ++j)
 											// Выполняем парсинг IP-адреса
 											answer.back().record[j] = static_cast <uint8_t> (self->_buffer.get(buffer_t::type_t::DATA)[offset++]);
 										// Устанавливаем тип полученных данных
@@ -754,7 +754,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 										// Устанавливаем размер извлекаемых данных
 										additional.back().record.resize(ntohs(rrflags->length), 0);
 										// Выполняем перебор полученных октетов для парсинга IP-адреса
-										for(int j = 0; j < ntohs(rrflags->length); ++j)
+										for(int32_t j = 0; j < ntohs(rrflags->length); ++j)
 											// Выполняем парсинг IP-адреса
 											additional.back().record[j] = static_cast <uint8_t> (self->_buffer.get(buffer_t::type_t::DATA)[offset++]);
 										// Устанавливаем тип полученных данных
@@ -824,7 +824,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Данные извлечённого IP-адреса
 													string ip = "";
 													// Тип интернет-протокола
-													int family = 0;
+													int32_t family = 0;
 													// Определяем тип записи
 													switch(item.type){
 														// Если тип полученной записи IPv4
@@ -918,7 +918,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Данные извлечённого IP-адреса
 													string ip = "";
 													// Тип интернет-протокола
-													int family = 0;
+													int32_t family = 0;
 													// Определяем тип записи
 													switch(item.type){
 														// Если тип полученной записи IPv4
@@ -998,7 +998,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Данные извлечённого IP-адреса
 													string ip = "";
 													// Тип интернет-протокола
-													int family = 0;
+													int32_t family = 0;
 													// Определяем тип записи
 													switch(item.type){
 														// Если тип полученной записи IPv4
@@ -1062,7 +1062,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Данные извлечённого IP-адреса
 													string ip = "";
 													// Тип интернет-протокола
-													int family = 0;
+													int32_t family = 0;
 													// Определяем тип записи
 													switch(item.type){
 														// Если тип полученной записи IPv4
@@ -1252,7 +1252,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 				// Результирующий буфер данных
 				char * buffer = nullptr;
 				// Выполняем кодирования доменного имени
-				const int rc = idn2_to_ascii_8z(domain.c_str(), &buffer, IDN2_NONTRANSITIONAL);
+				const int32_t rc = idn2_to_ascii_8z(domain.c_str(), &buffer, IDN2_NONTRANSITIONAL);
 				// Если кодирование не выполнено
 				if(rc != IDNA_SUCCESS)
 					// Выводим в лог сообщение
@@ -1302,7 +1302,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 				// Результирующий буфер данных
 				char * buffer = nullptr;
 				// Выполняем декодирования доменного имени
-				const int rc = idn2_to_unicode_8z8z(domain.c_str(), &buffer, 0);
+				const int32_t rc = idn2_to_unicode_8z8z(domain.c_str(), &buffer, 0);
 				// Если кодирование не выполнено
 				if(rc != IDNA_SUCCESS)
 					// Выводим в лог сообщение
@@ -1371,18 +1371,18 @@ bool awh::DNS::flush() noexcept {
  * cancel Метод отмены выполнения запроса
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::DNS::cancel(const int family) noexcept {
+void awh::DNS::cancel(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Определяем тип протокола подключения
 	switch(family){
 		// Если тип протокола подключения IPv4
-		case static_cast <int> (AF_INET):
+		case static_cast <int32_t> (AF_INET):
 			// Выполняем отмену резолвинга домена
 			this->_workerIPv4->cancel();
 		break;
 		// Если тип протокола подключения IPv6
-		case static_cast <int> (AF_INET6):
+		case static_cast <int32_t> (AF_INET6):
 			// Выполняем отмену резолвинга домена
 			this->_workerIPv6->cancel();
 		break;
@@ -1392,7 +1392,7 @@ void awh::DNS::cancel(const int family) noexcept {
  * shuffle Метод пересортировки серверов DNS
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
-void awh::DNS::shuffle(const int family) noexcept {
+void awh::DNS::shuffle(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	/**
@@ -1404,12 +1404,12 @@ void awh::DNS::shuffle(const int family) noexcept {
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET):
+			case static_cast <int32_t> (AF_INET):
 				// Выполняем рандомную сортировку списка DNS-серверов
 				::shuffle(this->_serversIPv4.begin(), this->_serversIPv4.end(), generator);
 			break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6):
+			case static_cast <int32_t> (AF_INET6):
 				// Выполняем рандомную сортировку списка DNS-серверов
 				::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
 			break;
@@ -1436,7 +1436,7 @@ void awh::DNS::timeout(const uint8_t sec) noexcept {
  * @param domain доменное имя соответствующее IP-адресу
  * @return       IP-адрес находящийся в кэше
  */
-string awh::DNS::cache(const int family, const string & domain) noexcept {
+string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если доменное имя передано
@@ -1448,7 +1448,7 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Если кэш доменных имён проинициализирован
 				if(!this->_cacheIPv4.empty()){
 					// Получаем диапазон IP-адресов в кэше
@@ -1480,7 +1480,7 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 				}
 			} break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Если кэш доменных имён проинициализирован
 				if(!this->_cacheIPv6.empty()){
 					// Получаем диапазон IP-адресов в кэше
@@ -1554,7 +1554,7 @@ void awh::DNS::clearCache(const string & domain) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param domain доменное имя для которого выполняется очистка кэша
  */
-void awh::DNS::clearCache(const int family, const string & domain) noexcept {
+void awh::DNS::clearCache(const int32_t family, const string & domain) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя передано
@@ -1564,7 +1564,7 @@ void awh::DNS::clearCache(const int family, const string & domain) noexcept {
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -1578,7 +1578,7 @@ void awh::DNS::clearCache(const int family, const string & domain) noexcept {
 				}
 			} break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -1609,13 +1609,13 @@ void awh::DNS::clearCache(const bool localhost) noexcept {
  * @param family    тип интернет-протокола AF_INET, AF_INET6
  * @param localhost флаг обозначающий добавление локального адреса
  */
-void awh::DNS::clearCache(const int family, const bool localhost) noexcept {
+void awh::DNS::clearCache(const int32_t family, const bool localhost) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Определяем тип протокола подключения
 	switch(family){
 		// Если тип протокола подключения IPv4
-		case static_cast <int> (AF_INET): {
+		case static_cast <int32_t> (AF_INET): {
 			// Переходим по всему списку IP-адресов
 			for(auto i = this->_cacheIPv4.begin(); i != this->_cacheIPv4.end();){
 				// Если мы нашли нужный тип IP-адреса
@@ -1627,7 +1627,7 @@ void awh::DNS::clearCache(const int family, const bool localhost) noexcept {
 			}
 		} break;
 		// Если тип протокола подключения IPv6
-		case static_cast <int> (AF_INET6): {
+		case static_cast <int32_t> (AF_INET6): {
 			// Переходим по всему списку IP-адресов
 			for(auto i = this->_cacheIPv6.begin(); i != this->_cacheIPv6.end();){
 				// Если мы нашли нужный тип IP-адреса
@@ -1675,7 +1675,7 @@ void awh::DNS::setToCache(const string & domain, const string & ip, const time_t
  * @param ttl       время жизни кэша доменного имени
  * @param localhost флаг обозначающий добавление локального адреса
  */
-void awh::DNS::setToCache(const int family, const string & domain, const string & ip, const time_t ttl, const bool localhost) noexcept {
+void awh::DNS::setToCache(const int32_t family, const string & domain, const string & ip, const time_t ttl, const bool localhost) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
@@ -1687,7 +1687,7 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -1720,7 +1720,7 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 				}
 			} break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -1773,7 +1773,7 @@ void awh::DNS::clearBlackList(const string & domain) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param domain доменное имя для которого очищается чёрный список
  */
-void awh::DNS::clearBlackList(const int family, const string & domain) noexcept {
+void awh::DNS::clearBlackList(const int32_t family, const string & domain) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя передано
@@ -1783,7 +1783,7 @@ void awh::DNS::clearBlackList(const int family, const string & domain) noexcept 
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -1795,7 +1795,7 @@ void awh::DNS::clearBlackList(const int family, const string & domain) noexcept 
 				}
 			} break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -1840,7 +1840,7 @@ void awh::DNS::delInBlackList(const string & domain, const string & ip) noexcept
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для удаления из чёрного списка
  */
-void awh::DNS::delInBlackList(const int family, const string & domain, const string & ip) noexcept {
+void awh::DNS::delInBlackList(const int32_t family, const string & domain, const string & ip) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
@@ -1850,7 +1850,7 @@ void awh::DNS::delInBlackList(const int family, const string & domain, const str
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -1869,7 +1869,7 @@ void awh::DNS::delInBlackList(const int family, const string & domain, const str
 				}
 			} break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -1921,7 +1921,7 @@ void awh::DNS::setToBlackList(const string & domain, const string & ip) noexcept
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в чёрный список
  */
-void awh::DNS::setToBlackList(const int family, const string & domain, const string & ip) noexcept {
+void awh::DNS::setToBlackList(const int32_t family, const string & domain, const string & ip) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
@@ -1931,7 +1931,7 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Создаём объект кэша
 				cache_t <1> cache;
 				// Устанавливаем флаг запрещённого домена
@@ -1969,7 +1969,7 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 				}
 			} break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Создаём объект кэша
 				cache_t <4> cache;
 				// Устанавливаем флаг запрещённого домена
@@ -2042,7 +2042,7 @@ bool awh::DNS::isInBlackList(const string & domain, const string & ip) const noe
  * @param ip     адрес для проверки наличия в чёрном списке
  * @return       результат проверки наличия IP-адреса в чёрном списке
  */
-bool awh::DNS::isInBlackList(const int family, const string & domain, const string & ip) const noexcept {
+bool awh::DNS::isInBlackList(const int32_t family, const string & domain, const string & ip) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если доменное имя и IP-адрес переданы
@@ -2052,7 +2052,7 @@ bool awh::DNS::isInBlackList(const int family, const string & domain, const stri
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv4.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -2071,7 +2071,7 @@ bool awh::DNS::isInBlackList(const int family, const string & domain, const stri
 				}
 			}
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Получаем диапазон IP-адресов в кэше
 				auto ret = this->_cacheIPv6.equal_range(domain);
 				// Переходим по всему списку IP-адресов
@@ -2099,7 +2099,7 @@ bool awh::DNS::isInBlackList(const int family, const string & domain, const stri
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @return       запрошенный сервер имён
  */
-string awh::DNS::server(const int family) noexcept {
+string awh::DNS::server(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Результат работы функции
@@ -2113,7 +2113,7 @@ string awh::DNS::server(const int family) noexcept {
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Если список серверов пустой
 				if(this->_serversIPv4.empty())
 					// Устанавливаем новый список имён
@@ -2132,7 +2132,7 @@ string awh::DNS::server(const int family) noexcept {
 				result = ::inet_ntop(family, &i->ip, reinterpret_cast <char *> (this->_buffer.get(buffer_t::type_t::ADDR)), size);
 			} break;
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Если список серверов пустой
 				if(this->_serversIPv6.empty())
 					// Устанавливаем новый список имён
@@ -2188,7 +2188,7 @@ void awh::DNS::server(const string & server) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param server адрес DNS-сервера
  */
-void awh::DNS::server(const int family, const string & server) noexcept {
+void awh::DNS::server(const int32_t family, const string & server) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -2287,7 +2287,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 				// Определяем тип протокола подключения
 				switch(family){
 					// Если тип протокола подключения IPv4
-					case static_cast <int> (AF_INET): {
+					case static_cast <int32_t> (AF_INET): {
 						// Создаём объект сервера DNS
 						server_t <1> server;
 						// Запоминаем полученный порт
@@ -2313,7 +2313,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 						}
 					} break;
 					// Если тип протокола подключения IPv6
-					case static_cast <int> (AF_INET6): {
+					case static_cast <int32_t> (AF_INET6): {
 						// Создаём объект сервера DNS
 						server_t <4> server;
 						// Запоминаем полученный порт
@@ -2396,7 +2396,7 @@ void awh::DNS::servers(const vector <string> & servers) noexcept {
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param servers адреса DNS-серверов
  */
-void awh::DNS::servers(const int family, const vector <string> & servers) noexcept {
+void awh::DNS::servers(const int32_t family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
@@ -2467,7 +2467,7 @@ void awh::DNS::replace(const vector <string> & servers) noexcept {
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param servers адреса DNS-серверов
  */
-void awh::DNS::replace(const int family, const vector <string> & servers) noexcept {
+void awh::DNS::replace(const int32_t family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -2477,12 +2477,12 @@ void awh::DNS::replace(const int family, const vector <string> & servers) noexce
 		// Определяем тип подключения
 		switch(family){
 			// Для протокола IPv4
-			case static_cast <int> (AF_INET):
+			case static_cast <int32_t> (AF_INET):
 				// Выполняем очистку списка DNS-серверов
 				this->_serversIPv4.clear();
 			break;
 			// Для протокола IPv6
-			case static_cast <int> (AF_INET6):
+			case static_cast <int32_t> (AF_INET6):
 				// Выполняем очистку списка DNS-серверов
 				this->_serversIPv6.clear();
 			break;
@@ -2498,12 +2498,12 @@ void awh::DNS::replace(const int family, const vector <string> & servers) noexce
 			// Определяем тип подключения
 			switch(family){
 				// Для протокола IPv4
-				case static_cast <int> (AF_INET):
+				case static_cast <int32_t> (AF_INET):
 					// Устанавливаем список серверов
 					servers = IPV4_RESOLVER;
 				break;
 				// Для протокола IPv6
-				case static_cast <int> (AF_INET6):
+				case static_cast <int32_t> (AF_INET6):
 					// Устанавливаем список серверов
 					servers = IPV6_RESOLVER;
 				break;
@@ -2578,7 +2578,7 @@ void awh::DNS::network(const vector <string> & network) noexcept {
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param network IP-адреса сетевых плат
  */
-void awh::DNS::network(const int family, const vector <string> & network) noexcept {
+void awh::DNS::network(const int32_t family, const vector <string> & network) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -2592,12 +2592,12 @@ void awh::DNS::network(const int family, const vector <string> & network) noexce
 				// Определяем тип передаваемого IP-адреса
 				switch(family){
 					// Если IP-адрес является IPv4 адресом
-					case static_cast <int> (AF_INET):
+					case static_cast <int32_t> (AF_INET):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv4->_network.push_back(host);
 					break;
 					// Если IP-адрес является IPv6 адресом
-					case static_cast <int> (AF_INET6):
+					case static_cast <int32_t> (AF_INET6):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv6->_network.push_back(host);
 					break;
@@ -2668,7 +2668,7 @@ void awh::DNS::hosts(const string & filename) noexcept {
 					// Если количество хостов в списке больше одного
 					if(hosts.size() > 1){
 						// Тип интернет-протокола AF_INET, AF_INET6
-						int family = 0;
+						int32_t family = 0;
 						// Определяем тип передаваемого сервера
 						switch(static_cast <uint8_t> (this->_net.host(hosts.front()))){
 							// Если хост является доменом или IPv4 адресом
@@ -2721,7 +2721,7 @@ string awh::DNS::host(const string & name) noexcept {
  * @param name   название сервера
  * @return       полученный IP-адрес
  */
-string awh::DNS::host(const int family, const string & name) noexcept {
+string awh::DNS::host(const int32_t family, const string & name) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Выполняем блокировку потока
@@ -2803,7 +2803,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 				// Определяем тип протокола подключения
 				switch(family){
 					// Если тип протокола подключения IPv4
-					case static_cast <int> (AF_INET): {
+					case static_cast <int32_t> (AF_INET): {
 						// Создаём объект сервера
 						struct sockaddr_in server;
 						// Выполняем перебор всего списка полученных IP-адресов
@@ -2823,7 +2823,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 						}
 					} break;
 					// Если тип протокола подключения IPv6
-					case static_cast <int> (AF_INET6): {
+					case static_cast <int32_t> (AF_INET6): {
 						// Создаём объект сервера
 						struct sockaddr_in6 server;
 						// Выполняем перебор всего списка полученных IP-адресов
@@ -2892,7 +2892,7 @@ string awh::DNS::resolve(const string & host) noexcept {
  * @param host   хост сервера
  * @return       полученный IP-адрес
  */
-string awh::DNS::resolve(const int family, const string & host) noexcept {
+string awh::DNS::resolve(const int32_t family, const string & host) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Выполняем блокировку потока
@@ -2951,12 +2951,12 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 							// Определяем тип протокола подключения
 							switch(family){
 								// Если тип протокола подключения IPv4
-								case static_cast <int> (AF_INET):
+								case static_cast <int32_t> (AF_INET):
 									// Выводим информацию об IP-адресе
 									cout << "IPv4: " << result << endl;
 								break;
 								// Если тип протокола подключения IPv6
-								case static_cast <int> (AF_INET6):
+								case static_cast <int32_t> (AF_INET6):
 									// Выводим информацию об IP-адресе
 									cout << "IPv6: " << result << endl;
 								break;
@@ -2978,7 +2978,7 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 							// Определяем тип протокола подключения
 							switch(family){
 								// Если тип протокола подключения IPv4
-								case static_cast <int> (AF_INET): {
+								case static_cast <int32_t> (AF_INET): {
 									// Получаем значение переменной
 									const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV4_%s", this->_prefix.c_str(), postfix.c_str()).c_str());
 									// Если IP-адрес из переменной окружения получен
@@ -2987,7 +2987,7 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 										return env;
 								} break;
 								// Если тип протокола подключения IPv6
-								case static_cast <int> (AF_INET6): {
+								case static_cast <int32_t> (AF_INET6): {
 									// Получаем значение переменной
 									const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV6_%s", this->_prefix.c_str(), postfix.c_str()).c_str());
 									// Если IP-адрес из переменной окружения получен
@@ -3002,7 +3002,7 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 						// Определяем тип протокола подключения
 						switch(family){
 							// Если тип протокола подключения IPv4
-							case static_cast <int> (AF_INET): {
+							case static_cast <int32_t> (AF_INET): {
 								// Если список DNS-серверов пустой
 								if(this->_serversIPv4.empty())
 									// Устанавливаем список серверов IPv4
@@ -3011,7 +3011,7 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 								result = this->_workerIPv4->request(domain);
 							} break;
 							// Если тип протокола подключения IPv6
-							case static_cast <int> (AF_INET6): {
+							case static_cast <int32_t> (AF_INET6): {
 								// Если список DNS-серверов пустой
 								if(this->_serversIPv6.empty())
 									// Устанавливаем список серверов IPv6
@@ -3050,12 +3050,12 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 							// Определяем тип протокола подключения
 							switch(family){
 								// Если тип протокола подключения IPv4
-								case static_cast <int> (AF_INET):
+								case static_cast <int32_t> (AF_INET):
 									// Выводим информацию об IP-адресе
 									cout << "IPv4: " << result << endl;
 								break;
 								// Если тип протокола подключения IPv6
-								case static_cast <int> (AF_INET6):
+								case static_cast <int32_t> (AF_INET6):
 									// Выводим информацию об IP-адресе
 									cout << "IPv6: " << result << endl;
 								break;
@@ -3108,7 +3108,7 @@ vector <string> awh::DNS::search(const string & ip) noexcept {
  * @param ip     адрес для поиска доменного имени
  * @return       список найденных доменных имён
  */
-vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
+vector <string> awh::DNS::search(const int32_t family, const string & ip) noexcept {
 	// Результат работы функции
 	vector <string> result;
 	// Если IP-адрес передан
@@ -3116,7 +3116,7 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
-			case static_cast <int> (AF_INET): {
+			case static_cast <int32_t> (AF_INET): {
 				// Переходим по всему списку IP-адресов
 				for(auto i = this->_cacheIPv4.begin(); i != this->_cacheIPv4.end(); ++i){
 					// Создаём буфер бинарных данных IP-адреса
@@ -3130,7 +3130,7 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 				}
 			}
 			// Если тип протокола подключения IPv6
-			case static_cast <int> (AF_INET6): {
+			case static_cast <int32_t> (AF_INET6): {
 				// Переходим по всему списку IP-адресов
 				for(auto i = this->_cacheIPv6.begin(); i != this->_cacheIPv6.end(); ++i){
 					// Создаём буфер бинарных данных IP-адреса
@@ -3153,7 +3153,7 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 			// Определяем тип протокола подключения
 			switch(family){
 				// Если тип протокола подключения IPv4
-				case static_cast <int> (AF_INET): {
+				case static_cast <int32_t> (AF_INET): {
 					// Если список DNS-серверов пустой
 					if(this->_serversIPv4.empty())
 						// Устанавливаем список серверов IPv4
@@ -3166,7 +3166,7 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 						result = this->search(family, ip);
 				} break;
 				// Если тип протокола подключения IPv6
-				case static_cast <int> (AF_INET6): {
+				case static_cast <int32_t> (AF_INET6): {
 					// Если список DNS-серверов пустой
 					if(this->_serversIPv6.empty())
 						// Устанавливаем список серверов IPv6

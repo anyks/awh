@@ -21,13 +21,13 @@
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       бинарный буфер IP адреса
  */
-vector <char> awh::Socks5::ipToHex(const string & ip, const int family) const noexcept {
+vector <char> awh::Socks5::ipToHex(const string & ip, const int32_t family) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если IP адрес передан
 	if(!ip.empty()){
 		// Результат конвертации
-		int conv = 0;
+		int32_t conv = 0;
 		// Определяем тип подключения
 		switch(family){
 			// Если тип адреса IPv4
@@ -73,7 +73,7 @@ vector <char> awh::Socks5::ipToHex(const string & ip, const int family) const no
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       IP адрес в виде строки
  */
-string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int family) const noexcept {
+string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если бинарный буфер передан

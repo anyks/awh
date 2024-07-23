@@ -101,7 +101,7 @@ namespace awh {
 			 */
 			mutable struct State {
 				// Количество обработанных байт
-				int num;
+				int32_t num;
 				// Буфер данных для шифрования
 				u_char ivec[AES_BLOCK_SIZE];
 				/**
@@ -143,9 +143,9 @@ namespace awh {
 			};
 		private:
 			// Размер скользящего окна
-			short _wbit;
+			int16_t _wbit;
 			// Устанавливаем количество раундов
-			int _rounds;
+			int32_t _rounds;
 		private:
 			// Уровни компрессии
 			uint32_t _level[3];
@@ -176,7 +176,7 @@ namespace awh {
 			const log_t * _log;
 		private:
 			// Устанавливаем уровень сжатия
-			static constexpr u_short DEFAULT_MEM_LEVEL = 4;
+			static constexpr uint16_t DEFAULT_MEM_LEVEL = 4;
 			// Размер буфера чанка в байтах
 			static constexpr uint32_t CHUNK_BUFFER_SIZE = 0x4000;
 		private:
@@ -301,12 +301,7 @@ namespace awh {
 			 * wbit Метод установки размера скользящего окна
 			 * @param wbit размер скользящего окна
 			 */
-			void wbit(const short wbit) noexcept;
-			/**
-			 * round Метод установки количества раундов шифрования
-			 * @param round количество раундов шифрования
-			 */
-			void round(const int round) noexcept;
+			void wbit(const int16_t wbit) noexcept;
 			/**
 			 * salt Метод установки соли шифрования
 			 * @param salt соль для шифрования
@@ -317,6 +312,11 @@ namespace awh {
 			 * @param pass пароль шифрования
 			 */
 			void pass(const string & pass) noexcept;
+			/**
+			 * round Метод установки количества раундов шифрования
+			 * @param round количество раундов шифрования
+			 */
+			void round(const int32_t round) noexcept;
 			/**
 			 * level Метод установки уровня компрессии
 			 * @param level уровень компрессии

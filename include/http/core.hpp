@@ -166,7 +166,7 @@ namespace awh {
 			/**
 			 * Список HTTP-сообщений
 			 */
-			map <u_short, string> messages = {
+			map <uint16_t, string> messages = {
 				{0, "Not Answer"},
 				{100, "Continue"},
 				{101, "Switching Protocols"},
@@ -536,7 +536,7 @@ namespace awh {
 			 * @param code код сообщения для получение
 			 * @return     соответствующее коду HTTP сообщение
 			 */
-			const string & message(const u_int code) const noexcept;
+			const string & message(const uint32_t code) const noexcept;
 		public:
 			/**
 			 * mapping Метод маппинга полученных данных

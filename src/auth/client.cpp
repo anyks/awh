@@ -199,7 +199,7 @@ string awh::client::Auth::auth(const string & method) noexcept {
 						// Выполняем инкрементацию счётчика
 						this->_digest.nc = this->_fmk->itoa((this->_fmk->atoi(this->_digest.nc, 16) + 1), 16);
 						// Добавляем нули в начало счётчика
-						for(u_short i = 0; i < (8 - this->_digest.nc.size()); i++)
+						for(uint16_t i = 0; i < (8 - this->_digest.nc.size()); i++)
 							// Добавляем ноль в начало счётчика
 							this->_digest.nc.insert(0, "0");
 						// Устанавливаем параметры для проверки

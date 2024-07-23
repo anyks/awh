@@ -51,11 +51,11 @@ bool awh::server::Proxy::authEvents(const uint64_t bid, const string & login, co
  * @param port порт подключения
  * @return     результат проверки
  */
-bool awh::server::Proxy::acceptEvents(const string & ip, const string & mac, const u_int port) noexcept {
+bool awh::server::Proxy::acceptEvents(const string & ip, const string & mac, const uint32_t port) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("accept"))
 		// Выполняем функцию обратного вызова
-		return this->_callbacks.call <bool (const string &, const string &, const u_int)> ("accept", ip, mac, port);
+		return this->_callbacks.call <bool (const string &, const string &, const uint32_t)> ("accept", ip, mac, port);
 	// Запрещаем выполнение подключения
 	return false;
 }
@@ -246,7 +246,7 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  */
-void awh::server::Proxy::responseClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message) noexcept {
+void awh::server::Proxy::responseClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message) noexcept {
 	// Блокируем пустую переменную
 	(void) sid;
 	(void) rid;
@@ -257,7 +257,7 @@ void awh::server::Proxy::responseClient(const int32_t sid, const uint64_t bid, c
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("response"))
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const uint64_t, const u_int, const string &)> ("response", bid, code, message);
+		this->_callbacks.call <void (const uint64_t, const uint32_t, const string &)> ("response", bid, code, message);
 }
 /**
  * activeServer Метод идентификации активности на Web сервере (для сервера)
@@ -559,7 +559,7 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
  * @param message сообщение ответа сервера
  * @param entity  тело ответа клиенту с сервера
  */
-void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity) noexcept {
+void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity) noexcept {
 	// Выполняем поиск объекта клиента
 	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
@@ -571,7 +571,7 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("entityClient"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const uint64_t, const u_int, const string &, vector <char> *)> ("entityClient", bid, code, message, &i->second->response.entity);
+				this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, vector <char> *)> ("entityClient", bid, code, message, &i->second->response.entity);
 		// Выполняем очистку тела ответа
 		} else i->second->response.entity.clear();
 		// Снимаем флаг отправки результата
@@ -682,7 +682,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
  * @param message сообщение ответа сервера
  * @param headers заголовки HTTP-ответа
  */
-void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем поиск объекта клиента
 	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
@@ -769,7 +769,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				// Если функция обратного вызова установлена
 				if(this->_callbacks.is("headersClient"))
 					// Выполняем функцию обратного вызова
-					this->_callbacks.call <void (const uint64_t, const u_int, const string &, unordered_multimap <string, string> *)> ("headersClient", bid, code, message, &i->second->response.headers);
+					this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, unordered_multimap <string, string> *)> ("headersClient", bid, code, message, &i->second->response.headers);
 				// Если производится активация Websocket
 				if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
 					// Флаг удачно-выполненного подключения
@@ -873,11 +873,11 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							// Если метод запроса не является методом CONNECT
 							if(i->second->request.params.method != awh::web_t::method_t::CONNECT){
 								// Подписываемся на получение сообщения сервера
-								i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
+								i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
 								// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
-								i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
+								i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
 								// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-								i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+								i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
 							// Если метод CONNECT не разрешён для запроса
 							} else if(this->_flags.find(flag_t::CONNECT_METHOD_SERVER_ENABLE) == this->_flags.end()) {
 								// Формируем сообщение ответа
@@ -976,11 +976,11 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										// Выполняем установку защищённого протокола
 										i->second->request.params.url.schema = "https";
 									// Подписываемся на получение сообщения сервера
-									i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
+									i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
 									// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
-									i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
+									i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
 									// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-									i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+									i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
 									// Устанавливаем флаги настроек модуля
 									i->second->awh.mode(std::move(flags));
 									// Выполняем инициализацию подключения
@@ -1090,11 +1090,11 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										awh::http_t::compressor_t::DEFLATE
 									});
 									// Подписываемся на получение сообщения сервера
-									i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
+									i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", std::bind(&server::proxy_t::responseClient, this, _1, bid, _2, _3, _4));
 									// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
-									i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
+									i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", std::bind(&server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5));
 									// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-									i->second->awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
+									i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
 									// Выполняем подключение клиента к сетевому ядру
 									this->_core.bind(&i->second->core);
 									// Выполняем установку подключения
@@ -1170,7 +1170,7 @@ string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vect
 		// Выполняем получение идентификатора сети
 		const uint16_t sid = this->_core.sid(bid);
 		// Получаем порт сервера
-		const u_int port = this->_core.port(sid);
+		const uint32_t port = this->_core.port(sid);
 		// Получаем хост сервера
 		const string & host = this->_core.host(sid);
 		// Если посредники найдены
@@ -1242,7 +1242,7 @@ void awh::server::Proxy::completed(const int32_t sid, const uint64_t bid) noexce
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("completed"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("completed", bid, i->second->response.params.code, i->second->response.params.message, i->second->response.entity, i->second->response.headers);
+				this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("completed", bid, i->second->response.params.code, i->second->response.params.message, i->second->response.entity, i->second->response.headers);
 		}
 	}
 }
@@ -1285,7 +1285,7 @@ void awh::server::Proxy::init(const string & socket, const http_t::compressor_t 
  * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
  * @param family     тип протокола интернета (IPV4 / IPV6 / NIX)
  */
-void awh::server::Proxy::init(const u_int port, const string & host, const http_t::compressor_t compressor, const scheme_t::family_t family) noexcept {
+void awh::server::Proxy::init(const uint32_t port, const string & host, const http_t::compressor_t compressor, const scheme_t::family_t family) noexcept {
 	// Выполняем инициализацию PROXY-сервера
 	this->_server.init(port, host);
 	// Устанавливаем компрессор для рекомпрессии пересылаемых данных
@@ -1358,7 +1358,7 @@ void awh::server::Proxy::callbacks(const fn_t & callbacks) noexcept {
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-u_int awh::server::Proxy::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::Proxy::port(const uint64_t bid) const noexcept {
 	// Выполняем получение порта подключения брокера
 	return this->_server.port(bid);
 }
@@ -1423,7 +1423,7 @@ void awh::server::Proxy::cluster(const awh::scheme_t::mode_t mode, const uint16_
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::Proxy::total(const u_short total) noexcept {
+void awh::server::Proxy::total(const uint16_t total) noexcept {
 	// Выполняем установку максимального количества одновременных подключений
 	this->_server.total(total);
 }
@@ -1661,32 +1661,6 @@ void awh::server::Proxy::hosts(const broker_t broker, const string & filename) n
 	}
 }
 /**
- * keepAlive Метод установки жизни подключения
- * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
- * @param cnt    максимальное количество попыток
- * @param idle   интервал времени в секундах через которое происходит проверка подключения
- * @param intvl  интервал времени в секундах между попытками
- */
-void awh::server::Proxy::keepAlive(const broker_t broker, const int cnt, const int idle, const int intvl) noexcept {
-	// Определяем переданного брокера
-	switch(static_cast <uint8_t> (broker)){
-		// Если брокером является клиент
-		case static_cast <uint8_t> (broker_t::CLIENT): {
-			// Устанавливаем максимальное количество попыток
-			this->_settings.ka.cnt = cnt;
-			// Устанавливаем интервал времени в секундах через которое происходит проверка подключения
-			this->_settings.ka.idle = idle;
-			// Устанавливаем интервал времени в секундах между попытками
-			this->_settings.ka.intvl = intvl;
-		} break;
-		// Если брокером является сервер
-		case static_cast <uint8_t> (broker_t::SERVER):
-			// Выполняем установку жизни подключения
-			this->_server.keepAlive(cnt, idle, intvl);
-		break;
-	}
-}
-/**
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param broker      брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param compressors список поддерживаемых компрессоров
@@ -1703,6 +1677,32 @@ void awh::server::Proxy::compressors(const broker_t broker, const vector <http_t
 		case static_cast <uint8_t> (broker_t::SERVER):
 			// Выполняем установку списка поддерживаемых компрессоров
 			this->_server.compressors(compressors);
+		break;
+	}
+}
+/**
+ * keepAlive Метод установки жизни подключения
+ * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+ * @param cnt    максимальное количество попыток
+ * @param idle   интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl  интервал времени в секундах между попытками
+ */
+void awh::server::Proxy::keepAlive(const broker_t broker, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Определяем переданного брокера
+	switch(static_cast <uint8_t> (broker)){
+		// Если брокером является клиент
+		case static_cast <uint8_t> (broker_t::CLIENT): {
+			// Устанавливаем максимальное количество попыток
+			this->_settings.ka.cnt = cnt;
+			// Устанавливаем интервал времени в секундах через которое происходит проверка подключения
+			this->_settings.ka.idle = idle;
+			// Устанавливаем интервал времени в секундах между попытками
+			this->_settings.ka.intvl = intvl;
+		} break;
+		// Если брокером является сервер
+		case static_cast <uint8_t> (broker_t::SERVER):
+			// Выполняем установку жизни подключения
+			this->_server.keepAlive(cnt, idle, intvl);
 		break;
 	}
 }
@@ -2128,7 +2128,7 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем функцию извлечения пароля пользователя для прохождения авторизации на сервере
 	this->_server.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&server::proxy_t::passwordEvents, this, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	this->_server.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&server::proxy_t::acceptEvents, this, _1, _2, _3));
+	this->_server.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&server::proxy_t::acceptEvents, this, _1, _2, _3));
 	// Устанавливаем функцию получения сырых данных полученных сервером с клиента
 	this->_server.callback <bool (const uint64_t, const char *, const size_t)> ("raw", std::bind(&server::proxy_t::raw, this, _1, broker_t::SERVER, _2, _3));
 	// Устанавливаем функцию проверки ввода логина и пароля пользователя

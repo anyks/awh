@@ -467,12 +467,12 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 			// Если установлен флаг проверки на верхний регистр
 			case static_cast <uint8_t> (check_t::UPPER):
 				// Выполняем проверку совпадают ли символы
-				result = (static_cast <int> (letter) == ::toupper(letter));
+				result = (static_cast <int32_t> (letter) == ::toupper(letter));
 			break;
 			// Если установлен флаг проверки на нижний регистр
 			case static_cast <uint8_t> (check_t::LOWER):
 				// Выполняем проверку совпадают ли символы
-				result = (static_cast <int> (letter) == ::tolower(letter));
+				result = (static_cast <int32_t> (letter) == ::tolower(letter));
 			break;
 			// Если установлен флаг проверки на пробел
 			case static_cast <uint8_t> (check_t::SPACE):
@@ -574,7 +574,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				// Выполняем перебор всего слова
 				for(auto & letter : text){
 					// Выполняем проверку совпадают ли символы
-					result = (static_cast <int> (letter) == ::toupper(letter));
+					result = (static_cast <int32_t> (letter) == ::toupper(letter));
 					// Если символы не совпадают
 					if(!result)
 						// Выходим из цикла
@@ -586,7 +586,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				// Выполняем перебор всего слова
 				for(auto & letter : text){
 					// Выполняем проверку совпадают ли символы
-					result = (static_cast <int> (letter) == ::tolower(letter));
+					result = (static_cast <int32_t> (letter) == ::tolower(letter));
 					// Если символы не совпадают
 					if(!result)
 						// Выходим из цикла
@@ -660,7 +660,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 			// Если установлен флаг проверки на соответствие кодировки UTF-8
 			case static_cast <uint8_t> (check_t::UTF8): {
 				// Символ для сравнения
-				u_int cp = 0;
+				uint32_t cp = 0;
 				// Номер позиции для сравнения
 				uint8_t num = 0;
 				// Получаем байты для сравнения
@@ -939,7 +939,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 			// Если установлен флаг проверки на соответствие кодировки UTF-8
 			case static_cast <uint8_t> (check_t::UTF8): {
 				// Символ для сравнения
-				u_int cp = 0;
+				uint32_t cp = 0;
 				// Номер позиции для сравнения
 				uint8_t num = 0;
 				// Получаем байты для сравнения
@@ -1196,7 +1196,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными MD5
 				for(uint8_t i = 0; i < 16; i++)
 					// Формируем данные MD5-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1217,7 +1217,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA1
 				for(uint8_t i = 0; i < 20; i++)
 					// Формируем данные SHA1-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1238,7 +1238,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA224
 				for(uint8_t i = 0; i < 28; i++)
 					// Формируем данные SHA224-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1259,7 +1259,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA256
 				for(uint8_t i = 0; i < 32; i++)
 					// Формируем данные SHA256-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1280,7 +1280,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA384
 				for(uint8_t i = 0; i < 48; i++)
 					// Формируем данные SHA384-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1301,7 +1301,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA512
 				for(uint8_t i = 0; i < 64; i++)
 					// Формируем данные SHA512-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1333,7 +1333,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 				// Заполняем строку данными MD5
 				for(uint8_t i = 0; i < 16; i++)
 					// Формируем данные MD5-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1346,7 +1346,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 				// Заполняем строку данными SHA1
 				for(uint8_t i = 0; i < 20; i++)
 					// Формируем данные SHA1-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1359,7 +1359,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 				// Заполняем строку данными SHA224
 				for(uint8_t i = 0; i < 28; i++)
 					// Формируем данные SHA224-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1372,7 +1372,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 				// Заполняем строку данными SHA256
 				for(uint8_t i = 0; i < 32; i++)
 					// Формируем данные SHA256-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1385,7 +1385,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 				// Заполняем строку данными SHA384
 				for(uint8_t i = 0; i < 48; i++)
 					// Формируем данные SHA384-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1398,7 +1398,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 				// Заполняем строку данными SHA512
 				for(uint8_t i = 0; i < 64; i++)
 					// Формируем данные SHA512-хэша
-					::sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+					::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
@@ -1436,21 +1436,21 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 				// Если требуется выполнить кодировку в UTF-8
 				case static_cast <uint8_t> (codepage_t::CP1251_UTF8): {
 					// Выполняем получение размера буфера данных
-					int size = MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int> (text.size()), 0, 0);
+					int32_t size = MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int32_t> (text.size()), 0, 0);
 					// Если размер буфера данных получен
 					if(size > 0){
 						// Создаём буфер данных
 						vector <wchar_t> buffer(static_cast <size_t> (size), 0);
 						// Если конвертация в CP1251 выполнена удачно
-						if(MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int> (text.size()), buffer.data(), static_cast <int> (buffer.size()))){
+						if(MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
 							// Получаем размер результирующего буфера данных в кодировке UTF-8
-							size = WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int> (buffer.size()), 0, 0, 0, 0);
+							size = WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
 							// Если размер буфера данных получен
 							if(size > 0){
 								// Выделяем данные для результирующего буфера данных
 								result.resize(static_cast <size_t> (size), 0);
 								// Если конвертация буфера текстовых данных в UTF-8 не выполнена
-								if(!WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int> (buffer.size()), result.data(), static_cast <int> (result.size()), 0, 0)){
+								if(!WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
 									// Выполняем удаление результирующего буфера данных
 									result.clear();
 									// Выполняем удаление выделенной памяти
@@ -1463,21 +1463,21 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 				// Если требуется выполнить кодировку в CP1251
 				case static_cast <uint8_t> (codepage_t::UTF8_CP1251): {
 					// Выполняем получение размера буфера данных
-					int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int> (text.size()), 0, 0);
+					int32_t size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int32_t> (text.size()), 0, 0);
 					// Если размер буфера данных получен
 					if(size > 0){
 						// Создаём буфер данных
 						vector <wchar_t> buffer(static_cast <size_t> (size), 0);
 						// Если конвертация в UTF-8 выполнена удачно
-						if(MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int> (text.size()), buffer.data(), static_cast <int> (buffer.size()))){
+						if(MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
 							// Получаем размер результирующего буфера данных в кодировке CP1251
-							size = WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int> (buffer.size()), 0, 0, 0, 0);
+							size = WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
 							// Если размер буфера данных получен
 							if(size > 0){
 								// Выделяем данные для результирующего буфера данных
 								result.resize(static_cast <size_t> (size), 0);
 								// Если конвертация буфера текстовых данных в CP1251 не выполнена
-								if(!WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int> (buffer.size()), result.data(), static_cast <int> (result.size()), 0, 0)){
+								if(!WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
 									// Выполняем удаление результирующего буфера данных
 									result.clear();
 									// Выполняем удаление выделенной памяти
@@ -2052,15 +2052,15 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
  * @param word римское число
  * @return     арабское число
  */
-u_short awh::Framework::rome2arabic(const string & word) const noexcept {
+uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 	// Результат работы функции
-	u_short result = 0;
+	uint16_t result = 0;
 	// Если слово передано
 	if(!word.empty()){
 		// Символ поиска
 		char c, o;
 		// Вспомогательные переменные
-		u_int i = 0, v = 0, n = 0;
+		uint32_t i = 0, v = 0, n = 0;
 		// Получаем длину слова
 		const size_t length = word.length();
 		// Если слово состоит всего из одной буквы
@@ -2170,15 +2170,15 @@ u_short awh::Framework::rome2arabic(const string & word) const noexcept {
  * @param word римское число
  * @return     арабское число
  */
-u_short awh::Framework::rome2arabic(const wstring & word) const noexcept {
+uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 	// Результат работы функции
-	u_short result = 0;
+	uint16_t result = 0;
 	// Если слово передано
 	if(!word.empty()){
 		// Символ поиска
 		wchar_t c, o;
 		// Вспомогательные переменные
-		u_int i = 0, v = 0, n = 0;
+		uint32_t i = 0, v = 0, n = 0;
 		// Получаем длину слова
 		const size_t length = word.length();
 		// Если слово состоит всего из одной буквы
@@ -2288,13 +2288,13 @@ u_short awh::Framework::rome2arabic(const wstring & word) const noexcept {
  * @param number арабское число от 1 до 4999
  * @return       римское число
  */
-wstring awh::Framework::arabic2rome(const u_int number) const noexcept {
+wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	// Если число передано верное
 	if((number >= 1) && (number <= 4999)){
 		// Копируем полученное число
-		u_int n = number;
+		uint32_t n = number;
 		// Вычисляем до тысяч
 		result.append(this->_numbers.m[::floor(n / 1000)]);
 		// Уменьшаем диапазон
@@ -2324,7 +2324,7 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
 	// Если слово передано
 	if(!word.empty()){
 		// Преобразуем слово в число
-		const u_int number = ::stoi(word);
+		const uint32_t number = ::stoi(word);
 		// Выполняем расчет
 		result = this->convert(this->arabic2rome(number));
 	}
@@ -2342,7 +2342,7 @@ wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 	// Если слово передано
 	if(!word.empty()){
 		// Преобразуем слово в число
-		const u_int number = ::stoi(word);
+		const uint32_t number = ::stoi(word);
 		// Выполняем расчет
 		result = this->arabic2rome(number);
 	}
@@ -2483,7 +2483,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 			}
 		};
 		// Индекс в массиве
-		u_short index = 1;
+		uint16_t index = 1;
 		// Исправляем возврат каретки
 		replaceFn(result, "\\r", "\r");
 		// Исправляем перенос строки

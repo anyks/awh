@@ -41,9 +41,9 @@ string awh::Authorization::response(const string & method, const string & user, 
 		 */
 		try {
 			// Определяем алгоритм шифрования
-			switch(static_cast <u_short> (this->_digest.hash)){
+			switch(static_cast <uint16_t> (this->_digest.hash)){
 				// Если алгоритм шифрования MD5
-				case static_cast <u_short> (hash_t::MD5): {
+				case static_cast <uint16_t> (hash_t::MD5): {
 					// Создаем первый этап
 					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::MD5);
 					// Если первый этап получен
@@ -57,7 +57,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 					}
 				} break;
 				// Если алгоритм шифрования SHA1
-				case static_cast <u_short> (hash_t::SHA1): {
+				case static_cast <uint16_t> (hash_t::SHA1): {
 					// Создаем первый этап
 					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::SHA1);
 					// Если первый этап получен
@@ -71,7 +71,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 					}
 				} break;
 				// Если алгоритм шифрования SHA256
-				case static_cast <u_short> (hash_t::SHA256): {
+				case static_cast <uint16_t> (hash_t::SHA256): {
 					// Создаем первый этап
 					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::SHA256);
 					// Если первый этап получен
@@ -85,7 +85,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 					}
 				} break;
 				// Если алгоритм шифрования SHA512
-				case static_cast <u_short> (hash_t::SHA512): {
+				case static_cast <uint16_t> (hash_t::SHA512): {
 					// Создаем первый этап
 					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::SHA512);
 					// Если первый этап получен

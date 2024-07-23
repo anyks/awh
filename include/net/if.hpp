@@ -30,6 +30,7 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
+	#define SOCKET int32_t
 	#define INVALID_SOCKET -1
 #endif
 
@@ -135,9 +136,9 @@ namespace awh {
 			unordered_map <string, string> _ips6;
 		private:
 			// Максимальная длина сетевого интерфейса
-			static constexpr u_short MAX_ADDRS = 32;
+			static constexpr uint16_t MAX_ADDRS = 32;
 			// Максимальный размер сетевого буфера
-			static constexpr u_short IF_BUFFER_SIZE = 4000;
+			static constexpr uint16_t IF_BUFFER_SIZE = 4000;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -148,18 +149,18 @@ namespace awh {
 			 * getIPAddresses Метод извлечения IP адресов
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			void getIPAddresses(const int family = AF_INET) noexcept;
+			void getIPAddresses(const int32_t family = AF_INET) noexcept;
 			/**
 			 * getHWAddresses Метод извлечения MAC адресов
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			void getHWAddresses(const int family = AF_INET) noexcept;
+			void getHWAddresses(const int32_t family = AF_INET) noexcept;
 		private:
 			/**
 			 * Метод закрытие подключения
 			 * @param fd файловый дескриптор (сокет)
 			 */
-			void close(const int fd) const noexcept;
+			void close(const int32_t fd) const noexcept;
 		public:
 			/**
 			 * init Метод инициализации сбора информации
@@ -189,34 +190,34 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       аппаратный адрес сетевого интерфейса клиента
 			 */
-			const string mac(const string & ip, const int family = AF_INET) const noexcept;
+			const string mac(const string & ip, const int32_t family = AF_INET) const noexcept;
 			/**
 			 * mac Метод определения мак адреса клиента
 			 * @param sin    объект подключения
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       данные мак адреса
 			 */
-			const string mac(struct sockaddr * sin, const int family = AF_INET) const noexcept;
+			const string mac(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
 		public:
 			/**
 			 * ip Метод получения основного IP адреса на сервере
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			const string ip(const int family = AF_INET) const noexcept;
+			const string ip(const int32_t family = AF_INET) const noexcept;
 			/**
 			 * ip Метод вывода IP адреса соответствующего сетевому интерфейсу
 			 * @param eth    идентификатор сетевого интерфейса
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       IP адрес соответствующий сетевому интерфейсу
 			 */
-			const string & ip(const string & eth, const int family = AF_INET) const noexcept;
+			const string & ip(const string & eth, const int32_t family = AF_INET) const noexcept;
 			/**
 			 * ip Метод получения IP адреса из подключения
 			 * @param sin    объект подключения
 			 * @param family тип интернет протокола
 			 * @return       данные ip адреса
 			 */
-			const string ip(struct sockaddr * sin, const int family = AF_INET) const noexcept;
+			const string ip(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
 		public:
 			/**
 			 * IfNet Конструктор

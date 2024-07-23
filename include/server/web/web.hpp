@@ -119,7 +119,7 @@ namespace awh {
 				 */
 				typedef struct Service {
 					bool alive;          // Флаг долгоживущего подключения
-					u_int port;          // Порт сервера
+					uint32_t port;          // Порт сервера
 					string host;         // Хости сервера
 					string realm;        // Название сервера
 					string opaque;       // Временный ключ сессии сервера
@@ -223,7 +223,7 @@ namespace awh {
 				 * @param sid  идентификатор схемы сети
 				 * @return     результат разрешения к подключению брокера
 				 */
-				bool acceptEvents(const string & ip, const string & mac, const u_int port, const uint16_t sid) noexcept;
+				bool acceptEvents(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept;
 			protected:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -291,7 +291,7 @@ namespace awh {
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
-				virtual void init(const u_int port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
+				virtual void init(const uint32_t port, const string & host = "", const vector <http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -344,7 +344,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
-				virtual u_int port(const uint64_t bid) const noexcept = 0;
+				virtual uint32_t port(const uint64_t bid) const noexcept = 0;
 				/**
 				 * agent Метод извлечения агента клиента
 				 * @param bid идентификатор брокера
@@ -435,19 +435,19 @@ namespace awh {
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
-				virtual void total(const u_short total) noexcept = 0;
+				virtual void total(const uint16_t total) noexcept = 0;
+				/**
+				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @param compressors список поддерживаемых компрессоров
+				 */
+				virtual void compressors(const vector <http_t::compressor_t> & compressors) noexcept = 0;
 				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
 				 */
-				virtual void keepAlive(const int cnt, const int idle, const int intvl) noexcept = 0;
-				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
-				 * @param compressors список поддерживаемых компрессоров
-				 */
-				virtual void compressors(const vector <http_t::compressor_t> & compressors) noexcept = 0;
+				virtual void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept = 0;
 			public:
 				/**
 				 * ident Метод установки идентификации сервера
@@ -538,7 +538,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @return    статус полученных данных
 				 */
-				virtual int beginSignal(const int32_t sid, const uint64_t bid) noexcept = 0;
+				virtual int32_t beginSignal(const int32_t sid, const uint64_t bid) noexcept = 0;
 				/**
 				 * closedSignal Метод завершения работы потока
 				 * @param sid   идентификатор потока
@@ -546,7 +546,7 @@ namespace awh {
 				 * @param error флаг ошибки если присутствует
 				 * @return      статус полученных данных
 				 */
-				virtual int closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept = 0;
+				virtual int32_t closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept = 0;
 				/**
 				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
 				 * @param sid идентификатор потока
@@ -555,7 +555,7 @@ namespace awh {
 				 * @param val данные значения заголовка
 				 * @return    статус полученных данных
 				 */
-				virtual int headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept = 0;
+				virtual int32_t headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept = 0;
 				/**
 				 * chunkSignal Метод обратного вызова при получении чанка HTTP/2
 				 * @param sid    идентификатор потока
@@ -564,7 +564,7 @@ namespace awh {
 				 * @param size   размер полученного буфера данных чанка
 				 * @return       статус полученных данных
 				 */
-				virtual int chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept = 0;
+				virtual int32_t chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept = 0;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
 				 * @param sid    идентификатор потока
@@ -574,7 +574,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
+				virtual int32_t frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * close Метод выполнения закрытия подключения

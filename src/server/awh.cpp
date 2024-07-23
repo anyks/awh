@@ -70,7 +70,7 @@ void awh::server::AWH::init(const string & socket, const vector <http_t::compres
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::AWH::init(const u_int port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
+void awh::server::AWH::init(const uint32_t port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
 	// Выполняем инициализацию WEB-сервера
 	this->_http.init(port, host, compressors);
 }
@@ -128,7 +128,7 @@ bool awh::server::AWH::send(const int32_t sid, const uint64_t bid, const char * 
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Выполняем отправку заголовков сообщения клиенту
 	return this->_http.send(sid, bid, code, mess, headers, end);
 }
@@ -141,7 +141,7 @@ int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const u_in
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем отправку сообщения клиенту
 	this->_http.send(sid, bid, code, mess, entity, headers);
 }
@@ -239,7 +239,7 @@ void awh::server::AWH::callbacks(const fn_t & callbacks) noexcept {
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
-u_int awh::server::AWH::port(const uint64_t bid) const noexcept {
+uint32_t awh::server::AWH::port(const uint64_t bid) const noexcept {
 	// Выполняем извлечение порта брокера
 	return this->_http.port(bid);
 }
@@ -346,7 +346,7 @@ const vector <vector <string>> & awh::server::AWH::extensions(const uint64_t bid
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::AWH::total(const u_short total) noexcept {
+void awh::server::AWH::total(const uint16_t total) noexcept {
 	// Выполняем установку максимального количества одновременных подключений
 	this->_http.total(total);
 }
@@ -369,22 +369,22 @@ void awh::server::AWH::hosts(const string & filename) noexcept {
 		this->_dns.hosts(filename);
 }
 /**
- * keepAlive Метод установки жизни подключения
- * @param cnt   максимальное количество попыток
- * @param idle  интервал времени в секундах через которое происходит проверка подключения
- * @param intvl интервал времени в секундах между попытками
- */
-void awh::server::AWH::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
-	// Выполняем установку жизни подключения
-	this->_http.keepAlive(cnt, idle, intvl);
-}
-/**
  * compressors Метод установки списка поддерживаемых компрессоров
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::server::AWH::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
 	// Выполняем установку списка поддерживаемых компрессоров
 	this->_http.compressors(compressors);
+}
+/**
+ * keepAlive Метод установки жизни подключения
+ * @param cnt   максимальное количество попыток
+ * @param idle  интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl интервал времени в секундах между попытками
+ */
+void awh::server::AWH::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+	// Выполняем установку жизни подключения
+	this->_http.keepAlive(cnt, idle, intvl);
 }
 /**
  * mode Метод установки флагов настроек модуля

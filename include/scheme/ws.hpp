@@ -72,7 +72,7 @@ namespace awh {
 					 * Partner Структура партнёра
 					 */
 					typedef struct Partner {
-						short wbit;    // Размер скользящего окна
+						int16_t wbit;  // Размер скользящего окна
 						bool takeover; // Флаг скользящего контекста сжатия
 						/**
 						 * Partner Конструктор

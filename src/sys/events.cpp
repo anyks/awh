@@ -126,7 +126,7 @@ void awh::Base::init(const bool mode) noexcept {
 			// Если WinSocksAPI ещё не инициализирована
 			if(!(this->_winSockInit = winsockInitialized())){
 				// Идентификатор ошибки
-				int error = 0;
+				int32_t error = 0;
 				// Выполняем инициализацию сетевого контекста
 				if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
 					// Выводим сообщение об ошибке
