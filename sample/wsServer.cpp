@@ -63,7 +63,7 @@ class Executor {
 		 * @param port порт подключения
 		 * @return     результат проверки
 		 */
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			// Выводим информацию в лог
 			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
@@ -139,7 +139,7 @@ class Executor {
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
-		void error(const uint64_t bid, const u_int code, const string & mess){
+		void error(const uint64_t bid, const uint32_t code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
@@ -200,7 +200,7 @@ class Executor {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -289,11 +289,11 @@ int main(int argc, char * argv[]){
 	// Устанавливаем функцию проверки авторизации прользователя
 	ws.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	ws.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
+	ws.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	ws.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2, &core));
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	ws.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
+	ws.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	ws.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3, &ws));
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов

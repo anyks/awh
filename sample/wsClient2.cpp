@@ -224,7 +224,7 @@ class WebClient {
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
-		void error(const u_int code, const string & mess){
+		void error(const uint32_t code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
@@ -262,7 +262,7 @@ class WebClient {
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void response(const int32_t sid, const uint64_t rid, const u_int code, const string & message){
+		void response(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message){
 			// Блокируем неиспользуемые переменные
 			(void) rid;
 			// Проверяем на наличие ошибок
@@ -305,7 +305,7 @@ class WebClient {
 		 * @param entity  тело ответа сервера
 		 * @param awh     объект web-клиента
 		 */
-		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, client::awh_t * awh){
+		void entity(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -338,7 +338,7 @@ class WebClient {
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -362,7 +362,7 @@ class WebClient {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk{};
 	// Создаём объект для работы с логами
@@ -457,17 +457,17 @@ int main(int argc, char * argv[]){
 	// Устанавливаем метод активации подключения
 	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1, &awh));
 	// Подписываемся на событие получения ошибки работы клиента
-	awh.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&WebClient::error, &executor, _1, _2));
+	awh.callback <void (const uint32_t, const string &)> ("errorWebsocket", std::bind(&WebClient::error, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
 	awh.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebClient::message, &executor, _1, _2, &awh));
 	// Устанавливаем метод получения сообщения сервера
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
+	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
 	// Подписываемся на событие рукопожатия
 	awh.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&WebClient::handshake, &executor, _1, _2, _3, &awh));
 	// Устанавливаем метод получения тела ответа
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
+	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
 	// Устанавливаем метод получения заголовков
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
 	// Выполняем инициализацию подключения	
 	awh.init("wss://stream.binance.com:9443");
 	// awh.init("wss://anyks.net:2222");

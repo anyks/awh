@@ -71,7 +71,7 @@ class Executor {
 				// Если событие пришло от дочернего процесса
 				case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
 					// Выводим полученное сообщение в лог
-					this->_log->print("Message from master: %s [%u]", log_t::flag_t::INFO, string(buffer, size).c_str(), getpid());
+					this->_log->print("Message from master: %s [%u]", log_t::flag_t::INFO, string(buffer, size).c_str(), ::getpid());
 				break;
 			}
 		}
@@ -108,7 +108,7 @@ class Executor {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами

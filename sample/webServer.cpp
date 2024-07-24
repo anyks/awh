@@ -65,7 +65,7 @@ class WebServer {
 		 * @param port порт подключения
 		 * @return     результат проверки
 		 */
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			// Выводим информацию в лог
 			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
@@ -141,7 +141,7 @@ class WebServer {
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
-		void error(const uint64_t bid, const u_int code, const string & mess){
+		void error(const uint64_t bid, const uint32_t code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
@@ -278,7 +278,7 @@ class WebServer {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -393,11 +393,11 @@ int main(int argc, char * argv[]){
 	// Устанавливаем функцию проверки авторизации прользователя
 	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	awh.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	awh.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2, &core));
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	awh.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
+	awh.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	awh.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3, &awh));
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия

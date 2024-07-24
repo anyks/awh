@@ -28,7 +28,7 @@ class Executor {
 		chrono::time_point <chrono::system_clock> _is;
 	private:
 		// Идентификаторы таймеров
-		u_short _count;
+		uint16_t _count;
 	private:
 		// Объект логирования
 		log_t * _log;
@@ -38,7 +38,7 @@ class Executor {
 		 * @param tid   идентификатор таймера
 		 * @param timer объект таймера
 		 */
-		void interval(const u_short tid, awh::timer_t * timer){
+		void interval(const uint16_t tid, awh::timer_t * timer){
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Выводим информацию в лог
@@ -57,7 +57,7 @@ class Executor {
 		 * timeout Метод таймаута
 		 * @param id идентификатор таймера
 		 */
-		void timeout(const u_short id){
+		void timeout(const uint16_t id){
 			// Выводим информацию в лог
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->_ts).count());
 		}
@@ -107,7 +107,7 @@ class Executor {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами

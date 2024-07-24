@@ -242,7 +242,7 @@ class Executor {
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
-		void error(const u_int code, const string & mess){
+		void error(const uint32_t code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
@@ -288,7 +288,7 @@ class Executor {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -416,7 +416,7 @@ int main(int argc, char * argv[]){
 	// Подписываемся на событие запуска/остановки сервера
 	ws.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
+	ws.callback <void (const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения с сервера
 	ws.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, &ws));
 	// Подписываемся на событие рукопожатия

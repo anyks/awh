@@ -36,7 +36,7 @@ class WebClient {
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void response(const int32_t sid, const uint64_t rid, const u_int code, const string & message){
+		void response(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message){
 			// Блокируем неиспользуемые переменные
 			(void) rid;
 			// Проверяем на наличие ошибок
@@ -81,7 +81,7 @@ class WebClient {
 		 * @param entity  тело ответа сервера
 		 * @param awh     объект web-клиента
 		 */
-		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, client::awh_t * awh){
+		void entity(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -118,7 +118,7 @@ class WebClient {
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -137,7 +137,7 @@ class WebClient {
 		 * @param data    данные полученных заголовков сообщения
 		 * @param awh     объект web-клиента
 		 */
-		void complete(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
+		void complete(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
 			// Блокируем неиспользуемые переменные
 			(void) sid;
 			(void) rid;
@@ -185,7 +185,7 @@ class WebClient {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk{};
 	// Создаём объект для работы с логами
@@ -290,13 +290,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем метод активации подключения
 	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1, &awh));
 	// Устанавливаем метод получения сообщения сервера
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
+	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", std::bind(&WebClient::response, &executor, _1, _2, _3, _4));
 	// Устанавливаем метод получения тела ответа
-	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
+	// awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
 	// Устанавливаем метод получения заголовков
-	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
 	// Устанавливаем метод получения ответа с сервера
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
+	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
 	// Выполняем инициализацию подключения
 	awh.init("https://api.binance.com");
 	// Выполняем запуск работы

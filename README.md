@@ -144,7 +144,7 @@ class WebClient {
 		const log_t * _log;
 	public:
 		
-		void message(const int32_t sid, const uint64_t rid, const u_int code, const string & message){
+		void message(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message){
 			(void) rid;
 			
 			if(code >= 300)
@@ -170,7 +170,7 @@ class WebClient {
 			}
 		}
 
-		void entity(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, client::awh_t * awh){
+		void entity(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
 
 			(void) sid;
 			(void) rid;
@@ -183,7 +183,7 @@ class WebClient {
 				awh->stop();
 		}
 
-		void headers(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
 			(void) sid;
 			(void) rid;
 
@@ -193,7 +193,7 @@ class WebClient {
 			cout << endl;
 		}
 
-		void complete(const int32_t sid, const uint64_t rid, const u_int code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
+		void complete(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
 			(void) sid;
 			(void) rid;
 
@@ -213,7 +213,7 @@ class WebClient {
 		WebClient(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk{};
 	log_t log(&fmk);
 
@@ -262,10 +262,10 @@ int main(int argc, char * argv[]){
 	*/
 
 	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1, &awh));
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &)> ("response", std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
-	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
-	// awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
-	awh.callback <void (const int32_t, const uint64_t, const u_int, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
+	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
+	// awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
+	// awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
+	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
 	
 	awh.init("https://apple.com");
 	awh.start();
@@ -281,7 +281,7 @@ int main(int argc, char * argv[]){
 using namespace std;
 using namespace awh;
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk{};
 	log_t log(&fmk);
 	uri_t uri(&fmk);
@@ -367,7 +367,7 @@ class WebServer {
 		}
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -467,7 +467,7 @@ class WebServer {
 		WebServer(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log), _method(awh::web_t::method_t::NONE) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
@@ -520,7 +520,7 @@ int main(int argc, char * argv[]){
 	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
 	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
-	awh.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	awh.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
 	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3, &awh));
 	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4, &awh));
 	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
@@ -572,7 +572,7 @@ class Executor {
 		}
 	public:
 
-		void error(const u_int code, const string & mess){
+		void error(const uint32_t code, const string & mess){
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 
@@ -595,7 +595,7 @@ class Executor {
 		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
@@ -643,7 +643,7 @@ int main(int argc, char * argv[]){
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 
 	ws.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
-	ws.callback <void (const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
+	ws.callback <void (const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
 	ws.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, &ws));
 	ws.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3, &ws));
 
@@ -680,7 +680,7 @@ class Executor {
 		}
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -699,7 +699,7 @@ class Executor {
 			}
 		}
 
-		void error(const uint64_t bid, const u_int code, const string & mess){
+		void error(const uint64_t bid, const uint32_t code, const string & mess){
 			(void) bid;
 
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
@@ -736,7 +736,7 @@ class Executor {
 		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
@@ -776,9 +776,9 @@ int main(int argc, char * argv[]){
 
 	ws.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Executor::password, &executor, _1, _2));
 	ws.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
-	ws.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
+	ws.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
 	ws.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2));
-	ws.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
+	ws.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
 	ws.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3, &ws));
 	ws.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&Executor::headers, &executor, _1, _2, _3, _4, _5));
 
@@ -816,7 +816,7 @@ class WebServer {
 		}
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -828,7 +828,7 @@ class WebServer {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void error(const uint64_t bid, const u_int code, const string & mess){
+		void error(const uint64_t bid, const uint32_t code, const string & mess){
 			(void) bid;
 
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
@@ -919,7 +919,7 @@ class WebServer {
 		WebServer(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log), _method(awh::web_t::method_t::NONE) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
@@ -981,8 +981,8 @@ int main(int argc, char * argv[]){
 	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
 	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
-	awh.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
-	awh.callback <void (const uint64_t, const u_int, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
+	awh.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	awh.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
 	awh.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3, &awh));
 	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3, &awh));
 	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4, &awh));
@@ -1020,7 +1020,7 @@ class Proxy {
 			return true;
 		}
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -1042,7 +1042,7 @@ class Proxy {
 		Proxy(log_t * log) : _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
@@ -1079,7 +1079,7 @@ int main(int argc, char * argv[]){
 
 	proxy.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Proxy::password, &executor, _1, _2));
 	proxy.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
-	proxy.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
+	proxy.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
 	proxy.callback <void (const uint64_t, const server::proxy_t::broker_t, const server::web_t::mode_t)> ("active", std::bind(&Proxy::active, &executor, _1, _2, _3));
 
 	proxy.start();
@@ -1109,7 +1109,7 @@ class Proxy {
 		}
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -1124,7 +1124,7 @@ class Proxy {
 		Proxy(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
@@ -1148,7 +1148,7 @@ int main(int argc, char * argv[]){
 	proxy.init(2222, "127.0.0.1");
 
 	proxy.callback <void (const size_t, const proxy_socks5_t::mode_t)> ("active", std::bind(&Proxy::active, &executor, _1, _2));
-	proxy.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
+	proxy.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
 	// proxy.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
 
 	proxy.start();
@@ -1170,12 +1170,12 @@ class Executor {
 		chrono::time_point <chrono::system_clock> _ts;
 		chrono::time_point <chrono::system_clock> _is;
 	private:
-		u_short _count;
+		uint16_t _count;
 	private:
 		log_t * _log;
 	public:
 
-		void interval(const u_short tid, awh::timer_t * timer){
+		void interval(const uint16_t tid, awh::timer_t * timer){
 			auto shift = chrono::system_clock::now();
 
 			this->_log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - this->_is).count());
@@ -1188,7 +1188,7 @@ class Executor {
 			}
 		}
 
-		void timeout(const u_short id){
+		void timeout(const uint16_t id){
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->_ts).count());
 		}
 
@@ -1217,7 +1217,7 @@ class Executor {
 		Executor(log_t * log) : _ts(chrono::system_clock::now()), _is(chrono::system_clock::now()), _count(0), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
@@ -1243,7 +1243,7 @@ int main(int argc, char * argv[]){
 using namespace std;
 using namespace awh;
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1283,7 +1283,7 @@ int main(int argc, char * argv[]){
 using namespace std;
 using namespace awh;
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	ntp_t ntp(&fmk, &log);
@@ -1310,7 +1310,7 @@ int main(int argc, char * argv[]){
 using namespace std;
 using namespace awh;
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	core_t core(&fmk, &log);
@@ -1361,7 +1361,7 @@ class Client {
 		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1401,7 +1401,7 @@ class Server {
 		const log_t * _log;
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -1424,7 +1424,7 @@ class Server {
 		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1443,7 +1443,7 @@ int main(int argc, char * argv[]){
 	sample.init(2222, "127.0.0.1");
 
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
@@ -1486,7 +1486,7 @@ class Client {
 		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1532,7 +1532,7 @@ class Server {
 		const log_t * _log;
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -1555,7 +1555,7 @@ class Server {
 		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1580,7 +1580,7 @@ int main(int argc, char * argv[]){
 	sample.init(2222, "127.0.0.1");
 
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
@@ -1623,7 +1623,7 @@ class Client {
 		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1663,7 +1663,7 @@ class Server {
 		const log_t * _log;
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -1686,7 +1686,7 @@ class Server {
 		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1704,7 +1704,7 @@ int main(int argc, char * argv[]){
 	sample.init(2222, "127.0.0.1");
 
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
@@ -1747,7 +1747,7 @@ class Client {
 		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1793,7 +1793,7 @@ class Server {
 		const log_t * _log;
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -1816,7 +1816,7 @@ class Server {
 		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1841,7 +1841,7 @@ int main(int argc, char * argv[]){
 	sample.init(2222, "127.0.0.1");
 
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
@@ -1884,7 +1884,7 @@ class Client {
 		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1930,7 +1930,7 @@ class Server {
 		const log_t * _log;
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -1953,7 +1953,7 @@ class Server {
 		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -1977,7 +1977,7 @@ int main(int argc, char * argv[]){
 	sample.init(2222, "127.0.0.1");
 
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
@@ -2020,7 +2020,7 @@ class Client {
 		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -2061,7 +2061,7 @@ class Server {
 		const log_t * _log;
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -2084,7 +2084,7 @@ class Server {
 		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -2104,7 +2104,7 @@ int main(int argc, char * argv[]){
 	sample.init("anyks");
 
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
@@ -2147,7 +2147,7 @@ class Client {
 		Client(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -2188,7 +2188,7 @@ class Server {
 		const log_t * _log;
 	public:
 
-		bool accept(const string & ip, const string & mac, const u_int port){
+		bool accept(const string & ip, const string & mac, const uint32_t port){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
@@ -2211,7 +2211,7 @@ class Server {
 		Server(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
@@ -2230,7 +2230,7 @@ int main(int argc, char * argv[]){
 	sample.init("anyks");
 
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const u_int)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
 
 	sample.start();
@@ -2276,7 +2276,7 @@ class Executor {
 					this->_log->print("Message from children [%u]: %s", log_t::flag_t::INFO, pid, string(buffer, size).c_str());
 				break;
 				case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
-					this->_log->print("Message from master: %s [%u]", log_t::flag_t::INFO, string(buffer, size).c_str(), getpid());
+					this->_log->print("Message from master: %s [%u]", log_t::flag_t::INFO, string(buffer, size).c_str(), ::getpid());
 				break;
 			}
 		}
@@ -2295,7 +2295,7 @@ class Executor {
 		Executor(log_t * log) : _log(log) {}
 };
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
@@ -2325,7 +2325,7 @@ int main(int argc, char * argv[]){
 using namespace std;
 using namespace awh;
 
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	net_t net{};
 
 	net = "[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]";
@@ -2414,11 +2414,11 @@ int main(int argc, char * argv[]){
 
 	net = "192.168.3.192";
 	cout << " Get address mask from network prefix = 9 || " << net.prefix2Mask(9) << endl;
-	cout << " Get address prefix from network mask = 255.128.0.0 || " << (u_short) net.mask2Prefix("255.128.0.0") << endl;
+	cout << " Get address prefix from network mask = 255.128.0.0 || " << static_cast <uint16_t> (net.mask2Prefix("255.128.0.0")) << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	cout << " Get address mask from network prefix = 53 || " << net.prefix2Mask(53) << endl;
-	cout << " Get address prefix from network mask = FFFF:FFFF:FFFF:F800:: || " << (u_short) net.mask2Prefix("FFFF:FFFF:FFFF:F800::") << endl;
+	cout << " Get address prefix from network mask = FFFF:FFFF:FFFF:F800:: || " << static_cast <uint16_t> (net.mask2Prefix("FFFF:FFFF:FFFF:F800::")) << endl;
 
 	net = "192.168.3.192";
 	cout << boolalpha;

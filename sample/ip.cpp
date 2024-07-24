@@ -22,7 +22,7 @@ using namespace awh;
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]){
+int32_t main(int32_t argc, char * argv[]){
 	// Выполняем создание объекта IP адреса
 	net_t net{};
 
@@ -175,14 +175,14 @@ int main(int argc, char * argv[]){
 	// Выводим составную часть IP адреса
 	cout << " Получаем маску адреса из префикса сети 9 || " << net.prefix2Mask(9) << endl;
 	// Выводим составную часть IP адреса
-	cout << " Получаем префикс сети из маски адреса 255.128.0.0 || " << (u_short) net.mask2Prefix("255.128.0.0") << endl;
+	cout << " Получаем префикс сети из маски адреса 255.128.0.0 || " << static_cast <uint16_t> (net.mask2Prefix("255.128.0.0")) << endl;
 
 	// Выводим тесты IP адресов
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 	// Выводим составную часть IP адреса
 	cout << " Получаем маску адреса из префикса сети 53 || " << net.prefix2Mask(53) << endl;
 	// Выводим составную часть IP адреса
-	cout << " Получаем префикс сети из маски адреса FFFF:FFFF:FFFF:F800:: || " << (u_short) net.mask2Prefix("FFFF:FFFF:FFFF:F800::") << endl;
+	cout << " Получаем префикс сети из маски адреса FFFF:FFFF:FFFF:F800:: || " << static_cast <uint16_t> (net.mask2Prefix("FFFF:FFFF:FFFF:F800::")) << endl;
 
 	// Выводим тесты IP адресов
 	net = "192.168.3.192";
