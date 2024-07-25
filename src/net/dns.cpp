@@ -1242,7 +1242,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 				// Выполняем кодирования доменного имени
 				if(IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
 					// Выводим в лог сообщение
-					this->_log->print("IDN encode failed (%d)", log_t::flag_t::CRITICAL, GetLastError());
+					this->_log->print("IDN encode failed (%d): DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, GetLastError(), domain.c_str());
 				// Получаем результат кодирования
 				else result = this->_fmk->convert(wstring{buffer});
 			/**
@@ -1256,7 +1256,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 				// Если кодирование не выполнено
 				if(rc != IDNA_SUCCESS)
 					// Выводим в лог сообщение
-					this->_log->print("IDN encode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
+					this->_log->print("IDN encode failed (%d): %s, DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc), domain.c_str());
 				// Получаем результат кодирования
 				else result = buffer;
 				// Если память была выделенна
@@ -1292,7 +1292,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 				// Выполняем кодирования доменного имени
 				if(IdnToUnicode(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
 					// Выводим в лог сообщение
-					this->_log->print("IDN decode failed (%d)", log_t::flag_t::CRITICAL, GetLastError());
+					this->_log->print("IDN decode failed (%d): DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, GetLastError(), domain.c_str());
 				// Получаем результат кодирования
 				else result = this->_fmk->convert(wstring{buffer});
 			/**
@@ -1306,7 +1306,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 				// Если кодирование не выполнено
 				if(rc != IDNA_SUCCESS)
 					// Выводим в лог сообщение
-					this->_log->print("IDN decode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
+					this->_log->print("IDN decode failed (%d): %s, DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc), domain.c_str());
 				// Получаем результат декодирования
 				else result = buffer;
 				// Если память была выделенна
