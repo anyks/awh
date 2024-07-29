@@ -78,109 +78,121 @@ void awh::OS::boost() const noexcept {
 	 * Операционной системой является MacOS X
 	 */
 	#elif __APPLE__ || __MACH__
-		// Устанавливаем максимальное количество подключений
-		this->sysctl("kern.ipc.somaxconn", 49152);
-		/**
-		 * Для хостов 10G было бы неплохо увеличить это значение,
-		 * т.к. 4G, похоже, является пределом для некоторых установок MacOS X
-		 */
-		this->sysctl("kern.ipc.maxsockbuf", 6291456);
-		// Увеличиваем максимальный размер буферов для отправки
-		this->sysctl("net.inet.tcp.sendspace", 1042560);
-		// Увеличиваем максимальный размер буферов для чтения
-		this->sysctl("net.inet.tcp.recvspace", 1042560);
-		// В MacOS X значение по умолчанию 3, что очень мало
-		this->sysctl("net.inet.tcp.win_scale_factor", 8);
-		// Увеличиваем максимумы автонастройки MacOS X TCP
-		this->sysctl("net.inet.tcp.autorcvbufmax", 33554432);
-		this->sysctl("net.inet.tcp.autosndbufmax", 33554432);
-		// Устанавливаем прочие настройки
-		this->sysctl("net.inet.tcp.slowstart_flightsize", 20);
-		this->sysctl("net.inet.tcp.local_slowstart_flightsize", 20);
+		// Если эффективный идентификатор пользователя принадлежит ROOT
+		if(::geteuid() == 0){
+			// Устанавливаем максимальное количество подключений
+			this->sysctl("kern.ipc.somaxconn", 49152);
+			/**
+			 * Для хостов 10G было бы неплохо увеличить это значение,
+			 * т.к. 4G, похоже, является пределом для некоторых установок MacOS X
+			 */
+			this->sysctl("kern.ipc.maxsockbuf", 6291456);
+			// Увеличиваем максимальный размер буферов для отправки
+			this->sysctl("net.inet.tcp.sendspace", 1042560);
+			// Увеличиваем максимальный размер буферов для чтения
+			this->sysctl("net.inet.tcp.recvspace", 1042560);
+			// В MacOS X значение по умолчанию 3, что очень мало
+			this->sysctl("net.inet.tcp.win_scale_factor", 8);
+			// Увеличиваем максимумы автонастройки MacOS X TCP
+			this->sysctl("net.inet.tcp.autorcvbufmax", 33554432);
+			this->sysctl("net.inet.tcp.autosndbufmax", 33554432);
+			// Устанавливаем прочие настройки
+			this->sysctl("net.inet.tcp.slowstart_flightsize", 20);
+			this->sysctl("net.inet.tcp.local_slowstart_flightsize", 20);
+		}
 	/**
 	 * Операционной системой является Linux
 	 */
 	#elif __linux__
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Для отладки активируем создание дампов ядра
-			this->sysctl("kernel.core_uses_pid", 1);
-			this->sysctl("kernel.core_pattern", string{"/tmp/core-%e-%p"});
-		#endif
-		// Активируем параметр помогающий в борье за ресурсы
-		this->sysctl("net.ipv4.tcp_tw_reuse", 1);
-		// Устанавливаем максимальное количество подключений
-		this->sysctl("net.core.somaxconn", 49152);
-		// Увеличиваем максимальный размер буферов для чтения
-		this->sysctl("net.core.rmem_max", 134217728);
-		// Увеличиваем максимальный размер буферов для отправки
-		this->sysctl("net.core.wmem_max", 134217728);
-		// Увеличиваем лимит автонастройки TCP-буфера Linux до 64 МБ
-		this->sysctl("net.ipv4.tcp_rmem", string{"\"4096 87380 33554432\""});
-		this->sysctl("net.ipv4.tcp_wmem", string{"\"4096 65536 33554432\""});
-		// Рекомендуется для хостов с включенными большими фреймами
-		this->sysctl("net.ipv4.tcp_mtu_probing", 1);
-		// Рекомендуется для хостов CentOS 7/Debian 8
-		this->sysctl("net.core.default_qdisc", string{"fq"});
-		/**
-		 * Рекомендуемый контроль перегрузки по умолчанию — htcp.
-		 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.ipv4.tcp_available_congestion_control
-		 */
-		const string & algorithm = this->congestionControl(this->sysctl <string> ("net.ipv4.tcp_available_congestion_control"));
-		// Если выбран лучший доступны алгоритм
-		if(!algorithm.empty())
-			// Активируем выбранный нами алгоритм
-			this->sysctl("net.ipv4.tcp_congestion_control", algorithm);
+		// Если эффективный идентификатор пользователя принадлежит ROOT
+		if(::geteuid() == 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Для отладки активируем создание дампов ядра
+				this->sysctl("kernel.core_uses_pid", 1);
+				this->sysctl("kernel.core_pattern", string{"/tmp/core-%e-%p"});
+			#endif
+			// Активируем параметр помогающий в борье за ресурсы
+			this->sysctl("net.ipv4.tcp_tw_reuse", 1);
+			// Устанавливаем максимальное количество подключений
+			this->sysctl("net.core.somaxconn", 49152);
+			// Увеличиваем максимальный размер буферов для чтения
+			this->sysctl("net.core.rmem_max", 134217728);
+			// Увеличиваем максимальный размер буферов для отправки
+			this->sysctl("net.core.wmem_max", 134217728);
+			// Увеличиваем лимит автонастройки TCP-буфера Linux до 64 МБ
+			this->sysctl("net.ipv4.tcp_rmem", string{"\"4096 87380 33554432\""});
+			this->sysctl("net.ipv4.tcp_wmem", string{"\"4096 65536 33554432\""});
+			// Рекомендуется для хостов с включенными большими фреймами
+			this->sysctl("net.ipv4.tcp_mtu_probing", 1);
+			// Рекомендуется для хостов CentOS 7/Debian 8
+			this->sysctl("net.core.default_qdisc", string{"fq"});
+			/**
+			 * Рекомендуемый контроль перегрузки по умолчанию — htcp.
+			 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.ipv4.tcp_available_congestion_control
+			 */
+			const string & algorithm = this->congestionControl(this->sysctl <string> ("net.ipv4.tcp_available_congestion_control"));
+			// Если выбран лучший доступны алгоритм
+			if(!algorithm.empty())
+				// Активируем выбранный нами алгоритм
+				this->sysctl("net.ipv4.tcp_congestion_control", algorithm);
+		}
 	/**
 	 * Операционной системой является FreeBSD
 	 */
 	#elif __FreeBSD__
-		/**
-		 * Данные оптимизаций операционной системы берет от сюда: http://fasterdata.es.net/host-tuning/freebsd
-		 */
-		// Устанавливаем максимальное количество подключений
-		this->sysctl("kern.ipc.somaxconn", 49152);
-		// Активируем автоматическую отправку и получение
-		this->sysctl("net.inet.tcp.sendbuf_auto", 1);
-		this->sysctl("net.inet.tcp.recvbuf_auto", 1);
-		// Увеличиваем размер шага автонастройки
-		this->sysctl("net.inet.tcp.sendbuf_inc", 16384);
-		this->sysctl("net.inet.tcp.recvbuf_inc", 524288);
-		// Активируем на хостах тестирования/измерений
-		this->sysctl("net.inet.tcp.hostcache.expire", 1);
-		/**
-		 * Для хостов 10G было бы неплохо увеличить это значение,
-		 * т.к. 4G, похоже, является пределом для некоторых установок FreeBSD
-		 */
-		this->sysctl("kern.ipc.maxsockbuf", 6291456);
-		// Увеличиваем максимальный размер буферов для отправки
-		this->sysctl("net.inet.tcp.sendspace", 1042560);
-		// Увеличиваем максимальный размер буферов для чтения
-		this->sysctl("net.inet.tcp.recvspace", 1042560);
-		// Увеличиваем максимальный размер буферов для отправки
-		this->sysctl("net.inet.tcp.sendbuf_max", 16777216);
-		// Увеличиваем максимальный размер буферов для чтения
-		this->sysctl("net.inet.tcp.recvbuf_max", 16777216);
-		/**
-		 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.inet.tcp.cc.available
-		 */
-		const string & algorithm = this->congestionControl(this->sysctl <string> ("net.inet.tcp.cc.available"));
-		// Если выбран лучший доступны алгоритм
-		if(!algorithm.empty())
-			// Активируем выбранный нами алгоритм
-			this->sysctl("net.inet.tcp.cc.algorithm", algorithm);
+		// Если эффективный идентификатор пользователя принадлежит ROOT
+		if(::geteuid() == 0){
+			/**
+			 * Данные оптимизаций операционной системы берет от сюда: http://fasterdata.es.net/host-tuning/freebsd
+			 */
+			// Устанавливаем максимальное количество подключений
+			this->sysctl("kern.ipc.somaxconn", 49152);
+			// Активируем автоматическую отправку и получение
+			this->sysctl("net.inet.tcp.sendbuf_auto", 1);
+			this->sysctl("net.inet.tcp.recvbuf_auto", 1);
+			// Увеличиваем размер шага автонастройки
+			this->sysctl("net.inet.tcp.sendbuf_inc", 16384);
+			this->sysctl("net.inet.tcp.recvbuf_inc", 524288);
+			// Активируем на хостах тестирования/измерений
+			this->sysctl("net.inet.tcp.hostcache.expire", 1);
+			/**
+			 * Для хостов 10G было бы неплохо увеличить это значение,
+			 * т.к. 4G, похоже, является пределом для некоторых установок FreeBSD
+			 */
+			this->sysctl("kern.ipc.maxsockbuf", 6291456);
+			// Увеличиваем максимальный размер буферов для отправки
+			this->sysctl("net.inet.tcp.sendspace", 1042560);
+			// Увеличиваем максимальный размер буферов для чтения
+			this->sysctl("net.inet.tcp.recvspace", 1042560);
+			// Увеличиваем максимальный размер буферов для отправки
+			this->sysctl("net.inet.tcp.sendbuf_max", 16777216);
+			// Увеличиваем максимальный размер буферов для чтения
+			this->sysctl("net.inet.tcp.recvbuf_max", 16777216);
+			/**
+			 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.inet.tcp.cc.available
+			 */
+			const string & algorithm = this->congestionControl(this->sysctl <string> ("net.inet.tcp.cc.available"));
+			// Если выбран лучший доступны алгоритм
+			if(!algorithm.empty())
+				// Активируем выбранный нами алгоритм
+				this->sysctl("net.inet.tcp.cc.algorithm", algorithm);
+		}
 	/**
 	 * Операционной системой является Unix
 	 */
 	#elif __unix || __unix__
-		// Эмпирическое правило: max_buf = 2 x cwnd_max (окно перегрузки)
-		this->exec("ndd -set /dev/tcp tcp_max_buf 33554432");
-		this->exec("ndd -set /dev/tcp tcp_cwnd_max 16777216");
-		// Увеличиваем размер окна TCP по умолчанию
-		this->exec("ndd -set /dev/tcp tcp_xmit_hiwat 65536");
-		this->exec("ndd -set /dev/tcp tcp_recv_hiwat 65536");
+		// Если эффективный идентификатор пользователя принадлежит ROOT
+		if(::geteuid() == 0){
+			// Эмпирическое правило: max_buf = 2 x cwnd_max (окно перегрузки)
+			this->exec("ndd -set /dev/tcp tcp_max_buf 33554432");
+			this->exec("ndd -set /dev/tcp tcp_cwnd_max 16777216");
+			// Увеличиваем размер окна TCP по умолчанию
+			this->exec("ndd -set /dev/tcp tcp_xmit_hiwat 65536");
+			this->exec("ndd -set /dev/tcp tcp_recv_hiwat 65536");
+		}
 	#endif
 }
 /**
@@ -610,7 +622,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 			// Создаем пайп для чтения результата работы OS
 			FILE * stream = ::popen(cmd.c_str(), "r");
 			// Если пайп открыт
-			if(stream){
+			if(stream != nullptr){
 				// Считываем до тех пор пока все не прочитаем
 				while(::fgets(buffer, sizeof(buffer), stream) != nullptr){
 					// Добавляем полученный результат
