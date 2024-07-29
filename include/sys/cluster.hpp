@@ -86,15 +86,6 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Стейт входящего собщения
-			 */
-			enum class state_t : uint8_t {
-				NONE = 0x00, // Стейт не установлен
-				HEAD = 0x01, // Заголовок входящего сообщения
-				DATA = 0x02  // Данные входящего сообщения
-			};
-		private:
-			/**
 			 * Message Структура межпроцессного сообщения
 			 */
 			typedef struct Message {
@@ -111,6 +102,7 @@ namespace awh {
 			 */
 			typedef struct Payload {
 				SOCKET fd;                 // Файловый дескриптор для отправки сообщения
+				pid_t pid;                 // Идентификатор процесса приславший данные
 				size_t pos;                // Позиция в буфере
 				size_t size;               // Размер буфера
 				size_t offset;             // Смещение в бинарном буфере
@@ -118,7 +110,7 @@ namespace awh {
 				/**
 				 * Payload Конструктор
 				 */
-				Payload() noexcept : fd(-1), pos(0), size(0), offset(0), data(nullptr) {}
+				Payload() noexcept : fd(INVALID_SOCKET), pid(0), pos(0), size(0), offset(0), data(nullptr) {}
 			} payload_t;
 		public:
 			/**
@@ -141,8 +133,6 @@ namespace awh {
 					 * Payload Структура буфера полезной нагрузки
 					 */
 					typedef struct Payload {
-						// Стейт входящего сообщения
-						state_t state;
 						// Параметры входящего сообщения
 						mess_t message;
 						// Буфер полезной нагрузки
@@ -150,7 +140,7 @@ namespace awh {
 						/**
 						 * Payload Конструктор
 						 */
-						Payload() noexcept : state(state_t::HEAD), buffer(buffer_t::mode_t::COPY) {}
+						Payload() noexcept : /*state(state_t::HEAD),*/ buffer(buffer_t::mode_t::COPY) {}
 					} payload_t;
 				public:
 					// Мютекс для блокировки потока
@@ -307,10 +297,10 @@ namespace awh {
 		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
-			// Буферы отправляемой полезной нагрузки
-			map <uint16_t, queue <payload_t>> _payloads;
 			// Список активных воркеров
 			map <uint16_t, unique_ptr <worker_t>> _workers;
+			// Буферы отправляемой полезной нагрузки
+			map <uint16_t, multimap <pid_t, payload_t>> _payloads;
 			// Список дочерних брокеров
 			map <uint16_t, vector <unique_ptr <broker_t>>> _brokers;
 		private:
@@ -333,20 +323,22 @@ namespace awh {
 			/**
 			 * send Метод асинхронной отправки буфера данных в сокет
 			 * @param wid    идентификатор воркера
+			 * @param pid    идентификатор процесса для получения сообщения
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных
 			 * @param fd     идентификатор файлового дескриптора
 			 */
-			void send(const uint16_t wid, const char * buffer, const size_t size, const SOCKET fd) noexcept;
+			void send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size, const SOCKET fd) noexcept;
 		private:
 			/**
 			 * emplace Метод добавления нового буфера полезной нагрузки
 			 * @param wid    идентификатор воркера
+			 * @param pid    идентификатор процесса для получения сообщения
 			 * @param buffer бинарный буфер полезной нагрузки
 			 * @param size   размер бинарного буфера полезной нагрузки
 			 * @param fd     идентификатор файлового дескриптора
 			 */
-			void emplace(const uint16_t wid, const char * buffer, const size_t size, const SOCKET fd) noexcept;
+			void emplace(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size, const SOCKET fd) noexcept;
 		private:
 			/**
 			 * write Метод записи буфера данных в сокет

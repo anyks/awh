@@ -112,7 +112,7 @@ void awh::OS::boost() const noexcept {
 			#if defined(DEBUG_MODE)
 				// Для отладки активируем создание дампов ядра
 				this->sysctl("kernel.core_uses_pid", 1);
-				this->sysctl("kernel.core_pattern", string{"/tmp/core-%e-%p"});
+				this->sysctl("kernel.core_pattern", string{"/tmp/%e-%p.core"});
 			#endif
 			// Активируем параметр помогающий в борье за ресурсы
 			this->sysctl("net.ipv4.tcp_tw_reuse", 1);

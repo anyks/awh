@@ -97,7 +97,7 @@
 		// Статус упавшего процесса
 		int32_t status = 0;
 		// Выполняем получение идентификатора упавшего процесса
-		while((pid = waitpid(-1, &status, WNOHANG)) > 0){
+		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0){
 			// Если работа процесса завершена
 			if(status > 0){
 				// Если объект воркера инициализирован
@@ -360,42 +360,26 @@
 			switch(static_cast <uint8_t> (family)){
 				// Если идентификатор семейства кластера является мастер-процессом
 				case static_cast <uint8_t> (family_t::MASTER): {
-					// Определяем стейт ожидаемого входящего сообщения
-					switch(static_cast <uint8_t> (i->second->state)){
-						// Если ожидаемое входящее сообщение является заголовком
-						case static_cast <uint8_t> (state_t::HEAD): {
-							// Получаем размер извлекаемых данных
-							const size_t size = sizeof(mess_t);
+					// Получаем размер извлекаемых данных
+					const size_t size = sizeof(mess_t);
+					// Если данные прочитаны правильно
+					if(!i->second->buffer.empty() && (i->second->buffer.size() >= size)){
+						// Выполняем извлечение входящих данных
+						::memcpy(&i->second->message, i->second->buffer.data(), size);
+						// Если размер данных соответствует
+						if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
 							// Если данные прочитаны правильно
-							if(!i->second->buffer.empty() && (i->second->buffer.size() >= size)){
-								// Выполняем извлечение входящих данных
-								::memcpy(&i->second->message, i->second->buffer.data(), size);
-								// Если размер данных соответствует
-								if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
-									// Выполняем установку ожидаемых данных
-									i->second->state = state_t::DATA;
-									// Удаляем лишние байты в смарт-буфере
-									i->second->buffer.erase(size);
-									// Фиксируем изменение в буфере
-									i->second->buffer.commit();
-									// Если данные в буфере ещё есть
-									if(!i->second->buffer.empty())
-										// Переходим к началу чтения данных
-										this->prepare(pid, family);
-								// Выводим сообщение что данные пришли битые
-								} else this->_log->print("[%u] Data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
-							}
-						} break;
-						// Если ожидаемое входящее сообщение является данными
-						case static_cast <uint8_t> (state_t::DATA): {
-							// Если данные прочитаны правильно
-							if(!i->second->buffer.empty() && (i->second->buffer.size() >= i->second->message.size)){
+							if(i->second->buffer.size() >= (i->second->message.size + size)){
 								// Создаём объект передаваемых данных
 								data_t data;
 								// Устанавливаем идентификатор процесса
 								data.pid = i->second->message.pid;
 								// Устанавливаем буфер передаваемых данных
-								data.buffer.assign(i->second->buffer.data(), i->second->buffer.data() + i->second->message.size);
+								data.buffer.assign(i->second->buffer.data() + size, i->second->buffer.data() + (i->second->message.size + size));
+								// Удаляем лишние байты в смарт-буфере
+								i->second->buffer.erase(i->second->message.size + size);
+								// Фиксируем изменение в буфере
+								i->second->buffer.commit();
 								// Если асинхронный режим работы активирован
 								if(this->async){
 									// Выполняем запуск работы скрина
@@ -409,112 +393,83 @@
 									// Выполняем отправку полученных данных напрямую
 									this->callback(std::move(data));
 								}
-								// Удаляем лишние байты в смарт-буфере
-								i->second->buffer.erase(i->second->message.size);
-								// Фиксируем изменение в буфере
-								i->second->buffer.commit();
-								// Выполняем установку ожидаемых данных
-								i->second->state = state_t::HEAD;
 								// Если данные в буфере ещё есть
 								if(!i->second->buffer.empty())
 									// Переходим к началу чтения данных
 									this->prepare(pid, family);
 							}
-						} break;
+						// Выводим сообщение что данные пришли битые
+						} else this->_log->print("[%u] Data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
 					}
 				} break;
 				// Если идентификатор семейства кластера является дочерним-процессом
 				case static_cast <uint8_t> (family_t::CHILDREN): {
-					// Определяем стейт ожидаемого входящего сообщения
-					switch(static_cast <uint8_t> (i->second->state)){
-						// Если ожидаемое входящее сообщение является заголовком
-						case static_cast <uint8_t> (state_t::HEAD): {
-							// Получаем размер извлекаемых данных
-							const size_t size = sizeof(mess_t);
-							// Если данные прочитаны правильно
-							if(!i->second->buffer.empty() && (i->second->buffer.size() >= size)){
-								// Выполняем извлечение входящих данных
-								::memcpy(&i->second->message, i->second->buffer.data(), size);
-								// Если размер данных соответствует
-								if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
-									// Выполняем установку ожидаемых данных
-									i->second->state = state_t::DATA;
-									// Удаляем лишние байты в смарт-буфере
-									i->second->buffer.erase(size);
-									// Фиксируем изменение в буфере
-									i->second->buffer.commit();
-									// Если данные в буфере ещё есть
-									if(!i->second->buffer.empty())
-										// Переходим к началу чтения данных
-										this->prepare(pid, family);
-								// Если данные пришли пустыми
-								} else {
-									// Если нужно завершить работу процесса
-									if(i->second->message.quit){
-										// Останавливаем чтение данных с родительского процесса
-										this->cluster->stop(this->wid);
-										// Выходим из приложения
-										::exit(SIGCHLD);
-									// Выводим сообщение что данные пришли битые
-									} else this->_log->print("[%u] Data from main process arrives corrupted", log_t::flag_t::CRITICAL, ::getpid());
-								}
-							}
-						} break;
-						// Если ожидаемое входящее сообщение является данными
-						case static_cast <uint8_t> (state_t::DATA): {
-							// Если данные прочитаны правильно
-							if(!i->second->buffer.empty()){
-								// Если нужно завершить работу процесса
-								if(i->second->message.quit){
-									// Если данные получены полностью
-									if(i->second->buffer.size() >= i->second->message.size){
-										// Создаём объект передаваемых данных
-										data_t data;
-										// Устанавливаем идентификатор процесса
-										data.pid = i->second->message.pid;
-										// Устанавливаем буфер передаваемых данных
-										data.buffer.assign(i->second->buffer.data(), i->second->buffer.data() + i->second->message.size);
-										// Выполняем отправку полученных данных
-										this->callback(std::move(data));
-									}
-									// Останавливаем чтение данных с родительского процесса
-									this->cluster->stop(this->wid);
-									// Выходим из приложения
-									::exit(SIGCHLD);
-								// Если передана последняя порция
-								} else if(i->second->buffer.size() >= i->second->message.size) {
+					// Получаем размер извлекаемых данных
+					const size_t size = sizeof(mess_t);
+					// Если данные прочитаны правильно
+					if(!i->second->buffer.empty() && (i->second->buffer.size() >= size)){
+						// Выполняем извлечение входящих данных
+						::memcpy(&i->second->message, i->second->buffer.data(), size);
+						// Если размер данных соответствует
+						if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
+							// Если нужно завершить работу процесса
+							if(i->second->message.quit){
+								// Если данные прочитаны правильно
+								if(i->second->buffer.size() >= (i->second->message.size + size)){
 									// Создаём объект передаваемых данных
 									data_t data;
 									// Устанавливаем идентификатор процесса
 									data.pid = i->second->message.pid;
 									// Устанавливаем буфер передаваемых данных
-									data.buffer.assign(i->second->buffer.data(), i->second->buffer.data() + i->second->message.size);
-									// Если асинхронный режим работы активирован
-									if(this->async){
-										// Выполняем запуск работы скрина
-										this->_screen.start();
-										// Выполняем отправку полученных данных
-										this->_screen = std::move(data);
-									// Если асинхронный режим работы деактивирован
-									} else {
-										// Выполняем остановку работы дочернего процесса
-										this->_screen.stop();
-										// Выполняем отправку полученных данных напрямую
-										this->callback(std::move(data));
-									}
-									// Удаляем лишние байты в смарт-буфере
-									i->second->buffer.erase(i->second->message.size);
-									// Фиксируем изменение в буфере
-									i->second->buffer.commit();
-									// Выполняем установку ожидаемых данных
-									i->second->state = state_t::HEAD;
-									// Если данные в буфере ещё есть
-									if(!i->second->buffer.empty())
-										// Переходим к началу чтения данных
-										this->prepare(pid, family);
+									data.buffer.assign(i->second->buffer.data() + size, i->second->buffer.data() + (i->second->message.size + size));
+									// Выполняем отправку полученных данных
+									this->callback(std::move(data));
 								}
+								// Останавливаем чтение данных с родительского процесса
+								this->cluster->stop(this->wid);
+								// Выходим из приложения
+								::exit(SIGCHLD);
+							// Если передана последняя порция
+							} else if(i->second->buffer.size() >= (i->second->message.size + size)) {
+								// Создаём объект передаваемых данных
+								data_t data;
+								// Устанавливаем идентификатор процесса
+								data.pid = i->second->message.pid;
+								// Устанавливаем буфер передаваемых данных
+								data.buffer.assign(i->second->buffer.data() + size, i->second->buffer.data() + (i->second->message.size + size));
+								// Удаляем лишние байты в смарт-буфере
+								i->second->buffer.erase(i->second->message.size + size);
+								// Фиксируем изменение в буфере
+								i->second->buffer.commit();
+								// Если асинхронный режим работы активирован
+								if(this->async){
+									// Выполняем запуск работы скрина
+									this->_screen.start();
+									// Выполняем отправку полученных данных
+									this->_screen = std::move(data);
+								// Если асинхронный режим работы деактивирован
+								} else {
+									// Выполняем остановку работы дочернего процесса
+									this->_screen.stop();
+									// Выполняем отправку полученных данных напрямую
+									this->callback(std::move(data));
+								}
+								// Если данные в буфере ещё есть
+								if(!i->second->buffer.empty())
+									// Переходим к началу чтения данных
+									this->prepare(pid, family);
 							}
-						} break;
+						// Если данные пришли пустыми
+						} else {
+							// Если нужно завершить работу процесса
+							if(i->second->message.quit){
+								// Останавливаем чтение данных с родительского процесса
+								this->cluster->stop(this->wid);
+								// Выходим из приложения
+								::exit(SIGCHLD);
+							// Выводим сообщение что данные пришли битые
+							} else this->_log->print("[%u] Data from main process arrives corrupted", log_t::flag_t::CRITICAL, ::getpid());
+						}
 					}
 				} break;
 			}
@@ -826,43 +781,47 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 /**
  * send Метод асинхронной отправки буфера данных в сокет
  * @param wid    идентификатор воркера
+ * @param pid    идентификатор процесса для получения сообщения
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param fd     идентификатор файлового дескриптора
  */
-void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t size, const SOCKET fd) noexcept {
+void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size, const SOCKET fd) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если идентификатор брокера подключений существует
-		if((buffer != nullptr) && (size > 0) && (fd > -1)){
-			// Ещем для указанного потока очередь полезной нагрузки
-			auto i = this->_payloads.find(wid);
-			// Если для потока очередь полезной нагрузки получена
-			if((i != this->_payloads.end()) && !i->second.empty() && ((i->second.front().offset - i->second.front().pos) > 0)){
-				// Если ещё есть место в буфере данных
-				if(i->second.back().offset < i->second.back().size){
-					// Получаем размер данных который возможно скопировать
-					const size_t actual = ((i->second.back().size - i->second.back().offset) >= size ? size : (i->second.back().size - i->second.back().offset));
-					// Выполняем копирование переданного буфера данных в временный буфер данных
-					::memcpy(i->second.back().data.get() + i->second.back().offset, buffer, actual);
-					// Выполняем смещение в основном буфере данных
-					i->second.back().offset += actual;
-					// Если не все данные были скопированы
-					if(actual < size)
-						// Выполняем создание нового фрейма
-						this->emplace(wid, buffer + actual, size - actual, fd);
-				// Если места в буфере данных больше нет
-				} else this->emplace(wid, buffer, size, fd);
-			// Если очередь ещё не существует
-			} else {
-				// Выполняем запись в сокет
-				const size_t bytes = ::write(fd, buffer, size);
-				// Если данные отправлены не полностью
-				if(bytes < size)
-					// Выполняем создание нового фрейма
-					this->emplace(wid, buffer + bytes, size - bytes, fd);
+		if((buffer != nullptr) && (size > 0) && (fd != INVALID_SOCKET)){
+			// Выполняем запись в сокет
+			const ssize_t bytes = ::write(fd, buffer, size);
+			// Если данные отправлены не полностью
+			if((bytes > 0) && (bytes < size))
+				// Выполняем создание нового фрейма
+				this->emplace(wid, pid, buffer + bytes, size - bytes, fd);
+			// Если запись в сокет не выполнена
+			else if(bytes < 0)
+				// Выполняем создание нового фрейма
+				this->emplace(wid, pid, buffer, size, fd);
+			// Если подключение завершено
+			else if(bytes == 0) {
+				// Если подключение закрыто, выходим из приложения
+				this->_log->print("Process [%u] is broken pipe", log_t::flag_t::CRITICAL, ::getpid());
+				// Останавливаем чтение данных с родительского процесса
+				this->stop(wid);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выходим из функции
+					return;
+				/**
+				 * Если режим отладки не активирован
+				 */
+				#else
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
+				#endif
 			}
 		}
 	#endif
@@ -870,17 +829,18 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 /**
  * emplace Метод добавления нового буфера полезной нагрузки
  * @param wid    идентификатор воркера
+ * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер полезной нагрузки
  * @param size   размер бинарного буфера полезной нагрузки
  * @param fd     идентификатор файлового дескриптора
  */
-void awh::Cluster::emplace(const uint16_t wid, const char * buffer, const size_t size, const SOCKET fd) noexcept {
+void awh::Cluster::emplace(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size, const SOCKET fd) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если идентификатор брокера подключений существует
-		if((buffer != nullptr) && (size > 0) && (fd > -1)){
+		if((buffer != nullptr) && (size > 0) && (fd != INVALID_SOCKET)){
 			/**
 			 * Выполняем отлов ошибок
 			 */
@@ -891,35 +851,41 @@ void awh::Cluster::emplace(const uint16_t wid, const char * buffer, const size_t
 				 * Выполняем создание нужного количества буферов
 				 */
 				do {
-					// Объект полезной нагрузки для отправки
-					payload_t payload;
-					// Устанавливаем файловый дескриптор
-					payload.fd = fd;
-					// Устанавливаем размер буфера данных
-					payload.size = MAX_PAYLOAD;
-					// Выполняем создание буфера данных
-					payload.data = unique_ptr <char []> (new char [MAX_PAYLOAD]);
 					// Получаем размер данных который возможно скопировать
 					actual = ((MAX_PAYLOAD >= (size - offset)) ? (size - offset) : MAX_PAYLOAD);
-					// Выполняем копирование буфера полезной нагрузки
-					::memcpy(payload.data.get(), buffer + offset, size - offset);
-					// Выполняем смещение в буфере
-					offset += actual;
-					// Увеличиваем смещение в буфере полезной нагрузки
-					payload.offset += actual;
-					// Ещем для указанного потока очередь полезной нагрузки
-					auto i = this->_payloads.find(wid);
-					// Если для потока очередь полезной нагрузки получена
-					if(i != this->_payloads.end())
-						// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-						i->second.push(std::move(payload));
-					// Если для потока почередь полезной нагрузки ещё не сформированна
-					else {
-						// Создаём новую очередь полезной нагрузки
-						auto ret = this->_payloads.emplace(wid, queue <payload_t> ());
-						// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-						ret.first->second.push(std::move(payload));
-					}
+					// Если количество копируемых байт больше нуля
+					if(actual > 0){
+						// Объект полезной нагрузки для отправки
+						payload_t payload;
+						// Устанавливаем файловый дескриптор
+						payload.fd = fd;
+						// Устанавливаем идентификатор процесса
+						payload.pid = pid;
+						// Устанавливаем размер буфера данных
+						payload.size = actual;
+						// Выполняем создание буфера данных
+						payload.data = unique_ptr <char []> (new char [actual]);
+						// Выполняем копирование буфера полезной нагрузки
+						::memcpy(payload.data.get(), buffer + offset, actual);
+						// Выполняем смещение в буфере
+						offset += actual;
+						// Увеличиваем смещение в буфере полезной нагрузки
+						payload.offset += actual;
+						// Ещем для указанного потока очередь полезной нагрузки
+						auto i = this->_payloads.find(wid);
+						// Если для потока очередь полезной нагрузки получена
+						if(i != this->_payloads.end())
+							// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+							i->second.emplace(pid, std::move(payload));
+						// Если для потока почередь полезной нагрузки ещё не сформированна
+						else {
+							// Создаём новую очередь полезной нагрузки
+							auto ret = this->_payloads.emplace(wid, multimap <pid_t, payload_t> ());
+							// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
+							ret.first->second.emplace(pid, std::move(payload));
+						}
+					// Выходим из цикла
+					} else break;
 				/**
 				 * Если не все данные полезной нагрузки установлены, создаём новый буфер
 				 */
@@ -928,8 +894,6 @@ void awh::Cluster::emplace(const uint16_t wid, const char * buffer, const size_t
 				auto i = this->_brokers.find(wid);
 				// Если брокер найден
 				if(i != this->_brokers.end()){
-					// Получаем идентификатор текущего процесса
-					const pid_t pid = ::getpid();
 					// Выполняем поиск индекса брокера
 					auto j = this->_pids.find(pid);
 					// Если индекс брокера найден
@@ -973,20 +937,22 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd, c
 				auto k = this->_payloads.find(wid);
 				// Если для потока очередь полезной нагрузки получена
 				if((k != this->_payloads.end()) && !k->second.empty()){
-					// Если есть данные для отправки
-					if((k->second.front().offset - k->second.front().pos) > 0){
+					// Выполняем поиск идентификатора процесса
+					auto l = k->second.find(pid);
+					// Если объект полезной нагрузки найден
+					if((l != k->second.end()) && ((l->second.offset - l->second.pos) > 0)){
 						// Останавливаем детектирования возможности записи в сокет
 						i->second.at(j->second)->send.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
 						// Выполняем запись в сокет
-						const size_t bytes = ::write(fd, k->second.front().data.get() + k->second.front().pos, k->second.front().offset - k->second.front().pos);
+						const size_t bytes = ::write(fd, l->second.data.get() + l->second.pos, l->second.offset - l->second.pos);
 						// Если данные записаны удачно
 						if(bytes > 0){
 							// Увеличиваем смещение в бинарном буфере
-							k->second.front().pos += bytes;
+							l->second.pos += bytes;
 							// Если все данные записаны успешно, тогда удаляем результат
-							if(k->second.front().pos == k->second.front().offset){
+							if(l->second.pos == l->second.offset){
 								// Выполняем удаление буфера буфера полезной нагрузки
-								k->second.pop();
+								k->second.erase(l);
 								// Если очередь полностью пустая
 								if(k->second.empty())
 									// Выполняем удаление всей очереди
@@ -1105,9 +1071,9 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 				// Получаем идентификатор брокера
 				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
 				// Выполняем отправку сообщения дочернему процессу
-				this->send(wid, reinterpret_cast <const char *> (&message), sizeof(message), broker->mfds[1]);
+				this->send(wid, ::getpid(), reinterpret_cast <const char *> (&message), sizeof(message), broker->mfds[1]);
 				// Выполняем отправку буфера полезной нагрузки
-				this->send(wid, buffer, size, broker->mfds[1]);
+				this->send(wid, ::getpid(), buffer, size, broker->mfds[1]);
 			}
 		}
 	/**
@@ -1145,9 +1111,9 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 				// Получаем идентификатор брокера
 				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
 				// Выполняем отправку сообщения дочернему процессу
-				this->send(wid, reinterpret_cast <const char *> (&message), sizeof(message), broker->cfds[1]);
+				this->send(wid, pid, reinterpret_cast <const char *> (&message), sizeof(message), broker->cfds[1]);
 				// Выполняем отправку буфера полезной нагрузки
-				this->send(wid, buffer, size, broker->cfds[1]);
+				this->send(wid, pid, buffer, size, broker->cfds[1]);
 			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
@@ -1205,9 +1171,9 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 					// Если идентификатор процесса не нулевой
 					if(broker->pid > 0){
 						// Выполняем отправку сообщения дочернему процессу
-						this->send(wid, reinterpret_cast <const char *> (&message), sizeof(message), broker->cfds[1]);
+						this->send(wid, broker->pid, reinterpret_cast <const char *> (&message), sizeof(message), broker->cfds[1]);
 						// Выполняем отправку буфера полезной нагрузки
-						this->send(wid, buffer, size, broker->cfds[1]);
+						this->send(wid, broker->pid, buffer, size, broker->cfds[1]);
 					}
 				}
 			}
@@ -1260,10 +1226,10 @@ void awh::Cluster::clear() noexcept {
 	this->_workers.clear();
 	// Выполняем очистку блоков полезной нагрузки
 	this->_payloads.clear();
-	// Выполняем освобождение выделенной памяти блоков полезной нагрузки
-	map <uint16_t, queue <payload_t>> ().swap(this->_payloads);
 	// Выполняем освобождение выделенной памяти
 	map <uint16_t, unique_ptr <worker_t>> ().swap(this->_workers);
+	// Выполняем освобождение выделенной памяти блоков полезной нагрузки
+	map <uint16_t, multimap <pid_t, payload_t>> ().swap(this->_payloads);
 }
 /**
  * close Метод закрытия всех подключений
