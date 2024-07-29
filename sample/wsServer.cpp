@@ -207,9 +207,9 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект параметров SSL-шифрования
 	node_t::ssl_t ssl;
-	// Создаём биндинг
+	// Создаём объект сетевого ядра
 	server::core_t core(&fmk, &log);
-	// Создаём объект REST запроса
+	// Создаём объект WebSocket-сервера
 	websocket_t ws(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	Executor executor(&fmk, &log);
@@ -301,5 +301,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запуск Websocket сервер
 	ws.start();
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

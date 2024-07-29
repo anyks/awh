@@ -28,9 +28,9 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём биндинг
+	// Создаём объект сетевого ядра
 	core_t core(&fmk, &log);
-	// Создаём объект PING запросов
+	// Создаём объект ICMP-клиента
 	ping_t ping(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("PING");
@@ -42,5 +42,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим результат пинга
 	log.print("PING result=%f", log_t::flag_t::INFO, result);
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

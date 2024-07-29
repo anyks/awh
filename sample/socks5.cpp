@@ -85,7 +85,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект параметров SSL-шифрования
 	node_t::ssl_t ssl;
-	// Создаём объект PROXY сервера
+	// Создаём объект прокси-сервера
 	proxy_socks5_t proxy(&fmk, &log);
 	// Создаём объект исполнителя
 	Proxy executor(&fmk, &log);
@@ -130,5 +130,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запуск Socks5 сервер
 	proxy.start();
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

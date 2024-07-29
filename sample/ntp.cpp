@@ -28,7 +28,7 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём биндинг
+	// Создаём объект NTP-клиента
 	ntp_t ntp(&fmk, &log);
 	// Создаём объект сетевого ядра
 	core_t core(&fmk, &log);
@@ -43,5 +43,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запрос на получение первого времени
 	log.print("Time: %s", log_t::flag_t::INFO, fmk.time2str((ntp.request() / 1000), "%H:%M:%S %d.%m.%Y").c_str());
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

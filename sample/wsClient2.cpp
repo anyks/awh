@@ -367,13 +367,13 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk{};
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект URI
+	// Создаём объект работы с адресами-URI
 	uri_t uri(&fmk);
 	// Создаём объект параметров SSL-шифрования
 	node_t::ssl_t ssl;
-	// Создаём биндинг
+	// Создаём объект сетевого ядра
 	client::core_t core(&fmk, &log);
-	// Создаём объект WEB запроса
+	// Создаём объект AWH-клиента
 	client::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	WebClient executor(&fmk, &log);
@@ -474,5 +474,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запуск работы
 	awh.start();
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

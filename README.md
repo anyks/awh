@@ -270,7 +270,7 @@ int32_t main(int32_t argc, char * argv[]){
 	awh.init("https://apple.com");
 	awh.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -335,7 +335,7 @@ int32_t main(int32_t argc, char * argv[]){
 	if(!body.empty())
 		cout << "RESPONSE: " << string(body.begin(), body.end()) << endl;
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -529,7 +529,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	awh.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -649,7 +649,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	ws.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -784,7 +784,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	ws.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -992,7 +992,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	awh.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1084,7 +1084,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	proxy.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1153,7 +1153,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	proxy.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1231,7 +1231,7 @@ int32_t main(int32_t argc, char * argv[]){
 	timer.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::launched, &executor, _1, &timer));
 	timer.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1271,7 +1271,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log.print("Encode domain \"ремпрофи.рф\" == \"%s\"", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
 	log.print("Decode domain \"xn--e1agliedd7a.xn--p1ai\" == \"%s\"", log_t::flag_t::INFO, dns.decode("xn--e1agliedd7a.xn--p1ai").c_str());
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1298,7 +1298,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	log.print("Time: %s", log_t::flag_t::INFO, fmk.time2str((ntp.request() / 1000), "%H:%M:%S %d.%m.%Y").c_str());
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1323,7 +1323,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	log.print("PING result=%f", log_t::flag_t::INFO, result);
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1384,7 +1384,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1448,7 +1448,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1515,7 +1515,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1585,7 +1585,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1646,7 +1646,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1709,7 +1709,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1776,7 +1776,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1846,7 +1846,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1913,7 +1913,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -1982,7 +1982,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -2044,7 +2044,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -2109,7 +2109,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -2171,7 +2171,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -2235,7 +2235,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -2314,7 +2314,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	core.start();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```
 
@@ -2509,6 +2509,6 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << " ARPA: b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa || " << net << endl;
 	cout << " ARPA IPv6: " << net.arpa() << endl;
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 ```

@@ -285,9 +285,9 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект параметров SSL-шифрования
 	node_t::ssl_t ssl;
-	// Создаём биндинг
+	// Создаём объект сетевого ядра
 	server::core_t core(&fmk, &log);
-	// Создаём объект WEB-клиента
+	// Создаём объект AWH-сервера
 	server::awh_t awh(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	WebServer executor(&fmk, &log);
@@ -353,14 +353,14 @@ int32_t main(int32_t argc, char * argv[]){
 		awh::http_t::compressor_t::ZSTD,
 		awh::http_t::compressor_t::BROTLI,
 		awh::http_t::compressor_t::GZIP,
-		awh::http_t::compressor_t::DEFLATE,
+		awh::http_t::compressor_t::DEFLATE
 	});
 	/*
 	awh.init(2222, "anyks.net", {
 		awh::http_t::compressor_t::ZSTD,
 		awh::http_t::compressor_t::BROTLI,
 		awh::http_t::compressor_t::GZIP,
-		awh::http_t::compressor_t::DEFLATE,
+		awh::http_t::compressor_t::DEFLATE
 	});
 	*/
 	/*
@@ -368,7 +368,7 @@ int32_t main(int32_t argc, char * argv[]){
 		awh::http_t::compressor_t::ZSTD,
 		awh::http_t::compressor_t::BROTLI,
 		awh::http_t::compressor_t::GZIP,
-		awh::http_t::compressor_t::DEFLATE,
+		awh::http_t::compressor_t::DEFLATE
 	});
 	*/
 	// Устанавливаем длительное подключение
@@ -409,5 +409,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запуск WEB-сервер
 	awh.start();
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

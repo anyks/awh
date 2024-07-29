@@ -134,5 +134,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

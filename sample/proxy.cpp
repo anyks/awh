@@ -107,7 +107,7 @@ int32_t main(int32_t argc, char * argv[]){
 	node_t::ssl_t ssl;
 	// Создаём объект исполнителя
 	Proxy executor(&log);
-	// Создаём объект PROXY сервера
+	// Создаём объект прокси-сервера
 	server::proxy_t proxy(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("Proxy Server");
@@ -174,5 +174,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запуск Proxy-сервер
 	proxy.start();
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

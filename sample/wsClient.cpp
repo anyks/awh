@@ -297,7 +297,7 @@ int32_t main(int32_t argc, char * argv[]){
 	node_t::ssl_t ssl;
 	// Создаём биндинг сетевого ядра
 	client::core_t core(&fmk, &log);
-	// Создаём объект Websocket клиента
+	// Создаём объект Websocket-клиента
 	websocket_t ws(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	Executor executor(&fmk, &log);
@@ -424,5 +424,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запуск Websocket клиента
 	ws.start();
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

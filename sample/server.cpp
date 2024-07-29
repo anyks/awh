@@ -84,9 +84,9 @@ int32_t main(int32_t argc, char * argv[]){
 	node_t::ssl_t ssl;
 	// Объект DNS-резолвера
 	dns_t dns(&fmk, &log);
-	// Создаём биндинг
+	// Создаём объект сетевого ядра
 	server::core_t core(&dns, &fmk, &log);
-	// Создаём объект SAMPLE запроса
+	// Создаём объект сервера
 	server::sample_t sample(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	Server executor(&fmk, &log);
@@ -136,5 +136,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запуск SAMPLE сервер
 	sample.start();
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }

@@ -28,7 +28,7 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём биндинг
+	// Создаём объект DNS-резолвера
 	dns_t dns(&fmk, &log);
 	// Создаём объект сетевого ядра
 	core_t core(&fmk, &log);
@@ -100,5 +100,5 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем декодирование кирилического доменного имени
 	log.print("Decode domain \"xn--e1agliedd7a.xn--p1ai\" == \"%s\"", log_t::flag_t::INFO, dns.decode("xn--e1agliedd7a.xn--p1ai").c_str());
 	// Выводим результат
-	return 0;
+	return EXIT_SUCCESS;
 }
