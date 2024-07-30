@@ -186,13 +186,13 @@
 							// Если буфер полезной нагрузки найден
 							if(i != this->_payload.end())
 								// Добавляем полученные данные в смарт-буфер
-								i->second->buffer.emplace(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+								i->second->buffer.insert(i->second->buffer.end(), reinterpret_cast <char *> (this->_buffer), reinterpret_cast <char *> (this->_buffer) + static_cast <size_t> (bytes));
 							// Если буфер полезной нагрузки не найден
 							else {
 								// Выполняем создание буфера полезной нагрузки
 								auto ret = this->_payload.emplace(pid, unique_ptr <payload_t> (new payload_t));
 								// Добавляем полученные данные в смарт-буфер
-								ret.first->second->buffer.emplace(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+								ret.first->second->buffer.insert(ret.first->second->buffer.end(), reinterpret_cast <char *> (this->_buffer), reinterpret_cast <char *> (this->_buffer) + static_cast <size_t> (bytes));
 							}
 							// Выполняем препарирование полученных данных
 							this->prepare(pid, family_t::MASTER);
@@ -283,13 +283,13 @@
 								// Если буфер полезной нагрузки найден
 								if(i != this->_payload.end())
 									// Добавляем полученные данные в смарт-буфер
-									i->second->buffer.emplace(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+									i->second->buffer.insert(i->second->buffer.end(), reinterpret_cast <char *> (this->_buffer), reinterpret_cast <char *> (this->_buffer) + static_cast <size_t> (bytes));
 								// Если буфер полезной нагрузки не найден
 								else {
 									// Выполняем создание буфера полезной нагрузки
 									auto ret = this->_payload.emplace(this->cluster->_pid, unique_ptr <payload_t> (new payload_t));
 									// Добавляем полученные данные в смарт-буфер
-									ret.first->second->buffer.emplace(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+									ret.first->second->buffer.insert(ret.first->second->buffer.end(), reinterpret_cast <char *> (this->_buffer), reinterpret_cast <char *> (this->_buffer) + static_cast <size_t> (bytes));
 								}
 								// Выполняем препарирование полученных данных
 								this->prepare(this->cluster->_pid, family_t::CHILDREN);
@@ -356,30 +356,34 @@
 		auto i = this->_payload.find(pid);
 		// Если полезная нагрузка получена
 		if(i != this->_payload.end()){
-			// Определяем семейство кластера
-			switch(static_cast <uint8_t> (family)){
-				// Если идентификатор семейства кластера является мастер-процессом
-				case static_cast <uint8_t> (family_t::MASTER): {
-					// Получаем размер извлекаемых данных
-					const size_t size = sizeof(mess_t);
-					// Если данные прочитаны правильно
-					if(!i->second->buffer.empty() && (i->second->buffer.size() >= size)){
-						// Выполняем извлечение входящих данных
-						::memcpy(&i->second->message, i->second->buffer.data(), size);
+			// Объект передаваемых данных
+			data_t data{};
+			// Размер смещения в буфере
+			const size_t offset = sizeof(mess_t);
+			// Выполняем обработку входящего буфера данных
+			while(!i->second->buffer.empty() && (i->second->buffer.size() >= offset)){
+				// Выполняем извлечение входящих данных
+				::memcpy(&i->second->message, i->second->buffer.data(), offset);
+				// Определяем семейство кластера
+				switch(static_cast <uint8_t> (family)){
+					// Если идентификатор семейства кластера является мастер-процессом
+					case static_cast <uint8_t> (family_t::MASTER): {
 						// Если размер данных соответствует
 						if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
 							// Если данные прочитаны правильно
-							if(i->second->buffer.size() >= (i->second->message.size + size)){
-								// Создаём объект передаваемых данных
-								data_t data;
+							if(i->second->buffer.size() >= (i->second->message.size + offset)){
 								// Устанавливаем идентификатор процесса
 								data.pid = i->second->message.pid;
 								// Устанавливаем буфер передаваемых данных
-								data.buffer.assign(i->second->buffer.data() + size, i->second->buffer.data() + (i->second->message.size + size));
-								// Удаляем лишние байты в смарт-буфере
-								i->second->buffer.erase(i->second->message.size + size);
-								// Фиксируем изменение в буфере
-								i->second->buffer.commit();
+								data.buffer.assign(i->second->buffer.data() + offset, i->second->buffer.data() + (offset + i->second->message.size));
+								// Если размер буфера больше количества удаляемых байт
+								if(i->second->buffer.size() >= (i->second->message.size + offset))
+									// Удаляем количество обработанных байт
+									i->second->buffer.erase(i->second->buffer.begin(), i->second->buffer.begin() + (i->second->message.size + offset));
+								// Если байт в буфере меньше, просто очищаем буфер
+								else i->second->buffer.clear();
+								// Выполняем сброс общего размера сообщения
+								i->second->message.size = 0;
 								// Если асинхронный режим работы активирован
 								if(this->async){
 									// Выполняем запуск работы скрина
@@ -393,35 +397,30 @@
 									// Выполняем отправку полученных данных напрямую
 									this->callback(std::move(data));
 								}
-								// Если данные в буфере ещё есть
-								if(!i->second->buffer.empty())
-									// Переходим к началу чтения данных
-									this->prepare(pid, family);
-							}
-						// Выводим сообщение что данные пришли битые
-						} else this->_log->print("[%u] Data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
-					}
-				} break;
-				// Если идентификатор семейства кластера является дочерним-процессом
-				case static_cast <uint8_t> (family_t::CHILDREN): {
-					// Получаем размер извлекаемых данных
-					const size_t size = sizeof(mess_t);
-					// Если данные прочитаны правильно
-					if(!i->second->buffer.empty() && (i->second->buffer.size() >= size)){
-						// Выполняем извлечение входящих данных
-						::memcpy(&i->second->message, i->second->buffer.data(), size);
+							// Выходим из цикла
+							} else break;
+						// Если данные пришли битые
+						} else {
+							// Выполняем очистку буфера данных
+							i->second->buffer.clear();
+							// Выводим сообщение что данные пришли битые
+							this->_log->print("[%u] Data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
+							// Выходим из цикла
+							break;
+						}
+					} break;
+					// Если идентификатор семейства кластера является дочерним-процессом
+					case static_cast <uint8_t> (family_t::CHILDREN): {
 						// Если размер данных соответствует
 						if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
 							// Если нужно завершить работу процесса
 							if(i->second->message.quit){
 								// Если данные прочитаны правильно
-								if(i->second->buffer.size() >= (i->second->message.size + size)){
-									// Создаём объект передаваемых данных
-									data_t data;
+								if(i->second->buffer.size() >= (i->second->message.size + offset)){
 									// Устанавливаем идентификатор процесса
 									data.pid = i->second->message.pid;
 									// Устанавливаем буфер передаваемых данных
-									data.buffer.assign(i->second->buffer.data() + size, i->second->buffer.data() + (i->second->message.size + size));
+									data.buffer.assign(i->second->buffer.data() + offset, i->second->buffer.data() + (offset + i->second->message.size));
 									// Выполняем отправку полученных данных
 									this->callback(std::move(data));
 								}
@@ -429,18 +428,20 @@
 								this->cluster->stop(this->wid);
 								// Выходим из приложения
 								::exit(SIGCHLD);
-							// Если передана последняя порция
-							} else if(i->second->buffer.size() >= (i->second->message.size + size)) {
-								// Создаём объект передаваемых данных
-								data_t data;
+							// Если данные прочитаны правильно
+							} else if(i->second->buffer.size() >= (i->second->message.size + offset)) {
 								// Устанавливаем идентификатор процесса
 								data.pid = i->second->message.pid;
 								// Устанавливаем буфер передаваемых данных
-								data.buffer.assign(i->second->buffer.data() + size, i->second->buffer.data() + (i->second->message.size + size));
-								// Удаляем лишние байты в смарт-буфере
-								i->second->buffer.erase(i->second->message.size + size);
-								// Фиксируем изменение в буфере
-								i->second->buffer.commit();
+								data.buffer.assign(i->second->buffer.data() + offset, i->second->buffer.data() + (offset + i->second->message.size));
+								// Если размер буфера больше количества удаляемых байт
+								if(i->second->buffer.size() >= (i->second->message.size + offset))
+									// Удаляем количество обработанных байт
+									i->second->buffer.erase(i->second->buffer.begin(), i->second->buffer.begin() + (i->second->message.size + offset));
+								// Если байт в буфере меньше, просто очищаем буфер
+								else i->second->buffer.clear();
+								// Выполняем сброс общего размера сообщения
+								i->second->message.size = 0;
 								// Если асинхронный режим работы активирован
 								if(this->async){
 									// Выполняем запуск работы скрина
@@ -454,11 +455,8 @@
 									// Выполняем отправку полученных данных напрямую
 									this->callback(std::move(data));
 								}
-								// Если данные в буфере ещё есть
-								if(!i->second->buffer.empty())
-									// Переходим к началу чтения данных
-									this->prepare(pid, family);
-							}
+							// Выходим из цикла
+							} else break;
 						// Если данные пришли пустыми
 						} else {
 							// Если нужно завершить работу процесса
@@ -467,11 +465,18 @@
 								this->cluster->stop(this->wid);
 								// Выходим из приложения
 								::exit(SIGCHLD);
-							// Выводим сообщение что данные пришли битые
-							} else this->_log->print("[%u] Data from main process arrives corrupted", log_t::flag_t::CRITICAL, ::getpid());
+							// Если данные пришли битые
+							} else {
+								// Выполняем очистку буфера данных
+								i->second->buffer.clear();
+								// Выводим сообщение что данные пришли битые
+								this->_log->print("[%u] Data from main process arrives corrupted", log_t::flag_t::CRITICAL, ::getpid());
+								// Выходим из цикла
+								break;
+							}
 						}
-					}
-				} break;
+					} break;
+				}
 			}
 		}
 	}

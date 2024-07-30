@@ -47,7 +47,6 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/screen.hpp>
-#include <sys/buffer.hpp>
 #include <net/socket.hpp>
 #include <sys/events.hpp>
 
@@ -136,11 +135,11 @@ namespace awh {
 						// Параметры входящего сообщения
 						mess_t message;
 						// Буфер полезной нагрузки
-						buffer_t buffer;
+						vector <char> buffer;
 						/**
 						 * Payload Конструктор
 						 */
-						Payload() noexcept : /*state(state_t::HEAD),*/ buffer(buffer_t::mode_t::COPY) {}
+						Payload() noexcept {}
 					} payload_t;
 				public:
 					// Мютекс для блокировки потока
