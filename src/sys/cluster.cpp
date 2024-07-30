@@ -360,14 +360,14 @@
 			data_t data{};
 			// Размер смещения в буфере
 			const size_t offset = sizeof(mess_t);
-			// Выполняем обработку входящего буфера данных
-			while(!i->second->buffer.empty() && (i->second->buffer.size() >= offset)){
-				// Выполняем извлечение входящих данных
-				::memcpy(&i->second->message, i->second->buffer.data(), offset);
-				// Определяем семейство кластера
-				switch(static_cast <uint8_t> (family)){
-					// Если идентификатор семейства кластера является мастер-процессом
-					case static_cast <uint8_t> (family_t::MASTER): {
+			// Определяем семейство кластера
+			switch(static_cast <uint8_t> (family)){
+				// Если идентификатор семейства кластера является мастер-процессом
+				case static_cast <uint8_t> (family_t::MASTER): {
+					// Выполняем обработку входящего буфера данных
+					while(!i->second->buffer.empty() && (i->second->buffer.size() >= offset)){
+						// Выполняем извлечение входящих данных
+						::memcpy(&i->second->message, i->second->buffer.data(), offset);
 						// Если размер данных соответствует
 						if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
 							// Если данные прочитаны правильно
@@ -408,9 +408,14 @@
 							// Выходим из цикла
 							break;
 						}
-					} break;
-					// Если идентификатор семейства кластера является дочерним-процессом
-					case static_cast <uint8_t> (family_t::CHILDREN): {
+					}
+				} break;
+				// Если идентификатор семейства кластера является дочерним-процессом
+				case static_cast <uint8_t> (family_t::CHILDREN): {
+					// Выполняем обработку входящего буфера данных
+					while(!i->second->buffer.empty() && (i->second->buffer.size() >= offset)){
+						// Выполняем извлечение входящих данных
+						::memcpy(&i->second->message, i->second->buffer.data(), offset);
 						// Если размер данных соответствует
 						if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
 							// Если нужно завершить работу процесса
@@ -475,8 +480,8 @@
 								break;
 							}
 						}
-					} break;
-				}
+					}
+				} break;
 			}
 		}
 	}
