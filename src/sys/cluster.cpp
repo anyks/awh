@@ -1078,12 +1078,16 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 				message.pid = pid;
 				// Выполняем установку размера отправляемых данных
 				message.size = size;
+				// Создаём временный буфер полезной нагрузки
+				vector <char> payload(size + sizeof(message), 0);
+				// Копируем в буфер полезной нагрузки параметры сообщения
+				::memcpy(payload.data(), reinterpret_cast <const char *> (&message), sizeof(message));
+				// Копируем в буфер полезной нагрузки, полученные данные
+				::memcpy(payload.data() + sizeof(message), buffer, size);
 				// Получаем идентификатор брокера
 				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
-				// Выполняем отправку сообщения дочернему процессу
-				this->send(wid, ::getpid(), reinterpret_cast <const char *> (&message), sizeof(message), broker->mfds[1]);
 				// Выполняем отправку буфера полезной нагрузки
-				this->send(wid, ::getpid(), buffer, size, broker->mfds[1]);
+				this->send(wid, ::getpid(), payload.data(), payload.size(), broker->mfds[1]);
 			}
 		}
 	/**
@@ -1118,12 +1122,16 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 				message.size = size;
 				// Устанавливаем пид процесса отправившего сообщение
 				message.pid = this->_pid;
+				// Создаём временный буфер полезной нагрузки
+				vector <char> payload(size + sizeof(message), 0);
+				// Копируем в буфер полезной нагрузки параметры сообщения
+				::memcpy(payload.data(), reinterpret_cast <const char *> (&message), sizeof(message));
+				// Копируем в буфер полезной нагрузки, полученные данные
+				::memcpy(payload.data() + sizeof(message), buffer, size);
 				// Получаем идентификатор брокера
 				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
-				// Выполняем отправку сообщения дочернему процессу
-				this->send(wid, pid, reinterpret_cast <const char *> (&message), sizeof(message), broker->cfds[1]);
 				// Выполняем отправку буфера полезной нагрузки
-				this->send(wid, pid, buffer, size, broker->cfds[1]);
+				this->send(wid, pid, payload.data(), payload.size(), broker->cfds[1]);
 			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
@@ -1176,15 +1184,18 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 				message.size = size;
 				// Устанавливаем пид процесса отправившего сообщение
 				message.pid = this->_pid;
+				// Создаём временный буфер полезной нагрузки
+				vector <char> payload(size + sizeof(message), 0);
+				// Копируем в буфер полезной нагрузки параметры сообщения
+				::memcpy(payload.data(), reinterpret_cast <const char *> (&message), sizeof(message));
+				// Копируем в буфер полезной нагрузки, полученные данные
+				::memcpy(payload.data() + sizeof(message), buffer, size);
 				// Переходим по всем дочерним процессам
 				for(auto & broker : i->second){
 					// Если идентификатор процесса не нулевой
-					if(broker->pid > 0){
-						// Выполняем отправку сообщения дочернему процессу
-						this->send(wid, broker->pid, reinterpret_cast <const char *> (&message), sizeof(message), broker->cfds[1]);
+					if(broker->pid > 0)
 						// Выполняем отправку буфера полезной нагрузки
-						this->send(wid, broker->pid, buffer, size, broker->cfds[1]);
-					}
+						this->send(wid, broker->pid, payload.data(), payload.size(), broker->cfds[1]);
 				}
 			}
 		// Если процесс превратился в зомби
