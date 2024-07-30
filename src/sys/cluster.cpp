@@ -376,12 +376,8 @@
 								data.pid = i->second->message.pid;
 								// Устанавливаем буфер передаваемых данных
 								data.buffer.assign(i->second->buffer.data() + offset, i->second->buffer.data() + (offset + i->second->message.size));
-								// Если размер буфера больше количества удаляемых байт
-								if(i->second->buffer.size() >= (i->second->message.size + offset))
-									// Удаляем количество обработанных байт
-									i->second->buffer.erase(i->second->buffer.begin(), i->second->buffer.begin() + (i->second->message.size + offset));
-								// Если байт в буфере меньше, просто очищаем буфер
-								else i->second->buffer.clear();
+								// Удаляем количество обработанных байт
+								i->second->buffer.erase(i->second->buffer.begin(), i->second->buffer.begin() + (i->second->message.size + offset));
 								// Выполняем сброс общего размера сообщения
 								i->second->message.size = 0;
 								// Если асинхронный режим работы активирован
@@ -439,12 +435,8 @@
 								data.pid = i->second->message.pid;
 								// Устанавливаем буфер передаваемых данных
 								data.buffer.assign(i->second->buffer.data() + offset, i->second->buffer.data() + (offset + i->second->message.size));
-								// Если размер буфера больше количества удаляемых байт
-								if(i->second->buffer.size() >= (i->second->message.size + offset))
-									// Удаляем количество обработанных байт
-									i->second->buffer.erase(i->second->buffer.begin(), i->second->buffer.begin() + (i->second->message.size + offset));
-								// Если байт в буфере меньше, просто очищаем буфер
-								else i->second->buffer.clear();
+								// Удаляем количество обработанных байт
+								i->second->buffer.erase(i->second->buffer.begin(), i->second->buffer.begin() + (i->second->message.size + offset));
 								// Выполняем сброс общего размера сообщения
 								i->second->message.size = 0;
 								// Если асинхронный режим работы активирован
@@ -789,54 +781,6 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 	#endif
 }
 /**
- * send Метод асинхронной отправки буфера данных в сокет
- * @param wid    идентификатор воркера
- * @param pid    идентификатор процесса для получения сообщения
- * @param buffer буфер для записи данных
- * @param size   размер записываемых данных
- * @param fd     идентификатор файлового дескриптора
- */
-void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size, const SOCKET fd) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если идентификатор брокера подключений существует
-		if((buffer != nullptr) && (size > 0) && (fd != INVALID_SOCKET)){
-			// Выполняем запись в сокет
-			const ssize_t bytes = ::write(fd, buffer, size);
-			// Если данные отправлены не полностью
-			if((bytes > 0) && (bytes < size))
-				// Выполняем создание нового фрейма
-				this->emplace(wid, pid, buffer + bytes, size - bytes, fd);
-			// Если запись в сокет не выполнена
-			else if(bytes < 0)
-				// Выполняем создание нового фрейма
-				this->emplace(wid, pid, buffer, size, fd);
-			// Если подключение завершено
-			else if(bytes == 0) {
-				// Если подключение закрыто, выходим из приложения
-				this->_log->print("Process [%u] is broken pipe", log_t::flag_t::CRITICAL, ::getpid());
-				// Останавливаем чтение данных с родительского процесса
-				this->stop(wid);
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выходим из функции
-					return;
-				/**
-				 * Если режим отладки не активирован
-				 */
-				#else
-					// Выходим из приложения
-					::exit(EXIT_FAILURE);
-				#endif
-			}
-		}
-	#endif
-}
-/**
  * emplace Метод добавления нового буфера полезной нагрузки
  * @param wid    идентификатор воркера
  * @param pid    идентификатор процесса для получения сообщения
@@ -1073,7 +1017,7 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 			// Если брокер найден
 			if((i != this->_brokers.end()) && (this->_pids.find(pid) != this->_pids.end())){
 				// Создаём объект сообщения
-				mess_t message;
+				mess_t message{};
 				// Устанавливаем пид процесса отправившего сообщение
 				message.pid = pid;
 				// Выполняем установку размера отправляемых данных
@@ -1087,7 +1031,7 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 				// Получаем идентификатор брокера
 				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
 				// Выполняем отправку буфера полезной нагрузки
-				this->send(wid, ::getpid(), payload.data(), payload.size(), broker->mfds[1]);
+				this->emplace(wid, ::getpid(), payload.data(), payload.size(), broker->mfds[1]);
 			}
 		}
 	/**
@@ -1117,7 +1061,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 			// Если брокер найден
 			if((i != this->_brokers.end()) && (this->_pids.find(pid) != this->_pids.end())){
 				// Создаём объект сообщения
-				mess_t message;
+				mess_t message{};
 				// Выполняем установку размера отправляемых данных
 				message.size = size;
 				// Устанавливаем пид процесса отправившего сообщение
@@ -1131,7 +1075,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 				// Получаем идентификатор брокера
 				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
 				// Выполняем отправку буфера полезной нагрузки
-				this->send(wid, pid, payload.data(), payload.size(), broker->cfds[1]);
+				this->emplace(wid, pid, payload.data(), payload.size(), broker->cfds[1]);
 			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
@@ -1179,7 +1123,7 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 			// Если брокер найден
 			if((i != this->_brokers.end()) && !i->second.empty()){
 				// Создаём объект сообщения
-				mess_t message;
+				mess_t message{};
 				// Выполняем установку размера отправляемых данных
 				message.size = size;
 				// Устанавливаем пид процесса отправившего сообщение
@@ -1195,7 +1139,7 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 					// Если идентификатор процесса не нулевой
 					if(broker->pid > 0)
 						// Выполняем отправку буфера полезной нагрузки
-						this->send(wid, broker->pid, payload.data(), payload.size(), broker->cfds[1]);
+						this->emplace(wid, broker->pid, payload.data(), payload.size(), broker->cfds[1]);
 				}
 			}
 		// Если процесс превратился в зомби

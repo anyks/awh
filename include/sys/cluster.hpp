@@ -320,16 +320,6 @@ namespace awh {
 			void fork(const uint16_t wid, const uint16_t index = 0, const bool stop = false) noexcept;
 		private:
 			/**
-			 * send Метод асинхронной отправки буфера данных в сокет
-			 * @param wid    идентификатор воркера
-			 * @param pid    идентификатор процесса для получения сообщения
-			 * @param buffer буфер для записи данных
-			 * @param size   размер записываемых данных
-			 * @param fd     идентификатор файлового дескриптора
-			 */
-			void send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size, const SOCKET fd) noexcept;
-		private:
-			/**
 			 * emplace Метод добавления нового буфера полезной нагрузки
 			 * @param wid    идентификатор воркера
 			 * @param pid    идентификатор процесса для получения сообщения
