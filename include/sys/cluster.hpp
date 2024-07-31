@@ -100,7 +100,6 @@ namespace awh {
 			 * Payload Структура полезной нагрузки
 			 */
 			typedef struct Payload {
-				SOCKET fd;                 // Файловый дескриптор для отправки сообщения
 				pid_t pid;                 // Идентификатор процесса приславший данные
 				size_t pos;                // Позиция в буфере
 				size_t size;               // Размер буфера
@@ -109,7 +108,7 @@ namespace awh {
 				/**
 				 * Payload Конструктор
 				 */
-				Payload() noexcept : fd(INVALID_SOCKET), pid(0), pos(0), size(0), offset(0), data(nullptr) {}
+				Payload() noexcept : pid(0), pos(0), size(0), offset(0), data(nullptr) {}
 			} payload_t;
 		public:
 			/**
@@ -240,7 +239,6 @@ namespace awh {
 					SOCKET cfds[2];    // Список файловых дескрипторов дочернего процесса
 					time_t date;       // Время начала жизни процесса
 					awh::event_t mess; // Объект события на получения сообщений
-					awh::event_t send; // Объект события на отправку сообщений
 					/**
 					 * Broker Конструктор
 					 * @param fmk объект фреймворка
@@ -250,8 +248,7 @@ namespace awh {
 					 end(false), pid(::getpid()),
 					 mfds{INVALID_SOCKET,INVALID_SOCKET},
 					 cfds{INVALID_SOCKET,INVALID_SOCKET}, date(0),
-					 mess(awh::event_t::type_t::EVENT, fmk, log),
-					 send(awh::event_t::type_t::EVENT, fmk, log) {}
+					 mess(awh::event_t::type_t::EVENT, fmk, log) {}
 					/**
 					 * ~Broker Деструктор
 					 */
@@ -312,6 +309,14 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
+			 * write Метод записи буфера данных в сокет
+			 * @param wid идентификатор воркера
+			 * @param pid идентификатор процесса для получения сообщения
+			 * @param fd  идентификатор файлового дескриптора
+			 */
+			void write(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept;
+		private:
+			/**
 			 * fork Метод отделения от основного процесса (создание дочерних процессов)
 			 * @param wid   идентификатор воркера
 			 * @param index индекс инициализированного процесса
@@ -325,18 +330,8 @@ namespace awh {
 			 * @param pid    идентификатор процесса для получения сообщения
 			 * @param buffer бинарный буфер полезной нагрузки
 			 * @param size   размер бинарного буфера полезной нагрузки
-			 * @param fd     идентификатор файлового дескриптора
 			 */
-			void emplace(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size, const SOCKET fd) noexcept;
-		private:
-			/**
-			 * write Метод записи буфера данных в сокет
-			 * @param wid   идентификатор воркера
-			 * @param pid   идентификатор процесса для получения сообщения
-			 * @param fd    идентификатор файлового дескриптора
-			 * @param event возникшее событие
-			 */
-			void write(const uint16_t wid, const pid_t pid, const SOCKET fd, const base_t::event_type_t event) noexcept;
+			void emplace(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * master Метод проверки является ли процесс родительским

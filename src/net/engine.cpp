@@ -286,7 +286,9 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 				result = this->network.at(dist6(random));
 			// Выводим только первый элемент
 			} else result = this->network.front();
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("Engine host: %s", log_t::flag_t::WARNING, error.what());

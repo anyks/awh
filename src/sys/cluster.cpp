@@ -41,8 +41,6 @@
 				if((broker->end = (broker->pid == pid))){
 					// Выполняем остановку чтение сообщений
 					broker->mess.stop();
-					// Выполняем остановку подписки на отправку данных
-					broker->send.stop();
 					// Выполняем закрытие файловых дескрипторов
 					::close(broker->cfds[0]);
 					::close(broker->mfds[1]);
@@ -257,8 +255,6 @@
 								if((broker->cfds[0] != item->cfds[0]) && (broker->mfds[1] != item->mfds[1])){
 									// Выполняем остановку чтение сообщений
 									item->mess.stop();
-									// Выполняем остановку подписки на отправку данных
-									item->send.stop();
 									// Закрываем файловый дескриптор на чтение из дочернего процесса
 									::close(item->cfds[0]);
 									// Закрываем файловый дескриптор на запись в основной процесс
@@ -267,8 +263,6 @@
 							}
 							// Выполняем остановку чтение сообщений
 							broker->mess.stop();
-							// Выполняем остановку подписки на отправку данных
-							broker->send.stop();
 							// Выходим из функции
 							return;
 						}
@@ -507,6 +501,105 @@ awh::Cluster::Worker::~Worker() noexcept {
 	#endif
 }
 /**
+ * write Метод записи буфера данных в сокет
+ * @param wid идентификатор воркера
+ * @param pid идентификатор процесса для получения сообщения
+ * @param fd  идентификатор файлового дескриптора
+ */
+void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем поиск брокеров
+			auto i = this->_brokers.find(wid);
+			// Если брокер найден
+			if(i != this->_brokers.end()){
+				// Выполняем поиск индекса активного процесса
+				auto j = this->_pids.find(pid);
+				// Если индекс активного процесса найден
+				if(j != this->_pids.end()){
+					// Ещем для указанного потока очередь полезной нагрузки
+					auto k = this->_payloads.find(wid);
+					// Если для потока очередь полезной нагрузки получена
+					if((k != this->_payloads.end()) && !k->second.empty()){
+						// Флаг завершения отправки всех данных
+						bool done = false;
+						/**
+						 * Выполняем отправку всего сообщения
+						 */
+						do {
+							// Выполняем поиск идентификатора процесса
+							auto l = k->second.find(pid);
+							// Если объект полезной нагрузки найден
+							if((l != k->second.end()) && ((l->second.offset - l->second.pos) > 0)){
+								// Устанавливаем метку записи данных
+								Send:
+								// Выполняем запись в сокет
+								const ssize_t bytes = ::write(fd, l->second.data.get() + l->second.pos, l->second.offset - l->second.pos);
+								// Если данные записаны удачно
+								if(bytes > 0){
+									// Увеличиваем смещение в бинарном буфере
+									l->second.pos += bytes;
+									// Если все данные записаны успешно, тогда удаляем результат
+									if(l->second.pos == l->second.offset){
+										// Выполняем удаление буфера буфера полезной нагрузки
+										k->second.erase(l);
+										// Если очередь полностью пустая
+										if((done = k->second.empty()))
+											// Выполняем удаление всей очереди
+											this->_payloads.erase(k);
+									}
+								// Если мы поймали ошибку
+								} else if(bytes < 0) {
+									// Если защищённый режим работы запрещён
+									if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
+										// Выполняем попытку отправить данные ещё раз
+										goto Send;
+									// Выводим в лог сообщение
+									else this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message().c_str());
+								// Если произошло отключение
+								} else {
+									// Выполняем остановку работы
+									this->stop(wid);
+									// Выводим в лог сообщение
+									this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message().c_str());
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Выходим из функции
+										return;
+									/**
+									 * Если режим отладки не активирован
+									 */
+									#else
+										// Выходим из приложения
+										::exit(EXIT_FAILURE);
+									#endif
+								}
+							}
+						/**
+						 * Если не все данные отправленны, продолжаем попытку
+						 */
+						} while(!done && (k->second.find(pid) != k->second.end()));
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Выводим в лог сообщение
+			this->_log->print("Write message to process", log_t::flag_t::CRITICAL);
+		}
+	#endif
+}
+/**
  * fork Метод отделения от основного процесса (создание дочерних процессов)
  * @param wid   идентификатор воркера
  * @param index индекс инициализированного процесса
@@ -567,12 +660,9 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выводим в лог сообщение
 						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						// Выполняем поиск завершившегося процесса
-						for(auto & broker : j->second){
+						for(auto & broker : j->second)
 							// Выполняем остановку чтение сообщений
 							broker->mess.stop();
-							// Выполняем остановку подписки на отправку данных
-							broker->send.stop();
-						}
 						// Выполняем остановку работы
 						this->stop(i->first);
 						// Выходим принудительно из приложения
@@ -583,12 +673,9 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выводим в лог сообщение
 						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						// Выполняем поиск завершившегося процесса
-						for(auto & broker : j->second){
+						for(auto & broker : j->second)
 							// Выполняем остановку чтение сообщений
 							broker->mess.stop();
-							// Выполняем остановку подписки на отправку данных
-							broker->send.stop();
-						}
 						// Выполняем остановку работы
 						this->stop(i->first);
 						// Выходим принудительно из приложения
@@ -670,14 +757,6 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 								broker->mess = std::bind(&worker_t::message, i->second.get(), _1, _2);
 								// Запускаем чтение данных с основного процесса
 								broker->mess.start();
-								// Устанавливаем базу событий для записи
-								broker->send = this->_base;
-								// Устанавливаем сокет для записи
-								broker->send = broker->mfds[1];
-								// Устанавливаем событие на запись данных в основной процесс
-								broker->send = static_cast <base_t::callback_t> (std::bind(&cluster_t::write, this, wid, pid, _1, _2));
-								// Запускаем запись данных в основной процесс
-								broker->send.start();
 								// Выполняем активацию работы события
 								broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 								// Если функция обратного вызова установлена
@@ -730,14 +809,6 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						broker->mess = std::bind(&worker_t::message, i->second.get(), _1, _2);
 						// Выполняем запуск работы чтения данных с дочерних процессов
 						broker->mess.start();
-						// Устанавливаем базу событий для записи
-						broker->send = this->_base;
-						// Устанавливаем сокет для записи
-						broker->send = broker->cfds[1];
-						// Устанавливаем событие на запись данных в дочерний процесс
-						broker->send = static_cast <base_t::callback_t> (std::bind(&cluster_t::write, this, wid, pid, _1, _2));
-						// Запускаем запись данных в дочерний процесс
-						broker->send.start();
 						// Если не нужно останавливаться на создании процессов
 						if(!stop)
 							// Выполняем создание новых процессов
@@ -786,15 +857,14 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер полезной нагрузки
  * @param size   размер бинарного буфера полезной нагрузки
- * @param fd     идентификатор файлового дескриптора
  */
-void awh::Cluster::emplace(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size, const SOCKET fd) noexcept {
+void awh::Cluster::emplace(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если идентификатор брокера подключений существует
-		if((buffer != nullptr) && (size > 0) && (fd != INVALID_SOCKET)){
+		if((buffer != nullptr) && (size > 0)){
 			/**
 			 * Выполняем отлов ошибок
 			 */
@@ -811,8 +881,6 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid, const char * buf
 					if(actual > 0){
 						// Объект полезной нагрузки для отправки
 						payload_t payload;
-						// Устанавливаем файловый дескриптор
-						payload.fd = fd;
 						// Устанавливаем идентификатор процесса
 						payload.pid = pid;
 						// Устанавливаем размер буфера данных
@@ -844,17 +912,6 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid, const char * buf
 				 * Если не все данные полезной нагрузки установлены, создаём новый буфер
 				 */
 				} while(offset < size);
-				// Выполняем поиск брокеров
-				auto i = this->_brokers.find(wid);
-				// Если брокер найден
-				if(i != this->_brokers.end()){
-					// Выполняем поиск индекса брокера
-					auto j = this->_pids.find(pid);
-					// Если индекс брокера найден
-					if(j != this->_pids.end())
-						// Запускаем ожидание записи данных
-						i->second.at(j->second)->send.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
-				}
 			/**
 			 * Если возникает ошибка
 			 */
@@ -863,69 +920,6 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid, const char * buf
 				this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
-			}
-		}
-	#endif
-}
-/**
- * write Метод записи буфера данных в сокет
- * @param wid   идентификатор воркера
- * @param pid   идентификатор процесса для получения сообщения
- * @param fd    идентификатор файлового дескриптора
- * @param event возникшее событие
- */
-void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd, const base_t::event_type_t event) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем поиск брокеров
-		auto i = this->_brokers.find(wid);
-		// Если брокер найден
-		if(i != this->_brokers.end()){
-			// Выполняем поиск индекса активного процесса
-			auto j = this->_pids.find(pid);
-			// Если индекс активного процесса найден
-			if(j != this->_pids.end()){
-				// Ещем для указанного потока очередь полезной нагрузки
-				auto k = this->_payloads.find(wid);
-				// Если для потока очередь полезной нагрузки получена
-				if((k != this->_payloads.end()) && !k->second.empty()){
-					// Выполняем поиск идентификатора процесса
-					auto l = k->second.find(pid);
-					// Если объект полезной нагрузки найден
-					if((l != k->second.end()) && ((l->second.offset - l->second.pos) > 0)){
-						// Останавливаем детектирования возможности записи в сокет
-						i->second.at(j->second)->send.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
-						// Выполняем запись в сокет
-						const size_t bytes = ::write(fd, l->second.data.get() + l->second.pos, l->second.offset - l->second.pos);
-						// Если данные записаны удачно
-						if(bytes > 0){
-							// Увеличиваем смещение в бинарном буфере
-							l->second.pos += bytes;
-							// Если все данные записаны успешно, тогда удаляем результат
-							if(l->second.pos == l->second.offset){
-								// Выполняем удаление буфера буфера полезной нагрузки
-								k->second.erase(l);
-								// Если очередь полностью пустая
-								if(k->second.empty())
-									// Выполняем удаление всей очереди
-									this->_payloads.erase(k);
-							}
-						}
-						// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
-						if(this->_payloads.find(wid) != this->_payloads.end()){
-							// Если сокет подключения активен
-							if((fd != INVALID_SOCKET) && (fd < MAX_SOCKETS))
-								// Запускаем ожидание записи данных
-								i->second.at(j->second)->send.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
-						}
-					// Если данных для отправки больше нет и сокет подключения активен
-					} else if((fd != INVALID_SOCKET) && (fd < MAX_SOCKETS))
-						// Останавливаем детектирования возможности записи в сокет
-						i->second.at(j->second)->send.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
-				// Останавливаем детектирования возможности записи в сокет
-				} else i->second.at(j->second)->send.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
 			}
 		}
 	#endif
@@ -1031,7 +1025,9 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 				// Получаем идентификатор брокера
 				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
 				// Выполняем отправку буфера полезной нагрузки
-				this->emplace(wid, ::getpid(), payload.data(), payload.size(), broker->mfds[1]);
+				this->emplace(wid, ::getpid(), payload.data(), payload.size());
+				// Выполняем отправку сообщения мастер-процессу
+				this->write(wid, ::getpid(), broker->mfds[1]);
 			}
 		}
 	/**
@@ -1075,7 +1071,9 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 				// Получаем идентификатор брокера
 				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
 				// Выполняем отправку буфера полезной нагрузки
-				this->emplace(wid, pid, payload.data(), payload.size(), broker->cfds[1]);
+				this->emplace(wid, pid, payload.data(), payload.size());
+				// Выполняем отправку сообщения дочернему-процессу
+				this->write(wid, pid, broker->cfds[1]);
 			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
@@ -1137,9 +1135,12 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 				// Переходим по всем дочерним процессам
 				for(auto & broker : i->second){
 					// Если идентификатор процесса не нулевой
-					if(broker->pid > 0)
+					if(broker->pid > 0){
 						// Выполняем отправку буфера полезной нагрузки
-						this->emplace(wid, broker->pid, payload.data(), payload.size(), broker->cfds[1]);
+						this->emplace(wid, broker->pid, payload.data(), payload.size());
+						// Выполняем отправку сообщения дочернему-процессу
+						this->write(wid, broker->pid, broker->cfds[1]);
+					}
 				}
 			}
 		// Если процесс превратился в зомби
@@ -1212,8 +1213,6 @@ void awh::Cluster::close() noexcept {
 				for(auto & broker : item.second){
 					// Выполняем остановку чтение сообщений
 					broker->mess.stop();
-					// Выполняем остановку подписки на отправку данных
-					broker->send.stop();
 					// Выполняем закрытие файловых дескрипторов
 					::close(broker->cfds[0]);
 					::close(broker->mfds[1]);
@@ -1243,8 +1242,6 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 			for(auto & broker : i->second){
 				// Выполняем остановку чтение сообщений
 				broker->mess.stop();
-				// Выполняем остановку подписки на отправку данных
-				broker->send.stop();
 				// Выполняем закрытие файловых дескрипторов
 				::close(broker->cfds[0]);
 				::close(broker->mfds[1]);
