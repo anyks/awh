@@ -558,6 +558,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем переключение на указанную версию
 	git checkout -b v${VER}-branch v${VER}-p4
 
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		# Применяем патч
+		apply_patch "lzma" "lzma.patch"
+	fi
+
 	# Создаём каталог сборки
 	mkdir -p "build" || exit 1
 	# Переходим в каталог
