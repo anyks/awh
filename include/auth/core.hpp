@@ -54,8 +54,10 @@ namespace awh {
 			enum class hash_t : uint8_t {
 				MD5    = 0x01, // Хэш-ключ MD5
 				SHA1   = 0x02, // Хэш-ключ SHA1
-				SHA256 = 0x03, // Хэш-ключ SHA256
-				SHA512 = 0x04  // Хэш-ключ SHA512
+				SHA224 = 0x03, // Хэш-ключ SHA224
+				SHA256 = 0x04, // Хэш-ключ SHA256
+				SHA384 = 0x05, // Хэш-ключ SHA384
+				SHA512 = 0x06  // Хэш-ключ SHA512
 			};
 		protected:
 			/**

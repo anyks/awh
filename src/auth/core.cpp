@@ -70,6 +70,20 @@ string awh::Authorization::response(const string & method, const string & user, 
 							result = this->_fmk->hash(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), fmk_t::hash_t::SHA1);
 					}
 				} break;
+				// Если алгоритм шифрования SHA224
+				case static_cast <uint16_t> (hash_t::SHA224): {
+					// Создаем первый этап
+					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::SHA224);
+					// Если первый этап получен
+					if(!ha1.empty()){
+						// Создаём второй этап
+						const string & ha2 = this->_fmk->hash(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()), fmk_t::hash_t::SHA224);
+						// Если второй этап создан
+						if(!ha2.empty())
+							// Создаём результат ответа
+							result = this->_fmk->hash(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), fmk_t::hash_t::SHA224);
+					}
+				} break;
 				// Если алгоритм шифрования SHA256
 				case static_cast <uint16_t> (hash_t::SHA256): {
 					// Создаем первый этап
@@ -82,6 +96,20 @@ string awh::Authorization::response(const string & method, const string & user, 
 						if(!ha2.empty())
 							// Создаём результат ответа
 							result = this->_fmk->hash(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), fmk_t::hash_t::SHA256);
+					}
+				} break;
+				// Если алгоритм шифрования SHA384
+				case static_cast <uint16_t> (hash_t::SHA384): {
+					// Создаем первый этап
+					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::SHA384);
+					// Если первый этап получен
+					if(!ha1.empty()){
+						// Создаём второй этап
+						const string & ha2 = this->_fmk->hash(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()), fmk_t::hash_t::SHA384);
+						// Если второй этап создан
+						if(!ha2.empty())
+							// Создаём результат ответа
+							result = this->_fmk->hash(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), fmk_t::hash_t::SHA384);
 					}
 				} break;
 				// Если алгоритм шифрования SHA512

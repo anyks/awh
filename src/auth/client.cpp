@@ -145,10 +145,18 @@ void awh::client::Auth::header(const string & header) noexcept {
 								else if(this->_fmk->compare(value, "SHA1"))
 									// Выполняем установку типа хэша SHA1
 									this->_digest.hash = hash_t::SHA1;
+								// Если алгоритм является SHA224
+								else if(this->_fmk->compare(value, "SHA224"))
+									// Выполняем установку типа хэша SHA224
+									this->_digest.hash = hash_t::SHA224;
 								// Если алгоритм является SHA256
 								else if(this->_fmk->compare(value, "SHA256"))
 									// Выполняем установку типа хэша SHA256
 									this->_digest.hash = hash_t::SHA256;
+								// Если алгоритм является SHA384
+								else if(this->_fmk->compare(value, "SHA384"))
+									// Выполняем установку типа хэша SHA384
+									this->_digest.hash = hash_t::SHA384;
 								// Если алгоритм является SHA512
 								else if(this->_fmk->compare(value, "SHA512"))
 									// Выполняем установку типа хэша SHA512
@@ -192,7 +200,7 @@ string awh::client::Auth::auth(const string & method) noexcept {
 						// Если ключ клиента не создан, создаём его
 						if(this->_digest.cnonce.empty()){
 							// Устанавливаем ключ клиента
-							this->_digest.cnonce = this->_fmk->hash(to_string(time(nullptr)), fmk_t::hash_t::MD5);
+							this->_digest.cnonce = this->_fmk->hash(std::to_string(time(nullptr)), fmk_t::hash_t::MD5);
 							// Обрезаем лишние символы
 							this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
 						}
