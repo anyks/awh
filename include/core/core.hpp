@@ -161,9 +161,6 @@ namespace awh {
 			bool _mode;
 			// Флаг разрешающий вывод информационных сообщений
 			bool _verb;
-		private:
-			// Количество подключённых внешних ядер
-			uint32_t _cores;
 		protected:
 			// Хранилище функций обратного вызова
 			fn_t _callbacks;

@@ -94,7 +94,7 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx);
 			// Выполняем блокировку чтения данных
-			this->_init = false;
+			this->_init = this->_virt;
 			// Если работа уже запущена
 			if(this->_work)
 				// Выполняем пинок
@@ -151,7 +151,7 @@ void awh::Core::Dispatch::rebase() noexcept {
 			// Если работа уже запущена
 			if(this->_work){
 				// Выполняем блокировку чтения данных
-				this->_init = false;
+				this->_init = this->_virt;
 				// Выполняем пинок
 				this->kick();
 			}
@@ -356,16 +356,12 @@ void awh::Core::bind(core_t * core) noexcept {
 			core->_dispatch.base = this->_dispatch.base;
 			// Выполняем блокировку потока
 			core->_mtx.status.lock();
-			// Увеличиваем количество подключённых потоков
-			this->_cores++;
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
 		// Если базы событий совпадают
 		} else {
 			// Выполняем блокировку потока
 			core->_mtx.status.lock();
-			// Увеличиваем количество подключённых потоков
-			this->_cores++;
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
 		}
@@ -386,8 +382,6 @@ void awh::Core::unbind(core_t * core) noexcept {
 		core->stop();
 		// Выполняем блокировку потока
 		core->_mtx.status.lock();
-		// Уменьшаем количество подключённых потоков
-		this->_cores--;
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
 		// Выполняем перевод базы событий в не виртуальную
@@ -585,7 +579,7 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _mode(false), _verb(true),
- _cores(0), _callbacks(log), _dispatch(fmk, log),
+ _callbacks(log), _dispatch(fmk, log),
  _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {
 	// Выполняем установку функции активации базы событий
