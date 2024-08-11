@@ -439,7 +439,7 @@ namespace awh {
 				bool flushDNS() noexcept;
 			public:
 				/**
-				 * timeoutDNS Метод установки времени ожидания выполнения запроса
+				 * timeoutDNS Метод установки времени ожидания выполнения запроса DNS-резолвера
 				 * @param sec интервал времени выполнения запроса в секундах
 				 */
 				void timeoutDNS(const uint8_t sec) noexcept;
@@ -451,18 +451,18 @@ namespace awh {
 				void prefixDNS(const string & prefix) noexcept;
 			public:
 				/**
-				 * clearDNSBlackList Метод очистки чёрного списка
+				 * clearDNSBlackList Метод очистки чёрного списка DNS-резолвера
 				 * @param domain доменное имя для которого очищается чёрный список
 				 */
 				void clearDNSBlackList(const string & domain) noexcept;
 				/**
-				 * delInDNSBlackList Метод удаления IP-адреса из чёрного списока
+				 * delInDNSBlackList Метод удаления IP-адреса из чёрного списока DNS-резолвера
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для удаления из чёрного списка
 				 */
 				void delInDNSBlackList(const string & domain, const string & ip) noexcept;
 				/**
-				 * setToDNSBlackList Метод добавления IP-адреса в чёрный список
+				 * setToDNSBlackList Метод добавления IP-адреса в чёрный список DNS-резолвера
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для добавления в чёрный список
 				 */
