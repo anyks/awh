@@ -329,13 +329,15 @@ string awh::URI::decode(const string & str) const noexcept {
 			// Если это не проценты
 			if(str[i] != '%'){
 				// Если это объединение двух слов
-				if(str[i] == '+') result.append(1, ' ');
+				if(str[i] == '+')
+					// Выполняем добавление разделителя
+					result.append(1, ' ');
 				// Иначе копируем букву как она есть
 				else result.append(1, str[i]);
 			// Если же это проценты
 			} else {
 				// Копируем символ
-				sscanf(str.substr(i + 1, 2).c_str(), "%x", &ii);
+				std::sscanf(str.substr(i + 1, 2).c_str(), "%x", &ii);
 				// Переводим символ в из числа в букву
 				ch = static_cast <char> (ii);
 				// Запоминаем полученный символ
@@ -870,7 +872,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 				// Если хост запроса найден
 				if(i != result.end()){
 					// Выполняем поиск разделителя данных пользователя и хоста
-					size_t pos = i->second.rfind("@");
+					size_t pos = i->second.rfind('@');
 					// Если разделитель порта найден
 					if(pos != string::npos){
 						// Получаем данные пользователя
@@ -878,7 +880,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 						// Формируем правильный хост
 						i->second = this->_fmk->transform(i->second.substr(pos + 1), fmk_t::transform_t::LOWER);
 						// Выполняем поиск разделителя логина и пароля
-						pos = user.find(":");
+						pos = user.find(':');
 						// Если разделитель логина и пароля найден
 						if(pos != string::npos){
 							// Устанавливаем пароль пользователя
@@ -1035,9 +1037,11 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 			// Получаем порт запроса
 			const string & port = match[4];
 			// Если порт получен
-			if(!port.empty()) result.port = ::stoi(port);
+			if(!port.empty())
+				// Выполняем установку порта
+				result.port = ::stoi(port);
 			// Если порт не получен но указана схема
-			else if(!schema.empty()){
+			else if(!schema.empty()) {
 				// Если схема принадлежит зашифрованному HTTP серверу
 				if(this->_fmk->compare(schema, "https"))
 					// Выполняем установку порта по умолчанию
