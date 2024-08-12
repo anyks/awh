@@ -968,11 +968,13 @@ string awh::URI::joinParams(const vector <pair <string, string>> & uri) const no
 	// Если параметры URI переданы
 	if(!uri.empty()){
 		// Добавляем системный параметр
-		result.append("?");
+		result.append(1, '?');
 		// Переходим по всему списку параметров
 		for(auto & param : uri){
 			// Если параметры уже были добавлены
-			if(result.length() > 1) result.append("&");
+			if(result.length() > 1)
+				// Выполняем добавление разделителя
+				result.append(1, '&');
 			// Если значение не пустое
 			if(!param.second.empty())
 				// Добавляем собранные параметры
