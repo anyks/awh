@@ -1533,12 +1533,10 @@ void awh::Base::kick() noexcept {
 		this->_mode = !this->_mode;
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
-		// Запускаем ожидание остановки работы базы событий
-		while(this->_launched)
-			// Ожидаем завершения работы базы событий
-			std::this_thread::sleep_for(10ms);
-		// Выполняем запуск работы базы событий
-		this->start();
+		// Выполняем деинициализацию базы событий
+		this->init(false);
+		// Выполняем инициализацию базы событий
+		this->init(true);
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
 }
@@ -1556,6 +1554,10 @@ void awh::Base::stop() noexcept {
 		this->_mtx.unlock();
 		// Выполняем очистку списка событий
 		this->clear();
+		// Выполняем деинициализацию базы событий
+		this->init(false);
+		// Выполняем инициализацию базы событий
+		this->init(true);
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
 }
@@ -2125,10 +2127,6 @@ void awh::Base::rebase() noexcept {
 		this->_mode = !this->_mode;
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
-		// Запускаем ожидание остановки работы базы событий
-		while(this->_launched)
-			// Ожидаем завершения работы базы событий
-			std::this_thread::sleep_for(10ms);
 		// Запоминаем список активных событий
 		std::map <SOCKET, item_t> items = this->_items;
 		// Выполняем очистку всех параметров
@@ -2201,8 +2199,8 @@ void awh::Base::frequency(const uint32_t msec) noexcept {
  * @param count максимальное количество обрабатываемых сокетов
  */
 awh::Base::Base(const fmk_t * fmk, const log_t * log, const uint32_t count) noexcept :
- _mode(false), _easily(false), _locker(false), _launched(false), _baseDelay(-1),
- _maxCount(count), _socket(fmk, log), _timeout(fmk, log), _fmk(fmk), _log(log) {
+ _mode(false), _easily(false), _locker(false), _launched(false),
+ _baseDelay(-1), _maxCount(count), _socket(fmk, log), _timeout(fmk, log), _fmk(fmk), _log(log) {
 	// Выполняем инициализацию базы событий
 	this->init(true);
 }
