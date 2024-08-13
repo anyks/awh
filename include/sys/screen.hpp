@@ -64,6 +64,9 @@ namespace awh {
 			// Флаг остановки работы дочернего потока
 			bool _stop;
 		private:
+			// Идентификатор потока
+			uint64_t _id;
+		private:
 			// Состояние здоровья
 			health_t _health;
 		private:
@@ -141,7 +144,7 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const exception & error) {
+					} catch(const std::exception &) {
 						// Выполняем запуск обработки поступившей задачи
 						this->process();
 						// Если произведена остановка
@@ -163,6 +166,15 @@ namespace awh {
 					return true;
 				// Выполняем проверку на наличие полезной нагрузки
 				return !this->_payload.empty();
+			}
+		public:
+			/**
+			 * id Метод получения идентификатора потока
+			 * @return идентификатор потока
+			 */
+			uint64_t id() const noexcept {
+				// Выводим идентификатор потока
+				return this->_id;
 			}
 		public:
 			/**
@@ -253,11 +265,17 @@ namespace awh {
 						this->_cv.notify_one();
 						// Дожидаемся завершения работы потока
 						this->_thr.join();
+						// Выполняем сброс идентификатора потока
+						this->_id = 0;
 					}
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const exception & error) {}
+				} catch(const std::exception &) {
+					/**
+					 * Выполняем игнорирование ошибки
+					 */
+				}
 			}
 			/**
 			 * start Метод запуска работы модуля
@@ -271,15 +289,23 @@ namespace awh {
 					if(this->_stop){
 						// Снимаем флаг остановки работы модуля
 						this->_stop = !this->_stop;
+						// Создаём объект хэширования
+						std::hash <std::thread::id> hasher;
 						// Создаём дочерний поток для формирования лога
 						this->_thr = std::thread(&Screen::receiving, this);
+						// Выполняем получение идентификатора потока
+						this->_id = hasher(this->_thr.get_id());
 						// Отсоединяемся от потока
 						this->_thr.detach();
 					}
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const exception & error) {}
+				} catch(const std::exception &) {
+					/**
+					 * Выполняем игнорирование ошибки
+					 */
+				}
 			}
 		public:
 			/**
@@ -359,7 +385,7 @@ namespace awh {
 			 * Screen Конструктор
 			 */
 			Screen() noexcept :
-			 _stop(true), _health(health_t::ALIVE),
+			 _stop(true), _id(0), _health(health_t::ALIVE),
 			 _delay(chrono::nanoseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
 				// Выполняем запуск модуля
@@ -370,7 +396,7 @@ namespace awh {
 			 * @param health статус здоровья
 			 */
 			Screen(const health_t health) noexcept :
-			 _stop(true), _health(health),
+			 _stop(true), _id(0), _health(health),
 			 _delay(chrono::nanoseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
 				// Если статус здоровья установлен как живой
