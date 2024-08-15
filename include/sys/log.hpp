@@ -92,7 +92,7 @@ namespace awh {
 				/**
 				 * Payload Конструктор
 				 */
-				Payload() noexcept : flag(flag_t::NONE), data("") {}
+				Payload() noexcept : flag(flag_t::NONE), data{""} {}
 			} payload_t;
 		private:
 			// Идентификатор родительского процесса
