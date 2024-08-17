@@ -441,8 +441,10 @@ void awh::client::Web::init(const string & dest, const vector <awh::http_t::comp
 			this->_scheme.url = this->_uri.parse(dest);
 		}
 	}
-	// Устанавливаем список поддерживаемых компрессоров
-	this->_compressors = compressors;
+	// Если список компрессоров передан
+	if(!compressors.empty())
+		// Устанавливаем список поддерживаемых компрессоров
+		this->_compressors = compressors;
 }
 /**
  * sendTimeout Метод отправки сигнала таймаута
