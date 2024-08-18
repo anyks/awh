@@ -1620,14 +1620,22 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 			} break;
 			// Если передан флаг умного перевода начальных символов в верхний регистр
 			case static_cast <uint8_t> (transform_t::SMART): {
+				// Символ с которым ведётся работа в данный момент
+				char letter = 0;
 				// Флаг детекции символа
 				bool mode = true;
 				// Переходим по всем буквам слова и формируем новую строку
 				for(size_t i = 0; i < text.length(); i++){
+					// Получаем символ с которым ведётся работа в данный момент
+					letter = text[i];
 					// Если флаг перевода в верхний регистр активирован
-					if(mode) text[i] = ::toupper(text[i]);
+					if(mode)
+						// Переводим символ в верхний режим
+						text[i] = ::toupper(letter);
+					// Переводим остальные символы в нижний регистр
+					else text[i] = ::tolower(letter);
 					// Если найден спецсимвол, устанавливаем флаг детекции
-					mode = ((text[i] == '-') || (text[i] == '_') || ::isspace(text[i]) || (text[i] == 32) || (text[i] == 9));
+					mode = ((letter == '-') || (letter == '_') || ::isspace(letter) || (letter == 32) || (letter == 9));
 				}
 			} break;
 		}
@@ -1686,7 +1694,11 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 					// Получаем символ с которым ведётся работа в данный момент
 					letter = text[i];
 					// Если флаг перевода в верхний регистр активирован
-					if(mode) text[i] = ::towupper(letter);
+					if(mode)
+						// Переводим символ в верхний режим
+						text[i] = ::towupper(letter);
+					// Переводим остальные символы в нижний регистр
+					else text[i] = ::towlower(letter);
 					// Если найден спецсимвол, устанавливаем флаг детекции
 					mode = ((letter == L'-') || (letter == L'_') || ::iswspace(letter) || (letter == 32) || (letter == 160) || (letter == 173) || (letter == 9));
 				}
