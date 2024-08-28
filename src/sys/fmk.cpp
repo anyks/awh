@@ -2760,31 +2760,31 @@ string awh::Framework::time2abbr(const time_t date) const noexcept {
 		// Если число больше года
 		if(date >= 29030400000)
 			// Выполняем формирование результата
-			result = this->format("%.1f year.", (date / double(29030400000)));
+			result = this->format("%.1f year.", (date / static_cast <double> (29030400000.)));
 		// Если число больше месяца
 		else if(date >= 2419200000)
 			// Выполняем формирование результата
-			result = this->format("%.1f month.", (date / double(2419200000)));
+			result = this->format("%.1f month.", (date / static_cast <double> (2419200000.)));
 		// Если число больше недели
 		else if(date >= 604800000)
 			// Выполняем формирование результата
-			result = this->format("%.1f week.", (date / double(604800000)));
+			result = this->format("%.1f week.", (date / static_cast <double> (604800000.)));
 		// Если число больше дня
 		else if(date >= 86400000)
 			// Выполняем формирование результата
-			result = this->format("%.1f day.", (date / double(86400000)));
+			result = this->format("%.1f day.", (date / static_cast <double> (86400000.)));
 		// Если число больше часа
 		else if(date >= 3600000)
 			// Выполняем формирование результата
-			result = this->format("%.1f hour.", (date / double(3600000)));
+			result = this->format("%.1f hour.", (date / static_cast <double> (3600000.)));
 		// Если число больше минуты
 		else if(date >= 60000)
 			// Выполняем формирование результата
-			result = this->format("%.1f min.", (date / double(60000)));
+			result = this->format("%.1f min.", (date / static_cast <double> (60000.)));
 		// Если число ольше секунды
 		else if(date >= 1000)
 			// Выполняем формирование результата
-			result = this->format("%.1f sec.", (date / double(1000)));
+			result = this->format("%.1f sec.", (date / static_cast <double> (1000.)));
 		// Иначе выводим как есть
 		else result = this->format("%u msec.", date);
 	}
