@@ -338,6 +338,10 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 										i->second->http.clear();
 										// Выполняем сброс состояния HTTP-запроса у конкретного потока
 										i->second->http.reset();
+										// Если функция обратного вызова на получение удачного ответа установлена
+										if(this->_callbacks.is("handshake"))
+											// Выполняем функцию обратного вызова
+											this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, rid, i->second->agent);
 										// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 										if(i->second->callback.is("entity"))
 											// Выполняем функцию обратного вызова дисконнекта
@@ -346,10 +350,6 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 										if(i->second->callback.is("complete"))
 											// Выполняем функцию обратного вызова
 											i->second->callback.bind("complete");
-										// Если функция обратного вызова на получение удачного ответа установлена
-										if(this->_callbacks.is("handshake"))
-											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, rid, i->second->agent);
 										// Выполняем завершение запроса
 										this->result(sid, rid);
 										// Если установлена функция отлова завершения запроса
@@ -372,6 +372,13 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 							switch(static_cast <uint8_t> (i->second->agent)){
 								// Если агент является клиентом HTTP
 								case static_cast <uint8_t> (agent_t::HTTP): {
+									// Если мы получили флаг завершения потока
+									if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
+										// Если функция обратного вызова на получение удачного ответа установлена
+										if(this->_callbacks.is("handshake"))
+											// Выполняем функцию обратного вызова
+											this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, i->second->id, i->second->agent);
+									}
 									// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
 									if(flags.find(awh::http2_t::flag_t::END_HEADERS) != flags.end()){
 										// Флаг полученных трейлеров из ответа сервера
@@ -472,10 +479,6 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 									if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 										// Получаем идентификатор запроса
 										const uint64_t rid = i->second->id;
-										// Если функция обратного вызова на получение удачного ответа установлена
-										if(this->_callbacks.is("handshake"))
-											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, rid, i->second->agent);
 										// Выполняем завершение запроса
 										this->result(sid, rid);
 										// Если установлена функция отлова завершения запроса

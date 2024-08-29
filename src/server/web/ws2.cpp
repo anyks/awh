@@ -705,10 +705,6 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 													// Выходим из функции
 													return NGHTTP2_ERR_CALLBACK_FAILURE;
 												}
-												// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
-												if(this->_callbacks.is("complete"))
-													// Выполняем функцию обратного вызова
-													this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
 												// Если функция обратного вызова активности потока установлена
 												if(this->_callbacks.is("stream"))
 													// Выполняем функцию обратного вызова
@@ -717,6 +713,10 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 												if(this->_callbacks.is("handshake"))
 													// Выполняем функцию обратного вызова
 													this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", options->sid, bid, agent_t::WEBSOCKET);
+												// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
+												if(this->_callbacks.is("complete"))
+													// Выполняем функцию обратного вызова
+													this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
 												// Если мы получили флаг завершения потока
 												if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 													// Если установлена функция отлова завершения запроса

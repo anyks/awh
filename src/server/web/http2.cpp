@@ -759,6 +759,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 					}
 					// Выполняем извлечение параметров запроса
 					const auto & request = stream->http.request();
+					// Если функция обратного вызова на получение удачного запроса установлена
+					if(this->_callbacks.is("handshake"))
+						// Выполняем функцию обратного вызова
+						this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, bid, agent_t::HTTP);
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(!stream->http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
 						// Выполняем функцию обратного вызова
@@ -767,10 +771,6 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 					if(this->_callbacks.is("complete"))
 						// Выполняем функцию обратного вызова
 						this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
-					// Если функция обратного вызова на получение удачного запроса установлена
-					if(this->_callbacks.is("handshake"))
-						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, bid, agent_t::HTTP);
 				} break;
 				// Если запрос неудачный
 				case static_cast <uint8_t> (http_t::status_t::FAULT): {
@@ -1061,14 +1061,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 							return;
 						// Выполняем извлечение параметров запроса
 						const auto & request = stream->http.request();
-						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-						if(!stream->http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
-							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", sid, bid, request.method, request.url, stream->http.body());
-						// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
-						if(this->_callbacks.is("complete"))
-							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
 						// Если функция обратного вызова активности потока установлена
 						if(this->_callbacks.is("stream"))
 							// Выполняем функцию обратного вызова
@@ -1077,6 +1069,14 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						if(this->_callbacks.is("handshake"))
 							// Выполняем функцию обратного вызова
 							this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, bid, agent_t::WEBSOCKET);
+						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+						if(!stream->http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
+							// Выполняем функцию обратного вызова
+							this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", sid, bid, request.method, request.url, stream->http.body());
+						// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
+						if(this->_callbacks.is("complete"))
+							// Выполняем функцию обратного вызова
+							this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
 						// Завершаем работу
 						return;
 					// Формируем ответ, что произошла внутренняя ошибка сервера

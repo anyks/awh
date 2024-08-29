@@ -668,14 +668,6 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					if(this->_verb)
 						// Выводим в лог сообщение об удачной авторизации не Websocket-сервере
 						this->_log->print("Authorization on the Websocket-server was successful", log_t::flag_t::INFO);
-					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-					if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
-						// Устанавливаем полученную функцию обратного вызова
-						this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity"), sid, this->_rid, response.code, response.message, this->_http.body());
-					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
-					if(this->_callbacks.is("complete"))
-						// Выполняем функцию обратного вызова
-						this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callbacks.is("stream"))
 						// Устанавливаем полученную функцию обратного вызова
@@ -684,6 +676,14 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					if(this->_callbacks.is("handshake"))
 						// Выполняем функцию обратного вызова
 						this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, this->_rid, agent_t::WEBSOCKET);
+					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+					if(!this->_http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
+						// Устанавливаем полученную функцию обратного вызова
+						this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity"), sid, this->_rid, response.code, response.message, this->_http.body());
+					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
+					if(this->_callbacks.is("complete"))
+						// Выполняем функцию обратного вызова
+						this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено

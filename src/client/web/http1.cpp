@@ -191,10 +191,10 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 							Stop:
 							// Если получение данных выполнено
 							if(completed){
-								// Если функция обратного вызова активности потока установлена
-								if(this->_callbacks.is("stream"))
+								// Если функция обратного вызова на получение удачного ответа установлена
+								if(this->_callbacks.is("handshake"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, rid, mode_t::CLOSE);
+									this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, rid, agent_t::HTTP);
 								// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 								if(this->_resultCallback.is("entity"))
 									// Выполняем функцию обратного вызова
@@ -205,10 +205,10 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 									this->_resultCallback.bind("complete");
 								// Выполняем очистку функций обратного вызова
 								this->_resultCallback.clear();
-								// Если функция обратного вызова на получение удачного ответа установлена
-								if(this->_callbacks.is("handshake"))
+								// Если функция обратного вызова активности потока установлена
+								if(this->_callbacks.is("stream"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const int32_t, const uint64_t, const agent_t)> ("handshake", sid, rid, agent_t::HTTP);
+									this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", sid, rid, mode_t::CLOSE);
 								// Если установлена функция отлова завершения запроса
 								if(this->_callbacks.is("end"))
 									// Выполняем функцию обратного вызова
