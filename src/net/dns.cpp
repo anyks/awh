@@ -1188,7 +1188,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							// Если произведён сброс подключения
 							case ECONNRESET:
 								// Выводим в лог сообщение
-								this->_self->_log->print("ECONNRESET [SERVER= %s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+								this->_self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 							break;
 						/**
 						 * Методы только для OS Windows
@@ -1197,7 +1197,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							// Если произведён сброс подключения
 							case WSAECONNRESET:
 								// Выводим в лог сообщение
-								this->_self->_log->print("ECONNRESET [SERVER= %s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
+								this->_self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 							break;
 						#endif
 						// Для остальных ошибок
