@@ -97,8 +97,8 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 			this->_init = this->_virt;
 			// Если работа уже запущена
 			if(this->_work)
-				// Выполняем пинок
-				this->kick();
+				// Выполняем остановку всех событий
+				this->base->kick();
 			// Удаляем объект базы событий
 			if(this->base != nullptr){
 				// Удаляем объект базы событий
@@ -149,12 +149,9 @@ void awh::Core::Dispatch::rebase() noexcept {
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx);
 			// Если работа уже запущена
-			if(this->_work){
+			if(this->_work)
 				// Выполняем блокировку чтения данных
 				this->_init = this->_virt;
-				// Выполняем пинок
-				this->kick();
-			}
 			// Удаляем объект базы событий
 			if(this->base != nullptr)
 				// Выполняем пересоздание базы событий
@@ -185,10 +182,6 @@ void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем фриз получения данных
 		this->base->freeze(mode);
-		// Если запрещено использовать простое чтение базы событий
-		if(mode)
-			// Выполняем пинок
-			this->kick();
 	}
 }
 /**
@@ -200,8 +193,8 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Устанавливаем флаг активации простого чтения базы событий
 	this->base->easily(mode);
-	// Выполняем пинок
-	this->kick();
+	// Выполняем остановку всех событий
+	this->base->kick();
 }
 /**
  * frequency Метод установки частоты обновления базы событий
@@ -214,6 +207,8 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Устанавливаем частоту обновления базы событий
 		this->base->frequency(msec);
+		// Выполняем остановку всех событий
+		this->base->kick();
 	}
 }
 /**
@@ -389,6 +384,15 @@ void awh::Core::unbind(core_t * core) noexcept {
 		// Запускаем метод деактивации базы событий
 		core->closedown(false, true);
 	}
+}
+/**
+ * kick Метод отправки пинка
+ */
+void awh::Core::kick() noexcept {
+	// Если система уже запущена
+	if(this->_mode)
+		// Выполняем отправку события сброса
+		this->_dispatch.kick();
 }
 /**
  * stop Метод остановки клиента

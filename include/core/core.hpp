@@ -207,6 +207,11 @@ namespace awh {
 			void unbind(Core * core) noexcept;
 		public:
 			/**
+			 * kick Метод отправки пинка
+			 */
+			void kick() noexcept;
+		public:
+			/**
 			 * stop Метод остановки клиента
 			 */
 			virtual void stop() noexcept;
