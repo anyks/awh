@@ -282,20 +282,36 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		/*
 		// Если база событий должна быть запущена внутри дочернего потока
-		if((result = ((this->_mode == mode_t::CHILD) && !this->stream()))){
-			// Создаём объект передаваемого сообщения
-			message_t message;
-			// Устанавливаем идентификатор запроса
-			message.id = id;
-			// Устанавливаем файловый дескриптор
-			message.fd = fd;
-			// Экшен выполняемого метода
-			message.action = action_t::DEL;
-			// Выполняем отправку сообщения в экран
-			this->_screen = message;
+		if(this->_started && (this->_mode == mode_t::CHILD) && !this->stream()){
+			// Если сообщение ещё не получено
+			if(!this->_sending){
+				// Устанавливаем флаг отправки результата
+				this->_sending = !this->_sending;
+				// Создаём объект передаваемого сообщения
+				message_t message;
+				// Устанавливаем идентификатор запроса
+				message.id = id;
+				// Устанавливаем файловый дескриптор
+				message.fd = fd;
+				// Экшен выполняемого метода
+				message.action = action_t::DEL;
+				// Выполняем отправку сообщения в экран
+				this->_screen = message;
+				// Создаём объект обещания завершения выполнения события
+				auto stop = this->_event.get_future();
+				// Выполняем ожидание завершения выполнения события
+				stop.wait();
+				// Выполняем получение результата
+				result = stop.get();
+				// Выполняем инициализацию нового промиса
+				this->_event = std::promise <bool> ();
+			// Выводим сообщение об ошибке
+			} else this->_log->print("Del event already send: %s", log_t::flag_t::WARNING);
 		// Выполняем запуск базы событий
 		} else {
+		*/
 			// Выполняем блокировку потока
 			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			/**
@@ -459,7 +475,16 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 					this->_locker = false;
 				}
 			#endif
+			/*
+			// Если база событий запущена внутри дочернего потока
+			if(this->_sending && (this->_mode == mode_t::CHILD) && this->stream()){
+				// Выполняем завершение работы события
+				this->_event.set_value(result);
+				// Снимаем значение флага отправки
+				this->_sending = !this->_sending;
+			}
 		}
+		*/
 	/**
 	 * Если возникает ошибка
 	 */
@@ -486,22 +511,40 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			/*
 			// Если база событий должна быть запущена внутри дочернего потока
-			if((result = ((this->_mode == mode_t::CHILD) && !this->stream()))){
-				// Создаём объект передаваемого сообщения
-				message_t message;
-				// Устанавливаем идентификатор запроса
-				message.id = id;
-				// Устанавливаем файловый дескриптор
-				message.fd = fd;
-				// Устанавливаем тип отслеживаемого события
-				message.type = type;
-				// Экшен выполняемого метода
-				message.action = action_t::DEL;
-				// Выполняем отправку сообщения в экран
-				this->_screen = message;
+			if(this->_started && (this->_mode == mode_t::CHILD) && !this->stream()){
+				// Если сообщение ещё не получено
+				if(!this->_sending){
+					// Устанавливаем флаг отправки результата
+					this->_sending = !this->_sending;
+					// Создаём объект передаваемого сообщения
+					message_t message;
+					// Устанавливаем идентификатор запроса
+					message.id = id;
+					// Устанавливаем файловый дескриптор
+					message.fd = fd;
+					// Устанавливаем тип отслеживаемого события
+					message.type = type;
+					// Экшен выполняемого метода
+					message.action = action_t::DEL;
+					// Выполняем отправку сообщения в экран
+					this->_screen = message;
+					// Устанавливаем флаг отправки результата
+					this->_sending = !this->_sending;
+					// Создаём объект обещания завершения выполнения события
+					auto stop = this->_event.get_future();
+					// Выполняем ожидание завершения выполнения события
+					stop.wait();
+					// Выполняем получение результата
+					result = stop.get();
+					// Выполняем инициализацию нового промиса
+					this->_event = std::promise <bool> ();
+				// Выводим сообщение об ошибке
+				} else this->_log->print("Del event already send: %s", log_t::flag_t::WARNING);
 			// Выполняем запуск базы событий
 			} else {
+			*/
 				// Выполняем блокировку потока
 				const lock_guard <std::recursive_mutex> lock(this->_mtx);
 				/**
@@ -891,7 +934,16 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 						this->_locker = false;
 					}
 				#endif
+				/*
+				// Если база событий запущена внутри дочернего потока
+				if(this->_sending && (this->_mode == mode_t::CHILD) && this->stream()){
+					// Выполняем завершение работы события
+					this->_event.set_value(result);
+					// Снимаем значение флага отправки
+					this->_sending = !this->_sending;
+				}
 			}
+			*/
 		/**
 		 * Если возникает ошибка
 		 */
@@ -921,26 +973,42 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			/*
 			// Если база событий должна быть запущена внутри дочернего потока
-			if((result = ((this->_mode == mode_t::CHILD) && !this->stream()))){
-				// Создаём объект передаваемого сообщения
-				message_t message;
-				// Устанавливаем идентификатор запроса
-				message.id = id;
-				// Устанавливаем файловый дескриптор
-				message.fd = &fd;
-				// Устанавливаем задержку времени для создания таймеров
-				message.delay = delay;
-				// Устанавливаем флаг серийного таймаута
-				message.series = series;
-				// Устанавливаем функцию обратного вызова
-				message.callback = callback;
-				// Экшен выполняемого метода
-				message.action = action_t::ADD;
-				// Выполняем отправку сообщения в экран
-				this->_screen = message;
+			if(this->_started && (this->_mode == mode_t::CHILD) && !this->stream()){
+				// Если сообщение ещё не получено
+				if(!this->_sending){
+					// Устанавливаем флаг отправки результата
+					this->_sending = !this->_sending;
+					// Создаём объект передаваемого сообщения
+					message_t message;
+					// Устанавливаем идентификатор запроса
+					message.id = id;
+					// Устанавливаем файловый дескриптор
+					message.fd = &fd;
+					// Устанавливаем задержку времени для создания таймеров
+					message.delay = delay;
+					// Устанавливаем флаг серийного таймаута
+					message.series = series;
+					// Устанавливаем функцию обратного вызова
+					message.callback = callback;
+					// Экшен выполняемого метода
+					message.action = action_t::ADD;
+					// Выполняем отправку сообщения в экран
+					this->_screen = message;
+					// Создаём объект обещания завершения выполнения события
+					auto stop = this->_event.get_future();
+					// Выполняем ожидание завершения выполнения события
+					stop.wait();
+					// Выполняем получение результата
+					result = stop.get();
+					// Выполняем инициализацию нового промиса
+					this->_event = std::promise <bool> ();
+				// Выводим сообщение об ошибке
+				} else this->_log->print("Add event already send: %s", log_t::flag_t::WARNING);
 			// Выполняем запуск базы событий
 			} else {
+			*/
 				// Выполняем блокировку потока
 				const lock_guard <std::recursive_mutex> lock(this->_mtx);
 				// Если количество добавленных файловых дескрипторов для отслеживания не достигло предела
@@ -1200,7 +1268,16 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 					this->_locker = false;
 				// Выводим сообщение об ошибке
 				} else this->_log->print("SOCKET=%d cannot be added because the number of events being monitored has already reached the limit of %d", log_t::flag_t::WARNING, fd, this->_maxCount);
+				/*
+				// Если база событий запущена внутри дочернего потока
+				if(this->_sending && (this->_mode == mode_t::CHILD) && this->stream()){
+					// Выполняем завершение работы события
+					this->_event.set_value(result);
+					// Снимаем значение флага отправки
+					this->_sending = !this->_sending;
+				}
 			}
+			*/
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1229,24 +1306,40 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			/*
 			// Если база событий должна быть запущена внутри дочернего потока
-			if((result = ((this->_mode == mode_t::CHILD) && !this->stream()))){
-				// Создаём объект передаваемого сообщения
-				message_t message;
-				// Устанавливаем идентификатор записи
-				message.id = id;
-				// Устанавливаем файловый дескриптор
-				message.fd = fd;
-				// Устанавливаем тип событий модуля для которого требуется сменить режим работы
-				message.type = type;
-				// Устанавливаем флаг режима работы модуля
-				message.mode = mode;
-				// Экшен выполняемого метода
-				message.action = action_t::MODE;
-				// Выполняем отправку сообщения в экран
-				this->_screen = message;
+			if(this->_started && (this->_mode == mode_t::CHILD) && !this->stream()){
+				// Если сообщение ещё не получено
+				if(!this->_sending){
+					// Устанавливаем флаг отправки результата
+					this->_sending = !this->_sending;
+					// Создаём объект передаваемого сообщения
+					message_t message;
+					// Устанавливаем идентификатор записи
+					message.id = id;
+					// Устанавливаем файловый дескриптор
+					message.fd = fd;
+					// Устанавливаем тип событий модуля для которого требуется сменить режим работы
+					message.type = type;
+					// Устанавливаем флаг режима работы модуля
+					message.mode = mode;
+					// Экшен выполняемого метода
+					message.action = action_t::MODE;
+					// Выполняем отправку сообщения в экран
+					this->_screen = message;
+					// Создаём объект обещания завершения выполнения события
+					auto stop = this->_event.get_future();
+					// Выполняем ожидание завершения выполнения события
+					stop.wait();
+					// Выполняем получение результата
+					result = stop.get();
+					// Выполняем инициализацию нового промиса
+					this->_event = std::promise <bool> ();
+				// Выводим сообщение об ошибке
+				} else this->_log->print("Mode event already send: %s", log_t::flag_t::WARNING);
 			// Выполняем запуск базы событий
 			} else {
+			*/
 				// Выполняем блокировку потока
 				const lock_guard <std::recursive_mutex> lock(this->_mtx);
 				// Выполняем поиск файлового дескриптора в базе событий
@@ -1517,7 +1610,16 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 						#endif
 					}
 				}
+				/*
+				// Если база событий запущена внутри дочернего потока
+				if(this->_sending && (this->_mode == mode_t::CHILD) && this->stream()){
+					// Выполняем завершение работы события
+					this->_event.set_value(result);
+					// Снимаем значение флага отправки
+					this->_sending = !this->_sending;
+				}
 			}
+			*/
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1541,11 +1643,14 @@ bool awh::Base::launched() const noexcept {
  * clear Метод очистки списка событий
  */
 void awh::Base::clear() noexcept {
+	/*
 	// Если база событий должна быть запущена внутри дочернего потока
-	if((this->_mode == mode_t::CHILD) && !this->stream()){
+	if(this->_started && (this->_mode == mode_t::CHILD) && !this->stream()){
+	*/
 		/**
 		 * Выполняем обработку ошибки
 		 */
+		/*
 		try {
 			// Создаём объект передаваемого сообщения
 			message_t message;
@@ -1553,15 +1658,18 @@ void awh::Base::clear() noexcept {
 			message.action = action_t::CLEAR;
 			// Выполняем отправку сообщения в экран
 			this->_screen = message;
+		*/
 		/**
 		 * Если возникает ошибка
 		 */
+		/*
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("Clear event base: %s", log_t::flag_t::CRITICAL, error.what());
 		}
 	// Выполняем запуск базы событий
 	} else {
+	*/
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1686,14 +1794,14 @@ void awh::Base::clear() noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->print("Clear event base: %s", log_t::flag_t::CRITICAL, error.what());
 		}
-	}
+	// }
 }
 /**
  * kick Метод отправки пинка
  */
 void awh::Base::kick() noexcept {
 	// Если база событий запущена внутри дочернего потока
-	if((this->_mode == mode_t::CHILD) && !this->stream()){
+	if(this->_started && (this->_mode == mode_t::CHILD) && !this->stream()){
 		/**
 		 * Выполняем обработку ошибки
 		 */
@@ -1770,16 +1878,13 @@ void awh::Base::kick() noexcept {
  */
 void awh::Base::stop() noexcept {
 	// Если база событий запущена внутри дочернего потока
-	if((this->_mode == mode_t::CHILD) && !this->stream()){
-		// Если работа базы событий запущена
-		if(this->_started){
-			// Создаём объект передаваемого сообщения
-			message_t message;
-			// Экшен выполняемого метода
-			message.action = action_t::STOP;
-			// Выполняем отправку сообщения в экран
-			this->_screen = message;
-		}
+	if(this->_started && (this->_mode == mode_t::CHILD) && !this->stream()){
+		// Создаём объект передаваемого сообщения
+		message_t message;
+		// Экшен выполняемого метода
+		message.action = action_t::STOP;
+		// Выполняем отправку сообщения в экран
+		this->_screen = message;
 	// Выполняем запуск базы событий
 	} else {
 		/**
@@ -1805,12 +1910,9 @@ void awh::Base::stop() noexcept {
 				// Выполняем разблокировку потока
 				this->_mtx.unlock();
 				// Если база событий запущена внутри дочернего потока
-				if(this->_mode == mode_t::CHILD){
-					// Выполняем остановку работы экрана
-					this->_screen.stop();
+				if(this->_mode == mode_t::CHILD)
 					// Выполняем завершение работы базы событий
-					this->bind.set_value();
-				}
+					this->_base.set_value();
 			// Выполняем разблокировку потока
 			} else this->_mtx.unlock();
 		/**
@@ -1827,7 +1929,7 @@ void awh::Base::stop() noexcept {
  */
 void awh::Base::start() noexcept {
 	// Если база событий должна быть запущена внутри дочернего потока
-	if((this->_mode == mode_t::CHILD) && !this->stream()){
+	if(!this->_started && (this->_mode == mode_t::CHILD) && !this->stream()){
 		/**
 		 * Выполняем обработку ошибки
 		 */
@@ -1840,10 +1942,14 @@ void awh::Base::start() noexcept {
 			message.action = action_t::START;
 			// Выполняем отправку сообщения в экран
 			this->_screen = message;
-			// Создаём объект обещания биндинга базы событий
-			auto bind = this->bind.get_future();
+			// Создаём объект обещания завершения работы базы событий
+			auto stop = this->_base.get_future();
 			// Выполняем ожидание завершения работы базы событий
-			bind.wait();
+			stop.wait();
+			// Выполняем инициализацию нового промиса
+			this->_base = std::promise <void> ();
+			// Выполняем остановку работы экрана
+			this->_screen.stop();
 		/**
 		 * Если возникает ошибка
 		 */
@@ -2426,27 +2532,12 @@ void awh::Base::start() noexcept {
  * rebase Метод пересоздания базы событий
  */
 void awh::Base::rebase() noexcept {
-	// Если база событий запущена внутри дочернего потока
-	if((this->_mode == mode_t::CHILD) && !this->stream()){
-		/**
-		 * Выполняем обработку ошибки
-		 */
-		try {
-			// Создаём объект передаваемого сообщения
-			message_t message;
-			// Экшен выполняемого метода
-			message.action = action_t::REBASE;
-			// Выполняем отправку сообщения в экран
-			this->_screen = message;
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Rebase event base: %s", log_t::flag_t::CRITICAL, error.what());
-		}
-	// Выполняем запуск базы событий
-	} else {
+	// Если метод запущен в дочернем потоке
+	if(this->stream())
+		// Выводим сообщение об ошибке
+		this->_log->print("Method \"rebase\" cannot be called in a child thread", log_t::flag_t::WARNING);
+	// Если запуск производится в основном потоке
+	else {
 		/**
 		 * Выполняем обработку ошибки
 		 */
@@ -2455,22 +2546,12 @@ void awh::Base::rebase() noexcept {
 			this->_mtx.lock();
 			// Если работа базы событий запущена
 			if(this->_started){
-				// Снимаем флаг работы базы событий
-				this->_started = !this->_started;
 				// Выполняем разблокировку потока
 				this->_mtx.unlock();
 				// Запоминаем список активных событий
 				std::map <SOCKET, item_t> items = this->_items;
-				// Выполняем очистку всех параметров
-				this->clear();
-				// Выполняем блокировку потока
-				this->_mtx.lock();
-				// Выполняем деинициализацию базы событий
-				this->init(false);
-				// Выполняем инициализацию базы событий
-				this->init(true);
-				// Выполняем разблокировку потока
-				this->_mtx.unlock();
+				// Выполняем остановку работы базы событий
+				this->stop();
 				// Если список активных событий не пустой
 				if(!items.empty()){
 					// Выполняем перебор всего списка активных событий
@@ -2580,9 +2661,9 @@ void awh::Base::frequency(const uint32_t msec) noexcept {
  * @param count максимальное количество обрабатываемых сокетов
  */
 awh::Base::Base(const fmk_t * fmk, const log_t * log, const uint32_t count) noexcept :
- _id(0), _easily(false), _locker(false), _started(false),
- _launched(false), _mode(mode_t::MAIN), _baseDelay(-1),
- _maxCount(count), _socket(fmk, log), _timeout(fmk, log),
+ _id(0), _easily(false), _locker(false), _sending(false),
+ _started(false), _launched(false), _mode(mode_t::CHILD),
+ _baseDelay(-1), _maxCount(count), _socket(fmk, log), _timeout(fmk, log),
  _screen(screen_t <message_t>::health_t::DEAD), _fmk(fmk), _log(log) {
 	// Выполняем инициализацию базы событий
 	this->init(true);

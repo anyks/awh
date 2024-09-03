@@ -269,6 +269,8 @@ namespace awh {
 			bool _easily;
 			// Флаг блокировки опроса базы событий
 			bool _locker;
+			// Флаг статуса результата отправки события
+			bool _sending;
 			// Флаг запуска работы базы событий
 			bool _started;
 			// Флаг запущенного опроса базы событий
@@ -322,7 +324,9 @@ namespace awh {
 			timeout_t _timeout;
 		private:
 			// Объект обещания биндинга базы событий
-			std::promise <void> bind;
+			std::promise <void> _base;
+			// Объект обещания на получение события
+			std::promise <bool> _event;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;

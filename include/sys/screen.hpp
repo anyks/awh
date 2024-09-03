@@ -83,7 +83,7 @@ namespace awh {
 			chrono::nanoseconds _delay;
 		private:
 			// Таймаут блокировки времени по умолчанию (100ms)
-			static constexpr const time_t TIMEOUT = 100000000;
+			static constexpr const time_t TIMEOUT = 0x5F5E100;
 		private:
 			// Функция обратного вызова при активации триггера
 			function <void (void)> _trigger;
@@ -96,28 +96,40 @@ namespace awh {
 			 * process Метод запуска обработки поступившей задачи
 			 */
 			void process() noexcept {
-				// Если функция обратного вызова триггера установлена
-				if(this->_trigger != nullptr)
-					// Выполняем функцию обратного вызова
-					this->_trigger();
-				// Если данные в очереди существуют
-				if(!this->_payload.empty()){
-					// Извлекаем данные полезной нагрузки
-					const auto & payload = this->_payload.front();
-					// Если функция подписки на логи установлена, выводим результат
-					if(this->_callback != nullptr)
-						// Выводим сообщение лога всем подписавшимся
-						this->_callback(payload);
-					// Выполняем блокировку потока
-					this->_mtx2.lock();
-					// Удаляем текущее задание
-					this->_payload.pop();
-					// Выполняем разблокировку потока
-					this->_mtx2.unlock();
-					// Если функция обратного вызова установлена
-					if(this->_state != nullptr)
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Если функция обратного вызова триггера установлена
+					if(this->_trigger != nullptr)
 						// Выполняем функцию обратного вызова
-						this->_state(state_t::DECREMENT, this->_payload.size());
+						this->_trigger();
+					// Если данные в очереди существуют
+					if(!this->_payload.empty()){
+						// Извлекаем данные полезной нагрузки
+						const auto & payload = this->_payload.front();
+						// Если функция подписки на логи установлена, выводим результат
+						if(this->_callback != nullptr)
+							// Выводим сообщение лога всем подписавшимся
+							this->_callback(payload);
+						// Выполняем блокировку потока
+						this->_mtx2.lock();
+						// Удаляем текущее задание
+						this->_payload.pop();
+						// Выполняем разблокировку потока
+						this->_mtx2.unlock();
+						// Если функция обратного вызова установлена
+						if(this->_state != nullptr)
+							// Выполняем функцию обратного вызова
+							this->_state(state_t::DECREMENT, this->_payload.size());
+					}
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					/**
+					 * Выполняем игнорирование ошибки
+					 */
 				}
 			}
 		private:
@@ -199,6 +211,8 @@ namespace awh {
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (void)> callback) noexcept {
+				// Выполняем блокировку потока
+				const lock_guard <mutex> lock(this->_mtx2);
 				// Устанавливаем функцию обратного вызова
 				this->_trigger = callback;
 			}
@@ -207,6 +221,8 @@ namespace awh {
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (const T &)> callback) noexcept {
+				// Выполняем блокировку потока
+				const lock_guard <mutex> lock(this->_mtx2);
 				// Устанавливаем функцию обратного вызова
 				this->_callback = callback;
 			}
@@ -215,6 +231,8 @@ namespace awh {
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (const state_t, const size_t)> callback) noexcept {
+				// Выполняем блокировку потока
+				const lock_guard <mutex> lock(this->_mtx2);
 				// Устанавливаем функцию обратного вызова
 				this->_state = callback;
 			}
@@ -235,18 +253,30 @@ namespace awh {
 			 * @param data данные отправляемого сообщения
 			 */
 			void send(const T & data) noexcept {
-				// Выполняем блокировку потока
-				this->_mtx2.lock();
-				// Выполняем добавление данных в очередь
-				this->_payload.push(data);
-				// Выполняем разблокировку потока
-				this->_mtx2.unlock();
-				// Если функция обратного вызова установлена
-				if(this->_state != nullptr)
-					// Выполняем функцию обратного вызова
-					this->_state(state_t::INCREMENT, this->_payload.size());
-				// Отправляем сообщение, что данные записаны
-				this->_cv.notify_one();
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					this->_mtx2.lock();
+					// Выполняем добавление данных в очередь
+					this->_payload.push(data);
+					// Выполняем разблокировку потока
+					this->_mtx2.unlock();
+					// Если функция обратного вызова установлена
+					if(this->_state != nullptr)
+						// Выполняем функцию обратного вызова
+						this->_state(state_t::INCREMENT, this->_payload.size());
+					// Отправляем сообщение, что данные записаны
+					this->_cv.notify_one();
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					/**
+					 * Выполняем игнорирование ошибки
+					 */
+				}
 			}
 		public:
 			/**
