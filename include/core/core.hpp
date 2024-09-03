@@ -128,6 +128,11 @@ namespace awh {
 					 * @param mode флаг активации
 					 */
 					void easily(const bool mode) noexcept;
+					/**
+					 * mode Метод установки режима работы базы событий
+					 * @param mode режим работы базы событий
+					 */
+					void mode(const base_t::mode_t mode) noexcept;
 				public:
 					/**
 					 * frequency Метод установки частоты обновления базы событий
@@ -205,6 +210,12 @@ namespace awh {
 			 * @param core модуль ядра для отключения
 			 */
 			void unbind(Core * core) noexcept;
+		public:
+			/**
+			 * mode Метод установки режима работы базы событий
+			 * @param mode режим работы базы событий
+			 */
+			void mode(const base_t::mode_t mode) noexcept;
 		public:
 			/**
 			 * kick Метод отправки пинка

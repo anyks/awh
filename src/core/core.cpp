@@ -197,6 +197,16 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	this->base->kick();
 }
 /**
+ * mode Метод установки режима работы базы событий
+ * @param mode режим работы базы событий
+ */
+void awh::Core::Dispatch::mode(const base_t::mode_t mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Выполняем установку режима работы базы событий
+	this->base->mode(mode);
+}
+/**
  * frequency Метод установки частоты обновления базы событий
  * @param msec частота обновления базы событий в миллисекундах
  */
@@ -384,6 +394,14 @@ void awh::Core::unbind(core_t * core) noexcept {
 		// Запускаем метод деактивации базы событий
 		core->closedown(false, true);
 	}
+}
+/**
+ * mode Метод установки режима работы базы событий
+ * @param mode режим работы базы событий
+ */
+void awh::Core::mode(const base_t::mode_t mode) noexcept {
+	// Выполняем установку режима работы базы событий
+	this->_dispatch.mode(mode);
 }
 /**
  * kick Метод отправки пинка
