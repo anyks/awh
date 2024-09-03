@@ -1529,14 +1529,39 @@ void awh::Base::kick() noexcept {
 	this->_mtx.lock();
 	// Если работа базы событий запущена
 	if(this->_mode){
-		// Снимаем флаг работы базы событий
-		this->_mode = !this->_mode;
+		// Выполняем активацию блокировки
+		this->_locker = this->_mode;
+		// Запоминаем список активных событий
+		std::map <SOCKET, item_t> items = this->_items;
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
+		// Выполняем очистку всех параметров
+		this->clear();
+		// Выполняем блокировку потока
+		this->_mtx.lock();
 		// Выполняем деинициализацию базы событий
 		this->init(false);
 		// Выполняем инициализацию базы событий
 		this->init(true);
+		// Выполняем разблокировку потока
+		this->_mtx.unlock();
+		// Если список активных событий не пустой
+		if(!items.empty()){
+			// Выполняем перебор всего списка активных событий
+			for(auto & item : items){
+				// Выполняем добавление события в базу событий
+				if(!this->add(item.second.id, item.second.fd, item.second.callback))
+					// Выводим сообщение что событие не вышло активировать
+					this->_log->print("Failed activate event for SOCKET=%d", log_t::flag_t::WARNING, item.second.fd);
+				// Если событие добавленно удачно
+				else {
+					// Выполняем перебор всех разрешений на запуск событий
+					for(auto & mode : item.second.mode)
+						// Выполняем активацию события на запуск
+						this->mode(item.second.id, item.second.fd, mode.first, mode.second);
+				}
+			}
+		}
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
 }
@@ -1554,10 +1579,14 @@ void awh::Base::stop() noexcept {
 		this->_mtx.unlock();
 		// Выполняем очистку списка событий
 		this->clear();
+		// Выполняем блокировку потока
+		this->_mtx.lock();
 		// Выполняем деинициализацию базы событий
 		this->init(false);
 		// Выполняем инициализацию базы событий
 		this->init(true);
+		// Выполняем разблокировку потока
+		this->_mtx.unlock();
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
 }
@@ -1571,34 +1600,34 @@ void awh::Base::start() noexcept {
 	if(!this->_mode){
 		// Устанавливаем флаг работы базы событий
 		this->_mode = !this->_mode;
+		// Переменная опроса события
+		int32_t poll = 0;
+		// Количество событий для опроса
+		size_t count = 0;
+		/**
+		 * Если это FreeBSD или MacOS X
+		 */
+		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
+			// Создаём объект временного таймаута
+			struct timespec baseDelay = {0, 0};
+			// Если установлен конкретный таймаут
+			if((this->_baseDelay > 0) && !this->_easily){
+				// Устанавливаем время в секундах
+				baseDelay.tv_sec = (this->_baseDelay / 1000);
+				// Устанавливаем время счётчика (наносекунды)
+				baseDelay.tv_nsec = (((this->_baseDelay % 1000) * 1000) * 1000000);
+			}
+		#endif
+		// Запускаем работу таймеров скрина
+		this->_timeout.start();
+		// Устанавливаем флаг запущенного опроса базы событий
+		this->_launched = this->_mode;
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Переменная опроса события
-			int32_t poll = 0;
-			// Количество событий для опроса
-			size_t count = 0;
-			/**
-			 * Если это FreeBSD или MacOS X
-			 */
-			#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
-				// Создаём объект временного таймаута
-				struct timespec baseDelay = {0, 0};
-				// Если установлен конкретный таймаут
-				if((this->_baseDelay > 0) && !this->_easily){
-					// Устанавливаем время в секундах
-					baseDelay.tv_sec = (this->_baseDelay / 1000);
-					// Устанавливаем время счётчика (наносекунды)
-					baseDelay.tv_nsec = (((this->_baseDelay % 1000) * 1000) * 1000000);
-				}
-			#endif
-			// Запускаем работу таймеров скрина
-			this->_timeout.start();
-			// Устанавливаем флаг запущенного опроса базы событий
-			this->_launched = this->_mode;
 			// Выполняем запуск базы события
 			while(this->_mode){
 				/**
@@ -1769,13 +1798,19 @@ void awh::Base::start() noexcept {
 								// Если время установленно
 								if(this->_baseDelay > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(chrono::milliseconds(this->_baseDelay));
+									std::this_thread::sleep_for(std::chrono::milliseconds(this->_baseDelay));
 								// Устанавливаем задержку времени по умолчанию
 								else std::this_thread::sleep_for(10ms);
-							}
-						// Замораживаем поток на период времени частоты обновления базы событий
-						} else std::this_thread::sleep_for(100ms);
+								// Продолжаем опрос дальше
+								continue;
+							// Если опрос базы событий не заблокирован
+							} else if(!this->_locker)
+								// Продолжаем опрос дальше
+								continue;
+						}
 					}
+					// Замораживаем поток на период времени частоты обновления базы событий
+					std::this_thread::sleep_for(100ms);
 				/**
 				 * Если это Linux
 				 */
@@ -1917,13 +1952,19 @@ void awh::Base::start() noexcept {
 								// Если время установленно
 								if(this->_baseDelay > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(chrono::milliseconds(this->_baseDelay));
+									std::this_thread::sleep_for(std::chrono::milliseconds(this->_baseDelay));
 								// Устанавливаем задержку времени по умолчанию
 								else std::this_thread::sleep_for(10ms);
-							}
-						// Замораживаем поток на период времени частоты обновления базы событий
-						} else std::this_thread::sleep_for(100ms);
+								// Продолжаем опрос дальше
+								continue;
+							// Если опрос базы событий не заблокирован
+							} else if(!this->_locker)
+								// Продолжаем опрос дальше
+								continue;
+						}
 					}
+					// Замораживаем поток на период времени частоты обновления базы событий
+					std::this_thread::sleep_for(100ms);
 				/**
 				 * Если это FreeBSD или MacOS X
 				 */
@@ -2088,13 +2129,19 @@ void awh::Base::start() noexcept {
 								// Если время установленно
 								if(this->_baseDelay > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(chrono::milliseconds(this->_baseDelay));
+									std::this_thread::sleep_for(std::chrono::milliseconds(this->_baseDelay));
 								// Устанавливаем задержку времени по умолчанию
 								else std::this_thread::sleep_for(10ms);
-							}
-						// Замораживаем поток на период времени частоты обновления базы событий
-						} else std::this_thread::sleep_for(100ms);
+								// Продолжаем опрос дальше
+								continue;
+							// Если опрос базы событий не заблокирован
+							} else if(!this->_locker)
+								// Продолжаем опрос дальше
+								continue;
+						}
 					}
+					// Замораживаем поток на период времени частоты обновления базы событий
+					std::this_thread::sleep_for(100ms);
 				#endif
 			}
 			// Останавливаем работу таймеров скрина
@@ -2147,6 +2194,13 @@ void awh::Base::rebase() noexcept {
 				if(!this->add(item.second.id, item.second.fd, item.second.callback))
 					// Выводим сообщение что событие не вышло активировать
 					this->_log->print("Failed activate event for SOCKET=%d", log_t::flag_t::WARNING, item.second.fd);
+				// Если событие добавленно удачно
+				else {
+					// Выполняем перебор всех разрешений на запуск событий
+					for(auto & mode : item.second.mode)
+						// Выполняем активацию события на запуск
+						this->mode(item.second.id, item.second.fd, mode.first, mode.second);
+				}
 			}
 		}
 		// Выполняем запуск работы базы событий
