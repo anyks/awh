@@ -197,16 +197,6 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	this->base->kick();
 }
 /**
- * mode Метод установки режима работы базы событий
- * @param mode режим работы базы событий
- */
-void awh::Core::Dispatch::mode(const base_t::mode_t mode) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Выполняем установку режима работы базы событий
-	this->base->mode(mode);
-}
-/**
  * frequency Метод установки частоты обновления базы событий
  * @param msec частота обновления базы событий в миллисекундах
  */
@@ -394,14 +384,6 @@ void awh::Core::unbind(core_t * core) noexcept {
 		// Запускаем метод деактивации базы событий
 		core->closedown(false, true);
 	}
-}
-/**
- * mode Метод установки режима работы базы событий
- * @param mode режим работы базы событий
- */
-void awh::Core::mode(const base_t::mode_t mode) noexcept {
-	// Выполняем установку режима работы базы событий
-	this->_dispatch.mode(mode);
 }
 /**
  * kick Метод отправки пинка
@@ -593,6 +575,37 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
 			} break;
 		}
 	}
+}
+/**
+ * eraseUpstream Метод удаления верхнеуровневого потока
+ * @param sid идентификатор верхнеуровневого потока
+ */
+void awh::Core::eraseUpstream(const uint64_t sid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Выполняем удаление верхнеуровневого потока
+	this->_dispatch.base->eraseUpstream(sid);
+}
+/**
+ * launchUpstream Метод запуска верхнеуровневого потока
+ * @param sid идентификатор верхнеуровневого потока
+ */
+void awh::Core::launchUpstream(const uint64_t sid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Выполняем запуск верхнеуровневого потока
+	this->_dispatch.base->launchUpstream(sid);
+}
+/**
+ * emplaceUpstream Метод создания верхнеуровневого потока
+ * @param callback функция обратного вызова
+ * @return         идентификатор верхнеуровневого потока
+ */
+uint64_t awh::Core::emplaceUpstream(function <void (void)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Выполняем создание верхнеуровневого потока
+	return this->_dispatch.base->emplaceUpstream(callback);
 }
 /**
  * Core Конструктор

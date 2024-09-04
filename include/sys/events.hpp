@@ -70,29 +70,7 @@ namespace awh {
 			 * Event Устанавливаем дружбу с модулем события
 			 */
 			friend class Event;
-		private:
-			/**
-			 * Экшен выполняемого запроса
-			 */
-			enum class action_t : uint8_t {
-				NONE   = 0x00, // Экшен для вызова метода не установлен
-				DEL    = 0x01, // Экшен вызова метода "del"
-				ADD    = 0x02, // Экшен вызова метода "add"
-				MODE   = 0x03, // Экшен вызова метода "mode"
-				KICK   = 0x04, // Экшен вызова метода "kick"
-				STOP   = 0x05, // Экшен вызова метода "stop"
-				START  = 0x06, // Экшен вызова метода "start"
-				CLEAR  = 0x07, // Экшен вызова метода "clear"
-				REBASE = 0x08  // Экшен вызова метода "rebase"
-			};
 		public:
-			/**
-			 * Тип работы базы событий
-			 */
-			enum class mode_t : uint8_t {
-				MAIN  = 0x00, // Работа базы событий в основном потоке
-				CHILD = 0x01  // Работа базы событий в дочернем потоке
-			};
 			/**
 			 * Тип режима получения события
 			 */
@@ -112,113 +90,25 @@ namespace awh {
 			};
 		private:
 			// Максимальное количество отслеживаемых сокетов
-			static constexpr const uint32_t MAX_COUNT_FDS = 20480;
+			static constexpr const uint32_t MAX_COUNT_FDS = 0x5000;
 		public:
 			/**
 			 * Создаём тип функции обратного вызова
 			 */
 			typedef std::function <void (const SOCKET, const event_type_t)> callback_t;
 		private:
-			/**
-			 * FileDescriptor Класс работы с файловым дескриптором
-			 */
-			typedef class FileDescriptor {
-				private:
-					// Файловый дескриптор в виде значения
-					SOCKET _value1;
-					// Файловый дескриптор в виде указателя
-					SOCKET * _value2;
-				public:
-					/**
-					 * Оператор присвоения значения сокета
-					 * @param value значение сокета для присвоения
-					 * @return      текущий объект
-					 */
-					FileDescriptor & operator = (SOCKET value) noexcept {
-						// Выполняем присвоение значения сокета
-						this->_value1 = value;
-						// Выводим значение текущего объекта
-						return (* this);
-					}
-					/**
-					 * Оператор присвоения указателя на сокет
-					 * @param value указатель на сокет для присвоения
-					 * @return      текущий объект
-					 */
-					FileDescriptor & operator = (SOCKET * value) noexcept {
-						// Выполняем присвоение указателя на сокет
-						this->_value2 = value;
-						// Выводим значение текущего объекта
-						return (* this);
-					}
-				public:
-					/**
-					 * Оператор извлечения установленного сокета
-					 * @return SOCKET значение сокета для извлечения
-					 */
-					operator SOCKET() noexcept {
-						// Если сокет установлен как указатель
-						if(this->_value2 != nullptr)
-							// Выводим значение сокета
-							return (* this->_value2);
-						// Выводим значение сокета как оно есть
-						else return this->_value1;
-					}
-					/**
-					 * Оператор извлечения установленного указателя на сокет
-					 * @return SOCKET указатель на сокет для извлечения
-					 */
-					operator SOCKET * () noexcept {
-						// Если сокет установлен как указатель
-						if(this->_value2 != nullptr)
-							// Выводим указатель на сокет
-							return this->_value2;
-						// Выводим указатель на сокет
-						else return &this->_value1;
-					}
-				public:
-					/**
-					 * FileDescriptor Конструктор
-					 */
-					FileDescriptor() noexcept : _value1(0), _value2(nullptr) {}
-					/**
-					 * FileDescriptor Конструктор
-					 * @param value значение сокета для присвоения
-					 */
-					FileDescriptor(SOCKET value) noexcept : _value1(value), _value2(nullptr) {}
-					/**
-					 * FileDescriptor Конструктор
-					 * @param value указатель на сокет для присвоения
-					 */
-					FileDescriptor(SOCKET * value) noexcept : _value1(0), _value2(value) {}
-			} __attribute__((packed)) fd_t;
-			/**
-			 * Message Структура сообщения передаваемая между потоками
-			 */
-			typedef struct Message {
-				// Объект файлового дескриптора
-				fd_t fd;
-				// Идентификатор записи
-				uint64_t id;
-				// Флаг активации серийного таймера
-				bool series;
-				// Задержка времени таймера
-				time_t delay;
-				// Экшен выполняемого метода
-				action_t action;
-				// Тип отслеживаемого события
-				event_type_t type;
-				// Флаг режима работы модуля
-				event_mode_t mode;
+			typedef struct Upstream {
+				// Файловые дескрипторы для чтения и записи
+				SOCKET read, write;
+				// Объект работы с пайпом
+				shared_ptr <pipe_t> pipe;
 				// Функция обратного вызова
-				callback_t callback;
+				function <void (void)> callback;
 				/**
-				 * Message Конструктор
+				 * Upstream Конструктор
 				 */
-				Message() noexcept :
-				 id(0), series(false), delay(0), action(action_t::NONE),
-				 type(event_type_t::NONE), mode(event_mode_t::DISABLED), callback(nullptr) {}
-			} message_t;
+				Upstream() noexcept : read(INVALID_SOCKET), write(INVALID_SOCKET), callback(nullptr) {}
+			} upstream_t;
 			/**
 			 * Item Структура данных участника
 			 */
@@ -269,15 +159,10 @@ namespace awh {
 			bool _easily;
 			// Флаг блокировки опроса базы событий
 			bool _locker;
-			// Флаг статуса результата отправки события
-			bool _sending;
 			// Флаг запуска работы базы событий
 			bool _started;
 			// Флаг запущенного опроса базы событий
 			bool _launched;
-		private:
-			// Режим работы базы событий
-			mode_t _mode;
 		private:
 			// Таймаут времени блокировки базы событий
 			int32_t _baseDelay;
@@ -323,31 +208,25 @@ namespace awh {
 			// Объект работы с таймерами скрина
 			timeout_t _timeout;
 		private:
-			// Объект обещания биндинга базы событий
-			std::promise <void> _base;
-			// Объект обещания на получение события
-			std::promise <bool> _event;
-		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
 		private:
-			// Объект экрана для работы в дочернем потоке
-			screen_t <message_t> _screen;
-		private:
 			// Список отслеживаемых участников
 			std::map <SOCKET, item_t> _items;
+			// Спиоск активных верхнеуровневых потоков
+			std::map <uint64_t, upstream_t> _upstreams;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
 			const log_t * _log;
-		public:
+		private:
 			/**
 			 * id Метод получения идентификатора потока
 			 * @return идентификатор потока для получения
 			 */
 			uint64_t id() const noexcept;
-		public:
+		private:
 			/**
 			 * stream Метод проверки запущен ли модуль в дочернем потоке
 			 * @return результат проверки
@@ -358,13 +237,15 @@ namespace awh {
 			 * init Метод инициализации базы событий
 			 * @param mode флаг инициализации
 			 */
-			void init(const bool mode) noexcept;
+			void init(const event_mode_t mode) noexcept;
 		private:
 			/**
-			 * process Метод обработки процесса выполнения экшенов внутри дочернего потока
-			 * @param message сообщение экшена для выполнения
+			 * upstream Метод получения событий верхнеуровневых потоков
+			 * @param sid  идентификатор верхнеуровневого потока
+			 * @param fd   файловый дескриптор верхнеуровневого потока
+			 * @param type тип отслеживаемого события
 			 */
-			void process(message_t message) noexcept;
+			void upstream(const uint64_t sid, const SOCKET fd, const event_type_t type) noexcept;
 		private:
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий для всех событий
@@ -426,16 +307,11 @@ namespace awh {
 			 * start Метод запуска чтения базы событий
 			 */
 			void start() noexcept;
-		public:
 			/**
 			 * rebase Метод пересоздания базы событий
 			 */
 			void rebase() noexcept;
-			/**
-			 * mode Метод установки режима работы базы событий
-			 * @param mode режим работы базы событий
-			 */
-			void mode(const mode_t mode) noexcept;
+		public:
 			/**
 			 * freeze Метод заморозки чтения данных
 			 * @param mode флаг активации
@@ -452,6 +328,23 @@ namespace awh {
 			 * @param msec частота обновления базы событий в миллисекундах
 			 */
 			void frequency(const uint32_t msec = 10) noexcept;
+		public:
+			/**
+			 * eraseUpstream Метод удаления верхнеуровневого потока
+			 * @param sid идентификатор верхнеуровневого потока
+			 */
+			void eraseUpstream(const uint64_t sid) noexcept;
+			/**
+			 * launchUpstream Метод запуска верхнеуровневого потока
+			 * @param sid идентификатор верхнеуровневого потока
+			 */
+			void launchUpstream(const uint64_t sid) noexcept;
+			/**
+			 * emplaceUpstream Метод создания верхнеуровневого потока
+			 * @param callback функция обратного вызова
+			 * @return         идентификатор верхнеуровневого потока
+			 */
+			uint64_t emplaceUpstream(function <void (void)> callback) noexcept;
 		public:
 			/**
 			 * Base Конструктор

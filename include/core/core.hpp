@@ -128,11 +128,6 @@ namespace awh {
 					 * @param mode флаг активации
 					 */
 					void easily(const bool mode) noexcept;
-					/**
-					 * mode Метод установки режима работы базы событий
-					 * @param mode режим работы базы событий
-					 */
-					void mode(const base_t::mode_t mode) noexcept;
 				public:
 					/**
 					 * frequency Метод установки частоты обновления базы событий
@@ -210,12 +205,6 @@ namespace awh {
 			 * @param core модуль ядра для отключения
 			 */
 			void unbind(Core * core) noexcept;
-		public:
-			/**
-			 * mode Метод установки режима работы базы событий
-			 * @param mode режим работы базы событий
-			 */
-			void mode(const base_t::mode_t mode) noexcept;
 		public:
 			/**
 			 * kick Метод отправки пинка
@@ -315,6 +304,23 @@ namespace awh {
 			 * @param mode флаг активации
 			 */
 			void signalInterception(const scheme_t::mode_t mode = scheme_t::mode_t::DISABLED) noexcept;
+		public:
+			/**
+			 * eraseUpstream Метод удаления верхнеуровневого потока
+			 * @param sid идентификатор верхнеуровневого потока
+			 */
+			void eraseUpstream(const uint64_t sid) noexcept;
+			/**
+			 * launchUpstream Метод запуска верхнеуровневого потока
+			 * @param sid идентификатор верхнеуровневого потока
+			 */
+			void launchUpstream(const uint64_t sid) noexcept;
+			/**
+			 * emplaceUpstream Метод создания верхнеуровневого потока
+			 * @param callback функция обратного вызова
+			 * @return         идентификатор верхнеуровневого потока
+			 */
+			uint64_t emplaceUpstream(function <void (void)> callback) noexcept;
 		public:
 			/**
 			 * Core Конструктор
