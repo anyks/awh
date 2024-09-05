@@ -153,7 +153,7 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 */
 				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
-			public:
+			private:
 				/**
 				 * chunking Метод обработки получения чанков
 				 * @param bid   идентификатор брокера
@@ -161,7 +161,7 @@ namespace awh {
 				 * @param http  объект модуля HTTP
 				 */
 				void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
-			public:
+			private:
 				/**
 				 * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
 				 * @param bid идентификатор брокера
