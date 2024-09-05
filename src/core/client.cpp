@@ -128,11 +128,15 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					break;
 				}
 				// Если unix-сокет используется
-				if(family == scheme_t::family_t::NIX)
+				if(family == scheme_t::family_t::NIX){
+					// Если название unix-сокета ещё не инициализированно
+					if(this->_settings.sockname.empty())
+						// Выполняем установку названия unix-сокета
+						this->sockname();
 					// Выполняем инициализацию сокета
-					broker->_addr.init(this->_settings.sockname, engine_t::type_t::CLIENT);
+					broker->_addr.init(this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), engine_t::type_t::CLIENT);
 				// Если unix-сокет не используется, выполняем инициализацию сокета
-				else broker->_addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
+				} else broker->_addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
 				if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
 					// Выполняем установку желаемого протокола подключения
@@ -247,11 +251,11 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Если unix-сокет используется
 						if(family == scheme_t::family_t::NIX){
 							// Выводим ионформацию об обрыве подключении по unix-сокету
-							this->_log->print("Connecting to SOCKET=%s", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+							this->_log->print("Connecting to HOST=%s/%s.sock", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to socket = %s", this->_settings.sockname.c_str()));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to HOST=%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
 						// Если используется хост и порт
 						} else {
 							// Выводим ионформацию об обрыве подключении по хосту и порту
@@ -259,7 +263,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Сonnecting to host = %s, port = %u", url.ip.c_str(), url.port));
+								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Сonnecting to HOST=%s, PORT=%u", url.ip.c_str(), url.port));
 						}
 						// Если объект DNS-резолвера установлен
 						if(this->_dns != nullptr){
@@ -313,7 +317,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если unix-сокет используется
 							if(family == scheme_t::family_t::NIX)
 								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
-								this->_log->print("Good host %s, SOCKET=%d", log_t::flag_t::INFO, this->_settings.sockname.c_str(), ret.first->second->_addr.fd);
+								this->_log->print("Good host %s/%s.sock, SOCKET=%d", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str(), ret.first->second->_addr.fd);
 							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
 							else this->_log->print("Good host %s [%s:%d], SOCKET=%d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->_addr.fd);
 						}
@@ -325,11 +329,11 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Если unix-сокет используется
 					if(family == scheme_t::family_t::NIX){
 						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
-						this->_log->print("Client cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+						this->_log->print("Client cannot be started [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s]", this->_settings.sockname.c_str()));
+							this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s/%s.sock]", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
 					// Если используется хост и порт
 					} else {
 						// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
@@ -1229,7 +1233,7 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 						// Если разрешено выводить информационные сообщения
 						if(this->_verb)
 							// Выводим в лог сообщение
-							this->_log->print("Connect client to server [%s]", log_t::flag_t::INFO, this->_settings.sockname.c_str());
+							this->_log->print("Connect client to server [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 					} break;
 				}
 				// Если подключение производится через, прокси-сервер

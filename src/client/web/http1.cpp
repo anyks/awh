@@ -128,7 +128,7 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 							// Добавляем полученные данные в буфер
 							this->_buffer.emplace(buffer, size);
 							// Выполняем обработку полученных данных
-							while(!this->_active){
+							while(this->_reading){
 								// Выполняем парсинг полученных данных
 								const size_t bytes = this->_http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 								// Если все данные получены
@@ -530,8 +530,8 @@ void awh::client::Http1::eventCallback(const fn_t::event_t event, const uint64_t
  * flush Метод сброса параметров запроса
  */
 void awh::client::Http1::flush() noexcept {
-	// Сбрасываем флаг принудительной остановки
-	this->_active = false;
+	// Разрешаем чтение данных из буфера
+	this->_reading = true;
 	// Снимаем флаг принудительной остановки
 	this->_stopped = false;
 	// Выполняем очистку оставшихся данных

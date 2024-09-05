@@ -190,17 +190,17 @@ namespace awh {
 				bool create(const uint16_t sid) noexcept;
 			public:
 				/**
+				 * host Метод получения хоста сервера
+				 * @param sid идентификатор схемы сети
+				 * @return    хост на котором висит сервер
+				 */
+				string host(const uint16_t sid) const noexcept;
+				/**
 				 * port Метод получения порта сервера
 				 * @param sid идентификатор схемы сети
 				 * @return    порт сервера который он прослушивает
 				 */
 				uint32_t port(const uint16_t sid) const noexcept;
-				/**
-				 * host Метод получения хоста сервера
-				 * @param sid идентификатор схемы сети
-				 * @return    хост на котором висит сервер
-				 */
-				const string & host(const uint16_t sid) const noexcept;
 			public:
 				/**
 				 * workers Метод получения списка доступных воркеров

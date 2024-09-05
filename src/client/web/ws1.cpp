@@ -1229,8 +1229,10 @@ void awh::client::Websocket1::pause() noexcept {
  * stop Метод остановки клиента
  */
 void awh::client::Websocket1::stop() noexcept {
-	// Устанавливаем флаг принудительной остановки
-	this->_active = true;
+	// Запрещаем чтение данных из буфера
+	this->_reading = false;
+	// Выполняем очистку буфера данных
+	this->_buffer.clear();
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем сброс параметров запроса
@@ -1262,6 +1264,10 @@ void awh::client::Websocket1::stop() noexcept {
  * start Метод запуска клиента
  */
 void awh::client::Websocket1::start() noexcept {
+	// Разрешаем чтение данных из буфера
+	this->_reading = true;
+	// Выполняем очистку буфера данных
+	this->_buffer.clear();
 	// Если адрес URL запроса передан
 	if(!this->_freeze && !this->_scheme.url.empty()){
 		// Если биндинг не запущен, выполняем запуск биндинга

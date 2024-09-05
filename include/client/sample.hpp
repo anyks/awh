@@ -26,6 +26,7 @@
  */
 #include <sys/fn.hpp>
 #include <sys/hold.hpp>
+#include <sys/buffer.hpp>
 #include <core/client.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -58,35 +59,62 @@ namespace awh {
 				enum class flag_t : uint8_t {
 					ALIVE    = 0x01, // Флаг автоматического поддержания подключения
 					NOT_INFO = 0x02, // Флаг запрещающий вывод информационных сообщений
-					NOT_STOP = 0x04  // Флаг запрета остановки работы базы событий
+					NOT_STOP = 0x03  // Флаг запрета остановки работы базы событий
 				};
 			private:
 				/**
 				 * Идентификаторы текущего события
 				 */
 				enum class event_t : uint8_t {
-					NONE    = 0x00, // Событие не установлено
-					OPEN    = 0x01, // Событие открытия подключения
-					READ    = 0x02, // Событие чтения данных с сервера
-					SEND    = 0x03, // Событие отправки данных на сервер
-					CONNECT = 0x04  // Событие подключения к серверу
+					NONE          = 0x00, // Событие не установлено
+					OPEN          = 0x01, // Событие открытия подключения
+					READ          = 0x02, // Событие чтения данных с сервера
+					SEND          = 0x03, // Событие отправки данных на сервер
+					CONNECT       = 0x04, // Событие подключения к серверу
+					PROXY_READ    = 0x05, // Событие чтения данных с прокси-сервера
+					PROXY_CONNECT = 0x06  // Событие подключения к прокси-серверу
 				};
 			private:
-				// Объект для работы с сетью
-				net_t _net;
-				// Хранилище функций обратного вызова
-				fn_t _callbacks;
-				// Объект сетевой схемы
-				scheme_t _scheme;
-			private:
-				// Список рабочих событий
-				stack <event_t> _events;
+				/**
+				 * Proxy Структура работы с прокси-сервером
+				 */
+				typedef struct Proxy {
+					bool mode;       // Флаг активации работы прокси-сервера
+					uint32_t answer; // Статус ответа прокси-сервера
+					/**
+					 * Proxy Конструктор
+					 */
+					Proxy() noexcept : mode(false), answer(0) {}
+				} __attribute__((packed)) proxy_t;
 			private:
 				// Идентификатор подключения
 				uint64_t _bid;
 			private:
+				// Флаг чтения данных из буфера
+				bool _reading;
 				// Флаг остановки работы базы событий
 				bool _complete;
+			private:
+				// Количество попыток
+				uint8_t _attempt;
+				// Общее количество попыток
+				uint8_t _attempts;
+			private:
+				// Объект для работы с сетью
+				net_t _net;
+				// Объект работы с URI ссылками
+				uri_t _uri;
+				// Объект параметров работы с прокси-сервером
+				proxy_t _proxy;
+				// Хранилище функций обратного вызова
+				fn_t _callbacks;
+				// Объект сетевой схемы
+				scheme_t _scheme;
+				// Объект буфера данных
+				buffer_t _buffer;
+			private:
+				// Список рабочих событий
+				stack <event_t> _events;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -96,35 +124,58 @@ namespace awh {
 				const client::core_t * _core;
 			private:
 				/**
-				 * openCallback Метод обратного вызова при запуске работы
+				 * openEvent Метод обратного вызова при запуске работы
 				 * @param sid идентификатор схемы сети
 				 */
-				void openCallback(const uint16_t sid) noexcept;
+				void openEvent(const uint16_t sid) noexcept;
 				/**
-				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * statusEvent Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 */
-				void eventsCallback(const awh::core_t::status_t status) noexcept;
+				void statusEvent(const awh::core_t::status_t status) noexcept;
 				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
+				 * connectEvent Метод обратного вызова при подключении к серверу
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void connectCallback(const uint64_t bid, const uint16_t sid) noexcept;
+				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * disconnectCallback Метод обратного вызова при отключении от сервера
+				 * disconnectEvent Метод обратного вызова при отключении от сервера
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectCallback(const uint64_t bid, const uint16_t sid) noexcept;
+				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * readCallback Метод обратного вызова при чтении сообщения с сервера
+				 * readEvent Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+			public:
+				/**
+				 * chunking Метод обработки получения чанков
+				 * @param bid   идентификатор брокера
+				 * @param chunk бинарный буфер чанка
+				 * @param http  объект модуля HTTP
+				 */
+				void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
+			public:
+				/**
+				 * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
+				 */
+				void proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
+				/**
+				 * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param bid    идентификатор брокера
+				 * @param sid    идентификатор схемы сети
+				 */
+				void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента
@@ -192,6 +243,12 @@ namespace awh {
 				}
 			public:
 				/**
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				void mode(const set <flag_t> & flags) noexcept;
+			public:
+				/**
 				 * cork Метод отключения/включения алгоритма TCP/CORK
 				 * @param mode режим применимой операции
 				 * @return     результат выполенния операции
@@ -217,6 +274,13 @@ namespace awh {
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
 				void bandwidth(const string & read = "", const string & write = "") noexcept;
+				/**
+				 * keepAlive Метод установки жизни подключения
+				 * @param cnt   максимальное количество попыток
+				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
+				 * @param intvl интервал времени в секундах между попытками
+				 */
+				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -227,17 +291,31 @@ namespace awh {
 				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
-				 * mode Метод установки флагов настроек модуля
-				 * @param flags список флагов настроек модуля для установки
+				 * proxyUserAgent Метод установки User-Agent для HTTP-запроса прокси-сервера
+				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void proxyUserAgent(const string & userAgent) noexcept;
 				/**
-				 * keepAlive Метод установки жизни подключения
-				 * @param cnt   максимальное количество попыток
-				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
-				 * @param intvl интервал времени в секундах между попытками
+				 * proxyIdent Метод установки идентификации клиента прокси-сервера
+				 * @param id   идентификатор сервиса
+				 * @param name название сервиса
+				 * @param ver  версия сервиса
 				 */
-				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
+				void proxyIdent(const string & id, const string & name, const string & ver) noexcept;
+			public:
+				/**
+				 * proxy Метод установки прокси-сервера
+				 * @param uri    параметры прокси-сервера
+				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+				 */
+				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+			public:
+				/**
+				 * authTypeProxy Метод установки типа авторизации прокси-сервера
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest-авторизации
+				 */
+				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
 				 * Sample Конструктор

@@ -538,13 +538,6 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Если приложение является сервером
-			if(type == type_t::SERVER){
-				// Если сокет в файловой системе уже существует, удаляем его
-				if(this->_fs.isSock(unixsocket))
-					// Удаляем файл сокета
-					::unlink(unixsocket.c_str());
-			}
 			// Создаем сокет подключения
 			this->fd = ::socket(AF_UNIX, this->_type, 0);
 			// Если сокет не создан то выходим
@@ -584,6 +577,13 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 					server.sun_family = AF_UNIX;
 					// Очищаем всю структуру для сервера
 					::memset(&server.sun_path, 0, sizeof(server.sun_path));
+					// Если приложение является сервером
+					if(type == type_t::SERVER){
+						// Если сокет в файловой системе уже существует, удаляем его
+						if(this->_fs.isSock(unixsocket))
+							// Удаляем файл сокета
+							::unlink(unixsocket.c_str());
+					}
 					// Копируем адрес сокета сервера
 					::strncpy(server.sun_path, unixsocket.c_str(), sizeof(server.sun_path));
 					// Выполняем копирование объект подключения сервера в сторейдж

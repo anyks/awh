@@ -234,7 +234,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 				// Если прокси-сервер является HTTPS
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
 					// Выполняем обработку полученных данных
-					while(!this->_active){
+					while(this->_reading){
 						// Выполняем парсинг полученных данных
 						const size_t bytes = this->_scheme.proxy.http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 						// Если все данные получены
@@ -385,10 +385,10 @@ bool awh::client::Web::enableSSLEvent(const uri_t::url_t & url, const uint64_t b
  * @param http  объект модуля HTTP
  */
 void awh::client::Web::chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
+	// Блокируем переменные которые не используем
+	(void) bid;
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()){
-		// Блокируем переменные которые не используем
-		(void) bid;
 		// Выполняем добавление полученного чанка в тело ответа
 		const_cast <awh::http_t *> (http)->body(chunk);
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
@@ -468,8 +468,10 @@ void awh::client::Web::open() noexcept {
  * stop Метод остановки клиента
  */
 void awh::client::Web::stop() noexcept {
-	// Устанавливаем флаг принудительной остановки
-	this->_active = true;
+	// Запрещаем чтение данных из буфера
+	this->_reading = false;
+	// Выполняем очистку буфера данных
+	this->_buffer.clear();
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем сброс параметров запроса
@@ -501,6 +503,10 @@ void awh::client::Web::stop() noexcept {
  * start Метод запуска клиента
  */
 void awh::client::Web::start() noexcept {
+	// Разрешаем чтение данных из буфера
+	this->_reading = true;
+	// Выполняем очистку буфера данных
+	this->_buffer.clear();
 	// Если адрес URL запроса передан
 	if((this->_core != nullptr) && !this->_scheme.url.empty()){
 		// Если биндинг не запущен
@@ -791,7 +797,7 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
- _nossl(false), _active(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
+ _nossl(false), _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
  _sendPing(0), _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.verbose(false);
@@ -808,7 +814,7 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
- _nossl(false), _active(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
+ _nossl(false), _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
  _sendPing(0), _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);

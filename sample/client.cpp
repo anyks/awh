@@ -102,6 +102,26 @@ int32_t main(int32_t argc, char * argv[]){
 	ssl.cert = "./certs/certificates/client-cert.pem";
 	// Выполняем установку параметров SSL-шифрования
 	core.ssl(ssl);
+	// Устанавливаем данные прокси-сервера
+	// sample.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
+	// sample.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
+	// sample.proxy("socks5://127.0.0.1:2222");
+	// sample.proxy("socks5://user:password@127.0.0.1:2222");
+	// sample.proxy("http://user:password@127.0.0.1:2222");
+	// sample.proxy("http://127.0.0.1:2222");
+	// sample.proxy("socks5://user:password@anyks", awh::scheme_t::family_t::NIX);
+	// sample.proxy("http://anyks", awh::scheme_t::family_t::NIX);
+	// sample.proxy("http://user:password@anyks", awh::scheme_t::family_t::NIX);
+	// sample.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
+	// sample.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
+	// sample.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
+	// sample.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
+	// sample.proxy("http://user:password@anyks.net:2222");
+	// sample.proxy("https://user:password@anyks.net:2222");
+	// sample.proxy("socks5://user:password@anyks.net:2222");
+	// Устанавливаем тип авторизации прокси-сервера
+	// sample.authTypeProxy(auth_t::type_t::BASIC);
+	// sample.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета
@@ -111,7 +131,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Устанавливаем длительное подключение
-	// ws.keepAlive(100, 30, 10);
+	// sample.keepAlive(100, 30, 10);
 	// Устанавливаем таймеры ожидания по одной секунде на чтение и запись
 	sample.waitTimeDetect(1, 1);
 	// Подписываемся на событие получения сообщения

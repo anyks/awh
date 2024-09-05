@@ -16,10 +16,10 @@
 #include <server/sample.hpp>
 
 /**
- * openCallback Метод обратного вызова при запуске работы
+ * openEvent Метод обратного вызова при запуске работы
  * @param sid идентификатор схемы сети
  */
-void awh::server::Sample::openCallback(const uint16_t sid) noexcept {
+void awh::server::Sample::openEvent(const uint16_t sid) noexcept {
 	// Если данные существуют
 	if(sid > 0){
 		// Устанавливаем хост сервера
@@ -29,10 +29,10 @@ void awh::server::Sample::openCallback(const uint16_t sid) noexcept {
 	}
 }
 /**
- * eventsCallback Метод обратного вызова при активации ядра сервера
+ * statusEvent Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  */
-void awh::server::Sample::eventsCallback(const awh::core_t::status_t status) noexcept {
+void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexcept {
 	// Определяем статус активности сетевого ядра
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
@@ -62,11 +62,11 @@ void awh::server::Sample::eventsCallback(const awh::core_t::status_t status) noe
 		this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
 }
 /**
- * connectCallback Метод обратного вызова при подключении к серверу
+ * connectEvent Метод обратного вызова при подключении к серверу
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Sample::connectCallback(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Sample::connectEvent(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Создаём брокера
@@ -78,11 +78,11 @@ void awh::server::Sample::connectCallback(const uint64_t bid, const uint16_t sid
 	}
 }
 /**
- * disconnectCallback Метод обратного вызова при отключении от сервера
+ * disconnectEvent Метод обратного вызова при отключении от сервера
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
-void awh::server::Sample::disconnectCallback(const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Добавляем в очередь список отключившихся клиентов
@@ -94,13 +94,13 @@ void awh::server::Sample::disconnectCallback(const uint64_t bid, const uint16_t 
 	}
 }
 /**
- * readCallback Метод обратного вызова при чтении сообщения с брокера
+ * readEvent Метод обратного вызова при чтении сообщения с брокера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::server::Sample::readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Sample::readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
@@ -120,13 +120,13 @@ void awh::server::Sample::readCallback(const char * buffer, const size_t size, c
 	}
 }
 /**
- * writeCallback Метод обратного вызова при записи сообщение брокеру
+ * writeEvent Метод обратного вызова при записи сообщение брокеру
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер записанных в сокет байт
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::server::Sample::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::server::Sample::writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
@@ -144,14 +144,14 @@ void awh::server::Sample::writeCallback(const char * buffer, const size_t size, 
 	}
 }
 /**
- * acceptCallback Функция обратного вызова при проверке подключения брокера
+ * acceptEvent Функция обратного вызова при проверке подключения брокера
  * @param ip   адрес интернет подключения брокера
  * @param mac  мак-адрес подключившегося брокера
  * @param port порт подключившегося брокера
  * @param sid  идентификатор схемы сети
  * @return     результат разрешения к подключению брокера
  */
-bool awh::server::Sample::acceptCallback(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept {
+bool awh::server::Sample::acceptEvent(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
@@ -414,17 +414,17 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем функцию активации ядра сервера
-	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::eventsCallback, this, _1));
+	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::statusEvent, this, _1));
 	// Устанавливаем событие на запуск системы
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openCallback, this, _1));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openEvent, this, _1));
 	// Устанавливаем событие подключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectCallback, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
 	// Устанавливаем событие отключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectCallback, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readCallback, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&sample_t::writeCallback, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&sample_t::writeEvent, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&sample_t::acceptCallback, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&sample_t::acceptEvent, this, _1, _2, _3, _4));
 }

@@ -922,8 +922,8 @@ void awh::client::Http2::eventCallback(const fn_t::event_t event, const uint64_t
  * flush Метод сброса параметров запроса
  */
 void awh::client::Http2::flush() noexcept {
-	// Сбрасываем флаг принудительной остановки
-	this->_active = false;
+	// Разрешаем чтение данных из буфера
+	this->_reading = true;
 	// Снимаем флаг принудительной остановки
 	this->_stopped = false;
 }

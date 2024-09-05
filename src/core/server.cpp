@@ -86,11 +86,15 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 							// Устанавливаем параметры сокета
 							broker->_addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::NIX)
+							if(this->_settings.family == scheme_t::family_t::NIX){
+								// Если название unix-сокета ещё не инициализированно
+								if(this->_settings.sockname.empty())
+									// Выполняем установку названия unix-сокета
+									this->sockname();
 								// Выполняем инициализацию сокета
-								broker->_addr.init(this->_settings.sockname, engine_t::type_t::SERVER);
+								broker->_addr.init(this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), engine_t::type_t::SERVER);
 							// Если unix-сокет не используется, выполняем инициализацию сокета
-							else broker->_addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_settings.ipV6only);
+							} else broker->_addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_settings.ipV6only);
 							// Выполняем разрешение подключения
 							if(broker->_addr.accept(broker->_addr.fd, 0)){
 								// Получаем адрес подключения клиента
@@ -1367,11 +1371,11 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->_log->print("Server cannot be init [%s]", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+								this->_log->print("Server cannot be init [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s]", this->_settings.sockname.c_str()));
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s/%s.sock]", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
 							// Если используется хост и порт
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту
@@ -1717,11 +1721,15 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 					shm->_addr.sonet(SOCK_STREAM, IPPROTO_TCP);
 			}
 			// Если unix-сокет используется
-			if(this->_settings.family == scheme_t::family_t::NIX)
+			if(this->_settings.family == scheme_t::family_t::NIX){
+				// Если название unix-сокета ещё не инициализированно
+				if(this->_settings.sockname.empty())
+					// Выполняем установку названия unix-сокета
+					this->sockname();
 				// Выполняем инициализацию сокета
-				shm->_addr.init(this->_settings.sockname, engine_t::type_t::SERVER);
+				shm->_addr.init(this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), engine_t::type_t::SERVER);
 			// Если unix-сокет не используется, выполняем инициализацию сокета
-			else shm->_addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_settings.ipV6only);
+			} else shm->_addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_settings.ipV6only);
 			// Если сокет подключения получен
 			if((shm->_addr.fd != INVALID_SOCKET) && (shm->_addr.fd < MAX_SOCKETS))
 				// Выполняем прослушивание порта
@@ -1730,6 +1738,34 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 	}
 	// Выводим результат создания сервера
 	return result;
+}
+/**
+ * host Метод получения хоста сервера
+ * @param sid идентификатор схемы сети
+ * @return    хост на котором висит сервер
+ */
+string awh::server::Core::host(const uint16_t sid) const noexcept {
+	// Определяем тип протокола подключения
+	switch(static_cast <uint8_t> (this->_settings.family)){
+		// Если тип протокола подключения unix-сокет
+		case static_cast <uint8_t> (scheme_t::family_t::NIX):
+			// Выводим название unix-сокета
+			return this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+		// Если адрес хоста принадлежит другому типу
+		default: {
+			// Выполняем поиск идентификатора схемы сети
+			auto i = this->_schemes.find(sid);
+			// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
+			if(i != this->_schemes.end()){
+				// Получаем объект схемы сети
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+				// Выводим хост на котором висит сервер
+				return shm->_host;
+			}
+		}
+	}
+	// Выводим результат
+	return "";
 }
 /**
  * port Метод получения порта сервера
@@ -1748,36 +1784,6 @@ uint32_t awh::server::Core::port(const uint16_t sid) const noexcept {
 	}
 	// Выводим неустановленный порт
 	return 0;
-}
-/**
- * host Метод получения хоста сервера
- * @param sid идентификатор схемы сети
- * @return    хост на котором висит сервер
- */
-const string & awh::server::Core::host(const uint16_t sid) const noexcept {
-	// Результат работы функции
-	static const string result = "";
-	// Определяем тип протокола подключения
-	switch(static_cast <uint8_t> (this->_settings.family)){
-		// Если тип протокола подключения unix-сокет
-		case static_cast <uint8_t> (scheme_t::family_t::NIX):
-			// Выводим название unix-сокета
-			return this->_settings.sockname;
-		// Если адрес хоста принадлежит другому типу
-		default: {
-			// Выполняем поиск идентификатора схемы сети
-			auto i = this->_schemes.find(sid);
-			// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
-			if(i != this->_schemes.end()){
-				// Получаем объект схемы сети
-				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
-				// Выводим хост на котором висит сервер
-				return shm->_host;
-			}
-		}
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * workers Метод получения списка доступных воркеров
@@ -2183,7 +2189,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX)
 								// Выводим информацию о запущенном сервере на unix-сокете
-								this->_log->print("Start server [%s]", log_t::flag_t::INFO, this->_settings.sockname.c_str());
+								this->_log->print("Start server [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 							else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 						}
@@ -2213,7 +2219,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 								// Если unix-сокет используется
 								if(this->_settings.family == scheme_t::family_t::NIX)
 									// Выводим информацию о запущенном сервере на unix-сокете
-									this->_log->print("Start server [%s]", log_t::flag_t::INFO, this->_settings.sockname.c_str());
+									this->_log->print("Start server [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 							}
@@ -2238,11 +2244,11 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->_log->print("Server cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+								this->_log->print("Server cannot be started [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s]", this->_settings.sockname.c_str()));
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s/%s.sock]", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
 							// Если используется хост и порт
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту
@@ -2263,7 +2269,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 								// Если unix-сокет используется
 								if(this->_settings.family == scheme_t::family_t::NIX)
 									// Выводим информацию о запущенном сервере на unix-сокете
-									this->_log->print("Start server [%s]", log_t::flag_t::INFO, this->_settings.sockname.c_str());
+									this->_log->print("Start server [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 							}
@@ -2325,11 +2331,11 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->_log->print("Server cannot be started [%s]", log_t::flag_t::CRITICAL, this->_settings.sockname.c_str());
+								this->_log->print("Server cannot be started [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s]", this->_settings.sockname.c_str()));
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be started [%s/%s.sock]", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
 							// Если используется хост и порт
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту

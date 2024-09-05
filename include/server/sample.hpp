@@ -99,52 +99,52 @@ namespace awh {
 				const server::core_t * _core;
 			private:
 				/**
-				 * openCallback Метод обратного вызова при запуске работы
+				 * openEvent Метод обратного вызова при запуске работы
 				 * @param sid идентификатор схемы сети
 				 */
-				void openCallback(const uint16_t sid) noexcept;
+				void openEvent(const uint16_t sid) noexcept;
 				/**
-				 * eventsCallback Метод обратного вызова при активации ядра сервера
+				 * statusEvent Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 */
-				void eventsCallback(const awh::core_t::status_t status) noexcept;
+				void statusEvent(const awh::core_t::status_t status) noexcept;
 				/**
-				 * connectCallback Метод обратного вызова при подключении к серверу
+				 * connectEvent Метод обратного вызова при подключении к серверу
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void connectCallback(const uint64_t bid, const uint16_t sid) noexcept;
+				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * disconnectCallback Метод обратного вызова при отключении от сервера
+				 * disconnectEvent Метод обратного вызова при отключении от сервера
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
-				void disconnectCallback(const uint64_t bid, const uint16_t sid) noexcept;
+				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * readCallback Метод обратного вызова при чтении сообщения с брокера
+				 * readEvent Метод обратного вызова при чтении сообщения с брокера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void readCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * writeCallback Метод обратного вызова при записи сообщение брокеру
+				 * writeEvent Метод обратного вызова при записи сообщение брокеру
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * acceptCallback Метод обратного вызова при проверке подключения брокера
+				 * acceptEvent Метод обратного вызова при проверке подключения брокера
 				 * @param ip   адрес интернет подключения брокера
 				 * @param mac  мак-адрес подключившегося брокера
 				 * @param port порт подключившегося брокера
 				 * @param sid  идентификатор схемы сети
 				 * @return     результат разрешения к подключению брокера
 				 */
-				bool acceptCallback(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept;
+				bool acceptEvent(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключившихся клиентов

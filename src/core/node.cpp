@@ -353,9 +353,9 @@ void awh::Node::resolver(const dns_t * dns) noexcept {
 	this->_dns = dns;
 }
 /**
- * sockname Метод установки адреса файла unix-сокета
- * @param name адрес файла unix-сокета
- * @return     результат установки unix-сокета
+ * sockname Метод установки названия unix-сокета
+ * @param name название unix-сокета
+ * @return     результат установки названия unix-сокета
  */
 bool awh::Node::sockname(const string & name) noexcept {
 	// Выполняем блокировку потока
@@ -364,16 +364,17 @@ bool awh::Node::sockname(const string & name) noexcept {
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Адрес файла сокета
-		string filename = "";
-		// Если адрес unix-сокета передан
+		// Если название unix-сокета передано
 		if(!name.empty())
-			// Получаем адрес файла
-			filename = name;
-		// Если адрес unix-сокета не передан
-		else filename = AWH_SHORT_NAME;
-		// Устанавливаем адрес файла unix-сокета
-		this->_settings.sockname = this->_fmk->format("/tmp/%s.sock", this->_fmk->transform(filename, fmk_t::transform_t::LOWER).c_str());
+			// Устанавливаем название unix-сокета
+			this->_settings.sockname = name;
+		// Если название unix-сокета не передан
+		else {
+			// Устанавливаем название unix-сокета по умолчанию
+			this->_settings.sockname = AWH_SHORT_NAME;
+			// Переводим название unix-сокета в нижний регистр
+			this->_fmk->transform(this->_settings.sockname, fmk_t::transform_t::LOWER);
+		}
 	/**
 	 * Если операционной системой является MS Windows
 	 */
@@ -385,6 +386,39 @@ bool awh::Node::sockname(const string & name) noexcept {
 	#endif
 	// Выводим результат
 	return !this->_settings.sockname.empty();
+}
+/**
+ * sockpath Метод установки адреса каталога где хранится unix-сокет
+ * @param path адрес каталога в файловой системе где хранится unix-сокет
+ * @return     результат установки адреса каталога где хранится unix-сокет
+ */
+bool awh::Node::sockpath(const string & path) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если адрес каталога в файловой системе где хранится unix-сокет передан
+		if(!path.empty())
+			// Устанавливаем адрес каталога в файловой системе где хранится unix-сокет
+			this->_settings.sockpath = path;
+		// Если адрес каталога в файловой системе где хранится unix-сокет не передан
+		else {
+			// Устанавливаем адрес каталога в файловой системе где хранится unix-сокет по умолчанию
+			this->_settings.sockpath = "/tmp";
+		}
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Выводим в лог сообщение
+		this->_log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
+		// Выходим принудительно из приложения
+		::exit(EXIT_FAILURE);
+	#endif
+	// Выводим результат
+	return !this->_settings.sockpath.empty();
 }
 /**
  * proto Метод извлечения поддерживаемого протокола подключения
@@ -473,22 +507,26 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 	this->_mtx.main.unlock();
 	// Если тип сокета подключения - unix-сокет
 	if(this->_settings.family == scheme_t::family_t::NIX){
-		// Если адрес файла unix-сокета ещё не инициализированно
+		// Если название unix-сокета ещё не инициализированно
 		if(this->_settings.sockname.empty())
-			// Выполняем активацию адреса файла unix-сокета
+			// Выполняем установку названия unix-сокета
 			this->sockname();
 	// Если тип сокета подключения соответствует хосту и порту
-	} else if((this->_settings.family != scheme_t::family_t::NIX) && (this->_type == engine_t::type_t::SERVER)) {
+	} else if(!this->_settings.sockname.empty() &&
+			 (this->_type == engine_t::type_t::SERVER) &&
+			 (this->_settings.family != scheme_t::family_t::NIX)) {
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx.main);
+			// Получаем адрес файла unix-сокет
+			const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 			// Если сокет в файловой системе уже существует, удаляем его
-			if(this->_fs.isSock(this->_settings.sockname))
+			if(this->_fs.isSock(filename))
 				// Удаляем файл сокета
-				::unlink(this->_settings.sockname.c_str());
+				::unlink(filename.c_str());
 			// Выполняем очистку unix-сокета
 			this->_settings.sockname.clear();
 		#endif
@@ -733,22 +771,26 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 	this->_mtx.main.unlock();
 	// Если тип сокета подключения - unix-сокет
 	if(this->_settings.family == scheme_t::family_t::NIX){
-		// Если адрес файла unix-сокета ещё не инициализированно
+		// Если название unix-сокета ещё не инициализированно
 		if(this->_settings.sockname.empty())
-			// Выполняем активацию адреса файла сокета
+			// Выполняем установку названия unix-сокета
 			this->sockname();
 	// Если тип сокета подключения соответствует хосту и порту
-	} else if((this->_settings.family != scheme_t::family_t::NIX) && (this->_type == engine_t::type_t::SERVER)) {
+	} else if(!this->_settings.sockname.empty() &&
+			 (this->_type == engine_t::type_t::SERVER) &&
+			 (this->_settings.family != scheme_t::family_t::NIX)) {
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx.main);
+			// Получаем адрес файла unix-сокет
+			const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 			// Если сокет в файловой системе уже существует, удаляем его
-			if(this->_fs.isSock(this->_settings.sockname))
+			if(this->_fs.isSock(filename))
 				// Удаляем файл сокета
-				::unlink(this->_settings.sockname.c_str());
+				::unlink(filename.c_str());
 			// Выполняем очистку unix-сокета
 			this->_settings.sockname.clear();
 		#endif
@@ -891,15 +933,19 @@ awh::Node::~Node() noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.main.lock();
 	// Если требуется использовать unix-сокет и ядро является сервером
-	if((this->_settings.family == scheme_t::family_t::NIX) && (this->_type == engine_t::type_t::SERVER)){
+	if(!this->_settings.sockname.empty() &&
+	  (this->_type == engine_t::type_t::SERVER) &&
+	  (this->_settings.family == scheme_t::family_t::NIX)){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
+			// Получаем адрес файла unix-сокет
+			const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 			// Если сокет в файловой системе уже существует, удаляем его
-			if(this->_fs.isSock(this->_settings.sockname))
+			if(this->_fs.isSock(filename))
 				// Удаляем файл сокета
-				::unlink(this->_settings.sockname.c_str());
+				::unlink(filename.c_str());
 		#endif
 	}
 	// Выполняем разблокировку потока

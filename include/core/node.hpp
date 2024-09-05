@@ -114,6 +114,8 @@ namespace awh {
 				scheme_t::family_t family;
 				// Адрес файла unix-сокета
 				string sockname;
+				// Адрес каталога для хранения unix-сокетов
+				string sockpath;
 				// Параметры для сети
 				vector <string> network;
 				/**
@@ -124,7 +126,8 @@ namespace awh {
 				 proto(engine_t::proto_t::RAW),
 				 sonet(scheme_t::sonet_t::TCP),
 				 family(scheme_t::family_t::IPV4),
-				 sockname{""}, network{"0.0.0.0","[::]"} {}
+				 sockname{""}, sockpath{"/tmp"},
+				 network{"0.0.0.0","[::]"} {}
 			} settings_t;
 		protected:
 			// Мютекс для блокировки потоков
@@ -246,11 +249,17 @@ namespace awh {
 			void resolver(const dns_t * dns) noexcept;
 		public:
 			/**
-			 * sockname Метод установки адреса файла unix-сокета
-			 * @param name адрес файла unix-сокета
-			 * @return     результат установки unix-сокета
+			 * sockname Метод установки названия unix-сокета
+			 * @param name название unix-сокета
+			 * @return     результат установки названия unix-сокета
 			 */
 			bool sockname(const string & name = "") noexcept;
+			/**
+			 * sockpath Метод установки адреса каталога где хранится unix-сокет
+			 * @param path адрес каталога в файловой системе где хранится unix-сокет
+			 * @return     результат установки адреса каталога где хранится unix-сокет
+			 */
+			bool sockpath(const string & path = "") noexcept;
 		public:
 			/**
 			 * proto Метод извлечения поддерживаемого протокола подключения
