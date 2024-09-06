@@ -592,22 +592,22 @@ void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, 
 	this->_scheme.timeouts.connect = connect;
 }
 /**
- * proxyUserAgent Метод установки User-Agent для HTTP-запроса прокси-сервера
+ * userAgentProxy Метод установки User-Agent для HTTP-запроса прокси-сервера
  * @param userAgent агент пользователя для HTTP-запроса
  */
-void awh::client::Sample::proxyUserAgent(const string & userAgent) noexcept {
+void awh::client::Sample::userAgentProxy(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
 	if(!userAgent.empty())
 		// Устанавливаем пользовательского агента для прокси-сервера
 		this->_scheme.proxy.http.userAgent(userAgent);
 }
 /**
- * proxyIdent Метод установки идентификации клиента прокси-сервера
+ * identProxy Метод установки идентификации клиента прокси-сервера
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::Sample::proxyIdent(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Sample::identProxy(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса для прокси-сервера
 	this->_scheme.proxy.http.ident(id, name, ver);
 }

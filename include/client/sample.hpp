@@ -299,17 +299,17 @@ namespace awh {
 				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
-				 * proxyUserAgent Метод установки User-Agent для HTTP-запроса прокси-сервера
+				 * userAgentProxy Метод установки User-Agent для HTTP-запроса прокси-сервера
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
-				void proxyUserAgent(const string & userAgent) noexcept;
+				void userAgentProxy(const string & userAgent) noexcept;
 				/**
-				 * proxyIdent Метод установки идентификации клиента прокси-сервера
+				 * identProxy Метод установки идентификации клиента прокси-сервера
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void proxyIdent(const string & id, const string & name, const string & ver) noexcept;
+				void identProxy(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
 				 * proxy Метод активации/деактивации прокси-склиента
