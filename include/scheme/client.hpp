@@ -48,6 +48,9 @@ namespace awh {
 					SOCKS5 = 0x03  // Прокси-сервер Socks5
 				};
 			public:
+				// Флаг включения прокси-склиента
+				bool mode;
+			public:
 				// Тип прокси-сервера
 				type_t type;
 			public:
@@ -64,19 +67,13 @@ namespace awh {
 				// Создаём объект для работы с HTTP
 				client::http_t http;
 			public:
-				// Создаём объект фреймворка
-				const fmk_t * fmk;
-				// Создаём объект работы с логами
-				const log_t * log;
-			public:
 				/**
 				 * Proxy Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 type(type_t::NONE), family(scheme_t::family_t::IPV4),
-				 socks5(log), http(fmk, log), fmk(fmk), log(log) {
+				 mode(false), type(type_t::NONE), family(scheme_t::family_t::IPV4), socks5(log), http(fmk, log) {
 					// Устанавливаем идентичность протокола к прокси-серверу
 					this->http.identity(http_t::identity_t::PROXY);
 				}
@@ -164,6 +161,12 @@ namespace awh {
 				 * @return идентификатор брокера
 				 */
 				uint64_t bid() const noexcept;
+			public:
+				/**
+				 * activateProxy Метод активации прокси-клиента
+				 * @param work флаг активации
+				 */
+				void activateProxy(const work_t work) noexcept;
 			public:
 				/**
 				 * Scheme Конструктор

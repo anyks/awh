@@ -60,7 +60,7 @@ void awh::client::Sample::connectEvent(const uint64_t bid, const uint16_t sid) n
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
-		if(hold.access({event_t::OPEN, event_t::READ}, event_t::CONNECT)){
+		if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
 			// Запоминаем идентификатор брокера
 			this->_bid = bid;
 			// Если функция обратного вызова существует
@@ -232,6 +232,8 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 							if(this->_scheme.proxy.socks5.is(socks5_t::state_t::HANDSHAKE)){
 								// Выполняем переключение на работу с сервером
 								const_cast <client::core_t *> (this->_core)->switchProxy(bid);
+								// Выполняем запуск функции подключения
+								this->connectEvent(bid, sid);
 								// Завершаем работу
 								return;
 							// Если рукопожатие не выполнено
@@ -263,9 +265,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 					}
 				} break;
 				// Если прокси-сервер является HTTP
-				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP):
-				// Если прокси-сервер является HTTPS
-				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
+				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP): {
 					// Выполняем обработку полученных данных
 					while(this->_reading){
 						// Выполняем парсинг полученных данных
@@ -302,8 +302,8 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 							this->_proxy.answer = response.code;
 							// Если выполнять редиректы запрещено
 							if(status == awh::http_t::status_t::RETRY){
-								// Если ответом сервера не является запросом авторизации
-								if(response.code != 407)
+								// Если ответом сервера является положительным
+								if(response.code == 200)
 									// Запрещаем выполнять редирект
 									status = awh::http_t::status_t::GOOD;
 							}
@@ -312,7 +312,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 								// Если нужно попытаться ещё раз
 								case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
 									// Если попытки повторить переадресацию ещё не закончились
-									if(this->_attempt >= this->_attempts){
+									if(this->_attempt < this->_attempts){
 										// Если адрес запроса получен
 										if(!this->_scheme.proxy.url.empty()){
 											// Если соединение является постоянным
@@ -330,17 +330,13 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 								} break;
 								// Если запрос выполнен удачно
 								case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
-									// Если защищённое подключение уже активированно
-									if(this->_scheme.proxy.type == client::proxy_t::type_t::HTTPS){
-										// Выполняем переключение на работу с сервером
-										this->_scheme.switchConnect();
-										// Выполняем запуск работы основного модуля
-										this->connectEvent(bid, sid);
 									// Выполняем переключение на работу с сервером
-									} else const_cast <client::core_t *> (this->_core)->switchProxy(bid);
+									const_cast <client::core_t *> (this->_core)->switchProxy(bid);
+									// Выполняем запуск функции подключения
+									this->connectEvent(bid, sid);
 									// Завершаем работу
 									return;
-								} break;
+								}
 								// Если запрос неудачный
 								case static_cast <uint8_t> (awh::http_t::status_t::FAULT):
 									// Выводим в лог сообщение
@@ -599,6 +595,18 @@ void awh::client::Sample::proxyUserAgent(const string & userAgent) noexcept {
 void awh::client::Sample::proxyIdent(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса для прокси-сервера
 	this->_scheme.proxy.http.ident(id, name, ver);
+}
+/**
+ * proxy Метод активации/деактивации прокси-склиента
+ * @param work флаг активации/деактивации прокси-клиента
+ */
+void awh::client::Sample::proxy(const client::scheme_t::work_t work) noexcept {
+	// Если прокси-сервер установлен
+	if(this->_scheme.proxy.type != client::proxy_t::type_t::NONE)
+		// Выполняем активацию прокси-сервера
+		this->_scheme.activateProxy(work);
+	// Снимаем флаг активации прокси-клиента
+	else this->_scheme.proxy.mode = false;
 }
 /**
  * proxy Метод установки прокси-сервера

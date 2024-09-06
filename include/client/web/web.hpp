@@ -422,6 +422,11 @@ namespace awh {
 				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
+				 * proxy Метод активации/деактивации прокси-склиента
+				 * @param work флаг активации/деактивации прокси-клиента
+				 */
+				virtual void proxy(const client::scheme_t::work_t work) noexcept;
+				/**
 				 * proxy Метод установки прокси-сервера
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)

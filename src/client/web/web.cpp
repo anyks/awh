@@ -269,8 +269,8 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							this->_proxy.answer = response.code;
 							// Если выполнять редиректы запрещено
 							if(!this->_redirects && (status == awh::http_t::status_t::RETRY)){
-								// Если ответом сервера не является запросом авторизации
-								if(response.code != 407)
+								// Если ответом сервера является положительным
+								if(response.code == 200)
 									// Запрещаем выполнять редирект
 									status = awh::http_t::status_t::GOOD;
 							}
@@ -625,6 +625,18 @@ void awh::client::Web::waitTimeDetect(const time_t read, const time_t write, con
 	this->_scheme.timeouts.write = write;
 	// Устанавливаем количество секунд на подключение
 	this->_scheme.timeouts.connect = connect;
+}
+/**
+ * proxy Метод активации/деактивации прокси-склиента
+ * @param work флаг активации/деактивации прокси-клиента
+ */
+void awh::client::Web::proxy(const client::scheme_t::work_t work) noexcept {
+	// Если прокси-сервер установлен
+	if(this->_scheme.proxy.type != client::proxy_t::type_t::NONE)
+		// Выполняем активацию прокси-сервера
+		this->_scheme.activateProxy(work);
+	// Снимаем флаг активации прокси-клиента
+	else this->_scheme.proxy.mode = false;
 }
 /**
  * proxy Метод установки прокси-сервера

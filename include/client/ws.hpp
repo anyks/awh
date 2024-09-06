@@ -241,6 +241,11 @@ namespace awh {
 				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
+				 * proxy Метод активации/деактивации прокси-склиента
+				 * @param work флаг активации/деактивации прокси-клиента
+				 */
+				void proxy(const client::scheme_t::work_t work) noexcept;
+				/**
 				 * proxy Метод установки прокси-сервера
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)

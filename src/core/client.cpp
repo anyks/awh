@@ -1086,7 +1086,7 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 		case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): break;
 		// Если активирован любой другой протокол, выходим из функции
 		default: return;
-	}	
+	}
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.proxy);
 	// Если идентификатор брокера подключений существует

@@ -380,6 +380,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.proxy("http://user:password@anyks.net:2222");
 	// ws.proxy("https://user:password@anyks.net:2222");
 	// ws.proxy("socks5://user:password@anyks.net:2222");
+
+	// Активируем работу прокси-сервера
+	// ws.proxy(client::scheme_t::work_t::ALLOW);
 	
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);

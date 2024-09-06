@@ -255,6 +255,14 @@ void awh::client::Websocket::ident(const string & id, const string & name, const
 	this->_ws.ident(id, name, ver);
 }
 /**
+ * proxy Метод активации/деактивации прокси-склиента
+ * @param work флаг активации/деактивации прокси-клиента
+ */
+void awh::client::Websocket::proxy(const client::scheme_t::work_t work) noexcept {
+	// Выполняем установку флага активации/деактивации прокси-склиента
+	this->_ws.proxy(work);
+}
+/**
  * proxy Метод установки прокси-сервера
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)

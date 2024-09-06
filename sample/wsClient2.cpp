@@ -439,6 +439,9 @@ int32_t main(int32_t argc, char * argv[]){
 	
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
+
+	// Активируем работу прокси-сервера
+	// awh.proxy(client::scheme_t::work_t::ALLOW);
 	
 	// Устанавливаем сабпротоколы
 	// awh.subprotocols({"test2", "test8", "test9"});

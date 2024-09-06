@@ -59,6 +59,8 @@ void awh::client::Auth::uri(const string & uri) noexcept {
 	if(!uri.empty())
 		// Устанавливаем адрес запроса
 		this->_digest.uri = uri;
+	// Устанавливаем корень адреса
+	else this->_digest.uri = "/";
 }
 /**
  * user Метод установки логина пользователя

@@ -323,6 +323,11 @@ namespace awh {
 				void multiThreads(const int16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
+				 * proxy Метод активации/деактивации прокси-склиента
+				 * @param work флаг активации/деактивации прокси-клиента
+				 */
+				void proxy(const client::scheme_t::work_t work) noexcept;
+				/**
 				 * proxy Метод установки прокси-сервера
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)

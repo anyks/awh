@@ -268,6 +268,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.proxy("http://user:password@anyks.net:2222");
 	// awh.proxy("https://user:password@anyks.net:2222");
 	// awh.proxy("socks5://user:password@anyks.net:2222");
+	// Активируем работу прокси-сервера
+	// awh.proxy(client::scheme_t::work_t::ALLOW);
 	/*
 	// Устанавливаем тип компрессии
 	awh.compressors({

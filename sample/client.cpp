@@ -119,6 +119,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// sample.proxy("http://user:password@anyks.net:2222");
 	// sample.proxy("https://user:password@anyks.net:2222");
 	// sample.proxy("socks5://user:password@anyks.net:2222");
+	// Активируем работу прокси-сервера
+	// sample.proxy(client::scheme_t::work_t::ALLOW);
 	// Устанавливаем тип авторизации прокси-сервера
 	// sample.authTypeProxy(auth_t::type_t::BASIC);
 	// sample.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);

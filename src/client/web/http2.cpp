@@ -2047,6 +2047,18 @@ void awh::client::Http2::multiThreads(const int16_t count, const bool mode) noex
 	else this->_threads = -1;
 }
 /**
+ * proxy Метод активации/деактивации прокси-склиента
+ * @param work флаг активации/деактивации прокси-клиента
+ */
+void awh::client::Http2::proxy(const client::scheme_t::work_t work) noexcept {
+	// Устанавливаем флаг активации/деактивации прокси-клиента
+	web2_t::proxy(work);
+	// Устанавливаем флаг активации/деактивации прокси-клиента для Websocket-клиента
+	this->_ws2.proxy(work);
+	// Устанавливаем флаг активации/деактивации прокси-клиента для HTTP-клиента
+	this->_http1.proxy(work);
+}
+/**
  * proxy Метод установки прокси-сервера
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
