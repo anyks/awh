@@ -393,11 +393,28 @@ void awh::client::Sample::stop() noexcept {
 	// Выполняем очистку буфера данных
 	this->_buffer.clear();
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
-		// Завершаем работу, если разрешено остановить
-		const_cast <client::core_t *> (this->_core)->stop();
+		// Если завершить работу разрешено
+		if(this->_complete && (this->_core != nullptr))
+			// Завершаем работу, если разрешено остановить
+			const_cast <client::core_t *> (this->_core)->stop();
+		// Если завершать работу запрещено, просто отключаемся
+		else {
+			/**
+			 * Если установлено постоянное подключение
+			 * нам нужно заблокировать автоматический реконнект.
+			 */
+			// Считываем значение флага
+			const bool alive = this->_scheme.alive;
+			// Выполняем отключение флага постоянного подключения
+			this->_scheme.alive = false;
+			// Выполняем отключение клиента
+			const_cast <client::core_t *> (this->_core)->close(this->_bid);
+			// Восстанавливаем предыдущее значение флага
+			this->_scheme.alive = alive;
+		}
 	}
 }
 /**

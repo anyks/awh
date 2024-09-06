@@ -157,8 +157,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.3.1
-	VER="3.3.1"
+	# Версия OpenSSL v3.3.2
+	VER="3.3.2"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*
@@ -391,7 +391,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src/build/cmake" || exit 1
 
 	# Версия LZ4
-	VER="1.9.4"
+	VER="1.10.0"
 
 	# Выполняем удаление предыдущей закаченной версии
 	git tag -d v${VER}
@@ -1288,7 +1288,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgHttp2
-	VER="1.62.1"
+	VER="1.63.0"
 
 	# Переключаемся на master
 	git checkout master
