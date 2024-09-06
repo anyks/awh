@@ -249,6 +249,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.proxy("https://user:password@host.com:port");
 	// awh.proxy("socks5://user:password@host.com:port");
 
+	// awh.proxy(client::scheme_t::work_t::ALLOW);
+	// awh.proxy(client::scheme_t::work_t::DISALLOW);
+
 	// awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
@@ -315,6 +318,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.proxy("http://user:password@host.com:port");
 	// awh.proxy("https://user:password@host.com:port");
 	// awh.proxy("socks5://user:password@host.com:port");
+
+	// awh.proxy(client::scheme_t::work_t::ALLOW);
+	// awh.proxy(client::scheme_t::work_t::DISALLOW);
 
 	// awh.authTypeProxy(auth_t::type_t::BASIC);
 	// awh.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
@@ -628,6 +634,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.proxy("http://user:password@host.com:port");
 	// ws.proxy("https://user:password@host.com:port");
 	// ws.proxy("socks5://user:password@host.com:port");
+
+	// ws.proxy(client::scheme_t::work_t::ALLOW);
+	// ws.proxy(client::scheme_t::work_t::DISALLOW);
 
 	// ws.authTypeProxy(auth_t::type_t::BASIC);
 	// ws.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
