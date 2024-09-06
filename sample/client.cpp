@@ -97,6 +97,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// core.easily(true);
 	// Отключаем валидацию сертификата
 	ssl.verify = false;
+	// Устанавливаем адрес сертификата
+	// ssl.ca = "./certs/ca.pem";
 	// Устанавливаем SSL сертификаты сервера
 	ssl.key  = "./certs/certificates/client-key.pem";
 	ssl.cert = "./certs/certificates/client-cert.pem";

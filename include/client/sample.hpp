@@ -155,6 +155,14 @@ namespace awh {
 				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
+				 * enableSSLEvent Метод активации зашифрованного канала SSL
+				 * @param url адрес сервера для которого выполняется активация зашифрованного канала SSL
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
+				 * @return    результат активации зашифрованного канала SSL
+				 */
+				bool enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid) noexcept;
+				/**
 				 * chunking Метод обработки получения чанков
 				 * @param bid   идентификатор брокера
 				 * @param chunk бинарный буфер чанка

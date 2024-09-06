@@ -3974,8 +3974,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 		// Устанавливаем тип приложения
 		target._type = type_t::CLIENT;
 		// Если объект фреймворка существует
-		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) &&
-		  ((!this->_cert.key.empty() && !this->_cert.pem.empty()) || this->encrypted(target))){
+		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && this->encrypted(target)){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */

@@ -115,6 +115,21 @@ void awh::client::Sample::readEvent(const char * buffer, const size_t size, cons
 	}
 }
 /**
+ * enableSSLEvent Метод активации зашифрованного канала SSL
+ * @param url адрес сервера для которого выполняется активация зашифрованного канала SSL
+ * @param bid идентификатор брокера
+ * @param sid идентификатор схемы сети
+ * @return    результат активации зашифрованного канала SSL
+ */
+bool awh::client::Sample::enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid) noexcept {
+	// Блокируем переменные которые не используем
+	(void) url;
+	(void) bid;
+	(void) sid;
+	// Выполняем проверку, выполняется подключение к серверу в защищённом рижеме или нет
+	return (this->_core->sonet() == scheme_t::sonet_t::TLS);
+}
+/**
  * chunking Метод обработки получения чанков
  * @param bid   идентификатор брокера
  * @param chunk бинарный буфер чанка
@@ -674,6 +689,8 @@ awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, cons
 	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
 	// Устанавливаем событие на подключение к прокси-серверу
 	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connectProxy", std::bind(&sample_t::proxyConnectEvent, this, _1, _2));
+	// Устанавливаем событие на активацию шифрованного SSL канала
+	const_cast <client::core_t *> (this->_core)->callback <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", std::bind(&sample_t::enableSSLEvent, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
 	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
 	// Устанавливаем событие на чтение данных с прокси-сервера

@@ -231,7 +231,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Получаем порт подключения клиента
 								broker->port(broker->_addr.port);
 								// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-								if((this->_callbacks.is("accept")) && !this->_callbacks.call <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
+								if(this->_callbacks.is("accept") && !this->_callbacks.call <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
 									// Если порт установлен
 									if(broker->port() > 0){
 										// Определяем тип протокола подключения
@@ -582,7 +582,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							// Получаем порт подключения клиента
 							broker->port(broker->_addr.port);
 							// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-							if((this->_callbacks.is("accept")) && !this->_callbacks.call <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
+							if(this->_callbacks.is("accept") && !this->_callbacks.call <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
 								// Если порт установлен
 								if(broker->port() > 0){
 									// Определяем тип протокола подключения

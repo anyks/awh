@@ -195,6 +195,8 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							if(this->_scheme.proxy.socks5.is(socks5_t::state_t::HANDSHAKE)){
 								// Выполняем переключение на работу с сервером
 								const_cast <client::core_t *> (this->_core)->switchProxy(bid);
+								// Выполняем запуск работы основного модуля
+								this->connectEvent(bid, sid);
 								// Завершаем работу
 								return;
 							// Если рукопожатие не выполнено
@@ -302,13 +304,13 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 								// Если запрос выполнен удачно
 								case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 									// Если защищённое подключение уже активированно
-									if(this->_scheme.proxy.type == client::proxy_t::type_t::HTTPS){
+									if(this->_scheme.proxy.type == client::proxy_t::type_t::HTTPS)
 										// Выполняем переключение на работу с сервером
 										this->_scheme.switchConnect();
-										// Выполняем запуск работы основного модуля
-										this->connectEvent(bid, sid);
 									// Выполняем переключение на работу с сервером
-									} else const_cast <client::core_t *> (this->_core)->switchProxy(bid);
+									else const_cast <client::core_t *> (this->_core)->switchProxy(bid);
+									// Выполняем запуск работы основного модуля
+									this->connectEvent(bid, sid);
 									// Завершаем работу
 									return;
 								} break;
