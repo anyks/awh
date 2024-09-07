@@ -237,16 +237,14 @@ void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t
 		switch(static_cast <uint8_t> (type)){
 			// Если событие является чтением
 			case static_cast <uint8_t> (event_type_t::READ): {
-				// Количество прочитанных байт
-				int32_t bytes = -1;
-				// Устанавливаем временное значение буфера
-				vector <char> buffer(sizeof(uint64_t), 0);
+				// Трансферный идентификатор
+				uint64_t tid = 0;
 				// Если чтение выполнено удачно
-				if((bytes = i->second.pipe->read(i->second.read, buffer.data(), buffer.size())) > 0){
+				if(i->second.pipe->read(i->second.read, reinterpret_cast <char *> (&tid), sizeof(tid)) == sizeof(tid)){
 					// Если функция обратного вызова существует
 					if(i->second.callback != nullptr)
 						// Выполняем функцию обратного вызова
-						i->second.callback();
+						i->second.callback(tid);
 				}
 			} break;
 			// Если событие является закрытием подключения
@@ -2376,8 +2374,9 @@ void awh::Base::eraseUpstream(const uint64_t sid) noexcept {
 /**
  * launchUpstream Метод запуска верхнеуровневого потока
  * @param sid идентификатор верхнеуровневого потока
+ * @param tid идентификатор трансферной передачи
  */
-void awh::Base::launchUpstream(const uint64_t sid) noexcept {
+void awh::Base::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept {
 	// Если метод запущен в основном потоке
 	if(!this->stream())
 		// Выводим сообщение об ошибке
@@ -2395,13 +2394,13 @@ void awh::Base::launchUpstream(const uint64_t sid) noexcept {
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Выполняем запись в сокет данных
-				i->second.pipe->write(i->second.write, reinterpret_cast <const char *> (&i->first), sizeof(i->first), i->second.pipe->port());
+				i->second.pipe->write(i->second.write, reinterpret_cast <const char *> (&tid), sizeof(tid), i->second.pipe->port());
 			/**
 			 * Для всех остальных операционных систем
 			 */
 			#else
 				// Выполняем запись в сокет данных
-				i->second.pipe->write(i->second.write, reinterpret_cast <const char *> (&i->first), sizeof(i->first));
+				i->second.pipe->write(i->second.write, reinterpret_cast <const char *> (&tid), sizeof(tid));
 			#endif
 		}
 	}
@@ -2411,7 +2410,7 @@ void awh::Base::launchUpstream(const uint64_t sid) noexcept {
  * @param callback функция обратного вызова
  * @return         идентификатор верхнеуровневого потока
  */
-uint64_t awh::Base::emplaceUpstream(function <void (void)> callback) noexcept {
+uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) noexcept {
 	// Результат работы функции
 	uint64_t result = 0;
 	// Если метод запущен в дочернем потоке

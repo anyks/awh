@@ -589,19 +589,20 @@ void awh::Core::eraseUpstream(const uint64_t sid) noexcept {
 /**
  * launchUpstream Метод запуска верхнеуровневого потока
  * @param sid идентификатор верхнеуровневого потока
+ * @param tid идентификатор трансферной передачи
  */
-void awh::Core::launchUpstream(const uint64_t sid) noexcept {
+void awh::Core::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем запуск верхнеуровневого потока
-	this->_dispatch.base->launchUpstream(sid);
+	this->_dispatch.base->launchUpstream(sid, tid);
 }
 /**
  * emplaceUpstream Метод создания верхнеуровневого потока
  * @param callback функция обратного вызова
  * @return         идентификатор верхнеуровневого потока
  */
-uint64_t awh::Core::emplaceUpstream(function <void (void)> callback) noexcept {
+uint64_t awh::Core::emplaceUpstream(function <void (const uint64_t)> callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем создание верхнеуровневого потока

@@ -313,14 +313,15 @@ namespace awh {
 			/**
 			 * launchUpstream Метод запуска верхнеуровневого потока
 			 * @param sid идентификатор верхнеуровневого потока
+			 * @param tid идентификатор трансферной передачи
 			 */
-			void launchUpstream(const uint64_t sid) noexcept;
+			void launchUpstream(const uint64_t sid, const uint64_t tid = 0) noexcept;
 			/**
 			 * emplaceUpstream Метод создания верхнеуровневого потока
 			 * @param callback функция обратного вызова
 			 * @return         идентификатор верхнеуровневого потока
 			 */
-			uint64_t emplaceUpstream(function <void (void)> callback) noexcept;
+			uint64_t emplaceUpstream(function <void (const uint64_t)> callback) noexcept;
 		public:
 			/**
 			 * Core Конструктор
