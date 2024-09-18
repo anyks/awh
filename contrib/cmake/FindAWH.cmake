@@ -50,8 +50,8 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     if(CMAKE_AWH_BUILD_DEBUG)
         # Выполняем проверку на существование зависимостей
         find_package_handle_standard_args(AWH REQUIRED_VARS
-            AWH_LIBRARY
             DEPEND_LIBRARY
+            AWH_LIBRARY
             LZ4_INCLUDE_DIR
             BZ2_INCLUDE_DIR
             ZSTD_INCLUDE_DIR
@@ -72,7 +72,7 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
             FAIL_MESSAGE "AWH library is not found"
         )
         # Формируем список библиотек
-        set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
+        set(AWH_LIBRARIES ${DEPEND_LIBRARY} ${AWH_LIBRARY})
     # Если режим отладки не активирован
     else()
         # Выполняем проверку на существование зависимостей
@@ -127,8 +127,8 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     if(CMAKE_AWH_BUILD_DEBUG)
         # Выполняем проверку на существование зависимостей
         find_package_handle_standard_args(AWH REQUIRED_VARS
-            AWH_LIBRARY
             DEPEND_LIBRARY
+            AWH_LIBRARY
             LZ4_INCLUDE_DIR
             BZ2_INCLUDE_DIR
             ZSTD_INCLUDE_DIR
@@ -146,7 +146,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
             FAIL_MESSAGE "AWH library is not found"
         )
         # Формируем список библиотек
-        set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
+        set(AWH_LIBRARIES ${DEPEND_LIBRARY} ${AWH_LIBRARY})
     # Если режим отладки не активирован
     else()
         # Выполняем проверку на существование зависимостей
@@ -192,8 +192,8 @@ else()
     if(CMAKE_AWH_BUILD_DEBUG)
         # Выполняем проверку на существование зависимостей
         find_package_handle_standard_args(AWH REQUIRED_VARS
-            AWH_LIBRARY
             DEPEND_LIBRARY
+            AWH_LIBRARY
             LZ4_INCLUDE_DIR
             BZ2_INCLUDE_DIR
             ZSTD_INCLUDE_DIR
@@ -212,7 +212,7 @@ else()
             FAIL_MESSAGE "AWH library is not found"
         )
         # Формируем список библиотек
-        set(AWH_LIBRARIES ${AWH_LIBRARY} ${DEPEND_LIBRARY})
+        set(AWH_LIBRARIES ${DEPEND_LIBRARY} ${AWH_LIBRARY})
     # Если режим отладки не активирован
     else()
         # Выполняем проверку на существование зависимостей
