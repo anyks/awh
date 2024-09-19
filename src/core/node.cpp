@@ -269,7 +269,7 @@ void awh::Node::emplace(const char * buffer, const size_t size, const uint64_t b
 				// Получаем размер данных который возможно скопировать
 				actual = ((this->_payloadSize >= (size - offset)) ? (size - offset) : this->_payloadSize);
 				// Выполняем копирование буфера полезной нагрузки
-				::memcpy(payload.data.get(), buffer + offset, size - offset);
+				::memcpy(payload.data.get(), buffer + offset, actual);
 				// Выполняем смещение в буфере
 				offset += actual;
 				// Увеличиваем смещение в буфере полезной нагрузки
