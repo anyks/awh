@@ -248,6 +248,12 @@ namespace awh {
 			void upstream(const uint64_t sid, const SOCKET fd, const event_type_t type) noexcept;
 		private:
 			/**
+			 * del Метод удаления файлового дескриптора из базы событий
+			 * @param fd файловый дескриптор для удаления
+			 * @return   результат работы функции
+			 */
+			bool del(const SOCKET fd) noexcept;
+			/**
 			 * del Метод удаления файлового дескриптора из базы событий для всех событий
 			 * @param id идентификатор записи
 			 * @param fd файловый дескриптор для удаления

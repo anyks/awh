@@ -258,6 +258,144 @@ void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t
 	}
 }
 /**
+ * del Метод удаления файлового дескриптора из базы событий
+ * @param fd файловый дескриптор для удаления
+ * @return   результат работы функции
+ */
+bool awh::Base::del(const SOCKET fd) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем блокировку чтения базы событий
+			this->_locker = true;
+			// Выполняем поиск файлового дескриптора из списка событий
+			for(auto j = this->_fds.begin(); j != this->_fds.end(); ++j){
+				// Если файловый дескриптор найден
+				if(j->fd == fd){
+					// Очищаем полученное событие
+					j->revents = 0;
+					// Выполняем закрытие подключения
+					::closesocket(j->fd);
+					// Выполняем сброс файлового дескриптора
+					j->fd = INVALID_SOCKET;
+					// Выполняем удаление события из списка отслеживания
+					this->_fds.erase(j);
+					// Выходим из цикла
+					break;
+				}
+			}
+			// Выполняем разблокировку чтения базы событий
+			this->_locker = false;
+		/**
+		 * Если это Linux
+		 */
+		#elif __linux__
+			// Флаг удалённого события из базы событий
+			bool erased = false;
+			// Выполняем блокировку чтения базы событий
+			this->_locker = true;
+			// Выполняем поиск файлового дескриптора из списка событий
+			for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
+				// Если файловый дескриптор найден
+				if(reinterpret_cast <item_t *> (j->data.ptr)->fd == fd){
+					// Выполняем изменение параметров события
+					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, &(* j)) == 0);
+					// Выполняем закрытие подключения
+					::close(fd);
+					// Выполняем удаление события из списка отслеживания
+					this->_events.erase(j);
+					// Выходим из цикла
+					break;
+				}
+			}
+			// Выполняем поиск файлового дескриптора из списка изменений
+			for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
+				// Если файловый дескриптор найден
+				if(reinterpret_cast <item_t *> (j->data.ptr)->fd == fd){
+					// Если событие ещё не удалено из базы событий
+					if(!erased){
+						// Выполняем изменение параметров события
+						result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, &(* j)) == 0);
+						// Выполняем закрытие подключения
+						::close(fd);
+					}
+					// Выполняем удаление события из списка изменений
+					this->_change.erase(j);
+					// Выходим из цикла
+					break;
+				}
+			}
+			// Если удаление не выполненно
+			if(!result){
+				// Выполняем изменение параметров события
+				result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, nullptr) == 0);
+				// Выполняем закрытие подключения
+				::close(fd);
+			}
+			// Выполняем разблокировку чтения базы событий
+			this->_locker = false;
+		/**
+		 * Если это FreeBSD или MacOS X
+		 */
+		#elif __APPLE__ || __MACH__ || __FreeBSD__
+			// Флаг удалённого события из базы событий
+			bool erased = false;
+			// Выполняем блокировку чтения базы событий
+			this->_locker = true;
+			// Выполняем поиск файлового дескриптора из списка событий
+			for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
+				// Если файловый дескриптор найден
+				if((erased = (j->ident == fd))){
+					// Выполняем удаление объекта события
+					EV_SET(&(* j), j->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
+					// Выполняем закрытие подключения
+					::close(j->ident);
+					// Выполняем удаление события из списка отслеживания
+					this->_events.erase(j);
+					// Выходим из цикла
+					break;
+				}
+			}
+			// Выполняем поиск файлового дескриптора из списка изменений
+			for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
+				// Если файловый дескриптор найден
+				if(j->ident == fd){
+					// Если событие ещё не удалено из базы событий
+					if(!erased){
+						// Выполняем удаление объекта события
+						EV_SET(&(* j), j->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
+						// Выполняем закрытие подключения
+						::close(j->ident);
+					}
+					// Выполняем удаление события из списка изменений
+					this->_change.erase(j);
+					// Выходим из цикла
+					break;
+				}
+			}
+			// Выполняем разблокировку чтения базы событий
+			this->_locker = false;
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("Del event in event base: %s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * del Метод удаления файлового дескриптора из базы событий для всех событий
  * @param id идентификатор записи
  * @param fd файловый дескриптор для удаления
@@ -1878,7 +2016,8 @@ void awh::Base::start() noexcept {
 												}
 												// Удаляем файловый дескриптор из базы событий
 												this->del(j->second.id, fd);
-											}
+											// Выполняем удаление фантомного файлового дескриптора
+											} else this->del(fd);
 										}
 									// Выходим из цикла
 									} else break;
@@ -2028,7 +2167,8 @@ void awh::Base::start() noexcept {
 													}
 													// Удаляем файловый дескриптор из базы событий
 													this->del(i->second.id, i->second.fd);
-												}
+												// Выполняем удаление фантомного файлового дескриптора
+												} else this->del(fd);
 											}
 										// Если файловый дескриптор не нулевой
 										} else if(this->_events.at(i).data.fd > 0)
@@ -2205,7 +2345,8 @@ void awh::Base::start() noexcept {
 													}
 													// Удаляем файловый дескриптор из базы событий
 													this->del(j->second.id, j->second.fd);
-												}
+												// Выполняем удаление фантомного файлового дескриптора
+												} else this->del(fd);
 											}
 										// Если файловый дескриптор не нулевой
 										} else if(this->_events.at(i).ident > 0)
