@@ -310,7 +310,7 @@ vector <char> awh::Hash::lzma(const char * buffer, const size_t size, const even
 	return result;
 }
 /**
- * zstd Метод работы с компрессором ZStd
+ * zstd Метод работы с компрессором Zstandard
  * @param buffer буфер данных для компрессии
  * @param size   размер данных для компрессии
  * @param event  событие выполнения операции
@@ -330,7 +330,7 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 				// Если размер выделен
 				if(actual == 0){
 					// Выводим сообщение об ошибке
-					this->_log->print("ZStd: %s", log_t::flag_t::WARNING, "compress failed");
+					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, "compress failed");
 					// Выходим из функции
 					return vector <char> ();
 				}
@@ -341,7 +341,7 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 				// Если мы получили ошибку
 				if(::ZSTD_isError(actual)){
 					// Выводим сообщение об ошибке
-					this->_log->print("ZStd: %s", log_t::flag_t::WARNING, "compress failed");
+					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(actual));
 					// Выходим из функции
 					return vector <char> ();
 				}
@@ -350,14 +350,70 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 			} break;
 			// Если необходимо выполнить декомпрессию данных
 			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+				// Выполняем создание контекста потока
+				ZSTD_DStream * ctx = ::ZSTD_createDStream();
+				// Если контекст потока создан
+				if(ctx == nullptr){
+					// Выводим сообщение об ошибке
+					this->_log->print("Zstandard: %s", log_t::flag_t::CRITICAL, "unable to create DStream");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Выполняем инициализацию потока
+				size_t status = ::ZSTD_initDStream(ctx);
+				// Если мы получили ошибку инициализации
+				if(::ZSTD_isError(status)){
+					// Выполняем удаление потока
+					::ZSTD_freeDStream(ctx);
+					// Выводим сообщение об ошибке
+					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Инициализируем переменные смещения в буфере и актуальный размер данных
+				size_t offset = 0, actual = 0;
+				// Получаем длину итогового буфера данных
+				const size_t length = ::ZSTD_DStreamOutSize();
+				// Выполняем инициализацию итогового буфера данных
+				const auto data = std::make_unique <char []> (length);
+				// Выполняем обработку всех входящих данных
+				while(offset < size){
+					// Определяем актуальный размер данных
+					actual = (((size - offset) > static_cast <size_t> (::ZSTD_DStreamInSize())) ? static_cast <size_t> (::ZSTD_DStreamInSize()) : (size - offset));
+					// Выполняем создание буфера данных для входящих сжатых данных
+					ZSTD_inBuffer input = {buffer + offset, actual, 0};
+					// Выполняем обработку до тех пор пока все не обработаем
+					while(input.pos < input.size){
+						// Выполняем создание буфера исходящих данных
+						ZSTD_outBuffer output = {data.get(), length, 0};
+						// Выполняем декомпрессию полученных данных
+						status = ::ZSTD_decompressStream(ctx, &output, &input);
+						// Если мы получили ошибку инициализации
+						if(::ZSTD_isError(status)){
+							// Выполняем удаление потока
+							::ZSTD_freeDStream(ctx);
+							// Выводим сообщение об ошибке
+							this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+							// Выходим из функции
+							return vector <char> ();
+						}
+						// Выполняем формирование полученных данных
+						result.insert(result.end(), data.get(), data.get() + output.pos);
+					}
+					// Увеличиваем смещение в исходном буфере необработанных данных
+					offset += actual;
+				}
+				// Выполняем удаление потока
+				::ZSTD_freeDStream(ctx);
+				/*
 				// Получаем размер будущего фрейма (определяем размер контента)
 				size_t actual = ::ZSTD_getFrameContentSize(buffer, size);
 				// Если размер контента не получен или неизвестен
 				if((actual == 0) || (actual == ZSTD_CONTENTSIZE_UNKNOWN) || (actual == ZSTD_CONTENTSIZE_ERROR)){
+					// Выполняем перерасчёт итогового размера
+					actual = (size * 5);
 					// Выводим сообщение об ошибке
-					this->_log->print("ZStd: %s", log_t::flag_t::WARNING, "decompress failed");
-					// Выходим из функции
-					return vector <char> ();
+					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, "final buffer size is not defined");
 				}
 				// Выделяем буфер памяти нужного нам размера
 				result.resize(actual, 0);
@@ -366,12 +422,13 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 				// Если мы получили ошибку
 				if(::ZSTD_isError(actual)){
 					// Выводим сообщение об ошибке
-					this->_log->print("ZStd: %s", log_t::flag_t::WARNING, "decompress failed");
+					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(actual));
 					// Выходим из функции
 					return vector <char> ();
 				}
 				// Корректируем размер результирующего буфера
 				result.resize(actual);
+				*/
 			} break;
 		}
 	}
@@ -947,9 +1004,9 @@ vector <char> awh::Hash::compress(const char * buffer, const size_t size, const 
 		case static_cast <uint8_t> (method_t::LZMA):
 			// Выполняем компрессию данных методом LZma
 			return this->lzma(buffer, size, event_t::COMPRESS);
-		// Если метод компрессии установлен ZStd
+		// Если метод компрессии установлен Zstandard
 		case static_cast <uint8_t> (method_t::ZSTD):
-			// Выполняем компрессию данных методом ZStd
+			// Выполняем компрессию данных методом Zstandard
 			return this->zstd(buffer, size, event_t::COMPRESS);
 		// Если метод компрессии установлен GZip
 		case static_cast <uint8_t> (method_t::GZIP):
@@ -993,9 +1050,9 @@ vector <char> awh::Hash::decompress(const char * buffer, const size_t size, cons
 		case static_cast <uint8_t> (method_t::LZMA):
 			// Выполняем декомпрессию данных методом LZma
 			return this->lzma(buffer, size, event_t::DECOMPRESS);
-		// Если метод декомпрессии установлен ZStd
+		// Если метод декомпрессии установлен Zstandard
 		case static_cast <uint8_t> (method_t::ZSTD):
-			// Выполняем декомпрессию данных методом ZStd
+			// Выполняем декомпрессию данных методом Zstandard
 			return this->zstd(buffer, size, event_t::DECOMPRESS);
 		// Если метод декомпрессии установлен GZip
 		case static_cast <uint8_t> (method_t::GZIP):
@@ -1070,7 +1127,7 @@ void awh::Hash::level(const level_t level) noexcept {
 			this->_level[0] = 0;
 			// Выполняем установку уровня компрессии GZip
 			this->_level[1] = Z_BEST_COMPRESSION;
-			// Выполняем установку уровня максимальной компрессии ZStd
+			// Выполняем установку уровня максимальной компрессии Zstandard
 			this->_level[2] = 100;
 		} break;
 		// Выполняем установку уровень компрессии на максимальную производительность
@@ -1079,7 +1136,7 @@ void awh::Hash::level(const level_t level) noexcept {
 			this->_level[0] = 3;
 			// Выполняем установку уровня компрессии GZip
 			this->_level[1] = Z_BEST_SPEED;
-			// Выполняем установку уровня максимальной компрессии ZStd
+			// Выполняем установку уровня максимальной компрессии Zstandard
 			this->_level[2] = ZSTD_CLEVEL_DEFAULT;
 		} break;
 		// Выполняем установку нормального уровня компрессии
@@ -1088,7 +1145,7 @@ void awh::Hash::level(const level_t level) noexcept {
 			this->_level[0] = 1;
 			// Выполняем установку уровня компрессии GZip
 			this->_level[1] = Z_DEFAULT_COMPRESSION;
-			// Выполняем установку уровня максимальной компрессии ZStd
+			// Выполняем установку уровня максимальной компрессии Zstandard
 			this->_level[2] = 22;
 		} break;
 	}

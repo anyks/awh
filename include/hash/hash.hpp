@@ -38,7 +38,7 @@
 #include <zlib.h>
 
 /**
- * Подключаем ZStd
+ * Подключаем Zstandard
 */
 #include <zstd.h>
 
@@ -126,7 +126,7 @@ namespace awh {
 				NONE    = 0x00, // Метод сжатия не установлен
 				LZ4     = 0x01, // Метод сжатия Lz4
 				LZMA    = 0x02, // Метод сжатия LZma
-				ZSTD    = 0x03, // Метод сжатия ZStd
+				ZSTD    = 0x03, // Метод сжатия Zstandard
 				GZIP    = 0x04, // Метод сжатия GZip
 				BZIP2   = 0x05, // Метод сжания BZip2
 				BROTLI  = 0x06, // Метод сжатия Brotli
@@ -225,7 +225,7 @@ namespace awh {
 			 */
 			vector <char> lzma(const char * buffer, const size_t size, const event_t event) noexcept;
 			/**
-			 * zstd Метод работы с компрессором ZStd
+			 * zstd Метод работы с компрессором Zstandard
 			 * @param buffer буфер данных для компрессии
 			 * @param size   размер данных для компрессии
 			 * @param event  событие выполнения операции
