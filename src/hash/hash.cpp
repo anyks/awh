@@ -325,6 +325,79 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 		switch(static_cast <uint8_t> (event)){
 			// Если необходимо выполнить компрессию данных
 			case static_cast <uint8_t> (event_t::COMPRESS): {
+				// Выполняем создание контекста потока
+				ZSTD_CStream * ctx = ::ZSTD_createCStream();
+				// Если контекст потока создан
+				if(ctx == nullptr){
+					// Выводим сообщение об ошибке
+					this->_log->print("Zstandard: %s", log_t::flag_t::CRITICAL, "unable to create CStream");
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Выполняем инициализацию потока
+				size_t status = ::ZSTD_initCStream(ctx, this->_level[2]);
+				// Если мы получили ошибку инициализации
+				if(::ZSTD_isError(status)){
+					// Выполняем удаление потока
+					::ZSTD_freeCStream(ctx);
+					// Выводим сообщение об ошибке
+					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Инициализируем переменные смещения в буфере и актуальный размер данных
+				size_t offset = 0, actual = 0;
+				// Получаем длину итогового буфера данных
+				const size_t length = ::ZSTD_CStreamOutSize();
+				// Выполняем инициализацию итогового буфера данных
+				const auto data = std::make_unique <char []> (length);
+				// Выполняем создание буфера исходящих данных
+				ZSTD_outBuffer output = {data.get(), length, 0};
+				// Выполняем обработку всех входящих данных
+				while(offset < size){
+					// Определяем актуальный размер данных
+					actual = (((size - offset) > static_cast <size_t> (::ZSTD_CStreamInSize())) ? static_cast <size_t> (::ZSTD_CStreamInSize()) : (size - offset));
+					// Выполняем создание буфера данных для входящих сжатых данных
+					ZSTD_inBuffer input = {buffer + offset, actual, 0};
+					// Выполняем обработку до тех пор пока все не обработаем
+					while(input.pos < input.size){
+						// Сбрасываем позицию буфера
+						output.pos = 0;
+						// Выполняем компрессию полученных данных
+						status = ::ZSTD_compressStream(ctx, &output, &input);
+						// Если мы получили ошибку инициализации
+						if(::ZSTD_isError(status)){
+							// Выполняем удаление потока
+							::ZSTD_freeCStream(ctx);
+							// Выводим сообщение об ошибке
+							this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+							// Выходим из функции
+							return vector <char> ();
+						}
+						// Выполняем формирование полученных данных
+						result.insert(result.end(), data.get(), data.get() + output.pos);
+					}
+					// Увеличиваем смещение в исходном буфере необработанных данных
+					offset += actual;
+				}
+				// Сбрасываем позицию буфера
+				output.pos = 0;
+				// Завершаем поток
+				status = ::ZSTD_endStream(ctx, &output);
+				// Если мы получили ошибку инициализации
+				if(::ZSTD_isError(status)){
+					// Выполняем удаление потока
+					::ZSTD_freeCStream(ctx);
+					// Выводим сообщение об ошибке
+					this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+					// Выходим из функции
+					return vector <char> ();
+				}
+				// Выполняем формирование полученных данных
+				result.insert(result.end(), data.get(), data.get() + output.pos);
+				// Выполняем удаление потока
+				::ZSTD_freeCStream(ctx);
+				/*
 				// Выполняем получение размер результирующего буфера
 				size_t actual = ::ZSTD_compressBound(size);
 				// Если размер выделен
@@ -347,6 +420,7 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 				}
 				// Корректируем размер результирующего буфера
 				result.resize(actual);
+				*/
 			} break;
 			// Если необходимо выполнить декомпрессию данных
 			case static_cast <uint8_t> (event_t::DECOMPRESS): {
@@ -376,6 +450,8 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 				const size_t length = ::ZSTD_DStreamOutSize();
 				// Выполняем инициализацию итогового буфера данных
 				const auto data = std::make_unique <char []> (length);
+				// Выполняем создание буфера исходящих данных
+				ZSTD_outBuffer output = {data.get(), length, 0};
 				// Выполняем обработку всех входящих данных
 				while(offset < size){
 					// Определяем актуальный размер данных
@@ -384,8 +460,8 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 					ZSTD_inBuffer input = {buffer + offset, actual, 0};
 					// Выполняем обработку до тех пор пока все не обработаем
 					while(input.pos < input.size){
-						// Выполняем создание буфера исходящих данных
-						ZSTD_outBuffer output = {data.get(), length, 0};
+						// Сбрасываем позицию буфера
+						output.pos = 0;
 						// Выполняем декомпрессию полученных данных
 						status = ::ZSTD_decompressStream(ctx, &output, &input);
 						// Если мы получили ошибку инициализации
