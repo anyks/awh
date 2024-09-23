@@ -40,7 +40,7 @@ namespace awh {
 		/**
 		 * Http1 Класс HTTP-сервера
 		 */
-		typedef class Http1 : public web_t {
+		typedef class AWHSHARED_EXPORT Http1 : public web_t {
 			private:
 				/**
 				 * Http2 Устанавливаем дружбу с классом HTTP/2 сервера

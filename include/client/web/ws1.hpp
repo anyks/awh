@@ -49,7 +49,7 @@ namespace awh {
 		/**
 		 * Websocket1 Класс Websocket-клиента
 		 */
-		typedef class Websocket1 : public web_t {
+		typedef class AWHSHARED_EXPORT Websocket1 : public web_t {
 			private:
 				/**
 				 * Http1 Устанавливаем дружбу с классом HTTP/1.1 клиента

@@ -42,7 +42,7 @@ namespace awh {
 		/**
 		 * Websocket2 Класс Websocket-клиента
 		 */
-		typedef class Websocket2 : public web2_t {
+		typedef class AWHSHARED_EXPORT Websocket2 : public web2_t {
 			private:
 				/**
 				 * Http2 Устанавливаем дружбу с классом HTTP/2 клиента

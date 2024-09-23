@@ -36,7 +36,7 @@ namespace awh {
 		/**
 		 * Http2 Класс HTTP2-клиента
 		 */
-		typedef class Http2 : public web2_t {
+		typedef class AWHSHARED_EXPORT Http2 : public web2_t {
 			private:
 				/**
 				 * Service Структура сервиса

@@ -48,7 +48,7 @@ namespace awh {
 		/**
 		 * Web Базовый класс web-сервера
 		 */
-		typedef class Web {
+		typedef class AWHSHARED_EXPORT Web {
 			public:
 				/**
 				 * Режим работы клиента
