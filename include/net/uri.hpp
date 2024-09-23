@@ -298,7 +298,7 @@ namespace awh {
 	 * @param os  поток куда нужно вывести данные
 	 * @param url параметры URL-запроса
 	 */
-	ostream & operator << (ostream & os, const uri_t::url_t & url) noexcept;
+	AWHSHARED_EXPORT ostream & operator << (ostream & os, const uri_t::url_t & url) noexcept;
 };
 
 #endif // __AWH_URI__

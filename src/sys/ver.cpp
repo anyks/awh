@@ -1,6 +1,6 @@
 /**
  * @file: ver.cpp
- * @date: 2023-12-21
+ * @date: 2024-01-27
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev
@@ -8,39 +8,44 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2023
+ * @copyright: Copyright © 2024
  */
 
 // Подключаем заголовочный файл
 #include <sys/ver.hpp>
 
 /**
- * dump Метод извлечения версии в виде числа
+ * num Метод извлечения версии в виде числа
  * @return версия в виде числа
  */
 uint32_t awh::Version::num() const noexcept {
 	// Выводим версию в виде числа
-	return this->_data;
+	return this->_version;
 }
 /**
- * get Метод извлечения версии
- * @return версия в виде строки
+ * str Метод извлечения версии в виде строки
+ * @param octets количество октетов
+ * @return       версия в виде строки
  */
-string awh::Version::get() const noexcept {
+string awh::Version::str(const uint8_t octets) const noexcept {
 	// Результат работы функции
 	string result = "";
-	// Создаём временный контейнер числа
-	uint8_t buffer[3];
-	// Выполняем копирование данных в буфер
-	memcpy(buffer, &this->_data, sizeof(buffer));
+	// Если количество октетов не указанно
+	if(octets == 0)
+		// Выполняем корректировку
+		const_cast <uint8_t &> (octets) = 1;
+	// Если октетов больше 4-х
+	else if(octets > 4)
+		// Выполняем корректировку
+		const_cast <uint8_t &> (octets) = 4;
 	// Переходим по всему массиву
-	for(uint8_t i = 0; i < sizeof(buffer); i++){
+	for(uint8_t i = 0; i < octets; i++){
 		// Если строка уже существует, добавляем разделитель
 		if(!result.empty())
 			// Добавляем разделитель
 			result.append(1, '.');
 		// Добавляем октет в версию
-		result.append(to_string(buffer[i]));
+		result.append(std::to_string(reinterpret_cast <const uint8_t *> (&this->_version)[i]));
 	}
 	// Выводим результат
 	return result;
@@ -49,35 +54,37 @@ string awh::Version::get() const noexcept {
  * set Метод установки версии
  * @param ver устанавливаемая версия
  */
-void awh::Version::set(const string & ver) noexcept {
-	// Если версия передана
-	if(!ver.empty()){
-		// Создаём временный контейнер числа
-		uint8_t buffer[3];
-		// Позиция разделителя
-		size_t start = 0, stop = 0, index = 0;
-		// Выполняем поиск разделителя
-		while((stop = ver.find('.', start)) != string::npos){
-			// Извлекаем полученное число
-			buffer[index] = std::stoi(ver.substr(start, stop));
-			// Выполняем смещение
-			start = (stop + 1);
-			// Увеличиваем смещение индекса
-			index++;
-		}
-		// Выполняем установку последнего октета
-		buffer[index] = std::stoi(ver.substr(start));
-		// Устанавливаем версию приложения
-		memcpy(&this->_data, buffer, sizeof(buffer));
-	}
+void awh::Version::set(const uint32_t ver) noexcept {
+	// Устанавливаем версию в виде числа
+	this->_version = ver;
 }
 /**
  * set Метод установки версии
  * @param ver устанавливаемая версия
  */
-void awh::Version::set(const uint32_t ver) noexcept {
-	// Устанавливаем версию в виде числа
-	this->_data = ver;
+void awh::Version::set(const string & ver) noexcept {
+	// Если версия передана
+	if(!ver.empty()){
+		// Выполняем сброс версии
+		this->_version = 0;
+		// Позиция разделителя
+		size_t start = 0, stop = 0, index = 0;
+		// Выполняем поиск разделителя
+		while((stop = ver.find('.', start)) != string::npos){
+			// Извлекаем полученное число
+			reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (std::stoi(ver.substr(start, stop)));
+			// Выполняем смещение
+			start = (stop + 1);
+			// Увеличиваем смещение индекса
+			index++;
+			// Если индекс перешёл диапазон, выходим
+			if(index > 3)
+				// Выходим из цикла
+				break;
+		}
+		// Выполняем установку последнего октета
+		reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (std::stoi(ver.substr(start)));
+	}
 }
 /**
  * Оператор вывода версии в качестве числа
@@ -93,7 +100,7 @@ awh::Version::operator uint32_t() const noexcept {
  */
 awh::Version::operator std::string() const noexcept {
 	// Выводим данные версии в виде строки
-	return this->get();
+	return this->str();
 }
 /**
  * Оператор [<] сравнения версии
@@ -102,7 +109,7 @@ awh::Version::operator std::string() const noexcept {
  */
 bool awh::Version::operator < (const ver_t & ver) const noexcept {
 	// Выводим результат
-	return (this->_data < ver._data);
+	return (this->_version < ver._version);
 }
 /**
  * Оператор [>] сравнения версии
@@ -111,7 +118,7 @@ bool awh::Version::operator < (const ver_t & ver) const noexcept {
  */
 bool awh::Version::operator > (const ver_t & ver) const noexcept {
 	// Выводим результат
-	return (this->_data > ver._data);
+	return (this->_version > ver._version);
 }
 /**
  * Оператор [<=] сравнения версии
@@ -120,7 +127,7 @@ bool awh::Version::operator > (const ver_t & ver) const noexcept {
  */
 bool awh::Version::operator <= (const ver_t & ver) const noexcept {
 	// Выводим результат
-	return (this->_data <= ver._data);
+	return (this->_version <= ver._version);
 }
 /**
  * Оператор [>=] сравнения версии
@@ -129,7 +136,7 @@ bool awh::Version::operator <= (const ver_t & ver) const noexcept {
  */
 bool awh::Version::operator >= (const ver_t & ver) const noexcept {
 	// Выводим результат
-	return (this->_data >= ver._data);
+	return (this->_version >= ver._version);
 }
 /**
  * Оператор [!=] сравнения версии
@@ -138,7 +145,7 @@ bool awh::Version::operator >= (const ver_t & ver) const noexcept {
  */
 bool awh::Version::operator != (const ver_t & ver) const noexcept {
 	// Выводим результат
-	return (this->_data != ver._data);
+	return (this->_version != ver._version);
 }
 /**
  * Оператор [==] сравнения версии
@@ -147,7 +154,7 @@ bool awh::Version::operator != (const ver_t & ver) const noexcept {
  */
 bool awh::Version::operator == (const ver_t & ver) const noexcept {
 	// Выводим результат
-	return (this->_data == ver._data);
+	return (this->_version == ver._version);
 }
 /**
  * Оператор [=] присвоения версии
@@ -167,7 +174,7 @@ awh::Version & awh::Version::operator = (const string & ver) noexcept {
  */
 awh::Version & awh::Version::operator = (const uint32_t ver) noexcept {
 	// Устанавливаем версию
-	this->_data = ver;
+	this->_version = ver;
 	// Выводим результат
 	return (* this);
 }
@@ -195,7 +202,7 @@ istream & awh::operator >> (istream & is, ver_t & ver) noexcept {
  */
 ostream & awh::operator << (ostream & os, const ver_t & ver) noexcept {
 	// Записываем в поток версию
-	os << ver.get();
+	os << ver.str();
 	// Выводим результат
 	return os;
 }

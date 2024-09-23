@@ -1,6 +1,6 @@
 /**
  * @file: ver.hpp
- * @date: 2023-12-21
+ * @date: 2024-01-27
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev
@@ -8,14 +8,14 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2023
+ * @copyright: Copyright © 2024
  */
 
 #ifndef __AWH_VERSION__
 #define __AWH_VERSION__
 
 /**
- * Стандартные модули
+ * Стандартная библиотека
  */
 #include <string>
 #include <cstring>
@@ -41,29 +41,31 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Version {
 		private:
 			// Данные версии
-			uint32_t _data;
+			uint32_t _version;
 		public:
 			/**
-			 * dump Метод извлечения версии в виде числа
+			 * num Метод извлечения версии в виде числа
 			 * @return версия в виде числа
 			 */
 			uint32_t num() const noexcept;
 		public:
 			/**
-			 * get Метод извлечения версии
-			 * @return версия в виде строки
+			 * str Метод извлечения версии в виде строки
+			 * @param octets количество октетов
+			 * @return      версия в виде строки
 			 */
-			string get() const noexcept;
-			/**
-			 * set Метод установки версии
-			 * @param ver устанавливаемая версия
-			 */
-			void set(const string & ver) noexcept;
+			string str(const uint8_t octets = 3) const noexcept;
+		public:
 			/**
 			 * set Метод установки версии
 			 * @param ver устанавливаемая версия
 			 */
 			void set(const uint32_t ver) noexcept;
+			/**
+			 * set Метод установки версии
+			 * @param ver устанавливаемая версия
+			 */
+			void set(const string & ver) noexcept;
 		public:
 			/**
 			 * Оператор вывода версии в качестве числа
@@ -129,12 +131,12 @@ namespace awh {
 			/**
 			 * Version Конструктор
 			 */
-			Version() noexcept : _data(0) {}
+			Version() noexcept : _version(0) {}
 			/**
 			 * Version Конструктор
 			 * @param ver устанавливаемая версия
 			 */
-			Version(const string & ver) noexcept : _data(0) {
+			Version(const string & ver) noexcept : _version(0) {
 				// Устанавливаем версию
 				this->set(ver);
 			}
@@ -142,7 +144,7 @@ namespace awh {
 			 * Version Конструктор
 			 * @param ver устанавливаемая версия
 			 */
-			Version(const uint32_t ver) noexcept : _data(0) {
+			Version(const uint32_t ver) noexcept : _version(0) {
 				// Устанавливаем версию
 				this->set(ver);
 			}
@@ -152,13 +154,13 @@ namespace awh {
 	 * @param is  поток для чтения
 	 * @param ver верси для присвоения
 	 */
-	istream & operator >> (istream & is, ver_t & ver) noexcept;
+	AWHSHARED_EXPORT istream & operator >> (istream & is, ver_t & ver) noexcept;
 	/**
 	 * Оператор [<<] вывода в поток версии
 	 * @param os  поток куда нужно вывести данные
 	 * @param ver верси для присвоения
 	 */
-	ostream & operator << (ostream & os, const ver_t & ver) noexcept;
+	AWHSHARED_EXPORT ostream & operator << (ostream & os, const ver_t & ver) noexcept;
 };
 
 #endif // __AWH_VERSION__
