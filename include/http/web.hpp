@@ -45,7 +45,7 @@ namespace awh {
 	/**
 	 * Web Класс для работы с парсером HTTP
 	 */
-	typedef class Web {
+	typedef class AWHSHARED_EXPORT Web {
 		public:
 			/**
 			 * Тип используемого HTTP-модуля

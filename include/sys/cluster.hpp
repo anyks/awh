@@ -114,7 +114,7 @@ namespace awh {
 			/**
 			 * Worker Класс воркера
 			 */
-			typedef class Worker {
+			typedef class AWHSHARED_EXPORT Worker {
 				private:
 					/**
 					 * Data Структура выводимых данных

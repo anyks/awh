@@ -136,7 +136,7 @@ namespace awh {
 			/**
 			 * Broker Класс брокера подключения
 			 */
-			typedef class Broker {
+			typedef class AWHSHARED_EXPORT Broker {
 				private:
 					// Мютекс для блокировки потока
 					mutex _mtx;
