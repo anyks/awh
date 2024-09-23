@@ -47,7 +47,7 @@ namespace awh {
 	/**
 	 * FN Класс работы с функциями
 	 */
-	typedef class FN {
+	typedef class AWHSHARED_EXPORT FN {
 		public:
 			/**
 			 * Основные события для функций обратного вызова

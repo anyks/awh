@@ -35,7 +35,7 @@ namespace awh {
 		/**
 		 * WS Класс для работы с сервером WebSocket
 		 */
-		typedef class WS : public ws_core_t {
+		typedef class AWHSHARED_EXPORT WS : public ws_core_t {
 			public:
 				/**
 				 * commit Метод применения полученных результатов

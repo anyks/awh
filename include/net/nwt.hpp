@@ -38,7 +38,7 @@ namespace awh {
 	/**
 	 * NWT Структура списка параметров URI
 	 */
-	typedef class NWT {
+	typedef class AWHSHARED_EXPORT NWT {
 		public:
 			// Типы n-грамм
 			enum class types_t : uint8_t {

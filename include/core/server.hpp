@@ -37,7 +37,7 @@ namespace awh {
 		/**
 		 * Core Класс серверного сетевого ядра
 		 */
-		typedef class Core : public awh::node_t {
+		typedef class AWHSHARED_EXPORT Core : public awh::node_t {
 			public:
 				/**
 				 * Коды ошибок клиента

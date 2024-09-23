@@ -45,7 +45,7 @@ namespace awh {
 	/**
 	 * Http Класс для работы с REST
 	 */
-	typedef class Http {
+	typedef class AWHSHARED_EXPORT Http {
 		public:
 			/**
 			 * Флаги наборов

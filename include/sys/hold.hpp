@@ -22,6 +22,11 @@
 #include <mutex>
 #include <stack>
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Устанавливаем область видимости
 using namespace std;
 
@@ -37,7 +42,7 @@ namespace awh {
 	/**
 	 * Holder Класс холдера
 	 */
-	class Holder {
+	class AWHSHARED_EXPORT Holder {
 		private:
 			// Флаг холдирования
 			bool _flag;

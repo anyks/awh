@@ -40,7 +40,7 @@ namespace awh {
 	/**
 	 * Core Класс ядра биндинга TCP/IP
 	 */
-	typedef class Core {
+	typedef class AWHSHARED_EXPORT Core {
 		private:
 			/**
 			 * Scheme Устанавливаем дружбу с схемой сети

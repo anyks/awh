@@ -48,7 +48,7 @@ namespace awh {
 	/**
 	 * Net Класс для работы с сетями
 	 */
-	typedef class Net {
+	typedef class AWHSHARED_EXPORT Net {
 		public:
 			/**
 			 * Режим дислокации IP-адреса

@@ -96,7 +96,7 @@ namespace awh {
 	/**
 	 * Socket Класс работы с сетевыми сокетами
 	 */
-	typedef class Socket {
+	typedef class AWHSHARED_EXPORT Socket {
 		public:
 			/**
 			 * Режимы работы с сокетами

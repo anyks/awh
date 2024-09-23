@@ -78,7 +78,7 @@ namespace awh {
 	/**
 	 * Ping Класс пинга
 	 */
-	typedef class Ping {
+	typedef class AWHSHARED_EXPORT Ping {
 		private:
 			/**
 			 * Статус работы NTP-резолвера

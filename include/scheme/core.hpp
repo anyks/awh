@@ -65,7 +65,7 @@ namespace awh {
 	/**
 	 * Scheme Структура схемы сети
 	 */
-	typedef struct Scheme {
+	typedef struct AWHSHARED_EXPORT Scheme {
 		private:
 			/**
 			 * Node Core Устанавливаем дружбу с нодой сетевого ядра

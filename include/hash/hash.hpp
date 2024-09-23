@@ -85,7 +85,7 @@ namespace awh {
 	/**
 	 * Hash Класс хеширования данных
 	 */
-	typedef class Hash {
+	typedef class AWHSHARED_EXPORT Hash {
 		private:
 			/**
 			 * События выполнения операции

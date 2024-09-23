@@ -37,7 +37,7 @@ namespace awh {
 	/**
 	 * Timeout Класс для работы с таймером в экране
 	 */
-	typedef class Timeout {
+	typedef class AWHSHARED_EXPORT Timeout {
 		private:
 			/**
 			 * Data структура обмена данными

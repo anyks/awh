@@ -84,6 +84,11 @@
 	#define FS_SEPARATOR "/"
 #endif
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 
@@ -94,7 +99,7 @@ namespace awh {
 	/**
 	 * OS Класс работы с операционной системой
 	 */
-	typedef class OS {
+	typedef class AWHSHARED_EXPORT OS {
 		public:
 			/**
 			 * type_t Названия поддерживаемых операционных систем

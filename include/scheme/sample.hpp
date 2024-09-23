@@ -46,7 +46,7 @@ namespace awh {
 			/**
 			 * Sample Структура схемы сети SAMPLE сервера
 			 */
-			typedef struct Sample : public scheme_t {
+			typedef struct AWHSHARED_EXPORT Sample : public scheme_t {
 				public:
 					/**
 					 * Allow Структура флагов разрешения обменом данных

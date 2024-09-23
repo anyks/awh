@@ -40,7 +40,7 @@ namespace awh {
 	/**
 	 * WCore Класс для работы с WebSocket
 	 */
-	typedef class WCore : public http_t {
+	typedef class AWHSHARED_EXPORT WCore : public http_t {
 		protected:
 			// Версия протокола WebSocket
 			static constexpr uint16_t WS_VERSION = 13;

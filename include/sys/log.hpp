@@ -49,7 +49,7 @@ namespace awh {
 	/**
 	 * Log Класс работы с логами
 	 */
-	typedef class Log {
+	typedef class AWHSHARED_EXPORT Log {
 		public:
 			/**
 			 * flag_t Флаги логирования

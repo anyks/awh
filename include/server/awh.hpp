@@ -34,7 +34,7 @@ namespace awh {
 		/**
 		 * AWH Класс работы с WEB-сервером
 		 */
-		typedef class AWH {
+		typedef class AWHSHARED_EXPORT AWH {
 			private:
 				// Объект DNS-резолвера
 				dns_t _dns;

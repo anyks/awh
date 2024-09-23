@@ -138,10 +138,11 @@ class Executor {
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
+		 * @param ws   объект Websocket-сервера
 		 */
-		void error(const uint64_t bid, const uint32_t code, const string & mess){
+		void error(const uint64_t bid, const uint32_t code, const string & mess, server::websocket_t * ws){
 			// Выводим информацию в лог
-			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+			this->_log->print("%s [%u] IP=%s", log_t::flag_t::CRITICAL, mess.c_str(), code, ws->ip(bid).c_str());
 		}
 		/**
 		 * message Метод получения сообщений
@@ -293,7 +294,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	ws.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2, &core));
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	ws.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
+	ws.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3, &ws));
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	ws.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3, &ws));
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов

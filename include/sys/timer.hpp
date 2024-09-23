@@ -23,6 +23,11 @@
 #include <functional>
 #include <condition_variable>
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Устанавливаем пространство имён
 using namespace std;
 
@@ -33,7 +38,7 @@ namespace awh {
 	/**
 	 * Timer Класс таймера
 	 */
-	typedef class Timer {
+	typedef class AWHSHARED_EXPORT Timer {
 		private:
 			/**
 			 * Worker Класс воркера

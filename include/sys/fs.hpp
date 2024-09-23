@@ -89,7 +89,7 @@ namespace awh {
 	/**
 	 * FS Класс модуля работы с файловой системой
 	 */
-	typedef class FS {
+	typedef class AWHSHARED_EXPORT FS {
 		public:
 			/**
 			 * Типы файловой системы

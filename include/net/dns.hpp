@@ -87,7 +87,7 @@ namespace awh {
 	/**
 	 * DNS Класс DNS ресолвера
 	 */
-	typedef class DNS {
+	typedef class AWHSHARED_EXPORT DNS {
 		private:
 			/**
 			 * Статус работы DNS-резолвера

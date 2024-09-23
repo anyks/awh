@@ -42,7 +42,7 @@ namespace awh {
 	/**
 	 * PIPE Класс передачи данных между процессами
 	 */
-	typedef class PIPE {
+	typedef class AWHSHARED_EXPORT PIPE {
 		public:
 			/**
 			 * Тип пайпа с которым производится работа

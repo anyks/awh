@@ -34,6 +34,11 @@
 	#include <tchar.h>	
 #endif
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 using namespace std::placeholders;
@@ -45,7 +50,7 @@ namespace awh {
 	/**
 	 * Signals Класс работы с сигналами
 	 */
-	typedef class Signals {
+	typedef class AWHSHARED_EXPORT Signals {
 		private:
 			/**
 			 * Если операционной системой не является Windows

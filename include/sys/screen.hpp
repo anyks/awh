@@ -28,6 +28,11 @@
 #include <functional>
 #include <condition_variable>
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 
@@ -43,7 +48,7 @@ namespace awh {
 	/**
 	 * Screen Класс для работы с дочерним потоком
 	 */
-	class Screen {
+	class AWHSHARED_EXPORT Screen {
 		public:
 			/**
 			 * Состояние очереди

@@ -75,7 +75,7 @@ namespace awh {
 	/**
 	 * Framework Класс фреймворка
 	 */
-	typedef class Framework {
+	typedef class AWHSHARED_EXPORT Framework {
 		public:
 			/**
 			 * codepage_t Типы кодировок адресов файлов и каталогов

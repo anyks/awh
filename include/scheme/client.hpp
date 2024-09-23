@@ -36,7 +36,7 @@ namespace awh {
 		/**
 		 * Proxy структура прокси-сервера
 		 */
-		typedef struct Proxy {
+		typedef struct AWHSHARED_EXPORT Proxy {
 			public:
 				/**
 				 * Типы прокси-сервера
@@ -85,7 +85,7 @@ namespace awh {
 		/**
 		 * Scheme Структура схемы сети клиента
 		 */
-		typedef struct Scheme : public awh::scheme_t {
+		typedef struct AWHSHARED_EXPORT Scheme : public awh::scheme_t {
 			private:
 				/**
 				 * Client Core Устанавливаем дружбу с клиентским классом ядра

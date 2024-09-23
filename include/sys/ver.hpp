@@ -23,6 +23,11 @@
 #include <iostream>
 #include <sys/types.h>
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Объявляем пространство имен
 using namespace std;
 
@@ -33,7 +38,7 @@ namespace awh {
 	/**
 	 * Version Класс работы с версиями
 	 */
-	typedef class Version {
+	typedef class AWHSHARED_EXPORT Version {
 		private:
 			// Данные версии
 			uint32_t _data;

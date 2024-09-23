@@ -27,6 +27,11 @@
 #include <functional>
 #include <condition_variable>
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Устанавливаем область видимости
 using namespace std;
 
@@ -37,7 +42,7 @@ namespace awh {
 	/**
 	 * Класс пула потоков
 	 */
-	typedef class ThreadPool {
+	typedef class AWHSHARED_EXPORT ThreadPool {
 		private:
 			// Тип очереди задач
 			typedef queue <function <void()>> task_t;

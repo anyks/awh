@@ -44,7 +44,7 @@ namespace awh {
 	/**
 	 * Node Класс рабочей ноды сетевого ядра
 	 */
-	typedef class Node : public awh::core_t {
+	typedef class AWHSHARED_EXPORT Node : public awh::core_t {
 		public:
 			/**
 			 * Режим отправки сообщений

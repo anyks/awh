@@ -44,7 +44,7 @@ namespace awh {
 		/**
 		 * Proxy Класс Proxy-сервера
 		 */
-		typedef class Proxy {
+		typedef class AWHSHARED_EXPORT Proxy {
 			public:
 				/**
 				 * Брокеры учавствующие в передаче данных

@@ -39,7 +39,7 @@ namespace awh {
 	/**
 	 * Base64 Класс
 	 */
-	typedef class Base64 {
+	typedef class AWHSHARED_EXPORT Base64 {
 		private:
 			/**
 			 * base64 Метод кодирования и декодирования base64

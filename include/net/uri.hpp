@@ -54,7 +54,7 @@ namespace awh {
 	/**
 	 * URI Класс dns ресолвера
 	 */
-	typedef class URI {
+	typedef class AWHSHARED_EXPORT URI {
 		public:
 			/**
 			 * Основные флаги приложения

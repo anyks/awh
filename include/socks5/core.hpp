@@ -49,7 +49,7 @@ namespace awh {
 	/**
 	 * Socks5 Класс работы с socks5 прокси-сервером
 	 */
-	typedef class Socks5 {
+	typedef class AWHSHARED_EXPORT Socks5 {
 		private:
 			/**
 			 * Список сообщений системы

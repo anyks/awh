@@ -126,7 +126,7 @@ namespace awh {
 	/**
 	 * IfNet Класс работы с сетевыми интерфейсами
 	 */
-	typedef class IfNet {
+	typedef class AWHSHARED_EXPORT IfNet {
 		private:
 			// Список сетевых интерфейсов
 			unordered_map <string, string> _ifs;

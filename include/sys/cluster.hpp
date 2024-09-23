@@ -60,7 +60,7 @@ namespace awh {
 	/**
 	 * Cluster Класс работы с кластером
 	 */
-	typedef class Cluster {
+	typedef class AWHSHARED_EXPORT Cluster {
 		private:
 			// Максимальный размер отправляемой полезной нагрузки
 			static constexpr size_t MAX_PAYLOAD = 0xFF2;

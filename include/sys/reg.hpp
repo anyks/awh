@@ -27,6 +27,11 @@
 #include <sys/types.h>
 #include <pcre2/pcre2posix.h>
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 
@@ -41,7 +46,7 @@ namespace awh {
 	/**
 	 * RegExp Класс объекта регулярных выражения
 	 */
-	typedef class RegExp {
+	typedef class AWHSHARED_EXPORT RegExp {
 		public:
 			/**
 			 * option_t Опции работы с регулярными выражениями

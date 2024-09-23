@@ -64,7 +64,7 @@ namespace awh {
 	/**
 	 * Base Класс базы событий
 	 */
-	typedef class Base {
+	typedef class AWHSHARED_EXPORT Base {
 		private:
 			/**
 			 * Event Устанавливаем дружбу с модулем события

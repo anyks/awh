@@ -90,7 +90,7 @@ namespace awh {
 	/**
 	 * Engine Класс для работы с двигателем передачи данных
 	 */
-	typedef class Engine {
+	typedef class AWHSHARED_EXPORT Engine {
 		public:
 			/**
 			 * Режим работы

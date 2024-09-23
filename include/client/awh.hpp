@@ -39,7 +39,7 @@ namespace awh {
 		/**
 		 * AWH Класс работы с WEB-клиентом
 		 */
-		typedef class AWH {
+		typedef class AWHSHARED_EXPORT AWH {
 			private:
 				// Объект работы с URI ссылками
 				uri_t _uri;

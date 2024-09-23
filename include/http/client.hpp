@@ -35,7 +35,7 @@ namespace awh {
 		/**
 		 * Http Класс для работы с REST клиентом
 		 */
-		typedef class Http : public awh::http_t {
+		typedef class AWHSHARED_EXPORT Http : public awh::http_t {
 			private:
 				/**
 				 * status Метод проверки текущего статуса

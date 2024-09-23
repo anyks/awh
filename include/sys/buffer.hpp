@@ -23,6 +23,11 @@
 #include <string>
 #include <cstring>
 
+/**
+ * Разрешаем сборку под Windows
+ */
+#include <sys/global.hpp>
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 
@@ -33,7 +38,7 @@ namespace awh {
 	/**
 	 * Buffer Клас динамического смарт-буфера
 	 */
-	typedef class Buffer {
+	typedef class AWHSHARED_EXPORT Buffer {
 		public:
 			/**
 			 * Режим работы буфера
