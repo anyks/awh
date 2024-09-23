@@ -59,6 +59,28 @@
 // of a+b is easily derived from the hashes of a and b.  This property
 // doesn't hold for any hash functions in this file.
 
+#ifndef AWH_GLOBAL_H
+#define AWH_GLOBAL_H
+
+#if defined(_MSC_VER) || defined(WIN64) || defined(_WIN64) || defined(__WIN64__) || defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+	#define DECL_EXPORT __declspec(dllexport)
+	#define DECL_IMPORT __declspec(dllimport)
+#else
+	#define DECL_EXPORT __attribute__((visibility("default")))
+	#define DECL_IMPORT __attribute__((visibility("default")))
+#endif
+
+#if defined(AWH_SHARED_LIBRARY_EXPORT)
+	#define AWHSHARED_EXPORT DECL_EXPORT
+#elif defined(AWH_SHARED_LIBRARY_IMPORT)
+	#define AWHSHARED_EXPORT DECL_IMPORT
+#else
+	#define AWHSHARED_EXPORT
+#endif
+
+#endif // AWH_GLOBAL_H
+
+
 #ifndef CITY_HASH_H_
 #define CITY_HASH_H_
 
@@ -75,26 +97,26 @@ inline uint64 Uint128Low64(const uint128& x) { return x.first; }
 inline uint64 Uint128High64(const uint128& x) { return x.second; }
 
 // Hash function for a byte array.
-uint64 CityHash64(const char *buf, size_t len);
+AWHSHARED_EXPORT uint64 CityHash64(const char *buf, size_t len);
 
 // Hash function for a byte array.  For convenience, a 64-bit seed is also
 // hashed into the result.
-uint64 CityHash64WithSeed(const char *buf, size_t len, uint64 seed);
+AWHSHARED_EXPORT uint64 CityHash64WithSeed(const char *buf, size_t len, uint64 seed);
 
 // Hash function for a byte array.  For convenience, two seeds are also
 // hashed into the result.
-uint64 CityHash64WithSeeds(const char *buf, size_t len,
+AWHSHARED_EXPORT uint64 CityHash64WithSeeds(const char *buf, size_t len,
                            uint64 seed0, uint64 seed1);
 
 // Hash function for a byte array.
-uint128 CityHash128(const char *s, size_t len);
+AWHSHARED_EXPORT uint128 CityHash128(const char *s, size_t len);
 
 // Hash function for a byte array.  For convenience, a 128-bit seed is also
 // hashed into the result.
-uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed);
+AWHSHARED_EXPORT uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed);
 
 // Hash function for a byte array.  Most useful in 32-bit binaries.
-uint32 CityHash32(const char *buf, size_t len);
+AWHSHARED_EXPORT uint32 CityHash32(const char *buf, size_t len);
 
 // Hash 128 input bits down to 64 bits of output.
 // This is intended to be a reasonably good hash function.
