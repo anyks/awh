@@ -449,13 +449,13 @@ namespace awh {
 	 * @param is   поток для чтения
 	 * @param addr адрес для присвоения
 	 */
-	istream & operator >> (istream & is, net_t & addr) noexcept;
+	AWHSHARED_EXPORT istream & operator >> (istream & is, net_t & addr) noexcept;
 	/**
 	 * Оператор [<<] вывода в поток IP-адреса
 	 * @param os   поток куда нужно вывести данные
 	 * @param addr адрес для присвоения
 	 */
-	ostream & operator << (ostream & os, const net_t & addr) noexcept;
+	AWHSHARED_EXPORT ostream & operator << (ostream & os, const net_t & addr) noexcept;
 };
 
 #endif // __AWH_NET__
