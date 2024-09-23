@@ -66,7 +66,7 @@ namespace awh {
 			/**
 			 * Expression Класс регулярного выражения
 			 */
-			typedef class Expression {
+			typedef class AWHSHARED_EXPORT Expression {
 				private:
 					/**
 					 * RegExp Устанавливаем дружбу с классом регулярных выражений
