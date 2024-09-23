@@ -48,7 +48,7 @@ namespace awh {
 	/**
 	 * Screen Класс для работы с дочерним потоком
 	 */
-	class AWHSHARED_EXPORT Screen {
+	class Screen {
 		public:
 			/**
 			 * Состояние очереди

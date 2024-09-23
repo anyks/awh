@@ -42,7 +42,7 @@ namespace awh {
 	/**
 	 * Класс пула потоков
 	 */
-	typedef class AWHSHARED_EXPORT ThreadPool {
+	typedef class ThreadPool {
 		private:
 			// Тип очереди задач
 			typedef queue <function <void()>> task_t;

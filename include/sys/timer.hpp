@@ -38,7 +38,7 @@ namespace awh {
 	/**
 	 * Timer Класс таймера
 	 */
-	typedef class AWHSHARED_EXPORT Timer {
+	typedef class Timer {
 		private:
 			/**
 			 * Worker Класс воркера

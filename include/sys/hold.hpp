@@ -42,7 +42,7 @@ namespace awh {
 	/**
 	 * Holder Класс холдера
 	 */
-	class AWHSHARED_EXPORT Holder {
+	class Holder {
 		private:
 			// Флаг холдирования
 			bool _flag;
