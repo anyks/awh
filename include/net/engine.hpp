@@ -159,7 +159,7 @@ namespace awh {
 			/**
 			 * Address Класс сетевого пространства
 			 */
-			typedef class Address {
+			typedef class AWHSHARED_EXPORT Address {
 				public:
 					/**
 					 * Статус подключения
@@ -362,7 +362,7 @@ namespace awh {
 			/**
 			 * Context Класс контекста двигателя
 			 */
-			typedef class Context {
+			typedef class AWHSHARED_EXPORT Context {
 				private:
 					/**
 					 * Engine Устанавливаем дружбу с родительским объектом двигателя

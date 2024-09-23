@@ -197,7 +197,7 @@ namespace awh {
 			/**
 			 * Worker Класс воркера резолвинга
 			 */
-			typedef class Worker {
+			typedef class AWHSHARED_EXPORT Worker {
 				private:
 					/**
 					 * NTP Устанавливаем дружбу с классом NTP-клиента

@@ -70,7 +70,7 @@ namespace awh {
 			/**
 			 * Dispatch Класс работы с событиями
 			 */
-			typedef class Dispatch {
+			typedef class AWHSHARED_EXPORT Dispatch {
 				private:
 					// Флаг работы модуля
 					bool _work;

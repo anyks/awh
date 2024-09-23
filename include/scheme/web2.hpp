@@ -46,7 +46,7 @@ namespace awh {
 			/**
 			 * WEB2 Структура схемы сети WEB/2 сервера
 			 */
-			typedef struct WEB2 : public scheme_t {
+			typedef struct AWHSHARED_EXPORT WEB2 : public scheme_t {
 				public:
 					/**
 					 * Stream Структура потока

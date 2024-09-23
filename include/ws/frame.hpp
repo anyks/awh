@@ -53,7 +53,7 @@ namespace awh {
 		/**
 		 * Message Структура сообщений удалённой стороны
 		 */
-		typedef class Message {
+		typedef class AWHSHARED_EXPORT Message {
 			public:
 				// Код сообщения
 				uint16_t code;
@@ -112,7 +112,7 @@ namespace awh {
 		/**
 		 * Frame Класс для работы с фреймом WebSocket
 		 */
-		typedef class Frame {
+		typedef class AWHSHARED_EXPORT Frame {
 			public:
 				/**
 				 * Состояние фрейма

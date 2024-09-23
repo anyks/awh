@@ -47,7 +47,7 @@ namespace awh {
 			/**
 			 * WEB Структура схемы сети WEB сервера
 			 */
-			typedef struct WEB : public scheme_t {
+			typedef struct AWHSHARED_EXPORT WEB : public scheme_t {
 				public:
 					/**
 					 * Options Структура параметров активного клиента

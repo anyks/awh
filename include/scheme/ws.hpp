@@ -48,7 +48,7 @@ namespace awh {
 			/**
 			 * WebSocket Структура схемы сети WebSocket сервера
 			 */
-			typedef struct WebSocket : public scheme_t {
+			typedef struct AWHSHARED_EXPORT WebSocket : public scheme_t {
 				public:
 					/**
 					 * Buffer Структура буфера данных

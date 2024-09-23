@@ -47,7 +47,7 @@ namespace awh {
 			/**
 			 * Socks5 Структура схемы сети Socks5 сервера
 			 */
-			typedef struct Socks5 : public scheme_t {
+			typedef struct AWHSHARED_EXPORT Socks5 : public scheme_t {
 				public:
 					/**
 					 * Locker Структура локера

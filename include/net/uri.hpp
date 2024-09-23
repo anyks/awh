@@ -86,7 +86,7 @@ namespace awh {
 			/**
 			 * URL Структура URL адреса
 			 */
-			typedef class URL {
+			typedef class AWHSHARED_EXPORT URL {
 				public:
 					// Порт сервера
 					uint32_t port;
