@@ -79,6 +79,9 @@ namespace awh {
 			private:
 				// Ядро для локального таймера
 				timer_t _timer;
+			protected:
+				// Интервал времени на выполнение пингов
+				time_t _pingInterval;
 			private:
 				// Хранилище функций обратного вызова
 				fn_t _callbacks;
@@ -261,6 +264,12 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint64_t bid) noexcept;
+			public:
+				/**
+				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @param time интервал времени выполнения пингов в миллисекундах
+				 */
+				void pingInterval(const time_t time) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд

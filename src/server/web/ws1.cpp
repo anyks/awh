@@ -890,7 +890,7 @@ void awh::server::Websocket1::pinging(const uint16_t tid) noexcept {
 						// Отправляем серверу сообщение
 						this->sendError(item.first, item.second->mess);
 					// Если время с предыдущего пинга прошло больше половины времени пинга
-					} else if((stamp - item.second->sendPing) > (PING_INTERVAL / 2))
+					} else if((stamp - item.second->sendPing) > (this->_pingInterval / 2))
 						// Отправляем запрос брокеру
 						this->ping(item.first, ::to_string(item.first));
 				}
@@ -1235,6 +1235,16 @@ void awh::server::Websocket1::waitPong(const time_t time) noexcept {
 		this->_waitPong = time;
 }
 /**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::server::Websocket1::pingInterval(const time_t time) noexcept {
+	// Если интервал времени передан
+	if(time > 0)
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах
+		this->_pingInterval = time;
+}
+/**
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */
@@ -1521,7 +1531,7 @@ void awh::server::Websocket1::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::server::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _waitPong(PING_INTERVAL * 5), _frameSize(0xFA000), _scheme(fmk, log) {}
+ web_t(fmk, log), _waitPong(_pingInterval * 2), _frameSize(0xFA000), _scheme(fmk, log) {}
 /**
  * Websocket1 Конструктор
  * @param core объект сетевого ядра
@@ -1529,7 +1539,7 @@ awh::server::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::server::Websocket1::Websocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _waitPong(PING_INTERVAL * 5), _frameSize(0xFA000), _scheme(fmk, log) {
+ web_t(core, fmk, log), _waitPong(_pingInterval * 2), _frameSize(0xFA000), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы

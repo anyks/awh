@@ -53,7 +53,7 @@ void awh::client::Web::statusEvent(const awh::core_t::status_t status) noexcept 
 				// Выполняем биндинг ядра локального таймера выполнения пинга
 				const_cast <client::core_t *> (this->_core)->bind(&this->_timer);
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
-				const uint16_t tid = this->_timer.interval(PING_INTERVAL);
+				const uint16_t tid = this->_timer.interval(this->_pingInterval);
 				// Выполняем добавление функции обратного вызова
 				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
 			}
@@ -812,7 +812,7 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
  _nossl(false), _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
- _sendPing(0), _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
+ _sendPing(0), _attempt(0), _attempts(15), _pingInterval(PING_INTERVAL), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
@@ -829,7 +829,7 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
  _nossl(false), _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
- _sendPing(0), _attempt(0), _attempts(15), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
+ _sendPing(0), _attempt(0), _attempts(15), _pingInterval(PING_INTERVAL), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова

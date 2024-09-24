@@ -196,6 +196,9 @@ namespace awh {
 				// Общее количество попыток
 				uint8_t _attempts;
 			protected:
+				// Интервал времени на выполнение пингов
+				time_t _pingInterval;
+			protected:
 				// Объект буфера данных
 				buffer_t _buffer;
 			private:
@@ -347,6 +350,11 @@ namespace awh {
 				 * @param time время ожидания в миллисекундах
 				 */
 				virtual void waitPong(const time_t time) noexcept = 0;
+				/**
+				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @param time интервал времени выполнения пингов в миллисекундах
+				 */
+				virtual void pingInterval(const time_t time) noexcept = 0;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова

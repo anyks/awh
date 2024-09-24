@@ -832,7 +832,7 @@ void awh::client::Websocket2::pinging(const uint16_t tid) noexcept {
 						// Выполняем отправку сообщения об ошибке
 						this->sendError(this->_mess);
 					// Если время с предыдущего пинга прошло больше половины времени пинга
-					} else if((stamp - this->_sendPing) > (PING_INTERVAL / 2))
+					} else if((stamp - this->_sendPing) > (this->_pingInterval / 2))
 						// Отправляем запрос брокеру
 						this->ping(::to_string(this->_bid));
 				// Если рукопожатие уже выполнено и пинг не прошёл
@@ -1606,6 +1606,19 @@ void awh::client::Websocket2::waitPong(const time_t time) noexcept {
 	}
 }
 /**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::client::Websocket2::pingInterval(const time_t time) noexcept {
+	// Если интервал времени передан
+	if(time > 0){
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах
+		this->_pingInterval = time;
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах для WebSocket/1.1
+		this->_ws1.pingInterval(time);
+	}
+}
+/**
  * callback Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */
@@ -1974,7 +1987,7 @@ void awh::client::Websocket2::encryption(const string & pass, const string & sal
 awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _threads(0), _waitPong(PING_INTERVAL * 5), _ws1(fmk, log),
+ _point(0), _threads(0), _waitPong(_pingInterval * 2), _ws1(fmk, log),
  _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log),
  _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
 	// Если размер фрейма не установлен
@@ -1995,7 +2008,7 @@ awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
 awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _threads(0), _waitPong(PING_INTERVAL * 5), _ws1(fmk, log),
+ _point(0), _threads(0), _waitPong(_pingInterval * 2), _ws1(fmk, log),
  _http(fmk, log), _hash(log), _frame(fmk, log), _resultCallback(log),
  _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
 	// Если размер фрейма не установлен

@@ -1402,7 +1402,7 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 								// Получаем текущий штамп времени
 								const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 								// Если время с предыдущего пинга прошло больше половины времени пинга
-								if((stamp - item.second->sendPing) > (PING_INTERVAL / 2)){
+								if((stamp - item.second->sendPing) > (this->_pingInterval / 2)){
 									// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 									if(!this->ping(item.first))
 										// Выполняем закрытие подключения
@@ -2608,6 +2608,16 @@ void awh::server::Http2::waitPong(const time_t time) noexcept {
 	if(time > 0)
 		// Выполняем установку времени ожидания
 		this->_ws2.waitPong(time);
+}
+/**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::server::Http2::pingInterval(const time_t time) noexcept {
+	// Если интервал времени передан
+	if(time > 0)
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах
+		this->_ws2.pingInterval(time);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола

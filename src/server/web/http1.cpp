@@ -1444,6 +1444,16 @@ void awh::server::Http1::waitPong(const time_t time) noexcept {
 		this->_ws1.waitPong(time);
 }
 /**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::server::Http1::pingInterval(const time_t time) noexcept {
+	// Если интервал времени передан
+	if(time > 0)
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах
+		this->_ws1.pingInterval(time);
+}
+/**
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */

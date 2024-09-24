@@ -261,6 +261,11 @@ namespace awh {
 				 * @param time время ожидания в миллисекундах
 				 */
 				void waitPong(const time_t time) noexcept;
+				/**
+				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @param time интервал времени выполнения пингов в миллисекундах
+				 */
+				void pingInterval(const time_t time) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

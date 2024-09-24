@@ -40,7 +40,7 @@ void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexce
 			// Выполняем биндинг ядра локального таймера
 			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
 			// Устанавливаем интервал времени на выполнения пинга клиента
-			uint16_t tid = this->_timer.interval(PING_INTERVAL);
+			uint16_t tid = this->_timer.interval(this->_pingInterval);
 			// Выполняем добавление функции обратного вызова
 			this->_timer.set <void (const uint16_t)> (tid, std::bind(&sample_t::pinging, this, tid));
 			// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
@@ -355,6 +355,14 @@ void awh::server::Sample::close(const uint64_t bid) noexcept {
 		const_cast <server::core_t *> (this->_core)->close(bid);
 }
 /**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::server::Sample::pingInterval(const time_t time) noexcept {
+	// Выполняем установку интервала времени выполнения пингов
+	this->_pingInterval = time;
+}
+/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
@@ -407,8 +415,8 @@ void awh::server::Sample::keepAlive(const int32_t cnt, const int32_t idle, const
  */
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _alive(false), _pinging(true), _complete(true),
- _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log), _callbacks(log),
- _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
+ _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log), _pingInterval(PING_INTERVAL),
+ _callbacks(log), _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Добавляем схему сети в сетевое ядро

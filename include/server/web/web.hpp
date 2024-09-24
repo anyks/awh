@@ -164,6 +164,9 @@ namespace awh {
 				// Максимальное количество запросов
 				size_t _maxRequests;
 			protected:
+				// Интервал времени на выполнение пингов
+				time_t _pingInterval;
+			protected:
 				// Список мусорных брокеров
 				map <uint64_t, time_t> _disconected;
 			protected:
@@ -278,6 +281,11 @@ namespace awh {
 				 * @param time время ожидания в миллисекундах
 				 */
 				virtual void waitPong(const time_t time) noexcept = 0;
+				/**
+				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @param time интервал времени выполнения пингов в миллисекундах
+				 */
+				virtual void pingInterval(const time_t time) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB брокера

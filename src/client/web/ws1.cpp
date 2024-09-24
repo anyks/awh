@@ -487,7 +487,7 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 				// Выполняем отправку сообщения об ошибке
 				this->sendError(this->_mess);
 			// Если время с предыдущего пинга прошло больше половины времени пинга
-			} else if((stamp - this->_sendPing) > (PING_INTERVAL / 2))
+			} else if((stamp - this->_sendPing) > (this->_pingInterval / 2))
 				// Отправляем запрос брокеру
 				this->ping(::to_string(this->_bid));
 		}
@@ -1291,6 +1291,16 @@ void awh::client::Websocket1::waitPong(const time_t time) noexcept {
 		this->_waitPong = time;
 }
 /**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::client::Websocket1::pingInterval(const time_t time) noexcept {
+	// Если интервал времени передан
+	if(time > 0)
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах
+		this->_pingInterval = time;
+}
+/**
  * callbacks Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */
@@ -1564,7 +1574,7 @@ void awh::client::Websocket1::encryption(const string & pass, const string & sal
 awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _waitPong(PING_INTERVAL * 5), _http(fmk, log), _hash(log),
+ _point(0), _waitPong(_pingInterval * 2), _http(fmk, log), _hash(log),
  _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
@@ -1586,7 +1596,7 @@ awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
 awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _waitPong(PING_INTERVAL * 5), _http(fmk, log), _hash(log),
+ _point(0), _waitPong(_pingInterval * 2), _http(fmk, log), _hash(log),
  _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));

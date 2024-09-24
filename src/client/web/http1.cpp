@@ -1138,6 +1138,16 @@ void awh::client::Http1::waitPong(const time_t time) noexcept {
 		this->_ws1.waitPong(time);
 }
 /**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::client::Http1::pingInterval(const time_t time) noexcept {
+	// Если интервал времени передан
+	if(time > 0)
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах
+		this->_ws1.pingInterval(time);
+}
+/**
  * callbacks Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */

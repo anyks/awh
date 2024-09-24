@@ -94,6 +94,14 @@ void awh::client::Websocket::waitPong(const time_t time) noexcept {
 	this->_ws.waitPong(time);
 }
 /**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::client::Websocket::pingInterval(const time_t time) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в миллисекундах
+	this->_ws.pingInterval(time);
+}
+/**
  * callbacks Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */

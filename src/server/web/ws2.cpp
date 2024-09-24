@@ -1156,7 +1156,7 @@ void awh::server::Websocket2::pinging(const uint16_t tid) noexcept {
 								// Отправляем серверу сообщение
 								this->sendError(item.first, item.second->mess);
 							// Если время с предыдущего пинга прошло больше половины времени пинга
-							} else if((stamp - item.second->sendPing) > (PING_INTERVAL / 2))
+							} else if((stamp - item.second->sendPing) > (this->_pingInterval / 2))
 								// Отправляем запрос брокеру
 								this->ping(item.first, ::to_string(item.first));
 						// Если рукопожатие не выполнено и пинг не прошёл
@@ -1571,6 +1571,19 @@ void awh::server::Websocket2::waitPong(const time_t time) noexcept {
 	}
 }
 /**
+ * pingInterval Метод установки интервала времени выполнения пингов
+ * @param time интервал времени выполнения пингов в миллисекундах
+ */
+void awh::server::Websocket2::pingInterval(const time_t time) noexcept {
+	// Если интервал времени передан
+	if(time > 0){
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах
+		this->_pingInterval = time;
+		// Выполняем установку интервала времени выполнения пингов в миллисекундах для WebSocket/1.1
+		this->_ws1.pingInterval(time);
+	}
+}
+/**
  * subprotocol Метод установки поддерживаемого сабпротокола
  * @param subprotocol сабпротокол для установки
  */
@@ -1980,7 +1993,7 @@ void awh::server::Websocket2::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::server::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept :
-web2_t(fmk, log), _waitPong(PING_INTERVAL * 5), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
+web2_t(fmk, log), _waitPong(_pingInterval * 2), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Если размер фрейма не установлен
@@ -1995,7 +2008,7 @@ web2_t(fmk, log), _waitPong(PING_INTERVAL * 5), _threads(0), _frameSize(0), _ws1
  * @param log  объект для работы с логами
  */
 awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _waitPong(PING_INTERVAL * 5), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
+ web2_t(core, fmk, log), _waitPong(_pingInterval * 2), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Если размер фрейма не установлен

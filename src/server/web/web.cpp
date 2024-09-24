@@ -44,7 +44,7 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 				// Если разрешено выполнять пинги
 				if(this->_pinging){
 					// Устанавливаем интервал времени на выполнения пинга клиента
-					const uint16_t tid = this->_timer.interval(PING_INTERVAL);
+					const uint16_t tid = this->_timer.interval(this->_pingInterval);
 					// Выполняем добавление функции обратного вызова
 					this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
 				}
@@ -138,7 +138,7 @@ void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uin
 				// Если разрешено выполнять пинги
 				if(this->_pinging){
 					// Устанавливаем интервал времени на выполнения пинга клиента
-					const uint16_t tid = this->_timer.interval(PING_INTERVAL);
+					const uint16_t tid = this->_timer.interval(this->_pingInterval);
 					// Выполняем добавление функции обратного вызова
 					this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
 				}
@@ -449,7 +449,8 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
  _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
- _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(nullptr) {
+ _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS),
+ _pingInterval(PING_INTERVAL), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
@@ -464,7 +465,8 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
  _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
- _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
+ _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS),
+ _pingInterval(PING_INTERVAL), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
