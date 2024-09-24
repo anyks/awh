@@ -303,16 +303,10 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			bool erased = false;
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
-			
-			cout << " ***************1 " << fd << endl;
-			
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 				// Если файловый дескриптор найден
 				if((j->data.ptr != nullptr) && (reinterpret_cast <item_t *> (j->data.ptr)->fd == fd)){
-					
-					cout << " ***************2 " << fd << endl;
-					
 					// Выполняем изменение параметров события
 					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, &(* j)) == 0);
 					// Выполняем закрытие подключения
@@ -327,9 +321,6 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
 				// Если файловый дескриптор найден
 				if((j->data.ptr != nullptr) && (reinterpret_cast <item_t *> (j->data.ptr)->fd == fd)){
-					
-					cout << " ***************3 " << fd << endl;
-					
 					// Если событие ещё не удалено из базы событий
 					if(!erased){
 						// Выполняем изменение параметров события
@@ -345,9 +336,6 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			}
 			// Если удаление не выполненно
 			if(!result){
-				
-				cout << " ***************4 " << fd << endl;
-				
 				// Выполняем изменение параметров события
 				result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, nullptr) == 0);
 				// Выполняем закрытие подключения
@@ -2007,27 +1995,30 @@ void awh::Base::start() noexcept {
 											// Выполняем поиск указанной записи
 											auto j = this->_items.find(fd);
 											// Если сокет в списке найден
-											if((j != this->_items.end()) && ((id == j->second.id) || (id == 0))){
-												// Получаем идентификатор события
-												id = j->second.id;
-												// Если функция обратного вызова установлена
-												if(j->second.callback != nullptr){
-													// Получаем функцию обратного вызова
-													auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
-													// Выполняем поиск события на отключение присутствует в базе событий
-													auto k = j->second.mode.find(event_type_t::CLOSE);
-													// Если событие найдено и оно активированно
-													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
-														// Удаляем файловый дескриптор из базы событий
-														this->del(j->second.id, fd);
-														// Выполняем функцию обратного вызова
-														callback();
-														// Продолжаем обход дальше
-														continue;
+											if(j != this->_items.end()){
+												// Если идентификаторы соответствуют
+												if((id == j->second.id) || (id == 0)){
+													// Получаем идентификатор события
+													id = j->second.id;
+													// Если функция обратного вызова установлена
+													if(j->second.callback != nullptr){
+														// Получаем функцию обратного вызова
+														auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
+														// Выполняем поиск события на отключение присутствует в базе событий
+														auto k = j->second.mode.find(event_type_t::CLOSE);
+														// Если событие найдено и оно активированно
+														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
+															// Удаляем файловый дескриптор из базы событий
+															this->del(j->second.id, fd);
+															// Выполняем функцию обратного вызова
+															callback();
+															// Продолжаем обход дальше
+															continue;
+														}
 													}
+													// Удаляем файловый дескриптор из базы событий
+													this->del(j->second.id, fd);
 												}
-												// Удаляем файловый дескриптор из базы событий
-												this->del(j->second.id, fd);
 											// Выполняем удаление фантомного файлового дескриптора
 											} else this->del(fd);
 										}
@@ -2159,29 +2150,29 @@ void awh::Base::start() noexcept {
 													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
 												// Выполняем поиск файлового дескриптора в базе событий
 												auto i = this->_items.find(fd);
-												
-												cout << " $$$$$$$$$$ " << fd << " == " << isClose << " == " << isError << " == " << (i != this->_items.end()) << endl;
-												
 												// Если файловый дескриптор есть в базе событий
-												if((i != this->_items.end()) && (id == i->second.id)){
-													// Если функция обратного вызова установлена
-													if(i->second.callback != nullptr){
-														// Получаем функцию обратного вызова
-														auto callback = std::bind(i->second.callback, i->second.fd, event_type_t::CLOSE);
-														// Выполняем поиск события на отключение присутствует в базе событий
-														auto j = i->second.mode.find(event_type_t::CLOSE);
-														// Если событие найдено и оно активированно
-														if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED)){
-															// Удаляем файловый дескриптор из базы событий
-															this->del(i->second.id, i->second.fd);
-															// Выполняем функцию обратного вызова
-															callback();
-															// Продолжаем обход дальше
-															continue;
+												if(i != this->_items.end()){
+													// Если идентификаторы соответствуют
+													if(id == i->second.id){
+														// Если функция обратного вызова установлена
+														if(i->second.callback != nullptr){
+															// Получаем функцию обратного вызова
+															auto callback = std::bind(i->second.callback, i->second.fd, event_type_t::CLOSE);
+															// Выполняем поиск события на отключение присутствует в базе событий
+															auto j = i->second.mode.find(event_type_t::CLOSE);
+															// Если событие найдено и оно активированно
+															if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED)){
+																// Удаляем файловый дескриптор из базы событий
+																this->del(i->second.id, i->second.fd);
+																// Выполняем функцию обратного вызова
+																callback();
+																// Продолжаем обход дальше
+																continue;
+															}
 														}
+														// Удаляем файловый дескриптор из базы событий
+														this->del(i->second.id, i->second.fd);
 													}
-													// Удаляем файловый дескриптор из базы событий
-													this->del(i->second.id, i->second.fd);
 												// Выполняем удаление фантомного файлового дескриптора
 												} else this->del(fd);
 											}
@@ -2341,25 +2332,28 @@ void awh::Base::start() noexcept {
 												// Выполняем поиск файлового дескриптора в базе событий
 												j = this->_items.find(fd);
 												// Если файловый дескриптор есть в базе событий
-												if((j != this->_items.end()) && (id == j->second.id)){
-													// Если функция обратного вызова установлена
-													if(j->second.callback != nullptr){
-														// Получаем функцию обратного вызова
-														auto callback = std::bind(j->second.callback, j->second.fd, event_type_t::CLOSE);
-														// Выполняем поиск события на отключение присутствует в базе событий
-														auto k = j->second.mode.find(event_type_t::CLOSE);
-														// Если событие найдено и оно активированно
-														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
-															// Удаляем файловый дескриптор из базы событий
-															this->del(j->second.id, j->second.fd);
-															// Выполняем функцию обратного вызова
-															callback();
-															// Продолжаем обход дальше
-															continue;
+												if(j != this->_items.end()){
+													// Если идентификаторы соответствуют
+													if(id == j->second.id){
+														// Если функция обратного вызова установлена
+														if(j->second.callback != nullptr){
+															// Получаем функцию обратного вызова
+															auto callback = std::bind(j->second.callback, j->second.fd, event_type_t::CLOSE);
+															// Выполняем поиск события на отключение присутствует в базе событий
+															auto k = j->second.mode.find(event_type_t::CLOSE);
+															// Если событие найдено и оно активированно
+															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
+																// Удаляем файловый дескриптор из базы событий
+																this->del(j->second.id, j->second.fd);
+																// Выполняем функцию обратного вызова
+																callback();
+																// Продолжаем обход дальше
+																continue;
+															}
 														}
+														// Удаляем файловый дескриптор из базы событий
+														this->del(j->second.id, j->second.fd);
 													}
-													// Удаляем файловый дескриптор из базы событий
-													this->del(j->second.id, j->second.fd);
 												// Выполняем удаление фантомного файлового дескриптора
 												} else this->del(fd);
 											}
