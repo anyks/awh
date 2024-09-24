@@ -265,9 +265,6 @@ void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t
 bool awh::Base::del(const SOCKET fd) noexcept {
 	// Результат работы функции
 	bool result = false;
-	
-	return result;
-	
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -306,10 +303,16 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			bool erased = false;
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
+			
+			cout << " ***************1 " << fd << endl;
+			
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 				// Если файловый дескриптор найден
 				if((j->data.ptr != nullptr) && (reinterpret_cast <item_t *> (j->data.ptr)->fd == fd)){
+					
+					cout << " ***************2 " << fd << endl;
+					
 					// Выполняем изменение параметров события
 					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, &(* j)) == 0);
 					// Выполняем закрытие подключения
@@ -324,6 +327,9 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
 				// Если файловый дескриптор найден
 				if((j->data.ptr != nullptr) && (reinterpret_cast <item_t *> (j->data.ptr)->fd == fd)){
+					
+					cout << " ***************3 " << fd << endl;
+					
 					// Если событие ещё не удалено из базы событий
 					if(!erased){
 						// Выполняем изменение параметров события
@@ -339,6 +345,9 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			}
 			// Если удаление не выполненно
 			if(!result){
+				
+				cout << " ***************4 " << fd << endl;
+				
 				// Выполняем изменение параметров события
 				result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, nullptr) == 0);
 				// Выполняем закрытие подключения
