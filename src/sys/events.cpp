@@ -306,7 +306,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 				// Если файловый дескриптор найден
-				if(reinterpret_cast <item_t *> (j->data.ptr)->fd == fd){
+				if((j->data.ptr != nullptr) && (reinterpret_cast <item_t *> (j->data.ptr)->fd == fd)){
 					// Выполняем изменение параметров события
 					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, &(* j)) == 0);
 					// Выполняем закрытие подключения
@@ -320,7 +320,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора из списка изменений
 			for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
 				// Если файловый дескриптор найден
-				if(reinterpret_cast <item_t *> (j->data.ptr)->fd == fd){
+				if((j->data.ptr != nullptr) && (reinterpret_cast <item_t *> (j->data.ptr)->fd == fd)){
 					// Если событие ещё не удалено из базы событий
 					if(!erased){
 						// Выполняем изменение параметров события
