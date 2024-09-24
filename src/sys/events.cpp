@@ -2157,6 +2157,9 @@ void awh::Base::start() noexcept {
 												if(isError)
 													// Выводим сообщение об ошибке
 													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
+												
+												cout << " $$$$$$$$$$ " << fd << " == " << isClose << " == " << isError << endl;
+												
 												// Выполняем поиск файлового дескриптора в базе событий
 												auto i = this->_items.find(fd);
 												// Если файловый дескриптор есть в базе событий
