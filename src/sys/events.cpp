@@ -265,6 +265,9 @@ void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t
 bool awh::Base::del(const SOCKET fd) noexcept {
 	// Результат работы функции
 	bool result = false;
+	
+	return result;
+	
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -334,7 +337,6 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 					break;
 				}
 			}
-			/*
 			// Если удаление не выполненно
 			if(!result){
 				// Выполняем изменение параметров события
@@ -342,7 +344,6 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 				// Выполняем закрытие подключения
 				::close(fd);
 			}
-			*/
 			// Выполняем разблокировку чтения базы событий
 			this->_locker = false;
 		/**
