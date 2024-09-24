@@ -334,6 +334,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 					break;
 				}
 			}
+			/*
 			// Если удаление не выполненно
 			if(!result){
 				// Выполняем изменение параметров события
@@ -341,6 +342,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 				// Выполняем закрытие подключения
 				::close(fd);
 			}
+			*/
 			// Выполняем разблокировку чтения базы событий
 			this->_locker = false;
 		/**
