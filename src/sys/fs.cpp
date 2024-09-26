@@ -1273,6 +1273,139 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 	}
 #endif
 /**
+ * read Метод чтения данных из файла
+ * @param filename адрес файла для чтения
+ * @return         бинарный буфер с прочитанными данными
+ */
+vector <char> awh::FS::read(const string & filename) const noexcept {
+	// Результат работы функции
+	vector <char> result;
+	// Если адрес файла передан и он существует
+	if(!filename.empty() && this->isFile(filename)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Выполняем работу для Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Создаём объект работы с файлом
+				HANDLE file = CreateFileW(this->_fmk->convert(filename).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+				// Если открыть файл открыт нормально
+				if(file != INVALID_HANDLE_VALUE){
+					// Устанавливаем размер буфера
+					result.resize(static_cast <uintmax_t> (GetFileSize(file, nullptr)), 0);
+					// Выполняем чтение из файла в буфер данные
+					ReadFile(file, static_cast <LPVOID> (result.data()), static_cast <DWORD> (result.size()), 0, nullptr);
+					// Выполняем закрытие файла
+					CloseHandle(file);
+				}
+			/**
+			 * Выполняем работу для Unix
+			 */
+			#else
+				// Файловый дескриптор файла
+				int32_t fd = -1;
+				// Структура статистики файла
+				struct stat info;
+				// Если файл не открыт
+				if((fd = ::open(filename.c_str(), O_RDONLY)) < 0)
+					// Выводим сообщение об ошибке
+					this->_log->print("Filename: \"%s\" is broken", log_t::flag_t::WARNING, filename.c_str());
+				// Если файл открыт удачно
+				else if(::fstat(fd, &info) < 0)
+					// Выводим сообщение об ошибке
+					this->_log->print("Filename: \"%s\" is unknown size", log_t::flag_t::WARNING, filename.c_str());
+				// Иначе продолжаем
+				else if(info.st_size > 0) {
+					// Создаём смещение в тексте
+					off_t offset = 0;
+					// Инициализируем смещение в памяти
+					off_t paOffset = (offset & ~(sysconf(_SC_PAGE_SIZE) - 1));
+					// Получаем размер данных в файле
+					const size_t size = (info.st_size - offset);
+					// Выполняем отображение файла в памяти
+					void * buffer = ::mmap(nullptr, (size + offset - paOffset), PROT_READ, MAP_PRIVATE, fd, paOffset);
+					// Если произошла ошибка чтения данных файла
+					if(buffer == MAP_FAILED)
+						// Выводим сообщение что прочитать файл не удалось
+						this->_log->print("Filename: \"%s\" is not read", log_t::flag_t::WARNING, filename.c_str());
+					// Если файл прочитан удачно
+					else if(buffer != nullptr)
+						// Выполняем выделение памяти для результирующего буфера
+						result.assign(reinterpret_cast <char *> (buffer), reinterpret_cast <char *> (buffer) + info.st_size);
+					// Выполняем удаление сопоставления для указанного диапазона адресов
+					::munmap(buffer, (size + offset - paOffset));
+				}
+				// Если файл открыт
+				if(fd > -1)
+					// Закрываем файловый дескриптор
+					::close(fd);
+			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch (const std::ios_base::failure & error) {
+			// Выводим сообщение инициализации метода класса скрипта торговой платформы
+			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * write Метод записи в файл бинарных данных
+ * @param filename адрес файла в который необходимо выполнить запись
+ * @param buffer   бинарный буфер который необходимо записать в файл
+ * @param size     размер бинарного буфера для записи в файл
+ */
+void awh::FS::write(const string & filename, const char * buffer, const size_t size) const noexcept {
+	// Если параметры для записи переданы
+	if(!filename.empty() && (buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Выполняем работу для Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем открытие файла на запись
+				HANDLE file = CreateFileW(this->_fmk->convert(filename).c_str(), GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+				// Если открыть файл открыт нормально
+				if(file != INVALID_HANDLE_VALUE){
+					// Получаем данные для записи в файл
+					const string & data = params.at(2).get <string> ();
+					// Выполняем запись данных в файл
+					WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+					// Выполняем закрытие файла
+					CloseHandle(file);
+				}
+			/**
+			 * Выполняем работу для Unix
+			 */
+			#else
+				// Файловый поток для записи
+				ofstream file(filename, ios::binary);
+				// Если файл открыт на запись
+				if(file.is_open()){
+					// Выполняем запись данных в файл
+					file.write(buffer, size);
+					// Закрываем файл
+					file.close();
+				}
+			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch (const std::ios_base::failure & error) {
+			// Выводим сообщение инициализации метода класса скрипта торговой платформы
+			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		}
+	}
+}
+/**
  * readFile Метод рекурсивного получения всех строк файла
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова

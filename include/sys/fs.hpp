@@ -259,6 +259,20 @@ namespace awh {
 			#endif
 		public:
 			/**
+			 * read Метод чтения данных из файла
+			 * @param filename адрес файла для чтения
+			 * @return         бинарный буфер с прочитанными данными
+			 */
+			vector <char> read(const string & filename) const noexcept;
+			/**
+			 * write Метод записи в файл бинарных данных
+			 * @param filename адрес файла в который необходимо выполнить запись
+			 * @param buffer   бинарный буфер который необходимо записать в файл
+			 * @param size     размер бинарного буфера для записи в файл
+			 */
+			void write(const string & filename, const char * buffer, const size_t size) const noexcept;
+		public:
+			/**
 			 * readFile Метод рекурсивного получения всех строк файла
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
