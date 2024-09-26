@@ -1975,6 +1975,10 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 							if(this->_callbacks.is("read"))
 								// Выводим функцию обратного вызова
 								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->_payload.data.get(), static_cast <size_t> (bytes), bid, i->first);
+							// Если тип сокета установлен как UDP
+							if((this->_settings.sonet == scheme_t::sonet_t::UDP) || (this->_settings.sonet == scheme_t::sonet_t::DTLS))
+								// Выходим из цикла
+								break;
 						// Если данные небыли получены
 						} else if(bytes <= 0) {
 							// Если чтение не выполнена, закрываем подключение

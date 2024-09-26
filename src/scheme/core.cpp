@@ -123,6 +123,8 @@ void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
  * @param event произошедшее событие
  */
 void awh::Scheme::Broker::callback(const SOCKET fd, const base_t::event_type_t event) noexcept {
+	// Выполняем блокирование неиспользуемых переменных
+	(void) fd;
 	// Определяем тип события
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие закрытие подключения
