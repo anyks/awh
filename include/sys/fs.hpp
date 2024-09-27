@@ -264,6 +264,7 @@ namespace awh {
 			 * @return         бинарный буфер с прочитанными данными
 			 */
 			vector <char> read(const string & filename) const noexcept;
+		public:
 			/**
 			 * write Метод записи в файл бинарных данных
 			 * @param filename адрес файла в который необходимо выполнить запись
@@ -271,6 +272,13 @@ namespace awh {
 			 * @param size     размер бинарного буфера для записи в файл
 			 */
 			void write(const string & filename, const char * buffer, const size_t size) const noexcept;
+			/**
+			 * append Метод добавления в файл бинарных данных
+			 * @param filename адрес файла в который необходимо выполнить запись
+			 * @param buffer   бинарный буфер который необходимо записать в файл
+			 * @param size     размер бинарного буфера для записи в файл
+			 */
+			void append(const string & filename, const char * buffer, const size_t size) const noexcept;
 		public:
 			/**
 			 * readFile Метод рекурсивного получения всех строк файла
@@ -284,6 +292,12 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void readFile2(const string & filename, function <void (const string &)> callback) const noexcept;
+			/**
+			 * readFile3 Метод рекурсивного получения всех строк файла (построчным методом)
+			 * @param filename адрес файла для чтения
+			 * @param callback функция обратного вызова
+			 */
+			void readFile3(const string & filename, function <void (const string &)> callback) const noexcept;
 		public:
 			/**
 			 * readDir Метод рекурсивного получения файлов во всех подкаталогах

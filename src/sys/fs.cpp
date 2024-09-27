@@ -273,7 +273,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 						// Если прочитать файла не вышло
 						else {
 							// Открываем файл на чтение
-							ifstream file(path, ios::in);
+							ifstream file(path, ios::in | ios::binary);
 							// Если файл открыт
 							if(file.is_open()){
 								// Перемещаем указатель в конец файла
@@ -1375,8 +1375,6 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 				HANDLE file = CreateFileW(this->_fmk->convert(filename).c_str(), GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 				// Если открыть файл открыт нормально
 				if(file != INVALID_HANDLE_VALUE){
-					// Получаем данные для записи в файл
-					const string & data = params.at(2).get <string> ();
 					// Выполняем запись данных в файл
 					WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
 					// Выполняем закрытие файла
@@ -1391,6 +1389,55 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 				// Если файл открыт на запись
 				if(file.is_open()){
 					// Выполняем запись данных в файл
+					file.write(buffer, size);
+					// Закрываем файл
+					file.close();
+				}
+			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch (const std::ios_base::failure & error) {
+			// Выводим сообщение инициализации метода класса скрипта торговой платформы
+			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		}
+	}
+}
+/**
+ * append Метод добавления в файл бинарных данных
+ * @param filename адрес файла в который необходимо выполнить запись
+ * @param buffer   бинарный буфер который необходимо записать в файл
+ * @param size     размер бинарного буфера для записи в файл
+ */
+void awh::FS::append(const string & filename, const char * buffer, const size_t size) const noexcept {
+	// Если параметры для записи переданы
+	if(!filename.empty() && (buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Выполняем работу для Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем открытие файла на добавление
+				HANDLE file = CreateFileW(this->_fmk->convert(filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+				// Если открыть файл открыт нормально
+				if(file != INVALID_HANDLE_VALUE){
+					// Выполняем добавление данных в файл
+					WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+					// Выполняем закрытие файла
+					CloseHandle(file);
+				}
+			/**
+			 * Выполняем работу для Unix
+			 */
+			#else
+				// Файловый поток для добавления
+				ofstream file(filename, (ios::binary | ios::app));
+				// Если файл открыт на добавление
+				if(file.is_open()){
+					// Выполняем добавление данных в файл
 					file.write(buffer, size);
 					// Закрываем файл
 					file.close();
@@ -1595,7 +1642,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 					// Получаем размер файла
 					size = static_cast <uintmax_t> (info.st_size);
 				// Открываем файл на чтение
-				ifstream file(filename, ios::in);
+				ifstream file(filename, ios::in | ios::binary);
 				// Если файл открыт
 				if(file.is_open()){
 					// Если арзмер файла не получен
@@ -1617,6 +1664,41 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 					file.close();
 				}
 			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch (const ios_base::failure & error) {
+			// Выводим сообщение инициализации метода класса скрипта торговой платформы
+			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		}
+	// Выводим сообщение об ошибке
+	} else this->_log->print("Filename: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
+}
+/**
+ * readFile3 Метод рекурсивного получения всех строк файла (построчным методом)
+ * @param filename адрес файла для чтения
+ * @param callback функция обратного вызова
+ */
+void awh::FS::readFile3(const string & filename, function <void (const string &)> callback) const noexcept {
+	// Если адрес файла передан
+	if(!filename.empty() && this->isFile(filename)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Открываем файл на чтение
+			ifstream file(this->_fmk->convert(filename), ios::in | ios::binary);
+			// Если файл открыт
+			if(file.is_open()){
+				// Результат полученный из потока
+				string result = "";
+				// Выполняем чтение данных из потока
+				while(std::getline(file, result))
+					// Выводим полученный результат
+					callback(result);
+				// Закрываем файл
+				file.close();
+			}
 		/**
 		 * Если возникает ошибка
 		 */
