@@ -1621,7 +1621,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 				// Если открыть файл открыт нормально
 				if(file != INVALID_HANDLE_VALUE){
 					// Устанавливаем размер буфера
-					vector <char> buffer(static_cast <uintmax_t> (GetFileSize(file, nullptr)), 0);
+					vector <char> buffer(static_cast <uintmax_t> (GetFileSize(file, nullptr)));
 					// Выполняем чтение из файла в буфер данные
 					ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
 					// Выполняем чтение данных из буфера
@@ -1686,41 +1686,19 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			/**
-			 * Выполняем работу для Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Открываем файл на чтение
-				wifstream file(this->_fmk->convert(filename), ios::in | ios::binary);
-				// Если файл открыт
-				if(file.is_open()){
-					// Результат полученный из потока
-					wstring result = L"";
-					// Выполняем чтение данных из потока
-					while(std::getline(file, result))
-						// Выводим полученный результат
-						callback(this->_fmk->convert(result));
-					// Закрываем файл
-					file.close();
-				}
-			/**
-			 * Выполняем работу для Unix
-			 */
-			#else
-				// Открываем файл на чтение
-				ifstream file(this->_fmk->convert(filename), ios::in | ios::binary);
-				// Если файл открыт
-				if(file.is_open()){
-					// Результат полученный из потока
-					string result = "";
-					// Выполняем чтение данных из потока
-					while(std::getline(file, result))
-						// Выводим полученный результат
-						callback(result);
-					// Закрываем файл
-					file.close();
-				}
-			#endif
+			// Открываем файл на чтение
+			ifstream file(this->_fmk->convert(filename).c_str(), ios::in | ios::binary);
+			// Если файл открыт
+			if(file.is_open()){
+				// Результат полученный из потока
+				string result = "";
+				// Выполняем чтение данных из потока
+				while(std::getline(file, result))
+					// Выводим полученный результат
+					callback(result);
+				// Закрываем файл
+				file.close();
+			}
 		/**
 		 * Если возникает ошибка
 		 */
