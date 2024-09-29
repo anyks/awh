@@ -1686,19 +1686,41 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Открываем файл на чтение
-			ifstream file(this->_fmk->convert(filename).c_str(), ios::in | ios::binary);
-			// Если файл открыт
-			if(file.is_open()){
-				// Результат полученный из потока
-				string result = "";
-				// Выполняем чтение данных из потока
-				while(std::getline(file, result))
-					// Выводим полученный результат
-					callback(result);
-				// Закрываем файл
-				file.close();
-			}
+			/**
+			 * Выполняем работу для Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Открываем файл на чтение
+				ifstream file(this->_fmk->convert(filename).c_str(), ios::in | ios::binary);
+				// Если файл открыт
+				if(file.is_open()){
+					// Результат полученный из потока
+					string result = "";
+					// Выполняем чтение данных из потока
+					while(std::getline(file, result))
+						// Выводим полученный результат
+						callback(result);
+					// Закрываем файл
+					file.close();
+				}
+			/**
+			 * Выполняем работу для Unix
+			 */
+			#else
+				// Открываем файл на чтение
+				ifstream file(filename, ios::in | ios::binary);
+				// Если файл открыт
+				if(file.is_open()){
+					// Результат полученный из потока
+					string result = "";
+					// Выполняем чтение данных из потока
+					while(std::getline(file, result))
+						// Выводим полученный результат
+						callback(result);
+					// Закрываем файл
+					file.close();
+				}
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
