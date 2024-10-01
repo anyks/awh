@@ -126,8 +126,10 @@ bool awh::client::Sample::enableSSLEvent(const uri_t::url_t & url, const uint64_
 	(void) url;
 	(void) bid;
 	(void) sid;
+	// Получаем тип активного протокола
+	const scheme_t::sonet_t sonet = this->_core->sonet();
 	// Выполняем проверку, выполняется подключение к серверу в защищённом рижеме или нет
-	return (this->_core->sonet() == scheme_t::sonet_t::TLS);
+	return ((sonet == scheme_t::sonet_t::TLS) || (sonet == scheme_t::sonet_t::SCTP));
 }
 /**
  * chunking Метод обработки получения чанков

@@ -158,7 +158,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Если хост сервера получен правильно
 						if(host != nullptr){
 							// Если функция обратного вызова активации шифрованного SSL канала установлена
-							if(!shm->isProxy() && (this->_callbacks.is("ssl")))
+							if(!shm->isProxy() && this->_callbacks.is("ssl"))
 								// Выполняем активацию шифрованного SSL канала
 								this->_engine.encrypted(this->_callbacks.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", url, broker->id(), sid), broker->_ectx);
 							// Выполняем активацию контекста подключения
