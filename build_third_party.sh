@@ -818,8 +818,8 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 		printf "\n****** ICONV ******\n"
 		cd "$ROOT/submodules" || exit 1
 
-		# Выполняем закачку архива исходников LibIconv
-		curl -o "$ROOT/submodules/libiconv.tar.gz" "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz"
+		# Выполняем копирование архива исходников LibIconv
+		cp "$ROOT/tar/libiconv-1.17.tar.gz" "$ROOT/submodules/libiconv.tar.gz"
 
 		# Если архив с исходниками получен
 		if [ -f "$ROOT/submodules/libiconv.tar.gz" ]; then
@@ -874,8 +874,8 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 		printf "\n****** IDN2 ******\n"
 		cd "$ROOT/submodules" || exit 1
 
-		# Выполняем закачку архива исходников LibIconv
-		curl -o "$ROOT/submodules/libidn2.tar.gz" "https://ftp.gnu.org/gnu/libidn/libidn2-2.3.3.tar.gz"
+		# Выполняем копирование архива исходников LibIDN
+		cp "$ROOT/tar/libidn2-2.3.3.tar.gz" "$ROOT/submodules/libidn2.tar.gz"
 
 		# Если архив с исходниками получен
 		if [ -f "$ROOT/submodules/libidn2.tar.gz" ]; then
