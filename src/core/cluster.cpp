@@ -97,12 +97,27 @@ set <pid_t> awh::cluster::Core::pids() const noexcept {
 }
 /**
  * send Метод отправки сообщение родительскому процессу
+ */
+void awh::cluster::Core::send() const noexcept {
+	// Выполняем отправку сообщения родительскому процессу
+	const_cast <cluster_t *> (&this->_cluster)->send(0);
+}
+/**
+ * send Метод отправки сообщение родительскому процессу
  * @param buffer буфер бинарных данных
  * @param size   размер буфера бинарных данных
  */
 void awh::cluster::Core::send(const char * buffer, const size_t size) const noexcept {
 	// Выполняем отправку сообщения родительскому процессу
 	const_cast <cluster_t *> (&this->_cluster)->send(0, buffer, size);
+}
+/**
+ * send Метод отправки сообщение процессу
+ * @param pid идентификатор процесса для отправки
+ */
+void awh::cluster::Core::send(const pid_t pid) const noexcept {
+	// Выполняем отправку сообщения указанному процессу
+	const_cast <cluster_t *> (&this->_cluster)->send(0, pid);
 }
 /**
  * send Метод отправки сообщение процессу
@@ -113,6 +128,13 @@ void awh::cluster::Core::send(const char * buffer, const size_t size) const noex
 void awh::cluster::Core::send(const pid_t pid, const char * buffer, const size_t size) const noexcept {
 	// Выполняем отправку сообщения указанному процессу
 	const_cast <cluster_t *> (&this->_cluster)->send(0, pid, buffer, size);
+}
+/**
+ * broadcast Метод отправки сообщения всем дочерним процессам
+ */
+void awh::cluster::Core::broadcast() const noexcept {
+	// Выполняем отправку сообщения всем процессам
+	const_cast <cluster_t *> (&this->_cluster)->broadcast(0);
 }
 /**
  * broadcast Метод отправки сообщения всем дочерним процессам

@@ -220,11 +220,23 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки сообщения родительскому процессу
+				 * @param wid идентификатор воркера
+				 */
+				void send(const uint16_t wid) noexcept;
+				/**
+				 * send Метод отправки сообщения родительскому процессу
 				 * @param wid    идентификатор воркера
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
 				void send(const uint16_t wid, const char * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * send Метод отправки сообщения дочернему процессу
+				 * @param wid идентификатор воркера
+				 * @param pid идентификатор процесса для получения сообщения
+				 */
+				void send(const uint16_t wid, const pid_t pid) noexcept;
 				/**
 				 * send Метод отправки сообщения дочернему процессу
 				 * @param wid    идентификатор воркера
@@ -234,6 +246,11 @@ namespace awh {
 				 */
 				void send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			public:
+				/**
+				 * broadcast Метод отправки сообщения всем дочерним процессам
+				 * @param wid идентификатор воркера
+				 */
+				void broadcast(const uint16_t wid) noexcept;
 				/**
 				 * broadcast Метод отправки сообщения всем дочерним процессам
 				 * @param wid    идентификатор воркера

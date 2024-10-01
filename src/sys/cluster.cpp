@@ -974,6 +974,16 @@ set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 }
 /**
  * send Метод отправки сообщения родительскому процессу
+ * @param wid идентификатор воркера
+ */
+void awh::Cluster::send(const uint16_t wid) noexcept {
+	// Флаг отправки сообщения
+	const bool message = true;
+	// Выполняем отправку сооббщения
+	this->send(wid, reinterpret_cast <const char *> (&message), sizeof(message));
+}
+/**
+ * send Метод отправки сообщения родительскому процессу
  * @param wid    идентификатор воркера
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
@@ -1040,6 +1050,17 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 }
 /**
  * send Метод отправки сообщения дочернему процессу
+ * @param wid идентификатор воркера
+ * @param pid идентификатор процесса для получения сообщения
+ */
+void awh::Cluster::send(const uint16_t wid, const pid_t pid) noexcept {
+	// Флаг отправки сообщения
+	const bool message = true;
+	// Выполняем отправку сооббщения
+	this->send(wid, pid, reinterpret_cast <const char *> (&message), sizeof(message));
+}
+/**
+ * send Метод отправки сообщения дочернему процессу
  * @param wid    идентификатор воркера
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
@@ -1102,6 +1123,16 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 		// Выводим предупредительное сообщение в лог
 		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 	#endif
+}
+/**
+ * broadcast Метод отправки сообщения всем дочерним процессам
+ * @param wid идентификатор воркера
+ */
+void awh::Cluster::broadcast(const uint16_t wid) noexcept {
+	// Флаг отправки сообщения
+	const bool message = true;
+	// Выполняем отправку сооббщения
+	this->broadcast(wid, reinterpret_cast <const char *> (&message), sizeof(message));
 }
 /**
  * broadcast Метод отправки сообщения всем дочерним процессам

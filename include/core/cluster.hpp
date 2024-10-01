@@ -102,10 +102,20 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки сообщение родительскому процессу
+				 */
+				void send() const noexcept;
+				/**
+				 * send Метод отправки сообщение родительскому процессу
 				 * @param buffer буфер бинарных данных
 				 * @param size   размер буфера бинарных данных
 				 */
 				void send(const char * buffer, const size_t size) const noexcept;
+			public:
+				/**
+				 * send Метод отправки сообщение процессу
+				 * @param pid идентификатор процесса для отправки
+				 */
+				void send(const pid_t pid) const noexcept;
 				/**
 				 * send Метод отправки сообщение процессу
 				 * @param pid    идентификатор процесса для отправки
@@ -114,6 +124,10 @@ namespace awh {
 				 */
 				void send(const pid_t pid, const char * buffer, const size_t size) const noexcept;
 			public:
+				/**
+				 * broadcast Метод отправки сообщения всем дочерним процессам
+				 */
+				void broadcast() const noexcept;
 				/**
 				 * broadcast Метод отправки сообщения всем дочерним процессам
 				 * @param buffer бинарный буфер для отправки сообщения

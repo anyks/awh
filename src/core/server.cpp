@@ -1862,6 +1862,29 @@ bool awh::server::Core::send(const char * buffer, const size_t size, const uint6
 }
 /**
  * send Метод отправки сообщения родительскому процессу
+ * @param wid идентификатор воркера
+ */
+void awh::server::Core::send(const uint16_t wid) noexcept {
+	// Определяем члена семейства кластера
+	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+		// Если процесс является родительским
+		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
+			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
+			this->_log->print("Send message is only available from children process", log_t::flag_t::WARNING);
+			// Если функция обратного вызова установлена
+			if(this->_callbacks.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Send message is only available from children process");
+		} break;
+		// Если процесс является дочерним
+		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
+			// Выполняем отправку сообщения родительскому процессу
+			this->_cluster.send(wid);
+		break;
+	}
+}
+/**
+ * send Метод отправки сообщения родительскому процессу
  * @param wid    идентификатор воркера
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
@@ -1887,6 +1910,30 @@ void awh::server::Core::send(const uint16_t wid, const char * buffer, const size
 }
 /**
  * send Метод отправки сообщения дочернему процессу
+ * @param wid идентификатор воркера
+ * @param pid идентификатор процесса для получения сообщения
+ */
+void awh::server::Core::send(const uint16_t wid, const pid_t pid) noexcept {
+	// Определяем члена семейства кластера
+	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+		// Если процесс является родительским
+		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
+			// Выполняем отправку сообщения дочернему процессу
+			this->_cluster.send(wid, pid);
+		break;
+		// Если процесс является дочерним
+		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
+			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
+			this->_log->print("Send message is only available from master process", log_t::flag_t::WARNING);
+			// Если функция обратного вызова установлена
+			if(this->_callbacks.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Send message is only available from master process");
+		} break;
+	}
+}
+/**
+ * send Метод отправки сообщения дочернему процессу
  * @param wid    идентификатор воркера
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
@@ -1908,6 +1955,29 @@ void awh::server::Core::send(const uint16_t wid, const pid_t pid, const char * b
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Send message is only available from master process");
+		} break;
+	}
+}
+/**
+ * broadcast Метод отправки сообщения всем дочерним процессам
+ * @param wid идентификатор воркера
+ */
+void awh::server::Core::broadcast(const uint16_t wid) noexcept {
+	// Определяем члена семейства кластера
+	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+		// Если процесс является родительским
+		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
+			// Выполняем отправку сообщения всем дочерним процессам
+			this->_cluster.broadcast(wid);
+		break;
+		// Если процесс является дочерним
+		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
+			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
+			this->_log->print("Broadcast message is only available from master process", log_t::flag_t::WARNING);
+			// Если функция обратного вызова установлена
+			if(this->_callbacks.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CLUSTER, "Broadcast is only available from master process");
 		} break;
 	}
 }
