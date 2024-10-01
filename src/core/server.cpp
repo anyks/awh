@@ -132,6 +132,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								ret.first->second->_ectx.blocking(engine_t::mode_t::ENABLE);
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
+								// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
+								ret.first->second->callback <void (const uint64_t)> ("close", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::close), this, sid, _1));
 								// Активируем получение данных с клиента
 								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 								// Деактивируем ожидание записи данных
@@ -808,7 +810,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							// Выполняем установку функции обратного вызова на отправку сообщений
 							broker->callback <void (const uint64_t)> ("write", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::write), this, _1));
 							// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
-							broker->callback <void (const uint64_t)> ("close", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, _1));
+							broker->callback <void (const uint64_t)> ("close", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::close), this, sid, _1));
 							// Активируем получение данных с клиента
 							broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 							// Деактивируем ожидание записи данных
@@ -1322,84 +1324,61 @@ void awh::server::Core::remove() noexcept {
 void awh::server::Core::close(const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
-	// Если тип сокета установлен как не UDP, останавливаем чтение
-	if(this->_settings.sonet != scheme_t::sonet_t::UDP){
-		// Если блокировка брокера не установлена
-		if(this->_busy.find(bid) == this->_busy.end()){
-			// Выполняем блокировку брокера
-			this->_busy.emplace(bid);
-			// Объект работы с функциями обратного вызова
-			fn_t callback(this->_log);
+	// Определяем тип сокета
+	switch(static_cast <uint8_t> (this->_settings.sonet)){
+		// Если тип сокета установлен как DTLS
+		case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
 			// Если идентификатор брокера подключений существует
-			if(this->has(bid)){
-				// Создаём бъект активного брокера подключения
-				awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-				// Выполняем поиск идентификатора схемы сети
-				auto i = this->_schemes.find(broker->sid());
-				// Если идентификатор схемы сети найден
-				if(i != this->_schemes.end()){
-					// Получаем объект схемы сети
-					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
-					// Выполняем очистку буфера событий
-					this->disable(bid);
-					// Выполняем очистку контекста двигателя
-					broker->_ectx.clear();
-					// Выполняем удаление параметров активного брокера
-					node_t::remove(bid);
-					// Если разрешено выводить информационыне уведомления
-					if(this->_verb)
-						// Выводим информацию об удачном отключении от сервера
-						this->_log->print("Disconnect client from server", log_t::flag_t::INFO);
-					// Если функция обратного вызова установлена
-					if(this->_callbacks.is("disconnect"))
-						// Устанавливаем полученную функцию обратного вызова
-						callback.set <void (const uint64_t, const uint16_t)> (bid, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, shm->id);
-					// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
-					if(this->_settings.sonet == scheme_t::sonet_t::DTLS){
+			if(this->has(bid))
+				// Выполняем закрытие подключения
+				this->close(this->broker(bid)->sid(), bid);
+		} break;
+		// Если тип сокета установлен как TCP/IP
+		case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+		// Если тип сокета установлен как TCP/IP TLS
+		case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+		// Если тип сокета установлен как SCTP
+		case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
+			// Если блокировка брокера не установлена
+			if(this->_busy.find(bid) == this->_busy.end()){
+				// Выполняем блокировку брокера
+				this->_busy.emplace(bid);
+				// Объект работы с функциями обратного вызова
+				fn_t callback(this->_log);
+				// Если идентификатор брокера подключений существует
+				if(this->has(bid)){
+					// Создаём бъект активного брокера подключения
+					awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+					// Выполняем поиск идентификатора схемы сети
+					auto i = this->_schemes.find(broker->sid());
+					// Если идентификатор схемы сети найден
+					if(i != this->_schemes.end()){
+						// Получаем объект схемы сети
+						scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+						// Выполняем очистку буфера событий
+						this->disable(bid);
+						// Выполняем очистку контекста двигателя
+						broker->_ectx.clear();
+						// Выполняем удаление параметров активного брокера
+						node_t::remove(bid);
+						// Если разрешено выводить информационыне уведомления
+						if(this->_verb)
+							// Выводим информацию об удачном отключении от сервера
+							this->_log->print("Disconnect client from server", log_t::flag_t::INFO);
 						// Если функция обратного вызова установлена
-						if(callback.is(bid))
-							// Выполняем все функции обратного вызова
-							callback.bind(bid);
-						// Выполняем удаление старого подключения
-						shm->_addr.clear();
-						// Если сокет подключения получен
-						if(this->create(shm->id))
-							// Выполняем создание нового DTLS-брокера
-							this->initDTLS(shm->id);
-						// Если сокет не создан, выводим в консоль информацию
-						else {
-							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::NIX){
-								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->_log->print("Server cannot be init [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
-								// Если функция обратного вызова установлена
-								if(this->_callbacks.is("error"))
-									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s/%s.sock]", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
-							// Если используется хост и порт
-							} else {
-								// Выводим сообщение об незапущенном сервере за порту
-								this->_log->print("Server cannot be init [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
-								// Если функция обратного вызова установлена
-								if(this->_callbacks.is("error"))
-									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s:%u]", shm->_host.c_str(), shm->_port));
-							}
-						}
-						// Удаляем блокировку брокера
-						this->_busy.erase(bid);
-						// Выходим из функции
-						return;
+						if(this->_callbacks.is("disconnect"))
+							// Устанавливаем полученную функцию обратного вызова
+							callback.set <void (const uint64_t, const uint16_t)> (bid, this->_callbacks.get <void (const uint64_t, const uint16_t)> ("disconnect"), bid, shm->id);
 					}
 				}
+				// Удаляем блокировку брокера
+				this->_busy.erase(bid);
+				// Если функция обратного вызова установлена
+				if(callback.is(bid))
+					// Выполняем все функции обратного вызова
+					callback.bind(bid);
 			}
-			// Удаляем блокировку брокера
-			this->_busy.erase(bid);
-			// Если функция обратного вызова установлена
-			if(callback.is(bid))
-				// Выполняем все функции обратного вызова
-				callback.bind(bid);
-		}
+		} break;
 	}
 }
 /**
@@ -1494,6 +1473,114 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 			// Выполняем все функции обратного вызова
 			callback.bind();
 		}
+	}
+}
+/**
+ * close Метод закрытия подключения брокера по протоколу UDP
+ * @param sid идентификатор схемы сети
+ * @param bid идентификатор брокера
+ */
+void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.close);
+	// Определяем тип сокета
+	switch(static_cast <uint8_t> (this->_settings.sonet)){
+		// Если тип сокета установлен как UDP
+		case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
+			// Если блокировка брокера не установлена
+			if(this->_busy.find(bid) == this->_busy.end()){
+				// Выполняем блокировку брокера
+				this->_busy.emplace(bid);
+				// Если идентификатор брокера подключений существует
+				if(this->has(bid)){
+					// Создаём бъект активного брокера подключения
+					awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+					// Выполняем поиск идентификатора схемы сети
+					auto i = this->_schemes.find(broker->sid());
+					// Если идентификатор схемы сети найден
+					if(i != this->_schemes.end()){
+						// Получаем объект схемы сети
+						scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+						// Выполняем очистку буфера событий
+						this->disable(bid);
+						// Выполняем очистку контекста двигателя
+						broker->_ectx.clear();
+						// Выполняем удаление параметров активного брокера
+						node_t::remove(bid);
+						// Если разрешено выводить информационыне уведомления
+						if(this->_verb)
+							// Выводим информацию об удачном отключении от сервера
+							this->_log->print("Disconnect server", log_t::flag_t::INFO);
+					}
+				}
+				// Удаляем блокировку брокера
+				this->_busy.erase(bid);
+				// Выполняем активацию сервера
+				this->accept(1, sid);
+			}
+		} break;
+		// Если тип сокета установлен как DTLS
+		case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
+			// Если блокировка брокера не установлена
+			if(this->_busy.find(bid) == this->_busy.end()){
+				// Выполняем блокировку брокера
+				this->_busy.emplace(bid);
+				// Если идентификатор брокера подключений существует
+				if(this->has(bid)){
+					// Создаём бъект активного брокера подключения
+					awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+					// Выполняем поиск идентификатора схемы сети
+					auto i = this->_schemes.find(broker->sid());
+					// Если идентификатор схемы сети найден
+					if(i != this->_schemes.end()){
+						// Получаем объект схемы сети
+						scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+						// Выполняем очистку буфера событий
+						this->disable(bid);
+						// Выполняем очистку контекста двигателя
+						broker->_ectx.clear();
+						// Выполняем удаление параметров активного брокера
+						node_t::remove(bid);
+						// Если разрешено выводить информационыне уведомления
+						if(this->_verb)
+							// Выводим информацию об удачном отключении от сервера
+							this->_log->print("Disconnect client from server", log_t::flag_t::INFO);
+						// Если функция обратного вызова установлена
+						if(this->_callbacks.is("disconnect"))
+							// Устанавливаем полученную функцию обратного вызова
+							this->_callbacks.call <void (const uint64_t, const uint16_t)> ("disconnect", bid, sid);
+						// Выполняем удаление старого подключения
+						shm->_addr.clear();
+						// Если сокет подключения получен
+						if(this->create(sid))
+							// Выполняем создание нового DTLS-брокера
+							this->initDTLS(sid);
+						// Если сокет не создан, выводим в консоль информацию
+						else {
+							// Если unix-сокет используется
+							if(this->_settings.family == scheme_t::family_t::NIX){
+								// Выводим информацию об незапущенном сервере на unix-сокете
+								this->_log->print("Server cannot be init [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s/%s.sock]", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
+							// Если используется хост и порт
+							} else {
+								// Выводим сообщение об незапущенном сервере за порту
+								this->_log->print("Server cannot be init [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s:%u]", shm->_host.c_str(), shm->_port));
+							}
+						}
+						// Удаляем блокировку брокера
+						this->_busy.erase(bid);
+					}
+				}
+			}
+		} break;
 	}
 }
 /**

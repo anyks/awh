@@ -177,6 +177,13 @@ namespace awh {
 				void remove(const uint16_t sid) noexcept;
 			public:
 				/**
+				 * close Метод закрытия подключения брокера по протоколу UDP
+				 * @param sid идентификатор схемы сети
+				 * @param bid идентификатор брокера
+				 */
+				void close(const uint16_t sid, const uint64_t bid) noexcept;
+			public:
+				/**
 				 * launch Метод запуска сервера
 				 * @param sid идентификатор схемы сети
 				 */
