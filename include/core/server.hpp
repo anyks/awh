@@ -52,13 +52,24 @@ namespace awh {
 				};
 			private:
 				/**
+				 * Режим создания таймера DTLS
+				 */
+				enum class mode_t : uint8_t {
+					NONE    = 0x00, // Режим не установлен
+					READ    = 0x01, // Режим чтения данных
+					ACCEPT  = 0x02, // Режим разрешения подключения
+					RECEIVE = 0x03  // Режим ожидания получения данных
+				};
+			private:
+				/**
 				 * Mutex Объект основных мютексов
 				 */
 				typedef struct Mutex {
-					recursive_mutex main;   // Для установки системных параметров
-					recursive_mutex timer;  // Для создания нового таймера
-					recursive_mutex close;  // Для закрытия подключения
-					recursive_mutex accept; // Для одобрения подключения
+					recursive_mutex main;    // Для установки системных параметров
+					recursive_mutex close;   // Для закрытия подключения
+					recursive_mutex accept;  // Для одобрения подключения
+					recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
+					recursive_mutex timeout; // Для создания нового таймаута
 				} mtx_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -82,8 +93,14 @@ namespace awh {
 				// Список активных дочерних процессов
 				multimap <uint16_t, pid_t> _workers;
 			private:
-				// Список активных таймеров для сетевых схем
-				map <uint16_t, unique_ptr <timer_t>> _timers;
+				// Таймер для работы DTLS
+				unique_ptr <timer_t> _timer;
+			private:
+				// Список таймаутов на получение данных
+				map <uint64_t, uint16_t> _receive;
+				// Список активных таймаутов
+				map <uint16_t, uint16_t> _timeouts;
+			private:
 				// Список подключённых брокеров
 				map <uint16_t, unique_ptr <awh::scheme_t::broker_t>> _brokers;
 			private:
@@ -112,6 +129,26 @@ namespace awh {
 				 * @param status флаг вывода события статуса
 				 */
 				void closedown(const bool mode, const bool status) noexcept;
+			private:
+				/**
+				 * clearTimeout Метод удаления таймера ожидания получения данных
+				 * @param bid идентификатор брокера
+				 */
+				void clearTimeout(const uint64_t bid) noexcept;
+				/**
+				 * clearTimeout Метод удаления таймера подключения или переподключения
+				 * @param sid идентификатор схемы сети
+				 */
+				void clearTimeout(const uint16_t sid) noexcept;
+			private:
+				/**
+				 * createTimeout Метод создания таймаута подключения или переподключения
+				 * @param sid  идентификатор схемы сети
+				 * @param bid  идентификатор брокера
+				 * @param msec время ожидания получения данных в миллисекундах
+				 * @param mode режим создания таймера
+				 */
+				void createTimeout(const uint16_t sid, const uint64_t bid, const time_t msec, const mode_t mode) noexcept;
 			private:
 				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера

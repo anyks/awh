@@ -128,8 +128,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
 								// Выполняем блокировку потока
 								this->_mtx.accept.unlock();
-								// Переводим сокет в блокирующий режим
-								ret.first->second->_ectx.blocking(engine_t::mode_t::ENABLE);
+								// Переводим сокет в неблокирующий режим
+								ret.first->second->_ectx.blocking(engine_t::mode_t::DISABLE);
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 								// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
@@ -821,15 +821,8 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							if(this->_callbacks.is("connect"))
 								// Выполняем функцию обратного вызова
 								this->_callbacks.call <void (const uint64_t, const uint16_t)> ("connect", bid, sid);
-							// Выполняем поиск таймера
-							auto i = this->_timers.find(sid);
-							// Если таймер найден
-							if(i != this->_timers.end()){
-								// Выполняем создание нового таймаута на 100 миллисекунд
-								const uint16_t tid = i->second->timeout(100);
-								// Выполняем добавление функции обратного вызова
-								i->second->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid));
-							}
+							// Выполняем создание нового таймера
+							this->createTimeout(sid, bid, 100, mode_t::READ);
 						}
 					// Подключение не установлено
 					} else {
@@ -844,18 +837,8 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 						// Выполняем удаление объекта подключения
 						this->close(bid);
 					}
-				// Выполняем повторную попытку
-				} else {
-					// Выполняем поиск таймера
-					auto i = this->_timers.find(sid);
-					// Если таймер найден
-					if(i != this->_timers.end()){
-						// Выполняем создание нового таймаута на 10 миллисекунд
-						const uint16_t tid = i->second->timeout(10);
-						// Выполняем добавление функции обратного вызова
-						i->second->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid));
-					}
-				}
+				// Проверяем наличие нового клиента ещё раз
+				} else this->createTimeout(sid, bid, 10, mode_t::ACCEPT);
 			}
 		}
 	}
@@ -895,6 +878,147 @@ void awh::server::Core::closedown(const bool mode, const bool status) noexcept {
 	if(mode)
 		// Выполняем отключение всех брокеров
 		this->close();
+}
+/**
+ * clearTimeout Метод удаления таймера ожидания получения данных
+ * @param bid идентификатор брокера
+ */
+void awh::server::Core::clearTimeout(const uint64_t bid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+	// Выполняем поиск активных таймаутов
+	auto i = this->_receive.find(bid);
+	// Если таймаут найден
+	if(i != this->_receive.end()){
+		// Если таймер инициализирован
+		if(this->_timer != nullptr)
+			// Выполняем удаление активных таймеров
+			this->_timer->clear(i->second);
+		// Удаляем таймаут из базы таймаутов
+		this->_receive.erase(i);
+	}
+}
+/**
+ * clearTimeout Метод удаления таймера подключения или переподключения
+ * @param sid идентификатор схемы сети
+ */
+void awh::server::Core::clearTimeout(const uint16_t sid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.timeout);
+	// Выполняем поиск активных таймаутов
+	auto i = this->_timeouts.find(sid);
+	// Если таймаут найден
+	if(i != this->_timeouts.end()){
+		// Если таймер инициализирован
+		if(this->_timer != nullptr)
+			// Выполняем удаление активных таймеров
+			this->_timer->clear(i->second);
+		// Удаляем таймаут из базы таймаутов
+		this->_timeouts.erase(i);
+	}
+}
+/**
+ * createTimeout Метод создания таймаута подключения или переподключения
+ * @param sid  идентификатор схемы сети
+ * @param bid  идентификатор брокера
+ * @param msec время ожидания получения данных в миллисекундах
+ * @param mode режим создания таймера
+ */
+void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, const time_t msec, const mode_t mode) noexcept {
+	// Если данные переданы верные
+	if((bid > 0) && (mode != mode_t::NONE) && (msec > 0)){
+		// Если таймер не инициализирован
+		if(this->_timer == nullptr){
+			// Выполняем блокировку потока
+			const lock_guard <recursive_mutex> lock1(this->_mtx.receive);
+			// Выполняем блокировку потока
+			const lock_guard <recursive_mutex> lock2(this->_mtx.timeout);
+			// Выполняем инициализацию нового таймера
+			this->_timer = unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log));
+			// Устанавливаем флаг запрещающий вывод информационных сообщений
+			this->_timer->verbose(false);
+			// Выполняем биндинг сетевого ядра таймера
+			this->bind(dynamic_cast <awh::core_t *> (this->_timer.get()));
+		}
+		// Определяем режим создания таймера
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо создать таймер на чтение данных
+			case static_cast <uint8_t> (mode_t::READ): {
+				// Если идентификатор схемы сети найден
+				if(this->has(sid)){
+					// Идентификатор таймера
+					uint16_t tid = 0;
+					// Выполняем поиск активных таймаутов
+					auto i = this->_timeouts.find(sid);
+					// Если таймаут найден
+					if(i != this->_timeouts.end()){
+						// Выполняем удаление активного таймера
+						this->_timer->clear(i->second);
+						// Выполняем создание нового таймаута
+						i->second = tid = this->_timer->timeout(msec);
+					// Если таймаут ещё не создан
+					} else {
+						// Выполняем блокировку потока
+						const lock_guard <recursive_mutex> lock(this->_mtx.timeout);
+						// Выполняем создание нового таймаута
+						this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
+					}
+					// Выполняем добавление функции обратного вызова
+					this->_timer->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid));
+				}
+			} break;
+			// Если необходимо создать таймер на разрешение подключения
+			case static_cast <uint8_t> (mode_t::ACCEPT): {
+				// Если идентификатор схемы сети найден
+				if(this->has(sid)){
+					// Идентификатор таймера
+					uint16_t tid = 0;
+					// Выполняем поиск активных таймаутов
+					auto i = this->_timeouts.find(sid);
+					// Если таймаут найден
+					if(i != this->_timeouts.end()){
+						// Выполняем удаление активного таймера
+						this->_timer->clear(i->second);
+						// Выполняем создание нового таймаута
+						i->second = tid = this->_timer->timeout(msec);
+					// Если таймаут ещё не создан
+					} else {
+						// Выполняем блокировку потока
+						const lock_guard <recursive_mutex> lock(this->_mtx.timeout);
+						// Выполняем создание нового таймаута
+						this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
+					}
+					// Выполняем добавление функции обратного вызова
+					this->_timer->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid));
+				}
+			} break;
+			// Если необходимо создать таймер на ожидание входящих данных
+			case static_cast <uint8_t> (mode_t::RECEIVE): {
+				// Если идентификатор брокера найден
+				if(this->has(bid)){
+					// Идентификатор таймера
+					uint16_t tid = 0;
+					// Выполняем поиск активных таймаутов
+					auto i = this->_receive.find(bid);
+					// Если таймаут найден
+					if(i != this->_receive.end()){
+						// Выполняем удаление активного таймера
+						this->_timer->clear(i->second);
+						// Выполняем создание нового таймаута
+						i->second = tid = this->_timer->timeout(msec);
+					// Если таймаут ещё не создан
+					} else {
+						// Выполняем блокировку потока
+						const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+						// Выполняем создание нового таймаута
+						this->_timeouts.emplace(bid, (tid = this->_timer->timeout(msec)));
+					}
+					// Выполняем добавление функции обратного вызова
+					this->_timer->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid));
+				}
+			} break;
+		}
+	}
 }
 /**
  * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
@@ -1089,19 +1213,6 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 				node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
 				// Выполняем разблокировку потока
 				this->_mtx.accept.unlock();
-				// Выполняем поиск таймера
-				auto j = this->_timers.find(sid);
-				// Если таймер ещё не создан
-				if(j == this->_timers.end()){
-					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx.timer);
-					// Выполняем создание нового таймера
-					auto ret = this->_timers.emplace(sid, unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log)));
-					// Устанавливаем флаг запрещающий вывод информационных сообщений
-					ret.first->second->verbose(false);
-					// Выполняем биндинг сетевого ядра таймера
-					this->bind(dynamic_cast <awh::core_t *> (ret.first->second.get()));
-				}
 				// Выполняем установку функции обратного вызова на получении сообщений
 				ret.first->second->callback <void (const uint64_t)> ("read", std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, _1));
 				// Запускаем событие подключения клиента
@@ -1177,6 +1288,8 @@ void awh::server::Core::close() noexcept {
 		fn_t callback(this->_log);
 		// Переходим по всему списку схем сети
 		for(auto & item : this->_schemes){
+			// Выполняем удаление таймера проверки наличия клиентов
+			this->clearTimeout(item.first);
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (item.second));
 			// Если в схеме сети есть подключённые клиенты
@@ -1187,6 +1300,8 @@ void awh::server::Core::close() noexcept {
 					if(this->_busy.find(i->first) == this->_busy.end()){
 						// Выполняем блокировку брокера
 						this->_busy.emplace(i->first);
+						// Выполняем удаление таймера ожидания получения данных
+						this->clearTimeout(i->first);
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
 						// Выполняем очистку буфера событий
@@ -1239,19 +1354,14 @@ void awh::server::Core::remove() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock2(node_t::_mtx.main);
 		const lock_guard <recursive_mutex> lock3(node_t::_mtx.send);
-		// Если список таймеров не пустой
-		if(!this->_timers.empty()){
-			// Выполняем перебор всех таймеров
-			for(auto i = this->_timers.begin(); i != this->_timers.end();){
-				// Выполняем блокировку потока
-				const lock_guard <recursive_mutex> lock(this->_mtx.timer);
-				// Останавливаем работу таймера
-				i->second->clear();
-				// Выполняем анбиндинг сетевого ядра таймера
-				this->unbind(dynamic_cast <awh::core_t *> (i->second.get()));
-				// Выполняем удаление таймера
-				i = this->_timers.erase(i);
-			}
+		// Если таймер инициализирован удачно
+		if(this->_timer != nullptr){
+			// Выполняем удаление всех таймеров
+			this->_timer->clear();
+			// Выполняем анбиндинг сетевого ядра таймера
+			this->unbind(dynamic_cast <awh::core_t *> (this->_timer.get()));
+			// Удалям активный таймер
+			this->_timer.reset(nullptr);
 		}
 		// Объект работы с функциями обратного вызова
 		fn_t callback(this->_log);
@@ -1264,6 +1374,8 @@ void awh::server::Core::remove() noexcept {
 		}
 		// Переходим по всему списку схем сети
 		for(auto i = this->_schemes.begin(); i != this->_schemes.end();){
+			// Выполняем удаление таймера проверки наличия клиентов
+			this->clearTimeout(i->first);
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Если в схеме сети есть подключённые клиенты
@@ -1274,6 +1386,8 @@ void awh::server::Core::remove() noexcept {
 					if(this->_busy.find(j->first) == this->_busy.end()){
 						// Выполняем блокировку брокера
 						this->_busy.emplace(j->first);
+						// Выполняем удаление таймера ожидания получения данных
+						this->clearTimeout(j->first);
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 						// Выполняем очистку буфера событий
@@ -1324,6 +1438,8 @@ void awh::server::Core::remove() noexcept {
 void awh::server::Core::close(const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
+	// Выполняем удаление таймера ожидания получения данных
+	this->clearTimeout(bid);
 	// Определяем тип сокета
 	switch(static_cast <uint8_t> (this->_settings.sonet)){
 		// Если тип сокета установлен как DTLS
@@ -1397,26 +1513,12 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 		if(i != this->_schemes.end()){
-			// Если список таймеров не пустой
-			if(!this->_timers.empty()){
-				// Выполняем поиск таймера
-				auto i = this->_timers.find(sid);
-				// Если таймер найден удачно
-				if(i != this->_timers.end()){
-					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx.timer);
-					// Останавливаем работу таймера
-					i->second->clear();
-					// Выполняем анбиндинг сетевого ядра таймера
-					this->unbind(dynamic_cast <awh::core_t *> (i->second.get()));
-					// Выполняем удаление таймера
-					this->_timers.erase(i);
-				}
-			}
 			// Объект работы с функциями обратного вызова
 			fn_t callback(this->_log);
+			// Выполняем удаление таймера проверки наличия клиентов
+			this->clearTimeout(i->first);
 			// Выполняем поиск активного брокера ожидания подключения
-			auto j = this->_brokers.find(sid);
+			auto j = this->_brokers.find(i->first);
 			// Если брокерактивного подключения получен
 			if(j != this->_brokers.end()){
 				// Активируем получение данных с клиента
@@ -1434,6 +1536,8 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 					if(this->_busy.find(j->first) == this->_busy.end()){
 						// Выполняем блокировку брокера
 						this->_busy.emplace(j->first);
+						// Выполняем удаление таймера ожидания получения данных
+						this->clearTimeout(j->first);
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
 						// Выполняем очистку буфера событий
@@ -1483,6 +1587,8 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
+	// Выполняем удаление таймера ожидания получения данных
+	this->clearTimeout(bid);
 	// Определяем тип сокета
 	switch(static_cast <uint8_t> (this->_settings.sonet)){
 		// Если тип сокета установлен как UDP
@@ -1533,6 +1639,8 @@ void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 					auto i = this->_schemes.find(broker->sid());
 					// Если идентификатор схемы сети найден
 					if(i != this->_schemes.end()){
+						// Выполняем удаление таймера проверки наличия клиентов
+						this->clearTimeout(i->first);
 						// Получаем объект схемы сети
 						scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 						// Выполняем очистку буфера событий
@@ -2133,9 +2241,17 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 								// Выводим функцию обратного вызова
 								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->_payload.data.get(), static_cast <size_t> (bytes), bid, i->first);
 							// Если тип сокета установлен как UDP
-							if((this->_settings.sonet == scheme_t::sonet_t::UDP) || (this->_settings.sonet == scheme_t::sonet_t::DTLS))
+							if(this->_settings.sonet == scheme_t::sonet_t::DTLS){
+								// Если подключение ещё не разорванно
+								if(this->has(bid)){
+									// Если таймер ожидания получения данных установлен
+									if(broker->_timeouts.read > 0)
+										// Выполняем создание таймаута ожидания получения данных
+										this->createTimeout(i->first, bid, broker->_timeouts.read * 1000, mode_t::RECEIVE);
+								}
 								// Выходим из цикла
 								break;
+							}
 						// Если данные небыли получены
 						} else if(bytes <= 0) {
 							// Если чтение не выполнена, закрываем подключение
@@ -2239,6 +2355,8 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 			if(i != this->_schemes.end()){
 				// Определяем тип сокета
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
+					// Если тип сокета установлен как UDP
+					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 					// Если тип сокета установлен как TCP/IP
 					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 					// Если тип сокета установлен как TCP/IP TLS
@@ -2281,6 +2399,8 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 					if(bytes != 0){
 						// Определяем тип сокета
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как UDP
+							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 							// Если тип сокета установлен как TCP/IP
 							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 							// Если тип сокета установлен как TCP/IP TLS
@@ -2854,7 +2974,7 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  awh::node_t(fmk, log), _socket(fmk, log),
  _cluster(fmk, log), _clusterSize(-1),
  _clusterAutoRestart(false), _clusterAsyncMessages(false),
- _clusterMode(awh::scheme_t::mode_t::DISABLED) {
+ _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов
@@ -2874,7 +2994,7 @@ awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log)
  awh::node_t(dns, fmk, log), _socket(fmk, log),
  _cluster(fmk, log), _clusterSize(-1),
  _clusterAutoRestart(false), _clusterAsyncMessages(false),
- _clusterMode(awh::scheme_t::mode_t::DISABLED) {
+ _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов

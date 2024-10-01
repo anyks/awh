@@ -622,7 +622,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 			// Если необходимо установить таймаут на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <char *> (&timeout), sizeof(timeout))))){
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <void *> (&timeout), sizeof(timeout))))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -635,7 +635,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 			// Если необходимо установить таймаут на запись
 			case static_cast <uint8_t> (mode_t::WRITE): {
 				// Выполняем установку таймаута на запись данных в сокет
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <char *> (&timeout), sizeof(timeout))))){
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <void *> (&timeout), sizeof(timeout))))){
 					/**
 					 * Если включён режим отладки
 					 */

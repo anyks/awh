@@ -216,30 +216,66 @@ namespace awh {
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (void)> callback) noexcept {
-				// Выполняем блокировку потока
-				const lock_guard <mutex> lock(this->_mtx2);
-				// Устанавливаем функцию обратного вызова
-				this->_trigger = callback;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard <mutex> lock(this->_mtx2);
+					// Устанавливаем функцию обратного вызова
+					this->_trigger = callback;
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					/**
+					 * Выполняем игнорирование ошибки
+					 */
+				}
 			}
 			/**
 			 * on Метод установки функции обратного вызова
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (const T &)> callback) noexcept {
-				// Выполняем блокировку потока
-				const lock_guard <mutex> lock(this->_mtx2);
-				// Устанавливаем функцию обратного вызова
-				this->_callback = callback;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard <mutex> lock(this->_mtx2);
+					// Устанавливаем функцию обратного вызова
+					this->_callback = callback;
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					/**
+					 * Выполняем игнорирование ошибки
+					 */
+				}
 			}
 			/**
 			 * on Метод установки функции обратного вызова получения состояния очереди
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (const state_t, const size_t)> callback) noexcept {
-				// Выполняем блокировку потока
-				const lock_guard <mutex> lock(this->_mtx2);
-				// Устанавливаем функцию обратного вызова
-				this->_state = callback;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard <mutex> lock(this->_mtx2);
+					// Устанавливаем функцию обратного вызова
+					this->_state = callback;
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					/**
+					 * Выполняем игнорирование ошибки
+					 */
+				}
 			}
 		public:
 			/**
@@ -247,10 +283,22 @@ namespace awh {
 			 * @param delay значение таймаута для установки в наносекундах
 			 */
 			void timeout(const time_t delay = TIMEOUT) noexcept {
-				// Выполняем блокировку потока
-				const lock_guard <mutex> lock(this->_mtx2);
-				// Выполняем установку задержки времени
-				this->_delay = chrono::nanoseconds(delay);
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard <mutex> lock(this->_mtx2);
+					// Выполняем установку задержки времени
+					this->_delay = chrono::nanoseconds(delay);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					/**
+					 * Выполняем игнорирование ошибки
+					 */
+				}
 			}
 		public:
 			/**

@@ -40,7 +40,8 @@ class Client {
 				const string message = "Hello World!!!";
 				// Выполняем отправку сообщения серверу
 				sample->send(message.data(), message.size());
-			}
+			// Останавливаем работу модуля
+			} else sample->stop();
 		}
 		/**
 		 * message Метод получения сообщений

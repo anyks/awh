@@ -53,18 +53,24 @@ namespace awh {
 				 * Mutex Структура основных мютексов
 				 */
 				typedef struct Mutex {
-					recursive_mutex timer;   // Для создания нового таймера
 					recursive_mutex close;   // Для закрытия подключения
 					recursive_mutex reset;   // Для сброса параметров таймаута
 					recursive_mutex proxy;   // Для работы с прокси-сервером
 					recursive_mutex connect; // Для выполнения подключения
+					recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
+					recursive_mutex timeout; // Для создания нового таймаута
 				} mtx_t;
 			private:
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
 			private:
-				// Список активных таймеров для сетевых схем
-				map <uint16_t, unique_ptr <timer_t>> _timers;
+				// Объект работы таймера
+				timer_t _timer;
+			private:
+				// Список таймаутов на получение данных
+				map <uint64_t, uint16_t> _receive;
+				// Список активных таймаутов
+				map <uint16_t, uint16_t> _timeouts;
 			private:
 				/**
 				 * connect Метод создания подключения к удаленному серверу
@@ -96,8 +102,26 @@ namespace awh {
 				 * @param mode режим работы клиента
 				 */
 				void timeout(const uint16_t sid, const scheme_t::mode_t mode) noexcept;
+			private:
 				/**
-				 * createTimeout Метод создания таймаута
+				 * clearTimeout Метод удаления таймера ожидания получения данных
+				 * @param bid идентификатор брокера
+				 */
+				void clearTimeout(const uint64_t bid) noexcept;
+				/**
+				 * clearTimeout Метод удаления таймера подключения или переподключения
+				 * @param sid идентификатор схемы сети
+				 */
+				void clearTimeout(const uint16_t sid) noexcept;
+			private:
+				/**
+				 * createTimeout Метод создания таймаута ожидания получения данных
+				 * @param bid  идентификатор брокера
+				 * @param msec время ожидания получения данных в миллисекундах
+				 */
+				void createTimeout(const uint64_t bid, const time_t msec) noexcept;
+				/**
+				 * createTimeout Метод создания таймаута подключения или переподключения
 				 * @param sid  идентификатор схемы сети
 				 * @param mode режим работы клиента
 				 */
@@ -117,11 +141,6 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void sendTimeout(const uint64_t bid) noexcept;
-				/**
-				 * clearTimeout Метод удаления установленного таймаута
-				 * @param sid идентификатор схемы сети
-				 */
-				void clearTimeout(const uint16_t sid) noexcept;
 			private:
 				/**
 				 * disable Метод остановки активности брокера подключения
