@@ -1934,10 +1934,10 @@ void awh::Base::start() noexcept {
 												if(j->second.delay > 0){
 													// Количество прочитанных байт
 													int32_t bytes = -1;
-													// Устанавливаем временное значение буфера
-													vector <char> buffer(sizeof(time_t), 0);
+													// Фремя погрешности работы таймера
+													time_t infelicity = 0;
 													// Если чтение выполнено удачно
-													if((bytes = j->second.pipe->read(fd, buffer.data(), buffer.size())) > 0){
+													if((bytes = j->second.pipe->read(fd, &infelicity, sizeof(infelicity))) > 0){
 														// Если функция обратного вызова установлена
 														if(j->second.callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -2113,10 +2113,10 @@ void awh::Base::start() noexcept {
 												if(item->delay > 0){
 													// Количество прочитанных байт
 													int32_t bytes = -1;
-													// Устанавливаем временное значение буфера
-													vector <char> buffer(sizeof(time_t), 0);
+													// Фремя погрешности работы таймера
+													time_t infelicity = 0;
 													// Если чтение выполнено удачно
-													if((bytes = item->pipe->read(item->fd, buffer.data(), buffer.size())) > 0){
+													if((bytes = item->pipe->read(item->fd, &infelicity, sizeof(infelicity))) > 0){
 														// Если функция обратного вызова установлена
 														if(item->callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -2294,10 +2294,10 @@ void awh::Base::start() noexcept {
 												if(item->delay > 0){
 													// Количество прочитанных байт
 													int32_t bytes = -1;
-													// Устанавливаем временное значение буфера
-													vector <char> buffer(sizeof(time_t), 0);
+													// Фремя погрешности работы таймера
+													time_t infelicity = 0;
 													// Если чтение выполнено удачно
-													if((bytes = item->pipe->read(item->fd, buffer.data(), buffer.size())) > 0){
+													if((bytes = item->pipe->read(item->fd, &infelicity, sizeof(infelicity))) > 0){
 														// Если функция обратного вызова установлена
 														if(item->callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий

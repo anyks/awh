@@ -56,11 +56,11 @@ namespace awh {
 					~Broker() noexcept {}
 			} broker_t;
 		private:
-			// Мютекс для блокировки основного потока
-			mutex _mtx;
-		private:
 			// Хранилище функций обратного вызова
 			fn_t _callbacks;
+		private:
+			// Мютекс для блокировки основного потока
+			recursive_mutex _mtx;
 		private:
 			// Список активных брокеров
 			map <uint16_t, unique_ptr <broker_t>> _brokers;
@@ -110,7 +110,7 @@ namespace awh {
 				// Если функция обратного вызова передана
 				if((tid > 0) && (fn != nullptr)){
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <recursive_mutex> lock(this->_mtx);
 					// Выполняем установку функции обратного вызова
 					this->_callbacks.set <A> (static_cast <uint64_t> (tid), fn);
 				}

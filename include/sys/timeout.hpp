@@ -58,9 +58,6 @@ namespace awh {
 			// Мютекс для блокировки потока
 			mutex _mtx;
 		private:
-			// Контрольная точка даты
-			time_t _date;
-		private:
 			/**
 			 * Методы только для OS Windows
 			 */

@@ -97,17 +97,17 @@ void awh::Timer::event(const uint16_t tid, const SOCKET fd, const base_t::event_
  */
 void awh::Timer::clear() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
 		// Выполняем перебор всех активных брокеров
 		for(auto i = this->_brokers.begin(); i != this->_brokers.end();){
-			// Выполняем остановку активного брокера
-			i->second->event.stop();
 			// Если функция обратного вызова существует
 			if(this->_callbacks.is(static_cast <uint64_t> (i->first)))
 				// Выполняем удаление функции обратного вызова
 				this->_callbacks.erase(static_cast <uint64_t> (i->first));
+			// Выполняем остановку активного брокера
+			i->second->event.stop();
 			// Выполняем удаление таймера
 			i = this->_brokers.erase(i);
 		}
@@ -119,25 +119,19 @@ void awh::Timer::clear() noexcept {
  */
 void awh::Timer::clear(const uint16_t tid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Если функция обратного вызова существует
+	if(this->_callbacks.is(static_cast <uint64_t> (tid)))
+		// Выполняем удаление функции обратного вызова
+		this->_callbacks.erase(static_cast <uint64_t> (tid));
 	// Выполняем поиск активного брокера
 	auto i = this->_brokers.find(tid);
 	// Если активный брокер найден
 	if(i != this->_brokers.end()){
 		// Выполняем остановку активного брокера
 		i->second->event.stop();
-		// Если функция обратного вызова существует
-		if(this->_callbacks.is(static_cast <uint64_t> (tid)))
-			// Выполняем удаление функции обратного вызова
-			this->_callbacks.erase(static_cast <uint64_t> (tid));
-		{
-			// Выполняем поиск активного брокера
-			auto i = this->_brokers.find(tid);
-			// Если активный брокер найден
-			if(i != this->_brokers.end())
-				// Выполняем удаление таймера
-				this->_brokers.erase(i);
-		}
+		// Выполняем удаление таймера
+		this->_brokers.erase(i);
 	}
 }
 /**

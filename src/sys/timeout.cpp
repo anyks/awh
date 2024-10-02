@@ -21,22 +21,22 @@
  * trigger Метод обработки событий триггера
  */
 void awh::Timeout::trigger() noexcept {
+	// Получаем текущее значение даты
+	const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
 		this->_mtx.lock();
 		// Идентификатор файлового дескриптора (сокета)
 		SOCKET fd = 0;
-		// Количество прошедшего времени
-		time_t elapsed = 0;
 		// Выполняем перебор всего списка таймеров
 		for(auto i = this->_timers.begin(); i != this->_timers.end();){
 			// Получаем файловый дескриптор
 			fd = i->second;
-			// Определяем сколько прошло времени
-			elapsed = (this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS) - this->_date);
 			// Если время вышло
-			if(elapsed >= i->first){
+			if(date >= i->first){
+				// Определяем размер погрешности
+				const time_t infelicity = (date - i->first);
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
 				// Выполняем поиск файловый дескриптор
@@ -44,46 +44,23 @@ void awh::Timeout::trigger() noexcept {
 				// Если файловый дескриптор найден в списке
 				if(j != this->_fds.end()){
 					// Выполняем запись в сокет данных
-					this->_pipe.write(fd, &elapsed, sizeof(elapsed), j->second);
+					this->_pipe.write(fd, &infelicity, sizeof(infelicity), j->second);
 					// Выполняем удаление идентификатора таймера
 					this->_fds.erase(j);
 				}
-			// Выходим из цикла
-			} else {
-				// Если времени больше не усталось
-				if((elapsed = (i->first - elapsed)) == 0){
-					// Выполняем удаление значение таймера
-					i = this->_timers.erase(i);
-					// Выполняем поиск файловый дескриптор
-					auto j = this->_fds.find(fd);
-					// Если файловый дескриптор найден в списке
-					if(j != this->_fds.end()){
-						// Выполняем запись в сокет данных
-						this->_pipe.write(fd, &elapsed, sizeof(elapsed), j->second);
-						// Выполняем удаление идентификатора таймера
-						this->_fds.erase(j);
-					}
-				// Выполняем замену таймера в списке
-				} else {
-					// Выполняем удаление значение таймера
-					this->_timers.erase(i);
-					// Добавляем новый элемент в список
-					i = this->_timers.emplace(elapsed, fd);
-					// Выполняем обход дальше
-					++i;
-				}
-			}
+			// Продолжаем перебор дальше
+			} else ++i;
 		}
-		// Запоминаем текущее значение даты
-		this->_date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
+		// Получаем первое значение даты в списке
+		const time_t first = this->_timers.begin()->first;
 		// Если список таймеров не пустой и время задержки выше 0
-		if(!this->_timers.empty() && (this->_timers.begin()->first > 0))
+		if(!this->_timers.empty() && ((first > date ? (first - date) : 0) > 0))
 			// Выполняем смену времени таймера
-			this->_screen = static_cast <time_t> (this->_timers.begin()->first);
-		// Устанавливаем таймаут по умолчанию
-		else this->_screen.timeout();
+			this->_screen = static_cast <time_t> (first - date);
+		// Выполняем обработку входящих данных
+		else this->trigger();
 	// Устанавливаем таймаут по умолчанию
 	} else this->_screen.timeout();
 }
@@ -94,20 +71,20 @@ void awh::Timeout::trigger() noexcept {
 void awh::Timeout::process(const data_t data) noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.lock();
+	// Получаем текущее значение даты
+	const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Идентификатор файлового дескриптора (сокета)
 		SOCKET fd = 0;
-		// Количество прошедшего времени
-		time_t elapsed = 0;
 		// Выполняем перебор всего списка таймеров
 		for(auto i = this->_timers.begin(); i != this->_timers.end();){
 			// Получаем файловый дескриптор
 			fd = i->second;
-			// Определяем сколько прошло времени
-			elapsed = (this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS) - this->_date);
 			// Если время вышло
-			if(elapsed >= i->first){
+			if(date >= i->first){
+				// Определяем размер погрешности
+				const time_t infelicity = (date - i->first);
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
 				// Выполняем поиск файловый дескриптор
@@ -115,35 +92,12 @@ void awh::Timeout::process(const data_t data) noexcept {
 				// Если файловый дескриптор найден в списке
 				if(j != this->_fds.end()){
 					// Выполняем запись в сокет данных
-					this->_pipe.write(fd, &elapsed, sizeof(elapsed), j->second);
+					this->_pipe.write(fd, &infelicity, sizeof(infelicity), j->second);
 					// Выполняем удаление идентификатора таймера
 					this->_fds.erase(j);
 				}
-			// Выходим из цикла
-			} else {
-				// Если времени больше не усталось
-				if((elapsed = (i->first - elapsed)) == 0){
-					// Выполняем удаление значение таймера
-					i = this->_timers.erase(i);
-					// Выполняем поиск файловый дескриптор
-					auto j = this->_fds.find(fd);
-					// Если файловый дескриптор найден в списке
-					if(j != this->_fds.end()){
-						// Выполняем запись в сокет данных
-						this->_pipe.write(fd, &elapsed, sizeof(elapsed), j->second);
-						// Выполняем удаление идентификатора таймера
-						this->_fds.erase(j);
-					}
-				// Выполняем замену таймера в списке
-				} else {
-					// Выполняем удаление значение таймера
-					this->_timers.erase(i);
-					// Добавляем новый элемент в список
-					i = this->_timers.emplace(elapsed, fd);
-					// Выполняем обход дальше
-					++i;
-				}
-			}
+			// Продолжаем перебор дальше
+			} else ++i;
 		}
 	}
 	// Если сокет таймера ещё не добавлен
@@ -151,18 +105,18 @@ void awh::Timeout::process(const data_t data) noexcept {
 		// Выполняем добавление файлового дескриптора в список
 		this->_fds.emplace(data.fd, data.port);
 		// Выполняем добавления нового таймера
-		this->_timers.emplace(data.delay, data.fd);
+		this->_timers.emplace(data.delay + date, data.fd);
 	}
-	// Запоминаем текущее значение даты
-	this->_date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 	// Выполняем разблокировку потока
 	this->_mtx.unlock();
+	// Получаем первое значение даты в списке
+	const time_t first = this->_timers.begin()->first;
 	// Если список таймеров не пустой и время задержки выше 0
-	if(!this->_timers.empty() && (this->_timers.begin()->first > 0))
+	if(!this->_timers.empty() && ((first > date ? (first - date) : 0) > 0))
 		// Выполняем смену времени таймера
-		this->_screen = static_cast <time_t> (this->_timers.begin()->first);
-	// Устанавливаем таймаут по умолчанию
-	else this->_screen.timeout();
+		this->_screen = static_cast <time_t> (first - date);
+	// Выполняем обработку входящих данных
+	else this->trigger();
 }
 /**
  * stop Метод остановки работы таймера
@@ -225,7 +179,7 @@ void awh::Timeout::set(const SOCKET fd, const time_t delay, const uint32_t port)
  * @param log объект для работы с логами
  */
 awh::Timeout::Timeout(const fmk_t * fmk, const log_t * log) noexcept :
- _date(0), _pipe(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk), _log(log) {
+ _pipe(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk), _log(log) {
 	/**
 	 * Методы только для OS Windows
 	 */
