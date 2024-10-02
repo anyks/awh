@@ -126,7 +126,7 @@ void awh::Signals::start() noexcept {
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Выполняем игнорирование сигналов SIGPIPE и SIGABRT
+			// Выполняем игнорирование сигналов SIGPIPE
 			::signal(SIGPIPE, SIG_IGN);
 			// Выполняем зануление структур перехватчиков событий
 			::memset(&this->_ev.sigInt, 0, sizeof(this->_ev.sigInt));

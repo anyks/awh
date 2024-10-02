@@ -36,7 +36,6 @@
 #if __linux__
 	// Подключаем модуль EPoll
 	#include <sys/epoll.h>
-	#include <sys/timerfd.h>
 /**
  * Если это FreeBSD или MacOS X
  */
@@ -115,41 +114,26 @@ namespace awh {
 			typedef struct Item {
 				// Отслеживаемый файловый дескриптор
 				SOCKET fd;
+				// Файловые дескрипторы таймеров
+				SOCKET timer;
 				// Идентификатор записи
 				uint64_t id;
 				// Флаг активации серийного таймера
 				bool series;
 				// Задержка времени таймера
 				time_t delay;
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Объект работы с пайпом
-					shared_ptr <pipe_t> pipe;
-				/**
-				 * Если это Linux
-				 */
-				#elif __linux__
-					// Параметры таймера
-					struct itimerspec timer;
-				/**
-				 * Если это FreeBSD или MacOS X
-				 */
-				#elif __APPLE__ || __MACH__ || __FreeBSD__
-					// Объект работы с пайпом
-					shared_ptr <pipe_t> pipe;
-					// Файловые дескрипторы таймеров
-					SOCKET timer = INVALID_SOCKET;
-				#endif
 				// Функция обратного вызова
 				callback_t callback;
+				// Объект работы с пайпом
+				shared_ptr <pipe_t> pipe;
 				// Список соответствия типов событий режиму работы
 				std::map <event_type_t, event_mode_t> mode;
 				/**
 				 * Item Конструктор
 				 */
-				Item() noexcept : fd(INVALID_SOCKET), id(0), series(false), delay(0), callback(nullptr) {}
+				Item() noexcept :
+				 fd(INVALID_SOCKET), timer(INVALID_SOCKET), id(0),
+				 series(false), delay(0), callback(nullptr), pipe(nullptr) {}
 			} item_t;
 		private:
 			// Идентификатор модуля

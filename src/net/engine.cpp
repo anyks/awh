@@ -4312,6 +4312,15 @@ void awh::Engine::certificate(const string & pem, const string & key) noexcept {
  */
 awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
  _verify(true), _fs(fmk, log), _cipher{""}, _crl(nullptr), _fmk(fmk), _uri(uri), _log(log) {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем игнорирование сигналов SIGPIPE
+		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+			// Выводим в лог сообщение
+			this->_log->print("Failed to ignoring signal SIGPIPE", log_t::flag_t::CRITICAL);
+	#endif
 	// Выполняем установку сертификата центра сертификации (CA-файла)
 	this->_cert.ca = this->_fs.realPath(this->_cert.ca, false);
 	// Выполняем установку алгоритмов шифрования
