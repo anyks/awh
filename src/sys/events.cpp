@@ -1187,10 +1187,10 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 							this->_change.push_back((struct epoll_event){});
 							// Устанавливаем новый объект для отслеживания события
 							this->_events.push_back((struct epoll_event){});
+							// Выполняем установку указателя на основное событие
+							this->_change.back().data.ptr = item;
 							// Устанавливаем флаг ожидания отключения сокета
 							this->_change.back().events = EPOLLERR;
-							// Выполняем установку указателя на основное событие
-							this->_change.back().data.ptr = &ret.first->second;
 							// Выполняем изменение параметров события
 							if(!(result = (::epoll_ctl(this->_efd, EPOLL_CTL_ADD, fd, &this->_change.back()) == 0)))
 								// Выводим сообщение об ошибке
