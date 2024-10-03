@@ -163,10 +163,15 @@ std::set <size_t> awh::ClusterMessageProtocol::items() const noexcept {
 	std::set <size_t> result;
 	// Если записи существуют
 	if(!this->_data.empty()){
+		// Индекс записи для добавления
+		size_t index = 0;
 		// Выполняем перебор всего списка записей
-		for(auto & item : this->_data)
+		for(auto & item : this->_data){
+			// Получаем индекс записи
+			index = item->_header.index;
 			// Добавляем полученный индекс в список записей
-			result.emplace(item->_header.index);
+			result.emplace(index);
+		}
 	}
 	// Выводим полученный результат
 	return result;
