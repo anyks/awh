@@ -308,17 +308,17 @@ void awh::ClusterMessageProtocol::push(const void * buffer, const size_t size) n
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("CMP: %s", log_t::flag_t::CRITICAL, error.what());
-	/**
-	 * Если возникает ошибка
-	 */
 	} catch(const bad_alloc &) {
 		// Выводим в лог сообщение
 		this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("CMP: %s", log_t::flag_t::CRITICAL, error.what());
 	}
 }
 /**
@@ -347,6 +347,8 @@ void awh::ClusterMessageProtocol::append(const void * buffer, const size_t size)
 				this->_log->print("Received data buffer was corrupted.", log_t::flag_t::CRITICAL);
 			// Если буфер данных соответствует
 			else {
+				// Получаем индекс записи в протоколе передачи данных
+				const size_t index = data->_header.index;
 				// Выполняем формирование буфера данных
 				data->_payload = unique_ptr <uint8_t []> (new uint8_t [data->_header.bytes]);
 				// Выполняем копирование буфера полученных данных
@@ -354,28 +356,22 @@ void awh::ClusterMessageProtocol::append(const void * buffer, const size_t size)
 				// Если все данные получены
 				if(data->_header.mode == mode_t::END){
 					// Выполняем получение всего списка записей
-					auto ret = this->_tmp.equal_range(data->_header.index);
+					auto ret = this->_tmp.equal_range(index);
 					// Выполняем перебор всего списка данных
 					for(auto i = ret.first; i != ret.second; ++i)
 						// Выполняем добавление буфера данных в список
 						this->_data.emplace(i->first, std::move(i->second));
 					// Выполняем удаление уже используемых буферов данных для текущей записи из временного буфера
-					this->_tmp.erase(data->_header.index);
+					this->_tmp.erase(index);
 					// Выполняем добавление буфера данных в список
-					this->_data.emplace(data->_header.index, std::move(data));
+					this->_data.emplace(index, std::move(data));
 					// Выполняем увеличение номера записи
 					this->_index = (this->_data.rbegin()->first + 1);
 				// Если данные записи получены частично, добавляем их в временный буфер
-				} else this->_tmp.emplace(data->_header.index, std::move(data));
+				} else this->_tmp.emplace(index, std::move(data));
 			}
 		// Выводим сообщение об ошибке
 		} else this->_log->print("Вuffer size is too small and is %zu bytes", log_t::flag_t::CRITICAL, size);
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("CMP: %s", log_t::flag_t::CRITICAL, error.what());
 	/**
 	 * Если возникает ошибка
 	 */
@@ -384,6 +380,12 @@ void awh::ClusterMessageProtocol::append(const void * buffer, const size_t size)
 		this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("CMP: %s", log_t::flag_t::CRITICAL, error.what());
 	}
 }
 /**
