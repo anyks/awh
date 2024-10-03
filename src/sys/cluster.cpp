@@ -378,11 +378,11 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 					// Выполняем запись в сокет
 					const ssize_t bytes = ::write(fd, buffer.data() + offset, buffer.size() - offset);
 					// Если данные записаны удачно
-					if(bytes == static_cast <ssize_t> (buffer.size()))
+					if(bytes == static_cast <ssize_t> (buffer.size() - offset))
 						// Удаляем чанк из объекта протокола
 						i->second->pop();
 					// Если данные отправлены не полностью
-					else if((bytes > 0) && (bytes < static_cast <ssize_t> (buffer.size()))) {
+					else if((bytes > 0) && (bytes < static_cast <ssize_t> (buffer.size() - offset))) {
 						// Увеличиваем смещение на количество отправленных данных
 						offset += static_cast <size_t> (bytes);
 						// Выполняем попытку отправить данные ещё раз
@@ -402,10 +402,10 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 						}
 					// Если произошло отключение
 					} else {
-						// Выполняем остановку работы
-						this->stop(wid);
 						// Выводим в лог сообщение
 						this->_log->print("Cluster write: %s", log_t::flag_t::WARNING, this->_socket.message().c_str());
+						// Выполняем остановку работы
+						this->stop(wid);
 						/**
 						 * Если включён режим отладки
 						 */
@@ -581,6 +581,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									this->_socket.blocking(broker->cfds[0], socket_t::mode_t::DISABLE);
 									// Делаем сокет на запись неблокирующим
 									this->_socket.blocking(broker->mfds[1], socket_t::mode_t::DISABLE);
+									// Добавляем новый протокол кластера
+									this->_cmp.emplace(wid, std::unique_ptr <cmp_t> (new cmp_t(this->_log)));
 									// Устанавливаем идентификатор процесса
 									broker->pid = pid;
 									// Устанавливаем время начала жизни процесса
@@ -681,6 +683,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Активируем перехватчик событий
 							::sigaction(SIGCHLD, &this->_sa, nullptr);
 						}
+						// Добавляем новый протокол кластера
+						this->_cmp.emplace(wid, std::unique_ptr <cmp_t> (new cmp_t(this->_log)));
 						// Выполняем перебор всех доступных брокеров
 						for(auto & broker : j->second){
 							// Выполняем активацию работы чтения данных с дочерних процессов
@@ -1211,12 +1215,6 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 		if(i == this->_workers.end())
 			// Добавляем воркер в список воркеров
 			this->_workers.emplace(wid, std::unique_ptr <worker_t> (new worker_t(wid, this, this->_log)));
-		// Выполняем поиск активных протоколов кластера
-		auto j = this->_cmp.find(wid);
-		// Если протокол кластера не найден
-		if(j == this->_cmp.end())
-			// Добавляем новый протокол кластера
-			this->_cmp.emplace(wid, std::unique_ptr <cmp_t> (new cmp_t(this->_log)));
 		// Выполняем установку максимально-возможного количества процессов
 		this->count(wid, count);
 	/**

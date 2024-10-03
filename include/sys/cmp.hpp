@@ -19,7 +19,7 @@
  * Стандартные модули
  */
 #include <set>
-#include <map>
+#include <deque>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -59,7 +59,6 @@ namespace awh {
 			 * Header Структура работы с заголовком буфера данных
 			 */
 			typedef struct Header {
-				pid_t  pid;   // Идентификатор процесса
 				mode_t mode;  // Режим работы буфера данных
 				size_t size;  // Общий размер записи
 				size_t bytes; // Размер текущего чанка
@@ -67,7 +66,7 @@ namespace awh {
 				/**
 				 * Header Конструктор
 				 */
-				Header() noexcept : pid(::getpid()), mode(mode_t::NONE), size(0), bytes(0), index(0) {}
+				Header() noexcept : mode(mode_t::NONE), size(0), bytes(0), index(0) {}
 			} __attribute__((packed)) header_t;
 			/**
 			 * Buffer Структура работы с буфером данных
@@ -117,16 +116,13 @@ namespace awh {
 			// Мютекс для блокировки потока
 			mutex _mtx;
 		private:
-			// Индекс последней записи
-			size_t _index;
-		private:
 			// Размер одного блока данных
 			size_t _chunkSize;
 		private:
 			// Временный буфер данных
-			std::multimap <size_t, std::unique_ptr <buffer_t>> _tmp;
+			std::deque <std::unique_ptr <buffer_t>> _tmp;
 			// Очередь данных буферов записи
-			std::multimap <size_t, std::unique_ptr <buffer_t>> _data;
+			std::deque <std::unique_ptr <buffer_t>> _data;
 		private:
 			// Создаём объект работы с логами
 			const log_t * _log;
@@ -165,13 +161,6 @@ namespace awh {
 			 * @return список записей в протоколе
 			 */
 			std::set <size_t> items() const noexcept;
-		public:
-			/**
-			 * pid Получение идентификатора процесса
-			 * @param index индекс конкретной записи
-			 * @return      идентификатор процесса
-			 */
-			pid_t pid(const size_t index) const noexcept;
 		public:
 			/**
 			 * at Метод извлечения данных конкретной записи
@@ -239,7 +228,7 @@ namespace awh {
 			 * ClusterMessageProtocol Конструктор
 			 * @param log объект для работы с логами
 			 */
-			ClusterMessageProtocol(const log_t * log) noexcept : _index(0), _chunkSize(CHUNK_SIZE), _log(log) {}
+			ClusterMessageProtocol(const log_t * log) noexcept : _chunkSize(CHUNK_SIZE), _log(log) {}
 			/**
 			 * ~ClusterMessageProtocol Деструктор
 			 */

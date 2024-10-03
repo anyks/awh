@@ -87,7 +87,7 @@ std::vector <char> awh::ClusterMessageProtocol::front() const noexcept {
 	// Если записи в протоколе существуют
 	if(!this->_data.empty())
 		// Выводим запрошенный буфер данных
-		return this->_data.begin()->second->data();
+		return this->_data.front()->data();
 	// Выводим результат
 	return std::vector <char> ();
 }
@@ -99,7 +99,7 @@ std::vector <char> awh::ClusterMessageProtocol::back() const noexcept {
 	// Если записи в протоколе существуют
 	if(!this->_data.empty())
 		// Выводим запрошенный буфер данных
-		return this->_data.rbegin()->second->data();
+		return this->_data.back()->data();
 	// Выводим результат
 	return std::vector <char> ();
 }
@@ -135,9 +135,13 @@ void awh::ClusterMessageProtocol::erase(const size_t index) noexcept {
 			// Выполняем перебор всего списка записей
 			for(auto i = this->_data.begin(); i != this->_data.end();){
 				// Если индекс соответствует записи
-				if(i->first == index)
+				if((* i)->_header.index == index)
 					// Выполняем удаление записи
 					i = this->_data.erase(i);
+				// Если индекс записи уже следующий
+				else if((* i)->_header.index > index)
+					// Выходим из цикла
+					break;
 				// Пропускаем запись и ищем дальше
 				else ++i;
 			}
@@ -162,28 +166,10 @@ std::set <size_t> awh::ClusterMessageProtocol::items() const noexcept {
 		// Выполняем перебор всего списка записей
 		for(auto & item : this->_data)
 			// Добавляем полученный индекс в список записей
-			result.emplace(item.first);
+			result.emplace(item->_header.index);
 	}
 	// Выводим полученный результат
 	return result;
-}
-/**
- * pid Получение идентификатора процесса
- * @param index индекс конкретной записи
- * @return      идентификатор процесса
- */
-pid_t awh::ClusterMessageProtocol::pid(const size_t index) const noexcept {
-	// Если список записей не пустой
-	if(!this->_data.empty()){
-		// Выполняем поиск указанной записи
-		auto i = this->_data.find(index);
-		// Если запись найдена
-		if(i != this->_data.end())
-			// Выводим идентификатор процесса
-			return i->second->_header.pid;
-	}
-	// Выводим результат
-	return 0;
 }
 /**
  * at Метод извлечения данных конкретной записи
@@ -195,14 +181,18 @@ std::vector <char> awh::ClusterMessageProtocol::at(const size_t index) const noe
 	std::vector <char> result;
 	// Если список записей не пустой
 	if(!this->_data.empty()){
-		// Выполняем получение всего списка записей
-		auto ret = this->_data.equal_range(index);
 		// Выполняем перебор всего списка данных
-		for(auto i = ret.first; i != ret.second; ++i){
-			// Если запись существует
-			if((i->second->_header.bytes > 0) && (i->second->_payload != nullptr))
-				// Выполняем добавление полученных данных в результирующий буфер
-				result.insert(result.end(), reinterpret_cast <char *> (i->second->_payload.get()), reinterpret_cast <char *> (i->second->_payload.get()) + i->second->_header.bytes);
+		for(auto i = this->_data.begin(); i != this->_data.end(); ++i){
+			// Если индекс записи соответствует
+			if((* i)->_header.index == index){
+				// Если запись существует
+				if(((* i)->_header.bytes > 0) && ((* i)->_payload != nullptr))
+					// Выполняем добавление полученных данных в результирующий буфер
+					result.insert(result.end(), reinterpret_cast <char *> ((* i)->_payload.get()), reinterpret_cast <char *> ((* i)->_payload.get()) + (* i)->_header.bytes);
+			// Если индекс записи уже следующий
+			} else if((* i)->_header.index > index)
+				// Выходим из цикла
+				break;
 		}
 	}
 	// Выводим результат
@@ -218,16 +208,14 @@ void awh::ClusterMessageProtocol::clear() noexcept {
 	try {
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем сброс индекса последней записи
-		this->_index = 0;
 		// Выполняем удаление буфера временных данных
 		this->_tmp.clear();
 		// Выполняем удаление всех данных
 		this->_data.clear();
 		// Очищаем выделенную память для временного буфера данных
-		std::multimap <size_t, std::unique_ptr <buffer_t>> ().swap(this->_tmp);
+		std::deque <std::unique_ptr <buffer_t>> ().swap(this->_tmp);
 		// Очищаем выделенную память для записей
-		std::multimap <size_t, std::unique_ptr <buffer_t>> ().swap(this->_data);
+		std::deque <std::unique_ptr <buffer_t>> ().swap(this->_data);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -249,7 +237,7 @@ void awh::ClusterMessageProtocol::pop() noexcept {
 		// Если список записей не пустой
 		if(!this->_data.empty())
 			// Выполняем удаление первой записи
-			this->_data.erase(this->_data.begin());
+			this->_data.pop_front();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -272,6 +260,8 @@ void awh::ClusterMessageProtocol::push(const void * buffer, const size_t size) n
 		const lock_guard <mutex> lock(this->_mtx);
 		// Получаем размер заголовка
 		const size_t headerSize = sizeof(header_t);
+		// Получаем индекс новой записи
+		const size_t index = (!this->_data.empty() ? this->_data.back()->_header.index + 1 : 0);
 		// Если размер данных больше размера чанка
 		if((headerSize + size) > this->_chunkSize){
 			// Получаем общий размер данных
@@ -279,19 +269,19 @@ void awh::ClusterMessageProtocol::push(const void * buffer, const size_t size) n
 			// Выполняем формирование буфера до тех пор пока все не добавим
 			while((size - offset) > 0){
 				// Выполняем добавление буфера данных в список
-				auto i = this->_data.emplace(this->_index, unique_ptr <buffer_t> (new buffer_t));
+				this->_data.push_back(std::unique_ptr <buffer_t> (new buffer_t));
 				// Если данные не помещаются в буфере
 				if((headerSize + (size - offset)) > this->_chunkSize){
 					// Формируем актуальный размер данных буфера
 					actual = (this->_chunkSize - headerSize);
 					// Добавляем в буфер новую запись
-					i->second->push(this->_index, (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE), size, reinterpret_cast <const char *> (buffer) + offset, actual);
+					this->_data.back()->push(index, (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE), size, reinterpret_cast <const char *> (buffer) + offset, actual);
 				// Если данные помещаются в буфере
 				} else {
 					// Формируем актуальный размер данных буфера
 					actual = (size - offset);
 					// Добавляем в буфер новую запись
-					i->second->push(this->_index, mode_t::END, size, reinterpret_cast <const char *> (buffer) + offset, actual);
+					this->_data.back()->push(index, mode_t::END, size, reinterpret_cast <const char *> (buffer) + offset, actual);
 				}
 				// Увеличиваем смещение в буфере
 				offset += actual;
@@ -299,12 +289,10 @@ void awh::ClusterMessageProtocol::push(const void * buffer, const size_t size) n
 		// Если размер данных помещается в буфер
 		} else {
 			// Выполняем добавление буфера данных в список
-			auto i = this->_data.emplace(this->_index, unique_ptr <buffer_t> (new buffer_t));
+			this->_data.push_back(std::unique_ptr <buffer_t> (new buffer_t));
 			// Добавляем в буфер данных наши записи
-			i->second->push(this->_index, mode_t::END, size, buffer, size);
+			this->_data.back()->push(index, mode_t::END, size, buffer, size);
 		}
-		// Выполняем увеличение номера записи
-		this->_index = (this->_data.rbegin()->first + 1);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -333,6 +321,20 @@ void awh::ClusterMessageProtocol::append(const void * buffer, const size_t size)
 	try {
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->_mtx);
+		
+		const bool data = true;
+
+		// Получаем индекс новой записи
+		const size_t index = (!this->_data.empty() ? this->_data.back()->_header.index + 1 : 0);
+
+		// Выполняем добавление буфера данных в список
+		this->_data.push_back(std::unique_ptr <buffer_t> (new buffer_t));
+		// Добавляем в буфер данных наши записи
+		this->_data.back()->push(index, mode_t::END, sizeof(data), reinterpret_cast <const char *> (&data) , sizeof(data));
+
+
+
+		/*
 		// Получаем размер заголовка
 		const size_t headerSize = sizeof(header_t);
 		// Если данные переданы
@@ -372,6 +374,7 @@ void awh::ClusterMessageProtocol::append(const void * buffer, const size_t size)
 			}
 		// Выводим сообщение об ошибке
 		} else this->_log->print("Вuffer size is too small and is %zu bytes", log_t::flag_t::CRITICAL, size);
+		*/
 	/**
 	 * Если возникает ошибка
 	 */
