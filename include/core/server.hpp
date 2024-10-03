@@ -84,8 +84,6 @@ namespace awh {
 				int16_t _clusterSize;
 				// Флаг автоматического перезапуска упавших процессов
 				bool _clusterAutoRestart;
-				// Флаг асинхронного режима обмена сообщениями
-				bool _clusterAsyncMessages;
 			private:
 				// Флаг активации/деактивации кластера
 				awh::scheme_t::mode_t _clusterMode;
@@ -355,11 +353,6 @@ namespace awh {
 				 * @param mode флаг перезапуска процессов
 				 */
 				void clusterAutoRestart(const bool mode) noexcept;
-				/**
-				 * clusterAsyncMessages Метод установки флага асинхронного режима обмена сообщениями
-				 * @param mode флаг асинхронного режима обмена сообщениями
-				 */
-				void clusterAsyncMessages(const bool mode) noexcept;
 			public:
 				/**
 				 * cluster Метод проверки активации кластера

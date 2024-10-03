@@ -276,29 +276,6 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 	#endif
 }
 /**
- * asyncMessages Метод установки флага асинхронного режима обмена сообщениями
- * @param mode флаг асинхронного режима обмена сообщениями
- */
-void awh::cluster::Core::asyncMessages(const bool mode) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Устанавливаем флаг асинхронного режима обмена сообщениями
-		this->_cluster.asyncMessages(0, mode);
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		// Выводим предупредительное сообщение в лог
-		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
-		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("error"))
-			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
-	#endif
-}
-/**
  * Core Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами

@@ -46,7 +46,7 @@
 #include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <sys/screen.hpp>
+#include <sys/cmp.hpp>
 #include <net/socket.hpp>
 #include <sys/events.hpp>
 
@@ -83,72 +83,18 @@ namespace awh {
 				MASTER   = 0x02, // Воркер является мастером
 				CHILDREN = 0x01  // Воркер является ребёнком
 			};
-		private:
-			/**
-			 * Message Структура межпроцессного сообщения
-			 */
-			typedef struct Message {
-				bool quit;   // Флаг остановки работы процесса
-				pid_t pid;   // Пид активного процесса
-				size_t size; // Размер передаваемых данных
-				/**
-				 * Message Конструктор
-				 */
-				Message() noexcept : quit(false), pid(0), size(0) {}
-			} __attribute__((packed)) mess_t;
-			/**
-			 * Payload Структура полезной нагрузки
-			 */
-			typedef struct Payload {
-				pid_t pid;                 // Идентификатор процесса приславший данные
-				size_t pos;                // Позиция в буфере
-				size_t size;               // Размер буфера
-				size_t offset;             // Смещение в бинарном буфере
-				unique_ptr <char []> data; // Данные буфера
-				/**
-				 * Payload Конструктор
-				 */
-				Payload() noexcept : pid(0), pos(0), size(0), offset(0), data(nullptr) {}
-			} payload_t;
 		public:
 			/**
 			 * Worker Класс воркера
 			 */
 			typedef class AWHSHARED_EXPORT Worker {
-				private:
-					/**
-					 * Data Структура выводимых данных
-					 */
-					typedef struct Data {
-						pid_t pid;            // Идентификатор процесса приславший данные
-						vector <char> buffer; // Буфер передаваемых данных
-						/**
-						 * Data Конструктор
-						 */
-						Data() noexcept : pid(0) {}
-					} data_t;
-					/**
-					 * Payload Структура буфера полезной нагрузки
-					 */
-					typedef struct Payload {
-						// Параметры входящего сообщения
-						mess_t message;
-						// Буфер полезной нагрузки
-						vector <char> buffer;
-						/**
-						 * Payload Конструктор
-						 */
-						Payload() noexcept {}
-					} payload_t;
 				public:
 					// Мютекс для блокировки потока
 					mutex mtx;
-				public:
+				private:
 					// Идентификатор воркера
-					uint16_t wid;
+					uint16_t _wid;
 				public:
-					// Флаг асинхронного режима обмена сообщениями
-					bool async;
 					// Флаг запуска работы
 					bool working;
 					// Флаг автоматического перезапуска
@@ -159,18 +105,14 @@ namespace awh {
 				private:
 					// Бинарный буфер полученных данных
 					uint8_t _buffer[4096];
-				public:
-					// Родительский объект кластера
-					Cluster * cluster;
 				private:
-					// Объект для работы с скрином
-					screen_t <data_t> _screen;
-				private:
-					// Полезная нагрузка полученная в сообщениях
-					map <pid_t, unique_ptr <payload_t>> _payload;
+					// Список объектов работы с протоколом кластера
+					map <pid_t, std::unique_ptr <cmp_t>> _cmp;
 				private:
 					// Объект для работы с логами
 					const log_t * _log;
+					// Родительский объект кластера
+					const Cluster * _ctx;
 				public:
 					/**
 					 * Если операционной системой не является Windows
@@ -196,33 +138,19 @@ namespace awh {
 						 */
 						void message(const SOCKET fd, const base_t::event_type_t event) noexcept;
 					#endif
-				private:
-					/**
-					 * Если операционной системой не является Windows
-					 */
-					#if !defined(_WIN32) && !defined(_WIN64)
-						/**
-						 * callback Метод вывода функции обратного вызова
-						 * @param data данные передаваемые процессом
-						 */
-						void callback(const data_t & data) noexcept;
-						/**
-						 * prepare Метод извлечения данных из полученного буфера
-						 * @param pid    идентификатор упавшего процесса
-						 * @param family идентификатор семейства кластера
-						 */
-						void prepare(const pid_t pid, const family_t family) noexcept;
-					#endif
 				public:
 					/**
 					 * Worker Конструктор
+					 * @param wid идентификатор воркера
+					 * @param ctx родительский объект кластера
 					 * @param log объект для работы с логами
 					 */
-					Worker(const log_t * log) noexcept;
+					Worker(const uint16_t wid, const Cluster * ctx, const log_t * log) noexcept :
+					 _wid(wid), working(false), restart(false), count(1), _buffer{0}, _log(log), _ctx(ctx) {}
 					/**
 					 * ~Worker Деструктор
 					 */
-					~Worker() noexcept;
+					~Worker() noexcept {}
 			} worker_t;
 		private:
 			/**
@@ -293,12 +221,12 @@ namespace awh {
 		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
+			// Список объектов работы с протоколом кластера
+			map <uint16_t, std::unique_ptr <cmp_t>> _cmp;
 			// Список активных воркеров
-			map <uint16_t, unique_ptr <worker_t>> _workers;
-			// Буферы отправляемой полезной нагрузки
-			map <uint16_t, multimap <pid_t, payload_t>> _payloads;
+			map <uint16_t, std::unique_ptr <worker_t>> _workers;
 			// Список дочерних брокеров
-			map <uint16_t, vector <unique_ptr <broker_t>>> _brokers;
+			map <uint16_t, vector <std::unique_ptr <broker_t>>> _brokers;
 		private:
 			// Объект работы с базой событий
 			base_t * _base;
@@ -311,10 +239,9 @@ namespace awh {
 			/**
 			 * write Метод записи буфера данных в сокет
 			 * @param wid идентификатор воркера
-			 * @param pid идентификатор процесса для получения сообщения
 			 * @param fd  идентификатор файлового дескриптора
 			 */
-			void write(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept;
+			void write(const uint16_t wid, const SOCKET fd) noexcept;
 		private:
 			/**
 			 * fork Метод отделения от основного процесса (создание дочерних процессов)
@@ -323,15 +250,6 @@ namespace awh {
 			 * @param stop  флаг остановки итерации создания дочерних процессов
 			 */
 			void fork(const uint16_t wid, const uint16_t index = 0, const bool stop = false) noexcept;
-		private:
-			/**
-			 * emplace Метод добавления нового буфера полезной нагрузки
-			 * @param wid    идентификатор воркера
-			 * @param pid    идентификатор процесса для получения сообщения
-			 * @param buffer бинарный буфер полезной нагрузки
-			 * @param size   размер бинарного буфера полезной нагрузки
-			 */
-			void emplace(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * master Метод проверки является ли процесс родительским
@@ -451,13 +369,6 @@ namespace awh {
 			 * @param count максимальное количество процессов
 			 */
 			void count(const uint16_t wid, const uint16_t count) noexcept;
-		public:
-			/**
-			 * asyncMessages Метод установки флага асинхронного режима обмена сообщениями
-			 * @param wid  идентификатор воркера
-			 * @param mode флаг асинхронного режима обмена сообщениями
-			 */
-			void asyncMessages(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
 			 * init Метод инициализации воркера

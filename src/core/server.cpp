@@ -1712,8 +1712,6 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 					this->_cluster.trackCrash(this->_clusterAutoRestart);
 					// Устанавливаем флаг автоматического перезапуска упавших процессов
 					this->_cluster.restart(sid, this->_clusterAutoRestart);
-					// Устанавливаем флаг асинхронного режима обмена сообщениями
-					this->_cluster.asyncMessages(sid, this->_clusterAsyncMessages);
 					// Если количество процессов установленно
 					if(this->_clusterSize >= 0)
 						// Выполняем инициализацию кластера
@@ -2727,31 +2725,6 @@ void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 	#endif
 }
 /**
- * clusterAsyncMessages Метод установки флага асинхронного режима обмена сообщениями
- * @param mode флаг асинхронного режима обмена сообщениями
- */
-void awh::server::Core::clusterAsyncMessages(const bool mode) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Выполняем установку флага асинхронного режима обмена сообщениями
-		this->_clusterAsyncMessages = mode;
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		// Выводим предупредительное сообщение в лог
-		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
-		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("error"))
-			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
-	#endif
-}
-/**
  * cluster Метод проверки активации кластера
  * @return режим активации кластера
  */
@@ -2972,8 +2945,7 @@ void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  awh::node_t(fmk, log), _socket(fmk, log),
- _cluster(fmk, log), _clusterSize(-1),
- _clusterAutoRestart(false), _clusterAsyncMessages(false),
+ _cluster(fmk, log), _clusterSize(-1), _clusterAutoRestart(false),
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
@@ -2992,8 +2964,7 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  awh::node_t(dns, fmk, log), _socket(fmk, log),
- _cluster(fmk, log), _clusterSize(-1),
- _clusterAutoRestart(false), _clusterAsyncMessages(false),
+ _cluster(fmk, log), _clusterSize(-1), _clusterAutoRestart(false),
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;

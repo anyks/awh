@@ -32,9 +32,9 @@
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->mtx);
 		// Выполняем поиск брокера
-		auto j = this->cluster->_brokers.find(this->wid);
+		auto j = this->_ctx->_brokers.find(this->_wid);
 		// Если брокер найден
-		if(j != this->cluster->_brokers.end()){
+		if(j != this->_ctx->_brokers.end()){
 			// Выполняем поиск завершившегося процесса
 			for(auto & broker : j->second){
 				// Если процесс найден
@@ -47,34 +47,34 @@
 					// Если статус сигнала, ручной остановкой процесса
 					if(status == SIGINT){
 						// Выполняем остановку работы
-						this->cluster->stop(this->wid);
+						const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
 						// Выходим из приложения
 						::exit(SIGINT);
 					// Если время жизни процесса составляет меньше 3-х минут
-					} else if((this->cluster->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - broker->date) <= 180000) {
+					} else if((this->_ctx->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - broker->date) <= 180000) {
 						// Выполняем остановку работы
-						this->cluster->stop(this->wid);
+						const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
 					// this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::CRITICAL, broker->pid, status);
 					// Если функция обратного вызова установлена
-					if(this->cluster->_callbacks.is("process"))
+					if(this->_ctx->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
-						this->cluster->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", j->first, pid, event_t::STOP);
+						this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", j->first, pid, event_t::STOP);
 					// Выполняем поиск воркера
-					auto i = this->cluster->_workers.find(j->first);
+					auto i = this->_ctx->_workers.find(j->first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
-					if((i != this->cluster->_workers.end()) && i->second->restart){
+					if((i != this->_ctx->_workers.end()) && i->second->restart){
 						// Получаем индекс упавшего процесса
-						const uint16_t index = this->cluster->_pids.at(broker->pid);
+						const uint16_t index = this->_ctx->_pids.at(broker->pid);
 						// Удаляем процесс из списка процессов
-						this->cluster->_pids.erase(broker->pid);
+						const_cast <cluster_t *> (this->_ctx)->_pids.erase(broker->pid);
 						// Выполняем создание нового процесса
-						this->cluster->fork(i->first, index, i->second->restart);
+						const_cast <cluster_t *> (this->_ctx)->fork(i->first, index, i->second->restart);
 					// Просто удаляем процесс из списка процессов
-					} else this->cluster->_pids.erase(broker->pid);
+					} else const_cast <cluster_t *> (this->_ctx)->_pids.erase(broker->pid);
 					// Выходим из цикла
 					break;
 				}
@@ -109,7 +109,7 @@
 				// Если объект воркера инициализирован
 				if(worker != nullptr)
 					// Выполняем остановку работы
-					worker->cluster->stop(worker->wid);
+					const_cast <cluster_t *> (worker->_ctx)->stop(worker->_wid);
 				// Выполняем завершение работы
 				::exit(status);
 			}
@@ -122,13 +122,13 @@
 	 */
 	void awh::Cluster::Worker::message(SOCKET fd, const base_t::event_type_t event) noexcept {
 		// Если процесс является родительским
-		if(this->cluster->_pid == static_cast <pid_t> (::getpid())){
+		if(this->_ctx->_pid == static_cast <pid_t> (::getpid())){
 			// Определяем тип события
 			switch(static_cast <uint8_t> (event)){
 				// Если выполняется событие закрытие подключения
 				case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
 					// Выводим сообщение об ошибке в лог
-					this->_log->print("[%u] Data from child process [%u] is closed", log_t::flag_t::CRITICAL, this->cluster->_pid, ::getpid());
+					this->_log->print("[%u] Data from child process [%u] is closed", log_t::flag_t::CRITICAL, this->_ctx->_pid, ::getpid());
 					/**
 					 * Если включён режим отладки
 					 */
@@ -148,9 +148,9 @@
 					// Идентификатор процесса приславший сообщение
 					pid_t pid = 0;
 					// Выполняем поиск текущего брокера
-					auto i = this->cluster->_brokers.find(this->wid);
+					auto i = this->_ctx->_brokers.find(this->_wid);
 					// Если текущий брокер найден
-					if(i != this->cluster->_brokers.end()){
+					if(i != this->_ctx->_brokers.end()){
 						// Флаг найденного файлового дескриптора
 						bool found = false;
 						// Переходим по всему списку брокеров
@@ -174,31 +174,40 @@
 						}
 					}
 					// Размер входящих сообщений
-					const int32_t bytes = ::read(fd, this->_buffer, sizeof(this->_buffer));
+					const ssize_t bytes = ::read(fd, this->_buffer, sizeof(this->_buffer));
 					// Если сообщение получено полностью
 					if(bytes != 0){
 						// Если данные прочитанны правильно
 						if(bytes > 0){
-							// Выполняем поиск буфера полезной нагрузки
-							auto i = this->_payload.find(pid);
-							// Если буфер полезной нагрузки найден
-							if(i != this->_payload.end())
-								// Добавляем полученные данные в смарт-буфер
-								i->second->buffer.insert(i->second->buffer.end(), reinterpret_cast <char *> (this->_buffer), reinterpret_cast <char *> (this->_buffer) + static_cast <size_t> (bytes));
-							// Если буфер полезной нагрузки не найден
-							else {
-								// Выполняем создание буфера полезной нагрузки
-								auto ret = this->_payload.emplace(pid, unique_ptr <payload_t> (new payload_t));
-								// Добавляем полученные данные в смарт-буфер
-								ret.first->second->buffer.insert(ret.first->second->buffer.end(), reinterpret_cast <char *> (this->_buffer), reinterpret_cast <char *> (this->_buffer) + static_cast <size_t> (bytes));
+							// Если функция обратного вызова установлена
+							if(this->_ctx->_callbacks.is("message")){
+								// Объект работы с протоколом передачи данных
+								cmp_t * cmp = nullptr;
+								// Выполняем поиск объекта работы с протоколом передачи данных
+								auto i = this->_cmp.find(pid);
+								// Если объект работы с протоколом передачи данных найден
+								if(i != this->_cmp.end())
+									// Выполняем извлечение объекта работы с протоколом передачи данных
+									cmp = i->second.get();
+								// Создаём новый объект протокола передачи данных
+								else cmp = this->_cmp.emplace(pid, std::unique_ptr <cmp_t> (new cmp_t(this->_log))).first->second.get();
+								// Выполняем добавление бинарных данных в протокол
+								cmp->append(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+								// Выполняем извлечение записей
+								for(auto & index : cmp->items()){
+									// Получаем буфер бинарных данных
+									const auto & buffer = cmp->at(index);
+									// Выполняем функцию обратного вызова
+									this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, buffer.data(), buffer.size());
+									// Выполняем удаление указанной записи
+									cmp->erase(index);
+								}
 							}
-							// Выполняем препарирование полученных данных
-							this->prepare(pid, family_t::MASTER);
 						}
 					// Если данные не прочитаны
 					} else {
 						// Выводим сообщение об ошибке в лог
-						this->_log->print("[%u] Data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
+						this->_log->print("[%u] Data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->_ctx->_pid, pid);
 						/**
 						 * Если включён режим отладки
 						 */
@@ -216,7 +225,7 @@
 				} break;
 			}
 		// Если процесс является дочерним
-		} else if(this->cluster->_pid == static_cast <pid_t> (::getppid())) {
+		} else if(this->_ctx->_pid == static_cast <pid_t> (::getppid())) {
 			// Определяем тип события
 			switch(static_cast <uint8_t> (event)){
 				// Если выполняется событие закрытие подключения
@@ -240,11 +249,11 @@
 				// Если выполняется событие чтения данных с сокета
 				case static_cast <uint8_t> (base_t::event_type_t::READ): {
 					// Выполняем поиск текущего брокера
-					auto i = this->cluster->_brokers.find(this->wid);
+					auto i = this->_ctx->_brokers.find(this->_wid);
 					// Если текущий брокер найден
-					if(i != this->cluster->_brokers.end()){
+					if(i != this->_ctx->_brokers.end()){
 						// Получаем индекс текущего процесса
-						const uint16_t index = this->cluster->_pids.at(::getpid());
+						const uint16_t index = this->_ctx->_pids.at(::getpid());
 						// Получаем объект текущего брокера
 						broker_t * broker = i->second.at(index).get();
 						// Если файловый дескриптор не соответствует родительскому
@@ -272,21 +281,30 @@
 						if(bytes != 0){
 							// Если данные прочитанны правильно
 							if(bytes > 0){
-								// Выполняем поиск буфера полезной нагрузки
-								auto i = this->_payload.find(this->cluster->_pid);
-								// Если буфер полезной нагрузки найден
-								if(i != this->_payload.end())
-									// Добавляем полученные данные в смарт-буфер
-									i->second->buffer.insert(i->second->buffer.end(), reinterpret_cast <char *> (this->_buffer), reinterpret_cast <char *> (this->_buffer) + static_cast <size_t> (bytes));
-								// Если буфер полезной нагрузки не найден
-								else {
-									// Выполняем создание буфера полезной нагрузки
-									auto ret = this->_payload.emplace(this->cluster->_pid, unique_ptr <payload_t> (new payload_t));
-									// Добавляем полученные данные в смарт-буфер
-									ret.first->second->buffer.insert(ret.first->second->buffer.end(), reinterpret_cast <char *> (this->_buffer), reinterpret_cast <char *> (this->_buffer) + static_cast <size_t> (bytes));
+								// Если функция обратного вызова установлена
+								if(this->_ctx->_callbacks.is("message")){
+									// Объект работы с протоколом передачи данных
+									cmp_t * cmp = nullptr;
+									// Выполняем поиск объекта работы с протоколом передачи данных
+									auto i = this->_cmp.find(::getppid());
+									// Если объект работы с протоколом передачи данных найден
+									if(i != this->_cmp.end())
+										// Выполняем извлечение объекта работы с протоколом передачи данных
+										cmp = i->second.get();
+									// Создаём новый объект протокола передачи данных
+									else cmp = this->_cmp.emplace(::getppid(), std::unique_ptr <cmp_t> (new cmp_t(this->_log))).first->second.get();
+									// Выполняем добавление бинарных данных в протокол
+									cmp->append(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+									// Выполняем извлечение записей
+									for(auto & index : cmp->items()){
+										// Получаем буфер бинарных данных
+										const auto & buffer = cmp->at(index);
+										// Выполняем функцию обратного вызова
+										this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, buffer.data(), buffer.size());
+										// Выполняем удаление указанной записи
+										cmp->erase(index);
+									}
 								}
-								// Выполняем препарирование полученных данных
-								this->prepare(this->cluster->_pid, family_t::CHILDREN);
 							}
 						// Если данные не прочитаны
 						} else {
@@ -314,7 +332,7 @@
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 			// Останавливаем чтение данных с родительского процесса
-			this->cluster->stop(this->wid);
+			const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
 			/**
 			 * Если включён режим отладки
 			 */
@@ -330,183 +348,13 @@
 			#endif
 		}
 	}
-	/**
-	 * callback Метод вывода функции обратного вызова
-	 * @param data данные передаваемые процессом
-	 */
-	void awh::Cluster::Worker::callback(const data_t & data) noexcept {
-		// Если функция обратного вызова установлена
-		if(this->cluster->_callbacks.is("message"))
-			// Выполняем функцию обратного вызова
-			this->cluster->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->wid, data.pid, data.buffer.data(), data.buffer.size());
-	}
-	/**
-	 * prepare Метод извлечения данных из полученного буфера
-	 * @param pid    идентификатор упавшего процесса
-	 * @param family идентификатор семейства кластера
-	 */
-	void awh::Cluster::Worker::prepare(const pid_t pid, const family_t family) noexcept {
-		// Выполняем поиск полезной нагрузки для указанного процесса
-		auto i = this->_payload.find(pid);
-		// Если полезная нагрузка получена
-		if(i != this->_payload.end()){
-			// Объект передаваемых данных
-			data_t data{};
-			// Размер смещения в буфере
-			const size_t offset = sizeof(mess_t);
-			// Определяем семейство кластера
-			switch(static_cast <uint8_t> (family)){
-				// Если идентификатор семейства кластера является мастер-процессом
-				case static_cast <uint8_t> (family_t::MASTER): {
-					// Выполняем обработку входящего буфера данных
-					while(!i->second->buffer.empty() && (i->second->buffer.size() >= offset)){
-						// Выполняем извлечение входящих данных
-						::memcpy(&i->second->message, i->second->buffer.data(), offset);
-						// Если размер данных соответствует
-						if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
-							// Если данные прочитаны правильно
-							if(i->second->buffer.size() >= (i->second->message.size + offset)){
-								// Устанавливаем идентификатор процесса
-								data.pid = i->second->message.pid;
-								// Устанавливаем буфер передаваемых данных
-								data.buffer.assign(i->second->buffer.data() + offset, i->second->buffer.data() + (offset + i->second->message.size));
-								// Удаляем количество обработанных байт
-								i->second->buffer.erase(i->second->buffer.begin(), i->second->buffer.begin() + (i->second->message.size + offset));
-								// Выполняем сброс общего размера сообщения
-								i->second->message.size = 0;
-								// Если асинхронный режим работы активирован
-								if(this->async){
-									// Выполняем запуск работы скрина
-									this->_screen.start();
-									// Выполняем отправку полученных данных
-									this->_screen = std::move(data);
-								// Если асинхронный режим работы деактивирован
-								} else {
-									// Выполняем остановку работы дочернего процесса
-									this->_screen.stop();
-									// Выполняем отправку полученных данных напрямую
-									this->callback(std::move(data));
-								}
-							// Выходим из цикла
-							} else break;
-						// Если данные пришли битые
-						} else {
-							// Выполняем очистку буфера данных
-							i->second->buffer.clear();
-							// Выводим сообщение что данные пришли битые
-							this->_log->print("[%u] Data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
-							// Выходим из цикла
-							break;
-						}
-					}
-				} break;
-				// Если идентификатор семейства кластера является дочерним-процессом
-				case static_cast <uint8_t> (family_t::CHILDREN): {
-					// Выполняем обработку входящего буфера данных
-					while(!i->second->buffer.empty() && (i->second->buffer.size() >= offset)){
-						// Выполняем извлечение входящих данных
-						::memcpy(&i->second->message, i->second->buffer.data(), offset);
-						// Если размер данных соответствует
-						if((i->second->message.size > 0) && (i->second->message.size <= MAX_MESSAGE)){
-							// Если нужно завершить работу процесса
-							if(i->second->message.quit){
-								// Если данные прочитаны правильно
-								if(i->second->buffer.size() >= (i->second->message.size + offset)){
-									// Устанавливаем идентификатор процесса
-									data.pid = i->second->message.pid;
-									// Устанавливаем буфер передаваемых данных
-									data.buffer.assign(i->second->buffer.data() + offset, i->second->buffer.data() + (offset + i->second->message.size));
-									// Выполняем отправку полученных данных
-									this->callback(std::move(data));
-								}
-								// Останавливаем чтение данных с родительского процесса
-								this->cluster->stop(this->wid);
-								// Выходим из приложения
-								::exit(SIGCHLD);
-							// Если данные прочитаны правильно
-							} else if(i->second->buffer.size() >= (i->second->message.size + offset)) {
-								// Устанавливаем идентификатор процесса
-								data.pid = i->second->message.pid;
-								// Устанавливаем буфер передаваемых данных
-								data.buffer.assign(i->second->buffer.data() + offset, i->second->buffer.data() + (offset + i->second->message.size));
-								// Удаляем количество обработанных байт
-								i->second->buffer.erase(i->second->buffer.begin(), i->second->buffer.begin() + (i->second->message.size + offset));
-								// Выполняем сброс общего размера сообщения
-								i->second->message.size = 0;
-								// Если асинхронный режим работы активирован
-								if(this->async){
-									// Выполняем запуск работы скрина
-									this->_screen.start();
-									// Выполняем отправку полученных данных
-									this->_screen = std::move(data);
-								// Если асинхронный режим работы деактивирован
-								} else {
-									// Выполняем остановку работы дочернего процесса
-									this->_screen.stop();
-									// Выполняем отправку полученных данных напрямую
-									this->callback(std::move(data));
-								}
-							// Выходим из цикла
-							} else break;
-						// Если данные пришли пустыми
-						} else {
-							// Если нужно завершить работу процесса
-							if(i->second->message.quit){
-								// Останавливаем чтение данных с родительского процесса
-								this->cluster->stop(this->wid);
-								// Выходим из приложения
-								::exit(SIGCHLD);
-							// Если данные пришли битые
-							} else {
-								// Выполняем очистку буфера данных
-								i->second->buffer.clear();
-								// Выводим сообщение что данные пришли битые
-								this->_log->print("[%u] Data from main process arrives corrupted", log_t::flag_t::CRITICAL, ::getpid());
-								// Выходим из цикла
-								break;
-							}
-						}
-					}
-				} break;
-			}
-		}
-	}
 #endif
-/**
- * Worker Конструктор
- * @param log объект для работы с логами
- */
-awh::Cluster::Worker::Worker(const log_t * log) noexcept :
- wid(0), async(false), working(false), restart(false),
- count(1), _buffer{0}, cluster(nullptr),
- _screen(Screen <data_t>::health_t::DEAD), _log(log) {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем установку функции обратного вызова при получении сообщения
-		this->_screen = static_cast <function <void (const data_t &)>> (std::bind(&worker_t::callback, this, _1));
-	#endif
-}
-/**
- * ~Worker Деструктор
- */
-awh::Cluster::Worker::~Worker() noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем остановку работы дочернего процесса
-		this->_screen.stop();
-	#endif
-}
 /**
  * write Метод записи буфера данных в сокет
  * @param wid идентификатор воркера
- * @param pid идентификатор процесса для получения сообщения
  * @param fd  идентификатор файлового дескриптора
  */
-void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept {
+void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -515,78 +363,62 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) n
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем поиск брокеров
-			auto i = this->_brokers.find(wid);
-			// Если брокер найден
-			if(i != this->_brokers.end()){
-				// Выполняем поиск индекса активного процесса
-				auto j = this->_pids.find(pid);
-				// Если индекс активного процесса найден
-				if(j != this->_pids.end()){
-					// Ещем для указанного потока очередь полезной нагрузки
-					auto k = this->_payloads.find(wid);
-					// Если для потока очередь полезной нагрузки получена
-					if((k != this->_payloads.end()) && !k->second.empty()){
-						// Флаг завершения отправки всех данных
-						bool done = false;
+			// Выполняем поиск активных протоколов кластера
+			auto i = this->_cmp.find(wid);
+			// Если протокол кластера найден
+			if(i != this->_cmp.end()){
+				// Выполняем перебор всех чанков протокола
+				while(!i->second->empty()){
+					// Смещение в бинарном буфере
+					size_t offset = 0;
+					// Получаем бинарный буфер данных
+					const auto & buffer = i->second->front();
+					// Устанавливаем метку записи данных
+					Send:
+					// Выполняем запись в сокет
+					const ssize_t bytes = ::write(fd, buffer.data() + offset, buffer.size() - offset);
+					// Если данные записаны удачно
+					if(bytes == static_cast <ssize_t> (buffer.size()))
+						// Удаляем чанк из объекта протокола
+						i->second->pop();
+					// Если данные отправлены не полностью
+					else if((bytes > 0) && (bytes < static_cast <ssize_t> (buffer.size()))) {
+						// Увеличиваем смещение на количество отправленных данных
+						offset += static_cast <size_t> (bytes);
+						// Выполняем попытку отправить данные ещё раз
+						goto Send;
+					// Если мы поймали ошибку
+					} else if(bytes < 0) {
+						// Если защищённый режим работы запрещён
+						if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
+							// Выполняем попытку отправить данные ещё раз
+							goto Send;
+						// Выводим в лог сообщение
+						else {
+							// Выводим в лог сообщение
+							this->_log->print("Cluster write: %s", log_t::flag_t::WARNING, this->_socket.message().c_str());
+							// Выходим из цикла
+							break;
+						}
+					// Если произошло отключение
+					} else {
+						// Выполняем остановку работы
+						this->stop(wid);
+						// Выводим в лог сообщение
+						this->_log->print("Cluster write: %s", log_t::flag_t::WARNING, this->_socket.message().c_str());
 						/**
-						 * Выполняем отправку всего сообщения
+						 * Если включён режим отладки
 						 */
-						do {
-							// Выполняем поиск идентификатора процесса
-							auto l = k->second.find(pid);
-							// Если объект полезной нагрузки найден
-							if((l != k->second.end()) && ((l->second.offset - l->second.pos) > 0)){
-								// Устанавливаем метку записи данных
-								Send:
-								// Выполняем запись в сокет
-								const ssize_t bytes = ::write(fd, l->second.data.get() + l->second.pos, l->second.offset - l->second.pos);
-								// Если данные записаны удачно
-								if(bytes > 0){
-									// Увеличиваем смещение в бинарном буфере
-									l->second.pos += bytes;
-									// Если все данные записаны успешно, тогда удаляем результат
-									if(l->second.pos == l->second.offset){
-										// Выполняем удаление буфера буфера полезной нагрузки
-										k->second.erase(l);
-										// Если очередь полностью пустая
-										if((done = k->second.empty()))
-											// Выполняем удаление всей очереди
-											this->_payloads.erase(k);
-									}
-								// Если мы поймали ошибку
-								} else if(bytes < 0) {
-									// Если защищённый режим работы запрещён
-									if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
-										// Выполняем попытку отправить данные ещё раз
-										goto Send;
-									// Выводим в лог сообщение
-									else this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message().c_str());
-								// Если произошло отключение
-								} else {
-									// Выполняем остановку работы
-									this->stop(wid);
-									// Выводим в лог сообщение
-									this->_log->print("%s", log_t::flag_t::WARNING, this->_socket.message().c_str());
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Выходим из функции
-										return;
-									/**
-									 * Если режим отладки не активирован
-									 */
-									#else
-										// Выходим из приложения
-										::exit(EXIT_FAILURE);
-									#endif
-								}
-							}
+						#if defined(DEBUG_MODE)
+							// Выходим из функции
+							return;
 						/**
-						 * Если не все данные отправленны, продолжаем попытку
+						 * Если режим отладки не активирован
 						 */
-						} while(!done && (k->second.find(pid) != k->second.end()));
+						#else
+							// Выходим из приложения
+							::exit(EXIT_FAILURE);
+						#endif
 					}
 				}
 			}
@@ -610,164 +442,92 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем поиск воркера
-		auto i = this->_workers.find(wid);
-		// Если воркер найден
-		if(i != this->_workers.end()){
-			// Если не все форки созданы
-			if(index < i->second->count){
-				// Выполняем поиск брокера
-				auto j = this->_brokers.find(i->first);
-				// Если список брокеров ещё пустой
-				if((j == this->_brokers.end()) || j->second.empty()){
-					// Удаляем список дочерних процессов
-					this->_pids.clear();
-					// Если список брокеров еще не инициализирован
-					if(j == this->_brokers.end()){
-						// Выполняем инициализацию списка брокеров
-						this->_brokers.emplace(i->first, vector <unique_ptr <broker_t>> ());
-						// Выполняем поиск брокера
-						j = this->_brokers.find(i->first);
+		/**
+		 * Выполняем обработку ошибки
+		 */
+		try {
+			// Выполняем поиск воркера
+			auto i = this->_workers.find(wid);
+			// Если воркер найден
+			if(i != this->_workers.end()){
+				// Если не все форки созданы
+				if(index < i->second->count){
+					// Выполняем поиск брокера
+					auto j = this->_brokers.find(i->first);
+					// Если список брокеров ещё пустой
+					if((j == this->_brokers.end()) || j->second.empty()){
+						// Удаляем список дочерних процессов
+						this->_pids.clear();
+						// Если список брокеров еще не инициализирован
+						if(j == this->_brokers.end()){
+							// Выполняем инициализацию списка брокеров
+							this->_brokers.emplace(i->first, vector <std::unique_ptr <broker_t>> ());
+							// Выполняем поиск брокера
+							j = this->_brokers.find(i->first);
+						}
+						// Выполняем создание указанное количество брокеров
+						for(size_t index = 0; index < i->second->count; index++){
+							// Создаём объект брокера
+							std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+							// Выполняем подписку на основной канал передачи данных
+							if(::pipe(broker->mfds) != 0){
+								// Выводим в лог сообщение
+								this->_log->print("Cluster fork child: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+								// Выходим принудительно из приложения
+								::exit(EXIT_FAILURE);
+							}
+							// Выполняем подписку на дочерний канал передачи данных
+							if(::pipe(broker->cfds) != 0){
+								// Выводим в лог сообщение
+								this->_log->print("Cluster fork child: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+								// Выходим принудительно из приложения
+								::exit(EXIT_FAILURE);
+							}
+							// Выполняем добавление брокера в список брокеров
+							j->second.push_back(std::move(broker));
+						}
 					}
-					// Выполняем создание указанное количество брокеров
-					for(size_t index = 0; index < i->second->count; index++){
+					// Если процесс завершил свою работу
+					if(j->second.at(index)->end){
 						// Создаём объект брокера
-						unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+						std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 						// Выполняем подписку на основной канал передачи данных
 						if(::pipe(broker->mfds) != 0){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+							this->_log->print("Cluster fork: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+							// Выполняем поиск завершившегося процесса
+							for(auto & broker : j->second)
+								// Выполняем остановку чтение сообщений
+								broker->mess.stop();
+							// Выполняем остановку работы
+							this->stop(i->first);
 							// Выходим принудительно из приложения
 							::exit(EXIT_FAILURE);
 						}
 						// Выполняем подписку на дочерний канал передачи данных
 						if(::pipe(broker->cfds) != 0){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+							this->_log->print("Cluster fork: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+							// Выполняем поиск завершившегося процесса
+							for(auto & broker : j->second)
+								// Выполняем остановку чтение сообщений
+								broker->mess.stop();
+							// Выполняем остановку работы
+							this->stop(i->first);
 							// Выходим принудительно из приложения
 							::exit(EXIT_FAILURE);
 						}
-						// Выполняем добавление брокера в список брокеров
-						j->second.push_back(std::move(broker));
+						// Устанавливаем нового брокера
+						j->second.at(index) = std::move(broker);
 					}
-				}
-				// Если процесс завершил свою работу
-				if(j->second.at(index)->end){
-					// Создаём объект брокера
-					unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
-					// Выполняем подписку на основной канал передачи данных
-					if(::pipe(broker->mfds) != 0){
-						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-						// Выполняем поиск завершившегося процесса
-						for(auto & broker : j->second)
-							// Выполняем остановку чтение сообщений
-							broker->mess.stop();
-						// Выполняем остановку работы
-						this->stop(i->first);
-						// Выходим принудительно из приложения
-						::exit(EXIT_FAILURE);
-					}
-					// Выполняем подписку на дочерний канал передачи данных
-					if(::pipe(broker->cfds) != 0){
-						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-						// Выполняем поиск завершившегося процесса
-						for(auto & broker : j->second)
-							// Выполняем остановку чтение сообщений
-							broker->mess.stop();
-						// Выполняем остановку работы
-						this->stop(i->first);
-						// Выходим принудительно из приложения
-						::exit(EXIT_FAILURE);
-					}
-					// Устанавливаем нового брокера
-					j->second.at(index) = std::move(broker);
-				}
-				// Устанавливаем идентификатор процесса
-				pid_t pid = -1;
-				// Определяем тип потока
-				switch((pid = ::fork())){
-					// Если поток не создан
-					case -1: {
-						// Выводим в лог сообщение
-						this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выходим из функции
-							return;
-						/**
-						 * Если режим отладки не активирован
-						 */
-						#else
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						#endif
-					} break;
-					// Если процесс является дочерним
-					case 0: {
-						// Если идентификатор процесса соответствует
-						if((i->second->working = (this->_pid == static_cast <pid_t> (::getppid())))){
-							// Получаем идентификатор текущего процесса
-							const pid_t pid = ::getpid();
-							// Добавляем в список дочерних процессов, идентификатор процесса
-							this->_pids.emplace(pid, index);
-							{
-								// Если база событий уже существует
-								if(this->_base != nullptr)
-									// Выполняем удаление базы событий
-									delete this->_base;
-								// Выполняем создание новой базы событий
-								this->_base = new base_t(this->_fmk, this->_log);
-								// Получаем объект текущего брокера
-								broker_t * broker = j->second.at(index).get();
-								// Выполняем перебор всего списка брокеров
-								for(size_t i = 0; i < j->second.size(); i++){
-									// Если индекс брокера совпадает
-									if(i == static_cast <uint16_t> (index)){
-										// Закрываем файловый дескриптор на запись в дочерний процесс
-										::close(j->second.at(i)->cfds[1]);
-										// Закрываем файловый дескриптор на чтение из основного процесса
-										::close(j->second.at(i)->mfds[0]);
-									// Закрываем все файловые дескрипторы для всех остальных брокеров
-									} else {
-										// Закрываем файловый дескриптор на запись в дочерний процесс
-										::close(j->second.at(i)->cfds[0]);
-										::close(j->second.at(i)->cfds[1]);
-										// Закрываем файловый дескриптор на чтение из основного процесса
-										::close(j->second.at(i)->mfds[0]);
-										::close(j->second.at(i)->mfds[1]);
-									}
-								}
-								// Делаем сокет на чтение неблокирующим
-								this->_socket.blocking(broker->cfds[0], socket_t::mode_t::DISABLE);
-								// Делаем сокет на запись неблокирующим
-								this->_socket.blocking(broker->mfds[1], socket_t::mode_t::DISABLE);
-								// Устанавливаем идентификатор процесса
-								broker->pid = pid;
-								// Устанавливаем время начала жизни процесса
-								broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-								// Устанавливаем базу событий для чтения
-								broker->mess = this->_base;
-								// Устанавливаем сокет для чтения
-								broker->mess = broker->cfds[0];
-								// Устанавливаем событие на чтение данных от основного процесса
-								broker->mess = std::bind(&worker_t::message, i->second.get(), _1, _2);
-								// Запускаем чтение данных с основного процесса
-								broker->mess.start();
-								// Выполняем активацию работы события
-								broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
-								// Если функция обратного вызова установлена
-								if(this->_callbacks.is("process"))
-									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
-							}
-						// Если процесс превратился в зомби
-						} else {
-							// Процесс превратился в зомби, самоликвидируем его
-							this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+					// Устанавливаем идентификатор процесса
+					pid_t pid = -1;
+					// Определяем тип потока
+					switch((pid = ::fork())){
+						// Если поток не создан
+						case -1: {
+							// Выводим в лог сообщение
+							this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
 							/**
 							 * Если включён режим отладки
 							 */
@@ -781,146 +541,168 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 								// Выходим из приложения
 								::exit(EXIT_FAILURE);
 							#endif
+						} break;
+						// Если процесс является дочерним
+						case 0: {
+							// Если идентификатор процесса соответствует
+							if((i->second->working = (this->_pid == static_cast <pid_t> (::getppid())))){
+								// Получаем идентификатор текущего процесса
+								const pid_t pid = ::getpid();
+								// Добавляем в список дочерних процессов, идентификатор процесса
+								this->_pids.emplace(pid, index);
+								{
+									// Если база событий уже существует
+									if(this->_base != nullptr)
+										// Выполняем удаление базы событий
+										delete this->_base;
+									// Выполняем создание новой базы событий
+									this->_base = new base_t(this->_fmk, this->_log);
+									// Получаем объект текущего брокера
+									broker_t * broker = j->second.at(index).get();
+									// Выполняем перебор всего списка брокеров
+									for(size_t i = 0; i < j->second.size(); i++){
+										// Если индекс брокера совпадает
+										if(i == static_cast <uint16_t> (index)){
+											// Закрываем файловый дескриптор на запись в дочерний процесс
+											::close(j->second.at(i)->cfds[1]);
+											// Закрываем файловый дескриптор на чтение из основного процесса
+											::close(j->second.at(i)->mfds[0]);
+										// Закрываем все файловые дескрипторы для всех остальных брокеров
+										} else {
+											// Закрываем файловый дескриптор на запись в дочерний процесс
+											::close(j->second.at(i)->cfds[0]);
+											::close(j->second.at(i)->cfds[1]);
+											// Закрываем файловый дескриптор на чтение из основного процесса
+											::close(j->second.at(i)->mfds[0]);
+											::close(j->second.at(i)->mfds[1]);
+										}
+									}
+									// Делаем сокет на чтение неблокирующим
+									this->_socket.blocking(broker->cfds[0], socket_t::mode_t::DISABLE);
+									// Делаем сокет на запись неблокирующим
+									this->_socket.blocking(broker->mfds[1], socket_t::mode_t::DISABLE);
+									// Устанавливаем идентификатор процесса
+									broker->pid = pid;
+									// Устанавливаем время начала жизни процесса
+									broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+									// Устанавливаем базу событий для чтения
+									broker->mess = this->_base;
+									// Устанавливаем сокет для чтения
+									broker->mess = broker->cfds[0];
+									// Устанавливаем событие на чтение данных от основного процесса
+									broker->mess = std::bind(&worker_t::message, i->second.get(), _1, _2);
+									// Запускаем чтение данных с основного процесса
+									broker->mess.start();
+									// Выполняем активацию работы события чтения данных с сокета
+									broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+									// выполняем активацию работы события закрытия подключения
+									broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+									// Если функция обратного вызова установлена
+									if(this->_callbacks.is("process"))
+										// Выполняем функцию обратного вызова
+										this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
+								}
+							// Если процесс превратился в зомби
+							} else {
+								// Процесс превратился в зомби, самоликвидируем его
+								this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выходим из функции
+									return;
+								/**
+								 * Если режим отладки не активирован
+								 */
+								#else
+									// Выходим из приложения
+									::exit(EXIT_FAILURE);
+								#endif
+							}
+						} break;
+						// Если процесс является родительским
+						default: {
+							// Добавляем в список дочерних процессов, идентификатор процесса
+							this->_pids.emplace(pid, index);
+							// Получаем объект текущего брокера
+							broker_t * broker = j->second.at(index).get();
+							// Закрываем файловый дескриптор на запись в основной процесс
+							::close(broker->mfds[1]);
+							// Закрываем файловый дескриптор на чтение из дочернего процесса
+							::close(broker->cfds[0]);
+							// Делаем сокет на чтение неблокирующим
+							this->_socket.blocking(broker->mfds[0], socket_t::mode_t::DISABLE);
+							// Делаем сокет на запись неблокирующим
+							this->_socket.blocking(broker->cfds[1], socket_t::mode_t::DISABLE);
+							// Устанавливаем PID-процесса
+							broker->pid = pid;
+							// Устанавливаем время начала жизни процесса
+							broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							// Устанавливаем базу событий для чтения
+							broker->mess = this->_base;
+							// Устанавливаем сокет для чтения
+							broker->mess = broker->mfds[0];
+							// Устанавливаем событие на чтение данных от дочернего процесса
+							broker->mess = std::bind(&worker_t::message, i->second.get(), _1, _2);
+							// Выполняем запуск работы чтения данных с дочерних процессов
+							broker->mess.start();
+							// Если не нужно останавливаться на создании процессов
+							if(!stop)
+								// Выполняем создание новых процессов
+								this->fork(i->first, index + 1, stop);
+							// Если нужно остановиться после создания всех прцоессов
+							else {
+								// Выполняем активацию работы чтения данных с дочерних процессов
+								broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+								// выполняем активацию работы события закрытия подключения
+								broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+							}
 						}
-					} break;
-					// Если процесс является родительским
-					default: {
-						// Добавляем в список дочерних процессов, идентификатор процесса
-						this->_pids.emplace(pid, index);
-						// Получаем объект текущего брокера
-						broker_t * broker = j->second.at(index).get();
-						// Закрываем файловый дескриптор на запись в основной процесс
-						::close(broker->mfds[1]);
-						// Закрываем файловый дескриптор на чтение из дочернего процесса
-						::close(broker->cfds[0]);
-						// Делаем сокет на чтение неблокирующим
-						this->_socket.blocking(broker->mfds[0], socket_t::mode_t::DISABLE);
-						// Делаем сокет на запись неблокирующим
-						this->_socket.blocking(broker->cfds[1], socket_t::mode_t::DISABLE);
-						// Устанавливаем PID-процесса
-						broker->pid = pid;
-						// Устанавливаем время начала жизни процесса
-						broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-						// Устанавливаем базу событий для чтения
-						broker->mess = this->_base;
-						// Устанавливаем сокет для чтения
-						broker->mess = broker->mfds[0];
-						// Устанавливаем событие на чтение данных от дочернего процесса
-						broker->mess = std::bind(&worker_t::message, i->second.get(), _1, _2);
-						// Выполняем запуск работы чтения данных с дочерних процессов
-						broker->mess.start();
-						// Если не нужно останавливаться на создании процессов
-						if(!stop)
-							// Выполняем создание новых процессов
-							this->fork(i->first, index + 1, stop);
-						// Выполняем активацию работы чтения данных с дочерних процессов
-						else broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+					}
+				// Если все процессы удачно созданы
+				} else if((i->second->working = !stop)) {
+					// Выполняем поиск брокера
+					auto j = this->_brokers.find(i->first);
+					// Если идентификатор воркера получен
+					if(j != this->_brokers.end()){
+						// Если нужно отслеживать падение дочерних процессов
+						if(this->_trackCrash){
+							// Запоминаем текущий объект воркера
+							worker = i->second.get();
+							// Выполняем зануление структур перехватчиков событий
+							::memset(&this->_sa, 0, sizeof(this->_sa));
+							// Устанавливаем функцию перехвадчика событий
+							this->_sa.sa_sigaction = worker_t::child;
+							// Устанавливаем флаги перехвата сигналов
+							this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
+							// Устанавливаем маску перехвата
+							sigemptyset(&this->_sa.sa_mask);
+							// Активируем перехватчик событий
+							::sigaction(SIGCHLD, &this->_sa, nullptr);
+						}
+						// Выполняем перебор всех доступных брокеров
+						for(auto & broker : j->second){
+							// Выполняем активацию работы чтения данных с дочерних процессов
+							broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+							// выполняем активацию работы события закрытия подключения
+							broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+						}
+						// Если функция обратного вызова установлена
+						if(this->_callbacks.is("process"))
+							// Выполняем функцию обратного вызова
+							this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, this->_pid, event_t::START);
 					}
 				}
-			// Если все процессы удачно созданы
-			} else if((i->second->working = !stop)) {
-				// Выполняем поиск брокера
-				auto j = this->_brokers.find(i->first);
-				// Если идентификатор воркера получен
-				if(j != this->_brokers.end()){
-					// Если нужно отслеживать падение дочерних процессов
-					if(this->_trackCrash){
-						// Запоминаем текущий объект воркера
-						worker = i->second.get();
-						// Выполняем зануление структур перехватчиков событий
-						::memset(&this->_sa, 0, sizeof(this->_sa));
-						// Устанавливаем функцию перехвадчика событий
-						this->_sa.sa_sigaction = worker_t::child;
-						// Устанавливаем флаги перехвата сигналов
-						this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
-						// Устанавливаем маску перехвата
-						sigemptyset(&this->_sa.sa_mask);
-						// Активируем перехватчик событий
-						::sigaction(SIGCHLD, &this->_sa, nullptr);
-					}
-					// Выполняем перебор всех доступных брокеров
-					for(auto & broker : j->second)
-						// Выполняем активацию работы чтения данных с дочерних процессов
-						broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
-					// Если функция обратного вызова установлена
-					if(this->_callbacks.is("process"))
-						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, this->_pid, event_t::START);
-				}
 			}
-		}
-	#endif
-}
-/**
- * emplace Метод добавления нового буфера полезной нагрузки
- * @param wid    идентификатор воркера
- * @param pid    идентификатор процесса для получения сообщения
- * @param buffer бинарный буфер полезной нагрузки
- * @param size   размер бинарного буфера полезной нагрузки
- */
-void awh::Cluster::emplace(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если идентификатор брокера подключений существует
-		if((buffer != nullptr) && (size > 0)){
-			/**
-			 * Выполняем отлов ошибок
-			 */
-			try {
-				// Смещение в переданном буфере данных
-				size_t offset = 0, actual = 0;
-				/**
-				 * Выполняем создание нужного количества буферов
-				 */
-				do {
-					// Получаем размер данных который возможно скопировать
-					actual = ((MAX_PAYLOAD >= (size - offset)) ? (size - offset) : MAX_PAYLOAD);
-					// Если количество копируемых байт больше нуля
-					if(actual > 0){
-						// Объект полезной нагрузки для отправки
-						payload_t payload;
-						// Устанавливаем идентификатор процесса
-						payload.pid = pid;
-						// Устанавливаем размер буфера данных
-						payload.size = actual;
-						// Выполняем создание буфера данных
-						payload.data = unique_ptr <char []> (new char [actual]);
-						// Выполняем копирование буфера полезной нагрузки
-						::memcpy(payload.data.get(), buffer + offset, actual);
-						// Выполняем смещение в буфере
-						offset += actual;
-						// Увеличиваем смещение в буфере полезной нагрузки
-						payload.offset += actual;
-						// Ещем для указанного потока очередь полезной нагрузки
-						auto i = this->_payloads.find(wid);
-						// Если для потока очередь полезной нагрузки получена
-						if(i != this->_payloads.end())
-							// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-							i->second.emplace(pid, std::move(payload));
-						// Если для потока почередь полезной нагрузки ещё не сформированна
-						else {
-							// Создаём новую очередь полезной нагрузки
-							auto ret = this->_payloads.emplace(wid, multimap <pid_t, payload_t> ());
-							// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-							ret.first->second.emplace(pid, std::move(payload));
-						}
-					// Выходим из цикла
-					} else break;
-				/**
-				 * Если не все данные полезной нагрузки установлены, создаём новый буфер
-				 */
-				} while(offset < size);
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const bad_alloc &) {
-				// Выводим в лог сообщение
-				this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выводим в лог сообщение
+			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
 		}
 	#endif
 }
@@ -1020,24 +802,15 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 			auto i = this->_brokers.find(wid);
 			// Если брокер найден
 			if((i != this->_brokers.end()) && (this->_pids.find(pid) != this->_pids.end())){
-				// Создаём объект сообщения
-				mess_t message{};
-				// Устанавливаем пид процесса отправившего сообщение
-				message.pid = pid;
-				// Выполняем установку размера отправляемых данных
-				message.size = size;
-				// Создаём временный буфер полезной нагрузки
-				vector <char> payload(size + sizeof(message), 0);
-				// Копируем в буфер полезной нагрузки параметры сообщения
-				::memcpy(payload.data(), reinterpret_cast <const char *> (&message), sizeof(message));
-				// Копируем в буфер полезной нагрузки, полученные данные
-				::memcpy(payload.data() + sizeof(message), buffer, size);
-				// Получаем идентификатор брокера
-				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
-				// Выполняем отправку буфера полезной нагрузки
-				this->emplace(wid, ::getpid(), payload.data(), payload.size());
-				// Выполняем отправку сообщения мастер-процессу
-				this->write(wid, ::getpid(), broker->mfds[1]);
+				// Выполняем поиск активных протоколов кластера
+				auto j = this->_cmp.find(i->first);
+				// Если протокол кластера найден
+				if(j != this->_cmp.end()){
+					// Выполняем добавление буфера данных в протокол
+					j->second->push(buffer, size);
+					// Выполняем отправку сообщения мастер-процессу
+					this->write(i->first, i->second.at(this->_pids.at(pid))->mfds[1]);
+				}
 			}
 		}
 	/**
@@ -1077,24 +850,15 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 			auto i = this->_brokers.find(wid);
 			// Если брокер найден
 			if((i != this->_brokers.end()) && (this->_pids.find(pid) != this->_pids.end())){
-				// Создаём объект сообщения
-				mess_t message{};
-				// Выполняем установку размера отправляемых данных
-				message.size = size;
-				// Устанавливаем пид процесса отправившего сообщение
-				message.pid = this->_pid;
-				// Создаём временный буфер полезной нагрузки
-				vector <char> payload(size + sizeof(message), 0);
-				// Копируем в буфер полезной нагрузки параметры сообщения
-				::memcpy(payload.data(), reinterpret_cast <const char *> (&message), sizeof(message));
-				// Копируем в буфер полезной нагрузки, полученные данные
-				::memcpy(payload.data() + sizeof(message), buffer, size);
-				// Получаем идентификатор брокера
-				broker_t * broker = i->second.at(this->_pids.at(pid)).get();
-				// Выполняем отправку буфера полезной нагрузки
-				this->emplace(wid, pid, payload.data(), payload.size());
-				// Выполняем отправку сообщения дочернему-процессу
-				this->write(wid, pid, broker->cfds[1]);
+				// Выполняем поиск активных протоколов кластера
+				auto j = this->_cmp.find(i->first);
+				// Если протокол кластера найден
+				if(j != this->_cmp.end()){
+					// Выполняем добавление буфера данных в протокол
+					j->second->push(buffer, size);
+					// Выполняем отправку сообщения дочернему-процессу
+					this->write(i->first, i->second.at(this->_pids.at(pid))->cfds[1]);
+				}
 			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
@@ -1151,26 +915,19 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 			auto i = this->_brokers.find(wid);
 			// Если брокер найден
 			if((i != this->_brokers.end()) && !i->second.empty()){
-				// Создаём объект сообщения
-				mess_t message{};
-				// Выполняем установку размера отправляемых данных
-				message.size = size;
-				// Устанавливаем пид процесса отправившего сообщение
-				message.pid = this->_pid;
-				// Создаём временный буфер полезной нагрузки
-				vector <char> payload(size + sizeof(message), 0);
-				// Копируем в буфер полезной нагрузки параметры сообщения
-				::memcpy(payload.data(), reinterpret_cast <const char *> (&message), sizeof(message));
-				// Копируем в буфер полезной нагрузки, полученные данные
-				::memcpy(payload.data() + sizeof(message), buffer, size);
-				// Переходим по всем дочерним процессам
-				for(auto & broker : i->second){
-					// Если идентификатор процесса не нулевой
-					if(broker->pid > 0){
-						// Выполняем отправку буфера полезной нагрузки
-						this->emplace(wid, broker->pid, payload.data(), payload.size());
-						// Выполняем отправку сообщения дочернему-процессу
-						this->write(wid, broker->pid, broker->cfds[1]);
+				// Выполняем поиск активных протоколов кластера
+				auto j = this->_cmp.find(i->first);
+				// Если протокол кластера найден
+				if(j != this->_cmp.end()){
+					// Переходим по всем дочерним процессам
+					for(auto & broker : i->second){
+						// Если идентификатор процесса не нулевой
+						if(broker->pid > 0){
+							// Выполняем добавление буфера данных в протокол
+							j->second->push(buffer, size);
+							// Выполняем отправку сообщения дочернему-процессу
+							this->write(i->first, broker->cfds[1]);
+						}
 					}
 				}
 			}
@@ -1217,16 +974,14 @@ void awh::Cluster::clear() noexcept {
 		// Выполняем очистку списка брокеров
 		this->_brokers.clear();
 		// Выполняем освобождение выделенной памяти брокеров подключения
-		map <uint16_t, vector <unique_ptr <broker_t>>> ().swap(this->_brokers);
+		map <uint16_t, vector <std::unique_ptr <broker_t>>> ().swap(this->_brokers);
 	}
+	// Выполняем очистку протокола передачи данных
+	this->_cmp.clear();
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
-	// Выполняем очистку блоков полезной нагрузки
-	this->_payloads.clear();
 	// Выполняем освобождение выделенной памяти
-	map <uint16_t, unique_ptr <worker_t>> ().swap(this->_workers);
-	// Выполняем освобождение выделенной памяти блоков полезной нагрузки
-	map <uint16_t, multimap <pid_t, payload_t>> ().swap(this->_payloads);
+	map <uint16_t, std::unique_ptr <worker_t>> ().swap(this->_workers);
 }
 /**
  * close Метод закрытия всех подключений
@@ -1253,8 +1008,13 @@ void awh::Cluster::close() noexcept {
 			item.second.clear();
 		}
 	}
-	// Выполняем очистку блоков полезной нагрузки
-	this->_payloads.clear();
+	// Если список активных протоколов кластера существует
+	if(!this->_cmp.empty()){
+		// Выполняем перебор всего списка протоколов кластера
+		for(auto & item : this->_cmp)
+			// Выполняем очистку протокола передачи данных
+			item.second->clear();
+	}
 }
 /**
  * close Метод закрытия всех подключений
@@ -1281,12 +1041,12 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 		// Очищаем список брокеров
 		i->second.clear();
 	}
-	// Выполняем поиск блока полезной нагрузки
-	auto j = this->_payloads.find(wid);
-	// Если блок полезной нагрузки найден
-	if(j != this->_payloads.end())
-		// Выполняем удаление блока полезной нагрузки
-		this->_payloads.erase(j);
+	// Выполняем поиск активных протоколов кластера
+	auto j = this->_cmp.find(wid);
+	// Если протокол кластера найден
+	if(j != this->_cmp.end())
+		// Выполняем удаление активного протокола кластера
+		j->second->clear();
 }
 /**
  * stop Метод остановки кластера
@@ -1314,16 +1074,6 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			 * Если операционной системой не является Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
-				// Создаём объект сообщения
-				mess_t message;
-				// Устанавливаем флаг остановки процесса
-				message.quit = true;
-				// Устанавливаем пид процесса отправившего сообщение
-				message.pid = this->_pid;
-				// Переходим по всему списку брокеров
-				for(auto & broker : j->second)
-					// Выполняем отправку сообщения дочернему процессу
-					::write(broker->cfds[1], &message, sizeof(message));
 				// Выполняем закрытие подключения передачи сообщений
 				this->close(wid);
 			#endif
@@ -1446,37 +1196,38 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 	}
 }
 /**
- * asyncMessages Метод установки флага асинхронного режима обмена сообщениями
- * @param wid  идентификатор воркера
- * @param mode флаг асинхронного режима обмена сообщениями
- */
-void awh::Cluster::asyncMessages(const uint16_t wid, const bool mode) noexcept {
-	// Выполняем поиск идентификатора воркера
-	auto i = this->_workers.find(wid);
-	// Если вокер найден
-	if(i != this->_workers.end())
-		// Устанавливаем флаг асинхронного режима обмена сообщениями
-		i->second->async = mode;
-}
-/**
  * init Метод инициализации воркера
  * @param wid   идентификатор воркера
  * @param count максимальное количество процессов
  */
 void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
-	// Выполняем поиск идентификатора воркера
-	auto i = this->_workers.find(wid);
-	// Если воркер не найден
-	if(i == this->_workers.end()){
-		// Добавляем воркер в список воркеров
-		auto ret = this->_workers.emplace(wid, unique_ptr <worker_t> (new worker_t(this->_log)));
-		// Устанавливаем идентификатор воркера
-		ret.first->second->wid = wid;
-		// Устанавливаем родительский объект кластера
-		ret.first->second->cluster = this;
+	/**
+	 * Выполняем обработку ошибки
+	 */
+	try {
+		// Выполняем поиск идентификатора воркера
+		auto i = this->_workers.find(wid);
+		// Если воркер не найден
+		if(i == this->_workers.end())
+			// Добавляем воркер в список воркеров
+			this->_workers.emplace(wid, std::unique_ptr <worker_t> (new worker_t(wid, this, this->_log)));
+		// Выполняем поиск активных протоколов кластера
+		auto j = this->_cmp.find(wid);
+		// Если протокол кластера не найден
+		if(j == this->_cmp.end())
+			// Добавляем новый протокол кластера
+			this->_cmp.emplace(wid, std::unique_ptr <cmp_t> (new cmp_t(this->_log)));
+		// Выполняем установку максимально-возможного количества процессов
+		this->count(wid, count);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const bad_alloc &) {
+		// Выводим в лог сообщение
+		this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
 	}
-	// Выполняем установку максимально-возможного количества процессов
-	this->count(wid, count);
 }
 /**
  * callbacks Метод установки функций обратного вызова

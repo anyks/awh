@@ -164,11 +164,6 @@ namespace awh {
 				 * @param mode флаг перезапуска процессов
 				 */
 				void autoRestart(const bool mode) noexcept;
-				/**
-				 * asyncMessages Метод установки флага асинхронного режима обмена сообщениями
-				 * @param mode флаг асинхронного режима обмена сообщениями
-				 */
-				void asyncMessages(const bool mode) noexcept;
 			public:
 				/**
 				 * Core Конструктор

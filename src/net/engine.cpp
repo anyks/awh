@@ -126,7 +126,7 @@ bool awh::Engine::Address::list() noexcept {
 			// Выполняем слушать порт сервера
 			if(!(result = (::listen(this->fd, SOMAXCONN) == 0))){
 				// Выводим сообщени об активном сервисе
-				this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+				this->_log->print("Engine list: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				// Выходим из функции
 				return result;
 			}
@@ -935,7 +935,7 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 				// Если ещё есть ошибки
 				} while((error = ERR_get_error()));
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
+				this->_log->print("Engine: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 			} break;
 			// Если нам было возвращено значение 0
 			case SSL_ERROR_ZERO_RETURN:
@@ -979,7 +979,7 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 					// Устанавливаем результат отключения подключения
 					result = 0;
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
+					this->_log->print("Engine: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 				} break;
 			/**
 			 * Методы только для OS Windows
@@ -990,7 +990,7 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 					// Устанавливаем результат отключения подключения
 					result = 0;
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
+					this->_log->print("Engine: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 				} break;
 			#endif
 			// Для остальных ошибок
@@ -998,7 +998,7 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 				// Устанавливаем результат отключения подключения
 				result = 0;
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, this->_addr->_socket.message().c_str());
+				this->_log->print("Engine: %s", log_t::flag_t::CRITICAL, this->_addr->_socket.message().c_str());
 			}
 		}
 	}
@@ -3007,13 +3007,13 @@ bool awh::Engine::storeCRL(SSL_CTX * ctx) const noexcept {
 					// Если ошибка получена
 					if(error != 0){
 						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+						this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 						/**
 						 * Выполняем извлечение остальных ошибок
 						 */
 						do {
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+							this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 						// Если ещё есть ошибки
 						} while((error = ERR_get_error()));
 					}

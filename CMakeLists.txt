@@ -92,9 +92,27 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
+    # Если операцинная система не относится к MS Windows
+    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+        # Устанавливаем сборку профилировщика
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+        SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+        SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
+        ##
+        #
+        # sudo apt-get install graphviz
+        # sudo pip install gprof2dot
+        #
+        # gprof ./build/[executable-name] gmon.out > ./profile-data.txt
+        #
+        # gprof2dot ./profile-data.txt | dot -Tsvg -o output.svg
+        ##
+    endif()
+    # Выводим сообщение отладочной информации
     message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}")
     message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}\n")
 else()
+    # Выводим сообщение релизной информации
     message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
     message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}\n")
 endif()
@@ -153,6 +171,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/cmp.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/pipe.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/events.cpp"

@@ -39,16 +39,16 @@ class Executor {
 					// Если событие пришло от родительского процесса
 					case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
 						// Формируем сообщение приветствия
-						const char * message = "Hi!";
+						const string message = "Hi!";
 						// Отправляем проиветствие всем дочерним процессам
-						core->broadcast(message, strlen(message));
+						core->broadcast(message.data(), message.size());
 					} break;
 					// Если событие пришло от дочернего процесса
 					case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
 						// Формируем сообщение приветствия
-						const char * message = "Hello";
+						const string message = "Hello";
 						// Отправляем проиветствие родительскому процессу
-						core->send(message, strlen(message));
+						core->send(message.data(), message.size());
 					} break;
 				}
 			}
