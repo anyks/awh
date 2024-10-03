@@ -327,6 +327,8 @@ void awh::ClusterMessageProtocol::append(const void * buffer, const size_t size)
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->_mtx);
 		
+
+		/*
 		const bool data = true;
 
 		// Получаем индекс новой записи
@@ -336,10 +338,8 @@ void awh::ClusterMessageProtocol::append(const void * buffer, const size_t size)
 		this->_data.push_back(std::unique_ptr <buffer_t> (new buffer_t));
 		// Добавляем в буфер данных наши записи
 		this->_data.back()->push(index, mode_t::END, sizeof(data), reinterpret_cast <const char *> (&data) , sizeof(data));
+		*/
 
-
-
-		/*
 		// Получаем размер заголовка
 		const size_t headerSize = sizeof(header_t);
 		// Если данные переданы
@@ -362,24 +362,29 @@ void awh::ClusterMessageProtocol::append(const void * buffer, const size_t size)
 				::memcpy(data->_payload.get(), reinterpret_cast <const char *> (buffer) + headerSize, data->_header.bytes);
 				// Если все данные получены
 				if(data->_header.mode == mode_t::END){
-					// Выполняем получение всего списка записей
-					auto ret = this->_tmp.equal_range(index);
 					// Выполняем перебор всего списка данных
-					for(auto i = ret.first; i != ret.second; ++i)
-						// Выполняем добавление буфера данных в список
-						this->_data.emplace(i->first, std::move(i->second));
-					// Выполняем удаление уже используемых буферов данных для текущей записи из временного буфера
-					this->_tmp.erase(index);
+					for(auto i = this->_tmp.begin(); i != this->_tmp.end();){
+						// Если индекс записи соответствует
+						if((* i)->_header.index == index){
+							// Выполняем добавление буфера данных в список
+							this->_data.push_back(std::move(* i));
+							// Выполняем удаление уже используемых буферов данных для текущей записи из временного буфера
+							i = this->_tmp.erase(i);
+						// Если индекс записи уже следующий
+						} else if((* i)->_header.index > index)
+							// Выходим из цикла
+							break;
+						// Продолжаем перебор дальше
+						else ++i;
+					}
 					// Выполняем добавление буфера данных в список
-					this->_data.emplace(index, std::move(data));
-					// Выполняем увеличение номера записи
-					this->_index = (this->_data.rbegin()->first + 1);
+					this->_data.push_back(std::move(data));
 				// Если данные записи получены частично, добавляем их в временный буфер
-				} else this->_tmp.emplace(index, std::move(data));
+				} else this->_tmp.push_back(std::move(data));
 			}
 		// Выводим сообщение об ошибке
 		} else this->_log->print("Вuffer size is too small and is %zu bytes", log_t::flag_t::CRITICAL, size);
-		*/
+		
 	/**
 	 * Если возникает ошибка
 	 */
