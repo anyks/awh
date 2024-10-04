@@ -18,7 +18,8 @@
 /**
  * Стандартные модули
  */
-#include <set>
+#include <map>
+#include <queue>
 #include <deque>
 #include <mutex>
 #include <string>
@@ -29,6 +30,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/buffer.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -38,202 +40,299 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * ClusterMessageProtocol Класс для работы с протоколом передачи данных
+	 * cmp пространство имён Cluster Message Protocol (CMP)
 	 */
-	typedef class AWHSHARED_EXPORT ClusterMessageProtocol {
-		public:
-			// Устанавливаем максимальный размер одного буфера данных
-			static constexpr size_t CHUNK_SIZE = 0x1000;
-		public:
-			/**
-			 * Режим передачи буфера данных
-			 */
-			enum class mode_t : uint8_t {
-				NONE    = 0x00, // Режим буфера данных не установлен
-				END     = 0x01, // Режим буфера данных конец передачи
-				BEGIN   = 0x02, // Режим буфера данных начало передачи
-				CONTINE = 0x03  // Режим буфера данных продолжение передачи
-			};
-		public:
-			/**
-			 * Header Структура работы с заголовком буфера данных
-			 */
-			typedef struct Header {
-				mode_t mode;  // Режим работы буфера данных
-				size_t size;  // Общий размер записи
-				size_t bytes; // Размер текущего чанка
-				size_t index; // Индекс текущей записи
+	namespace cmp {
+		/**
+		 * Encoder Класс для работы с протоколом передачи данных
+		 */
+		typedef class AWHSHARED_EXPORT Encoder {
+			public:
+				// Устанавливаем максимальный размер одного буфера данных
+				static constexpr size_t CHUNK_SIZE = 0x1000;
+			private:
 				/**
-				 * Header Конструктор
+				 * Режим передачи буфера данных
 				 */
-				Header() noexcept : mode(mode_t::NONE), size(0), bytes(0), index(0) {}
-			} __attribute__((packed)) header_t;
-			/**
-			 * Buffer Структура работы с буфером данных
-			 */
-			typedef class AWHSHARED_EXPORT Buffer {
-				private:
-					// Устанавливаем дружбу с родительским классом
-					friend class ClusterMessageProtocol;
-				private:
-					// Заголовок буфера данных
-					header_t _header;
+				enum class mode_t : uint8_t {
+					NONE    = 0x00, // Режим буфера данных не установлен
+					END     = 0x01, // Режим буфера данных конец передачи
+					BEGIN   = 0x02, // Режим буфера данных начало передачи
+					CONTINE = 0x03  // Режим буфера данных продолжение передачи
+				};
+			private:
+				/**
+				 * Header Структура работы с заголовком буфера данных
+				 */
+				typedef struct Header {
+					mode_t mode;  // Режим работы буфера данных
+					size_t size;  // Общий размер записи
+					size_t bytes; // Размер текущего чанка
+					size_t index; // Индекс текущей записи
+					/**
+					 * Header Конструктор
+					 */
+					Header() noexcept : mode(mode_t::NONE), size(0), bytes(0), index(0) {}
+				} __attribute__((packed)) header_t;
+				/**
+				 * Buffer Структура работы с буфером данных
+				 */
+				typedef class AWHSHARED_EXPORT Buffer {
+					private:
+						// Устанавливаем дружбу с родительским классом
+						friend class Encoder;
+					private:
+						// Заголовок буфера данных
+						header_t _header;
+						// Данные полезной нагрузки
+						std::unique_ptr <uint8_t []> _payload;
+					public:
+						/**
+						 * data данные буфера в бинарном виде
+						 * @return буфер в бинарном виде
+						 */
+						std::vector <char> data() const noexcept;
+					public:
+						/**
+						 * Оператор извлечения бинарного буфера в бинарном виде
+						 * @return бинарный буфер в бинарном виде
+						 */
+						operator std::vector <char> () const noexcept;
+					public:
+						/**
+						 * push Метод добавления в буфер записи данных для отправки
+						 * @param index  индекс текущей записи
+						 * @param mode   режим отправки буфера данных
+						 * @param size   общий размер записи целиком
+						 * @param buffer буфер данных единичного чанка
+						 * @param bytes  размер буфера данных единичного чанка
+						 */
+						void push(const size_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
+					public:
+						/**
+						 * Buffer Конструктор
+						 */
+						Buffer() noexcept : _payload(nullptr) {}
+						/**
+						 * ~Buffer Деструктор
+						 */
+						~Buffer() noexcept {}
+				} buffer_t;
+			private:
+				// Мютекс для блокировки потока
+				mutex _mtx;
+			private:
+				// Размер одного блока данных
+				size_t _chunkSize;
+			private:
+				// Очередь данных буферов записи
+				std::deque <std::unique_ptr <buffer_t>> _data;
+			private:
+				// Создаём объект работы с логами
+				const log_t * _log;
+			public:
+				/**
+				 * back Метод получения последней записи протокола
+				 * @return объект данных последней записи
+				 */
+				std::vector <char> back() const noexcept;
+				/**
+				 * front Метод получения первой записи протокола
+				 * @return объект данных первой записи
+				 */
+				std::vector <char> front() const noexcept;
+			public:
+				/**
+				 * empty Метод проверки на пустоту контейнера
+				 * @return результат проверки
+				 */
+				bool empty() const noexcept;
+			public:
+				/**
+				 * size Метод получения количества подготовленных буферов
+				 * @return количество подготовленных буферов
+				 */
+				size_t size() const noexcept;
+			public:
+				/**
+				 * clear Метод очистки данных
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * pop Метод удаления первой записи протокола
+				 */
+				void pop() noexcept;
+			public:
+				/**
+				 * push Метод добавления новой записи в протокол
+				 * @param buffer буфер данных для добавления
+				 * @param size   размер буфера данных
+				 */
+				void push(const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * chunkSize Метод установки максимального размера одного блока
+				 * @param size размер блока данных
+				 */
+				void chunkSize(const size_t size = CHUNK_SIZE) noexcept;
+			public:
+				/**
+				 * Оператор проверки на доступность данных в контейнере
+				 * @return результат проверки
+				 */
+				operator bool() const noexcept;
+				/**
+				 * Оператор получения количества записей
+				 * @return количество записей в протоколе
+				 */
+				operator size_t() const noexcept;
+			public:
+				/**
+				 * Оператор [=] установки максимального размера одного блока
+				 * @param size размер блока данных
+				 * @return     текущий объект протокола
+				 */
+				Encoder & operator = (const size_t size) noexcept;
+			public:
+				/**
+				 * Encoder Конструктор
+				 * @param log объект для работы с логами
+				 */
+				Encoder(const log_t * log) noexcept : _chunkSize(CHUNK_SIZE), _log(log) {}
+				/**
+				 * ~Encoder Деструктор
+				 */
+				~Encoder() noexcept {}
+		} encoder_t;
+		/**
+		 * Decoder Класс для работы с протоколом получения данных
+		 */
+		typedef class AWHSHARED_EXPORT Decoder {
+			private:
+				/**
+				 * Режим передачи буфера данных
+				 */
+				enum class mode_t : uint8_t {
+					NONE    = 0x00, // Режим буфера данных не установлен
+					END     = 0x01, // Режим буфера данных конец передачи
+					BEGIN   = 0x02, // Режим буфера данных начало передачи
+					CONTINE = 0x03  // Режим буфера данных продолжение передачи
+				};
+			private:
+				/**
+				 * Buffer Структура работы с буферами данных
+				 */
+				typedef struct Buffer {
+					// Общий размер записи
+					size_t size;
+					// Смещение в бинарном буфере
+					size_t offset;
 					// Данные полезной нагрузки
-					std::unique_ptr <uint8_t []> _payload;
-				public:
-					/**
-					 * data данные буфера в бинарном виде
-					 * @return буфер в бинарном виде
-					 */
-					std::vector <char> data() const noexcept;
-				public:
-					/**
-					 * Оператор извлечения бинарного буфера в бинарном виде
-					 * @return бинарный буфер в бинарном виде
-					 */
-					operator std::vector <char> () const noexcept;
-				public:
-					/**
-					 * push Метод добавления в буфер записи данных для отправки
-					 * @param index  индекс текущей записи
-					 * @param mode   режим отправки буфера данных
-					 * @param size   общий размер записи целиком
-					 * @param buffer буфер данных единичного чанка
-					 * @param bytes  размер буфера данных единичного чанка
-					 */
-					void push(const size_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
-				public:
+					std::unique_ptr <uint8_t []> payload;
 					/**
 					 * Buffer Конструктор
 					 */
-					Buffer() noexcept : _payload(nullptr) {}
+					Buffer() noexcept : size(0), offset(0), payload(nullptr) {}
+				} buffer_t;
+				/**
+				 * Header Структура работы с заголовком буфера данных
+				 */
+				typedef struct Header {
+					mode_t mode;  // Режим работы буфера данных
+					size_t size;  // Общий размер записи
+					size_t bytes; // Размер текущего чанка
+					size_t index; // Индекс текущей записи
 					/**
-					 * ~Buffer Деструктор
+					 * Header Конструктор
 					 */
-					~Buffer() noexcept {}
-			} buffer_t;
-		private:
-			// Мютекс для блокировки потока
-			mutex _mtx;
-		private:
-			// Размер одного блока данных
-			size_t _chunkSize;
-		private:
-			// Временный буфер данных
-			std::deque <std::unique_ptr <buffer_t>> _tmp;
-			// Очередь данных буферов записи
-			std::deque <std::unique_ptr <buffer_t>> _data;
-		private:
-			// Создаём объект работы с логами
-			const log_t * _log;
-		public:
-			/**
-			 * front Метод получения первой записи протокола
-			 * @return объект данных первой записи
-			 */
-			std::vector <char> front() const noexcept;
-			/**
-			 * back Метод получения последней записи протокола
-			 * @return объект данных последней записи
-			 */
-			std::vector <char> back() const noexcept;
-		public:
-			/**
-			 * empty Метод проверки на пустоту контейнера
-			 * @return результат проверки
-			 */
-			bool empty() const noexcept;
-		public:
-			/**
-			 * size Метод получения количества подготовленных буферов
-			 * @return количество подготовленных буферов
-			 */
-			size_t size() const noexcept;
-		public:
-			/**
-			 * erase Метод удаления записи протокола
-			 * @param index индекс конкретной записи
-			 */
-			void erase(const size_t index) noexcept;
-		public:
-			/**
-			 * items Метод получения списка записей
-			 * @return список записей в протоколе
-			 */
-			std::set <size_t> items() const noexcept;
-		public:
-			/**
-			 * at Метод извлечения данных конкретной записи
-			 * @param index индекс конкретной записи
-			 * @return      буфер данных записи
-			 */
-			std::vector <char> at(const size_t index) const noexcept;
-		public:
-			/**
-			 * clear Метод очистки данных
-			 */
-			void clear() noexcept;
-		public:
-			/**
-			 * pop Метод удаления первой записи протокола
-			 */
-			void pop() noexcept;
-		public:
-			/**
-			 * push Метод добавления новой записи в протокол
-			 * @param buffer буфер данных для добавления
-			 * @param size   размер буфера данных
-			 */
-			void push(const void * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * append Метод добавления записи в бинарном виде
-			 * @param buffer буфер данных в бинарном виде
-			 * @param size   размер буфера данных в бинарном виде
-			 */
-			void append(const void * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * chunkSize Метод установки максимального размера одного блока
-			 * @param size размер блока данных
-			 */
-			void chunkSize(const size_t size = CHUNK_SIZE) noexcept;
-		public:
-			/**
-			 * Оператор проверки на доступность данных в контейнере
-			 * @return результат проверки
-			 */
-			operator bool() const noexcept;
-			/**
-			 * Оператор получения количества записей
-			 * @return количество записей в протоколе
-			 */
-			operator size_t() const noexcept;
-		public:
-			/**
-			 * Оператор извлечения данных конкретной записи
-			 * @param index индекс конкретной записи
-			 * @return      буфер данных записи
-			 */
-			std::vector <char> operator [] (const size_t index) const noexcept;
-		public:
-			/**
-			 * Оператор [=] установки максимального размера одного блока
-			 * @param size размер блока данных
-			 * @return     текущий объект протокола
-			 */
-			ClusterMessageProtocol & operator = (const size_t size) noexcept;
-		public:
-			/**
-			 * ClusterMessageProtocol Конструктор
-			 * @param log объект для работы с логами
-			 */
-			ClusterMessageProtocol(const log_t * log) noexcept : _chunkSize(CHUNK_SIZE), _log(log) {}
-			/**
-			 * ~ClusterMessageProtocol Деструктор
-			 */
-			~ClusterMessageProtocol() noexcept {}
-	} cmp_t;
+					Header() noexcept : mode(mode_t::NONE), size(0), bytes(0), index(0) {}
+				} __attribute__((packed)) header_t;
+			private:
+				// Мютекс для блокировки потока
+				mutex _mtx;
+			private:
+				// Объект буфера данных
+				awh::buffer_t _buffer;
+			private:
+				// Набор временных буферов данных
+				std::map <size_t, std::unique_ptr <buffer_t>> _tmp;
+				// Набор собранных данных
+				std::queue <std::pair <size_t, std::unique_ptr <uint8_t []>>> _data;
+			private:
+				// Создаём объект работы с логами
+				const log_t * _log;
+			public:
+				/**
+				 * back Метод получения последней записи протокола
+				 * @return объект данных последней записи
+				 */
+				std::vector <char> back() const noexcept;
+				/**
+				 * front Метод получения первой записи протокола
+				 * @return объект данных первой записи
+				 */
+				std::vector <char> front() const noexcept;
+			public:
+				/**
+				 * empty Метод проверки на пустоту контейнера
+				 * @return результат проверки
+				 */
+				bool empty() const noexcept;
+			public:
+				/**
+				 * size Метод получения количества подготовленных буферов
+				 * @return количество подготовленных буферов
+				 */
+				size_t size() const noexcept;
+			public:
+				/**
+				 * clear Метод очистки данных
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * pop Метод удаления первой записи протокола
+				 */
+				void pop() noexcept;
+			public:
+				/**
+				 * push Метод добавления новой записи в протокол
+				 * @param buffer буфер данных для добавления
+				 * @param size   размер буфера данных
+				 */
+				void push(const void * buffer, const size_t size) noexcept;
+			private:
+				/**
+				 * prepare Метод препарирования полученных данных
+				 * @param buffer буфер данных для препарирования
+				 * @param size   размер буфера данных для препарирования
+				 * @return       количество обработанных байт
+				 */
+				size_t prepare(const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * Оператор проверки на доступность данных в контейнере
+				 * @return результат проверки
+				 */
+				operator bool() const noexcept;
+				/**
+				 * Оператор получения количества записей
+				 * @return количество записей в протоколе
+				 */
+				operator size_t() const noexcept;
+			public:
+				/**
+				 * Decoder Конструктор
+				 * @param log объект для работы с логами
+				 */
+				Decoder(const log_t * log) noexcept : _buffer(awh::buffer_t::mode_t::COPY), _log(log) {}
+				/**
+				 * ~Encoder Деструктор
+				 */
+				~Decoder() noexcept {}
+		} decoder_t;
+	};
 };
 
 #endif // __AWH_CLUSTER_MESSAGE_PROTOCOL__

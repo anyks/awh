@@ -182,7 +182,7 @@
 							// Если функция обратного вызова установлена
 							if(this->_ctx->_callbacks.is("message")){
 								// Объект работы с протоколом передачи данных
-								cmp_t * cmp = nullptr;
+								cmp::decoder_t * cmp = nullptr;
 								// Выполняем поиск объекта работы с протоколом передачи данных
 								auto i = this->_cmp.find(pid);
 								// Если объект работы с протоколом передачи данных найден
@@ -190,17 +190,17 @@
 									// Выполняем извлечение объекта работы с протоколом передачи данных
 									cmp = i->second.get();
 								// Создаём новый объект протокола передачи данных
-								else cmp = this->_cmp.emplace(pid, std::unique_ptr <cmp_t> (new cmp_t(this->_log))).first->second.get();
+								else cmp = this->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log))).first->second.get();
 								// Выполняем добавление бинарных данных в протокол
-								cmp->append(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+								cmp->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
 								// Выполняем извлечение записей
-								for(auto & index : cmp->items()){
+								while(!cmp->empty()){
 									// Получаем буфер бинарных данных
-									const auto & buffer = cmp->at(index);
+									const auto & buffer = cmp->front();
 									// Выполняем функцию обратного вызова
 									this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, buffer.data(), buffer.size());
 									// Выполняем удаление указанной записи
-									cmp->erase(index);
+									cmp->pop();
 								}
 							}
 						}
@@ -284,7 +284,7 @@
 								// Если функция обратного вызова установлена
 								if(this->_ctx->_callbacks.is("message")){
 									// Объект работы с протоколом передачи данных
-									cmp_t * cmp = nullptr;
+									cmp::decoder_t * cmp = nullptr;
 									// Выполняем поиск объекта работы с протоколом передачи данных
 									auto i = this->_cmp.find(::getppid());
 									// Если объект работы с протоколом передачи данных найден
@@ -292,17 +292,17 @@
 										// Выполняем извлечение объекта работы с протоколом передачи данных
 										cmp = i->second.get();
 									// Создаём новый объект протокола передачи данных
-									else cmp = this->_cmp.emplace(::getppid(), std::unique_ptr <cmp_t> (new cmp_t(this->_log))).first->second.get();
+									else cmp = this->_cmp.emplace(::getppid(), std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log))).first->second.get();
 									// Выполняем добавление бинарных данных в протокол
-									cmp->append(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+									cmp->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
 									// Выполняем извлечение записей
-									for(auto & index : cmp->items()){
+									while(!cmp->empty()){
 										// Получаем буфер бинарных данных
-										const auto & buffer = cmp->at(index);
+										const auto & buffer = cmp->front();
 										// Выполняем функцию обратного вызова
 										this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, buffer.data(), buffer.size());
 										// Выполняем удаление указанной записи
-										cmp->erase(index);
+										cmp->pop();
 									}
 								}
 							}
@@ -581,8 +581,6 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									this->_socket.blocking(broker->cfds[0], socket_t::mode_t::DISABLE);
 									// Делаем сокет на запись неблокирующим
 									this->_socket.blocking(broker->mfds[1], socket_t::mode_t::DISABLE);
-									// Добавляем новый протокол кластера
-									this->_cmp.emplace(wid, std::unique_ptr <cmp_t> (new cmp_t(this->_log)));
 									// Устанавливаем идентификатор процесса
 									broker->pid = pid;
 									// Устанавливаем время начала жизни процесса
@@ -599,6 +597,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 									// выполняем активацию работы события закрытия подключения
 									broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+									// Добавляем новый протокол кластера
+									this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 									// Если функция обратного вызова установлена
 									if(this->_callbacks.is("process"))
 										// Выполняем функцию обратного вызова
@@ -683,8 +683,6 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Активируем перехватчик событий
 							::sigaction(SIGCHLD, &this->_sa, nullptr);
 						}
-						// Добавляем новый протокол кластера
-						this->_cmp.emplace(wid, std::unique_ptr <cmp_t> (new cmp_t(this->_log)));
 						// Выполняем перебор всех доступных брокеров
 						for(auto & broker : j->second){
 							// Выполняем активацию работы чтения данных с дочерних процессов
@@ -692,6 +690,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// выполняем активацию работы события закрытия подключения
 							broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						}
+						// Добавляем новый протокол кластера
+						this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("process"))
 							// Выполняем функцию обратного вызова

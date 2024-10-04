@@ -107,7 +107,7 @@ namespace awh {
 					uint8_t _buffer[4096];
 				private:
 					// Список объектов работы с протоколом кластера
-					map <pid_t, std::unique_ptr <cmp_t>> _cmp;
+					map <pid_t, std::unique_ptr <cmp::decoder_t>> _cmp;
 				private:
 					// Объект для работы с логами
 					const log_t * _log;
@@ -222,7 +222,7 @@ namespace awh {
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
 			// Список объектов работы с протоколом кластера
-			map <uint16_t, std::unique_ptr <cmp_t>> _cmp;
+			map <uint16_t, std::unique_ptr <cmp::encoder_t>> _cmp;
 			// Список активных воркеров
 			map <uint16_t, std::unique_ptr <worker_t>> _workers;
 			// Список дочерних брокеров
