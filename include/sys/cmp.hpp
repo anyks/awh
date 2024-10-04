@@ -209,6 +209,9 @@ namespace awh {
 		 * Decoder Класс для работы с протоколом получения данных
 		 */
 		typedef class AWHSHARED_EXPORT Decoder {
+			public:
+				// Устанавливаем максимальный размер одного буфера данных
+				static constexpr size_t CHUNK_SIZE = 0x1000;
 			private:
 				/**
 				 * Режим передачи буфера данных
@@ -251,6 +254,9 @@ namespace awh {
 			private:
 				// Мютекс для блокировки потока
 				mutex _mtx;
+			private:
+				// Размер одного блока данных
+				size_t _chunkSize;
 			private:
 				// Объект буфера данных
 				awh::buffer_t _buffer;
@@ -312,6 +318,12 @@ namespace awh {
 				size_t prepare(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
+				 * chunkSize Метод установки максимального размера одного блока
+				 * @param size размер блока данных
+				 */
+				void chunkSize(const size_t size = CHUNK_SIZE) noexcept;
+			public:
+				/**
 				 * Оператор проверки на доступность данных в контейнере
 				 * @return результат проверки
 				 */
@@ -326,7 +338,8 @@ namespace awh {
 				 * Decoder Конструктор
 				 * @param log объект для работы с логами
 				 */
-				Decoder(const log_t * log) noexcept : _buffer(awh::buffer_t::mode_t::COPY), _log(log) {}
+				Decoder(const log_t * log) noexcept :
+				 _chunkSize(CHUNK_SIZE), _buffer(awh::buffer_t::mode_t::COPY), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */

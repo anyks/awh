@@ -197,8 +197,12 @@
 								while(!cmp->empty()){
 									// Получаем буфер бинарных данных
 									const auto & buffer = cmp->front();
-									// Выполняем функцию обратного вызова
-									this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, buffer.data(), buffer.size());
+									// Если буфер данных получен
+									if(!buffer.empty())
+										// Выполняем функцию обратного вызова
+										this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, buffer.data(), buffer.size());
+									// Выводим значение по умолчанию
+									else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, nullptr, 0);
 									// Выполняем удаление указанной записи
 									cmp->pop();
 								}
@@ -299,8 +303,12 @@
 									while(!cmp->empty()){
 										// Получаем буфер бинарных данных
 										const auto & buffer = cmp->front();
-										// Выполняем функцию обратного вызова
-										this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, buffer.data(), buffer.size());
+										// Если буфер данных получен
+										if(!buffer.empty())
+											// Выполняем функцию обратного вызова
+											this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, buffer.data(), buffer.size());
+										// Выводим значение по умолчанию
+										else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, nullptr, 0);
 										// Выполняем удаление указанной записи
 										cmp->pop();
 									}

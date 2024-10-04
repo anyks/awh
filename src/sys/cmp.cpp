@@ -286,7 +286,7 @@ std::vector <char> awh::cmp::Decoder::back() const noexcept {
 	// Результат работы функции
 	std::vector <char> result;
 	// Если записи в протоколе существуют
-	if(!this->_data.empty()){
+	if(!this->_data.empty() && (this->_data.back().first > 0)){
 		// Выделяем память под указанный буфер данных
 		result.resize(this->_data.back().first, 0);
 		// Выполняем копирование буфера данных
@@ -303,7 +303,7 @@ std::vector <char> awh::cmp::Decoder::front() const noexcept {
 	// Результат работы функции
 	std::vector <char> result;
 	// Если записи в протоколе существуют
-	if(!this->_data.empty()){
+	if(!this->_data.empty() && (this->_data.front().first > 0)){
 		// Выделяем память под указанный буфер данных
 		result.resize(this->_data.front().first, 0);
 		// Выполняем копирование буфера данных
@@ -445,60 +445,74 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 				header_t header;
 				// Выполняем получение данных заголовков
 				::memcpy(&header, buffer, sizeof(header));
-				// Если данных достаточно для извлечения полезной нагрузки
-				if(size >= (headerSize + header.bytes)){
-					// Выполняем смещение в буфере данных
-					result += headerSize;
-					// Получаем индекс текущей записи
-					const size_t index = header.index;
-					// Выполняем поиск указанной записи во временном объекте
-					auto i = this->_tmp.find(index);
-					// Если запись найдена в временном блоке данных
-					if(i != this->_tmp.end()){
-						// Выполняем копирование данных полезной нагрузки
-						::memcpy(i->second->payload.get() + i->second->offset, reinterpret_cast <const uint8_t *> (buffer) + result, header.bytes);
-						// Устанавливаем смещение в временном буфере данных
-						i->second->offset += header.bytes;
-						// Если запись мы получили последнюю
-						if(header.mode == mode_t::END){
-							// Если данные мы собрали правильно
-							if(i->second->size == i->second->offset)
-								// Выполняем перемещение данных в очередь
-								this->_data.push(make_pair(i->second->size, std::move(i->second->payload)));
-							// Выводим сообщение об ошибке
-							else this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "we received damage during the data collection process");
-							// Выполняем удаление данных из временного контейнера
-							this->_tmp.erase(i);
+				// Если общий размер блока слишком большой
+				if(header.bytes > (this->_chunkSize - headerSize)){
+					// Выводим в лог сообщение
+					this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "data buffer has been corrupted");
+					// Очищаем все данные декодера
+					this->clear();
+				// Продолжаем дальнейшую работу
+				} else {
+					// Если данных достаточно для извлечения полезной нагрузки
+					if(size >= (headerSize + header.bytes)){
+						// Выполняем смещение в буфере данных
+						result += headerSize;
+						// Получаем индекс текущей записи
+						const size_t index = header.index;
+						// Выполняем поиск указанной записи во временном объекте
+						auto i = this->_tmp.find(index);
+						// Если запись найдена в временном блоке данных
+						if(i != this->_tmp.end()){
+							// Если размер полезной нагрузки установлен
+							if(header.bytes > 0)
+								// Выполняем копирование данных полезной нагрузки
+								::memcpy(i->second->payload.get() + i->second->offset, reinterpret_cast <const uint8_t *> (buffer) + result, header.bytes);
+							// Устанавливаем смещение в временном буфере данных
+							i->second->offset += header.bytes;
+							// Если запись мы получили последнюю
+							if(header.mode == mode_t::END){
+								// Если данные мы собрали правильно
+								if(i->second->size == i->second->offset)
+									// Выполняем перемещение данных в очередь
+									this->_data.push(make_pair(i->second->size, std::move(i->second->payload)));
+								// Выводим сообщение об ошибке
+								else this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "we received damage during the data collection process");
+								// Выполняем удаление данных из временного контейнера
+								this->_tmp.erase(i);
+							}
+						// Если запись не найдена во временном блоке данных
+						} else {
+							// Выполняем создание нового буфера данных
+							std::unique_ptr <buffer_t> data = std::unique_ptr <buffer_t> (new buffer_t);
+							// Выполняем установку размера буфера данных полезной нагрузки
+							data->size = header.size;
+							// Устанавливаем смещение в временном буфере данных
+							data->offset = header.bytes;
+							// Если размер полезной нагрузки установлен
+							if(data->offset > 0){
+								// Выделяем память для полезной нагрузки временного буфера данных
+								data->payload = unique_ptr <uint8_t []> (new uint8_t [data->size]);
+								// Выполняем копирование данных полезной нагрузки
+								::memcpy(data->payload.get(), reinterpret_cast <const uint8_t *> (buffer) + result, data->offset);
+							}
+							// Если запись мы получили последнюю
+							if(header.mode == mode_t::END){
+								// Если данные мы собрали правильно
+								if(data->size == data->offset)
+									// Выполняем перемещение данных в очередь
+									this->_data.push(make_pair(data->size, std::move(data->payload)));
+								// Выводим сообщение об ошибке
+								else this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "we received damage during the data collection process");
+							// Выполняем добавление записи во временный объект
+							} else this->_tmp.emplace(index, std::move(data));
 						}
-					// Если запись не найдена во временном блоке данных
-					} else {
-						// Выполняем создание нового буфера данных
-						std::unique_ptr <buffer_t> data = std::unique_ptr <buffer_t> (new buffer_t);
-						// Выполняем установку размера буфера данных полезной нагрузки
-						data->size = header.size;
-						// Устанавливаем смещение в временном буфере данных
-						data->offset = header.bytes;
-						// Выделяем память для полезной нагрузки временного буфера данных
-						data->payload = unique_ptr <uint8_t []> (new uint8_t [data->size]);
-						// Выполняем копирование данных полезной нагрузки
-						::memcpy(data->payload.get(), reinterpret_cast <const uint8_t *> (buffer) + result, data->offset);
-						// Если запись мы получили последнюю
-						if(header.mode == mode_t::END){
-							// Если данные мы собрали правильно
-							if(data->size == data->offset)
-								// Выполняем перемещение данных в очередь
-								this->_data.push(make_pair(data->size, std::move(data->payload)));
-							// Выводим сообщение об ошибке
-							else this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "we received damage during the data collection process");
-						// Выполняем добавление записи во временный объект
-						} else this->_tmp.emplace(index, std::move(data));
+						// Выполняем увеличение смещения
+						result += header.bytes;
+						// Если мы извлекли не все данные из буфера
+						if(size > result)
+							// Выполняем извлечение слещующей порции данных
+							result += this->prepare(reinterpret_cast <const char *> (buffer) + result, size - result);
 					}
-					// Выполняем увеличение смещения
-					result += header.bytes;
-					// Если мы извлекли не все данные из буфера
-					if(size > result)
-						// Выполняем извлечение слещующей порции данных
-						result += this->prepare(reinterpret_cast <const char *> (buffer) + result, size - result);
 				}
 			}
 		/**
@@ -520,6 +534,27 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 	} else this->_log->print("CMP Decoder: %s", log_t::flag_t::WARNING, "non-existent data was sent to the decoder");
 	// Выводим результат
 	return result;
+}
+/**
+ * chunkSize Метод установки максимального размера одного блока
+ * @param size размер блока данных
+ */
+void awh::cmp::Decoder::chunkSize(const size_t size) noexcept {
+	/**
+	 * Выполняем обработку ошибки
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx);
+		// Выполняем установку размера чанка
+		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 }
 /**
  * Оператор проверки на доступность данных в контейнере
