@@ -24,6 +24,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <chrono>
 
 /**
  * Наши модули
@@ -68,7 +69,7 @@ namespace awh {
 					mode_t mode;  // Режим работы буфера данных
 					size_t size;  // Общий размер записи
 					size_t bytes; // Размер текущего чанка
-					size_t index; // Индекс текущей записи
+					time_t index; // Индекс текущей записи
 					/**
 					 * Header Конструктор
 					 */
@@ -107,7 +108,7 @@ namespace awh {
 						 * @param buffer буфер данных единичного чанка
 						 * @param bytes  размер буфера данных единичного чанка
 						 */
-						void push(const size_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
+						void push(const time_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
 					public:
 						/**
 						 * Buffer Конструктор
@@ -130,6 +131,12 @@ namespace awh {
 			private:
 				// Создаём объект работы с логами
 				const log_t * _log;
+			private:
+				/**
+				 * index Метод генерации индекса
+				 * @return сгенерированный индекс записи
+				 */
+				time_t index() const noexcept;
 			public:
 				/**
 				 * back Метод получения последней записи протокола
@@ -245,7 +252,7 @@ namespace awh {
 					mode_t mode;  // Режим работы буфера данных
 					size_t size;  // Общий размер записи
 					size_t bytes; // Размер текущего чанка
-					size_t index; // Индекс текущей записи
+					time_t index; // Индекс текущей записи
 					/**
 					 * Header Конструктор
 					 */
@@ -262,7 +269,7 @@ namespace awh {
 				awh::buffer_t _buffer;
 			private:
 				// Набор временных буферов данных
-				std::map <size_t, std::unique_ptr <buffer_t>> _tmp;
+				std::map <time_t, std::unique_ptr <buffer_t>> _tmp;
 				// Набор собранных данных
 				std::queue <std::pair <size_t, std::unique_ptr <uint8_t []>>> _data;
 			private:

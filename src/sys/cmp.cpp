@@ -49,7 +49,7 @@ awh::cmp::Encoder::Buffer::operator std::vector <char> () const noexcept {
  * @param buffer буфер данных единичного чанка
  * @param bytes  размер буфера данных единичного чанка
  */
-void awh::cmp::Encoder::Buffer::push(const size_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept {
+void awh::cmp::Encoder::Buffer::push(const time_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept {
 	/**
 	 * Выполняем обработку ошибки
 	 */
@@ -78,6 +78,16 @@ void awh::cmp::Encoder::Buffer::push(const size_t index, const mode_t mode, cons
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}
+}
+/**
+ * index Метод генерации индекса
+ * @return сгенерированный индекс записи
+ */
+time_t awh::cmp::Encoder::index() const noexcept {
+	// Получаем штамп времени в наносекундах
+	const chrono::nanoseconds ns = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+	// Получаем результат
+	return static_cast <time_t> (ns.count());
 }
 /**
  * back Метод получения последней записи протокола
@@ -177,10 +187,10 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		try {
 			// Выполняем блокировку потока
 			const lock_guard <mutex> lock(this->_mtx);
+			// Получаем индекс новой записи
+			const time_t index = this->index();
 			// Получаем размер заголовка
 			const size_t headerSize = sizeof(header_t);
-			// Получаем индекс новой записи
-			const size_t index = (!this->_data.empty() ? this->_data.back()->_header.index + 1 : 0);
 			// Если размер данных больше размера чанка
 			if((headerSize + size) > this->_chunkSize){
 				// Получаем общий размер данных
@@ -343,7 +353,7 @@ void awh::cmp::Decoder::clear() noexcept {
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Очищаем выделенную память для временных данных
-		std::map <size_t, std::unique_ptr <buffer_t>> ().swap(this->_tmp);
+		std::map <time_t, std::unique_ptr <buffer_t>> ().swap(this->_tmp);
 		// Очищаем выделенную память для собранных данных
 		std::queue <std::pair <size_t, std::unique_ptr <uint8_t []>>> ().swap(this->_data);
 	/**
@@ -440,7 +450,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 			// Получаем размер заголовка
 			const size_t headerSize = sizeof(header_t);
 			// Если данных достаточно для извлечения заголовка
-			if(size > headerSize){
+			if(size >= headerSize){
 				// Создаём объект заголовка
 				header_t header;
 				// Выполняем получение данных заголовков
@@ -458,7 +468,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 						// Выполняем смещение в буфере данных
 						result += headerSize;
 						// Получаем индекс текущей записи
-						const size_t index = header.index;
+						const time_t index = header.index;
 						// Выполняем поиск указанной записи во временном объекте
 						auto i = this->_tmp.find(index);
 						// Если запись найдена в временном блоке данных
@@ -476,7 +486,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 									// Выполняем перемещение данных в очередь
 									this->_data.push(make_pair(i->second->size, std::move(i->second->payload)));
 								// Выводим сообщение об ошибке
-								else this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "we received damage during the data collection process");
+								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, i->second->offset, i->second->size, "we received damage during the data collection process");
 								// Выполняем удаление данных из временного контейнера
 								this->_tmp.erase(i);
 							}
@@ -502,7 +512,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 									// Выполняем перемещение данных в очередь
 									this->_data.push(make_pair(data->size, std::move(data->payload)));
 								// Выводим сообщение об ошибке
-								else this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "we received damage during the data collection process");
+								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, data->offset, data->size, "we received damage during the data process");
 							// Выполняем добавление записи во временный объект
 							} else this->_tmp.emplace(index, std::move(data));
 						}
