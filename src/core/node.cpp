@@ -216,7 +216,7 @@ void awh::Node::createBuffer(const uint64_t bid) noexcept {
 				 */
 				} catch(const bad_alloc &) {
 					// Выводим в лог сообщение
-					this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+					this->_log->print("Server createBuffer: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				}
@@ -296,7 +296,7 @@ void awh::Node::emplace(const char * buffer, const size_t size, const uint64_t b
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим в лог сообщение
-			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			this->_log->print("Server emplace: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

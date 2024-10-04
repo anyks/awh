@@ -170,6 +170,8 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const bad_alloc &) {
+			// Выводим сообщение в лог
+			this->_log->print("Timer timeout: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -215,6 +217,8 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const bad_alloc &) {
+			// Выводим сообщение в лог
+			this->_log->print("Timer interval: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

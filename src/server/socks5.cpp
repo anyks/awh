@@ -460,7 +460,7 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим в лог сообщение
-			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			this->_log->print("Socks5 unavailable: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

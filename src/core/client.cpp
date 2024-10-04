@@ -394,7 +394,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 			 */
 			} catch(const bad_alloc &) {
 				// Выводим в лог сообщение
-				this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+				this->_log->print("Client connect: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
 			}

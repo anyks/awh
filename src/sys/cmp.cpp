@@ -217,7 +217,7 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим в лог сообщение
-			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			this->_log->print("CMP Encoder: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		/**
@@ -506,7 +506,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим в лог сообщение
-			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		/**

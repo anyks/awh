@@ -131,7 +131,7 @@ void awh::Core::Dispatch::virt(const bool mode) noexcept {
 	 */
 	} catch(const bad_alloc &) {
 		// Выводим в лог сообщение
-		this->_log->print("Memory allocation error for event base", log_t::flag_t::CRITICAL);
+		this->_log->print("Dispatch virt: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}
@@ -165,7 +165,7 @@ void awh::Core::Dispatch::rebase() noexcept {
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим в лог сообщение
-			this->_log->print("Memory allocation error for event base", log_t::flag_t::CRITICAL);
+			this->_log->print("Dispatch repase: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

@@ -1607,7 +1607,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			 */
 			} catch(const bad_alloc &) {
 				// Выводим в лог сообщение
-				this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+				this->_log->print("Http2 sendData: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
 			}

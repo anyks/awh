@@ -169,6 +169,8 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
 		 * Если возникает ошибка
 		 */
 		} catch(const bad_alloc &) {
+			// Выводим сообщение в лог
+			fprintf(stderr, "RegExp exec: %s", "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

@@ -704,7 +704,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим в лог сообщение
-			this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			this->_log->print("Cluster fork: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -1222,7 +1222,7 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 	 */
 	} catch(const bad_alloc &) {
 		// Выводим в лог сообщение
-		this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+		this->_log->print("Cluster init: %s", log_t::flag_t::CRITICAL, "memory allocation error");
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}
