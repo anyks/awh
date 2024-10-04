@@ -24,7 +24,6 @@
 #include <mutex>
 #include <string>
 #include <vector>
-#include <chrono>
 
 /**
  * Наши модули
@@ -66,14 +65,16 @@ namespace awh {
 				 * Header Структура работы с заголовком буфера данных
 				 */
 				typedef struct Header {
+					pid_t pid;    // Идентификатор процесса
+					uint64_t id;  // Идентификатор сообщения
 					mode_t mode;  // Режим работы буфера данных
 					size_t size;  // Общий размер записи
 					size_t bytes; // Размер текущего чанка
-					time_t index; // Индекс текущей записи
+					size_t index; // Номер одного чанка
 					/**
 					 * Header Конструктор
 					 */
-					Header() noexcept : mode(mode_t::NONE), size(0), bytes(0), index(0) {}
+					Header() noexcept : pid(::getpid()), id(0), mode(mode_t::NONE), size(0), bytes(0), index(0) {}
 				} __attribute__((packed)) header_t;
 				/**
 				 * Buffer Структура работы с буфером данных
@@ -102,13 +103,14 @@ namespace awh {
 					public:
 						/**
 						 * push Метод добавления в буфер записи данных для отправки
+						 * @param id     идентификатор сообщения
 						 * @param index  индекс текущей записи
 						 * @param mode   режим отправки буфера данных
 						 * @param size   общий размер записи целиком
 						 * @param buffer буфер данных единичного чанка
 						 * @param bytes  размер буфера данных единичного чанка
 						 */
-						void push(const time_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
+						void push(const uint64_t id, const size_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
 					public:
 						/**
 						 * Buffer Конструктор
@@ -123,6 +125,9 @@ namespace awh {
 				// Мютекс для блокировки потока
 				mutex _mtx;
 			private:
+				// Количество записей
+				uint64_t _count;
+			private:
 				// Размер одного блока данных
 				size_t _chunkSize;
 			private:
@@ -131,12 +136,6 @@ namespace awh {
 			private:
 				// Создаём объект работы с логами
 				const log_t * _log;
-			private:
-				/**
-				 * index Метод генерации индекса
-				 * @return сгенерированный индекс записи
-				 */
-				time_t index() const noexcept;
 			public:
 				/**
 				 * back Метод получения последней записи протокола
@@ -206,7 +205,7 @@ namespace awh {
 				 * Encoder Конструктор
 				 * @param log объект для работы с логами
 				 */
-				Encoder(const log_t * log) noexcept : _chunkSize(CHUNK_SIZE), _log(log) {}
+				Encoder(const log_t * log) noexcept : _count(0), _chunkSize(CHUNK_SIZE), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */
@@ -249,15 +248,22 @@ namespace awh {
 				 * Header Структура работы с заголовком буфера данных
 				 */
 				typedef struct Header {
+					pid_t pid;    // Идентификатор процесса
+					uint64_t id;  // Идентификатор сообщения
 					mode_t mode;  // Режим работы буфера данных
 					size_t size;  // Общий размер записи
 					size_t bytes; // Размер текущего чанка
-					time_t index; // Индекс текущей записи
+					size_t index; // Номер одного чанка
 					/**
 					 * Header Конструктор
 					 */
-					Header() noexcept : mode(mode_t::NONE), size(0), bytes(0), index(0) {}
+					Header() noexcept : pid(0), id(0), mode(mode_t::NONE), size(0), bytes(0), index(0) {}
 				} __attribute__((packed)) header_t;
+			
+			private:
+
+				vector <char> _bb;
+			
 			private:
 				// Мютекс для блокировки потока
 				mutex _mtx;
@@ -269,7 +275,7 @@ namespace awh {
 				awh::buffer_t _buffer;
 			private:
 				// Набор временных буферов данных
-				std::map <time_t, std::unique_ptr <buffer_t>> _tmp;
+				std::map <uint64_t, std::unique_ptr <buffer_t>> _tmp;
 				// Набор собранных данных
 				std::queue <std::pair <size_t, std::unique_ptr <uint8_t []>>> _data;
 			private:

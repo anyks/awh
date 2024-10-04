@@ -43,17 +43,20 @@ awh::cmp::Encoder::Buffer::operator std::vector <char> () const noexcept {
 }
 /**
  * push Метод добавления в буфер записи данных для отправки
+ * @param id     идентификатор сообщения
  * @param index  индекс текущей записи
  * @param mode   режим отправки буфера данных
  * @param size   общий размер записи целиком
  * @param buffer буфер данных единичного чанка
  * @param bytes  размер буфера данных единичного чанка
  */
-void awh::cmp::Encoder::Buffer::push(const time_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept {
+void awh::cmp::Encoder::Buffer::push(const uint64_t id, const size_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept {
 	/**
 	 * Выполняем обработку ошибки
 	 */
 	try {
+		// Устанавливаем идентификатор сообщения
+		this->_header.id = id;
 		// Устанавливаем режим отравки буфера данных
 		this->_header.mode = mode;
 		// Выполняем установку общего размера записи
@@ -78,16 +81,6 @@ void awh::cmp::Encoder::Buffer::push(const time_t index, const mode_t mode, cons
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}
-}
-/**
- * index Метод генерации индекса
- * @return сгенерированный индекс записи
- */
-time_t awh::cmp::Encoder::index() const noexcept {
-	// Получаем штамп времени в наносекундах
-	const chrono::nanoseconds ns = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
-	// Получаем результат
-	return static_cast <time_t> (ns.count());
 }
 /**
  * back Метод получения последней записи протокола
@@ -187,40 +180,44 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		try {
 			// Выполняем блокировку потока
 			const lock_guard <mutex> lock(this->_mtx);
-			// Получаем индекс новой записи
-			const time_t index = this->index();
 			// Получаем размер заголовка
 			const size_t headerSize = sizeof(header_t);
 			// Если размер данных больше размера чанка
 			if((headerSize + size) > this->_chunkSize){
-				// Получаем общий размер данных
-				size_t actual = 0, offset = 0;
+				// Получаем индекс новой записи
+				const uint64_t id = this->_count++;
+				// Параметры обхода буфера данных
+				size_t actual = 0, offset = 0, index = 0;
 				// Выполняем формирование буфера до тех пор пока все не добавим
 				while((size - offset) > 0){
-					// Выполняем добавление буфера данных в список
-					this->_data.push_back(std::unique_ptr <buffer_t> (new buffer_t));
+					// Выполняем создание буфера данных
+					std::unique_ptr <buffer_t> data = std::unique_ptr <buffer_t> (new buffer_t);
 					// Если данные не помещаются в буфере
 					if((headerSize + (size - offset)) > this->_chunkSize){
 						// Формируем актуальный размер данных буфера
 						actual = (this->_chunkSize - headerSize);
 						// Добавляем в буфер новую запись
-						this->_data.back()->push(index, (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE), size, reinterpret_cast <const char *> (buffer) + offset, actual);
+						data->push(id, index++, (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE), size, reinterpret_cast <const char *> (buffer) + offset, actual);
 					// Если данные помещаются в буфере
 					} else {
 						// Формируем актуальный размер данных буфера
 						actual = (size - offset);
 						// Добавляем в буфер новую запись
-						this->_data.back()->push(index, mode_t::END, size, reinterpret_cast <const char *> (buffer) + offset, actual);
+						data->push(id, index++, mode_t::END, size, reinterpret_cast <const char *> (buffer) + offset, actual);
 					}
 					// Увеличиваем смещение в буфере
 					offset += actual;
+					// Выполняем добавление буфера данных в список
+					this->_data.push_back(std::move(data));
 				}
 			// Если размер данных помещается в буфер
 			} else {
-				// Выполняем добавление буфера данных в список
-				this->_data.push_back(std::unique_ptr <buffer_t> (new buffer_t));
+				// Выполняем создание буфера данных
+				std::unique_ptr <buffer_t> data = std::unique_ptr <buffer_t> (new buffer_t);
 				// Добавляем в буфер данных наши записи
-				this->_data.back()->push(index, mode_t::END, size, buffer, size);
+				data->push(this->_count++, 0, mode_t::END, size, buffer, size);
+				// Выполняем добавление буфера данных в список
+				this->_data.push_back(std::move(data));
 			}
 		/**
 		 * Если возникает ошибка
@@ -353,7 +350,7 @@ void awh::cmp::Decoder::clear() noexcept {
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Очищаем выделенную память для временных данных
-		std::map <time_t, std::unique_ptr <buffer_t>> ().swap(this->_tmp);
+		std::map <uint64_t, std::unique_ptr <buffer_t>> ().swap(this->_tmp);
 		// Очищаем выделенную память для собранных данных
 		std::queue <std::pair <size_t, std::unique_ptr <uint8_t []>>> ().swap(this->_data);
 	/**
@@ -401,17 +398,28 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 			// Выполняем блокировку потока
 			const lock_guard <mutex> lock(this->_mtx);
 			// Если данные в бинарном буфере существуют
-			if(!this->_buffer.empty()){
+			// if(!this->_buffer.empty()){
+			if(!this->_bb.empty()){
 				// Добавляем полученные данные в бинарный буфер
-				this->_buffer.emplace(reinterpret_cast <const char *> (buffer), size);
+				// this->_buffer.emplace(reinterpret_cast <const char *> (buffer), size);
+				
+				this->_bb.insert(this->_bb.end(), reinterpret_cast <const char *> (buffer), reinterpret_cast <const char *> (buffer) + size);
+				
 				// Запускаем препарирование данных
-				const size_t result = this->prepare(static_cast <awh::buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+				// const size_t result = this->prepare(static_cast <awh::buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+				
+				const size_t result = this->prepare(this->_bb.data(), this->_bb.size());
+				
 				// Если количество обработанных данных больше нуля
 				if(result > 0){
 					// Удаляем количество обработанных байт
-					this->_buffer.erase(result);
+					// this->_buffer.erase(result);
 					// Фиксируем изменение в буфере
-					this->_buffer.commit();
+					// this->_buffer.commit();
+
+					auto i = this->_bb.begin();
+
+					this->_bb.erase(i, i + result);
 				}
 			// Если данных во временном буфере ещё нет
 			} else {
@@ -420,7 +428,8 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 				// Если данных из буфера обработано меньше чем передано
 				if((size - result) > 0)
 					// Добавляем полученные данные в бинарный буфер
-					this->_buffer.emplace(reinterpret_cast <const char *> (buffer) + result, size - result);
+					// this->_buffer.emplace(reinterpret_cast <const char *> (buffer) + result, size - result);
+					this->_bb.insert(this->_bb.end(), reinterpret_cast <const char *> (buffer) + result, reinterpret_cast <const char *> (buffer) + size);
 			}
 		/**
 		 * Если возникает ошибка
@@ -468,9 +477,9 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 						// Выполняем смещение в буфере данных
 						result += headerSize;
 						// Получаем индекс текущей записи
-						const time_t index = header.index;
+						const uint64_t id = header.id;
 						// Выполняем поиск указанной записи во временном объекте
-						auto i = this->_tmp.find(index);
+						auto i = this->_tmp.find(id);
 						// Если запись найдена в временном блоке данных
 						if(i != this->_tmp.end()){
 							// Если размер полезной нагрузки установлен
@@ -514,7 +523,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 								// Выводим сообщение об ошибке
 								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, data->offset, data->size, "we received damage during the data process");
 							// Выполняем добавление записи во временный объект
-							} else this->_tmp.emplace(index, std::move(data));
+							} else this->_tmp.emplace(id, std::move(data));
 						}
 						// Выполняем увеличение смещения
 						result += header.bytes;
