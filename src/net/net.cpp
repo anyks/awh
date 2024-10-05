@@ -1301,7 +1301,7 @@ string awh::Net::arpa() const noexcept {
 				// Выполняем перебор полученного хексета
 				for(auto & item : this->zerro(this->itoa(static_cast <int64_t> (num), 16), 4)){
 					// Если последний символ не является точкой
-					if(result.front() != '.')
+					if(!result.empty() && (result.front() != '.'))
 						// Добавляем разделитель
 						result.insert(result.begin(), '.');
 					// Добавляем хексет в версию
