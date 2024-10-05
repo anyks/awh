@@ -1011,7 +1011,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 						// Выполняем блокировку потока
 						const lock_guard <recursive_mutex> lock(this->_mtx.receive);
 						// Выполняем создание нового таймаута
-						this->_timeouts.emplace(bid, (tid = this->_timer->timeout(msec)));
+						this->_receive.emplace(bid, (tid = this->_timer->timeout(msec)));
 					}
 					// Выполняем добавление функции обратного вызова
 					this->_timer->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid));
