@@ -107,7 +107,7 @@ namespace awh {
 					uint8_t _buffer[4096];
 				private:
 					// Список объектов работы с протоколом кластера
-					map <pid_t, std::unique_ptr <cmp::decoder_t>> _cmp;
+					std::map <pid_t, std::unique_ptr <cmp::decoder_t>> _cmp;
 				private:
 					// Объект для работы с логами
 					const log_t * _log;
@@ -219,14 +219,17 @@ namespace awh {
 				struct sigaction _sa;
 			#endif
 		private:
+			// Мютекс для блокировки потока
+			std::unique_ptr <std::recursive_mutex> _mtx;
+		private:
 			// Список активных дочерних процессов
-			map <pid_t, uint16_t> _pids;
+			std::map <pid_t, uint16_t> _pids;
 			// Список объектов работы с протоколом кластера
-			map <uint16_t, std::unique_ptr <cmp::encoder_t>> _cmp;
+			std::map <uint16_t, std::unique_ptr <cmp::encoder_t>> _cmp;
 			// Список активных воркеров
-			map <uint16_t, std::unique_ptr <worker_t>> _workers;
+			std::map <uint16_t, std::unique_ptr <worker_t>> _workers;
 			// Список дочерних брокеров
-			map <uint16_t, vector <std::unique_ptr <broker_t>>> _brokers;
+			std::map <uint16_t, std::vector <std::unique_ptr <broker_t>>> _brokers;
 		private:
 			// Объект работы с базой событий
 			base_t * _base;
@@ -423,7 +426,7 @@ namespace awh {
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 			 _pid(::getpid()), _trackCrash(true), _callbacks(log),
-			 _socket(fmk, log), _base(nullptr), _fmk(fmk), _log(log) {}
+			 _socket(fmk, log), _mtx(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
 			 * @param base база событий
@@ -432,7 +435,7 @@ namespace awh {
 			 */
 			Cluster(base_t * base, const fmk_t * fmk, const log_t * log) noexcept :
 			 _pid(::getpid()), _trackCrash(true), _callbacks(log),
-			 _socket(fmk, log), _base(base), _fmk(fmk), _log(log) {}
+			 _socket(fmk, log), _mtx(nullptr), _base(base), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Cluster Деструктор
 			 */

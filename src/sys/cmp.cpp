@@ -44,13 +44,12 @@ awh::cmp::Encoder::Buffer::operator std::vector <char> () const noexcept {
 /**
  * push Метод добавления в буфер записи данных для отправки
  * @param id     идентификатор сообщения
- * @param index  индекс текущей записи
  * @param mode   режим отправки буфера данных
  * @param size   общий размер записи целиком
  * @param buffer буфер данных единичного чанка
  * @param bytes  размер буфера данных единичного чанка
  */
-void awh::cmp::Encoder::Buffer::push(const uint64_t id, const size_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept {
+void awh::cmp::Encoder::Buffer::push(const uint64_t id, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept {
 	/**
 	 * Выполняем обработку ошибки
 	 */
@@ -63,8 +62,6 @@ void awh::cmp::Encoder::Buffer::push(const uint64_t id, const size_t index, cons
 		this->_header.size = size;
 		// Устанавливаем актуальный размер данных
 		this->_header.bytes = bytes;
-		// Устанавливаем индекс записи
-		this->_header.index = index;
 		// Если данные переданы верные
 		if((buffer != nullptr) && (bytes > 0)){
 			// Выполняем формирование буфера данных
@@ -131,7 +128,7 @@ void awh::cmp::Encoder::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем удаление всех данных
 		this->_data.clear();
 		// Очищаем выделенную память для записей
@@ -153,7 +150,7 @@ void awh::cmp::Encoder::pop() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Если список записей не пустой
 		if(!this->_data.empty())
 			// Выполняем удаление первой записи
@@ -179,15 +176,15 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Получаем размер заголовка
 			const size_t headerSize = sizeof(header_t);
 			// Если размер данных больше размера чанка
 			if((headerSize + size) > this->_chunkSize){
+				// Параметры обхода буфера данных
+				size_t actual = 0, offset = 0;
 				// Получаем индекс новой записи
 				const uint64_t id = this->_count++;
-				// Параметры обхода буфера данных
-				size_t actual = 0, offset = 0, index = 0;
 				// Выполняем формирование буфера до тех пор пока все не добавим
 				while((size - offset) > 0){
 					// Выполняем создание буфера данных
@@ -197,13 +194,13 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 						// Формируем актуальный размер данных буфера
 						actual = (this->_chunkSize - headerSize);
 						// Добавляем в буфер новую запись
-						data->push(id, index++, (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE), size, reinterpret_cast <const char *> (buffer) + offset, actual);
+						data->push(id, (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE), size, reinterpret_cast <const char *> (buffer) + offset, actual);
 					// Если данные помещаются в буфере
 					} else {
 						// Формируем актуальный размер данных буфера
 						actual = (size - offset);
 						// Добавляем в буфер новую запись
-						data->push(id, index++, mode_t::END, size, reinterpret_cast <const char *> (buffer) + offset, actual);
+						data->push(id, mode_t::END, size, reinterpret_cast <const char *> (buffer) + offset, actual);
 					}
 					// Увеличиваем смещение в буфере
 					offset += actual;
@@ -215,7 +212,7 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 				// Выполняем создание буфера данных
 				std::unique_ptr <buffer_t> data = std::unique_ptr <buffer_t> (new buffer_t);
 				// Добавляем в буфер данных наши записи
-				data->push(this->_count++, 0, mode_t::END, size, buffer, size);
+				data->push(this->_count++, mode_t::END, size, buffer, size);
 				// Выполняем добавление буфера данных в список
 				this->_data.push_back(std::move(data));
 			}
@@ -247,7 +244,7 @@ void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем установку размера чанка
 		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
 	/**
@@ -344,7 +341,7 @@ void awh::cmp::Decoder::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем удаление всех временных данных
 		this->_tmp.clear();
 		// Выполняем очистку буфера данных
@@ -370,7 +367,7 @@ void awh::cmp::Decoder::pop() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Если список записей не пустой
 		if(!this->_data.empty())
 			// Выполняем удаление первой записи
@@ -396,30 +393,19 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если данные в бинарном буфере существуют
-			// if(!this->_buffer.empty()){
-			if(!this->_bb.empty()){
+			if(!this->_buffer.empty()){
 				// Добавляем полученные данные в бинарный буфер
-				// this->_buffer.emplace(reinterpret_cast <const char *> (buffer), size);
-				
-				this->_bb.insert(this->_bb.end(), reinterpret_cast <const char *> (buffer), reinterpret_cast <const char *> (buffer) + size);
-				
+				this->_buffer.emplace(reinterpret_cast <const char *> (buffer), size);
 				// Запускаем препарирование данных
-				// const size_t result = this->prepare(static_cast <awh::buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
-				
-				const size_t result = this->prepare(this->_bb.data(), this->_bb.size());
-				
+				const size_t result = this->prepare(static_cast <awh::buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
 				// Если количество обработанных данных больше нуля
 				if(result > 0){
 					// Удаляем количество обработанных байт
-					// this->_buffer.erase(result);
+					this->_buffer.erase(result);
 					// Фиксируем изменение в буфере
-					// this->_buffer.commit();
-
-					auto i = this->_bb.begin();
-
-					this->_bb.erase(i, i + result);
+					this->_buffer.commit();
 				}
 			// Если данных во временном буфере ещё нет
 			} else {
@@ -428,8 +414,7 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 				// Если данных из буфера обработано меньше чем передано
 				if((size - result) > 0)
 					// Добавляем полученные данные в бинарный буфер
-					// this->_buffer.emplace(reinterpret_cast <const char *> (buffer) + result, size - result);
-					this->_bb.insert(this->_bb.end(), reinterpret_cast <const char *> (buffer) + result, reinterpret_cast <const char *> (buffer) + size);
+					this->_buffer.emplace(reinterpret_cast <const char *> (buffer) + result, size - result);
 			}
 		/**
 		 * Если возникает ошибка
@@ -463,7 +448,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 				// Создаём объект заголовка
 				header_t header;
 				// Выполняем получение данных заголовков
-				::memcpy(&header, buffer, sizeof(header));
+				::memcpy(&header, buffer, headerSize);
 				// Если общий размер блока слишком большой
 				if(header.bytes > (this->_chunkSize - headerSize)){
 					// Выводим в лог сообщение
@@ -528,7 +513,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 						// Выполняем увеличение смещения
 						result += header.bytes;
 						// Если мы извлекли не все данные из буфера
-						if(size > result)
+						if((size > result) && ((size - result) >= headerSize))
 							// Выполняем извлечение слещующей порции данных
 							result += this->prepare(reinterpret_cast <const char *> (buffer) + result, size - result);
 					}
@@ -564,7 +549,7 @@ void awh::cmp::Decoder::chunkSize(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем установку размера чанка
 		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
 	/**

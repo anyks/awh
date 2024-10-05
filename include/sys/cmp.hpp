@@ -65,16 +65,14 @@ namespace awh {
 				 * Header Структура работы с заголовком буфера данных
 				 */
 				typedef struct Header {
-					pid_t pid;    // Идентификатор процесса
 					uint64_t id;  // Идентификатор сообщения
 					mode_t mode;  // Режим работы буфера данных
 					size_t size;  // Общий размер записи
 					size_t bytes; // Размер текущего чанка
-					size_t index; // Номер одного чанка
 					/**
 					 * Header Конструктор
 					 */
-					Header() noexcept : pid(::getpid()), id(0), mode(mode_t::NONE), size(0), bytes(0), index(0) {}
+					Header() noexcept : id(0), mode(mode_t::NONE), size(0), bytes(0) {}
 				} __attribute__((packed)) header_t;
 				/**
 				 * Buffer Структура работы с буфером данных
@@ -104,13 +102,12 @@ namespace awh {
 						/**
 						 * push Метод добавления в буфер записи данных для отправки
 						 * @param id     идентификатор сообщения
-						 * @param index  индекс текущей записи
 						 * @param mode   режим отправки буфера данных
 						 * @param size   общий размер записи целиком
 						 * @param buffer буфер данных единичного чанка
 						 * @param bytes  размер буфера данных единичного чанка
 						 */
-						void push(const uint64_t id, const size_t index, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
+						void push(const uint64_t id, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
 					public:
 						/**
 						 * Buffer Конструктор
@@ -123,7 +120,7 @@ namespace awh {
 				} buffer_t;
 			private:
 				// Мютекс для блокировки потока
-				mutex _mtx;
+				std::mutex _mtx;
 			private:
 				// Количество записей
 				uint64_t _count;
@@ -248,25 +245,18 @@ namespace awh {
 				 * Header Структура работы с заголовком буфера данных
 				 */
 				typedef struct Header {
-					pid_t pid;    // Идентификатор процесса
 					uint64_t id;  // Идентификатор сообщения
 					mode_t mode;  // Режим работы буфера данных
 					size_t size;  // Общий размер записи
 					size_t bytes; // Размер текущего чанка
-					size_t index; // Номер одного чанка
 					/**
 					 * Header Конструктор
 					 */
-					Header() noexcept : pid(0), id(0), mode(mode_t::NONE), size(0), bytes(0), index(0) {}
+					Header() noexcept : id(0), mode(mode_t::NONE), size(0), bytes(0) {}
 				} __attribute__((packed)) header_t;
-			
-			private:
-
-				vector <char> _bb;
-			
 			private:
 				// Мютекс для блокировки потока
-				mutex _mtx;
+				std::mutex _mtx;
 			private:
 				// Размер одного блока данных
 				size_t _chunkSize;

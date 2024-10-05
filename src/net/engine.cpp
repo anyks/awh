@@ -485,7 +485,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int32_t family) noexcep
 				// Устанавливаем разрешение на повторное использование сокета
 				this->_socket.reuseable(this->fd);
 				// Переводим сокет в не блокирующий режим
-				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLE);
+				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLED);
 			}
 		} break;
 		/**
@@ -503,7 +503,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int32_t family) noexcep
 					// Устанавливаем разрешение на повторное использование сокета
 					this->_socket.reuseable(this->fd);
 					// Переводим сокет в не блокирующий режим
-					this->_socket.blocking(this->fd, socket_t::mode_t::DISABLE);
+					this->_socket.blocking(this->fd, socket_t::mode_t::DISABLED);
 				}
 			} break;
 		#endif
@@ -558,7 +558,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Если приложение является сервером
 			if(type == type_t::SERVER)
 				// Переводим сокет в не блокирующий режим
-				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLE);
+				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLED);
 			// Создаём объект подключения для клиента
 			struct sockaddr_un client;
 			// Создаём объект подключения для сервера
@@ -817,7 +817,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 					// Включаем отображение сети IPv4 в IPv6
 					if(family == AF_INET6)
 						// Выполняем активацию работы только IPv6 сети
-						this->_socket.onlyIPv6(this->fd, onlyV6 ? socket_t::mode_t::ENABLE : socket_t::mode_t::DISABLE);
+						this->_socket.onlyIPv6(this->fd, onlyV6 ? socket_t::mode_t::ENABLED : socket_t::mode_t::DISABLED);
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->_type == SOCK_STREAM) {
 					/**
@@ -845,7 +845,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 					// Включаем отображение сети IPv4 в IPv6
 					if(family == AF_INET6)
 						// Выполняем активацию работы только IPv6 сети
-						this->_socket.onlyIPv6(this->fd, onlyV6 ? socket_t::mode_t::ENABLE : socket_t::mode_t::DISABLE);
+						this->_socket.onlyIPv6(this->fd, onlyV6 ? socket_t::mode_t::ENABLED : socket_t::mode_t::DISABLED);
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->_type == SOCK_STREAM)
 					// Активируем KeepAlive
@@ -854,7 +854,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 			// Если приложение является сервером
 			if(type == type_t::SERVER)
 				// Переводим сокет в не блокирующий режим
-				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLE);
+				this->_socket.blocking(this->fd, socket_t::mode_t::DISABLED);
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->fd);
 			// Определяем тип запускаемого приложения
@@ -1756,9 +1756,9 @@ bool awh::Engine::Context::blocking(const mode_t mode) noexcept {
 			// Определяем режим применяемой операции
 			switch(static_cast <uint8_t> (mode)){
 				// Если необходимо перевести сокет в блокирующий режим
-				case static_cast <uint8_t> (mode_t::ENABLE): {
+				case static_cast <uint8_t> (mode_t::ENABLED): {
 					// Переводим сокет в блокирующий режим
-					this->_addr->_async = !this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::ENABLE);
+					this->_addr->_async = !this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::ENABLED);
 					// Если шифрование включено
 					if(this->_encrypted && (this->_ssl != nullptr)){
 						// Устанавливаем блокирующий режим ввода/вывода для сокета
@@ -1770,9 +1770,9 @@ bool awh::Engine::Context::blocking(const mode_t mode) noexcept {
 					}
 				} break;
 				// Если необходимо перевести сокет в неблокирующий режим
-				case static_cast <uint8_t> (mode_t::DISABLE): {
+				case static_cast <uint8_t> (mode_t::DISABLED): {
 					// Переводим сокет в не блокирующий режим
-					this->_addr->_async = this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::DISABLE);
+					this->_addr->_async = this->_addr->_socket.blocking(this->_addr->fd, socket_t::mode_t::DISABLED);
 					// Если шифрование включено
 					if(this->_encrypted && (this->_ssl != nullptr)){
 						// Устанавливаем неблокирующий режим ввода/вывода для сокета
@@ -1819,18 +1819,18 @@ bool awh::Engine::Context::cork(const mode_t mode) noexcept {
 					// Определяем режим применяемой операции
 					switch(static_cast <uint8_t> (mode)){
 						// Если необходимо активировать алгоритм TCP/CORK
-						case static_cast <uint8_t> (mode_t::ENABLE): {
+						case static_cast <uint8_t> (mode_t::ENABLED): {
 							// Выполняем активирование алгоритма TCP/CORK
-							result = this->_addr->_socket.cork(this->_addr->fd, socket_t::mode_t::ENABLE);
+							result = this->_addr->_socket.cork(this->_addr->fd, socket_t::mode_t::ENABLED);
 							// Если шифрование включено
 							if(this->_encrypted && (this->_ssl != nullptr))
 								// Запрещаем отправку частичных пакетов в соединение
 								SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
 						} break;
 						// Если необходимо деактивировать алгоритм TCP/CORK
-						case static_cast <uint8_t> (mode_t::DISABLE): {
+						case static_cast <uint8_t> (mode_t::DISABLED): {
 							// Выполняем деактивирование алгоритма TCP/CORK
-							result = this->_addr->_socket.cork(this->_addr->fd, socket_t::mode_t::DISABLE);
+							result = this->_addr->_socket.cork(this->_addr->fd, socket_t::mode_t::DISABLED);
 							// Если шифрование включено
 							if(this->_encrypted && (this->_ssl != nullptr))
 								// Разрешаем отправку частичных пакетов в соединение
@@ -1872,7 +1872,7 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 					// Определяем режим применяемой операции
 					switch(static_cast <uint8_t> (mode)){
 						// Если необходимо деактивировать алгоритм Нейгла
-						case static_cast <uint8_t> (mode_t::ENABLE): {
+						case static_cast <uint8_t> (mode_t::ENABLED): {
 							// Если шифрование включено
 							if(this->_encrypted && (this->_ssl != nullptr)){
 								// Разрешаем отправку частичных пакетов в соединение
@@ -1880,10 +1880,10 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 								// Отключаем алгоритм Нейгла
 								result = !static_cast <bool> (BIO_set_tcp_ndelay(this->_addr->fd, 1));
 							// Выполняем деактивирование алгоритма Нейгла
-							} else result = this->_addr->_socket.nodelay(this->_addr->fd, socket_t::mode_t::ENABLE);
+							} else result = this->_addr->_socket.nodelay(this->_addr->fd, socket_t::mode_t::ENABLED);
 						} break;
 						// Если необходимо активировать алгоритм Нейгла
-						case static_cast <uint8_t> (mode_t::DISABLE): {
+						case static_cast <uint8_t> (mode_t::DISABLED): {
 							// Если шифрование включено
 							if(this->_encrypted && (this->_ssl != nullptr)){
 								// Запрещаем отправку частичных пакетов в соединение
@@ -1891,7 +1891,7 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 								// Включаем алгоритм Нейгла
 								result = !static_cast <bool> (BIO_set_tcp_ndelay(this->_addr->fd, 0));
 							// Выполняем активирование алгоритма Нейгла
-							} else result = this->_addr->_socket.nodelay(this->_addr->fd, socket_t::mode_t::DISABLE);
+							} else result = this->_addr->_socket.nodelay(this->_addr->fd, socket_t::mode_t::DISABLED);
 						} break;
 					}
 				}
@@ -3592,7 +3592,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем неблокирующий режим ввода/вывода для сокета
-				target.blocking(mode_t::DISABLE);
+				target.blocking(mode_t::DISABLED);
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 				/**
@@ -3923,7 +3923,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Если приложение является сервером
 					case static_cast <uint8_t> (type_t::SERVER): {
 						// Устанавливаем неблокирующий режим ввода/вывода для сокета
-						target.blocking(mode_t::DISABLE);
+						target.blocking(mode_t::DISABLED);
 						// Включаем обмен куками
 						SSL_set_options(target._ssl, SSL_OP_COOKIE_EXCHANGE);
 					} break;
@@ -4204,7 +4204,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
-				target.blocking(mode_t::ENABLE);
+				target.blocking(mode_t::ENABLED);
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 				/**

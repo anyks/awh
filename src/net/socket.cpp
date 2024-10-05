@@ -286,7 +286,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 		// Определяем режим блокировки
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо перевести сокет в блокирующий режим
-			case static_cast <uint8_t> (mode_t::ENABLE): {
+			case static_cast <uint8_t> (mode_t::ENABLED): {
 				// Формируем флаг разблокировки
 				u_long flag = 0;
 				// Выполняем разблокировку сокета
@@ -301,7 +301,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 				}
 			} break;
 			// Если необходимо перевести сокет в неблокирующий режим
-			case static_cast <uint8_t> (mode_t::DISABLE): {
+			case static_cast <uint8_t> (mode_t::DISABLED): {
 				// Формируем флаг разблокировки
 				u_long flag = 1;
 				// Выполняем разблокировку сокета
@@ -337,7 +337,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 		// Определяем режим блокировки
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо перевести сокет в блокирующий режим
-			case static_cast <uint8_t> (mode_t::ENABLE): {
+			case static_cast <uint8_t> (mode_t::ENABLED): {
 				// Если флаг уже установлен
 				if(flags & O_NONBLOCK){
 					// Устанавливаем неблокирующий режим
@@ -353,7 +353,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 				}
 			} break;
 			// Если необходимо перевести сокет в неблокирующий режим
-			case static_cast <uint8_t> (mode_t::DISABLE): {
+			case static_cast <uint8_t> (mode_t::DISABLED): {
 				// Если флаг ещё не установлен
 				if(!(flags & O_NONBLOCK)){
 					// Устанавливаем неблокирующий режим
@@ -391,12 +391,12 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 		// Определяем режим установки типа сокета
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо активировать алгоритм TCP/CORK
-			case static_cast <uint8_t> (mode_t::ENABLE):
+			case static_cast <uint8_t> (mode_t::ENABLED):
 				// Активируем алгоритм TCP/CORK
 				flag = 1;
 			break;
 			// Если необходимо деактивировать алгоритм TCP/CORK
-			case static_cast <uint8_t> (mode_t::DISABLE):
+			case static_cast <uint8_t> (mode_t::DISABLED):
 				// Деактивируем алгоритм TCP/CORK
 				flag = 0;
 			break;
@@ -420,12 +420,12 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 		// Определяем режим установки типа сокета
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо активировать алгоритм TCP/CORK
-			case static_cast <uint8_t> (mode_t::ENABLE):
+			case static_cast <uint8_t> (mode_t::ENABLED):
 				// Активируем алгоритм TCP/CORK
 				flag = 1;
 			break;
 			// Если необходимо деактивировать алгоритм TCP/CORK
-			case static_cast <uint8_t> (mode_t::DISABLE):
+			case static_cast <uint8_t> (mode_t::DISABLED):
 				// Деактивируем алгоритм TCP/CORK
 				flag = 0;
 			break;
@@ -458,12 +458,12 @@ bool awh::Socket::nodelay(const SOCKET fd, const mode_t mode) const noexcept {
 	// Определяем режим установки типа сокета
 	switch(static_cast <uint8_t> (mode)){
 		// Если необходимо активировать алгоритм TCP/NODELAY
-		case static_cast <uint8_t> (mode_t::ENABLE):
+		case static_cast <uint8_t> (mode_t::ENABLED):
 			// Активируем алгоритм TCP/NODELAY
 			flag = 1;
 		break;
 		// Если необходимо деактивировать алгоритм TCP/NODELAY
-		case static_cast <uint8_t> (mode_t::DISABLE):
+		case static_cast <uint8_t> (mode_t::DISABLED):
 			// Деактивируем алгоритм TCP/NODELAY
 			flag = 0;
 		break;
@@ -548,7 +548,7 @@ bool awh::Socket::onlyIPv6(const SOCKET fd, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Устанавливаем параметр
-	const uint32_t on = static_cast <uint32_t> (mode == mode_t::ENABLE);
+	const uint32_t on = static_cast <uint32_t> (mode == mode_t::ENABLED);
 	// Разрешаем повторно использовать тот же host:port после отключения
 	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&on), sizeof(on))))){
 		/**

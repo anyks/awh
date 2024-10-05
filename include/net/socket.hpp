@@ -102,11 +102,11 @@ namespace awh {
 			 * Режимы работы с сокетами
 			 */
 			enum class mode_t : uint8_t {
-				NONE    = 0x00, // Флаг сокета не установлен
-				READ    = 0x01, // Параметры сокета на чтение
-				WRITE   = 0x02, // Параметры сокета на запись
-				ENABLE  = 0x03, // Активация режима работы сокета
-				DISABLE = 0x04  // Деактивация режима работы сокета
+				NONE     = 0x00, // Флаг сокета не установлен
+				READ     = 0x01, // Параметры сокета на чтение
+				WRITE    = 0x02, // Параметры сокета на запись
+				ENABLED  = 0x03, // Активация режима работы сокета
+				DISABLED = 0x04  // Деактивация режима работы сокета
 			};
 		private:
 			// Создаём объект фреймворка
@@ -193,7 +193,7 @@ namespace awh {
 			 * @param mode режим активации или деактивации
 			 * @return     результат работы функции
 			 */
-			bool onlyIPv6(const SOCKET fd, const mode_t mode = mode_t::DISABLE) const noexcept;
+			bool onlyIPv6(const SOCKET fd, const mode_t mode = mode_t::DISABLED) const noexcept;
 		public:
 			/**
 			 * timeout Метод установки таймаута на чтение из сокета

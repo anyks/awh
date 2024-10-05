@@ -1145,7 +1145,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
 							// Делаем сокет неблокирующим
-							this->_socket.blocking(fd, socket_t::mode_t::DISABLE);
+							this->_socket.blocking(fd, socket_t::mode_t::DISABLED);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_items.emplace(fd, item_t());
 							// Выполняем установку объекта пайпа
@@ -1228,7 +1228,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
 							// Делаем сокет неблокирующим
-							this->_socket.blocking(fd, socket_t::mode_t::DISABLE);
+							this->_socket.blocking(fd, socket_t::mode_t::DISABLED);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_items.emplace(fd, item_t());
 							// Выполняем установку объекта пайпа
@@ -2644,7 +2644,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 				// Выходим из функции
 				return result;
 			// Делаем сокет неблокирующим
-			this->_socket.blocking(fds[0], socket_t::mode_t::DISABLE);
+			this->_socket.blocking(fds[0], socket_t::mode_t::DISABLED);
 			// Выполняем генерацию идентификатора верхнеуровневого потока
 			result = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 			// Выполняем добавление в список верхнеуровневых потоков, новый поток

@@ -1547,7 +1547,7 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 						// Если тип сокета установлен как SCTP
 						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 							// Переводим сокет в блокирующий режим
-							broker->_ectx.blocking(engine_t::mode_t::ENABLE);
+							broker->_ectx.blocking(engine_t::mode_t::ENABLED);
 						break;
 					}
 					// Получаем максимальный размер буфера
@@ -1595,7 +1595,7 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 								// Если тип сокета установлен как SCTP
 								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 									// Переводим сокет в неблокирующий режим
-									broker->_ectx.blocking(engine_t::mode_t::DISABLE);
+									broker->_ectx.blocking(engine_t::mode_t::DISABLED);
 								break;
 							}
 						}

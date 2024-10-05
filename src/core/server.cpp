@@ -129,7 +129,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Выполняем блокировку потока
 								this->_mtx.accept.unlock();
 								// Переводим сокет в неблокирующий режим
-								ret.first->second->_ectx.blocking(engine_t::mode_t::DISABLE);
+								ret.first->second->_ectx.blocking(engine_t::mode_t::DISABLED);
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->callback <void (const uint64_t)> ("read", std::bind(&core_t::read, this, _1));
 								// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
@@ -420,7 +420,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Выполняем блокировку потока
 								this->_mtx.accept.unlock();
 								// Переводим сокет в неблокирующий режим
-								ret.first->second->_ectx.blocking(engine_t::mode_t::DISABLE);
+								ret.first->second->_ectx.blocking(engine_t::mode_t::DISABLED);
 								// Если вывод информационных данных не запрещён
 								if(this->_verb){
 									// Если порт установлен
@@ -730,7 +730,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 								return;
 							}
 							// Переводим сокет в блокирующий режим
-							broker->_ectx.blocking(engine_t::mode_t::ENABLE);
+							broker->_ectx.blocking(engine_t::mode_t::ENABLED);
 							// Если вывод информационных данных не запрещён
 							if(this->_verb){
 								// Если порт установлен
@@ -2362,7 +2362,7 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 					// Если тип сокета установлен как SCTP
 					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 						// Переводим сокет в блокирующий режим
-						broker->_ectx.blocking(engine_t::mode_t::ENABLE);
+						broker->_ectx.blocking(engine_t::mode_t::ENABLED);
 					break;
 				}
 				// Получаем максимальный размер буфера
@@ -2406,7 +2406,7 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 							// Если тип сокета установлен как SCTP
 							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 								// Переводим сокет в неблокирующий режим
-								broker->_ectx.blocking(engine_t::mode_t::DISABLE);
+								broker->_ectx.blocking(engine_t::mode_t::DISABLED);
 							break;
 						}
 					}

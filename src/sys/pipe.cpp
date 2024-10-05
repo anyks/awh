@@ -77,7 +77,7 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 				}
 			#endif
 			// Делаем сокет неблокирующим
-			this->_socket.blocking(result[0], socket_t::mode_t::DISABLE);
+			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
 		} break;
 		// Если тип пайпа соответствует UDP-серверу
 		case static_cast <uint8_t> (type_t::NETWORK): {
@@ -103,7 +103,7 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(result[0]);
 			// Переводим сокет в не блокирующий режим
-			this->_socket.blocking(result[0], socket_t::mode_t::DISABLE);
+			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
 			// Зануляем объект сервера
 			::memset(&this->_peer.server, 0, sizeof(this->_peer.server));
 			// Устанавливаем протокол интернета
