@@ -50,6 +50,8 @@
 #include <net/socket.hpp>
 #include <sys/events.hpp>
 
+#include <core/core.hpp>
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 
@@ -234,8 +236,8 @@ namespace awh {
 			// Список дочерних брокеров
 			std::map <uint16_t, std::vector <std::unique_ptr <broker_t>>> _brokers;
 		private:
-			// Объект работы с базой событий
-			base_t * _base;
+			// Объект сетевого ядра
+			core_t * _core;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -352,10 +354,10 @@ namespace awh {
 			void restart(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
-			 * base Метод установки базы событий
-			 * @param base база событий для установки
+			 * base Метод установки сетевого ядра
+			 * @param core сетевое ядро для установки
 			 */
-			void base(base_t * base) noexcept;
+			void core(core_t * core) noexcept;
 		public:
 			/**
 			 * trackCrash Метод отключения отслеживания падения дочерних процессов
@@ -429,20 +431,20 @@ namespace awh {
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 			 _pid(::getpid()), _crash(true), _callbacks(log), _socket(fmk, log),
-			 _mtx(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
+			 _mtx(nullptr), _core(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
-			 * @param base база событий
+			 * @param core объект сетевого ядра
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Cluster(base_t * base, const fmk_t * fmk, const log_t * log) noexcept :
+			Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
 			 _pid(::getpid()), _crash(true), _callbacks(log), _socket(fmk, log),
-			 _mtx(nullptr), _base(base), _fmk(fmk), _log(log) {}
+			 _mtx(nullptr), _core(core), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Cluster Деструктор
 			 */
-			~Cluster() noexcept {}
+			~Cluster() noexcept;
 	} cluster_t;
 };
 

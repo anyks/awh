@@ -280,15 +280,13 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _size(1), _cluster(fmk, log) {
+awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _size(1), _cluster(this, fmk, log) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Отключаем отслеживание упавших процессов
 	this->_cluster.trackCrash(false);
 	// Выполняем инициализацию кластера
 	this->_cluster.init(0, this->_size);
-	// Выполняем установку базы данных
-	this->_cluster.base(this->_dispatch.base);
 	// Устанавливаем функцию получения статуса кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, cluster_t::event_t)> ("process", std::bind(&core_t::cluster, this, _1, _2, _3));
 	// Устанавливаем функцию получения входящих сообщений

@@ -16,6 +16,11 @@
 #include <core/core.hpp>
 
 /**
+ * Объект глобальной базы событий
+ */
+static awh::base_t * EventBase = nullptr;
+
+/**
  * kick Метод отправки пинка
  */
 void awh::Core::Dispatch::kick() noexcept {
@@ -24,7 +29,7 @@ void awh::Core::Dispatch::kick() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем остановку всех событий
-		this->base->kick();
+		this->_base->kick();
 	}
 }
 /**
@@ -38,7 +43,7 @@ void awh::Core::Dispatch::stop() noexcept {
 		// Снимаем флаг работы модуля
 		this->_work = !this->_work;
 		// Выполняем остановку базы событий
-		this->base->stop();
+		this->_base->stop();
 	// Если модуль не инициализирован
 	} else if(!this->_init) {
 		// Если функция обратного вызова установлена
@@ -64,7 +69,7 @@ void awh::Core::Dispatch::start() noexcept {
 			// Выполняем запуск функции активации базы событий
 			this->_launching(true, true);
 		// Выполняем запуск базы событий
-		this->base->start();
+		this->_base->start();
 		// Если функция обратного вызова установлена
 		if(this->_closedown != nullptr)
 			// Выполняем остановку функции активации базы событий
@@ -79,62 +84,6 @@ void awh::Core::Dispatch::start() noexcept {
 			this->_launching(true, false);
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
-}
-/**
- * virt Метод активации работы базы событий как виртуальной
- * @param mode флаг активации
- */
-void awh::Core::Dispatch::virt(const bool mode) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если требуется активировать базу событий как виртуальную
-		if(mode && !this->_virt){
-			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx);
-			// Выполняем блокировку чтения данных
-			this->_init = this->_virt;
-			// Если работа уже запущена
-			if(this->_work)
-				// Выполняем остановку всех событий
-				this->base->kick();
-			// Удаляем объект базы событий
-			if(this->base != nullptr){
-				// Удаляем объект базы событий
-				delete this->base;
-				// Выполняем зануление базы событий
-				this->base = nullptr;
-			}
-			// Активируем флаг виртуальной базы событий
-			this->_virt = !this->_virt;
-		// Если требуется деактивировать базу событий как виртуальную
-		} else if(!mode && this->_virt) {
-			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx);
-			// Создаем новую базу событий
-			this->base = new base_t(this->_fmk, this->_log);
-			// Активируем флаг виртуальной базы событий
-			this->_virt = !this->_virt;
-			// Выполняем разблокировку чтения данных
-			this->_init = !this->_virt;
-		// Если производится переключение на виртуальную базу событий но она уже виртуальная
-		} else if(mode && this->_virt)
-			// Выводим сообщение об ошибке
-			this->_log->print("Cannot make the event database virtual because i is already virtual", log_t::flag_t::WARNING);
-		// Если производится переход с виртуальной базы данных на обычную но она уже обычная
-		else if(!mode && !this->_virt)
-			// Выводим сообщение об ошибке
-			this->_log->print("Cannot switch from a virtual event database to a real one, since i is no longer virtual", log_t::flag_t::WARNING);
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const bad_alloc &) {
-		// Выводим в лог сообщение
-		this->_log->print("Dispatch virt: %s", log_t::flag_t::CRITICAL, "memory allocation error");
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
-	}
 }
 /**
  * rebase Метод пересоздания базы событий
@@ -152,12 +101,47 @@ void awh::Core::Dispatch::rebase() noexcept {
 			if(this->_work)
 				// Выполняем блокировку чтения данных
 				this->_init = this->_virt;
-			// Удаляем объект базы событий
-			if(this->base != nullptr)
+			// Если база событий уже создана
+			if(this->_base != nullptr)
 				// Выполняем пересоздание базы событий
-				this->base->rebase();
+				this->_base->rebase();
 			// Создаем новую базу событий
-			else this->base = new base_t(this->_fmk, this->_log);
+			else this->_base = EventBase = new base_t(this->_fmk, this->_log);
+			// Выполняем разблокировку чтения данных
+			this->_init = !this->_virt;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выводим в лог сообщение
+			this->_log->print("Dispatch repase: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	}
+}
+/**
+ * reinit Метод реинициализации базы событий
+ */
+void awh::Core::Dispatch::reinit() noexcept {
+	// Если требуется активировать базу событий как виртуальную
+	if(!this->_virt){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем блокировку потока
+			const lock_guard <recursive_mutex> lock(this->_mtx);
+			// Если работа уже запущена
+			if(this->_work)
+				// Выполняем блокировку чтения данных
+				this->_init = this->_virt;
+			// Если база событий уже создана
+			if(this->_base != nullptr)
+				// Удаляем объект базы событий
+				delete this->_base;
+			// Создаем новую базу событий
+			this->_base = EventBase = new base_t(this->_fmk, this->_log);
 			// Выполняем разблокировку чтения данных
 			this->_init = !this->_virt;
 		/**
@@ -181,7 +165,7 @@ void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем фриз получения данных
-		this->base->freeze(mode);
+		this->_base->freeze(mode);
 	}
 }
 /**
@@ -192,9 +176,9 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Устанавливаем флаг активации простого чтения базы событий
-	this->base->easily(mode);
+	this->_base->easily(mode);
 	// Выполняем остановку всех событий
-	this->base->kick();
+	this->_base->kick();
 }
 /**
  * frequency Метод установки частоты обновления базы событий
@@ -206,9 +190,9 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Устанавливаем частоту обновления базы событий
-		this->base->frequency(msec);
+		this->_base->frequency(msec);
 		// Выполняем остановку всех событий
-		this->base->kick();
+		this->_base->kick();
 	}
 }
 /**
@@ -237,10 +221,19 @@ void awh::Core::Dispatch::on(const status_t status, function <void (const bool, 
  * @param log объект для работы с логами
  */
 awh::Core::Dispatch::Dispatch(const fmk_t * fmk, const log_t * log) noexcept :
- _work(false), _init(false), _virt(false), base(nullptr),
- _launching(nullptr), _closedown(nullptr), _fmk(fmk), _log(log) {
-	// Выполняем инициализацию базы событий
-	this->rebase();
+ _pid(::getpid()), _work(false), _init(false), _virt(false),
+ _launching(nullptr), _closedown(nullptr), _base(nullptr), _fmk(fmk), _log(log) {
+	// Если база событий ещё не проинициализированна
+	if(EventBase == nullptr)
+		// Выполняем инициализацию базы событий
+		this->reinit();
+	// Если база событий уже инициализированна
+	else {
+		// Отмечаем, что база событий является виртуальной
+		this->_virt = true;
+		// Выполняем установку базы событий
+		this->_base = EventBase;
+	}
 }
 /**
  * ~Dispatch Деструктор
@@ -249,11 +242,13 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 	// Если база событий проинициализированна
 	if(this->_init){
 		// Если база событий не является виртуальной
-		if(!this->_virt && (this->base != nullptr)){
+		if(!this->_virt && (this->_base != nullptr)){
 			// Удаляем объект базы событий
-			delete this->base;
+			delete this->_base;
+			// Зануляем глобальную базу событий
+			EventBase = nullptr;
 			// Выполняем зануление базы событий
-			this->base = nullptr;
+			this->_base = nullptr;
 		}
 	}
 }
@@ -333,6 +328,13 @@ void awh::Core::rebase() noexcept {
 	}
 }
 /**
+ * reinit Метод реинициализации базы событий
+ */
+void awh::Core::reinit() noexcept {
+	// Выполняем переинициализацию базы событий
+	this->_dispatch.reinit();
+}
+/**
  * bind Метод подключения модуля ядра к текущей базе событий
  * @param core модуль ядра для подключения
  */
@@ -340,29 +342,9 @@ void awh::Core::bind(core_t * core) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она отличается от текущей базы событий
-	if((core != nullptr) && (core != this)){
-		// Выполняем остановку базы событий
-		core->stop();
-		// Если базы событий отличаются
-		if(core->_dispatch.base != this->_dispatch.base){
-			// Выполняем перевод базы событий в виртуальную
-			core->_dispatch.virt(true);
-			// Выполняем установку базы событий
-			core->_dispatch.base = this->_dispatch.base;
-			// Выполняем блокировку потока
-			core->_mtx.status.lock();
-			// Выполняем разблокировку потока
-			core->_mtx.status.unlock();
-		// Если базы событий совпадают
-		} else {
-			// Выполняем блокировку потока
-			core->_mtx.status.lock();
-			// Выполняем разблокировку потока
-			core->_mtx.status.unlock();
-		}
+	if((core != nullptr) && (core != this))
 		// Выполняем запуск управляющей функции
 		core->launching(false, true);
-	}
 }
 /**
  * unbind Метод отключения модуля ядра от текущей базы событий
@@ -372,18 +354,9 @@ void awh::Core::unbind(core_t * core) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она совпадает с текущей базы событий
-	if((core != nullptr) && (core != this) && (core->_dispatch.base == this->_dispatch.base)){
-		// Выполняем остановку базы событий
-		core->stop();
-		// Выполняем блокировку потока
-		core->_mtx.status.lock();
-		// Выполняем разблокировку потока
-		core->_mtx.status.unlock();
-		// Выполняем перевод базы событий в не виртуальную
-		core->_dispatch.virt(false);
+	if((core != nullptr) && (core != this))
 		// Запускаем метод деактивации базы событий
 		core->closedown(false, true);
-	}
 }
 /**
  * kick Метод отправки пинка
@@ -503,6 +476,14 @@ bool awh::Core::working() const noexcept {
 	return this->_mode;
 }
 /**
+ * eventBase Метод получения базы событий
+ * @return инициализированная база событий
+ */
+awh::base_t * awh::Core::eventBase() noexcept {
+	// Выполняем получение базы событий
+	return this->_dispatch._base;
+}
+/**
  * easily Метод активации простого режима чтения базы событий
  * @param mode флаг активации простого чтения базы событий
  */
@@ -584,7 +565,7 @@ void awh::Core::eraseUpstream(const uint64_t sid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем удаление верхнеуровневого потока
-	this->_dispatch.base->eraseUpstream(sid);
+	this->_dispatch._base->eraseUpstream(sid);
 }
 /**
  * launchUpstream Метод запуска верхнеуровневого потока
@@ -595,7 +576,7 @@ void awh::Core::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept 
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем запуск верхнеуровневого потока
-	this->_dispatch.base->launchUpstream(sid, tid);
+	this->_dispatch._base->launchUpstream(sid, tid);
 }
 /**
  * emplaceUpstream Метод создания верхнеуровневого потока
@@ -606,7 +587,7 @@ uint64_t awh::Core::emplaceUpstream(function <void (const uint64_t)> callback) n
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем создание верхнеуровневого потока
-	return this->_dispatch.base->emplaceUpstream(callback);
+	return this->_dispatch._base->emplaceUpstream(callback);
 }
 /**
  * Core Конструктор

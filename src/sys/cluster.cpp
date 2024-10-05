@@ -541,12 +541,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 								// Добавляем в список дочерних процессов, идентификатор процесса
 								this->_pids.emplace(pid, index);
 								{
-									// Если база событий уже существует
-									if(this->_base != nullptr)
-										// Выполняем удаление базы событий
-										delete this->_base;
-									// Выполняем создание новой базы событий
-									this->_base = new base_t(this->_fmk, this->_log);
+									// Выполняем переинициализацию базы событий
+									this->_core->reinit();
 									// Получаем объект текущего брокера
 									broker_t * broker = j->second.at(index).get();
 									// Выполняем перебор всего списка брокеров
@@ -576,7 +572,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									// Устанавливаем время начала жизни процесса
 									broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 									// Устанавливаем базу событий для чтения
-									broker->mess = this->_base;
+									broker->mess = this->_core->eventBase();
 									// Устанавливаем сокет для чтения
 									broker->mess = broker->cfds[0];
 									// Устанавливаем событие на чтение данных от основного процесса
@@ -636,7 +632,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Устанавливаем время начала жизни процесса
 							broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 							// Устанавливаем базу событий для чтения
-							broker->mess = this->_base;
+							broker->mess = this->_core->eventBase();
 							// Устанавливаем сокет для чтения
 							broker->mess = broker->mfds[0];
 							// Устанавливаем событие на чтение данных от дочернего процесса
@@ -1215,10 +1211,10 @@ void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
 		this->_mtx->unlock();
 }
 /**
- * base Метод установки базы событий
- * @param base база событий для установки
+ * base Метод установки сетевого ядра
+ * @param core сетевое ядро для установки
  */
-void awh::Cluster::base(base_t * base) noexcept {
+void awh::Cluster::core(core_t * core) noexcept {
 	// Если мютекс инициализирован
 	if(this->_mtx != nullptr)
 		// Выполняем блокировку потока
@@ -1228,7 +1224,7 @@ void awh::Cluster::base(base_t * base) noexcept {
 		// Выполняем остановку процессов
 		this->stop(worker.first);
 	// Выполняем установку базы событий
-	this->_base = base;
+	this->_core = core;
 	// Если мютекс инициализирован
 	if(this->_mtx != nullptr)
 		// Выполняем разблокировку потока
@@ -1348,4 +1344,22 @@ void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
 	if(this->_mtx != nullptr)
 		// Выполняем разблокировку потока
 		this->_mtx->unlock();
+}
+/**
+ * ~Cluster Деструктор
+ */
+awh::Cluster::~Cluster() noexcept {
+	// Если активные брокеры присутствуют в кластере
+	if(!this->_brokers.empty()){
+		// Список активных брокеров
+		std::vector <uint16_t> brokers;
+		// Выполняем перебор всех активных брокеров
+		for(auto & item : this->_brokers)
+			// Выполняем добавление идентификатора брокера в список
+			brokers.push_back(item.first);
+		// Выполняем перебор всего списка брокеров
+		for(auto & broker : brokers)
+			// Останавливаем работу кластера
+			this->stop(broker);
+	}
 }

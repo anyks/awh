@@ -141,7 +141,7 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
  */
 uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 	// Если данные переданы
-	if((this->_dispatch.base != nullptr) && (delay > 0)){
+	if(delay > 0){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -157,7 +157,7 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 			// Устанавливаем время задержки таймера
 			ret.first->second->event.timeout(delay);
 			// Устанавливаем базу данных событий
-			ret.first->second->event = this->_dispatch.base;
+			ret.first->second->event = this->eventBase();
 			// Устанавливаем функцию обратного вызова
 			ret.first->second->event = std::bind(&timer_t::event, this, ret.first->first, _1, _2);
 			// Выполняем запуск работы таймера
@@ -186,7 +186,7 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
  */
 uint16_t awh::Timer::interval(const time_t delay) noexcept {
 	// Если данные переданы
-	if((this->_dispatch.base != nullptr) && (delay > 0)){
+	if(delay > 0){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -204,7 +204,7 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			// Устанавливаем время задержки таймера
 			ret.first->second->event.timeout(delay, true);
 			// Устанавливаем базу данных событий
-			ret.first->second->event = this->_dispatch.base;
+			ret.first->second->event = this->eventBase();
 			// Устанавливаем функцию обратного вызова
 			ret.first->second->event = std::bind(&timer_t::event, this, ret.first->first, _1, _2);
 			// Выполняем запуск работы таймера

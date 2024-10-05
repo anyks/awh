@@ -72,6 +72,12 @@ namespace awh {
 			 */
 			typedef class AWHSHARED_EXPORT Dispatch {
 				private:
+					// Устанавливаем дружбу с родительским классом
+					friend class Core;
+				private:
+					// Идентификатор процесса
+					pid_t _pid;
+				private:
 					// Флаг работы модуля
 					bool _work;
 					// Флаг инициализации базы событий
@@ -81,14 +87,14 @@ namespace awh {
 				private:
 					// Мютекс для блокировки потока
 					recursive_mutex _mtx;
-				public:
-					// База данных событий
-					base_t * base;
 				private:
 					// Функция обратного вызова при запуске модуля
 					function <void (const bool, const bool)> _launching;
 					// Функция обратного вызова при остановки модуля
 					function <void (const bool, const bool)> _closedown;
+				private:
+					// База данных событий
+					base_t * _base;
 				private:
 					// Создаём объект фреймворка
 					const fmk_t * _fmk;
@@ -109,15 +115,13 @@ namespace awh {
 					void start() noexcept;
 				public:
 					/**
-					 * virt Метод активации работы базы событий как виртуальной
-					 * @param mode флаг активации
-					 */
-					void virt(const bool mode) noexcept;
-				public:
-					/**
 					 * rebase Метод пересоздания базы событий
 					 */
 					void rebase() noexcept;
+					/**
+					 * reinit Метод реинициализации базы событий
+					 */
+					void reinit() noexcept;
 					/**
 					 * freeze Метод заморозки чтения данных
 					 * @param mode флаг активации
@@ -194,6 +198,10 @@ namespace awh {
 			 * rebase Метод пересоздания базы событий
 			 */
 			void rebase() noexcept;
+			/**
+			 * reinit Метод реинициализации базы событий
+			 */
+			void reinit() noexcept;
 		public:
 			/**
 			 * bind Метод подключения модуля ядра к текущей базе событий
@@ -277,6 +285,12 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			bool working() const noexcept;
+		public:
+			/**
+			 * eventBase Метод получения базы событий
+			 * @return инициализированная база событий
+			 */
+			base_t * eventBase() noexcept;
 		public:
 			/**
 			 * easily Метод активации простого режима чтения базы событий

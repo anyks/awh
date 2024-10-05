@@ -121,7 +121,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Выполняем блокировку потока
 								this->_mtx.accept.lock();
 								// Выполняем установку базы событий
-								broker->base(this->_dispatch.base);
+								broker->base(this->eventBase());
 								// Добавляем созданного брокера в список брокеров
 								auto ret = shm->_brokers.emplace(broker->id(), std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
 								// Добавляем брокера в список подключений
@@ -412,7 +412,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Выполняем блокировку потока
 								this->_mtx.accept.lock();
 								// Выполняем установку базы событий
-								broker->base(this->_dispatch.base);
+								broker->base(this->eventBase());
 								// Добавляем созданного брокера в список брокеров
 								auto ret = shm->_brokers.emplace(broker->id(), std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
 								// Добавляем брокера в список подключений
@@ -1075,7 +1075,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 									// Устанавливаем активный сокет сервера
 									i->second->_addr.fd = shm->_addr.fd;
 									// Выполняем установку базы событий
-									i->second->base(this->_dispatch.base);
+									i->second->base(this->eventBase());
 									// Активируем получение данных с клиента
 									i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 								// Если брокер не существует
@@ -1093,7 +1093,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 										// Устанавливаем активный сокет сервера
 										ret.first->second->_addr.fd = shm->_addr.fd;
 										// Выполняем установку базы событий
-										ret.first->second->base(this->_dispatch.base);
+										ret.first->second->base(this->eventBase());
 										// Выполняем установку функции обратного вызова на получении сообщений
 										ret.first->second->callback <void (const uint64_t)> ("read", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, shm->_addr.fd, sid));
 										// Активируем получение данных с клиента
@@ -1206,7 +1206,7 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 				// Выполняем получение контекста сертификата
 				this->_engine.wrap(broker->_ectx, &shm->_addr, engine_t::type_t::SERVER);
 				// Выполняем установку базы событий
-				broker->base(this->_dispatch.base);
+				broker->base(this->eventBase());
 				// Добавляем созданного брокера в список брокеров
 				auto ret = shm->_brokers.emplace(bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
 				// Добавляем брокера в список подключений
@@ -1706,8 +1706,6 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 			switch(static_cast <uint8_t> (this->_clusterMode)){
 				// Если кластер необходимо активировать
 				case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
-					// Устанавливаем базу событий кластера
-					this->_cluster.base(this->_dispatch.base);
 					// Устанавливаем флаг отслеживания упавших процессов
 					this->_cluster.trackCrash(this->_clusterAutoRestart);
 					// Устанавливаем флаг автоматического перезапуска упавших процессов
@@ -2568,7 +2566,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 										// Устанавливаем активный сокет сервера
 										i->second->_addr.fd = shm->_addr.fd;
 										// Выполняем установку базы событий
-										i->second->base(this->_dispatch.base);
+										i->second->base(this->eventBase());
 										// Активируем получение данных с клиента
 										i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 									// Если брокер не существует
@@ -2586,7 +2584,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 											// Устанавливаем активный сокет сервера
 											ret.first->second->_addr.fd = shm->_addr.fd;
 											// Выполняем установку базы событий
-											ret.first->second->base(this->_dispatch.base);
+											ret.first->second->base(this->eventBase());
 											// Выполняем установку функции обратного вызова на получении сообщений
 											ret.first->second->callback <void (const uint64_t)> ("read", std::bind(static_cast <void (core_t::*)(const SOCKET, const uint16_t)> (&core_t::accept), this, shm->_addr.fd, sid));
 											// Активируем получение данных с клиента
@@ -2944,8 +2942,8 @@ void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(fmk, log), _socket(fmk, log),
- _cluster(fmk, log), _clusterSize(-1), _clusterAutoRestart(false),
+ awh::node_t(fmk, log), _socket(fmk, log), _cluster(this, fmk, log),
+ _clusterSize(-1), _clusterAutoRestart(false),
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
@@ -2963,8 +2961,8 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(dns, fmk, log), _socket(fmk, log),
- _cluster(fmk, log), _clusterSize(-1), _clusterAutoRestart(false),
+ awh::node_t(dns, fmk, log), _socket(fmk, log), _cluster(this, fmk, log),
+ _clusterSize(-1), _clusterAutoRestart(false),
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;

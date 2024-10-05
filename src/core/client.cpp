@@ -235,7 +235,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Выполняем блокировку потока
 					this->_mtx.connect.lock();
 					// Выполняем установку базы событий
-					broker->base(this->_dispatch.base);
+					broker->base(this->eventBase());
 					// Добавляем созданного брокера в список брокеров
 					auto ret = shm->_brokers.emplace(broker->id(), std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
 					// Добавляем брокера в список подключений
