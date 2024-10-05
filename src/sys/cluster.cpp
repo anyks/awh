@@ -30,13 +30,13 @@
 	 */
 	void awh::Cluster::Worker::process(const pid_t pid, const int32_t status) noexcept {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Выполняем поиск брокера
-		auto j = this->_ctx->_brokers.find(this->_wid);
+		auto i = this->_ctx->_brokers.find(this->_wid);
 		// Если брокер найден
-		if(j != this->_ctx->_brokers.end()){
+		if(i != this->_ctx->_brokers.end()){
 			// Выполняем поиск завершившегося процесса
-			for(auto & broker : j->second){
+			for(auto & broker : i->second){
 				// Если процесс найден
 				if((broker->end = (broker->pid == pid))){
 					// Выполняем остановку чтение сообщений
@@ -58,21 +58,21 @@
 						::exit(EXIT_FAILURE);
 					}
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					// this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::CRITICAL, broker->pid, status);
+					this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::WARNING, broker->pid, status);
 					// Если функция обратного вызова установлена
 					if(this->_ctx->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
-						this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", j->first, pid, event_t::STOP);
+						this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::STOP);
 					// Выполняем поиск воркера
-					auto i = this->_ctx->_workers.find(j->first);
+					auto j = this->_ctx->_workers.find(i->first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
-					if((i != this->_ctx->_workers.end()) && i->second->restart){
+					if((j != this->_ctx->_workers.end()) && j->second->_restart){
 						// Получаем индекс упавшего процесса
 						const uint16_t index = this->_ctx->_pids.at(broker->pid);
 						// Удаляем процесс из списка процессов
 						const_cast <cluster_t *> (this->_ctx)->_pids.erase(broker->pid);
 						// Выполняем создание нового процесса
-						const_cast <cluster_t *> (this->_ctx)->fork(i->first, index, i->second->restart);
+						const_cast <cluster_t *> (this->_ctx)->fork(i->first, index, j->second->_restart);
 					// Просто удаляем процесс из списка процессов
 					} else const_cast <cluster_t *> (this->_ctx)->_pids.erase(broker->pid);
 					// Выходим из цикла
@@ -181,30 +181,25 @@
 						if(bytes > 0){
 							// Если функция обратного вызова установлена
 							if(this->_ctx->_callbacks.is("message")){
-								// Объект работы с протоколом передачи данных
-								cmp::decoder_t * cmp = nullptr;
 								// Выполняем поиск объекта работы с протоколом передачи данных
 								auto i = this->_cmp.find(pid);
 								// Если объект работы с протоколом передачи данных найден
-								if(i != this->_cmp.end())
-									// Выполняем извлечение объекта работы с протоколом передачи данных
-									cmp = i->second.get();
-								// Создаём новый объект протокола передачи данных
-								else cmp = this->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log))).first->second.get();
-								// Выполняем добавление бинарных данных в протокол
-								cmp->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
-								// Выполняем извлечение записей
-								while(!cmp->empty()){
-									// Получаем буфер бинарных данных
-									const auto & buffer = cmp->front();
-									// Если буфер данных получен
-									if(!buffer.empty())
-										// Выполняем функцию обратного вызова
-										this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, buffer.data(), buffer.size());
-									// Выводим значение по умолчанию
-									else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, nullptr, 0);
-									// Выполняем удаление указанной записи
-									cmp->pop();
+								if(i != this->_cmp.end()){
+									// Выполняем добавление бинарных данных в протокол
+									i->second->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+									// Выполняем извлечение записей
+									while(!i->second->empty()){
+										// Получаем буфер бинарных данных
+										const auto & buffer = i->second->front();
+										// Если буфер данных получен
+										if(!buffer.empty())
+											// Выполняем функцию обратного вызова
+											this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, buffer.data(), buffer.size());
+										// Выводим значение по умолчанию
+										else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, nullptr, 0);
+										// Выполняем удаление указанной записи
+										i->second->pop();
+									}
 								}
 							}
 						}
@@ -287,30 +282,25 @@
 							if(bytes > 0){
 								// Если функция обратного вызова установлена
 								if(this->_ctx->_callbacks.is("message")){
-									// Объект работы с протоколом передачи данных
-									cmp::decoder_t * cmp = nullptr;
 									// Выполняем поиск объекта работы с протоколом передачи данных
 									auto i = this->_cmp.find(::getppid());
 									// Если объект работы с протоколом передачи данных найден
-									if(i != this->_cmp.end())
-										// Выполняем извлечение объекта работы с протоколом передачи данных
-										cmp = i->second.get();
-									// Создаём новый объект протокола передачи данных
-									else cmp = this->_cmp.emplace(::getppid(), std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log))).first->second.get();
-									// Выполняем добавление бинарных данных в протокол
-									cmp->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
-									// Выполняем извлечение записей
-									while(!cmp->empty()){
-										// Получаем буфер бинарных данных
-										const auto & buffer = cmp->front();
-										// Если буфер данных получен
-										if(!buffer.empty())
-											// Выполняем функцию обратного вызова
-											this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, buffer.data(), buffer.size());
-										// Выводим значение по умолчанию
-										else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, nullptr, 0);
-										// Выполняем удаление указанной записи
-										cmp->pop();
+									if(i != this->_cmp.end()){
+										// Выполняем добавление бинарных данных в протокол
+										i->second->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+										// Выполняем извлечение записей
+										while(!i->second->empty()){
+											// Получаем буфер бинарных данных
+											const auto & buffer = i->second->front();
+											// Если буфер данных получен
+											if(!buffer.empty())
+												// Выполняем функцию обратного вызова
+												this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, buffer.data(), buffer.size());
+											// Выводим значение по умолчанию
+											else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, nullptr, 0);
+											// Выполняем удаление указанной записи
+											i->second->pop();
+										}
 									}
 								}
 							}
@@ -451,7 +441,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 			// Если воркер найден
 			if(i != this->_workers.end()){
 				// Если не все форки созданы
-				if(index < i->second->count){
+				if(index < i->second->_count){
 					// Выполняем поиск брокера
 					auto j = this->_brokers.find(i->first);
 					// Если список брокеров ещё пустой
@@ -466,7 +456,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							j = this->_brokers.find(i->first);
 						}
 						// Выполняем создание указанное количество брокеров
-						for(size_t index = 0; index < i->second->count; index++){
+						for(size_t index = 0; index < i->second->_count; index++){
 							// Создаём объект брокера
 							std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 							// Выполняем подписку на основной канал передачи данных
@@ -545,7 +535,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Если процесс является дочерним
 						case 0: {
 							// Если идентификатор процесса соответствует
-							if((i->second->working = (this->_pid == static_cast <pid_t> (::getppid())))){
+							if((i->second->_working = (this->_pid == static_cast <pid_t> (::getppid())))){
 								// Получаем идентификатор текущего процесса
 								const pid_t pid = ::getpid();
 								// Добавляем в список дочерних процессов, идентификатор процесса
@@ -599,8 +589,10 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 									// Создаём мютекс для блокировки потока
 									this->_mtx = std::unique_ptr <std::recursive_mutex> (new std::recursive_mutex);
-									// Добавляем новый протокол кластера
+									// Создаём новый объект протокола передачи данных
 									this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
+									// Создаём новый объект протокола получения данных
+									i->second->_cmp.emplace(this->_pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
 									// Если функция обратного вызова установлена
 									if(this->_callbacks.is("process"))
 										// Выполняем функцию обратного вызова
@@ -662,16 +654,18 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 								// выполняем активацию работы события закрытия подключения
 								broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 							}
+							// Создаём новый объект протокола получения данных
+							i->second->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
 						}
 					}
 				// Если все процессы удачно созданы
-				} else if((i->second->working = !stop)) {
+				} else if((i->second->_working = !stop)) {
 					// Выполняем поиск брокера
 					auto j = this->_brokers.find(i->first);
 					// Если идентификатор воркера получен
 					if(j != this->_brokers.end()){
 						// Если нужно отслеживать падение дочерних процессов
-						if(this->_trackCrash){
+						if(this->_crash){
 							// Запоминаем текущий объект воркера
 							worker = i->second.get();
 							// Выполняем зануление структур перехватчиков событий
@@ -694,7 +688,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						}
 						// Создаём мютекс для блокировки потока
 						this->_mtx = std::unique_ptr <std::recursive_mutex> (new std::recursive_mutex);
-						// Добавляем новый протокол кластера
+						// Создаём новый объект протокола передачи данных
 						this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("process"))
@@ -733,7 +727,7 @@ bool awh::Cluster::working(const uint16_t wid) const noexcept {
 	// Если воркер найден
 	if(i != this->_workers.end())
 		// Выводим результат проверки
-		return i->second->working;
+		return i->second->_working;
 	// Сообщаем, что проверка не выполнена
 	return false;
 }
@@ -825,7 +819,8 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 					}
 				}
 			}
-		}
+		// Выводим предупредительное сообщение в лог
+		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -897,7 +892,8 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 					::exit(EXIT_FAILURE);
 				#endif
 			}
-		}
+		// Выводим предупредительное сообщение в лог
+		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -973,7 +969,8 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 					::exit(EXIT_FAILURE);
 				#endif
 			}
-		}
+		// Выводим предупредительное сообщение в лог
+		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -992,6 +989,10 @@ void awh::Cluster::clear() noexcept {
 		this->_mtx->lock();
 	// Удаляем список дочерних процессов
 	this->_pids.clear();
+	// Если мютекс инициализирован
+	if(this->_mtx != nullptr)
+		// Выполняем разблокировку потока
+		this->_mtx->unlock();
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
 		// Переходим по всем брокерам
@@ -1003,6 +1004,10 @@ void awh::Cluster::clear() noexcept {
 		// Выполняем освобождение выделенной памяти брокеров подключения
 		std::map <uint16_t, std::vector <std::unique_ptr <broker_t>>> ().swap(this->_brokers);
 	}
+	// Если мютекс инициализирован
+	if(this->_mtx != nullptr)
+		// Выполняем блокировку потока
+		this->_mtx->lock();
 	// Выполняем очистку протокола передачи данных
 	this->_cmp.clear();
 	// Выполняем очистку списка воркеров
@@ -1100,10 +1105,6 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
  * @param wid идентификатор воркера
  */
 void awh::Cluster::stop(const uint16_t wid) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Выполняем поиск брокеров
 	auto j = this->_brokers.find(wid);
 	// Если брокер найден
@@ -1117,9 +1118,9 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			// Если воркер найден, получаем флаг перезапуска
 			if(i != this->_workers.end()){
 				// Получаем флаг перезапуска
-				restart = i->second->restart;
+				restart = i->second->_restart;
 				// Снимаем флаг перезапуска процесса
-				i->second->restart = false;
+				i->second->_restart = false;
 			}
 			/**
 			 * Если операционной системой не является Windows
@@ -1131,7 +1132,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			// Если воркер найден, возвращаем флаг перезапуска
 			if(i != this->_workers.end())
 				// Возвращаем значение флага автоматического перезапуска процесса
-				i->second->restart = restart;
+				i->second->_restart = restart;
 		// Если процесс является дочерним
 		} else if(this->_pid == static_cast <pid_t> (::getppid()))
 			// Выполняем закрытие подключения передачи сообщений
@@ -1156,17 +1157,21 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				::exit(EXIT_FAILURE);
 			#endif
 		}
+		// Если мютекс инициализирован
+		if(this->_mtx != nullptr)
+			// Выполняем блокировку потока
+			this->_mtx->lock();
 		// Если воркер найден, снимаем флаг запуска кластера
 		if(i != this->_workers.end())
 			// Снимаем флаг запуска кластера
-			i->second->working = false;
+			i->second->_working = false;
 		// Удаляем список дочерних процессов
 		this->_pids.clear();
+		// Если мютекс инициализирован
+		if(this->_mtx != nullptr)
+			// Выполняем разблокировку потока
+			this->_mtx->unlock();
 	}
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * start Метод запуска кластера
@@ -1203,7 +1208,7 @@ void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
 	// Если вокер найден
 	if(i != this->_workers.end())
 		// Устанавливаем флаг автоматического перезапуска процесса
-		i->second->restart = mode;
+		i->second->_restart = mode;
 	// Если мютекс инициализирован
 	if(this->_mtx != nullptr)
 		// Выполняем разблокировку потока
@@ -1239,7 +1244,7 @@ void awh::Cluster::trackCrash(const bool mode) noexcept {
 		// Выполняем блокировку потока
 		this->_mtx->lock();
 	// Выполняем установку флага отслеживания падения дочерних процессов
-	this->_trackCrash = mode;
+	this->_crash = mode;
 	// Если мютекс инициализирован
 	if(this->_mtx != nullptr)
 		// Выполняем разблокировку потока
@@ -1256,7 +1261,7 @@ uint16_t awh::Cluster::count(const uint16_t wid) const noexcept {
 	// Если вокер найден
 	if(i != this->_workers.end())
 		// Выводим максимально-возможное количество процессов
-		return i->second->count;
+		return i->second->_count;
 	// Выводим результат
 	return 0;
 }
@@ -1277,13 +1282,13 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 		// Если количество процессов не передано
 		if(count == 0)
 			// Устанавливаем максимальное количество ядер доступных в системе
-			i->second->count = (std::thread::hardware_concurrency() / 2);
+			i->second->_count = (std::thread::hardware_concurrency() / 2);
 		// Устанавливаем максимальное количество процессов
-		else i->second->count = count;
+		else i->second->_count = count;
 		// Если количество процессов не установлено
-		if(i->second->count == 0)
+		if(i->second->_count == 0)
 			// Устанавливаем один рабочий процесс
-			i->second->count = 1;
+			i->second->_count = 1;
 	}
 	// Если мютекс инициализирован
 	if(this->_mtx != nullptr)
@@ -1296,20 +1301,24 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
  * @param count максимальное количество процессов
  */
 void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	/**
 	 * Выполняем обработку ошибки
 	 */
 	try {
+		// Если мютекс инициализирован
+		if(this->_mtx != nullptr)
+			// Выполняем блокировку потока
+			this->_mtx->lock();
 		// Выполняем поиск идентификатора воркера
 		auto i = this->_workers.find(wid);
 		// Если воркер не найден
 		if(i == this->_workers.end())
 			// Добавляем воркер в список воркеров
 			this->_workers.emplace(wid, std::unique_ptr <worker_t> (new worker_t(wid, this, this->_log)));
+		// Если мютекс инициализирован
+		if(this->_mtx != nullptr)
+			// Выполняем разблокировку потока
+			this->_mtx->unlock();
 		// Выполняем установку максимально-возможного количества процессов
 		this->count(wid, count);
 	/**
@@ -1321,10 +1330,6 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * callbacks Метод установки функций обратного вызова

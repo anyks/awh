@@ -88,20 +88,23 @@ namespace awh {
 			 * Worker Класс воркера
 			 */
 			typedef class AWHSHARED_EXPORT Worker {
-				public:
+				private:
+					// Устанавливаем дружбу с родительским классом
+					friend class Cluster;
+				private:
 					// Мютекс для блокировки потока
-					mutex mtx;
+					mutex _mtx;
+				private:
+					// Флаг запуска работы
+					bool _working;
+					// Флаг автоматического перезапуска
+					bool _restart;
 				private:
 					// Идентификатор воркера
 					uint16_t _wid;
-				public:
-					// Флаг запуска работы
-					bool working;
-					// Флаг автоматического перезапуска
-					bool restart;
-				public:
+				private:
 					// Количество рабочих процессов
-					uint16_t count;
+					uint16_t _count;
 				private:
 					// Бинарный буфер полученных данных
 					uint8_t _buffer[4096];
@@ -146,7 +149,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Worker(const uint16_t wid, const Cluster * ctx, const log_t * log) noexcept :
-					 _wid(wid), working(false), restart(false), count(1), _buffer{0}, _log(log), _ctx(ctx) {}
+					 _working(false), _restart(false), _wid(wid), _count(1), _buffer{0}, _log(log), _ctx(ctx) {}
 					/**
 					 * ~Worker Деструктор
 					 */
@@ -203,7 +206,7 @@ namespace awh {
 			pid_t _pid;
 		private:
 			// Флаг отслеживания падения дочерних процессов
-			bool _trackCrash;
+			bool _crash;
 		private:
 			// Хранилище функций обратного вызова
 			fn_t _callbacks;
@@ -224,10 +227,10 @@ namespace awh {
 		private:
 			// Список активных дочерних процессов
 			std::map <pid_t, uint16_t> _pids;
-			// Список объектов работы с протоколом кластера
-			std::map <uint16_t, std::unique_ptr <cmp::encoder_t>> _cmp;
 			// Список активных воркеров
 			std::map <uint16_t, std::unique_ptr <worker_t>> _workers;
+			// Список объектов работы с протоколом кластера
+			std::map <uint16_t, std::unique_ptr <cmp::encoder_t>> _cmp;
 			// Список дочерних брокеров
 			std::map <uint16_t, std::vector <std::unique_ptr <broker_t>>> _brokers;
 		private:
@@ -425,8 +428,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(::getpid()), _trackCrash(true), _callbacks(log),
-			 _socket(fmk, log), _mtx(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
+			 _pid(::getpid()), _crash(true), _callbacks(log), _socket(fmk, log),
+			 _mtx(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
 			 * @param base база событий
@@ -434,8 +437,8 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Cluster(base_t * base, const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(::getpid()), _trackCrash(true), _callbacks(log),
-			 _socket(fmk, log), _mtx(nullptr), _base(base), _fmk(fmk), _log(log) {}
+			 _pid(::getpid()), _crash(true), _callbacks(log), _socket(fmk, log),
+			 _mtx(nullptr), _base(base), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Cluster Деструктор
 			 */
