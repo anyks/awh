@@ -979,16 +979,8 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
  * clear Метод очистки всех выделенных ресурсов
  */
 void awh::Cluster::clear() noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Удаляем список дочерних процессов
 	this->_pids.clear();
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
 		// Переходим по всем брокерам
@@ -1000,29 +992,17 @@ void awh::Cluster::clear() noexcept {
 		// Выполняем освобождение выделенной памяти брокеров подключения
 		std::map <uint16_t, std::vector <std::unique_ptr <broker_t>>> ().swap(this->_brokers);
 	}
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Выполняем очистку протокола передачи данных
 	this->_cmp.clear();
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
 	// Выполняем освобождение выделенной памяти
 	std::map <uint16_t, std::unique_ptr <worker_t>> ().swap(this->_workers);
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * close Метод закрытия всех подключений
  */
 void awh::Cluster::close() noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
 		// Переходим по всем брокерам
@@ -1051,20 +1031,12 @@ void awh::Cluster::close() noexcept {
 			// Выполняем очистку протокола передачи данных
 			item.second->clear();
 	}
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * close Метод закрытия всех подключений
  * @param wid идентификатор воркера
  */
 void awh::Cluster::close(const uint16_t wid) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Выполняем поиск брокеров
 	auto i = this->_brokers.find(wid);
 	// Если брокер найден
@@ -1091,10 +1063,6 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 	if(j != this->_cmp.end())
 		// Выполняем удаление активного протокола кластера
 		j->second->clear();
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * stop Метод остановки кластера
@@ -1153,20 +1121,12 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				::exit(EXIT_FAILURE);
 			#endif
 		}
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr)
-			// Выполняем блокировку потока
-			this->_mtx->lock();
 		// Если воркер найден, снимаем флаг запуска кластера
 		if(i != this->_workers.end())
 			// Снимаем флаг запуска кластера
 			i->second->_working = false;
 		// Удаляем список дочерних процессов
 		this->_pids.clear();
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr)
-			// Выполняем разблокировку потока
-			this->_mtx->unlock();
 	}
 }
 /**
@@ -1174,20 +1134,12 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
  * @param wid идентификатор воркера
  */
 void awh::Cluster::start(const uint16_t wid) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Выполняем поиск идентификатора воркера
 	auto i = this->_workers.find(wid);
 	// Если вокер найден
 	if(i != this->_workers.end())
 		// Выполняем запуск процесса
 		this->fork(i->first);
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * restart Метод установки флага перезапуска процессов
@@ -1195,56 +1147,35 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
  * @param mode флаг перезапуска процессов
  */
 void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Выполняем поиск идентификатора воркера
 	auto i = this->_workers.find(wid);
 	// Если вокер найден
 	if(i != this->_workers.end())
 		// Устанавливаем флаг автоматического перезапуска процесса
 		i->second->_restart = mode;
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * base Метод установки сетевого ядра
  * @param core сетевое ядро для установки
  */
 void awh::Cluster::core(core_t * core) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
-	// Переходим по всем активным воркерам
-	for(auto & worker : this->_workers)
-		// Выполняем остановку процессов
-		this->stop(worker.first);
+	// Если все воркеры уже инициализированы
+	if(!this->_workers.empty()){
+		// Переходим по всем активным воркерам
+		for(auto & worker : this->_workers)
+			// Выполняем остановку процессов
+			this->stop(worker.first);
+	}
 	// Выполняем установку базы событий
 	this->_core = core;
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * trackCrash Метод отключения отслеживания падения дочерних процессов
  * @param mode флаг отслеживания падения дочерних процессов
  */
 void awh::Cluster::trackCrash(const bool mode) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Выполняем установку флага отслеживания падения дочерних процессов
 	this->_crash = mode;
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * count Метод получения максимального количества процессов
@@ -1267,10 +1198,6 @@ uint16_t awh::Cluster::count(const uint16_t wid) const noexcept {
  * @param count максимальное количество процессов
  */
 void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Выполняем поиск идентификатора воркера
 	auto i = this->_workers.find(wid);
 	// Если вокер найден
@@ -1286,10 +1213,6 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 			// Устанавливаем один рабочий процесс
 			i->second->_count = 1;
 	}
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * init Метод инициализации воркера
@@ -1301,20 +1224,12 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 	 * Выполняем обработку ошибки
 	 */
 	try {
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr)
-			// Выполняем блокировку потока
-			this->_mtx->lock();
 		// Выполняем поиск идентификатора воркера
 		auto i = this->_workers.find(wid);
 		// Если воркер не найден
 		if(i == this->_workers.end())
 			// Добавляем воркер в список воркеров
 			this->_workers.emplace(wid, std::unique_ptr <worker_t> (new worker_t(wid, this, this->_log)));
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr)
-			// Выполняем разблокировку потока
-			this->_mtx->unlock();
 		// Выполняем установку максимально-возможного количества процессов
 		this->count(wid, count);
 	/**
@@ -1332,18 +1247,10 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
  * @param callbacks функции обратного вызова
  */
 void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем блокировку потока
-		this->_mtx->lock();
 	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
 	this->_callbacks.set("process", callbacks);
 	// Выполняем установку функции обратного вызова при получении сообщения
 	this->_callbacks.set("message", callbacks);
-	// Если мютекс инициализирован
-	if(this->_mtx != nullptr)
-		// Выполняем разблокировку потока
-		this->_mtx->unlock();
 }
 /**
  * ~Cluster Деструктор
