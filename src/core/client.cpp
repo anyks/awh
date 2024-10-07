@@ -71,6 +71,8 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
 				// Устанавливаем время жизни подключения
 				broker->_addr.alive = shm->keepAlive;
+				// Выполняем установку времени ожидания входящих сообщений
+				broker->_timeouts.wait = shm->timeouts.wait;
 				// Устанавливаем таймаут начтение данных из сокета
 				broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
 				// Устанавливаем таймаут на запись данных в сокет
@@ -1374,7 +1376,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 							// Если данные получены
 							if(bytes > 0){
 								// Если таймер ожидания получения данных установлен
-								if((this->_waitMessage > 0) || (broker->_timeouts.read > 0))
+								if((broker->_timeouts.wait > 0) || (broker->_timeouts.read > 0))
 									// Выполняем удаление таймаута
 									this->clearTimeout(bid);
 								// Если подключение производится через, прокси-сервер
@@ -1403,9 +1405,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					// Если подключение ещё не разорванно
 					if(this->has(bid)){
 						// Если время ожиданий входящих сообщений установлено
-						if(this->_waitMessage > 0)
+						if(broker->_timeouts.wait > 0)
 							// Выполняем создание таймаута ожидания получения данных
-							this->createTimeout(bid, this->_waitMessage * 1000);
+							this->createTimeout(bid, broker->_timeouts.wait * 1000);
 						// Выполняем активацию отслеживания получения данных с этого сокета
 						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 					}
@@ -1707,6 +1709,53 @@ void awh::client::Core::work(const uint16_t sid, const string & ip, const int32_
 		if(this->_callbacks.is("disconnect"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const uint16_t)> ("disconnect", 0, sid);
+	}
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param bid идентификатор брокера
+ * @param sec интервал времени в секундах
+ */
+void awh::client::Core::waitMessage(const uint64_t bid, const time_t sec) noexcept {
+	// Если идентификатор брокера подключения передан
+	if(bid > 0){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем удаление таймаута
+		this->clearTimeout(bid);
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если сокет подключения активен
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+			// Выполняем установку времени ожидания входящих сообщений
+			broker->_timeouts.wait = sec;
+	}
+}
+/**
+ * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @param bid     идентификатор брокера
+ * @param read    количество секунд для детекции по чтению
+ * @param write   количество секунд для детекции по записи
+ * @param connect количество секунд для детекции по подключению
+ */
+void awh::client::Core::waitTimeDetect(const uint64_t bid, const time_t read, const time_t write, const time_t connect) noexcept {
+	// Если идентификатор брокера подключения передан
+	if(bid > 0){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем удаление таймаута
+		this->clearTimeout(bid);
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если сокет подключения активен
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
+			// Устанавливаем количество секунд на чтение
+			broker->_timeouts.read = read;
+			// Устанавливаем количество секунд на запись
+			broker->_timeouts.write = write;
+			// Устанавливаем количество секунд на подключение
+			broker->_timeouts.connect = connect;
+		}
 	}
 }
 /**

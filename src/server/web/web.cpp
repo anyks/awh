@@ -309,16 +309,6 @@ awh::engine_t::proto_t awh::server::Web::proto(const uint64_t bid) const noexcep
 	return engine_t::proto_t::NONE;
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::server::Web::waitMessage(const time_t sec) noexcept {
-	// Если сетевое ядро установлено
-	if(this->_core != nullptr)
-		// Выполняем установку времени ожидания входящих сообщений
-		const_cast <server::core_t *> (this->_core)->waitMessage(sec);
-}
-/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */

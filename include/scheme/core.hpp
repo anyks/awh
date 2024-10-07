@@ -110,17 +110,15 @@ namespace awh {
 			 * Timeouts Структура таймаутов
 			 */
 			typedef struct Timeouts {
+				time_t wait;    // Таймаут ожидания получения данных
 				time_t read;    // Таймаут на чтение в секундах
 				time_t write;   // Таймаут на запись в секундах
 				time_t connect; // Таймаут на подключение в секундах
 				/**
 				 * Timeouts Конструктор
 				 */
-				Timeouts() noexcept :
-				 read(READ_TIMEOUT),
-				 write(WRITE_TIMEOUT),
-				 connect(CONNECT_TIMEOUT) {}
-			} timeouts_t;
+				Timeouts() noexcept : wait(0), read(READ_TIMEOUT), write(WRITE_TIMEOUT), connect(CONNECT_TIMEOUT) {}
+			} __attribute__((packed)) timeouts_t;
 			/**
 			 * Payload Структура полезной нагрузки
 			 */

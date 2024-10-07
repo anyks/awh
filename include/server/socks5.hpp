@@ -318,6 +318,11 @@ namespace awh {
 				void brokerAvailableSize(const size_t size) noexcept;
 			public:
 				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
+				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
@@ -341,12 +346,6 @@ namespace awh {
 				 * @param size количество рабочих процессов
 				 */
 				void cluster(const awh::scheme_t::mode_t mode, const uint16_t size = 0) noexcept;
-			public:
-				/**
-				 * waitMessage Метод ожидания входящих сообщений
-				 * @param sec интервал времени в секундах
-				 */
-				void waitMessage(const time_t sec) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов модуля

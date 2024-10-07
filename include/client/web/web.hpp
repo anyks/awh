@@ -402,12 +402,6 @@ namespace awh {
 				engine_t::proto_t proto() const noexcept;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
-				 * @param sec интервал времени в секундах
-				 */
-				void waitMessage(const time_t sec) noexcept;
-			public:
-				/**
 				 * cork Метод отключения/включения алгоритма TCP/CORK
 				 * @param mode режим применимой операции
 				 * @return     результат выполенния операции
@@ -427,6 +421,11 @@ namespace awh {
 				 */
 				void bandwidth(const string & read = "", const string & write = "") noexcept;
 			public:
+				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read    количество секунд для детекции по чтению

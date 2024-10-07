@@ -578,16 +578,6 @@ awh::engine_t::proto_t awh::client::Web::proto() const noexcept {
 	return engine_t::proto_t::NONE;
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::client::Web::waitMessage(const time_t sec) noexcept {
-	// Если объект сетевого ядра установлен
-	if(this->_core != nullptr)
-		// Выполняем установку времени ожидания входящих сообщений
-		const_cast <client::core_t *> (this->_core)->waitMessage(sec);
-}
-/**
  * cork Метод отключения/включения алгоритма TCP/CORK
  * @param mode режим применимой операции
  * @return     результат выполенния операции
@@ -625,18 +615,37 @@ void awh::client::Web::bandwidth(const string & read, const string & write) noex
 		const_cast <client::core_t *> (this->_core)->bandwidth(this->_bid, read, write);
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::client::Web::waitMessage(const time_t sec) noexcept {
+	// Если объект сетевого ядра установлен
+	if((this->_core != nullptr) && (this->_bid > 0))
+		// Устанавливаем время ожидания получения данных
+		const_cast <client::core_t *> (this->_core)->waitMessage(this->_bid, sec);
+	// Устанавливаем время ожидания получения данных
+	else this->_scheme.timeouts.wait = sec;
+}
+/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read    количество секунд для детекции по чтению
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
  */
 void awh::client::Web::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
-	// Устанавливаем количество секунд на чтение
-	this->_scheme.timeouts.read = read;
-	// Устанавливаем количество секунд на запись
-	this->_scheme.timeouts.write = write;
-	// Устанавливаем количество секунд на подключение
-	this->_scheme.timeouts.connect = connect;
+	// Если объект сетевого ядра установлен
+	if((this->_core != nullptr) && (this->_bid > 0))
+		// Выполняем установку детекции сообщений по количеству секунд
+		const_cast <client::core_t *> (this->_core)->waitTimeDetect(this->_bid, read, write, connect);
+	// Если подключение ещё не установлено
+	else {
+		// Устанавливаем количество секунд на чтение
+		this->_scheme.timeouts.read = read;
+		// Устанавливаем количество секунд на запись
+		this->_scheme.timeouts.write = write;
+		// Устанавливаем количество секунд на подключение
+		this->_scheme.timeouts.connect = connect;
+	}
 }
 /**
  * proxy Метод активации/деактивации прокси-склиента

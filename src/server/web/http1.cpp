@@ -1659,6 +1659,14 @@ void awh::server::Http1::identity(const http_t::identity_t identity) noexcept {
 	this->_identity = identity;
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::Http1::waitMessage(const time_t sec) noexcept {
+	// Устанавливаем время ожидания получения данных
+	this->_scheme.timeouts.wait = sec;
+}
+/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи

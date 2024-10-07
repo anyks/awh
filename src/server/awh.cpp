@@ -476,14 +476,6 @@ void awh::server::AWH::maxRequests(const size_t max) noexcept {
 	this->_http.maxRequests(max);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::server::AWH::waitMessage(const time_t sec) noexcept {
-	// Выполняем установку времени ожидания входящих сообщений
-	this->_http.waitMessage(sec);
-}
-/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
@@ -515,6 +507,14 @@ void awh::server::AWH::alive(const uint64_t bid, const bool mode) noexcept {
 void awh::server::AWH::identity(const http_t::identity_t identity) noexcept {
 	// Выполняем установку идентичности протокола модуля
 	this->_http.identity(identity);
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::AWH::waitMessage(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания входящих сообщений
+	this->_http.waitMessage(sec);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

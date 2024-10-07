@@ -353,16 +353,6 @@ void awh::Node::resolver(const dns_t * dns) noexcept {
 	this->_dns = dns;
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::Node::waitMessage(const time_t sec) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Выполняем установку времени ожидания входящих сообщений
-	this->_waitMessage = sec;
-}
-/**
  * sockname Метод установки названия unix-сокета
  * @param name название unix-сокета
  * @return     результат установки названия unix-сокета

@@ -373,12 +373,6 @@ namespace awh {
 				virtual const string & mac(const uint64_t bid) const noexcept = 0;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
-				 * @param sec интервал времени в секундах
-				 */
-				void waitMessage(const time_t sec) noexcept;
-			public:
-				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
@@ -416,6 +410,11 @@ namespace awh {
 				 */
 				virtual void mode(const set <flag_t> & flags) noexcept = 0;
 			public:
+				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				virtual void waitMessage(const time_t sec) noexcept = 0;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению

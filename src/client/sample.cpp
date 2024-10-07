@@ -520,16 +520,6 @@ void awh::client::Sample::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("message", callbacks);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::client::Sample::waitMessage(const time_t sec) noexcept {
-	// Если объект сетевого ядра установлен
-	if(this->_core != nullptr)
-		// Выполняем установку времени ожидания входящих сообщений
-		const_cast <client::core_t *> (this->_core)->waitMessage(sec);
-}
-/**
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
@@ -618,6 +608,14 @@ void awh::client::Sample::keepAlive(const int32_t cnt, const int32_t idle, const
 	this->_scheme.keepAlive.idle = idle;
 	// Выполняем установку интервала времени в секундах между попытками
 	this->_scheme.keepAlive.intvl = intvl;
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::client::Sample::waitMessage(const time_t sec) noexcept {
+	// Устанавливаем время ожидания получения данных
+	this->_scheme.timeouts.wait = sec;
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

@@ -340,14 +340,6 @@ void awh::client::Websocket::setToDNSBlackList(const string & domain, const stri
 		this->_dns.setToBlackList(domain, ip);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::client::Websocket::waitMessage(const time_t sec) noexcept {
-	// Выполняем установку интервала времени ожидания входящих сообщений
-	this->_ws.waitMessage(sec);
-}
-/**
  * cork Метод отключения/включения алгоритма TCP/CORK
  * @param mode режим применимой операции
  * @return     результат выполенния операции
@@ -400,6 +392,14 @@ void awh::client::Websocket::authType(const auth_t::type_t type, const auth_t::h
 void awh::client::Websocket::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Выполняем установку типа авторизации на прокси-сервере
 	this->_ws.authTypeProxy(type, hash);
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::client::Websocket::waitMessage(const time_t sec) noexcept {
+	// Выполняем установку интервала времени ожидания входящих сообщений
+	this->_ws.waitMessage(sec);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

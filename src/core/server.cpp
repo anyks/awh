@@ -189,6 +189,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
 						// Устанавливаем время жизни подключения
 						broker->_addr.alive = shm->keepAlive;
+						// Выполняем установку времени ожидания входящих сообщений
+						broker->_timeouts.wait = shm->timeouts.wait;
 						// Устанавливаем таймаут начтение данных из сокета
 						broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
 						// Устанавливаем таймаут на запись данных в сокет
@@ -1195,6 +1197,8 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 				const uint64_t bid = broker->id();
 				// Выполняем установку желаемого протокола подключения
 				broker->_ectx.proto(this->_settings.proto);
+				// Выполняем установку времени ожидания входящих сообщений
+				broker->_timeouts.wait = shm->timeouts.wait;
 				// Устанавливаем таймаут начтение данных из сокета
 				broker->timeout(shm->timeouts.read, engine_t::method_t::READ);
 				// Устанавливаем таймаут на запись данных в сокет
@@ -2233,7 +2237,7 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						// Если данные получены
 						if(bytes > 0){
 							// Если таймер ожидания получения данных установлен
-							if((this->_waitMessage > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
+							if((broker->_timeouts.wait > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
 								// Выполняем удаление таймаута
 								this->clearTimeout(bid);
 							// Если данных достаточно и функция обратного вызова на получение данных установлена
@@ -2268,9 +2272,9 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				// Если подключение ещё не разорванно
 				if(this->has(bid)){
 					// Если время ожиданий входящих сообщений установлено
-					if((this->_waitMessage > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
+					if((broker->_timeouts.wait > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
 						// Выполняем создание таймаута ожидания получения данных
-						this->createTimeout(i->first, bid, this->_waitMessage * 1000, mode_t::RECEIVE);
+						this->createTimeout(i->first, bid, broker->_timeouts.wait * 1000, mode_t::RECEIVE);
 					// Выполняем активацию отслеживания получения данных с этого сокета
 					broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
 				}
@@ -2943,6 +2947,53 @@ void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const
 		}
 		// Выполняем создание буфера полезной нагрузки
 		this->createBuffer(bid);
+	}
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param bid идентификатор брокера
+ * @param sec интервал времени в секундах
+ */
+void awh::server::Core::waitMessage(const uint64_t bid, const time_t sec) noexcept {
+	// Если идентификатор брокера подключения передан
+	if(bid > 0){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем удаление таймаута
+		this->clearTimeout(bid);
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если сокет подключения активен
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+			// Выполняем установку времени ожидания входящих сообщений
+			broker->_timeouts.wait = sec;
+	}
+}
+/**
+ * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @param bid     идентификатор брокера
+ * @param read    количество секунд для детекции по чтению
+ * @param write   количество секунд для детекции по записи
+ * @param connect количество секунд для детекции по подключению
+ */
+void awh::server::Core::waitTimeDetect(const uint64_t bid, const time_t read, const time_t write, const time_t connect) noexcept {
+	// Если идентификатор брокера подключения передан
+	if(bid > 0){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем удаление таймаута
+		this->clearTimeout(bid);
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если сокет подключения активен
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
+			// Устанавливаем количество секунд на чтение
+			broker->_timeouts.read = read;
+			// Устанавливаем количество секунд на запись
+			broker->_timeouts.write = write;
+			// Устанавливаем количество секунд на подключение
+			broker->_timeouts.connect = connect;
+		}
 	}
 }
 /**

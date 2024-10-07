@@ -307,16 +307,6 @@ const string & awh::server::Sample::mac(const uint64_t bid) const noexcept {
 	return this->_scheme.mac(bid);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::server::Sample::waitMessage(const time_t sec) noexcept {
-	// Если объект сетевого ядра установлен
-	if(this->_core != nullptr)
-		// Выполняем установку времени ожидания сообщений
-		const_cast <server::core_t *> (this->_core)->waitMessage(sec);
-}
-/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
@@ -382,6 +372,14 @@ void awh::server::Sample::close(const uint64_t bid) noexcept {
 void awh::server::Sample::pingInterval(const time_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов
 	this->_pingInterval = (sec * 1000);
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::Sample::waitMessage(const time_t sec) noexcept {
+	// Устанавливаем время ожидания получения данных
+	this->_scheme.timeouts.wait = sec;
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

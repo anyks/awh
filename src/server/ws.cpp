@@ -288,20 +288,20 @@ void awh::server::Websocket::alive(const time_t sec) noexcept {
 	this->_ws.alive(sec);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::server::Websocket::waitMessage(const time_t sec) noexcept {
-	// Выполняем установку времени ожидания входящих сообщений
-	this->_ws.waitMessage(sec);
-}
-/**
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
 void awh::server::Websocket::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку списка заголовков
 	this->_ws.setHeaders(headers);
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::Websocket::waitMessage(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания входящих сообщений
+	this->_ws.waitMessage(sec);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

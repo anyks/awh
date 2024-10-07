@@ -643,6 +643,14 @@ void awh::server::ProxySocks5::brokerAvailableSize(const size_t size) noexcept {
 	this->_core.brokerAvailableSize(static_cast <size_t> (size));
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::ProxySocks5::waitMessage(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания входящих сообщений
+	this->_scheme.timeouts.wait = sec;
+}
+/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
@@ -677,14 +685,6 @@ void awh::server::ProxySocks5::clusterAutoRestart(const bool mode) noexcept {
 void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const uint16_t size) noexcept {
 	// Устанавливаем количество процессов кластера
 	this->_core.cluster(mode, size);
-}
-/**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::server::ProxySocks5::waitMessage(const time_t sec) noexcept {
-	// Выполняем установку времени ожидания входящих сообщений
-	this->_core.waitMessage(sec);
 }
 /**
  * mode Метод установки флагов модуля

@@ -224,6 +224,21 @@ namespace awh {
 				void work(const uint16_t sid, const string & ip, const int32_t family) noexcept;
 			public:
 				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param bid идентификатор брокера
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const uint64_t bid, const time_t sec) noexcept;
+				/**
+				 * waitTimeDetect Метод детекции сообщений по количеству секунд
+				 * @param bid     идентификатор брокера
+				 * @param read    количество секунд для детекции по чтению
+				 * @param write   количество секунд для детекции по записи
+				 * @param connect количество секунд для детекции по подключению
+				 */
+				void waitTimeDetect(const uint64_t bid, const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
+			public:
+				/**
 				 * Core Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами

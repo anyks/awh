@@ -295,12 +295,6 @@ namespace awh {
 				void setToDNSBlackList(const string & domain, const string & ip) noexcept;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
-				 * @param sec интервал времени в секундах
-				 */
-				void waitMessage(const time_t sec) noexcept;
-			public:
-				/**
 				 * cork Метод отключения/включения алгоритма TCP/CORK
 				 * @param mode режим применимой операции
 				 * @return     результат выполенния операции
@@ -339,6 +333,11 @@ namespace awh {
 				 */
 				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
+				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read    количество секунд для детекции по чтению

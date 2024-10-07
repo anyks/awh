@@ -356,6 +356,8 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			ret.first->second->awh.network(this->_settings.ips, this->_settings.ns, this->_settings.family);
 			// Устанавливаем параметры авторизации на удалённом прокси-сервере
 			ret.first->second->awh.authTypeProxy(this->_settings.proxy.auth.type, this->_settings.proxy.auth.hash);
+			// Выполняем установку времени ожидания получения данных
+			ret.first->second->awh.waitMessage(this->_settings.wtd.wait);
 			// Выполняем установку таймаутов на обмен данными в миллисекундах
 			ret.first->second->awh.waitTimeDetect(this->_settings.wtd.read, this->_settings.wtd.write, this->_settings.wtd.connect);
 			// Устанавливаем функцию обратного вызова активности клиента на Web-сервере
@@ -1542,14 +1544,6 @@ void awh::server::Proxy::ssl(const node_t::ssl_t & ssl) noexcept {
 	}
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
- * @param sec интервал времени в секундах
- */
-void awh::server::Proxy::waitMessage(const time_t sec) noexcept {
-	// Выполняем установку времени ожидания входящих сообщений
-	this->_server.waitMessage(sec);
-}
-/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
@@ -1715,6 +1709,26 @@ void awh::server::Proxy::keepAlive(const broker_t broker, const int32_t cnt, con
 	}
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+ * @param sec    интервал времени в секундах
+ */
+void awh::server::Proxy::waitMessage(const broker_t broker, const time_t sec) noexcept {
+	// Определяем переданного брокера
+	switch(static_cast <uint8_t> (broker)){
+		// Если брокером является клиент
+		case static_cast <uint8_t> (broker_t::CLIENT):
+			// Выполняем установку времени ожидания входящих сообщений
+			this->_settings.wtd.wait = sec;
+		break;
+		// Если брокером является сервер
+		case static_cast <uint8_t> (broker_t::SERVER):
+			// Выполняем установку времени ожидания входящих сообщений
+			this->_server.waitMessage(sec);
+		break;
+	}
+}
+/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param read    количество секунд для детекции по чтению
@@ -1726,18 +1740,12 @@ void awh::server::Proxy::waitTimeDetect(const broker_t broker, const time_t read
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
-			// Если количество секунд для детекции по чтению передано
-			if(read > 0)
-				// Выполняем установку количества секунд для детекции по чтению
-				this->_settings.wtd.read = read;
-			// Если количество секунд для детекции по записи передано
-			if(write > 0)
-				// Выполняем установку количества секунд для детекции по записи
-				this->_settings.wtd.write = write;
-			// Если количество секунд для подключения к серверу передано
-			if(connect > 0)
-				// Выполняем установку количества секунд для подключения к серверу
-				this->_settings.wtd.connect = connect;	
+			// Выполняем установку количества секунд для детекции по чтению
+			this->_settings.wtd.read = read;
+			// Выполняем установку количества секунд для детекции по записи
+			this->_settings.wtd.write = write;
+			// Выполняем установку количества секунд для подключения к серверу
+			this->_settings.wtd.connect = connect;	
 		} break;
 		// Если брокером является сервер
 		case static_cast <uint8_t> (broker_t::SERVER):
@@ -1893,10 +1901,8 @@ bool awh::server::Proxy::flushDNS(const uint64_t bid) noexcept {
  * @param sec интервал времени выполнения запроса в секундах
  */
 void awh::server::Proxy::timeoutDNS(const uint8_t sec) noexcept {
-	// Если время ожидания выполнения запроса передано
-	if(sec > 0)
-		// Выполняем установку времени ожидания выполнения запроса
-		this->_settings.dns.timeout = sec;
+	// Выполняем установку времени ожидания выполнения запроса
+	this->_settings.dns.timeout = sec;
 }
 /**
  * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён

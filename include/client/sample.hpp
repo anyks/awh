@@ -251,12 +251,6 @@ namespace awh {
 				}
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
-				 * @param sec интервал времени в секундах
-				 */
-				void waitMessage(const time_t sec) noexcept;
-			public:
-				/**
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
@@ -296,6 +290,11 @@ namespace awh {
 				 */
 				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
+				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read    количество секунд для детекции по чтению

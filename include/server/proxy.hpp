@@ -147,13 +147,14 @@ namespace awh {
 				 * WaitTimeDetect Структура таймаутов на обмен данными в миллисекундах
 				 */
 				typedef struct WaitTimeDetect {
+					time_t wait;    // Время ожидания получения данных
 					time_t read;    // Время ожидания на получение данных
-					time_t write;   // Врежмя ожидания на отправку данных
+					time_t write;   // Время ожидания на отправку данных
 					time_t connect; // Время ожидания подключения
 					/**
 					 * WaitTimeDetect Конструктор
 					 */
-					WaitTimeDetect() noexcept : read(READ_TIMEOUT), write(WRITE_TIMEOUT), connect(CONNECT_TIMEOUT) {}
+					WaitTimeDetect() noexcept : wait(0), read(READ_TIMEOUT), write(WRITE_TIMEOUT), connect(CONNECT_TIMEOUT) {}
 				} __attribute__((packed)) wtd_t;
 				/**
 				 * ProxyClient Структура параметров прокси-клиента
@@ -644,12 +645,6 @@ namespace awh {
 				void ssl(const node_t::ssl_t & ssl) noexcept;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
-				 * @param sec интервал времени в секундах
-				 */
-				void waitMessage(const time_t sec) noexcept;
-			public:
-				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
@@ -730,6 +725,12 @@ namespace awh {
 				 */
 				void keepAlive(const broker_t broker, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
+				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
+				 * @param sec    интервал времени в секундах
+				 */
+				void waitMessage(const broker_t broker, const time_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)

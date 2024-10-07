@@ -1842,6 +1842,14 @@ void awh::server::Websocket2::setHeaders(const unordered_multimap <string, strin
 	this->_headers = headers;
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::Websocket2::waitMessage(const time_t sec) noexcept {
+	// Устанавливаем время ожидания получения данных
+	this->_scheme.timeouts.wait = sec;
+}
+/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
