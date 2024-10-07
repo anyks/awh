@@ -2872,10 +2872,7 @@ void awh::Event::stop() noexcept {
 			// Снимаем флаг запущенной работы
 			this->_mode = !this->_mode;
 			// Выполняем удаление всех событий
-			this->_base->del(this->_id, this->_fd, base_t::event_type_t::READ);
-			this->_base->del(this->_id, this->_fd, base_t::event_type_t::TIMER);
-			this->_base->del(this->_id, this->_fd, base_t::event_type_t::WRITE);
-			this->_base->del(this->_id, this->_fd, base_t::event_type_t::CLOSE);
+			this->_base->del(this->_id, this->_fd);
 		// Выводим сообщение об ошибке
 		} else this->_log->print("File descriptor is not init", log_t::flag_t::WARNING);
 	}
