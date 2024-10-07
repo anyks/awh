@@ -2003,7 +2003,7 @@ awh::Net::Net() noexcept : _type(type_t::NONE) {
  */
 awh::Net::Net(const regexp_t::exp_t & exp) noexcept : _type(type_t::NONE) {
 	// Устанавливаем регулярное выражение для проверки адреса
-	this->_exp.set(exp);
+	this->_exp = exp;
 }
 /**
  * Оператор [>>] чтения из потока IP-адреса

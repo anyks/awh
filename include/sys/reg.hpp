@@ -18,6 +18,7 @@
 /**
  * Стандартные модули
  */
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -62,11 +63,11 @@ namespace awh {
 				NOTEMPTY  = 0x07, // Блокировка сопоставления пустой строки
 				MULTILINE = 0x08  // ^ и $ соответствуют новым строкам в тексте
 			};
-		public:
+		private:
 			/**
 			 * Expression Класс регулярного выражения
 			 */
-			typedef class AWHSHARED_EXPORT Expression {
+			class Expression {
 				private:
 					/**
 					 * RegExp Устанавливаем дружбу с классом регулярных выражений
@@ -75,48 +76,37 @@ namespace awh {
 				private:
 					// Флаг инициализации
 					bool _mode;
-					// Флаг инициализации
-					bool _init;
 				private:
 					// Объект контекста регулярного выражения
 					regex_t _reg;
 				public:
 					/**
-					 * clear Метод очистки созданного объекта
-					 */
-					void clear() noexcept;
-				public:
-					/**
-					 * set Метод установки внешнего регулярного выражения
-					 * @param exp объект внешнего регулярного выражения
-					 */
-					void set(const Expression & exp) noexcept;
-				public:
-					/**
 					 * Оператор проверки на инициализацию регулярного выражения
 					 * @return результат проверки
 					 */
-					operator bool() const noexcept;
-				public:
-					/**
-					 * Оператор [=] присвоения собранного регулярного выражения
-					 * @param exp объект регулярного выражения
-					 * @return    текущий объект регулярного выражения
-					 */
-					Expression & operator = (const Expression & exp) noexcept;
+					operator bool() const noexcept {
+						// Выводим результ проверки инициализации
+						return this->_mode;
+					}
 				public:
 					/**
 					 * Expression Конструктор
 					 */
-					Expression() noexcept : _mode(false), _init(true) {}
+					Expression() noexcept : _mode(false) {}
 					/**
 					 * ~Expression Деструктор
 					 */
-					~Expression() noexcept;
-			} exp_t;
+					~Expression() noexcept {}
+			};
+		public:
+			// Создаём новый тип данных регулярного выражения
+			typedef std::shared_ptr <Expression> exp_t;
 		private:
 			// Текст ошибки
 			string _error;
+		private:
+			// Список инициализированных регулярных выражений
+			std::map <std::pair <int32_t, string>, regex_t *> _expressions;
 		public:
 			/**
 			 * error Метод извлечения текста ошибки регулярного выражения
@@ -155,7 +145,7 @@ namespace awh {
 			/**
 			 * ~RegExp Деструктор
 			 */
-			~RegExp() noexcept {}
+			~RegExp() noexcept;
 	} regexp_t;
 };
 
