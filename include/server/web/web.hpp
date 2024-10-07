@@ -278,14 +278,14 @@ namespace awh {
 			public:
 				/**
 				 * waitPong Метод установки времени ожидания ответа WebSocket-клиента
-				 * @param time время ожидания в миллисекундах
+				 * @param sec время ожидания в секундах
 				 */
-				virtual void waitPong(const time_t time) noexcept = 0;
+				virtual void waitPong(const time_t sec) noexcept = 0;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
-				 * @param time интервал времени выполнения пингов в миллисекундах
+				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				virtual void pingInterval(const time_t time) noexcept = 0;
+				virtual void pingInterval(const time_t sec) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB брокера
@@ -373,15 +373,21 @@ namespace awh {
 				virtual const string & mac(const uint64_t bid) const noexcept = 0;
 			public:
 				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
+			public:
+				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
 				virtual void alive(const bool mode) noexcept;
 				/**
 				 * alive Метод установки времени жизни подключения
-				 * @param time время жизни подключения
+				 * @param sec время жизни подключения
 				 */
-				virtual void alive(const time_t time) noexcept;
+				virtual void alive(const time_t sec) noexcept;
 			public:
 				/**
 				 * core Метод установки сетевого ядра

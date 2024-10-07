@@ -2232,6 +2232,10 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						const int64_t bytes = broker->_ectx.read(broker->_payload.data.get(), broker->_payload.size);
 						// Если данные получены
 						if(bytes > 0){
+							// Если таймер ожидания получения данных установлен
+							if((this->_waitMessage > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
+								// Выполняем удаление таймаута
+								this->clearTimeout(bid);
 							// Если данных достаточно и функция обратного вызова на получение данных установлена
 							if(this->_callbacks.is("read"))
 								// Выводим функцию обратного вызова
@@ -2262,9 +2266,14 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				// Выполняем чтение до тех пор, пока всё не прочитаем
 				} while(this->has(bid));
 				// Если подключение ещё не разорванно
-				if(this->has(bid))
+				if(this->has(bid)){
+					// Если время ожиданий входящих сообщений установлено
+					if((this->_waitMessage > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
+						// Выполняем создание таймаута ожидания получения данных
+						this->createTimeout(i->first, bid, this->_waitMessage * 1000, mode_t::RECEIVE);
 					// Выполняем активацию отслеживания получения данных с этого сокета
 					broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+				}
 			// Если схема сети не существует
 			} else {
 				// Выводим сообщение в лог, о таймауте подключения

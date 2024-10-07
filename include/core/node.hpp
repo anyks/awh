@@ -146,6 +146,9 @@ namespace awh {
 			// Объект сетевых параметров
 			settings_t _settings;
 		protected:
+			// Время ожидания входящего сообщения
+			time_t _waitMessage;
+		protected:
 			// Размер буфера полезной нагрузки
 			size_t _payloadSize;
 		private:
@@ -247,6 +250,12 @@ namespace awh {
 			 * @param dns объект DNS-резолвер
 			 */
 			void resolver(const dns_t * dns) noexcept;
+		public:
+			/**
+			 * waitMessage Метод ожидания входящих сообщений
+			 * @param sec интервал времени в секундах
+			 */
+			void waitMessage(const time_t sec) noexcept;
 		public:
 			/**
 			 * sockname Метод установки названия unix-сокета
@@ -442,7 +451,7 @@ namespace awh {
 			 */
 			Node(const fmk_t * fmk, const log_t * log) noexcept :
 			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk),
-			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT), _payloadSize(0),
+			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT), _waitMessage(0), _payloadSize(0),
 			 _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(nullptr) {}
 			/**
 			 * Core Конструктор
@@ -452,7 +461,7 @@ namespace awh {
 			 */
 			Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
 			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk),
-			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT), _payloadSize(0),
+			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT), _waitMessage(0), _payloadSize(0),
 			 _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(dns) {}
 			/**
 			 * ~Node Деструктор

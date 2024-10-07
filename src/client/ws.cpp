@@ -24,13 +24,6 @@ awh::engine_t::proto_t awh::client::Websocket::proto() const noexcept {
 	return this->_ws.proto();
 }
 /**
- * sendTimeout Метод отправки сигнала таймаута
- */
-void awh::client::Websocket::sendTimeout() noexcept {
-	// Выполняем отправку сигнала таймаута
-	this->_ws.sendTimeout();
-}
-/**
  * sendError Метод отправки сообщения об ошибке на сервер
  * @param mess отправляемое сообщение об ошибке
  */
@@ -72,6 +65,13 @@ void awh::client::Websocket::open() noexcept {
 	this->_ws.open();
 }
 /**
+ * reset Метод принудительного сброса подключения
+ */
+void awh::client::Websocket::reset() noexcept {
+	// Выполняем отправку сигнала таймаута
+	this->_ws.reset();
+}
+/**
  * stop Метод остановки клиента
  */
 void awh::client::Websocket::stop() noexcept {
@@ -87,19 +87,19 @@ void awh::client::Websocket::start() noexcept {
 }
 /**
  * waitPong Метод установки времени ожидания ответа WebSocket-сервера
- * @param time время ожидания в миллисекундах
+ * @param sec время ожидания в секундах
  */
-void awh::client::Websocket::waitPong(const time_t time) noexcept {
+void awh::client::Websocket::waitPong(const time_t sec) noexcept {
 	// Выполняем установку времени ожидания
-	this->_ws.waitPong(time);
+	this->_ws.waitPong(sec);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::client::Websocket::pingInterval(const time_t time) noexcept {
-	// Выполняем установку интервала времени выполнения пингов в миллисекундах
-	this->_ws.pingInterval(time);
+void awh::client::Websocket::pingInterval(const time_t sec) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_ws.pingInterval(sec);
 }
 /**
  * callbacks Метод установки функций обратного вызова
@@ -338,6 +338,14 @@ void awh::client::Websocket::setToDNSBlackList(const string & domain, const stri
 	if(!domain.empty() && !ip.empty())
 		// Выполняем установку доменного имени в чёрный список
 		this->_dns.setToBlackList(domain, ip);
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::client::Websocket::waitMessage(const time_t sec) noexcept {
+	// Выполняем установку интервала времени ожидания входящих сообщений
+	this->_ws.waitMessage(sec);
 }
 /**
  * cork Метод отключения/включения алгоритма TCP/CORK

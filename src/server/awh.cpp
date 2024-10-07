@@ -294,19 +294,19 @@ void awh::server::AWH::close(const uint64_t bid) noexcept {
 }
 /**
  * waitPong Метод установки времени ожидания ответа WebSocket-клиента
- * @param time время ожидания в миллисекундах
+ * @param sec время ожидания в секундах
  */
-void awh::server::AWH::waitPong(const time_t time) noexcept {
+void awh::server::AWH::waitPong(const time_t sec) noexcept {
 	// Выполняем установку времени ожидания
-	this->_http.waitPong(time);
+	this->_http.waitPong(sec);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::AWH::pingInterval(const time_t time) noexcept {
-	// Выполняем установку интервала времени выполнения пингов в миллисекундах
-	this->_http.pingInterval(time);
+void awh::server::AWH::pingInterval(const time_t sec) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_http.pingInterval(sec);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -476,6 +476,14 @@ void awh::server::AWH::maxRequests(const size_t max) noexcept {
 	this->_http.maxRequests(max);
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::AWH::waitMessage(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания входящих сообщений
+	this->_http.waitMessage(sec);
+}
+/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
@@ -485,11 +493,11 @@ void awh::server::AWH::alive(const bool mode) noexcept {
 }
 /**
  * alive Метод установки времени жизни подключения
- * @param time время жизни подключения
+ * @param sec время жизни подключения
  */
-void awh::server::AWH::alive(const time_t time) noexcept {
+void awh::server::AWH::alive(const time_t sec) noexcept {
 	// Устанавливаем время жизни подключения
-	this->_http.alive(time);
+	this->_http.alive(sec);
 }
 /**
  * alive Метод установки долгоживущего подключения

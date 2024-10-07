@@ -1542,6 +1542,14 @@ void awh::server::Proxy::ssl(const node_t::ssl_t & ssl) noexcept {
 	}
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::Proxy::waitMessage(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания входящих сообщений
+	this->_server.waitMessage(sec);
+}
+/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
@@ -1551,11 +1559,11 @@ void awh::server::Proxy::alive(const bool mode) noexcept {
 }
 /**
  * alive Метод установки времени жизни подключения
- * @param time время жизни подключения
+ * @param sec время жизни подключения
  */
-void awh::server::Proxy::alive(const time_t time) noexcept {
+void awh::server::Proxy::alive(const time_t sec) noexcept {
 	// Устанавливаем время жизни подключения
-	this->_server.alive(time);
+	this->_server.alive(sec);
 }
 /**
  * alive Метод установки долгоживущего подключения

@@ -481,13 +481,13 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 			// Получаем текущий штамп времени
 			const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 			// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-			if((stamp - this->_point) >= this->_waitPong){
+			if((this->_waitPong > 0) && ((stamp - this->_point) >= this->_waitPong)){
 				// Создаём сообщение
 				this->_mess = ws::mess_t(1005, "PING response not received");
 				// Выполняем отправку сообщения об ошибке
 				this->sendError(this->_mess);
 			// Если время с предыдущего пинга прошло больше половины времени пинга
-			} else if((stamp - this->_sendPing) > (this->_pingInterval / 2))
+			} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((stamp - this->_sendPing) > (this->_pingInterval / 2)))
 				// Отправляем запрос брокеру
 				this->ping(::to_string(this->_bid));
 		}
@@ -1282,23 +1282,19 @@ void awh::client::Websocket1::start() noexcept {
 }
 /**
  * waitPong Метод установки времени ожидания ответа WebSocket-сервера
- * @param time время ожидания в миллисекундах
+ * @param sec время ожидания в секундах
  */
-void awh::client::Websocket1::waitPong(const time_t time) noexcept {
-	// Если время ожидания передано
-	if(time > 0)
-		// Выполняем установку времени ожидания
-		this->_waitPong = time;
+void awh::client::Websocket1::waitPong(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания
+	this->_waitPong = (sec * 1000);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::client::Websocket1::pingInterval(const time_t time) noexcept {
-	// Если интервал времени передан
-	if(time > 0)
-		// Выполняем установку интервала времени выполнения пингов в миллисекундах
-		this->_pingInterval = time;
+void awh::client::Websocket1::pingInterval(const time_t sec) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_pingInterval = (sec * 1000);
 }
 /**
  * callbacks Метод установки функций обратного вызова

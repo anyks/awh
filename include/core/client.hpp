@@ -137,10 +137,10 @@ namespace awh {
 				void start() noexcept;
 			public:
 				/**
-				 * sendTimeout Метод отправки принудительного таймаута
+				 * reset Метод принудительного сброса подключения
 				 * @param bid идентификатор брокера
 				 */
-				void sendTimeout(const uint64_t bid) noexcept;
+				void reset(const uint64_t bid) noexcept;
 			private:
 				/**
 				 * disable Метод остановки активности брокера подключения

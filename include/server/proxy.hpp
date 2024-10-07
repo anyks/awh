@@ -644,15 +644,21 @@ namespace awh {
 				void ssl(const node_t::ssl_t & ssl) noexcept;
 			public:
 				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
+			public:
+				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
 				void alive(const bool mode) noexcept;
 				/**
 				 * alive Метод установки времени жизни подключения
-				 * @param time время жизни подключения
+				 * @param sec время жизни подключения
 				 */
-				void alive(const time_t time) noexcept;
+				void alive(const time_t sec) noexcept;
 				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param bid  идентификатор брокера

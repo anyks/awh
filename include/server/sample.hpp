@@ -239,6 +239,12 @@ namespace awh {
 				const string & mac(const uint64_t bid) const noexcept;
 			public:
 				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
+			public:
+				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
@@ -267,9 +273,9 @@ namespace awh {
 			public:
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
-				 * @param time интервал времени выполнения пингов в миллисекундах
+				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				void pingInterval(const time_t time) noexcept;
+				void pingInterval(const time_t sec) noexcept;
 			public:
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд

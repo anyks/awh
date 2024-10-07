@@ -283,8 +283,20 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 				if(i->fd == fd){
 					// Очищаем полученное событие
 					i->revents = 0;
+					// Выполняем поиск файлового дескриптора в базе событий
+					auto j = this->_items.find(i->fd);
+					// Если файловый дескриптор есть в базе событий
+					if(j != this->_items.end()){
+						// Если событие является таймером
+						if(j->second.delay > 0){
+							// Выполняем удаление таймера
+							this->_timeout.del(i->fd);
+							// Выполняем закрытие подключения
+							::_close(i->fd);
+						// Выполняем закрытие подключения
+						} else ::closesocket(i->fd);
 					// Выполняем закрытие подключения
-					::closesocket(i->fd);
+					} else ::closesocket(i->fd);
 					// Выполняем сброс файлового дескриптора
 					i->fd = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
@@ -312,9 +324,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 					// Выполняем закрытие подключения
 					::close(fd);
 					// Если событие является таймером
-					if(reinterpret_cast <item_t *> (i->data.ptr)->delay > 0)
+					if(reinterpret_cast <item_t *> (i->data.ptr)->delay > 0){
+						// Выполняем удаление таймера
+						this->_timeout.del(reinterpret_cast <item_t *> (i->data.ptr)->timer);
 						// Выполняем закрытие таймера
 						::close(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+					}
 					// Выполняем удаление события из списка отслеживания
 					this->_events.erase(i);
 					// Выходим из цикла
@@ -332,9 +347,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						// Выполняем закрытие подключения
 						::close(fd);
 						// Если событие является таймером
-						if(reinterpret_cast <item_t *> (i->data.ptr)->delay > 0)
+						if(reinterpret_cast <item_t *> (i->data.ptr)->delay > 0){
+							// Выполняем удаление таймера
+							this->_timeout.del(reinterpret_cast <item_t *> (i->data.ptr)->timer);
 							// Выполняем закрытие таймера
 							::close(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+						}
 					}
 					// Выполняем удаление события из списка изменений
 					this->_change.erase(i);
@@ -364,9 +382,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Если файловый дескриптор есть в базе событий
 			if(i != this->_items.end()){
 				// Если событие является таймером
-				if(i->second.delay > 0)
+				if(i->second.delay > 0){
+					// Выполняем удаление таймера
+					this->_timeout.del(i->second.timer);
 					// Выполняем закрытие таймера
 					::close(i->second.timer);
+				}
 			}
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_events.begin(); i != this->_events.end(); ++i){
@@ -444,11 +465,13 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 						// Очищаем полученное событие
 						j->revents = 0;
 						// Если событие является таймером
-						if(i->second.delay > 0)
+						if(i->second.delay > 0){
+							// Выполняем удаление таймера
+							this->_timeout.del(j->fd);
 							// Выполняем закрытие подключения
 							::_close(j->fd);
 						// Выполняем закрытие подключения
-						else ::closesocket(j->fd);
+						} else ::closesocket(j->fd);
 						// Выполняем сброс файлового дескриптора
 						j->fd = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
@@ -474,6 +497,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				bool erased = false;
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
+				// Выполняем удаление таймера
+				this->_timeout.del(i->second.timer);
 				// Если событие является таймером
 				if(i->second.delay > 0)
 					// Выполняем закрытие таймера
@@ -528,6 +553,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				bool erased = false;
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
+				// Выполняем удаление таймера
+				this->_timeout.del(i->second.timer);
 				// Если событие является таймером
 				if(i->second.delay > 0)
 					// Выполняем закрытие таймера
@@ -655,6 +682,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 									if((erased = (k->fd == fd))){
 										// Очищаем полученное событие
 										k->revents = 0;
+										// Выполняем удаление таймера
+										this->_timeout.del(k->fd);
 										// Выполняем закрытие подключения
 										::_close(k->fd);
 										// Выполняем удаление типа события
@@ -804,6 +833,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								} else result = (::epoll_ctl(this->_efd, EPOLL_CTL_MOD, i->second.fd, &(* k)) == 0);
 								// Если событие является таймером
 								if(i->second.delay > 0){
+									// Выполняем удаление таймера
+									this->_timeout.del(i->second.timer);
 									// Выполняем закрытие подключения
 									::close(i->second.fd);
 									// Выполняем закрытие таймера
@@ -827,6 +858,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 							   (reinterpret_cast <item_t *> (k->data.ptr)->id == id)){
 								// Если событие является таймером
 								if(i->second.delay > 0){
+									// Выполняем удаление таймера
+									this->_timeout.del(i->second.timer);
 									// Выполняем закрытие подключения
 									::close(i->second.fd);
 									// Выполняем закрытие таймера
@@ -882,6 +915,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 									// Если файловый дескриптор найден
 									if((erased = (k->ident == fd))){
+										// Выполняем удаление таймера
+										this->_timeout.del(i->second.timer);
 										// Выполняем удаление работы события
 										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
@@ -987,6 +1022,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 							if(k->ident == fd){
 								// Если событие является таймером
 								if(i->second.delay > 0){
+									// Выполняем удаление таймера
+									this->_timeout.del(i->second.timer);
 									// Выполняем удаление события таймера
 									EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 									// Выполняем закрытие подключения
@@ -1637,11 +1674,13 @@ void awh::Base::clear() noexcept {
 				// Если файловый дескриптор есть в базе событий
 				if(j != this->_items.end()){
 					// Если событие является таймером
-					if(j->second.delay > 0)
+					if(j->second.delay > 0){
+						// Выполняем удаление таймера
+						this->_timeout.del(i->fd);
 						// Выполняем закрытие подключения
 						::_close(i->fd);
 					// Выполняем закрытие подключения
-					else ::closesocket(i->fd);
+					} else ::closesocket(i->fd);
 				// Выполняем закрытие подключения
 				} else ::closesocket(i->fd);
 				// Выполняем сброс файлового дескриптора
@@ -1660,9 +1699,12 @@ void awh::Base::clear() noexcept {
 				// Выполняем закрытие подключения
 				::close(reinterpret_cast <item_t *> (i->data.ptr)->fd);
 				// Если событие является таймером
-				if(reinterpret_cast <item_t *> (i->data.ptr)->delay > 0)
+				if(reinterpret_cast <item_t *> (i->data.ptr)->delay > 0){
+					// Выполняем удаление таймера
+					this->_timeout.del(reinterpret_cast <item_t *> (i->data.ptr)->timer);
 					// Выполняем закрытие таймера
 					::close(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+				}
 				// Выполняем удаление события из списка изменений
 				i = this->_change.erase(i);
 			}
@@ -1682,6 +1724,8 @@ void awh::Base::clear() noexcept {
 				if(j != this->_items.end()){
 					// Если событие является таймером
 					if(j->second.delay > 0){
+						// Выполняем удаление таймера
+						this->_timeout.del(j->second.timer);
 						// Выполняем удаление события таймера
 						EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 						// Выполняем закрытие подключения
@@ -1709,6 +1753,8 @@ void awh::Base::clear() noexcept {
 				if(j != this->_items.end()){
 					// Если событие является таймером
 					if(j->second.delay > 0){
+						// Выполняем удаление таймера
+						this->_timeout.del(j->second.timer);
 						// Выполняем удаление события таймера
 						EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 						// Выполняем закрытие подключения

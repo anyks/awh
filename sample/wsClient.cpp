@@ -323,7 +323,7 @@ int32_t main(int32_t argc, char * argv[]){
 		client::web_t::flag_t::CONNECT_METHOD_ENABLE
 	});
 	// Устанавливаем время ожидания ответа WebSocket-сервера
-	// ws.waitPong(300000);
+	// ws.waitPong(300);
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);
 	// Устанавливаем простое чтение базы событий
@@ -406,6 +406,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.encryption(string{"PASS"});
 	// Устанавливаем дополнительные заголовки
 	// ws.setHeaders({{"hello", "world!!"}});
+	// Устанавливаем таймер ожидания входящих сообщений
+	// ws.waitMessage(5);
 	// Устанавливаем сабпротоколы
 	ws.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем поддерживаемые расширения

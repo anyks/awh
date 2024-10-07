@@ -1150,13 +1150,13 @@ void awh::server::Websocket2::pinging(const uint16_t tid) noexcept {
 							// Получаем текущий штамп времени
 							const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 							// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-							if((stamp - item.second->point) >= this->_waitPong){
+							if((this->_waitPong > 0) && ((stamp - item.second->point) >= this->_waitPong)){
 								// Создаём сообщение
 								item.second->mess = ws::mess_t(1005, "PING response not received");
 								// Отправляем серверу сообщение
 								this->sendError(item.first, item.second->mess);
 							// Если время с предыдущего пинга прошло больше половины времени пинга
-							} else if((stamp - item.second->sendPing) > (this->_pingInterval / 2))
+							} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((stamp - item.second->sendPing) > (this->_pingInterval / 2)))
 								// Отправляем запрос брокеру
 								this->ping(item.first, ::to_string(item.first));
 						// Если рукопожатие не выполнено и пинг не прошёл
@@ -1559,29 +1559,23 @@ void awh::server::Websocket2::close(const uint64_t bid) noexcept {
 }
 /**
  * waitPong Метод установки времени ожидания ответа WebSocket-клиента
- * @param time время ожидания в миллисекундах
+ * @param sec время ожидания в секундах
  */
-void awh::server::Websocket2::waitPong(const time_t time) noexcept {
-	// Если время ожидания передано
-	if(time > 0){
-		// Выполняем установку времени ожидания
-		this->_waitPong = time;
-		// Выполняем установку времени ожидания для WebSocket/1.1
-		this->_ws1.waitPong(time);
-	}
+void awh::server::Websocket2::waitPong(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания для WebSocket/1.1
+	this->_ws1.waitPong(sec);
+	// Выполняем установку времени ожидания
+	this->_waitPong = (sec * 1000);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::Websocket2::pingInterval(const time_t time) noexcept {
-	// Если интервал времени передан
-	if(time > 0){
-		// Выполняем установку интервала времени выполнения пингов в миллисекундах
-		this->_pingInterval = time;
-		// Выполняем установку интервала времени выполнения пингов в миллисекундах для WebSocket/1.1
-		this->_ws1.pingInterval(time);
-	}
+void awh::server::Websocket2::pingInterval(const time_t sec) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в секундах для WebSocket/1.1
+	this->_ws1.pingInterval(sec);
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_pingInterval = (sec * 1000);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -1787,13 +1781,13 @@ void awh::server::Websocket2::alive(const bool mode) noexcept {
 }
 /**
  * alive Метод установки времени жизни подключения
- * @param time время жизни подключения
+ * @param sec время жизни подключения
  */
-void awh::server::Websocket2::alive(const time_t time) noexcept {
+void awh::server::Websocket2::alive(const time_t sec) noexcept {
 	// Выполняем установку времени жизни подключения
-	web2_t::alive(time);
+	web2_t::alive(sec);
 	// Выполняем установку времени жизни подключения для Websocket-сервера
-	this->_ws1.alive(time);
+	this->_ws1.alive(sec);
 }
 /**
  * core Метод установки сетевого ядра

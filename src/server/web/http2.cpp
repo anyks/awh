@@ -1402,7 +1402,7 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 								// Получаем текущий штамп времени
 								const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 								// Если время с предыдущего пинга прошло больше половины времени пинга
-								if((stamp - item.second->sendPing) > (this->_pingInterval / 2)){
+								if((this->_pingInterval > 0) && ((stamp - item.second->sendPing) > (this->_pingInterval / 2))){
 									// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 									if(!this->ping(item.first))
 										// Выполняем закрытие подключения
@@ -2601,23 +2601,19 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
 }
 /**
  * waitPong Метод установки времени ожидания ответа WebSocket-клиента
- * @param time время ожидания в миллисекундах
+ * @param sec время ожидания в секундах
  */
-void awh::server::Http2::waitPong(const time_t time) noexcept {
-	// Если время ожидания передано
-	if(time > 0)
-		// Выполняем установку времени ожидания
-		this->_ws2.waitPong(time);
+void awh::server::Http2::waitPong(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания
+	this->_ws2.waitPong(sec);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::Http2::pingInterval(const time_t time) noexcept {
-	// Если интервал времени передан
-	if(time > 0)
-		// Выполняем установку интервала времени выполнения пингов в миллисекундах
-		this->_ws2.pingInterval(time);
+void awh::server::Http2::pingInterval(const time_t sec) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_ws2.pingInterval(sec);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -2859,15 +2855,15 @@ void awh::server::Http2::alive(const bool mode) noexcept {
 }
 /**
  * alive Метод установки времени жизни подключения
- * @param time время жизни подключения
+ * @param sec время жизни подключения
  */
-void awh::server::Http2::alive(const time_t time) noexcept {
+void awh::server::Http2::alive(const time_t sec) noexcept {
 	// Выполняем установку времени жизни подключения
-	web2_t::alive(time);
+	web2_t::alive(sec);
 	// Выполняем установку времени жизни подключения для Websocket-сервера
-	this->_ws2.alive(time);
+	this->_ws2.alive(sec);
 	// Выполняем установку времени жизни подключения для HTTP-сервера
-	this->_http1.alive(time);
+	this->_http1.alive(sec);
 }
 /**
  * alive Метод установки долгоживущего подключения

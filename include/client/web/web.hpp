@@ -327,14 +327,14 @@ namespace awh {
 				void init(const string & dest, const vector <awh::http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
-				 * sendTimeout Метод отправки сигнала таймаута
-				 */
-				void sendTimeout() noexcept;
-			public:
-				/**
 				 * open Метод открытия подключения
 				 */
 				void open() noexcept;
+			public:
+				/**
+				 * reset Метод принудительного сброса подключения
+				 */
+				void reset() noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента
@@ -347,14 +347,14 @@ namespace awh {
 			public:
 				/**
 				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
-				 * @param time время ожидания в миллисекундах
+				 * @param sec время ожидания в секундах
 				 */
-				virtual void waitPong(const time_t time) noexcept = 0;
+				virtual void waitPong(const time_t sec) noexcept = 0;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
-				 * @param time интервал времени выполнения пингов в миллисекундах
+				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				virtual void pingInterval(const time_t time) noexcept = 0;
+				virtual void pingInterval(const time_t sec) noexcept = 0;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -400,6 +400,12 @@ namespace awh {
 				 * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
 				 */
 				engine_t::proto_t proto() const noexcept;
+			public:
+				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
 			public:
 				/**
 				 * cork Метод отключения/включения алгоритма TCP/CORK

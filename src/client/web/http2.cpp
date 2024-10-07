@@ -969,7 +969,7 @@ void awh::client::Http2::pinging(const uint16_t tid) noexcept {
 						// Получаем текущий штамп времени
 						const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Если время с предыдущего пинга прошло больше половины времени пинга
-						if((stamp - this->_sendPing) > (this->_pingInterval / 2)){
+						if((this->_pingInterval > 0) && ((stamp - this->_sendPing) > (this->_pingInterval / 2))){
 							// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 							if(!this->ping())
 								// Выполняем закрытие подключения
@@ -1784,23 +1784,21 @@ void awh::client::Http2::pause() noexcept {
 }
 /**
  * waitPong Метод установки времени ожидания ответа WebSocket-сервера
- * @param time время ожидания в миллисекундах
+ * @param sec время ожидания в секундах
  */
-void awh::client::Http2::waitPong(const time_t time) noexcept {
-	// Если время ожидания передано
-	if(time > 0)
-		// Выполняем установку времени ожидания
-		this->_ws2.waitPong(time);
+void awh::client::Http2::waitPong(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания
+	this->_ws2.waitPong(sec);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::client::Http2::pingInterval(const time_t time) noexcept {
-	// Если интервал времени передан
-	if(time > 0)
-		// Выполняем установку интервала времени выполнения пингов в миллисекундах
-		this->_ws2.pingInterval(time);
+void awh::client::Http2::pingInterval(const time_t sec) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_ws2.pingInterval(sec);
+	// Выполняем установку интервала времени выполнения пингов в секундах для протокола HTTP/2 клиента
+	this->_pingInterval = (sec * 1000);
 }
 /**
  * callbacks Метод установки функций обратного вызова

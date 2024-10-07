@@ -258,14 +258,14 @@ namespace awh {
 			public:
 				/**
 				 * waitPong Метод установки времени ожидания ответа WebSocket-клиента
-				 * @param time время ожидания в миллисекундах
+				 * @param sec время ожидания в секундах
 				 */
-				void waitPong(const time_t time) noexcept;
+				void waitPong(const time_t sec) noexcept;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
-				 * @param time интервал времени выполнения пингов в миллисекундах
+				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				void pingInterval(const time_t time) noexcept;
+				void pingInterval(const time_t sec) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола
@@ -339,9 +339,9 @@ namespace awh {
 				void alive(const bool mode) noexcept;
 				/**
 				 * alive Метод установки времени жизни подключения
-				 * @param time время жизни подключения
+				 * @param sec время жизни подключения
 				 */
-				void alive(const time_t time) noexcept;
+				void alive(const time_t sec) noexcept;
 				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param bid  идентификатор брокера

@@ -1129,23 +1129,19 @@ void awh::client::Http1::pause() noexcept {
 }
 /**
  * waitPong Метод установки времени ожидания ответа WebSocket-сервера
- * @param time время ожидания в миллисекундах
+ * @param sec время ожидания в секундах
  */
-void awh::client::Http1::waitPong(const time_t time) noexcept {
-	// Если время ожидания передано
-	if(time > 0)
-		// Выполняем установку времени ожидания
-		this->_ws1.waitPong(time);
+void awh::client::Http1::waitPong(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания
+	this->_ws1.waitPong(sec);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::client::Http1::pingInterval(const time_t time) noexcept {
-	// Если интервал времени передан
-	if(time > 0)
-		// Выполняем установку интервала времени выполнения пингов в миллисекундах
-		this->_ws1.pingInterval(time);
+void awh::client::Http1::pingInterval(const time_t sec) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_ws1.pingInterval(sec);
 }
 /**
  * callbacks Метод установки функций обратного вызова

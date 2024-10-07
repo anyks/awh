@@ -449,15 +449,6 @@ void awh::client::Web::init(const string & dest, const vector <awh::http_t::comp
 		this->_compressors = compressors;
 }
 /**
- * sendTimeout Метод отправки сигнала таймаута
- */
-void awh::client::Web::sendTimeout() noexcept {
-	// Если подключение выполнено
-	if((this->_core != nullptr) && this->_core->working())
-		// Отправляем сигнал принудительного таймаута
-		const_cast <client::core_t *> (this->_core)->sendTimeout(this->_bid);
-}
-/**
  * open Метод открытия подключения
  */
 void awh::client::Web::open() noexcept {
@@ -465,6 +456,15 @@ void awh::client::Web::open() noexcept {
 	if(this->_core != nullptr)
 		// Выполняем открытие подключения на удалённом сервере
 		this->openEvent(this->_scheme.id);
+}
+/**
+ * reset Метод принудительного сброса подключения
+ */
+void awh::client::Web::reset() noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working())
+		// Отправляем сигнал принудительного таймаута
+		const_cast <client::core_t *> (this->_core)->reset(this->_bid);
 }
 /**
  * stop Метод остановки клиента
@@ -576,6 +576,16 @@ awh::engine_t::proto_t awh::client::Web::proto() const noexcept {
 		return this->_core->proto(this->_bid);
 	// Выводим протокол по умолчанию
 	return engine_t::proto_t::NONE;
+}
+/**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::client::Web::waitMessage(const time_t sec) noexcept {
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr)
+		// Выполняем установку времени ожидания входящих сообщений
+		const_cast <client::core_t *> (this->_core)->waitMessage(sec);
 }
 /**
  * cork Метод отключения/включения алгоритма TCP/CORK

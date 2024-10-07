@@ -21,7 +21,7 @@
  */
 void awh::server::Sample::openEvent(const uint16_t sid) noexcept {
 	// Если данные существуют
-	if(sid > 0){
+	if((this->_core != nullptr) && (sid > 0)){
 		// Устанавливаем хост сервера
 		const_cast <server::core_t *> (this->_core)->init(sid, this->_port, this->_host);
 		// Выполняем запуск сервера
@@ -33,33 +33,36 @@ void awh::server::Sample::openEvent(const uint16_t sid) noexcept {
  * @param status флаг запуска/остановки
  */
 void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexcept {
-	// Определяем статус активности сетевого ядра
-	switch(static_cast <uint8_t> (status)){
-		// Если система запущена
-		case static_cast <uint8_t> (awh::core_t::status_t::START): {
-			// Выполняем биндинг ядра локального таймера
-			const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
-			// Устанавливаем интервал времени на выполнения пинга клиента
-			uint16_t tid = this->_timer.interval(this->_pingInterval);
-			// Выполняем добавление функции обратного вызова
-			this->_timer.set <void (const uint16_t)> (tid, std::bind(&sample_t::pinging, this, tid));
-			// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
-			tid = this->_timer.interval(3000);
-			// Выполняем добавление функции обратного вызова
-			this->_timer.set <void (const uint16_t)> (tid, std::bind(&sample_t::erase, this, tid));
-		} break;
-		// Если система остановлена
-		case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
-			// Останавливаем все установленные таймеры
-			this->_timer.clear();
-			// Выполняем анбиндинг ядра локального таймера
-			const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
-		} break;
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Определяем статус активности сетевого ядра
+		switch(static_cast <uint8_t> (status)){
+			// Если система запущена
+			case static_cast <uint8_t> (awh::core_t::status_t::START): {
+				// Выполняем биндинг ядра локального таймера
+				const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
+				// Устанавливаем интервал времени на выполнения пинга клиента
+				uint16_t tid = this->_timer.interval(this->_pingInterval);
+				// Выполняем добавление функции обратного вызова
+				this->_timer.set <void (const uint16_t)> (tid, std::bind(&sample_t::pinging, this, tid));
+				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
+				tid = this->_timer.interval(3000);
+				// Выполняем добавление функции обратного вызова
+				this->_timer.set <void (const uint16_t)> (tid, std::bind(&sample_t::erase, this, tid));
+			} break;
+			// Если система остановлена
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
+				// Останавливаем все установленные таймеры
+				this->_timer.clear();
+				// Выполняем анбиндинг ядра локального таймера
+				const_cast <server::core_t *> (this->_core)->unbind(&this->_timer);
+			} break;
+		}
+		// Если функция получения событий запуска и остановки сетевого ядра установлена
+		if(this->_callbacks.is("status"))
+			// Выводим функцию обратного вызова
+			this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
 	}
-	// Если функция получения событий запуска и остановки сетевого ядра установлена
-	if(this->_callbacks.is("status"))
-		// Выводим функцию обратного вызова
-		this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
 }
 /**
  * connectEvent Метод обратного вызова при подключении к серверу
@@ -128,7 +131,7 @@ void awh::server::Sample::readEvent(const char * buffer, const size_t size, cons
  */
 void awh::server::Sample::writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
-	if((bid > 0) && (sid > 0)){
+	if((this->_core != nullptr) && (bid > 0) && (sid > 0)){
 		// Получаем параметры активного клиента
 		scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -198,7 +201,7 @@ void awh::server::Sample::erase(const uint16_t tid) noexcept {
  */
 void awh::server::Sample::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
-	if(tid > 0){
+	if((this->_core != nullptr) && (tid > 0)){
 		// Выполняем перебор всех активных клиентов
 		for(auto & item : this->_scheme.get()){
 			// Если параметры активного клиента получены
@@ -220,8 +223,10 @@ void awh::server::Sample::init(const string & socket) noexcept {
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем установку unix-сокет
-		const_cast <server::core_t *> (this->_core)->sockname(socket);
+		// Если объект сетевого ядра установлен
+		if(this->_core != nullptr)
+			// Выполняем установку unix-сокет
+			const_cast <server::core_t *> (this->_core)->sockname(socket);
 	#endif
 }
 /**
@@ -257,7 +262,7 @@ void awh::server::Sample::callbacks(const fn_t & callbacks) noexcept {
  */
 void awh::server::Sample::send(const uint64_t bid, const char * buffer, const size_t size) const noexcept {
 	// Если подключение выполнено
-	if(this->_core->working()){
+	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
 		scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
@@ -302,6 +307,16 @@ const string & awh::server::Sample::mac(const uint64_t bid) const noexcept {
 	return this->_scheme.mac(bid);
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::Sample::waitMessage(const time_t sec) noexcept {
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr)
+		// Выполняем установку времени ожидания сообщений
+		const_cast <server::core_t *> (this->_core)->waitMessage(sec);
+}
+/**
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
@@ -326,12 +341,15 @@ void awh::server::Sample::alive(const uint64_t bid, const bool mode) noexcept {
  * stop Метод остановки сервера
  */
 void awh::server::Sample::stop() noexcept {
-	// Если завершить работу разрешено
-	if(this->_complete && this->_core->working())
-		// Завершаем работу, если разрешено остановить
-		const_cast <server::core_t *> (this->_core)->stop();
-	// Если завершать работу запрещено, просто отключаемся
-	else const_cast <server::core_t *> (this->_core)->close();
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Если завершить работу разрешено
+		if(this->_complete && this->_core->working())
+			// Завершаем работу, если разрешено остановить
+			const_cast <server::core_t *> (this->_core)->stop();
+		// Если завершать работу запрещено, просто отключаемся
+		else const_cast <server::core_t *> (this->_core)->close();
+	}
 }
 /**
  * start Метод запуска сервера
@@ -347,20 +365,23 @@ void awh::server::Sample::start() noexcept {
  * @param bid идентификатор брокера
  */
 void awh::server::Sample::close(const uint64_t bid) noexcept {
-	// Получаем параметры активного клиента
-	scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
-	if((options->close = (options != nullptr)))
-		// Выполняем отключение брокера
-		const_cast <server::core_t *> (this->_core)->close(bid);
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Получаем параметры активного клиента
+		scheme::sample_t::options_t * options = const_cast <scheme::sample_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
+		if((options->close = (options != nullptr)))
+			// Выполняем отключение брокера
+			const_cast <server::core_t *> (this->_core)->close(bid);
+	}
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::Sample::pingInterval(const time_t time) noexcept {
+void awh::server::Sample::pingInterval(const time_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов
-	this->_pingInterval = time;
+	this->_pingInterval = (sec * 1000);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -378,20 +399,25 @@ void awh::server::Sample::waitTimeDetect(const time_t read, const time_t write) 
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::Sample::total(const uint16_t total) noexcept {
-	// Устанавливаем максимальное количество одновременных подключений
-	const_cast <server::core_t *> (this->_core)->total(this->_scheme.id, total);
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr)
+		// Устанавливаем максимальное количество одновременных подключений
+		const_cast <server::core_t *> (this->_core)->total(this->_scheme.id, total);
 }
 /**
  * mode Метод установки флага модуля
  * @param flag флаг модуля для установки
  */
 void awh::server::Sample::mode(const set <flag_t> & flags) noexcept {
-	// Активируем выполнение пинга
-	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <server::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Активируем выполнение пинга
+		this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
+		// Устанавливаем флаг анбиндинга ядра сетевого модуля
+		this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
+		// Устанавливаем флаг запрещающий вывод информационных сообщений
+		const_cast <server::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
+	}
 }
 /**
  * keepAlive Метод установки жизни подключения
@@ -417,22 +443,25 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
  _pid(::getpid()), _alive(false), _pinging(true), _complete(true),
  _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log), _pingInterval(PING_INTERVAL),
  _callbacks(log), _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
-	// Выполняем отключение информационных сообщений сетевого ядра таймера
-	this->_timer.verbose(false);
-	// Добавляем схему сети в сетевое ядро
-	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
-	// Устанавливаем функцию активации ядра сервера
-	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::statusEvent, this, _1));
-	// Устанавливаем событие на запуск системы
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openEvent, this, _1));
-	// Устанавливаем событие подключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
-	// Устанавливаем событие отключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
-	// Устанавливаем функцию чтения данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
-	// Устанавливаем функцию записи данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&sample_t::writeEvent, this, _1, _2, _3, _4));
-	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&sample_t::acceptEvent, this, _1, _2, _3, _4));
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Выполняем отключение информационных сообщений сетевого ядра таймера
+		this->_timer.verbose(false);
+		// Добавляем схему сети в сетевое ядро
+		const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
+		// Устанавливаем функцию активации ядра сервера
+		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::statusEvent, this, _1));
+		// Устанавливаем событие на запуск системы
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openEvent, this, _1));
+		// Устанавливаем событие подключения
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
+		// Устанавливаем событие отключения
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
+		// Устанавливаем функцию чтения данных
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
+		// Устанавливаем функцию записи данных
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&sample_t::writeEvent, this, _1, _2, _3, _4));
+		// Добавляем событие аццепта брокера
+		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&sample_t::acceptEvent, this, _1, _2, _3, _4));
+	}
 }

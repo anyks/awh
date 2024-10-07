@@ -679,6 +679,14 @@ void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const u
 	this->_core.cluster(mode, size);
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::server::ProxySocks5::waitMessage(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания входящих сообщений
+	this->_core.waitMessage(sec);
+}
+/**
  * mode Метод установки флагов модуля
  * @param flags список флагов модуля для установки
  */

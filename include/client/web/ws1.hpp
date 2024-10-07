@@ -309,14 +309,14 @@ namespace awh {
 			public:
 				/**
 				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
-				 * @param time время ожидания в миллисекундах
+				 * @param sec время ожидания в секундах
 				 */
-				void waitPong(const time_t time) noexcept;
+				void waitPong(const time_t sec) noexcept;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
-				 * @param time интервал времени выполнения пингов в миллисекундах
+				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				void pingInterval(const time_t time) noexcept;
+				void pingInterval(const time_t sec) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова

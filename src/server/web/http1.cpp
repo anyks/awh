@@ -1216,7 +1216,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 					}
 				}
 				// Если подключение не установлено как постоянное, но подключение долгоживущее
-				if(!this->_service.alive && !options->alive && options->http.is(http_t::state_t::ALIVE))
+				if((this->_timeAlive > 0) && !this->_service.alive && !options->alive && options->http.is(http_t::state_t::ALIVE))
 					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 					options->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
 				// Если сообщение ответа не установлено
@@ -1435,23 +1435,19 @@ void awh::server::Http1::close(const uint64_t bid) noexcept {
 }
 /**
  * waitPong Метод установки времени ожидания ответа WebSocket-клиента
- * @param time время ожидания в миллисекундах
+ * @param sec время ожидания в секундах
  */
-void awh::server::Http1::waitPong(const time_t time) noexcept {
-	// Если время ожидания передано
-	if(time > 0)
-		// Выполняем установку времени ожидания
-		this->_ws1.waitPong(time);
+void awh::server::Http1::waitPong(const time_t sec) noexcept {
+	// Выполняем установку времени ожидания
+	this->_ws1.waitPong(sec);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
- * @param time интервал времени выполнения пингов в миллисекундах
+ * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::Http1::pingInterval(const time_t time) noexcept {
-	// Если интервал времени передан
-	if(time > 0)
-		// Выполняем установку интервала времени выполнения пингов в миллисекундах
-		this->_ws1.pingInterval(time);
+void awh::server::Http1::pingInterval(const time_t sec) noexcept {
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_ws1.pingInterval(sec);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -1593,11 +1589,11 @@ void awh::server::Http1::alive(const bool mode) noexcept {
 }
 /**
  * alive Метод установки времени жизни подключения
- * @param time время жизни подключения
+ * @param sec время жизни подключения
  */
-void awh::server::Http1::alive(const time_t time) noexcept {
+void awh::server::Http1::alive(const time_t sec) noexcept {
 	// Выполняем установку времени жизни подключения
-	web_t::alive(time);
+	web_t::alive(sec);
 }
 /**
  * alive Метод установки долгоживущего подключения

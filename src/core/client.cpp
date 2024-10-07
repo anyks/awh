@@ -653,10 +653,10 @@ void awh::client::Core::start() noexcept {
 		node_t::start();
 }
 /**
- * sendTimeout Метод отправки принудительного таймаута
+ * reset Метод принудительного сброса подключения
  * @param bid идентификатор брокера
  */
-void awh::client::Core::sendTimeout(const uint64_t bid) noexcept {
+void awh::client::Core::reset(const uint64_t bid) noexcept {
 	// Если блокировка брокера не установлена
 	if(this->_busy.find(bid) == this->_busy.end()){
 		// Если брокер существует
@@ -1374,7 +1374,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 							// Если данные получены
 							if(bytes > 0){
 								// Если таймер ожидания получения данных установлен
-								if(broker->_timeouts.read > 0)
+								if((this->_waitMessage > 0) || (broker->_timeouts.read > 0))
 									// Выполняем удаление таймаута
 									this->clearTimeout(bid);
 								// Если подключение производится через, прокси-сервер
@@ -1401,9 +1401,14 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					// Выполняем чтение до тех пор, пока всё не прочитаем
 					} while(this->has(bid));
 					// Если подключение ещё не разорванно
-					if(this->has(bid))
+					if(this->has(bid)){
+						// Если время ожиданий входящих сообщений установлено
+						if(this->_waitMessage > 0)
+							// Выполняем создание таймаута ожидания получения данных
+							this->createTimeout(bid, this->_waitMessage * 1000);
 						// Выполняем активацию отслеживания получения данных с этого сокета
 						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+					}
 				// Если подключение завершено
 				} else {
 					// Останавливаем чтение данных

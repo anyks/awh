@@ -343,6 +343,12 @@ namespace awh {
 				void cluster(const awh::scheme_t::mode_t mode, const uint16_t size = 0) noexcept;
 			public:
 				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
+			public:
+				/**
 				 * mode Метод установки флагов модуля
 				 * @param flags список флагов модуля для установки
 				 */

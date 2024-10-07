@@ -52,10 +52,6 @@ namespace awh {
 				engine_t::proto_t proto() const noexcept;
 			public:
 				/**
-				 * sendTimeout Метод отправки сигнала таймаута
-				 */
-				void sendTimeout() noexcept;
-				/**
 				 * sendError Метод отправки сообщения об ошибке на сервер
 				 * @param mess отправляемое сообщение об ошибке
 				 */
@@ -86,6 +82,11 @@ namespace awh {
 				void open() noexcept;
 			public:
 				/**
+				 * reset Метод принудительного сброса подключения
+				 */
+				void reset() noexcept;
+			public:
+				/**
 				 * stop Метод остановки клиента
 				 */
 				void stop() noexcept;
@@ -96,14 +97,14 @@ namespace awh {
 			public:
 				/**
 				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
-				 * @param time время ожидания в миллисекундах
+				 * @param sec время ожидания в секундах
 				 */
-				void waitPong(const time_t time) noexcept;
+				void waitPong(const time_t sec) noexcept;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
-				 * @param time интервал времени выполнения пингов в миллисекундах
+				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				void pingInterval(const time_t time) noexcept;
+				void pingInterval(const time_t sec) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -292,6 +293,12 @@ namespace awh {
 				 * @param ip     адрес для добавления в чёрный список
 				 */
 				void setToDNSBlackList(const string & domain, const string & ip) noexcept;
+			public:
+				/**
+				 * waitMessage Метод ожидания входящих сообщений
+				 * @param sec интервал времени в секундах
+				 */
+				void waitMessage(const time_t sec) noexcept;
 			public:
 				/**
 				 * cork Метод отключения/включения алгоритма TCP/CORK

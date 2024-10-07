@@ -21,7 +21,7 @@
  */
 void awh::client::Sample::openEvent(const uint16_t sid) noexcept {
 	// Если данные переданы верные
-	if(sid > 0){
+	if((this->_core != nullptr) && (sid > 0)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
@@ -77,7 +77,7 @@ void awh::client::Sample::connectEvent(const uint64_t bid, const uint16_t sid) n
  */
 void awh::client::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
-	if(sid > 0){
+	if((this->_core != nullptr) && (sid > 0)){
 		// Если подключение не является постоянным
 		if(!this->_scheme.alive){
 			// Очищаем адрес сервера
@@ -126,10 +126,15 @@ bool awh::client::Sample::enableSSLEvent(const uri_t::url_t & url, const uint64_
 	(void) url;
 	(void) bid;
 	(void) sid;
-	// Получаем тип активного протокола
-	const scheme_t::sonet_t sonet = this->_core->sonet();
-	// Выполняем проверку, выполняется подключение к серверу в защищённом рижеме или нет
-	return ((sonet == scheme_t::sonet_t::TLS) || (sonet == scheme_t::sonet_t::SCTP));
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Получаем тип активного протокола
+		const scheme_t::sonet_t sonet = this->_core->sonet();
+		// Выполняем проверку, выполняется подключение к серверу в защищённом рижеме или нет
+		return ((sonet == scheme_t::sonet_t::TLS) || (sonet == scheme_t::sonet_t::SCTP));
+	}
+	// Выводим значение по умолчанию
+	return false;
 }
 /**
  * chunking Метод обработки получения чанков
@@ -152,7 +157,7 @@ void awh::client::Sample::chunking(const uint64_t bid, const vector <char> & chu
  */
 void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
-	if((bid > 0) && (sid > 0)){
+	if((this->_core != nullptr) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
@@ -216,7 +221,7 @@ void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t s
  */
 void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
+	if((this->_core != nullptr) && (buffer != nullptr) && (size > 0) && (bid > 0) && (sid > 0)){
 		// Создаём объект холдирования
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
@@ -423,23 +428,26 @@ void awh::client::Sample::stop() noexcept {
  * start Метод запуска клиента
  */
 void awh::client::Sample::start() noexcept {
-	// Разрешаем чтение данных из буфера
-	this->_reading = true;
-	// Выполняем очистку буфера данных
-	this->_buffer.clear();
-	// Если биндинг не запущен
-	if(!this->_core->working())
-		// Выполняем запуск биндинга
-		const_cast <client::core_t *> (this->_core)->start();
-	// Если биндинг уже запущен, выполняем запрос на сервер
-	else const_cast <client::core_t *> (this->_core)->open(this->_scheme.id);
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Разрешаем чтение данных из буфера
+		this->_reading = true;
+		// Выполняем очистку буфера данных
+		this->_buffer.clear();
+		// Если биндинг не запущен
+		if(!this->_core->working())
+			// Выполняем запуск биндинга
+			const_cast <client::core_t *> (this->_core)->start();
+		// Если биндинг уже запущен, выполняем запрос на сервер
+		else const_cast <client::core_t *> (this->_core)->open(this->_scheme.id);
+	}
 }
 /**
  * close Метод закрытия подключения клиента
  */
 void awh::client::Sample::close() noexcept {
 	// Если подключение выполнено
-	if(this->_core->working())
+	if((this->_core != nullptr) && this->_core->working())
 		// Завершаем работу, если разрешено остановить
 		const_cast <client::core_t *> (this->_core)->close(this->_bid);
 }
@@ -449,7 +457,7 @@ void awh::client::Sample::close() noexcept {
  */
 void awh::client::Sample::init(const string & socket) noexcept {
 	// Если unix-сокет передан
-	if(!socket.empty()){
+	if((this->_core != nullptr) && !socket.empty()){
 		// Выполняем очистку схемы сети
 		this->_scheme.clear();
 		// Устанавливаем URL адрес запроса (как заглушка)
@@ -512,16 +520,29 @@ void awh::client::Sample::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("message", callbacks);
 }
 /**
+ * waitMessage Метод ожидания входящих сообщений
+ * @param sec интервал времени в секундах
+ */
+void awh::client::Sample::waitMessage(const time_t sec) noexcept {
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr)
+		// Выполняем установку времени ожидания входящих сообщений
+		const_cast <client::core_t *> (this->_core)->waitMessage(sec);
+}
+/**
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Sample::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Устанавливаем флаг анбиндинга ядра сетевого модуля
+		this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
+		// Устанавливаем флаг поддержания автоматического подключения
+		this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
+		// Устанавливаем флаг запрещающий вывод информационных сообщений
+		const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
+	}
 }
 /**
  * cork Метод отключения/включения алгоритма TCP/CORK
@@ -560,7 +581,7 @@ void awh::client::Sample::send(const char * buffer, const size_t size) noexcept 
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
 		// Если подключение выполнено
-		if(this->_core->working()){
+		if((this->_core != nullptr) && this->_core->working()){
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа
@@ -579,8 +600,10 @@ void awh::client::Sample::send(const char * buffer, const size_t size) noexcept 
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
 void awh::client::Sample::bandwidth(const string & read, const string & write) noexcept {
-	// Выполняем установку пропускной способности сети
-	const_cast <client::core_t *> (this->_core)->bandwidth(this->_bid, read, write);
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr)
+		// Выполняем установку пропускной способности сети
+		const_cast <client::core_t *> (this->_core)->bandwidth(this->_bid, read, write);
 }
 /**
  * keepAlive Метод установки жизни подключения
@@ -694,24 +717,27 @@ void awh::client::Sample::authTypeProxy(const auth_t::type_t type, const auth_t:
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _reading(false), _complete(true), _attempt(0), _attempts(15),
  _uri(fmk), _callbacks(log), _scheme(fmk, log), _fmk(fmk), _log(log), _core(core) {
-	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_scheme.proxy.http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&sample_t::chunking, this, _1, _2, _3));
-	// Добавляем схему сети в сетевое ядро
-	const_cast <client::core_t *> (this->_core)->scheme(&this->_scheme);
-	// Устанавливаем событие на запуск системы
-	const_cast <client::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openEvent, this, _1));
-	// Выполняем установку функций обратного вызова для клиента
-	const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::statusEvent, this, _1));
-	// Устанавливаем событие подключения
-	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
-	// Устанавливаем событие отключения
-	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
-	// Устанавливаем событие на подключение к прокси-серверу
-	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connectProxy", std::bind(&sample_t::proxyConnectEvent, this, _1, _2));
-	// Устанавливаем событие на активацию шифрованного SSL канала
-	const_cast <client::core_t *> (this->_core)->callback <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", std::bind(&sample_t::enableSSLEvent, this, _1, _2, _3));
-	// Устанавливаем функцию чтения данных
-	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
-	// Устанавливаем событие на чтение данных с прокси-сервера
-	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", std::bind(&sample_t::proxyReadEvent, this, _1, _2, _3, _4));
+	// Если объект сетевого ядра установлен
+	if(this->_core != nullptr){
+		// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
+		this->_scheme.proxy.http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&sample_t::chunking, this, _1, _2, _3));
+		// Добавляем схему сети в сетевое ядро
+		const_cast <client::core_t *> (this->_core)->scheme(&this->_scheme);
+		// Устанавливаем событие на запуск системы
+		const_cast <client::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openEvent, this, _1));
+		// Выполняем установку функций обратного вызова для клиента
+		const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::statusEvent, this, _1));
+		// Устанавливаем событие подключения
+		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
+		// Устанавливаем событие отключения
+		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
+		// Устанавливаем событие на подключение к прокси-серверу
+		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connectProxy", std::bind(&sample_t::proxyConnectEvent, this, _1, _2));
+		// Устанавливаем событие на активацию шифрованного SSL канала
+		const_cast <client::core_t *> (this->_core)->callback <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", std::bind(&sample_t::enableSSLEvent, this, _1, _2, _3));
+		// Устанавливаем функцию чтения данных
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
+		// Устанавливаем событие на чтение данных с прокси-сервера
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", std::bind(&sample_t::proxyReadEvent, this, _1, _2, _3, _4));
+	}
 }
