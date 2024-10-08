@@ -966,9 +966,14 @@ vector <string> awh::URI::splitPath(const string & path, const string & delim) c
 		// Выполняем сплит параметров пути
 		if(!this->_fmk->split(this->_fmk->convert(path.front() == '/' ? path.substr(1) : path), this->_fmk->convert(delim), params).empty()){
 			// Переходим по всему списку параметров
-			for(auto & param : params)
-				// Добавляем в список наши параметры
-				result.push_back(this->decode(this->_fmk->convert(param)));
+			for(auto & param : params){
+				// Выполняем конвертирование полученной строки
+				const string & item = this->_fmk->convert(param);
+				// Если в адресе не найдена точка
+				if(item.front() != '.')
+					// Добавляем в список наши параметры
+					result.push_back(this->decode(item));
+			}
 		}
 	}
 	// Выводим результат
