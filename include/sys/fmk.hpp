@@ -143,7 +143,7 @@ namespace awh {
 			/**
 			 * Symbols Класс основных символов
 			 */
-			typedef class Symbols {
+			typedef class AWHSHARED_EXPORT Symbols {
 				private:
 					// Контейнер римских чисел
 					map <char, uint16_t> _romes;
