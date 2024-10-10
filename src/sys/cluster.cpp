@@ -44,6 +44,8 @@
 					// Выполняем закрытие файловых дескрипторов
 					::close(broker->cfds[0]);
 					::close(broker->mfds[1]);
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::WARNING, broker->pid, status);
 					// Если статус сигнала, ручной остановкой процесса
 					if(status == SIGINT){
 						// Выполняем остановку работы
@@ -57,8 +59,6 @@
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
-					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::WARNING, broker->pid, status);
 					// Если функция обратного вызова установлена
 					if(this->_ctx->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
@@ -106,6 +106,8 @@
 				break;
 			// Если нужно выполнить нормальное завершение работы
 			} else {
+				// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+				this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::WARNING, pid, status);
 				// Если объект воркера инициализирован
 				if(worker != nullptr)
 					// Выполняем остановку работы
