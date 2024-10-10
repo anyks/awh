@@ -374,6 +374,13 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 				while(!i->second->empty()){
 					// Получаем бинарный буфер данных
 					const auto & buffer = i->second->front();
+					// Если данных в буфере нету, выходим из цикла
+					if(buffer.empty()){
+						// Процесс превратился в зомби, самоликвидируем его
+						this->_log->print("Cluster message sending stack was broken for process [%u]", log_t::flag_t::WARNING, ::getpid());
+						// Выходим из цикла
+						break;
+					}
 					// Устанавливаем метку отправки данных
 					Send:
 					// Выполняем запись в сокет
