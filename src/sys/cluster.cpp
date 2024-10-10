@@ -22,7 +22,7 @@
 	/**
 	 * Глобальный объект воркера
 	 */
-	awh::cluster_t::worker_t * worker = nullptr;
+	static awh::cluster_t::worker_t * worker = nullptr;
 	/**
 	 * process Метод перезапуска упавшего процесса
 	 * @param pid    идентификатор упавшего процесса
@@ -89,7 +89,9 @@
 	 */
 	void awh::Cluster::Worker::child(int32_t signal, siginfo_t * info, void * ctx) noexcept {
 		// Зануляем неиспользуемые переменные
+		(void) ctx;
 		(void) info;
+		(void) signal;
 		// Идентификатор упавшего процесса
 		pid_t pid = 0;
 		// Статус упавшего процесса
@@ -106,12 +108,13 @@
 				break;
 			// Если нужно выполнить нормальное завершение работы
 			} else {
-				// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-				this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::WARNING, pid, status);
 				// Если объект воркера инициализирован
-				if(worker != nullptr)
+				if(worker != nullptr){
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					worker->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::WARNING, pid, status);
 					// Выполняем остановку работы
 					const_cast <cluster_t *> (worker->_ctx)->stop(worker->_wid);
+				}
 				// Выполняем завершение работы
 				::exit(status);
 			}
