@@ -415,6 +415,8 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 	if((buffer != nullptr) && (size > 0)){
 		// Выполняем чтение заголовков
 		this->head(head, buffer, size);
+		// Устанавливаем стейт фрейма
+		head.state = state_t::GOOD;
 		// Получаем размер смещения
 		head.frame = static_cast <uint64_t> (head.size);
 		// Получаем общее количество байтов
@@ -433,8 +435,6 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 				if(static_cast <size_t> (bytes) <= size){
 					// Бинарные данные маски
 					u_char mask[4];
-					// Флаг определения качества полученного фрейма
-					bool quality = true;
 					// Если маска требуется, маскируем данные
 					if(head.mask){
 						// Считываем ключ маски
@@ -453,28 +453,36 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 					}
 					// Увеличиваем размер смещения
 					head.frame += head.payload;
-					// Проверяем состояние флагов RSV2 и RSV3
-					if(head.rsv[1] || head.rsv[2])
+					// Если размер не установлен
+					if(head.payload == 0)
 						// Устанавливаем статус битого фрейма
-						quality = false;
+						head.state = state_t::BAD;
+					// Проверяем состояние флагов RSV2 и RSV3
+					else if(head.rsv[1] || head.rsv[2])
+						// Устанавливаем статус битого фрейма
+						head.state = state_t::BAD;
 					// Если флаг компресси включён а данные пришли не сжатые
 					else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) || ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
 						// Устанавливаем статус битого фрейма
-						quality = false;
+						head.state = state_t::BAD;
 					// Если опкоды требуют финального фрейма
 					else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))
 						// Устанавливаем статус битого фрейма
-						quality = false;
+						head.state = state_t::BAD;
 					// Если фрейм испорчен
-					if(!quality)
+					if(head.state == state_t::BAD){
 						// Очищаем результирующий буфер
-						result.clear();					
-					// Устанавливаем статус фрейма
-					head.state = (quality ? state_t::GOOD : state_t::BAD);
+						result.clear();
+						// Выполняем очистку выделенной памяти
+						vector <char> ().swap(result);
+					}
 				}
 			// Устанавливаем статус битого фрейма
 			} else head.state = state_t::BAD;
-		}
+		// Если размер данных уже слишком большой, выводим сообщение об ошибке
+		} else if((size > sizeof(head_t)) && (head.payload > MAX_FRAME_SIZE))
+			// Устанавливаем статус битого фрейма
+			head.state = state_t::BAD;
 	}
 	// Выводим результат
 	return result;

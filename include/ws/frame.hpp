@@ -113,6 +113,9 @@ namespace awh {
 		 * Frame Класс для работы с фреймом WebSocket
 		 */
 		typedef class AWHSHARED_EXPORT Frame {
+			private:
+				// Устанавливаем максимальную версию фрейма
+				static constexpr uint32_t MAX_FRAME_SIZE = std::numeric_limits <uint32_t>::max();
 			public:
 				/**
 				 * Состояние фрейма
@@ -137,9 +140,9 @@ namespace awh {
 				};
 			public:
 				/**
-				 * Head Структура шапки
+				 * Header Структура шапки
 				 */
-				typedef struct Head {
+				typedef struct Header {
 					bool fin;         // Фрейм является финальным
 					bool mask;        // Маска протокола
 					bool rsv[3];      // Расширения протокола
@@ -149,14 +152,14 @@ namespace awh {
 					uint64_t payload; // Размер полезной нагрузки
 					opcode_t optcode; // Опциональные коды
 					/**
-					 * Head Конструктор
+					 * Header Конструктор
 					 * @param fin  флаг финального фрейма
 					 * @param mask флаг маскирования сообщения
 					 */
-					Head(const bool fin = true, const bool mask = true) noexcept :
-					fin(fin), mask(mask), rsv{false, false, false},
-					size(0), state(state_t::NONE), frame(0),
-					payload(0), optcode(opcode_t::TEXT) {}
+					Header(const bool fin = true, const bool mask = true) noexcept :
+					 fin(fin), mask(mask), rsv{false, false, false},
+					 size(0), state(state_t::NONE), frame(0),
+					 payload(0), optcode(opcode_t::TEXT) {}
 				} __attribute__((packed)) head_t;
 			private:
 				// Создаём объект фреймворка
