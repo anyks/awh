@@ -888,6 +888,26 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			# Переходим в каталог сборки
 			cd "$src" || exit 1
 
+			# Если операционной системой является Linux или Windows
+			if [[ $OS = "Linux" ]] || [[ $OS = "Windows" ]]; then
+				# Выполняем патчинг библиотеки для дальнейшей сборки
+				sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_encode.c"
+				sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_decode.c"
+			# Если операционной системой является MacOS X или FreeBSD
+			elif [[ $OS = "Darwin" ]] || [[ $OS = "FreeBSD" ]]; then
+				# Выполняем патчинг библиотеки для дальнейшей сборки
+				sed -i -e 's!#ifdef HAVE_SYMVER_ALIAS_SUPPORT!#if 0!' "$src/lib/puny_encode.c"
+				sed -i -e 's!#ifdef HAVE_SYMVER_ALIAS_SUPPORT!#if 0!' "$src/lib/puny_decode.c"
+
+				# Удаляем временные паразитные файлы
+				if [ -f "$src/lib/puny_encode.c-e" ]; then
+					rm "$src/lib/puny_encode.c-e"
+				fi
+				if [ -f "$src/lib/puny_decode.c-e" ]; then
+					rm "$src/lib/puny_decode.c-e"
+				fi
+			fi
+
 			# Выполняем конфигурацию модуля
 			./configure \
 			 --prefix=$PREFIX \
