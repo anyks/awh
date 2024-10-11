@@ -179,15 +179,17 @@ namespace awh {
 			 * Payload Структура полезной нагрузки
 			 */
 			typedef struct Payload {
-				int32_t sid;                  // Идентификатор потока
-				flag_t flag;                  // Флаг передаваемого потока по сети
-				size_t size;                  // Размер буфера
-				size_t offset;                // Смещение в бинарном буфере
-				unique_ptr <uint8_t []> data; // Данные буфера
+				int32_t sid;                         // Идентификатор потока
+				flag_t flag;                         // Флаг передаваемого потока по сети
+				size_t size;                         // Размер буфера
+				size_t offset;                       // Смещение в бинарном буфере
+				std::unique_ptr <uint8_t []> buffer; // Данные буфера
 				/**
 				 * Payload Конструктор
 				 */
-				Payload() noexcept : sid(0), flag(flag_t::NONE), size(0), offset(0), data(nullptr) {}
+				Payload() noexcept :
+				 sid(0), flag(flag_t::NONE),
+				 size(0), offset(0), buffer(nullptr) {}
 			} payload_t;
 		private:
 			// Флаг требования закрыть подключение
@@ -207,11 +209,11 @@ namespace awh {
 			// Список доступных источников для подключения
 			vector <string> _origins;
 		private:
-			// Буферы отправляемой полезной нагрузки
-			map <int32_t, queue <payload_t>> _payloads;
-		private:
 			// Список отправляемых альтернативных сервисов
-			unordered_multimap <string, string> _altsvc;
+			std::unordered_multimap <string, string> _altsvc;
+		private:
+			// Буферы отправляемой полезной нагрузки
+			std::map <int32_t, std::queue <payload_t>> _payloads;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;

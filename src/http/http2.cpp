@@ -761,7 +761,7 @@ int32_t awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const 
 				// Выходим из функции
 				return rv;
 			// Выполняем обновление размеров окна
-			} else self->windowUpdate(sid, size);
+			}// else self->windowUpdate(sid, size); // Система делает это сама когда потребуется
 		}
 	}
 	// Выводим значение по умолчанию
@@ -889,7 +889,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 			// Если на принимаемой стороне достаточно памяти для получения отправляемых данных
 			if(bytes <= (size - offset)){
 				// Выполняем копирование всего буфера полезной нагрузки
-				::memcpy(buffer + offset, i->second.front().data.get() + i->second.front().offset, bytes);
+				::memcpy(buffer + offset, i->second.front().buffer.get() + i->second.front().offset, bytes);
 				// Увеличиваем смещение в бинарном буфере
 				offset += bytes;
 				// Удаляем отправленное сообщение из очереди
@@ -897,7 +897,7 @@ ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t *
 			// Если в буфере ещё осталось чуть-чуть данных
 			} else if((size - offset) > 0) {
 				// Выполняем копирование всего буфера полезной нагрузки
-				::memcpy(buffer + offset, i->second.front().data.get() + i->second.front().offset, (size - offset));
+				::memcpy(buffer + offset, i->second.front().buffer.get() + i->second.front().offset, (size - offset));
 				// Увеличиваем смещение в бинарном буфере полезной нагрузки
 				i->second.front().offset += (size - offset);
 				// Увеличиваем смещение в бинарном буфере
@@ -932,7 +932,7 @@ size_t awh::Http2::available(const int32_t sid) const noexcept {
 		// Если количество байт получены положительные
 		if((sessionBytes > 0) && (streamBytes > 0))
 			// Определяем минимальное количество байт которые возможно отправить
-			result = static_cast <size_t> (min(sessionBytes, streamBytes));
+			result = static_cast <size_t> (::min(sessionBytes, streamBytes));
 		// Если количество байт достуных для отправки в поток получены отрицательные
 		else if((sessionBytes > 0) && (streamBytes <= 0))
 			// Устанавливаем количество доступных байт для отправки
@@ -1586,9 +1586,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Устанавливаем флаг передаваемого потока по сети
 				payload.flag = flag;
 				// Выполняем создание буфера данных
-				payload.data = unique_ptr <uint8_t []> (new uint8_t [size]);
+				payload.buffer = std::unique_ptr <uint8_t []> (new uint8_t [size]);
 				// Выполняем копирование буфера полезной нагрузки
-				::memcpy(payload.data.get(), buffer, size);
+				::memcpy(payload.buffer.get(), buffer, size);
 				// Ещем для указанного потока очередь полезной нагрузки
 				auto i = this->_payloads.find(id);
 				// Если для потока очередь полезной нагрузки получена
@@ -1615,8 +1615,20 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			if((nghttp2_session_want_read(this->_session) == 0) && (nghttp2_session_want_write(this->_session) == 0))
 				// Выполняем завершение работы
 				goto End;
-			// Выполняем отправку полезной нагрузки
-			this->submit(id, flag);
+			// Выполняем поиск указанного потока
+			auto i = this->_payloads.find(id);
+			// Если список полезной нагрузки получен
+			if((i != this->_payloads.end()) && !i->second.empty()){
+				// Выполняем перебор всех буферов данных для текущего потока
+				while(!i->second.empty()){
+					// Если на принимаемой стороне достаточно памяти для получения отправляемых данных
+					if(this->available(id) >= i->second.front().size)
+						// Выполняем отправку данных полезной нагрузки для указанного потока
+						this->submit(id, i->second.front().flag);
+					// Если данных не достаточно, выходим
+					else break;
+				}
+			}
 			// Выполняем вызов метода выполненного события
 			this->completed(event_t::SEND_DATA);
 			// Выводим результат
