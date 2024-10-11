@@ -43,7 +43,6 @@ if [ -n "$1" ]; then
 		clean_submodule "pcre2"
 		clean_submodule "openssl"
 		clean_submodule "nghttp2"
-		clean_submodule "jemalloc"
 
 		# Если операционная система не является Windows
 		if [[ ! $OS = "Windows" ]]; then
@@ -1234,73 +1233,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Если операцинная система не относится к MS Windows
-if [[ ! $OS = "Windows" ]]; then
-	# Сборка JeMalloc
-	src="$ROOT/submodules/jemalloc"
-	if [ ! -f "$src/.stamp_done" ]; then
-		printf "\n****** AWH JeMalloc ******\n"
-		cd "$src" || exit 1
-
-		# Версия JeMalloc
-		VER="5.3.0"
-
-		# Выполняем удаление предыдущей закаченной версии
-		git tag -d ${VER}
-		# Закачиваем все изменения
-		git fetch --all
-		# Закачиваем все теги
-		git fetch --all --tags
-		# Выполняем жесткое переключение на master
-		git reset --hard origin/master
-		# Переключаемся на master
-		git checkout master
-		# Выполняем обновление данных
-		git pull origin master
-		# Удаляем старую ветку
-		git branch -D v${VER}-branch
-		# Выполняем переключение на указанную версию
-		git checkout -b v${VER}-branch ${VER}
-
-		# Подготавливаем сборочные данные
-		./autogen.sh || exit 1
-		# Выполняем конфигурацию исходников
-		./configure \
-		--prefix="$PREFIX" \
-		--enable-doc=no \
-		--enable-shared=no \
-		--enable-static=yes
-
-		# Устанавливаем систему сборки
-		if [[ $OS = "FreeBSD" ]]; then
-			# Выполняем сборку на всех логических ядрах
-			gmake -j"$numproc" || exit 1
-			# Выполняем установку проекта
-			gmake install || exit 1
-		else
-			# Выполняем сборку на всех логических ядрах
-			make -j"$numproc" || exit 1
-			# Выполняем установку проекта
-			make install || exit 1
-		fi
-
-		# Выполняем конфигурацию проекта
-		if [[ $OS = "Windows" ]]; then
-			# Производим корректировку названий библиотек
-			for i in $(ls "$PREFIX/lib" | grep "jemalloc.*\.lib$");
-			do
-				LIBNAME="${i%.*}"
-				echo "Move \"$PREFIX/lib/$i\" to \"$PREFIX/lib/lib$LIBNAME.a\""
-				mv "$PREFIX/lib/$i" "$PREFIX/lib/lib$LIBNAME.a" || exit 1
-			done
-		fi
-
-		# Помечаем флагом, что сборка и установка произведена
-		touch "$src/.stamp_done"
-		cd "$ROOT" || exit 1
-	fi
-fi
-
 # Сборка NgHttp2
 src="$ROOT/submodules/nghttp2"
 if [ ! -f "$src/.stamp_done" ]; then
@@ -1394,8 +1326,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-		 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
-		 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
 		.. || exit 1
 	fi
 

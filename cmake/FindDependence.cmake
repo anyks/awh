@@ -18,11 +18,6 @@ find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_D
 find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/pcre2 NO_DEFAULT_PATH)
 find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp2 NO_DEFAULT_PATH)
 
-# Если операцинная система не относится к MS Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    find_path(JEMALLOC_INCLUDE_DIR NAMES jemalloc.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/jemalloc NO_DEFAULT_PATH)
-endif()
-
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     find_path(IDN2_INCLUDE_DIR NAMES idn2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/idn2 NO_DEFAULT_PATH)
@@ -49,7 +44,6 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         BROTLI_INCLUDE_DECODE_DIR
         OPENSSL_INCLUDE_DIR
         PCRE_INCLUDE_DIR
-        JEMALLOC_INCLUDE_DIR
         NGHTTP2_INCLUDE_DIR
         IDN2_INCLUDE_DIR
         ICONV_INCLUDE_DIR
@@ -66,7 +60,6 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         ${BROTLI_INCLUDE_ENCODE_DIR}
         ${OPENSSL_INCLUDE_DIR}
         ${PCRE_INCLUDE_DIR}
-        ${JEMALLOC_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
         ${IDN2_INCLUDE_DIR}
         ${ICONV_INCLUDE_DIR}
@@ -118,7 +111,6 @@ else()
         BROTLI_INCLUDE_DECODE_DIR
         OPENSSL_INCLUDE_DIR
         PCRE_INCLUDE_DIR
-        JEMALLOC_INCLUDE_DIR
         NGHTTP2_INCLUDE_DIR
 
         FAIL_MESSAGE "Missing Dependence. Run ./build_third_party.sh first"
@@ -133,7 +125,6 @@ else()
         ${BROTLI_INCLUDE_ENCODE_DIR}
         ${OPENSSL_INCLUDE_DIR}
         ${PCRE_INCLUDE_DIR}
-        ${JEMALLOC_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
     )
 endif()
@@ -148,8 +139,3 @@ install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/inc
 install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-
-# Если операцинная система не относится к MS Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    install(DIRECTORY "${JEMALLOC_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-endif()

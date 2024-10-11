@@ -145,7 +145,6 @@ if(Dependence_FOUND)
 
     # Если операцинная система не относится к MS Windows
     if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        message(STATUS "JeMalloc include dir found: " ${JEMALLOC_INCLUDE_DIR})
         # Сборка модуля AWH_IDN
         if(CMAKE_BUILD_IDN)
             message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})

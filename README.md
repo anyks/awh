@@ -25,7 +25,6 @@
 - [CityHash](https://github.com/google/cityhash)
 - [LibIconv](https://www.gnu.org/software/libiconv)
 - [LibIdn2](https://www.gnu.org/software/libidn)
-- [JeMalloc](https://jemalloc.net)
 - [NgHttp2](https://nghttp2.org/documentation/)
 - [NLohmann::json](https://json.nlohmann.me)
 

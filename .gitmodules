@@ -10,9 +10,6 @@
 [submodule "submodules/nghttp2"]
 	path = submodules/nghttp2
 	url = https://github.com/nghttp2/nghttp2.git
-[submodule "submodules/jemalloc"]
-	path = submodules/jemalloc
-	url = https://github.com/jemalloc/jemalloc.git
 [submodule "submodules/pcre2"]
 	path = submodules/pcre2
 	url = https://github.com/PCRE2Project/pcre2.git
