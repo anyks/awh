@@ -97,7 +97,7 @@ void awh::Timer::event(const uint16_t tid, const SOCKET fd, const base_t::event_
  */
 void awh::Timer::clear() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
 		// Выполняем перебор всех активных брокеров
@@ -119,7 +119,7 @@ void awh::Timer::clear() noexcept {
  */
 void awh::Timer::clear(const uint16_t tid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если функция обратного вызова существует
 	if(this->_callbacks.is(static_cast <uint64_t> (tid)))
 		// Выполняем удаление функции обратного вызова
@@ -151,7 +151,7 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 			// Получаем идентификатор таймера
 			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
+			auto ret = this->_brokers.emplace(tid, std::unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем время задержки таймера
@@ -196,7 +196,7 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			// Получаем идентификатор таймера
 			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
+			auto ret = this->_brokers.emplace(tid, std::unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем флаг персистентной работы

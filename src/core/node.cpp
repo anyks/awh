@@ -20,8 +20,8 @@
  */
 void awh::Node::remove() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock1(this->_mtx.main);
-	const lock_guard <recursive_mutex> lock2(this->_mtx.send);
+	const lock_guard <std::recursive_mutex> lock1(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock2(this->_mtx.send);
 	// Выполняем удаление всей схемы сети
 	this->_schemes.clear();
 	// Выполняем удаление списка брокеров подключения
@@ -39,8 +39,8 @@ void awh::Node::remove(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock1(this->_mtx.main);
-		const lock_guard <recursive_mutex> lock2(this->_mtx.send);
+		const lock_guard <std::recursive_mutex> lock1(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock2(this->_mtx.send);
 		// Выполняем поиск идентификатора схемы сети
 		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден
@@ -69,8 +69,8 @@ void awh::Node::remove(const uint64_t bid) noexcept {
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock1(this->_mtx.main);
-		const lock_guard <recursive_mutex> lock2(this->_mtx.send);
+		const lock_guard <std::recursive_mutex> lock1(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock2(this->_mtx.send);
 		// Выполняем поиск брокера подключения
 		auto i = this->_brokers.find(bid);
 		// Если брокер подключения найден
@@ -140,7 +140,7 @@ uint16_t awh::Node::sid(const uint64_t bid) const noexcept {
  */
 void awh::Node::available(const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.send);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.send);
 	// Ещем для указанного потока очередь полезной нагрузки
 	auto i = this->_payloads.find(bid);
 	// Если для потока очередь полезной нагрузки получена
@@ -210,7 +210,7 @@ void awh::Node::createBuffer(const uint64_t bid) noexcept {
 					// Устанавливаем размер буфера данных
 					broker->_payload.size = size;
 					// Выполняем создание буфера данных
-					broker->_payload.data = unique_ptr <char []> (new char [size]);
+					broker->_payload.data = std::unique_ptr <char []> (new char [size]);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -265,7 +265,7 @@ void awh::Node::emplace(const char * buffer, const size_t size, const uint64_t b
 				// Устанавливаем размер буфера данных
 				payload.size = this->_payloadSize;
 				// Выполняем создание буфера данных
-				payload.data = unique_ptr <char []> (new char [this->_payloadSize]);
+				payload.data = std::unique_ptr <char []> (new char [this->_payloadSize]);
 				// Получаем размер данных который возможно скопировать
 				actual = ((this->_payloadSize >= (size - offset)) ? (size - offset) : this->_payloadSize);
 				// Выполняем копирование буфера полезной нагрузки
@@ -313,7 +313,7 @@ uint16_t awh::Node::scheme(const scheme_t * scheme) noexcept {
 	// Если схема сети передана и URL адрес существует
 	if(scheme != nullptr){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Получаем объект схемы сети
 		scheme_t * shm = const_cast <scheme_t *> (scheme);
 		// Устанавливаем идентификатор схемы сети
@@ -330,7 +330,7 @@ uint16_t awh::Node::scheme(const scheme_t * scheme) noexcept {
  */
 void awh::Node::ssl(const ssl_t & ssl) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку флага проверки домена
 	this->_engine.verify(ssl.verify);
 	// Выполняем установку алгоритмов шифрования
@@ -348,7 +348,7 @@ void awh::Node::ssl(const ssl_t & ssl) noexcept {
  */
 void awh::Node::resolver(const dns_t * dns) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем DNS-резолвер
 	this->_dns = dns;
 }
@@ -359,7 +359,7 @@ void awh::Node::resolver(const dns_t * dns) noexcept {
  */
 bool awh::Node::sockname(const string & name) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -394,7 +394,7 @@ bool awh::Node::sockname(const string & name) noexcept {
  */
 bool awh::Node::sockpath(const string & path) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -452,7 +452,7 @@ awh::engine_t::proto_t awh::Node::proto(const uint64_t bid) const noexcept {
  */
 void awh::Node::proto(const engine_t::proto_t proto) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку поддерживаемого протокола подключения
 	this->_settings.proto = proto;
 }
@@ -470,7 +470,7 @@ awh::scheme_t::sonet_t awh::Node::sonet() const noexcept {
  */
 void awh::Node::sonet(const scheme_t::sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип сокета
 	this->_settings.sonet = sonet;
 	/**
@@ -520,7 +520,7 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx.main);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 			// Получаем адрес файла unix-сокет
 			const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 			// Если сокет в файловой системе уже существует, удаляем его
@@ -546,7 +546,7 @@ awh::Node::sending_t awh::Node::sending() const noexcept {
  */
 void awh::Node::sending(const sending_t sending) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку режима отправки сообщений
 	this->_sending = sending;
 }
@@ -564,7 +564,7 @@ size_t awh::Node::memoryAvailableSize() const noexcept {
  */
 void awh::Node::memoryAvailableSize(const size_t size) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров
 	this->_memoryAvailableSize = size;
 }
@@ -597,7 +597,7 @@ size_t awh::Node::brokerAvailableSize(const uint64_t bid) const noexcept {
  */
 void awh::Node::brokerAvailableSize(const size_t size) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку размера хранимой полезной нагрузки для одного брокера
 	this->_brokerAvailableSize = size;
 }
@@ -609,8 +609,8 @@ void awh::Node::brokerAvailableSize(const size_t size) noexcept {
  */
 bool awh::Node::cork(const uint64_t bid, const engine_t::mode_t mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock1(this->_mtx.main);
-	const lock_guard <recursive_mutex> lock2(this->_mtx.send);
+	const lock_guard <std::recursive_mutex> lock1(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock2(this->_mtx.send);
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -631,8 +631,8 @@ bool awh::Node::cork(const uint64_t bid, const engine_t::mode_t mode) noexcept {
  */
 bool awh::Node::nodelay(const uint64_t bid, const engine_t::mode_t mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock1(this->_mtx.main);
-	const lock_guard <recursive_mutex> lock2(this->_mtx.send);
+	const lock_guard <std::recursive_mutex> lock1(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock2(this->_mtx.send);
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
 		// Создаём бъект активного брокера подключения
@@ -656,7 +656,7 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 	// Результат работы функции
 	bool result = false;
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.send);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.send);
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid) && (buffer != nullptr) && (size > 0)){
 		// Флаг недоступности свободной памяти в буфере обмена данными
@@ -747,7 +747,7 @@ void awh::Node::events(const uint64_t bid, const awh::scheme_t::mode_t mode, con
 	// Если идентификатор брокера подключений существует
 	if((bid > 0) && this->has(bid)){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Выполняем активацию/деактивацию метода события сокета
@@ -784,7 +784,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx.main);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 			// Получаем адрес файла unix-сокет
 			const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 			// Если сокет в файловой системе уже существует, удаляем его
@@ -798,7 +798,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 	// Если IP-адреса переданы
 	if(!ips.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Если объект DNS-резолвера установлен
 		if(this->_dns != nullptr)
 			// Выполняем установку параметров сети для DNS-резолвера

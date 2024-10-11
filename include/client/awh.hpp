@@ -48,6 +48,9 @@ namespace awh {
 				// Объект работы с протоколом HTTP/2
 				client::http2_t _http;
 			private:
+				// Список доступных компрессоров
+				vector <awh::http_t::compressor_t> _compressors;
+			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
 				// Объект работы с логами

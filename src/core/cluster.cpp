@@ -91,7 +91,7 @@ bool awh::cluster::Core::master() const noexcept {
  * pids Метод получения списка дочерних процессов
  * @return список дочерних процессов
  */
-set <pid_t> awh::cluster::Core::pids() const noexcept {
+std::set <pid_t> awh::cluster::Core::pids() const noexcept {
 	// Выполняем извлечение списка доступных идентификаторов процессов
 	return this->_cluster.pids(0);
 }

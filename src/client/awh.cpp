@@ -121,8 +121,12 @@ void awh::client::AWH::pause() noexcept {
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::client::AWH::init(const string & dest, const vector <awh::http_t::compressor_t> & compressors) noexcept {
+	// Если список доступных компрессоров пустой
+	if(compressors.empty())
+		// Выполняем инициализацию клиента с ранее установленными компрессорами
+		this->_http.init(dest, this->_compressors);
 	// Выполняем инициализацию клиента
-	this->_http.init(dest, compressors);
+	else this->_http.init(dest, compressors);
 }
 /**
  * GET Метод запроса в формате HTTP методом GET
@@ -133,8 +137,21 @@ void awh::client::AWH::init(const string & dest, const vector <awh::http_t::comp
 vector <char> awh::client::AWH::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result;
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::GET, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::GET, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH GET: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -147,8 +164,21 @@ vector <char> awh::client::AWH::GET(const uri_t::url_t & url, const unordered_mu
 vector <char> awh::client::AWH::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result;
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::DEL, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::DEL, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH DEL: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -160,14 +190,41 @@ vector <char> awh::client::AWH::DEL(const uri_t::url_t & url, const unordered_mu
  * @return        результат запроса
  */
 vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Получаем тело запроса
-	const string body = entity.dump();
-	// Устанавливаем тепло запроса
-	vector <char> result(body.begin(), body.end());
-	// Добавляем заголовок типа контента
-	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Результат работы функции
+	vector <char> result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Получаем тело запроса
+		const string body = entity.dump();
+		// Устанавливаем тепло запроса
+		result.assign(body.begin(), body.end());
+		// Если заголовки переданы заполненными
+		if(!headers.empty()){
+			// Выполняем перебор всех установленных заголовков
+			for(auto i = headers.begin(); i != headers.end();){
+				// Если заголовок соответствует типу контента
+				if(this->_fmk->compare("Content-Type", i->second))
+					// Выполняем удаление записи
+					i = const_cast <unordered_multimap <string, string> &> (headers).erase(i);
+				// Продолжаем перебор дальше
+				else ++i;
+			}
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> &> (headers).emplace("Content-Type", "application/json");
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH PUT: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -180,9 +237,22 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const json & entit
  */
 vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
-	vector <char> result = std::forward <const vector <char>> (entity);
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	vector <char> result = entity;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH PUT: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -194,25 +264,54 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const vector <char
  * @return        результат запроса
  */
 vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Тело в формате X-WWW-Form-Urlencoded
-	string body = "";
-	// Переходим по всему списку тела запроса
-	for(auto & param : entity){
-		// Есди данные уже набраны
-		if(!body.empty()) body.append("&");
-		// Добавляем в список набор параметров
-		body.append(this->_uri.encode(param.first));
-		// Добавляем разделитель
-		body.append("=");
-		// Добавляем значение
-		body.append(this->_uri.encode(param.second));
-	}
 	// Устанавливаем тепло запроса
-	vector <char> result(body.begin(), body.end());
-	// Добавляем заголовок типа контента
-	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	vector <char> result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Тело в формате X-WWW-Form-Urlencoded
+		string body = "";
+		// Переходим по всему списку тела запроса
+		for(auto & param : entity){
+			// Есди данные уже набраны
+			if(!body.empty())
+				// Добавляем разделитель
+				body.append("&");
+			// Добавляем в список набор параметров
+			body.append(this->_uri.encode(param.first));
+			// Добавляем разделитель
+			body.append("=");
+			// Добавляем значение
+			body.append(this->_uri.encode(param.second));
+		}
+		// Устанавливаем тепло запроса
+		result.assign(body.begin(), body.end());
+		// Если заголовки переданы заполненными
+		if(!headers.empty()){
+			// Выполняем перебор всех установленных заголовков
+			for(auto i = headers.begin(); i != headers.end();){
+				// Если заголовок соответствует типу контента
+				if(this->_fmk->compare("Content-Type", i->second))
+					// Выполняем удаление записи
+					i = const_cast <unordered_multimap <string, string> &> (headers).erase(i);
+				// Продолжаем перебор дальше
+				else ++i;
+			}
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> &> (headers).emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH PUT: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -224,14 +323,41 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const unordered_mu
  * @return        результат запроса
  */
 vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Получаем тело запроса
-	const string body = entity.dump();
 	// Устанавливаем тепло запроса
-	vector <char> result(body.begin(), body.end());
-	// Добавляем заголовок типа контента
-	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	vector <char> result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Получаем тело запроса
+		const string body = entity.dump();
+		// Устанавливаем тепло запроса
+		result.assign(body.begin(), body.end());
+		// Если заголовки переданы заполненными
+		if(!headers.empty()){
+			// Выполняем перебор всех установленных заголовков
+			for(auto i = headers.begin(); i != headers.end();){
+				// Если заголовок соответствует типу контента
+				if(this->_fmk->compare("Content-Type", i->second))
+					// Выполняем удаление записи
+					i = const_cast <unordered_multimap <string, string> &> (headers).erase(i);
+				// Продолжаем перебор дальше
+				else ++i;
+			}
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> &> (headers).emplace("Content-Type", "application/json");
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH POST: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -244,9 +370,22 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const json & enti
  */
 vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
-	vector <char> result = std::forward <const vector <char>> (entity);
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	vector <char> result = entity;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH POST: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -258,25 +397,54 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const vector <cha
  * @return        результат запроса
  */
 vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Тело в формате X-WWW-Form-Urlencoded
-	string body = "";
-	// Переходим по всему списку тела запроса
-	for(auto & param : entity){
-		// Есди данные уже набраны
-		if(!body.empty()) body.append("&");
-		// Добавляем в список набор параметров
-		body.append(this->_uri.encode(param.first));
-		// Добавляем разделитель
-		body.append("=");
-		// Добавляем значение
-		body.append(this->_uri.encode(param.second));
-	}
 	// Устанавливаем тепло запроса
-	vector <char> result(body.begin(), body.end());
-	// Добавляем заголовок типа контента
-	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	vector <char> result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Тело в формате X-WWW-Form-Urlencoded
+		string body = "";
+		// Переходим по всему списку тела запроса
+		for(auto & param : entity){
+			// Есди данные уже набраны
+			if(!body.empty())
+				// Добавляем разделитель
+				body.append("&");
+			// Добавляем в список набор параметров
+			body.append(this->_uri.encode(param.first));
+			// Добавляем разделитель
+			body.append("=");
+			// Добавляем значение
+			body.append(this->_uri.encode(param.second));
+		}
+		// Устанавливаем тепло запроса
+		result.assign(body.begin(), body.end());
+		// Если заголовки переданы заполненными
+		if(!headers.empty()){
+			// Выполняем перебор всех установленных заголовков
+			for(auto i = headers.begin(); i != headers.end();){
+				// Если заголовок соответствует типу контента
+				if(this->_fmk->compare("Content-Type", i->second))
+					// Выполняем удаление записи
+					i = const_cast <unordered_multimap <string, string> &> (headers).erase(i);
+				// Продолжаем перебор дальше
+				else ++i;
+			}
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> &> (headers).emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH POST: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -288,14 +456,41 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const unordered_m
  * @return        результат запроса
  */
 vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Получаем тело запроса
-	const string body = entity.dump();
 	// Устанавливаем тепло запроса
-	vector <char> result(body.begin(), body.end());
-	// Добавляем заголовок типа контента
-	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	vector <char> result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Получаем тело запроса
+		const string body = entity.dump();
+		// Устанавливаем тепло запроса
+		result.assign(body.begin(), body.end());
+		// Если заголовки переданы заполненными
+		if(!headers.empty()){
+			// Выполняем перебор всех установленных заголовков
+			for(auto i = headers.begin(); i != headers.end();){
+				// Если заголовок соответствует типу контента
+				if(this->_fmk->compare("Content-Type", i->second))
+					// Выполняем удаление записи
+					i = const_cast <unordered_multimap <string, string> &> (headers).erase(i);
+				// Продолжаем перебор дальше
+				else ++i;
+			}
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> &> (headers).emplace("Content-Type", "application/json");
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH PATCH: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -308,9 +503,22 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const json & ent
  */
 vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
-	vector <char> result = std::forward <const vector <char>> (entity);
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	vector <char> result = entity;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH PATCH: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -322,25 +530,54 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const vector <ch
  * @return        результат запроса
  */
 vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Тело в формате X-WWW-Form-Urlencoded
-	string body = "";
-	// Переходим по всему списку тела запроса
-	for(auto & param : entity){
-		// Есди данные уже набраны
-		if(!body.empty()) body.append("&");
-		// Добавляем в список набор параметров
-		body.append(this->_uri.encode(param.first));
-		// Добавляем разделитель
-		body.append("=");
-		// Добавляем значение
-		body.append(this->_uri.encode(param.second));
-	}
 	// Устанавливаем тепло запроса
-	vector <char> result(body.begin(), body.end());
-	// Добавляем заголовок типа контента
-	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	vector <char> result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Тело в формате X-WWW-Form-Urlencoded
+		string body = "";
+		// Переходим по всему списку тела запроса
+		for(auto & param : entity){
+			// Есди данные уже набраны
+			if(!body.empty())
+				// Добавляем разделитель
+				body.append("&");
+			// Добавляем в список набор параметров
+			body.append(this->_uri.encode(param.first));
+			// Добавляем разделитель
+			body.append("=");
+			// Добавляем значение
+			body.append(this->_uri.encode(param.second));
+		}
+		// Устанавливаем тепло запроса
+		result.assign(body.begin(), body.end());
+		// Если заголовки переданы заполненными
+		if(!headers.empty()){
+			// Выполняем перебор всех установленных заголовков
+			for(auto i = headers.begin(); i != headers.end();){
+				// Если заголовок соответствует типу контента
+				if(this->_fmk->compare("Content-Type", i->second))
+					// Выполняем удаление записи
+					i = const_cast <unordered_multimap <string, string> &> (headers).erase(i);
+				// Продолжаем перебор дальше
+				else ++i;
+			}
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> &> (headers).emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH PATCH: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -352,11 +589,24 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const unordered_
  */
 unordered_multimap <string, string> awh::client::AWH::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
-	vector <char> entity;
-	// Результат работы функции
-	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::HEAD, url, entity, result);
+	unordered_multimap <string, string> result = headers;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Устанавливаем тепло запроса
+		vector <char> entity;
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::HEAD, url, entity, result);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH HEAD: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -368,11 +618,24 @@ unordered_multimap <string, string> awh::client::AWH::HEAD(const uri_t::url_t & 
  */
 unordered_multimap <string, string> awh::client::AWH::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
-	vector <char> entity;
-	// Результат работы функции
-	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::TRACE, url, entity, result);
+	unordered_multimap <string, string> result = headers;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Устанавливаем тепло запроса
+		vector <char> entity;
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::TRACE, url, entity, result);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH TRACE: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -384,11 +647,24 @@ unordered_multimap <string, string> awh::client::AWH::TRACE(const uri_t::url_t &
  */
 unordered_multimap <string, string> awh::client::AWH::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
-	vector <char> entity;
-	// Результат работы функции
-	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
-	// Выполняем HTTP-запрос на сервер
-	this->REQUEST(awh::web_t::method_t::OPTIONS, url, entity, result);
+	unordered_multimap <string, string> result = headers;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Устанавливаем тепло запроса
+		vector <char> entity;
+		// Выполняем HTTP-запрос на сервер
+		this->REQUEST(awh::web_t::method_t::OPTIONS, url, entity, result);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выполняем очистку блока реузльтата
+		result.clear();
+		// Выводим сообщение об ошибке
+		this->_log->print("AWH OPTIONS: %s", log_t::flag_t::CRITICAL, error.what());
+	}
 	// Выводим результат
 	return result;
 }
@@ -519,13 +795,17 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			// Выполняем остановку
 			this->stop();
 		});
-		// Выполняем инициализацию подключения
-		this->init(this->_uri.origin(url), {
-			awh::http_t::compressor_t::ZSTD,
-			awh::http_t::compressor_t::BROTLI,
-			awh::http_t::compressor_t::GZIP,
-			awh::http_t::compressor_t::DEFLATE
-		});
+		// Если список доступных компрессоров пустой
+		if(this->_compressors.empty()){
+			// Выполняем инициализацию подключения
+			this->init(this->_uri.origin(url), {
+				awh::http_t::compressor_t::ZSTD,
+				awh::http_t::compressor_t::BROTLI,
+				awh::http_t::compressor_t::GZIP,
+				awh::http_t::compressor_t::DEFLATE
+			});
+		// Выполняем инициализацию клиента
+		} else this->init(this->_uri.origin(url), this->_compressors);
 		// Выполняем запуск работы
 		this->start();
 	}
@@ -695,8 +975,10 @@ void awh::client::AWH::user(const string & login, const string & password) noexc
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::client::AWH::compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept {
+	// Выполняем установку списка доступных компрессоров
+	this->_compressors = compressors;
 	// Выполняем установку списка поддерживаемых компрессоров
-	this->_http.compressors(compressors);
+	this->_http.compressors(this->_compressors);
 }
 /**
  * keepAlive Метод установки жизни подключения

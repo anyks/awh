@@ -25,11 +25,11 @@ static awh::base_t * EventBase = nullptr;
  */
 void awh::Core::Dispatch::kick() noexcept {
 	// Если база событий проинициализированна
-	if(this->_init){
+	if(this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выполняем остановку всех событий
-		this->_base->kick();
+		EventBase->kick();
 	}
 }
 /**
@@ -37,13 +37,13 @@ void awh::Core::Dispatch::kick() noexcept {
  */
 void awh::Core::Dispatch::stop() noexcept {
 	// Если чтение базы событий уже началось
-	if(this->_work && this->_init){
+	if(this->_work && this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Снимаем флаг работы модуля
 		this->_work = !this->_work;
 		// Выполняем остановку базы событий
-		this->_base->stop();
+		EventBase->stop();
 	// Если модуль не инициализирован
 	} else if(!this->_init) {
 		// Если функция обратного вызова установлена
@@ -59,7 +59,7 @@ void awh::Core::Dispatch::start() noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.lock();
 	// Если чтение базы событий ещё не началось
-	if(!this->_work && this->_init){
+	if(!this->_work && this->_init && (EventBase != nullptr)){
 		// Устанавливаем флаг работы модуля
 		this->_work = !this->_work;
 		// Выполняем разблокировку потока
@@ -69,7 +69,7 @@ void awh::Core::Dispatch::start() noexcept {
 			// Выполняем запуск функции активации базы событий
 			this->_launching(true, true);
 		// Выполняем запуск базы событий
-		this->_base->start();
+		EventBase->start();
 		// Если функция обратного вызова установлена
 		if(this->_closedown != nullptr)
 			// Выполняем остановку функции активации базы событий
@@ -96,17 +96,17 @@ void awh::Core::Dispatch::rebase() noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Если работа уже запущена
 			if(this->_work)
 				// Выполняем блокировку чтения данных
 				this->_init = this->_virt;
 			// Если база событий уже создана
-			if(this->_base != nullptr)
+			if(EventBase != nullptr)
 				// Выполняем пересоздание базы событий
-				this->_base->rebase();
+				EventBase->rebase();
 			// Создаем новую базу событий
-			else this->_base = EventBase = new base_t(this->_fmk, this->_log);
+			else EventBase = new base_t(this->_fmk, this->_log);
 			// Выполняем разблокировку чтения данных
 			this->_init = !this->_virt;
 		/**
@@ -131,17 +131,17 @@ void awh::Core::Dispatch::reinit() noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Если работа уже запущена
 			if(this->_work)
 				// Выполняем блокировку чтения данных
 				this->_init = this->_virt;
 			// Если база событий уже создана
-			if(this->_base != nullptr)
+			if(EventBase != nullptr)
 				// Удаляем объект базы событий
-				delete this->_base;
+				delete EventBase;
 			// Создаем новую базу событий
-			this->_base = EventBase = new base_t(this->_fmk, this->_log);
+			EventBase = new base_t(this->_fmk, this->_log);
 			// Выполняем разблокировку чтения данных
 			this->_init = !this->_virt;
 		/**
@@ -161,11 +161,11 @@ void awh::Core::Dispatch::reinit() noexcept {
  */
 void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 	// Если база событий проинициализированна
-	if(this->_init){
+	if(this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выполняем фриз получения данных
-		this->_base->freeze(mode);
+		EventBase->freeze(mode);
 	}
 }
 /**
@@ -173,12 +173,15 @@ void awh::Core::Dispatch::freeze(const bool mode) noexcept {
  * @param mode флаг активации
  */
 void awh::Core::Dispatch::easily(const bool mode) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Устанавливаем флаг активации простого чтения базы событий
-	this->_base->easily(mode);
-	// Выполняем остановку всех событий
-	this->_base->kick();
+	// Если база событий инициализированна
+	if(EventBase != nullptr){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		// Устанавливаем флаг активации простого чтения базы событий
+		EventBase->easily(mode);
+		// Выполняем остановку всех событий
+		EventBase->kick();
+	}
 }
 /**
  * frequency Метод установки частоты обновления базы событий
@@ -186,13 +189,13 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
  */
 void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
 	// Если база событий проинициализированна
-	if(this->_init){
+	if(this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Устанавливаем частоту обновления базы событий
-		this->_base->frequency(msec);
+		EventBase->frequency(msec);
 		// Выполняем остановку всех событий
-		this->_base->kick();
+		EventBase->kick();
 	}
 }
 /**
@@ -222,18 +225,11 @@ void awh::Core::Dispatch::on(const status_t status, function <void (const bool, 
  */
 awh::Core::Dispatch::Dispatch(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _work(false), _init(false), _virt(false),
- _launching(nullptr), _closedown(nullptr), _base(nullptr), _fmk(fmk), _log(log) {
+ _launching(nullptr), _closedown(nullptr), _fmk(fmk), _log(log) {
 	// Если база событий ещё не проинициализированна
-	if(EventBase == nullptr)
+	if(!(this->_virt = (EventBase != nullptr)))
 		// Выполняем инициализацию базы событий
 		this->reinit();
-	// Если база событий уже инициализированна
-	else {
-		// Отмечаем, что база событий является виртуальной
-		this->_virt = true;
-		// Выполняем установку базы событий
-		this->_base = EventBase;
-	}
 }
 /**
  * ~Dispatch Деструктор
@@ -242,13 +238,11 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 	// Если база событий проинициализированна
 	if(this->_init){
 		// Если база событий не является виртуальной
-		if(!this->_virt && (this->_base != nullptr)){
+		if(!this->_virt && (EventBase != nullptr)){
 			// Удаляем объект базы событий
-			delete this->_base;
+			delete EventBase;
 			// Зануляем глобальную базу событий
 			EventBase = nullptr;
-			// Выполняем зануление базы событий
-			this->_base = nullptr;
 		}
 	}
 }
@@ -340,7 +334,7 @@ void awh::Core::reinit() noexcept {
  */
 void awh::Core::bind(core_t * core) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
+	const lock_guard <std::recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она отличается от текущей базы событий
 	if((core != nullptr) && (core != this))
 		// Выполняем запуск управляющей функции
@@ -352,7 +346,7 @@ void awh::Core::bind(core_t * core) noexcept {
  */
 void awh::Core::unbind(core_t * core) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
+	const lock_guard <std::recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она совпадает с текущей базы событий
 	if((core != nullptr) && (core != this))
 		// Запускаем метод деактивации базы событий
@@ -410,7 +404,7 @@ void awh::Core::launching(const bool mode, const bool status) noexcept {
 	// Блокируем неиспользуемую переменную
 	(void) mode;
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.status);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.status);
 	// Если требуется изменить статус
 	if(status)
 		// Устанавливаем статус сетевого ядра
@@ -436,7 +430,7 @@ void awh::Core::closedown(const bool mode, const bool status) noexcept {
 	// Блокируем неиспользуемую переменную
 	(void) mode;
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.status);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.status);
 	// Если требуется изменить статус
 	if(status)
 		// Устанавливаем статус сетевого ядра
@@ -459,7 +453,7 @@ void awh::Core::closedown(const bool mode, const bool status) noexcept {
  */
 void awh::Core::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку функции обратного вызова при краше приложения
 	this->_callbacks.set("crash", callbacks);
 	// Выполняем установку функции обратного вызова на событие получения ошибки
@@ -481,7 +475,7 @@ bool awh::Core::working() const noexcept {
  */
 awh::base_t * awh::Core::eventBase() noexcept {
 	// Выполняем получение базы событий
-	return this->_dispatch._base;
+	return EventBase;
 }
 /**
  * easily Метод активации простого режима чтения базы событий
@@ -515,7 +509,7 @@ void awh::Core::freeze(const bool mode) noexcept {
  */
 void awh::Core::verbose(const bool mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем флаг запрета вывода информационных сообщений
 	this->_verb = mode;
 }
@@ -533,7 +527,7 @@ void awh::Core::frequency(const uint8_t msec) noexcept {
  */
 void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Если флаг активации отличается
 	if(this->_signals != mode){
 		// Определяем флаг активации
@@ -562,10 +556,13 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
  * @param sid идентификатор верхнеуровневого потока
  */
 void awh::Core::eraseUpstream(const uint64_t sid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Выполняем удаление верхнеуровневого потока
-	this->_dispatch._base->eraseUpstream(sid);
+	// Если база событий инициализированна
+	if(EventBase != nullptr){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
+		// Выполняем удаление верхнеуровневого потока
+		EventBase->eraseUpstream(sid);
+	}
 }
 /**
  * launchUpstream Метод запуска верхнеуровневого потока
@@ -573,10 +570,13 @@ void awh::Core::eraseUpstream(const uint64_t sid) noexcept {
  * @param tid идентификатор трансферной передачи
  */
 void awh::Core::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Выполняем запуск верхнеуровневого потока
-	this->_dispatch._base->launchUpstream(sid, tid);
+	// Если база событий инициализированна
+	if(EventBase != nullptr){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
+		// Выполняем запуск верхнеуровневого потока
+		EventBase->launchUpstream(sid, tid);
+	}
 }
 /**
  * emplaceUpstream Метод создания верхнеуровневого потока
@@ -584,10 +584,15 @@ void awh::Core::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept 
  * @return         идентификатор верхнеуровневого потока
  */
 uint64_t awh::Core::emplaceUpstream(function <void (const uint64_t)> callback) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Выполняем создание верхнеуровневого потока
-	return this->_dispatch._base->emplaceUpstream(callback);
+	// Если база событий инициализированна
+	if(EventBase != nullptr){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
+		// Выполняем создание верхнеуровневого потока
+		return EventBase->emplaceUpstream(callback);
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * Core Конструктор

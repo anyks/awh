@@ -18,9 +18,7 @@
 /**
  * Стандартные библиотеки
  */
-#include <map>
 #include <set>
-#include <vector>
 
 /**
  * Модули AWH
@@ -98,7 +96,7 @@ namespace awh {
 				 * pids Метод получения списка дочерних процессов
 				 * @return список дочерних процессов
 				 */
-				set <pid_t> pids() const noexcept;
+				std::set <pid_t> pids() const noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщение родительскому процессу

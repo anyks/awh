@@ -60,10 +60,10 @@ namespace awh {
 			fn_t _callbacks;
 		private:
 			// Мютекс для блокировки основного потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
 			// Список активных брокеров
-			map <uint16_t, unique_ptr <broker_t>> _brokers;
+			std::map <uint16_t, std::unique_ptr <broker_t>> _brokers;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
