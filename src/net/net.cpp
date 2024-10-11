@@ -1281,7 +1281,7 @@ string awh::Net::arpa() const noexcept {
 					// Добавляем разделитель
 					result.append(1, '.');
 				// Добавляем октет в версию
-				result.append(to_string(this->_buffer[i]));
+				result.append(std::to_string(this->_buffer[i]));
 			}
 			// Добавляем запись ARPA
 			result.append(".in-addr.arpa");
@@ -1309,7 +1309,7 @@ string awh::Net::arpa() const noexcept {
 				}
 			}
 			// Добавляем запись ARPA
-			result.append("ip6.arpa");
+			result.append(".ip6.arpa");
 		} break;
 	}
 	// Выводим результат
@@ -1611,7 +1611,7 @@ string awh::Net::get(const format_t format) const noexcept {
 						// Добавляем октет в версию
 						result.append(
 							(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-							this->zerro(to_string(this->_buffer[i])) : to_string(this->_buffer[i])
+							this->zerro(std::to_string(this->_buffer[i])) : std::to_string(this->_buffer[i])
 						);
 					}
 				// Если формат адреса принадлежит к IPv6
@@ -1719,7 +1719,7 @@ string awh::Net::get(const format_t format) const noexcept {
 						// Добавляем октет в версию
 						result.append(
 							(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-							this->zerro(to_string(this->_buffer[count + i])) : to_string(this->_buffer[count + i])
+							this->zerro(std::to_string(this->_buffer[count + i])) : std::to_string(this->_buffer[count + i])
 						);
 					}
 				}
