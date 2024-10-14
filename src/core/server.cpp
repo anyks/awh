@@ -516,12 +516,23 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 							}
 						// Если подключение не установлено
 						} else {
-							// Выводим сообщение об ошибке
-							this->_log->print("Accepting failed, PID=%d", log_t::flag_t::WARNING, ::getpid());
-							// Если функция обратного вызова установлена
-							if(this->_callbacks.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
+							// Определяем режим активации кластера
+							switch(static_cast <uint8_t> (this->_clusterMode)){
+								// Если кластер необходимо активировать
+								case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED):
+									// Выводим сообщение об ошибке
+									this->_log->print("Node PID=%d is ready to receive new clients", log_t::flag_t::INFO, ::getpid());
+								break;
+								// Если кластер необходимо деактивировать
+								case static_cast <uint8_t> (awh::scheme_t::mode_t::DISABLED): {
+									// Выводим сообщение об ошибке
+									this->_log->print("Accepting failed, PID=%d", log_t::flag_t::WARNING, ::getpid());
+									// Если функция обратного вызова установлена
+									if(this->_callbacks.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
+								} break;
+							}
 						}
 					/**
 					 * Если возникает ошибка
