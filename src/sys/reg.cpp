@@ -34,15 +34,15 @@ const string & awh::RegExp::error() const noexcept {
  * @param exp  объект регулярного выражения
  * @return     результат проверки регулярного выражения
  */
-bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
+bool awh::RegExp::test(const char * text, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы верные
-	if(!text.empty() && exp->_mode){
+	if((text != nullptr) && exp->_mode){
 		// Создаём объект матчинга
 		regmatch_t match[1];
 		// Выполняем разбор регулярного выражения
-		const int32_t error = pcre2_regexec(&exp->_reg, text.c_str(), 1, match, REG_NOTEMPTY);
+		const int32_t error = pcre2_regexec(&exp->_reg, text, 1, match, REG_NOTEMPTY);
 		// Если возникла ошибка
 		if(!(result = (error == 0))){
 			// Создаём буфер данных для извлечения данных ошибки
@@ -62,26 +62,38 @@ bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
 	return result;
 }
 /**
+ * test Метод проверки регулярного выражения
+ * @param text текст для обработки
+ * @param exp  объект регулярного выражения
+ * @return     результат проверки регулярного выражения
+ */
+bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
+	// Если данные переданы верные
+	if(!text.empty() && exp->_mode)
+		// Выполняем проверку регулярного выражения
+		return this->test(text.c_str(), exp);
+	// Выводим результат
+	return false;
+}
+/**
  * exec Метод запуска регулярного выражения
  * @param text текст для обработки
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const noexcept {
+vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	vector <string> result;
 	// Если данные переданы верные
-	if(!text.empty() && exp->_mode){
+	if((text != nullptr) && exp->_mode){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Получаем строку текста для поиска
-			const char * str = text.c_str();
 			// Создаём объект матчинга
 			std::unique_ptr <regmatch_t []> match(new regmatch_t [exp->_reg.re_nsub + 1]);
 			// Выполняем разбор регулярного выражения
-			const int32_t error = pcre2_regexec(&exp->_reg, str, exp->_reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
+			const int32_t error = pcre2_regexec(&exp->_reg, text, exp->_reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
 			// Если возникла ошибка
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
@@ -103,7 +115,7 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
 					// Если результат получен
 					if(match[i].rm_eo > 0)
 						// Добавляем полученный результат в список результатов
-						result.at(i).assign(str + match[i].rm_so, match[i].rm_eo - match[i].rm_so);
+						result.at(i).assign(text + match[i].rm_so, match[i].rm_eo - match[i].rm_so);
 				}
 			}
 		/**
@@ -118,6 +130,92 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * exec Метод запуска регулярного выражения
+ * @param text текст для обработки
+ * @param exp  объект регулярного выражения
+ * @return     результат обработки регулярного выражения
+ */
+vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const noexcept {
+	// Если данные переданы верные
+	if(!text.empty() && exp->_mode)
+		// Выполняем запуск регулярного выражения
+		return this->exec(text.c_str(), exp);
+	// Выводим результат
+	return vector <string> ();
+}
+/**
+ * match Метод выполнения регулярного выражения
+ * @param text текст для обработки
+ * @param exp  объект регулярного выражения
+ * @return     результат обработки регулярного выражения
+ */
+vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t & exp) const noexcept {
+	// Результат работы функции
+	vector <pair <size_t, size_t>> result;
+	// Если данные переданы верные
+	if((text != nullptr) && exp->_mode){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Создаём объект матчинга
+			std::unique_ptr <regmatch_t []> match(new regmatch_t [exp->_reg.re_nsub + 1]);
+			// Выполняем разбор регулярного выражения
+			const int32_t error = pcre2_regexec(&exp->_reg, text, exp->_reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
+			// Если возникла ошибка
+			if(error > 0){
+				// Создаём буфер данных для извлечения данных ошибки
+				char buffer[256];
+				// Выполняем заполнение нулями буфер данных
+				::memset(buffer, '\0', sizeof(buffer));
+				// Выполняем извлечение текста ошибки
+				const size_t size = pcre2_regerror(error, &exp->_reg, buffer, sizeof(buffer) - 1);
+				// Если текст ошибки получен
+				if(size > 0)
+					// Выполняем установку кода ошибки
+					const_cast <regexp_t *> (this)->_error.assign(buffer, size);
+			// Если ошибок не получено
+			} else {
+				// Выполняем создание результата
+				result.resize(exp->_reg.re_nsub + 1);
+				// Выполняем перебор всех полученных вариантов
+				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->_reg.re_nsub + 1); i++){
+					// Если результат получен
+					if(match[i].rm_eo > 0)
+						// Добавляем полученный результат в список результатов
+						result.at(i) = std::make_pair(static_cast <size_t> (match[i].rm_so), static_cast <size_t> (match[i].rm_eo - match[i].rm_so));
+					// Добавляем пустое значение
+					else result.at(i) = std::make_pair(static_cast <size_t> (0), static_cast <size_t> (0));
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выводим сообщение в лог
+			fprintf(stderr, "RegExp exec: %s", "memory allocation error");
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * match Метод выполнения регулярного выражения
+ * @param text текст для обработки
+ * @param exp  объект регулярного выражения
+ * @return     результат обработки регулярного выражения
+ */
+vector <pair <size_t, size_t>> awh::RegExp::match(const string & text, const exp_t & exp) const noexcept {
+	// Если данные переданы верные
+	if(!text.empty() && exp->_mode)
+		// Выполняем выполнение регулярного выражения
+		return this->match(text.c_str(), exp);
+	// Выводим результат
+	return vector <pair <size_t, size_t>> ();
 }
 /**
  * build Метод сборки регулярного выражения
