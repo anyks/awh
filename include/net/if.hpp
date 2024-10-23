@@ -146,12 +146,12 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * getIPAddresses Метод извлечения IP адресов
+			 * getIPAddresses Метод извлечения IP-адресов
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void getIPAddresses(const int32_t family = AF_INET) noexcept;
 			/**
-			 * getHWAddresses Метод извлечения MAC адресов
+			 * getHWAddresses Метод извлечения MAC-адресов
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void getHWAddresses(const int32_t family = AF_INET) noexcept;
@@ -172,8 +172,8 @@ namespace awh {
 			void clear() noexcept;
 		public:
 			/**
-			 * Метод вывода списка MAC адресов
-			 * @return список MAC адресов
+			 * Метод вывода списка MAC-адресов
+			 * @return список MAC-адресов
 			 */
 			const unordered_map <string, string> & hws() const noexcept;
 		public:
@@ -185,7 +185,7 @@ namespace awh {
 			const string name(const string & eth) const noexcept;
 		public:
 			/**
-			 * mac Метод получения MAC адреса по IP адресу клиента
+			 * mac Метод получения MAC-адреса по IP-адресу клиента
 			 * @param ip     адрес интернет-подключения клиента
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       аппаратный адрес сетевого интерфейса клиента
@@ -200,19 +200,19 @@ namespace awh {
 			const string mac(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
 		public:
 			/**
-			 * ip Метод получения основного IP адреса на сервере
+			 * ip Метод получения основного IP-адреса на сервере
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			const string ip(const int32_t family = AF_INET) const noexcept;
 			/**
-			 * ip Метод вывода IP адреса соответствующего сетевому интерфейсу
+			 * ip Метод вывода IP-адреса соответствующего сетевому интерфейсу
 			 * @param eth    идентификатор сетевого интерфейса
 			 * @param family тип протокола интернета AF_INET или AF_INET6
-			 * @return       IP адрес соответствующий сетевому интерфейсу
+			 * @return       IP-адрес соответствующий сетевому интерфейсу
 			 */
 			const string & ip(const string & eth, const int32_t family = AF_INET) const noexcept;
 			/**
-			 * ip Метод получения IP адреса из подключения
+			 * ip Метод получения IP-адреса из подключения
 			 * @param sin    объект подключения
 			 * @param family тип интернет протокола
 			 * @return       данные ip адреса
