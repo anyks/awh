@@ -154,21 +154,6 @@ namespace awh {
 			type_t type(const string & addr, const bool actual = true) const noexcept;
 		public:
 			/**
-			 * size Метод подсчёта размера файла/каталога
-			 * @param path полный путь для подсчёта размера
-			 * @param ext  расширение файла если требуется фильтрация
-			 * @return     общий размер файла/каталога
-			 */
-			uintmax_t size(const string & path, const string & ext = "") const noexcept;
-			/**
-			 * count Метод подсчёта количество файлов в каталоге
-			 * @param path путь для подсчёта
-			 * @param ext  расширение файла если требуется фильтрация
-			 * @return     количество файлов в каталоге
-			 */
-			uintmax_t count(const string & path, const string & ext = "") const noexcept;
-		public:
-			/**
 			 * delPath Метод удаления полного пути
 			 * @param path полный путь для удаления
 			 * @return     количество дочерних элементов
@@ -257,6 +242,23 @@ namespace awh {
 				 */
 				int64_t seek(HANDLE file, const int64_t distance, const DWORD position) const noexcept;
 			#endif
+		public:
+			/**
+			 * size Метод подсчёта размера файла/каталога
+			 * @param path полный путь для подсчёта размера
+			 * @param ext  расширение файла если требуется фильтрация
+			 * @param rec  флаг рекурсивного перебора каталогов
+			 * @return     общий размер файла/каталога
+			 */
+			uintmax_t size(const string & path, const string & ext = "", const bool rec = true) const noexcept;
+			/**
+			 * count Метод подсчёта количество файлов в каталоге
+			 * @param path путь для подсчёта
+			 * @param ext  расширение файла если требуется фильтрация
+			 * @param rec  флаг рекурсивного перебора каталогов
+			 * @return     количество файлов в каталоге
+			 */
+			uintmax_t count(const string & path, const string & ext = "", const bool rec = true) const noexcept;
 		public:
 			/**
 			 * read Метод чтения данных из файла

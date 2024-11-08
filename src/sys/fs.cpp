@@ -244,332 +244,6 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 	return result;
 }
 /**
- * size Метод подсчёта размера файла/каталога
- * @param path полный путь для подсчёта размера
- * @param ext  расширение файла если требуется фильтрация
- * @return     общий размер файла/каталога
- */
-uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept {
-	// Результат работы функции
-	uintmax_t result = 0;
-	// Если путь для подсчёта передан
-	if(!path.empty()){
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Определяем тип переданного пути
-			switch(static_cast <uint8_t> (this->type(path))){
-				// Если полный путь является файлом
-				case static_cast <uint8_t> (type_t::FILE): {
-					/**
-					 * Выполняем работу для Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Создаём объект работы с файлом
-						HANDLE file = CreateFileW(this->_fmk->convert(path).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-						// Если открыть файл открыт нормально
-						if(file != INVALID_HANDLE_VALUE){
-							// Получаем размер файла
-							result = static_cast <uintmax_t> (GetFileSize(file, nullptr));
-							// Выполняем закрытие файла
-							CloseHandle(file);
-						}
-					/**
-					 * Выполняем работу для Unix
-					 */
-					#else
-						// Структура проверка статистики
-						struct stat info;
-						// Выполняем извлечение данных статистики
-						const int32_t status = ::stat(path.c_str(), &info);
-						// Если тип определён
-						if(status == 0)
-							// Выводим размер файла
-							result = static_cast <uintmax_t> (info.st_size);
-						// Если прочитать файла не вышло
-						else {
-							// Открываем файл на чтение
-							ifstream file(path, ios::in | ios::binary);
-							// Если файл открыт
-							if(file.is_open()){
-								// Перемещаем указатель в конец файла
-								file.seekg(0, file.end);
-								// Определяем размер файла
-								result = file.tellg();
-								// Возвращаем указатель обратно
-								file.seekg(0, file.beg);
-								// Закрываем файл
-								file.close();
-							}
-						}
-					#endif
-				} break;
-				// Если полный путь является каталогом
-				case static_cast <uint8_t> (type_t::DIR): {
-					/**
-					 * Выполняем работу для Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Открываем указанный каталог
-						_WDIR * dir = _wopendir(this->_fmk->convert(path).c_str());
-					/**
-					 * Выполняем работу для Unix
-					 */
-					#else
-						// Открываем указанный каталог
-						DIR * dir = ::opendir(path.c_str());
-					#endif
-						// Если каталог открыт
-						if(dir != nullptr){
-							/**
-							 * Выполняем работу для Windows
-							 */
-							#if defined(_WIN32) || defined(_WIN64)
-								// Структура проверка статистики
-								struct _stat info;
-								// Создаем указатель на содержимое каталога
-								struct _wdirent * ptr = nullptr;
-								// Выполняем чтение содержимого каталога
-								while((ptr = _wreaddir(dir))){
-							/**
-							 * Выполняем работу для Unix
-							 */
-							#else
-								// Структура проверка статистики
-								struct stat info;
-								// Создаем указатель на содержимое каталога
-								struct dirent * ptr = nullptr;
-								// Выполняем чтение содержимого каталога
-								while((ptr = ::readdir(dir))){
-							#endif
-									/**
-									 * Выполняем работу для Windows
-									 */
-									#if defined(_WIN32) || defined(_WIN64)
-										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-										if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
-											// Выполняем пропуск каталога
-											continue;
-										// Получаем адрес в виде строки
-										const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
-									/**
-									 * Выполняем работу для Unix
-									 */
-									#else
-										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-										if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
-											// Выполняем пропуск каталога
-											continue;
-										// Получаем адрес в виде строки
-										const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
-									#endif
-									/**
-									 * Выполняем работу для Windows
-									 */
-									#if defined(_WIN32) || defined(_WIN64)
-										// Если статистика извлечена
-										if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
-									/**
-									 * Выполняем работу для Unix
-									 */
-									#else
-										// Если статистика извлечена
-										if(!::stat(address.c_str(), &info)){
-									#endif
-											// Если дочерний элемент является дирректорией
-											if(S_ISDIR(info.st_mode))
-												// Выполняем подсчёт размера каталога
-												result += this->size(address, ext);
-											// Если дочерний элемент является файлом
-											else if(!ext.empty()) {
-												// Получаем расширение файла
-												const string & extension = this->_fmk->format(".%s", ext.c_str());
-												// Получаем длину адреса
-												const size_t length = extension.length();
-												// Если расширение не выше полного адреса
-												if(address.length() > length){
-													// Если расширение файла найдено
-													if(this->_fmk->compare(address.substr(address.length() - length), extension))
-														// Получаем размер файла
-														result += this->size(address);
-												}
-											// Получаем размер файла
-											} else result += this->size(address);
-									}
-							}
-							/**
-							 * Выполняем работу для Windows
-							 */
-							#if defined(_WIN32) || defined(_WIN64)
-								// Закрываем открытый каталог
-								_wclosedir(dir);
-							/**
-							 * Выполняем работу для Unix
-							 */
-							#else
-								// Закрываем открытый каталог
-								::closedir(dir);
-							#endif
-						}
-				} break;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * count Метод подсчёта количество файлов в каталоге
- * @param path путь для подсчёта
- * @param ext  расширение файла если требуется фильтрация
- * @return     количество файлов в каталоге
- */
-uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept {
-	// Результат работы функции
-	uintmax_t result = 0;
-	// Если адрес каталога и расширение файлов переданы
-	if(!path.empty() && this->isDir(path)){
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			/**
-			 * Выполняем работу для Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Открываем указанный каталог
-				_WDIR * dir = _wopendir(this->_fmk->convert(path).c_str());
-			/**
-			 * Выполняем работу для Unix
-			 */
-			#else
-				// Открываем указанный каталог
-				DIR * dir = ::opendir(path.c_str());
-			#endif
-				// Если каталог открыт
-				if(dir != nullptr){
-					/**
-					 * Выполняем работу для Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Структура проверка статистики
-						struct _stat info;
-						// Создаем указатель на содержимое каталога
-						struct _wdirent * ptr = nullptr;
-						// Выполняем чтение содержимого каталога
-						while((ptr = _wreaddir(dir))){
-					/**
-					 * Выполняем работу для Unix
-					 */
-					#else
-						// Структура проверка статистики
-						struct stat info;
-						// Создаем указатель на содержимое каталога
-						struct dirent * ptr = nullptr;
-						// Выполняем чтение содержимого каталога
-						while((ptr = ::readdir(dir))){
-					#endif
-							/**
-							 * Выполняем работу для Windows
-							 */
-							#if defined(_WIN32) || defined(_WIN64)
-								// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-								if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
-									// Выполняем пропуск каталога
-									continue;
-								// Получаем адрес в виде строки
-								const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
-							/**
-							 * Выполняем работу для Unix
-							 */
-							#else
-								// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-								if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
-									// Выполняем пропуск каталога
-									continue;
-								// Получаем адрес в виде строки
-								const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
-							#endif
-							/**
-							 * Выполняем работу для Windows
-							 */
-							#if defined(_WIN32) || defined(_WIN64)
-								// Если статистика извлечена
-								if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
-							/**
-							 * Выполняем работу для Unix
-							 */
-							#else
-								// Если статистика извлечена
-								if(!::stat(address.c_str(), &info)){
-							#endif
-									// Если дочерний элемент является дирректорией
-									if(S_ISDIR(info.st_mode))
-										// Выполняем подсчитываем количество файлов в каталоге
-										result += this->count(address, ext);
-									// Если дочерний элемент является файлом
-									else if(!ext.empty()) {
-										// Получаем расширение файла
-										const string & extension = this->_fmk->format(".%s", ext.c_str());
-										// Получаем длину адреса
-										const size_t length = extension.length();
-										// Если расширение не выше полного адреса
-										if(address.length() > length){
-											// Если расширение файла найдено
-											if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
-												// Получаем количество файлов в каталоге
-												result++;
-										}
-									// Получаем количество файлов в каталоге
-									} else result++;
-							}
-					}
-					/**
-					 * Выполняем работу для Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Закрываем открытый каталог
-						_wclosedir(dir);
-					/**
-					 * Выполняем работу для Unix
-					 */
-					#else
-						// Закрываем открытый каталог
-						::closedir(dir);
-					#endif
-				}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
-		}
-	// Выводим сообщение об ошибке
-	} else this->_log->print("Path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
-	// Выводим результат
-	return result;
-}
-/**
  * delPath Метод удаления полного пути
  * @param path полный путь для удаления
  * @return     количество дочерних элементов
@@ -1428,6 +1102,334 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 		return li.QuadPart;
 	}
 #endif
+/**
+ * size Метод подсчёта размера файла/каталога
+ * @param path полный путь для подсчёта размера
+ * @param ext  расширение файла если требуется фильтрация
+ * @param rec  флаг рекурсивного перебора каталогов
+ * @return     общий размер файла/каталога
+ */
+uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec) const noexcept {
+	// Результат работы функции
+	uintmax_t result = 0;
+	// Если путь для подсчёта передан
+	if(!path.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Определяем тип переданного пути
+			switch(static_cast <uint8_t> (this->type(path))){
+				// Если полный путь является файлом
+				case static_cast <uint8_t> (type_t::FILE): {
+					/**
+					 * Выполняем работу для Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Создаём объект работы с файлом
+						HANDLE file = CreateFileW(this->_fmk->convert(path).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+						// Если открыть файл открыт нормально
+						if(file != INVALID_HANDLE_VALUE){
+							// Получаем размер файла
+							result = static_cast <uintmax_t> (GetFileSize(file, nullptr));
+							// Выполняем закрытие файла
+							CloseHandle(file);
+						}
+					/**
+					 * Выполняем работу для Unix
+					 */
+					#else
+						// Структура проверка статистики
+						struct stat info;
+						// Выполняем извлечение данных статистики
+						const int32_t status = ::stat(path.c_str(), &info);
+						// Если тип определён
+						if(status == 0)
+							// Выводим размер файла
+							result = static_cast <uintmax_t> (info.st_size);
+						// Если прочитать файла не вышло
+						else {
+							// Открываем файл на чтение
+							ifstream file(path, ios::in | ios::binary);
+							// Если файл открыт
+							if(file.is_open()){
+								// Перемещаем указатель в конец файла
+								file.seekg(0, file.end);
+								// Определяем размер файла
+								result = file.tellg();
+								// Возвращаем указатель обратно
+								file.seekg(0, file.beg);
+								// Закрываем файл
+								file.close();
+							}
+						}
+					#endif
+				} break;
+				// Если полный путь является каталогом
+				case static_cast <uint8_t> (type_t::DIR): {
+					/**
+					 * Выполняем работу для Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Открываем указанный каталог
+						_WDIR * dir = _wopendir(this->_fmk->convert(path).c_str());
+					/**
+					 * Выполняем работу для Unix
+					 */
+					#else
+						// Открываем указанный каталог
+						DIR * dir = ::opendir(path.c_str());
+					#endif
+						// Если каталог открыт
+						if(dir != nullptr){
+							/**
+							 * Выполняем работу для Windows
+							 */
+							#if defined(_WIN32) || defined(_WIN64)
+								// Структура проверка статистики
+								struct _stat info;
+								// Создаем указатель на содержимое каталога
+								struct _wdirent * ptr = nullptr;
+								// Выполняем чтение содержимого каталога
+								while((ptr = _wreaddir(dir))){
+							/**
+							 * Выполняем работу для Unix
+							 */
+							#else
+								// Структура проверка статистики
+								struct stat info;
+								// Создаем указатель на содержимое каталога
+								struct dirent * ptr = nullptr;
+								// Выполняем чтение содержимого каталога
+								while((ptr = ::readdir(dir))){
+							#endif
+									/**
+									 * Выполняем работу для Windows
+									 */
+									#if defined(_WIN32) || defined(_WIN64)
+										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+										if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
+											// Выполняем пропуск каталога
+											continue;
+										// Получаем адрес в виде строки
+										const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
+									/**
+									 * Выполняем работу для Unix
+									 */
+									#else
+										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+										if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+											// Выполняем пропуск каталога
+											continue;
+										// Получаем адрес в виде строки
+										const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+									#endif
+									/**
+									 * Выполняем работу для Windows
+									 */
+									#if defined(_WIN32) || defined(_WIN64)
+										// Если статистика извлечена
+										if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
+									/**
+									 * Выполняем работу для Unix
+									 */
+									#else
+										// Если статистика извлечена
+										if(!::stat(address.c_str(), &info)){
+									#endif
+											// Если дочерний элемент является дирректорией
+											if(S_ISDIR(info.st_mode))
+												// Выполняем подсчёт размера каталога
+												result += (rec ? this->size(address, ext) : 0);
+											// Если дочерний элемент является файлом
+											else if(!ext.empty()) {
+												// Получаем расширение файла
+												const string & extension = this->_fmk->format(".%s", ext.c_str());
+												// Получаем длину адреса
+												const size_t length = extension.length();
+												// Если расширение не выше полного адреса
+												if(address.length() > length){
+													// Если расширение файла найдено
+													if(this->_fmk->compare(address.substr(address.length() - length), extension))
+														// Получаем размер файла
+														result += this->size(address);
+												}
+											// Получаем размер файла
+											} else result += this->size(address);
+									}
+							}
+							/**
+							 * Выполняем работу для Windows
+							 */
+							#if defined(_WIN32) || defined(_WIN64)
+								// Закрываем открытый каталог
+								_wclosedir(dir);
+							/**
+							 * Выполняем работу для Unix
+							 */
+							#else
+								// Закрываем открытый каталог
+								::closedir(dir);
+							#endif
+						}
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch (const std::ios_base::failure & error) {
+			// Выводим сообщение инициализации метода класса скрипта торговой платформы
+			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			// Выводим сообщение инициализации метода класса скрипта торговой платформы
+			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * count Метод подсчёта количество файлов в каталоге
+ * @param path путь для подсчёта
+ * @param ext  расширение файла если требуется фильтрация
+ * @param rec  флаг рекурсивного перебора каталогов
+ * @return     количество файлов в каталоге
+ */
+uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec) const noexcept {
+	// Результат работы функции
+	uintmax_t result = 0;
+	// Если адрес каталога и расширение файлов переданы
+	if(!path.empty() && this->isDir(path)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Выполняем работу для Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Открываем указанный каталог
+				_WDIR * dir = _wopendir(this->_fmk->convert(path).c_str());
+			/**
+			 * Выполняем работу для Unix
+			 */
+			#else
+				// Открываем указанный каталог
+				DIR * dir = ::opendir(path.c_str());
+			#endif
+				// Если каталог открыт
+				if(dir != nullptr){
+					/**
+					 * Выполняем работу для Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Структура проверка статистики
+						struct _stat info;
+						// Создаем указатель на содержимое каталога
+						struct _wdirent * ptr = nullptr;
+						// Выполняем чтение содержимого каталога
+						while((ptr = _wreaddir(dir))){
+					/**
+					 * Выполняем работу для Unix
+					 */
+					#else
+						// Структура проверка статистики
+						struct stat info;
+						// Создаем указатель на содержимое каталога
+						struct dirent * ptr = nullptr;
+						// Выполняем чтение содержимого каталога
+						while((ptr = ::readdir(dir))){
+					#endif
+							/**
+							 * Выполняем работу для Windows
+							 */
+							#if defined(_WIN32) || defined(_WIN64)
+								// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+								if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
+									// Выполняем пропуск каталога
+									continue;
+								// Получаем адрес в виде строки
+								const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
+							/**
+							 * Выполняем работу для Unix
+							 */
+							#else
+								// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+								if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+									// Выполняем пропуск каталога
+									continue;
+								// Получаем адрес в виде строки
+								const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+							#endif
+							/**
+							 * Выполняем работу для Windows
+							 */
+							#if defined(_WIN32) || defined(_WIN64)
+								// Если статистика извлечена
+								if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
+							/**
+							 * Выполняем работу для Unix
+							 */
+							#else
+								// Если статистика извлечена
+								if(!::stat(address.c_str(), &info)){
+							#endif
+									// Если дочерний элемент является дирректорией
+									if(S_ISDIR(info.st_mode))
+										// Выполняем подсчитываем количество файлов в каталоге
+										result += (rec ? this->count(address, ext) : 0);
+									// Если дочерний элемент является файлом
+									else if(!ext.empty()) {
+										// Получаем расширение файла
+										const string & extension = this->_fmk->format(".%s", ext.c_str());
+										// Получаем длину адреса
+										const size_t length = extension.length();
+										// Если расширение не выше полного адреса
+										if(address.length() > length){
+											// Если расширение файла найдено
+											if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
+												// Получаем количество файлов в каталоге
+												result++;
+										}
+									// Получаем количество файлов в каталоге
+									} else result++;
+							}
+					}
+					/**
+					 * Выполняем работу для Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Закрываем открытый каталог
+						_wclosedir(dir);
+					/**
+					 * Выполняем работу для Unix
+					 */
+					#else
+						// Закрываем открытый каталог
+						::closedir(dir);
+					#endif
+				}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch (const std::ios_base::failure & error) {
+			// Выводим сообщение инициализации метода класса скрипта торговой платформы
+			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			// Выводим сообщение инициализации метода класса скрипта торговой платформы
+			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		}
+	// Выводим сообщение об ошибке
+	} else this->_log->print("Path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
+	// Выводим результат
+	return result;
+}
 /**
  * read Метод чтения данных из файла
  * @param filename адрес файла для чтения
