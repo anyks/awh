@@ -1005,7 +1005,7 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 			// Создаём объект информационных данных файла или каталога
 			struct stat info;
 			// Выполняем чтение информационных данных файла
-			if(!(result = (stat(path.c_str(), &info) == 0)) && (AWH_ERROR() != 0))
+			if(!(result = (::stat(path.c_str(), &info) == 0)) && (AWH_ERROR() != 0))
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::WARNING, this->message(AWH_ERROR()).c_str());
 			// Если информационные данные считаны удачно
