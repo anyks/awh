@@ -204,13 +204,13 @@ namespace awh {
 			pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
 		public:
 			/**
-			 * chmod Метод получения метаданных файла или каталога
+			 * chmod Метод получения прав доступа к файлу или каталогу
 			 * @param path полный путь к файлу или каталогу
 			 * @return     запрашиваемые метаданные
 			 */
 			mode_t chmod(const string & path) const noexcept;
 			/**
-			 * chmod Метод изменения метаданных файла или каталога
+			 * chmod Метод изменения прав доступа к файлу или каталогу
 			 * @param path полный путь к файлу или каталогу
 			 * @param mode метаданные для установки
 			 * @return     результат работы функции
@@ -222,7 +222,7 @@ namespace awh {
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				/**
-				 * chown Метод установки владельца на каталог
+				 * chown Метод установки владельца на файл или каталог
 				 * @param path  путь к файлу или каталогу для установки владельца
 				 * @param user  данные пользователя
 				 * @param group идентификатор группы

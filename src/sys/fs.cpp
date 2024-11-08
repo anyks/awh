@@ -983,7 +983,7 @@ pair <string, string> awh::FS::components(const string & addr, const bool actual
 	return result;
 }
 /**
- * chmod Метод получения метаданных файла или каталога
+ * chmod Метод получения прав доступа к файлу или каталогу
  * @param path полный путь к файлу или каталогу
  * @return     запрашиваемые метаданные
  */
@@ -1016,7 +1016,7 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 	return result;
 }
 /**
- * chmod Метод изменения метаданных файла или каталога
+ * chmod Метод изменения прав доступа к файлу или каталогу
  * @param path полный путь к файлу или каталогу
  * @param mode метаданные для установки
  * @return     результат работы функции
@@ -1050,7 +1050,7 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * chown Метод установки владельца на каталог
+	 * chown Метод установки владельца на файл или каталог
 	 * @param path  путь к файлу или каталогу для установки владельца
 	 * @param user  данные пользователя
 	 * @param group идентификатор группы
