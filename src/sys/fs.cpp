@@ -1882,7 +1882,7 @@ void awh::FS::readPath(const string & path, const string & ext, const bool rec, 
 		// Переходим по всему списку файлов в каталоге
 		this->readDir(path, ext, rec, [&](const string & filename) noexcept -> void {
 			// Выполняем считывание всех строк текста
-			this->readFile2(filename, [&](const string & text) noexcept -> void {
+			this->readFile(filename, [&](const string & text) noexcept -> void {
 				// Если текст получен
 				if(!text.empty())
 					// Выводим функцию обратного вызова
