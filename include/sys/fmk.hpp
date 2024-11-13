@@ -91,9 +91,16 @@ namespace awh {
 			 */
 			enum class stamp_t : uint8_t {
 				NONE         = 0x00, // Не установлено
-				SECONDS      = 0x01, // Секунды
-				MILLISECONDS = 0x03, // Миллисекунды
-				NANOSECONDS  = 0x04  // Наносекунды
+				YEARS        = 0x01, // Годы
+				MONTHS       = 0x02, // Месяцы
+				WEEKS        = 0x03, // Недели
+				DAYS         = 0x04, // Дни
+				HOURS        = 0x05, // Часы
+				MINUTES      = 0x06, // Минуты
+				SECONDS      = 0x07, // Секунды
+				MILLISECONDS = 0x08, // Миллисекунды
+				MICROSECONDS = 0x09, // Микросекунды
+				NANOSECONDS  = 0x0A  // Наносекунды
 			};
 			/**
 			 * hash_t Тип хэш-суммы
