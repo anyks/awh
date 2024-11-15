@@ -48,9 +48,9 @@ static std::function <void (const int32_t)> callbackFn = nullptr;
 				// Если название пользователя получено
 				if(user != nullptr)
 					// Выводим сообщение в лог
-					printf("Killer detected PID=%u, USER=%s\n", info->si_pid, user);
+					fprintf(stderr, "Killer detected PID=%u, USER=%s\n", info->si_pid, user);
 				// Если имя пользователя не получено
-				else printf("Killer detected PID=%u, UID=%u", info->si_pid, info->si_uid);
+				else fprintf(stderr, "Killer detected PID=%u, UID=%u", info->si_pid, info->si_uid);
 			}
 			// Выполняем функцию обратного вызова
 			std::thread(callbackFn, signal).detach();
