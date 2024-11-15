@@ -18,7 +18,7 @@
 /**
  * Функция обратного вызова при получении сигнала
  */
-function <void (const int32_t)> callbackFn = nullptr;
+static std::function <void (const int32_t)> callbackFn = nullptr;
 
 /**
  * Если операционной системой не является Windows
@@ -32,12 +32,29 @@ function <void (const int32_t)> callbackFn = nullptr;
 	 */
 	static void signalHandler(int32_t signal, siginfo_t * info, void * ctx) noexcept {
 		// Зануляем неиспользуемые переменные
-		(void) info;
 		(void) ctx;
 		// Если функция обратного вызова установлена, выводим её
-		if(callbackFn != nullptr)
+		if(callbackFn != nullptr){
+			// Если произошло убийство приложения
+			if((info != nullptr) && (signal == SIGTERM)){
+				// Название пользователя
+				const char * user = nullptr;
+				// Определяем название пользователя
+				const auto * pwd = ::getpwuid(info->si_uid);
+				// Если название пользователя определено
+				if(pwd != nullptr)
+					// Устанавливаем название пользователя
+					user = pwd->pw_name;
+				// Если название пользователя получено
+				if(user != nullptr)
+					// Выводим сообщение в лог
+					printf("Killer detected PID=%u, USER=%s\n", info->si_pid, user);
+				// Если имя пользователя не получено
+				else printf("Killer detected PID=%u, UID=%u", info->si_pid, info->si_uid);
+			}
 			// Выполняем функцию обратного вызова
 			std::thread(callbackFn, signal).detach();
+		}
 	}
 /**
  * Если операционной системой является MS Windows
@@ -63,9 +80,9 @@ void awh::Signals::callback(const int32_t sig) noexcept {
 	// Выполняем остановку всех сотальных сигналов
 	this->stop();
 	// Если функция обратного вызова установлена, выводим её
-	if(this->_fn != nullptr)
+	if(this->_callback != nullptr)
 		// Выполняем функцию обратного вызова
-		this->_fn(sig);
+		this->_callback(sig);
 }
 /**
  * stop Метод остановки обработки сигналов
@@ -195,7 +212,7 @@ void awh::Signals::start() noexcept {
  */
 void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 	// Выполняем установку функцию обратного вызова
-	this->_fn = callback;
+	this->_callback = callback;
 	// Выполняем установки функции обратного вызова
 	callbackFn = std::bind(&sig_t::callback, this, _1);
 }

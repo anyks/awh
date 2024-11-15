@@ -31,7 +31,12 @@
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <windows.h>
-	#include <tchar.h>	
+	#include <tchar.h>
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	#include <pwd.h>
 #endif
 
 /**
@@ -102,7 +107,7 @@ namespace awh {
 			bool _mode;
 		private:
 			// Функция обратного вызова при получении сигнала
-			function <void (const int32_t)> _fn;
+			function <void (const int32_t)> _callback;
 		private:
 			/**
 			 * callback Функция обратного вызова
@@ -128,7 +133,7 @@ namespace awh {
 			/**
 			 * Signals Конструктор
 			 */
-			Signals() noexcept : _mode(false), _fn(nullptr) {}
+			Signals() noexcept : _mode(false), _callback(nullptr) {}
 			/**
 			 * ~Signals Деструктор
 			 */
