@@ -283,7 +283,7 @@ uid_t awh::OS::uid(const string & name) const noexcept {
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Получаем идентификатор имени пользователя
-			struct passwd * pwd = ::getpwnam(name.c_str());
+			const auto * pwd = ::getpwnam(name.c_str());
 			// Если идентификатор пользователя не найден
 			if(pwd == nullptr)
 				// Сообщаем что ничего не найдено
@@ -418,7 +418,7 @@ bool awh::OS::chown(const string & user, const string & group) const noexcept {
 		// Если название пользователя передано
 		if(!user.empty()){
 			// Получаем идентификатор имени пользователя
-			struct passwd * pwd = ::getpwnam(user.c_str());
+			const auto * pwd = ::getpwnam(user.c_str());
 			// Если идентификатор пользователя не найден
 			if(pwd == nullptr)
 				// Сообщаем что ничего не найдено
@@ -429,13 +429,13 @@ bool awh::OS::chown(const string & user, const string & group) const noexcept {
 		// Если название группы пользователя передано
 		if(result && !group.empty()){
 			// Получаем идентификатор группы пользователя
-			struct group * pwd = ::getgrnam(group.c_str());
+			const auto * grp = ::getgrnam(group.c_str());
 			// Если идентификатор группы не найден
-			if(pwd == nullptr)
+			if(grp == nullptr)
 				// Сообщаем что ничего не найдено
 				return false;
 			// Устанавливаем идентификатор группы
-			result = (::setgid(pwd->gr_gid) == 0);
+			result = (::setgid(grp->gr_gid) == 0);
 		}
 		// Выводим результат
 		return result;
