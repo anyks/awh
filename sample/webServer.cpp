@@ -33,6 +33,23 @@ class WebServer {
 		map <uint64_t, queue <vector <char>>> _payloads;
 	public:
 		/**
+		 * crash Метод обработки вызова крашей в приложении
+		 * @param sig номер сигнала операционной системы
+		 */
+		void crash(const int sig) noexcept {
+			// Если мы получили сигнал завершения работы
+			if(sig == 2)
+				// Выводим сообщение о заверщении работы
+				this->_log->print("%s finishing work, goodbye!", log_t::flag_t::INFO, AWH_NAME);
+			// Выводим сообщение об ошибке
+			else this->_log->print("%s cannot be continued, signal: [%u]. Finishing work, goodbye!", log_t::flag_t::CRITICAL, AWH_NAME, sig);
+			// Выполняем отключение вывода лога
+			const_cast <awh::log_t *> (this->_log)->level(awh::log_t::level_t::NONE);
+			// Завершаем работу приложения
+			::exit(sig);
+		}
+	public:
+		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
 		 * @param bid   идентификатор брокера (клиента)
 		 * @param login логин пользователя
@@ -384,6 +401,10 @@ int32_t main(int32_t argc, char * argv[]){
 	awh.addAltSvc("example.com", "h2=\":8000\"");
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
+	// Разрешаем перехват сигналов
+	core.signalInterception(awh::scheme_t::mode_t::ENABLED);
+	// Устанавливаем функцию обработки сигналов завершения работы приложения
+	core.callback <void (const int)> ("crash", std::bind(&WebServer::crash, &executor, _1));
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
 	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&WebServer::available, &executor, _1, _2, &core));
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки

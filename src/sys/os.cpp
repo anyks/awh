@@ -29,7 +29,7 @@
 #endif
 
 /**
- * Методы только не для OS Windows
+ * Если операционной системой не является Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -39,7 +39,7 @@
 	#include <grp.h>
 	#include <sys/resource.h>
 /**
- * Методы только для OS Windows
+ * Если операционной системой является MS Windows
  */
 #else
 	/**

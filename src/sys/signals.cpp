@@ -12,8 +12,32 @@
  * @copyright: Copyright © 2024
  */
 
+/**
+ * Если операционной системой не является Windows
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * Стандартные модули
+	 */
+	#include <pwd.h>
+#endif
+
 // Подключаем заголовочный файл
 #include <sys/signals.hpp>
+
+/**
+ * Если операционной системой не является Windows
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * Объект фреймворка
+	 */
+	const static awh::fmk_t * awhFmk = nullptr;
+	/**
+	 * Объект для работы с логами
+	 */
+	const static awh::log_t * awhLog = nullptr;
+#endif
 
 /**
  * Функция обратного вызова при получении сигнала
@@ -45,12 +69,31 @@ static std::function <void (const int32_t)> callbackFn = nullptr;
 				if(pwd != nullptr)
 					// Устанавливаем название пользователя
 					user = pwd->pw_name;
-				// Если название пользователя получено
-				if(user != nullptr)
-					// Выводим сообщение в лог
-					fprintf(stderr, "Killer detected PID=%u, USER=%s\n", info->si_pid, user);
-				// Если имя пользователя не получено
-				else fprintf(stderr, "Killer detected PID=%u, UID=%u", info->si_pid, info->si_uid);
+				// Создаём объект работы с операционной системой
+				awh::os_t os;
+				// Создаём строку запроса для получения названия приложения
+				const string cmd = awhFmk->format("ps -p %d -o comm=", info->si_pid);
+				// Выполняем получение идентификатора процесса
+				const string app = os.exec(cmd, false);
+				// Если название приложения получено
+				if(!app.empty()){
+					// Удаляем лишние символы
+					awhFmk->transform(app, awh::fmk_t::transform_t::TRIM);
+					// Если название пользователя получено
+					if(user != nullptr)
+						// Выводим сообщение в лог
+						awhLog->print("Killer detected APP=%s, USER=%s", awh::log_t::flag_t::WARNING, app.c_str(), user);
+					// Если имя пользователя не получено
+					else awhLog->print("Killer detected APP=%s, UID=%u", awh::log_t::flag_t::WARNING, app.c_str(), info->si_uid);
+				// Если название приложения не получено
+				} else {
+					// Если название пользователя получено
+					if(user != nullptr)
+						// Выводим сообщение в лог
+						awhLog->print("Killer detected PID=%u, USER=%s", awh::log_t::flag_t::WARNING, info->si_pid, user);
+					// Если имя пользователя не получено
+					else awhLog->print("Killer detected PID=%u, UID=%u", awh::log_t::flag_t::WARNING, info->si_pid, info->si_uid);
+				}
 			}
 			// Выполняем функцию обратного вызова
 			std::thread(callbackFn, signal).detach();
@@ -215,6 +258,29 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 	this->_callback = callback;
 	// Выполняем установки функции обратного вызова
 	callbackFn = std::bind(&sig_t::callback, this, _1);
+}
+/**
+ * Signals Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Signals::Signals(const fmk_t * fmk, const log_t * log) noexcept : _mode(false), _callback(nullptr) {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Запоминаем объект фреймворка
+		awhFmk = fmk;
+		// Запоминаем объект для работы с логами
+		awhLog = log;
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Зануляем неиспользуемые переменные
+		(void) fmk;
+		(void) log;
+	#endif
 }
 /**
  * ~Signals Деструктор

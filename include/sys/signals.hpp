@@ -32,17 +32,13 @@
 #if defined(_WIN32) || defined(_WIN64)
 	#include <windows.h>
 	#include <tchar.h>
-/**
- * Для всех остальных операционных систем
- */
-#else
-	#include <pwd.h>
 #endif
 
 /**
- * Разрешаем сборку под Windows
+ * Подключаем наши модули
  */
-#include <sys/global.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -132,8 +128,10 @@ namespace awh {
 		public:
 			/**
 			 * Signals Конструктор
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			Signals() noexcept : _mode(false), _callback(nullptr) {}
+			Signals(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Signals Деструктор
 			 */

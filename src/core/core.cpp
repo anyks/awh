@@ -601,7 +601,7 @@ uint64_t awh::Core::emplaceUpstream(function <void (const uint64_t)> callback) n
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _mode(false), _verb(true),
- _callbacks(log), _dispatch(fmk, log),
+ _callbacks(log), _dispatch(fmk, log), _sig(fmk, log),
  _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {
 	// Выполняем установку функции активации базы событий
