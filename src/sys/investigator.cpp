@@ -107,6 +107,12 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 				result = buffer;
 				// Выполняем закрытие процесса
 				::CloseHandle(hpc);
+				// Выполняем поиск каталога
+				const size_t pos = result.rfind('\\');
+				// Если каталог найден
+				if(pos != string::npos)
+					// Выполняем удаление лишних символов
+					result.erase(result.begin(), result.begin() + (pos + 1));
 			}
 		#endif
 	}
