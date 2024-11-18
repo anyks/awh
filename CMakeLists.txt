@@ -77,6 +77,8 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     set(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+    set(AWH_PARAMS "-lutil -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 else()
     set(AWH_PARAMS "-Wno-unknown-attributes")
 endif()
@@ -177,6 +179,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/timeout.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/investigator.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
@@ -254,6 +257,7 @@ set(WS_CLIENT_APP_NAME wsClient)
 set(WS_SERVER_APP_NAME wsServer)
 set(WEB_CLIENT_APP_NAME webClient)
 set(WEB_SERVER_APP_NAME webServer)
+set(INVESTIGATOR_APP_NAME investigator)
 set(AWH_LIB_NAME ${PROJECT_NAME})
 
 # Если операционной системой не является Windows
@@ -278,7 +282,7 @@ endif(CMAKE_SHARED_BUILD_LIB)
  if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
     # Устанавливаем необходимые зависимости для MS Windows
-    set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+    set(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
     set(RES_FILES "awh.rc")
@@ -300,6 +304,7 @@ endif(CMAKE_SHARED_BUILD_LIB)
     add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp ${RES_FILES})
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
+    add_executable(${INVESTIGATOR_APP_NAME} sample/investigator.cpp ${RES_FILES})
 # Если операционной системой является Linux, FreeBSD, MacOS X
 else()
     # Выполняем создание демонстрационных приложений
@@ -317,6 +322,7 @@ else()
     add_executable(${WS_CLIENT_APP_NAME} sample/wsClient.cpp)
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp)
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp)
+    add_executable(${INVESTIGATOR_APP_NAME} sample/investigator.cpp)
 endif()
 
 # Если нужно собрать и динамическую библиотеку
@@ -437,6 +443,14 @@ if(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+        # Выполняем сборку приложения дознавателя
+        target_link_libraries(
+            ${INVESTIGATOR_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
     # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
     elseif(CMAKE_BUILD_IDN)
 
@@ -546,6 +560,13 @@ if(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+        # Выполняем сборку приложения дознавателя
+        target_link_libraries(
+            ${INVESTIGATOR_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${AWH_IDN}
+        )
+
     # Если операционной системой является Linux, FreeBSD, MacOS X
     else()
 
@@ -637,6 +658,12 @@ if(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
+            ${AWH_LIB_NAME}
+        )
+
+        # Выполняем сборку приложения дознавателя
+        target_link_libraries(
+            ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
         )
 
@@ -763,6 +790,15 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+        # Выполняем сборку приложения дознавателя
+        target_link_libraries(
+            ${INVESTIGATOR_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
     # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
     elseif(CMAKE_BUILD_IDN)
 
@@ -878,6 +914,14 @@ else(CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+        # Выполняем сборку приложения дознавателя
+        target_link_libraries(
+            ${INVESTIGATOR_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${AWH_IDN}
+        )
+
     # Если операционной системой является Linux, FreeBSD, MacOS X
     else()
 
@@ -975,6 +1019,13 @@ else(CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+        )
+
+        # Выполняем сборку приложения дознавателя
+        target_link_libraries(
+            ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
         )
@@ -1071,6 +1122,12 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
+        add_custom_command(TARGET "${INVESTIGATOR_APP_NAME}" POST_BUILD
+            COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${INVESTIGATOR_APP_NAME}>" "${entitlements_file}"
+            COMMENT "Sign target \"${INVESTIGATOR_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
     endif()
     # Сборка модуля CMAKE_ENABLED_PVS
     if(CMAKE_ENABLED_PVS)
@@ -1097,6 +1154,8 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         pvs_studio_add_target(TARGET ${WEB_CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${WEB_SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${CLUSTER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLUSTER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${INVESTIGATOR_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${INVESTIGATOR_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+
     endif(CMAKE_ENABLED_PVS)
 endif()
 
@@ -1145,6 +1204,7 @@ install(TARGETS ${WS_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/$
 install(TARGETS ${WS_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${INVESTIGATOR_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Если операционной системой не является Windows
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")

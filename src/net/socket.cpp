@@ -23,7 +23,7 @@ bool awh::Socket::noSigILL() const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Методы только не для OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаем структуру активации сигнала
@@ -89,7 +89,7 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Если это Linux
+	 * Для операционной системы Linux
 	 */
 	#ifdef __linux__
 		// Создаем структуру активации сигнала
@@ -117,7 +117,7 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 			return -1;
 		*/
 	/**
-	 * Если это FreeBSD или MacOS X
+	 * Для операционных систем FreeBSD или MacOS X
 	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__
 		// Устанавливаем параметр
@@ -145,7 +145,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем параметр
@@ -206,7 +206,7 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Методы только не для OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Флаги файлового дескриптора
@@ -249,7 +249,7 @@ bool awh::Socket::blocking(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Методы для всех ОС кроме OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Флаги файлового дескриптора
@@ -280,7 +280,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Определяем режим блокировки
@@ -383,7 +383,7 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Если это Linux
+	 * Для операционной системы Linux
 	 */
 	#ifdef __linux__
 		// Флаг активации или деактивации алгоритма TCP/CORK
@@ -412,7 +412,7 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 			#endif
 		}
 	/**
-	 * Если это FreeBSD или MacOS X
+	 * Для операционных систем FreeBSD или MacOS X
 	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__
 		// Флаг активации или деактивации алгоритма TCP/CORK
@@ -521,7 +521,7 @@ string awh::Socket::message(const int32_t code) const noexcept {
 		// Выполняем получение кода ошибки
 		const_cast <int32_t &> (code) = AWH_ERROR();
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Создаём буфер сообщения ошибки
@@ -573,7 +573,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем время таймаута в миллисекундах
@@ -681,7 +681,7 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 					#endif
 				}
 			/**
-			 * Методы только для OS Windows
+			 * Для операционной системы Windows
 			 */
 			#elif defined(_WIN32) || defined(_WIN64)
 				// Выполняем получение размер TTL по умолчанию
@@ -733,7 +733,7 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 					#endif
 				}
 			/**
-			 * Методы только для OS Windows
+			 * Для операционной системы Windows
 			 */
 			#elif defined(_WIN32) || defined(_WIN64)
 				// Выполняем получение размер TTL по умолчанию
@@ -799,13 +799,13 @@ bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_
 		// Выводим сообщение об ошибке
 		} else this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->message(AWH_ERROR()).c_str());
 		/**
-		 * Методы только для OS Windows
+		 * Для операционной системы Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Закрываем файловый дескриптор
 			::closesocket(fd);
 		/**
-		 * Методы для всех остальных операционных систем
+		 * Для всех остальных операционных систем
 		 */
 		#else
 			// Закрываем файловый дескриптор
@@ -827,7 +827,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		{
@@ -881,7 +881,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			}
 		}*/
 	/**
-	 * Методы только для *Nix-подобных операционных систем
+	 * Только для *Nix-подобных операционных систем
 	 */
 	#else
 		// Устанавливаем параметр
@@ -998,7 +998,7 @@ u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexc
 	// Результат работы функции
 	u_long result = 0;
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Определяем флаг блокировки

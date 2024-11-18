@@ -47,7 +47,7 @@
 #include <cstdlib>
 
 /**
- * Методы только для OS Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <winsock2.h>
