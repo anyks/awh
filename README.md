@@ -2520,3 +2520,29 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+### Example Investigator
+```c++
+#include <sys/investigator.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+
+using namespace std;
+using namespace awh;
+
+int32_t main(int32_t argc, char * argv[]){
+	fmk_t fmk;
+	igtr_t igtr;
+	log_t log(&fmk);
+
+	log.name("Investigator");
+	log.format("%H:%M:%S %d.%m.%Y");
+
+	if(argc > 1){
+		const pid_t pid = static_cast <pid_t> (::stoi(argv[1]));
+		log.print("Investigator: NAME=%s", log_t::flag_t::INFO, igtr.inquiry(pid).c_str());
+	} else log.print("Investigator: NAME=%s", log_t::flag_t::INFO, igtr.inquiry().c_str());
+
+	return EXIT_SUCCESS;
+}
+```

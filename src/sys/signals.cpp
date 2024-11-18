@@ -63,6 +63,8 @@ static std::function <void (const int32_t)> callbackFn = nullptr;
 		if(callbackFn != nullptr){
 			// Если произошло убийство приложения
 			if((info != nullptr) && (signal == SIGTERM)){
+				// Создаём объект дознавателя
+				awh::igtr_t igtr;
 				// Название пользователя
 				const char * user = nullptr;
 				// Определяем название пользователя
@@ -71,16 +73,10 @@ static std::function <void (const int32_t)> callbackFn = nullptr;
 				if(pwd != nullptr)
 					// Устанавливаем название пользователя
 					user = pwd->pw_name;
-				// Создаём объект работы с операционной системой
-				awh::os_t os;
-				// Создаём строку запроса для получения названия приложения
-				const string cmd = awhFmk->format("ps -p %d -o comm=", info->si_pid);
-				// Выполняем получение идентификатора процесса
-				const string app = os.exec(cmd, false);
+				// Выполняем получение названия процесса
+				const string & app = igtr.inquiry(info->si_pid);
 				// Если название приложения получено
 				if(!app.empty()){
-					// Удаляем лишние символы
-					awhFmk->transform(app, awh::fmk_t::transform_t::TRIM);
 					// Если название пользователя получено
 					if(user != nullptr)
 						// Выводим сообщение в лог

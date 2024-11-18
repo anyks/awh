@@ -30,13 +30,13 @@
  * Для OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
-	#include <windows.h>
 	#include <tchar.h>
 #endif
 
 /**
  * Подключаем наши модули
  */
+#include <sys/investigator.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
