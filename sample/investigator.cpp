@@ -10,9 +10,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/investigator.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <sys/investigator.hpp>
 
 // Подключаем пространство имён
 using namespace std;
