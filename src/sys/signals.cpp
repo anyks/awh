@@ -20,6 +20,10 @@
 	 * Стандартные модули
 	 */
 	#include <pwd.h>
+	/**
+	 * Подключаем наши модули
+	 */
+	#include <sys/investigator.hpp>
 #endif
 
 /**
