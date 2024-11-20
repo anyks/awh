@@ -28,7 +28,7 @@ bool awh::Engine::Address::close() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор подключён
-	if((result = (this->fd != INVALID_SOCKET) && (this->fd < MAX_SOCKETS))){
+	if((result = (this->fd != INVALID_SOCKET) && (this->fd < AWH_MAX_SOCKETS))){
 		/**
 		 * Если операционной системой является Windows
 		 */
@@ -432,7 +432,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int32_t family) noexcep
 			// Определяем разрешено ли подключение к прокси серверу
 			this->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), &this->_peer.size);
 			// Если сокет не создан тогда выходим
-			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS))
+			if((this->fd == INVALID_SOCKET) || (this->fd >= AWH_MAX_SOCKETS))
 				// Выходим из функции
 				return false;
 		} break;
@@ -541,7 +541,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Создаем сокет подключения
 			this->fd = ::socket(AF_UNIX, this->_type, 0);
 			// Если сокет не создан то выходим
-			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS)){
+			if((this->fd == INVALID_SOCKET) || (this->fd >= AWH_MAX_SOCKETS)){
 				// Выводим сообщение в консоль
 				this->_log->print("%s UNIXSOCKET=%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str(), unixsocket.c_str());
 				// Выходим
@@ -674,7 +674,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
  */
 void awh::Engine::Address::init(const string & ip, const uint32_t port, const int32_t family, const type_t type, const bool onlyV6) noexcept {
 	// Если IP адрес передан
-	if(!ip.empty() && (port <= 65535) && !this->network.empty()){
+	if(!ip.empty() && (port <= AWH_MAX_PORT) && !this->network.empty()){
 		// Если список сетевых интерфейсов установлен
 		if((family == AF_INET) || (family == AF_INET6)){
 			// Получаем хост текущего компьютера
@@ -796,7 +796,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 			// Создаем сокет подключения
 			this->fd = ::socket(family, this->_type, this->_protocol);
 			// Если сокет не создан то выходим
-			if((this->fd == INVALID_SOCKET) || (this->fd >= MAX_SOCKETS)){
+			if((this->fd == INVALID_SOCKET) || (this->fd >= AWH_MAX_SOCKETS)){
 				// Выводим сообщение в консоль
 				this->_log->print("%s [%s:%u]", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str(), ip.c_str(), port);
 				// Выходим
@@ -1135,7 +1135,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 	int64_t result = 0;
 	// Если буфер данных передан
 	if((buffer != nullptr) && (this->_addr != nullptr) && (size > 0) &&
-	   (this->_type != type_t::NONE) && (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+	   (this->_type != type_t::NONE) && (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 		// Если защищённый режим работы разрешён
 		if(this->_encrypted && (this->_ssl != nullptr)){
 			// Выполняем очистку ошибок OpenSSL
@@ -1414,7 +1414,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 	int64_t result = 0;
 	// Если буфер данных передан
 	if((buffer != nullptr) && (this->_addr != nullptr) && (size > 0) &&
-	   (this->_type != type_t::NONE) && (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+	   (this->_type != type_t::NONE) && (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 		// Если защищённый режим работы разрешён
 		if(this->_encrypted && (this->_ssl != nullptr)){
 			// Выполняем очистку ошибок OpenSSL
@@ -1752,7 +1752,7 @@ bool awh::Engine::Context::blocking(const mode_t mode) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 			// Определяем режим применяемой операции
 			switch(static_cast <uint8_t> (mode)){
 				// Если необходимо перевести сокет в блокирующий режим
@@ -1802,7 +1802,7 @@ bool awh::Engine::Context::cork(const mode_t mode) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 			// Если сокет установлен TCP/IP
 			if(this->_addr->_type == SOCK_STREAM){
 				// Флаг разрешения активации алгоритма TCP/CORK
@@ -1855,7 +1855,7 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 			// Если сокет установлен TCP/IP
 			if(this->_addr->_type == SOCK_STREAM){
 				// Флаг разрешения активации алгоритма Найгла
@@ -1927,7 +1927,7 @@ bool awh::Engine::Context::timeout(const time_t msec, const method_t method) noe
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 			// Определяем тип метода
 			switch(static_cast <uint8_t> (method)){
 				// Если установлен метод чтения
@@ -1955,7 +1955,7 @@ u_long awh::Engine::Context::availability(const method_t method) const noexcept 
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 			// Определяем метод для работы с буфером
 			switch(static_cast <uint8_t> (method)){
 				// Если метод чтения
@@ -1985,7 +1985,7 @@ int32_t awh::Engine::Context::buffer(const method_t method) const noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 			// Определяем метод для работы с буфером
 			switch(static_cast <uint8_t> (method)){
 				// Если метод чтения
@@ -2020,7 +2020,7 @@ bool awh::Engine::Context::buffer(const int32_t read, const int32_t write) noexc
 	// Если адрес присвоен
 	if((this->_addr != nullptr) && (read > 0) && (write > 0)){
 		// Если сокет удачно инициализирован
-		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < AWH_MAX_SOCKETS)){
 			// Если защищённый режим работы разрешён
 			if(this->_encrypted && (this->_ssl != nullptr)){
 				// Устанавливаем размер буфера данных на чтение в BIO SSL
@@ -3311,7 +3311,7 @@ void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 		// Устанавливаем тип приложения
 		target._type = type_t::SERVER;
 		// Если тип подключения является клиент
-		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && target._encrypted){
+		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < AWH_MAX_SOCKETS) && target._encrypted){
 			// Извлекаем BIO cthdthf
 			target._bio = SSL_get_rbio(target._ssl);
 			// Устанавливаем сокет клиента
@@ -3360,7 +3360,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			// Выходим из функции
 			return;
 		// Если объект фреймворка существует
-		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && !this->_cert.key.empty() && !this->_cert.pem.empty()){
+		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < AWH_MAX_SOCKETS) && !this->_cert.key.empty() && !this->_cert.pem.empty()){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -3629,7 +3629,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 		// Устанавливаем файловый дескриптор
 		target._addr = address;
 		// Если объект фреймворка существует
-		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS)){
+		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < AWH_MAX_SOCKETS)){
 			// Определяем тип сокета
 			switch(target._addr->_type){
 				// Если тип сокета - диграммы
@@ -3974,7 +3974,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 		// Устанавливаем тип приложения
 		target._type = type_t::CLIENT;
 		// Если объект фреймворка существует
-		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < MAX_SOCKETS) && this->encrypted(target)){
+		if((target._addr->fd != INVALID_SOCKET) && (target._addr->fd < AWH_MAX_SOCKETS) && this->encrypted(target)){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */

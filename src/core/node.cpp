@@ -191,7 +191,7 @@ void awh::Node::createBuffer(const uint64_t bid) noexcept {
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS)){
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS)){
 			// Если буфер полезной нагрузки уже инициализирован
 			if(broker->_payload.size != 0){
 				// Выполняем зануление размера буфера данных
@@ -616,7 +616,7 @@ bool awh::Node::cork(const uint64_t bid, const engine_t::mode_t mode) noexcept {
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS))
 			// Выполняем активирование/деактивирование алгоритма TCP/CORK
 			return broker->_ectx.cork(mode);
 	}
@@ -638,7 +638,7 @@ bool awh::Node::nodelay(const uint64_t bid, const engine_t::mode_t mode) noexcep
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < MAX_SOCKETS))
+		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS))
 			// Выполняем активирование/деактивирование алгоритма Нейгла
 			return broker->_ectx.nodelay(mode);
 	}

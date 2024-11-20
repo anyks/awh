@@ -161,7 +161,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx);
 	// Если сокет подключения активен и база событий установлена и активна
-	if((this->_addr.fd != INVALID_SOCKET) && (this->_addr.fd < MAX_SOCKETS) && (this->_base != nullptr)){
+	if((this->_addr.fd != INVALID_SOCKET) && (this->_addr.fd < AWH_MAX_SOCKETS) && (this->_base != nullptr)){
 		// Определяем метод события сокета
 		switch(static_cast <uint8_t> (method)){
 			// Если передано событие подписки на чтение

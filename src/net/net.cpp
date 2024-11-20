@@ -959,7 +959,7 @@ bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
 		// Создаём временный буфер данных для сравнения
 		vector <uint16_t> buffer(6, 0);
 		// Устанавливаем хексет маски
-		buffer[5] = 65535;
+		buffer[5] = 0xFFFF;
 		// Если буфер данных принадлежит к вещанию IPv6 => IPv4
 		result = (::memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0);
 	}
@@ -1663,7 +1663,7 @@ string awh::Net::get(const format_t format) const noexcept {
 				// Создаём временный буфер данных для сравнения
 				vector <uint16_t> buffer(6, 0);
 				// Устанавливаем хексет маски
-				buffer[5] = 65535;
+				buffer[5] = 0xFFFF;
 				// Флаг зеркального вещания IPv6 => IPv4
 				bool broadcast = false;
 				// Если буфер данных принадлежит к вещанию IPv6 => IPv4

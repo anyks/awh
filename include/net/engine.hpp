@@ -34,6 +34,11 @@
  */
 
 /**
+ * Максимальный номер порта
+ */
+#define AWH_MAX_PORT 0xFFFF
+
+/**
  * Отключаем Deprecated для Apple
  */
 #if defined(__APPLE__) && defined(__clang__)
