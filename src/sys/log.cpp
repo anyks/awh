@@ -137,7 +137,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 		// Проверяем является ли это переводом строки
 		isEnd = ((payload.data.compare("\r\n") == 0) || (payload.data.compare("\n") == 0));
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если файл для вывода лога указан
 	if((this->_mode.find(mode_t::FILE) != this->_mode.end()) && !this->_filename.empty()){
 		/**

@@ -363,9 +363,6 @@ namespace awh {
 				TIMER = 0x02  // Тип события таймер
 			};
 		private:
-			// Мютекс для блокировки основного потока
-			mutex _mtx;
-		private:
 			// Режим активации события
 			bool _mode;
 		private:
@@ -383,6 +380,9 @@ namespace awh {
 		private:
 			// Задержка времени таймера
 			time_t _delay;
+		private:
+			// Мютекс для блокировки потока
+			std::recursive_mutex _mtx;
 		private:
 			// Функция обратного вызова
 			base_t::callback_t _callback;

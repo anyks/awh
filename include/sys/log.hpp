@@ -114,14 +114,14 @@ namespace awh {
 			// Адрес файла для сохранения логов
 			string _filename;
 		private:
-			// Мютекс для блокировки потока
-			mutable mutex _mtx;
-		private:
 			// Список доступных флагов
 			set <mode_t> _mode;
 		private:
 			// Список проинициализированных процессов
 			mutable set <pid_t> _initialized;
+		private:
+			// Мютекс для блокировки потока
+			mutable std::recursive_mutex _mtx;
 		private:
 			// Объект работы с дочерними потоками
 			mutable screen_t <payload_t> _screen;

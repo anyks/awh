@@ -45,7 +45,7 @@ uint32_t awh::Scheme::Broker::port() const noexcept {
  */
 void awh::Scheme::Broker::port(const uint32_t port) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если порт передан
 	if(port > 0)
 		// Выполняем установку порта
@@ -65,7 +65,7 @@ const string & awh::Scheme::Broker::ip() const noexcept {
  */
 void awh::Scheme::Broker::ip(const string & ip) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если IP-адрес передан
 	if(!ip.empty())
 		// Выполняем установку IP-адреса
@@ -85,7 +85,7 @@ const string & awh::Scheme::Broker::mac() const noexcept {
  */
 void awh::Scheme::Broker::mac(const string & mac) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если MAC-адрес передан
 	if(!mac.empty())
 		// Выполняем установку MAC-адреса
@@ -97,7 +97,7 @@ void awh::Scheme::Broker::mac(const string & mac) noexcept {
  */
 void awh::Scheme::Broker::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем установку функции обратного вызова при активации сокета на чтение
 	this->_callbacks.set("read", callbacks);
 	// Выполняем установку функции обратного вызова при готовности сокета к записи
@@ -113,7 +113,7 @@ void awh::Scheme::Broker::callbacks(const fn_t & callbacks) noexcept {
  */
 void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем установку типа сокета подключения
 	this->_sonet = sonet;
 }
@@ -159,7 +159,7 @@ void awh::Scheme::Broker::callback(const SOCKET fd, const base_t::event_type_t e
  */
 void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t method) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если сокет подключения активен и база событий установлена и активна
 	if((this->_addr.fd != INVALID_SOCKET) && (this->_addr.fd < AWH_MAX_SOCKETS) && (this->_base != nullptr)){
 		// Определяем метод события сокета
@@ -230,7 +230,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
  */
 void awh::Scheme::Broker::timeout(const time_t seconds, const engine_t::method_t method) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Определяем метод режима работы
 	switch(static_cast <uint8_t> (method)){
 		// Режим работы ЧТЕНИЕ
@@ -256,7 +256,7 @@ void awh::Scheme::Broker::timeout(const time_t seconds, const engine_t::method_t
  */
 void awh::Scheme::Broker::base(base_t * base) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем установку базы событий
 	this->_base = base;
 }
@@ -267,7 +267,7 @@ void awh::Scheme::Broker::base(base_t * base) noexcept {
  */
 awh::Scheme::Broker & awh::Scheme::Broker::operator = (base_t * base) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем установку базы событий
 	this->_base = base;
 	// Выводим текущий объект

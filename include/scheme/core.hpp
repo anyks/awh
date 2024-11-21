@@ -136,9 +136,6 @@ namespace awh {
 			 */
 			typedef class AWHSHARED_EXPORT Broker {
 				private:
-					// Мютекс для блокировки потока
-					mutex _mtx;
-				private:
 					// Идентификатор брокера
 					uint64_t _id;
 				private:
@@ -171,6 +168,9 @@ namespace awh {
 					engine_t::ctx_t _ectx;
 					// Создаём объект подключения клиента
 					engine_t::addr_t _addr;
+				private:
+					// Мютекс для блокировки потока
+					std::recursive_mutex _mtx;
 				private:
 					// Создаём объект фреймворка
 					const fmk_t * _fmk;
@@ -245,7 +245,7 @@ namespace awh {
 						// Если функция обратного вызова передана
 						if((idw > 0) && (fn != nullptr)){
 							// Выполняем блокировку потока
-							const lock_guard <mutex> lock(this->_mtx);
+							const lock_guard <std::recursive_mutex> lock(this->_mtx);
 							// Выполняем установку функции обратного вызова
 							this->_callbacks.set <A> (idw, fn);
 						}
@@ -264,7 +264,7 @@ namespace awh {
 						// Если функция обратного вызова передана
 						if(!name.empty() && (fn != nullptr)){
 							// Выполняем блокировку потока
-							const lock_guard <mutex> lock(this->_mtx);
+							const lock_guard <std::recursive_mutex> lock(this->_mtx);
 							// Выполняем установку функции обратного вызова
 							this->_callbacks.set <A> (name, fn);
 						}

@@ -55,9 +55,6 @@ namespace awh {
 				Data() noexcept : fd(INVALID_SOCKET), delay(0), port(0) {}
 			} __attribute__((packed)) data_t;
 		private:
-			// Мютекс для блокировки потока
-			mutex _mtx;
-		private:
 			/**
 			 * Методы только для OS Windows
 			 */
@@ -71,6 +68,9 @@ namespace awh {
 				// Объект работы с пайпом
 				pipe_t _pipe;
 			#endif
+		private:
+			// Мютекс для блокировки потока
+			std::recursive_mutex _mtx;
 		private:
 			// Объект экрана для работы в дочернем потоке
 			screen_t <data_t> _screen;

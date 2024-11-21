@@ -2755,7 +2755,7 @@ awh::Event::type_t awh::Event::type() const noexcept {
  */
 void awh::Event::set(base_t * base) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Устанавливаем базу данных событий
 	this->_base = base;
 }
@@ -2798,7 +2798,7 @@ void awh::Event::set(const SOCKET fd) noexcept {
  */
 void awh::Event::set(base_t::callback_t callback) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Устанавливаем функцию обратного вызова
 	this->_callback = callback;
 }
@@ -2808,7 +2808,7 @@ void awh::Event::set(base_t::callback_t callback) noexcept {
  */
 void awh::Event::del(const base_t::event_type_t type) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если работа события запущена
 	if((this->_base != nullptr) && this->_mode){
 		// Если событие является стандартным
@@ -2826,7 +2826,7 @@ void awh::Event::del(const base_t::event_type_t type) noexcept {
  */
 void awh::Event::timeout(const time_t delay, const bool series) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Определяем тип установленного события
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием
@@ -2851,7 +2851,7 @@ void awh::Event::timeout(const time_t delay, const bool series) noexcept {
  */
 bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если работа базы событий активированна
 	if((this->_base != nullptr) && ((this->_fd != INVALID_SOCKET) || (this->_delay > 0)))
 		// Выполняем установку режима работы модуля
@@ -2864,7 +2864,7 @@ bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_
  */
 void awh::Event::stop() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если работа события запущена
 	if((this->_base != nullptr) && this->_mode){
 		// Если событие является стандартным
@@ -2882,7 +2882,7 @@ void awh::Event::stop() noexcept {
  */
 void awh::Event::start() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если работа события ещё не запущена
 	if(!this->_mode && (this->_base != nullptr)){
 		// Если событие является стандартным
@@ -2941,7 +2941,7 @@ awh::Event & awh::Event::operator = (const SOCKET fd) noexcept {
  */
 awh::Event & awh::Event::operator = (const time_t delay) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Определяем тип установленного события
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием
