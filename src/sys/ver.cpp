@@ -65,25 +65,35 @@ void awh::Version::set(const uint32_t ver) noexcept {
 void awh::Version::set(const string & ver) noexcept {
 	// Если версия передана
 	if(!ver.empty()){
-		// Выполняем сброс версии
-		this->_version = 0;
-		// Позиция разделителя
-		size_t start = 0, stop = 0, index = 0;
-		// Выполняем поиск разделителя
-		while((stop = ver.find('.', start)) != string::npos){
-			// Извлекаем полученное число
-			reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (std::stoi(ver.substr(start, stop)));
-			// Выполняем смещение
-			start = (stop + 1);
-			// Увеличиваем смещение индекса
-			index++;
-			// Если индекс перешёл диапазон, выходим
-			if(index > 3)
-				// Выходим из цикла
-				break;
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем сброс версии
+			this->_version = 0;
+			// Позиция разделителя
+			size_t start = 0, stop = 0, index = 0;
+			// Выполняем поиск разделителя
+			while((stop = ver.find('.', start)) != string::npos){
+				// Извлекаем полученное число
+				reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (::stoi(ver.substr(start, stop)));
+				// Выполняем смещение
+				start = (stop + 1);
+				// Увеличиваем смещение индекса
+				index++;
+				// Если индекс перешёл диапазон, выходим
+				if(index > 3)
+					// Выходим из цикла
+					break;
+			}
+			// Выполняем установку последнего октета
+			reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (::stoi(ver.substr(start)));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception &) {
+			/* Ничего не делаем */
 		}
-		// Выполняем установку последнего октета
-		reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (std::stoi(ver.substr(start)));
 	}
 }
 /**

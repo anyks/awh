@@ -41,8 +41,9 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
 #include <net/net.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
@@ -155,6 +156,8 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
+			// Объект для работы с логами
+			const log_t * _log;
 		public:
 			/**
 			 * parse Метод получения параметров URL-запроса
@@ -287,8 +290,9 @@ namespace awh {
 			/**
 			 * URI Конструктор
 			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			URI(const fmk_t * fmk) noexcept;
+			URI(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~URI Деструктор
 			 */

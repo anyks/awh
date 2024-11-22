@@ -540,16 +540,35 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 					if(!data.front().first.empty()){
 						// Если запись является числом
 						if(data.front().second){
-							// Выполняем получение числа
-							const uint64_t value1 = ::stoull(data.front().first);
-							// Пытаемся уменьшить число
-							if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
-								// Выполняем преобразование в unsigned int 32
-								const uint32_t value2 = static_cast <uint32_t> (value1);
+							/**
+							 * Выполняем отлов ошибок
+							 */
+							try {
+								// Выполняем получение числа
+								const uint64_t value1 = ::stoull(data.front().first);
+								// Пытаемся уменьшить число
+								if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
+									// Выполняем преобразование в unsigned int 32
+									const uint32_t value2 = static_cast <uint32_t> (value1);
+									// Выполняем добавление новой записи в буфер
+									buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
 								// Выполняем добавление новой записи в буфер
-								buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
-							// Выполняем добавление новой записи в буфер
-							} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
+								} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
+							/**
+							 * Если возникает ошибка
+							 */
+							} catch(const std::exception &) {
+								// Выполняем получение числа
+								const uint64_t value1 = 0;
+								// Пытаемся уменьшить число
+								if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
+									// Выполняем преобразование в unsigned int 32
+									const uint32_t value2 = static_cast <uint32_t> (value1);
+									// Выполняем добавление новой записи в буфер
+									buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
+								// Выполняем добавление новой записи в буфер
+								} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
+							}
 						// Если запись является текстом
 						} else {
 							// Если последний символ является пробелом, удаляем его

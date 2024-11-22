@@ -2120,7 +2120,7 @@ void awh::server::Proxy::encryption(const broker_t broker, const string & pass, 
  * @param log объект для работы с логами
  */
 awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _callbacks(log), _core(fmk, log), _server(&_core, fmk, log),
+ _uri(fmk, log), _callbacks(log), _core(fmk, log), _server(&_core, fmk, log),
  _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE),
  _compressor(http_t::compressor_t::NONE), _fmk(fmk), _log(log) {
 	// Устанавливаем тип сокета TCP

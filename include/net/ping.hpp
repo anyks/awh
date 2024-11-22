@@ -325,8 +325,8 @@ namespace awh {
 			 */
 			Ping(const fmk_t * fmk, const log_t * log) noexcept :
 			 _fd(INVALID_SOCKET), _mode(false), _verb(true),
-			 _dns(fmk, log), _socket(fmk, log), _shifting(3000),
-			 _timeoutRead(5000), _timeoutWrite(15000),
+			 _net(log), _dns(fmk, log), _socket(fmk, log),
+			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
 			 _fmk(fmk), _log(log), _callback(nullptr) {}
 			/**
 			 * ~Ping Деструктор

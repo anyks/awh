@@ -393,62 +393,73 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 				result = bytes;
 				// Если все данные получены
 				if(stop){
-					// Определяем тип HTTP-модуля
-					switch(static_cast <uint8_t> (this->_hid)){
-						// Если мы работаем с клиентом
-						case static_cast <uint8_t> (hid_t::CLIENT): {
-							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-							if(this->_callbacks.is("headersResponse"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_res.code, this->_res.message, this->_headers);
-						} break;
-						// Если мы работаем с сервером
-						case static_cast <uint8_t> (hid_t::SERVER): {
-							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-							if(this->_callbacks.is("headersRequest"))
-								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_req.method, this->_req.url, this->_headers);
-						} break;
-					}
-					// Получаем размер тела
-					auto i = this->_headers.find("content-length");
-					// Если размер запроса передан
-					if(i != this->_headers.end()){
-						// Запоминаем размер тела сообщения
-						this->_bodySize = static_cast <size_t> (::stoull(i->second));
-						// Если размер тела не получен
-						if(this->_bodySize == 0){
-							// Запрашиваем заголовок подключения
-							const string & header = this->header("connection");
-							// Если заголовок подключения найден
-							if(header.empty() || !this->_fmk->exists("close", header)){
-								// Тело в запросе не передано
-								this->_state = state_t::END;
-								// Выходим из функции
-								return;
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Определяем тип HTTP-модуля
+						switch(static_cast <uint8_t> (this->_hid)){
+							// Если мы работаем с клиентом
+							case static_cast <uint8_t> (hid_t::CLIENT): {
+								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+								if(this->_callbacks.is("headersResponse"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_res.code, this->_res.message, this->_headers);
+							} break;
+							// Если мы работаем с сервером
+							case static_cast <uint8_t> (hid_t::SERVER): {
+								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+								if(this->_callbacks.is("headersRequest"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_req.method, this->_req.url, this->_headers);
+							} break;
+						}
+						// Получаем размер тела
+						auto i = this->_headers.find("content-length");
+						// Если размер запроса передан
+						if(i != this->_headers.end()){
+							// Запоминаем размер тела сообщения
+							this->_bodySize = static_cast <size_t> (::stoull(i->second));
+							// Если размер тела не получен
+							if(this->_bodySize == 0){
+								// Запрашиваем заголовок подключения
+								const string & header = this->header("connection");
+								// Если заголовок подключения найден
+								if(header.empty() || !this->_fmk->exists("close", header)){
+									// Тело в запросе не передано
+									this->_state = state_t::END;
+									// Выходим из функции
+									return;
+								}
+							}
+							// Устанавливаем стейт поиска тела запроса
+							this->_state = state_t::BODY;
+							// Продолжаем работу
+							goto end;
+						// Если тело приходит
+						} else {
+							// Выполняем извлечение списка параметров передачи данных
+							const auto & range = this->_headers.equal_range("transfer-encoding");
+							// Выполняем перебор всего списка указанных заголовков
+							for(auto i = range.first; i != range.second; ++i){
+								// Если нужно получать размер тела чанками
+								if(this->_fmk->exists("chunked", i->second)){
+									// Устанавливаем стейт поиска тела запроса
+									this->_state = state_t::BODY;
+									// Продолжаем работу
+									goto end;
+								}
 							}
 						}
-						// Устанавливаем стейт поиска тела запроса
-						this->_state = state_t::BODY;
-						// Продолжаем работу
-						goto end;
-					// Если тело приходит
-					} else {
-						// Выполняем извлечение списка параметров передачи данных
-						const auto & range = this->_headers.equal_range("transfer-encoding");
-						// Выполняем перебор всего списка указанных заголовков
-						for(auto i = range.first; i != range.second; ++i){
-							// Если нужно получать размер тела чанками
-							if(this->_fmk->exists("chunked", i->second)){
-								// Устанавливаем стейт поиска тела запроса
-								this->_state = state_t::BODY;
-								// Продолжаем работу
-								goto end;
-							}
-						}
+						// Тело в запросе не передано
+						this->_state = state_t::END;
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const std::exception & error) {
+						// Выводим сообщение об ошибке
+						this->_log->print("Web: %s", log_t::flag_t::CRITICAL, error.what());
 					}
-					// Тело в запросе не передано
-					this->_state = state_t::END;
 					// Устанавливаем метку завершения работы
 					end:
 					// Выходим из функции
@@ -463,202 +474,235 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							switch(static_cast <uint8_t> (this->_hid)){
 								// Если мы работаем с клиентом
 								case static_cast <uint8_t> (hid_t::CLIENT): {
-									// Создаём буфер для проверки
-									char temp[5];
-									// Копируем полученную строку
-									::strncpy(temp, buffer, 4);
-									// Устанавливаем конец строки
-									temp[4] = '\0';
-									// Если мы получили ответ от сервера
-									if(::strcmp(temp, "HTTP") == 0){
-										// Выполняем очистку всех ранее полученных данных
-										this->clear();
-										// Выполняем сброс размера тела
-										this->_bodySize = -1;
-										// Устанавливаем разделитель
-										this->_separator = ':';
-										// Устанавливаем стейт ожидания получения заголовков
-										this->_state = state_t::HEADERS;
-										// Получаем версию протокол запроса
-										this->_res.version = ::stof(string(buffer + 5, this->_pos[0] - 5));
-										// Получаем сообщение ответа
-										this->_res.message.assign(buffer + (this->_pos[1] + 1), size - (this->_pos[1] + 1));
-										// Получаем код ответа
-										this->_res.code = static_cast <uint32_t> (::stoi(string(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1))));
-										// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-										if(this->_callbacks.is("response"))
-											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const uint64_t, const uint32_t, const string &)> ("response", this->_id, this->_res.code, this->_res.message);
-									// Если данные пришли неправильные
-									} else {
-										// Выполняем очистку всех ранее полученных данных
-										this->clear();
-										// Сообщаем, что переданное тело содержит ошибки
-										this->_log->print("Broken response server", log_t::flag_t::WARNING);
-										// Если функция обратного вызова на на вывод ошибок установлена
-										if(this->_callbacks.is("error"))
-											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken response server");
+									/**
+									 * Выполняем отлов ошибок
+									 */
+									try {
+										// Создаём буфер для проверки
+										char temp[5];
+										// Копируем полученную строку
+										::strncpy(temp, buffer, 4);
+										// Устанавливаем конец строки
+										temp[4] = '\0';
+										// Если мы получили ответ от сервера
+										if(::strcmp(temp, "HTTP") == 0){
+											// Выполняем очистку всех ранее полученных данных
+											this->clear();
+											// Выполняем сброс размера тела
+											this->_bodySize = -1;
+											// Устанавливаем разделитель
+											this->_separator = ':';
+											// Устанавливаем стейт ожидания получения заголовков
+											this->_state = state_t::HEADERS;
+											// Получаем версию протокол запроса
+											this->_res.version = ::stof(string(buffer + 5, this->_pos[0] - 5));
+											// Получаем сообщение ответа
+											this->_res.message.assign(buffer + (this->_pos[1] + 1), size - (this->_pos[1] + 1));
+											// Получаем код ответа
+											this->_res.code = static_cast <uint32_t> (::stoi(string(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1))));
+											// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+											if(this->_callbacks.is("response"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const uint64_t, const uint32_t, const string &)> ("response", this->_id, this->_res.code, this->_res.message);
+										// Если данные пришли неправильные
+										} else {
+											// Выполняем очистку всех ранее полученных данных
+											this->clear();
+											// Сообщаем, что переданное тело содержит ошибки
+											this->_log->print("Broken response server", log_t::flag_t::WARNING);
+											// Если функция обратного вызова на на вывод ошибок установлена
+											if(this->_callbacks.is("error"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken response server");
+										}
+									/**
+									 * Если возникает ошибка
+									 */
+									} catch(const std::exception & error) {
+										// Выводим сообщение об ошибке
+										this->_log->print("Web: %s", log_t::flag_t::CRITICAL, error.what());
 									}
 								} break;
 								// Если мы работаем с сервером
 								case static_cast <uint8_t> (hid_t::SERVER): {
-									// Создаём буфер для проверки
-									char temp[5];
-									// Копируем полученную строку
-									::strncpy(temp, buffer + (this->_pos[1] + 1), 4);
-									// Устанавливаем конец строки
-									temp[4] = '\0';
-									// Если мы получили ответ от сервера
-									if(::strcmp(temp, "HTTP") == 0){
-										// Выполняем очистку всех ранее полученных данных
-										this->clear();
-										// Выполняем сброс размера тела
-										this->_bodySize = -1;
-										// Устанавливаем разделитель
-										this->_separator = ':';
-										// Выполняем смену стейта
-										this->_state = state_t::HEADERS;
-										// Получаем метод запроса
-										const string method(buffer, this->_pos[0]);
-										// Получаем параметры URI-запроса
-										const string uri(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1));
-										// Получаем версию протокол запроса
-										this->_req.version = ::stof(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
-										// Выполняем установку URI-параметров запроса
-										this->_req.url = this->_uri.parse(uri);
-										// Если метод определён как GET
-										if(this->_fmk->compare(method, "get"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::GET;
-										// Если метод определён как PUT
-										else if(this->_fmk->compare(method, "put"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::PUT;
-										// Если метод определён как POST
-										else if(this->_fmk->compare(method, "post"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::POST;
-										// Если метод определён как HEAD
-										else if(this->_fmk->compare(method, "head"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::HEAD;
-										// Если метод определён как DELETE
-										else if(this->_fmk->compare(method, "delete"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::DEL;
-										// Если метод определён как PATCH
-										else if(this->_fmk->compare(method, "patch"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::PATCH;
-										// Если метод определён как TRACE
-										else if(this->_fmk->compare(method, "trace"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::TRACE;
-										// Если метод определён как OPTIONS
-										else if(this->_fmk->compare(method, "options"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::OPTIONS;
-										// Если метод определён как CONNECT
-										else if(this->_fmk->compare(method, "connect"))
-											// Выполняем установку метода запроса
-											this->_req.method = method_t::CONNECT;
-										// Если функция обратного вызова на вывод запроса клиента на выполненный запрос к серверу установлена
-										if(this->_callbacks.is("request"))
-											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &)> ("request", this->_id, this->_req.method, this->_req.url);
-									// Если данные пришли неправильные
-									} else {
-										// Выполняем очистку всех ранее полученных данных
-										this->clear();
-										// Сообщаем, что переданное тело содержит ошибки
-										this->_log->print("Broken request client", log_t::flag_t::WARNING);
-										// Если функция обратного вызова на на вывод ошибок установлена
-										if(this->_callbacks.is("error"))
-											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken request client");
+									/**
+									 * Выполняем отлов ошибок
+									 */
+									try {
+										// Создаём буфер для проверки
+										char temp[5];
+										// Копируем полученную строку
+										::strncpy(temp, buffer + (this->_pos[1] + 1), 4);
+										// Устанавливаем конец строки
+										temp[4] = '\0';
+										// Если мы получили ответ от сервера
+										if(::strcmp(temp, "HTTP") == 0){
+											// Выполняем очистку всех ранее полученных данных
+											this->clear();
+											// Выполняем сброс размера тела
+											this->_bodySize = -1;
+											// Устанавливаем разделитель
+											this->_separator = ':';
+											// Выполняем смену стейта
+											this->_state = state_t::HEADERS;
+											// Получаем метод запроса
+											const string method(buffer, this->_pos[0]);
+											// Получаем параметры URI-запроса
+											const string uri(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1));
+											// Получаем версию протокол запроса
+											this->_req.version = ::stof(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
+											// Выполняем установку URI-параметров запроса
+											this->_req.url = this->_uri.parse(uri);
+											// Если метод определён как GET
+											if(this->_fmk->compare(method, "get"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::GET;
+											// Если метод определён как PUT
+											else if(this->_fmk->compare(method, "put"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::PUT;
+											// Если метод определён как POST
+											else if(this->_fmk->compare(method, "post"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::POST;
+											// Если метод определён как HEAD
+											else if(this->_fmk->compare(method, "head"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::HEAD;
+											// Если метод определён как DELETE
+											else if(this->_fmk->compare(method, "delete"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::DEL;
+											// Если метод определён как PATCH
+											else if(this->_fmk->compare(method, "patch"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::PATCH;
+											// Если метод определён как TRACE
+											else if(this->_fmk->compare(method, "trace"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::TRACE;
+											// Если метод определён как OPTIONS
+											else if(this->_fmk->compare(method, "options"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::OPTIONS;
+											// Если метод определён как CONNECT
+											else if(this->_fmk->compare(method, "connect"))
+												// Выполняем установку метода запроса
+												this->_req.method = method_t::CONNECT;
+											// Если функция обратного вызова на вывод запроса клиента на выполненный запрос к серверу установлена
+											if(this->_callbacks.is("request"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &)> ("request", this->_id, this->_req.method, this->_req.url);
+										// Если данные пришли неправильные
+										} else {
+											// Выполняем очистку всех ранее полученных данных
+											this->clear();
+											// Сообщаем, что переданное тело содержит ошибки
+											this->_log->print("Broken request client", log_t::flag_t::WARNING);
+											// Если функция обратного вызова на на вывод ошибок установлена
+											if(this->_callbacks.is("error"))
+												// Выполняем функцию обратного вызова
+												this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken request client");
+										}
+									/**
+									 * Если возникает ошибка
+									 */
+									} catch(const std::exception & error) {
+										// Выводим сообщение об ошибке
+										this->_log->print("Web: %s", log_t::flag_t::CRITICAL, error.what());
 									}
 								} break;
 							}
 						} break;
 						// Если передан режим получения заголовков
 						case static_cast <uint8_t> (state_t::HEADERS): {
-							// Получаем ключ заголовка
-							string key(buffer, this->_pos[0]);
-							// Получаем значение заголовка
-							string val(buffer + (this->_pos[0] + 1), size - (this->_pos[0] + 1));
-							// Добавляем заголовок в список заголовков
-							if(!key.empty() && !val.empty()){
-								// Если название заголовка соответствует HOST
-								if(this->_fmk->compare(key, "host")){
-									// Создаём объект работы с IP-адресами
-									net_t net;
-									// Выполняем установку порта по умолчанию
-									this->_req.url.port = 80;
-									// Выполняем установку схемы запроса
-									this->_req.url.schema = "http";
-									// Выполняем установку хоста
-									this->_req.url.host = this->_fmk->transform(val, fmk_t::transform_t::TRIM);
-									// Выполняем поиск разделителя
-									const size_t pos = this->_req.url.host.rfind(':');
-									// Если разделитель найден
-									if(pos != string::npos){
-										// Получаем порт сервера
-										const string & port = this->_req.url.host.substr(pos + 1);
-										// Если данные порта являются числом
-										if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
-											// Выполняем установку порта сервера
-											this->_req.url.port = static_cast <uint32_t> (::stoi(port));
-											// Выполняем получение хоста сервера
-											this->_req.url.host = this->_req.url.host.substr(0, pos);
-											// Если порт установлен как 443
-											if(this->_req.url.port == 443)
-												// Выполняем установку защищённую схему запроса
-												this->_req.url.schema = "https";
+							/**
+							 * Выполняем отлов ошибок
+							 */
+							try {
+								// Получаем ключ заголовка
+								string key(buffer, this->_pos[0]);
+								// Получаем значение заголовка
+								string val(buffer + (this->_pos[0] + 1), size - (this->_pos[0] + 1));
+								// Добавляем заголовок в список заголовков
+								if(!key.empty() && !val.empty()){
+									// Если название заголовка соответствует HOST
+									if(this->_fmk->compare(key, "host")){
+										// Создаём объект работы с IP-адресами
+										net_t net(this->_log);
+										// Выполняем установку порта по умолчанию
+										this->_req.url.port = 80;
+										// Выполняем установку схемы запроса
+										this->_req.url.schema = "http";
+										// Выполняем установку хоста
+										this->_req.url.host = this->_fmk->transform(val, fmk_t::transform_t::TRIM);
+										// Выполняем поиск разделителя
+										const size_t pos = this->_req.url.host.rfind(':');
+										// Если разделитель найден
+										if(pos != string::npos){
+											// Получаем порт сервера
+											const string & port = this->_req.url.host.substr(pos + 1);
+											// Если данные порта являются числом
+											if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
+												// Выполняем установку порта сервера
+												this->_req.url.port = static_cast <uint32_t> (::stoi(port));
+												// Выполняем получение хоста сервера
+												this->_req.url.host = this->_req.url.host.substr(0, pos);
+												// Если порт установлен как 443
+												if(this->_req.url.port == 443)
+													// Выполняем установку защищённую схему запроса
+													this->_req.url.schema = "https";
+											}
 										}
+										// Определяем тип домена
+										switch(static_cast <uint8_t> (net.host(this->_req.url.host))){
+											// Если передан IP-адрес сети IPv4
+											case static_cast <uint8_t> (net_t::type_t::IPV4): {
+												// Выполняем установку семейства IP-адресов
+												this->_req.url.family = AF_INET;
+												// Выполняем установку IPv4 адреса
+												this->_req.url.ip = this->_req.url.host;
+											} break;
+											// Если передан IP-адрес сети IPv6
+											case static_cast <uint8_t> (net_t::type_t::IPV6): {
+												// Выполняем установку семейства IP-адресов
+												this->_req.url.family = AF_INET6;
+												// Выполняем установку IPv6 адреса
+												this->_req.url.ip = net = this->_req.url.host;
+											} break;
+											// Если передана доменная зона
+											case static_cast <uint8_t> (net_t::type_t::FQDN):
+												// Выполняем установку IPv6 адреса
+												this->_req.url.domain = this->_fmk->transform(this->_req.url.host, fmk_t::transform_t::LOWER);
+											break;
+										}
+									// Если название заголовка соответствует переключению протокола
+									} else if(this->_fmk->compare(key, "upgrade"))
+										// Выполняем установку название протокола для переключению
+										this->_upgrade = val;
+									// Если название заголовка соответствует трейлеру
+									else if(this->_fmk->compare(key, "trailer")) {
+										// Выполняем сбор трейлеров
+										this->_trailers.emplace(this->_fmk->transform(this->_fmk->transform(val, fmk_t::transform_t::TRIM), fmk_t::transform_t::LOWER));
+										// Выводим результат
+										return;
 									}
-									// Определяем тип домена
-									switch(static_cast <uint8_t> (net.host(this->_req.url.host))){
-										// Если передан IP-адрес сети IPv4
-										case static_cast <uint8_t> (net_t::type_t::IPV4): {
-											// Выполняем установку семейства IP-адресов
-											this->_req.url.family = AF_INET;
-											// Выполняем установку IPv4 адреса
-											this->_req.url.ip = this->_req.url.host;
-										} break;
-										// Если передан IP-адрес сети IPv6
-										case static_cast <uint8_t> (net_t::type_t::IPV6): {
-											// Выполняем установку семейства IP-адресов
-											this->_req.url.family = AF_INET6;
-											// Выполняем установку IPv6 адреса
-											this->_req.url.ip = net = this->_req.url.host;
-										} break;
-										// Если передана доменная зона
-										case static_cast <uint8_t> (net_t::type_t::FQDN):
-											// Выполняем установку IPv6 адреса
-											this->_req.url.domain = this->_fmk->transform(this->_req.url.host, fmk_t::transform_t::LOWER);
-										break;
-									}
-								// Если название заголовка соответствует переключению протокола
-								} else if(this->_fmk->compare(key, "upgrade"))
-									// Выполняем установку название протокола для переключению
-									this->_upgrade = val;
-								// Если название заголовка соответствует трейлеру
-								else if(this->_fmk->compare(key, "trailer")) {
-									// Выполняем сбор трейлеров
-									this->_trailers.emplace(this->_fmk->transform(this->_fmk->transform(val, fmk_t::transform_t::TRIM), fmk_t::transform_t::LOWER));
-									// Выводим результат
-									return;
+									// Добавляем заголовок в список
+									this->_headers.emplace(
+										this->_fmk->transform(key, fmk_t::transform_t::LOWER),
+										this->_fmk->transform(val, fmk_t::transform_t::TRIM)
+									);
+									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
+									if(this->_callbacks.is("header"))
+										// Выполняем функцию обратного вызова
+										this->_callbacks.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, std::move(key), std::move(val));
 								}
-								// Добавляем заголовок в список
-								this->_headers.emplace(
-									this->_fmk->transform(key, fmk_t::transform_t::LOWER),
-									this->_fmk->transform(val, fmk_t::transform_t::TRIM)
-								);
-								// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
-								if(this->_callbacks.is("header"))
-									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, std::move(key), std::move(val));
+							/**
+							 * Если возникает ошибка
+							 */
+							} catch(const std::exception & error) {
+								// Выводим сообщение об ошибке
+								this->_log->print("Web: %s", log_t::flag_t::CRITICAL, error.what());
 							}
 						} break;
 					}
@@ -1305,7 +1349,7 @@ void awh::Web::callbacks(const fn_t & callbacks) noexcept {
  * @param log объект для работы с логами
  */
 awh::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _separator('\0'), _pos{-1, -1}, _bodySize(-1), _uri(fmk), _callbacks(log),
+ _separator('\0'), _pos{-1, -1}, _bodySize(-1), _uri(fmk, log), _callbacks(log),
  _hid(hid_t::NONE), _state(state_t::QUERY), _upgrade{""}, _fmk(fmk), _log(log) {
 	// Выполняем заполнение списка стандартных заголовков
 	this->_standardHeaders.insert({

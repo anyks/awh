@@ -36,7 +36,7 @@
  */
 #include <sys/os.hpp>
 #include <sys/reg.hpp>
-
+#include <sys/log.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
@@ -106,10 +106,11 @@ namespace awh {
 				std::unique_ptr <Net> begin; // Начальный IP-адрес
 				/**
 				 * LocalNet Конструктор
+				 * @param log объект для работы с логами
 				 */
-				LocalNet() noexcept :
+				LocalNet(const log_t * log) noexcept :
 				 reserved(false), prefix(0),
-				 end(new Net), begin(new Net) {}
+				 end(new Net(log)), begin(new Net(log)) {}
 			} localNet_t;
 		private:
 			// Тип обрабатываемого адреса
@@ -126,6 +127,9 @@ namespace awh {
 		private:
 			// Список локальных адресов
 			std::multimap <type_t, localNet_t> _localsNet;
+		private:
+			// Объект для работы с логами
+			const log_t * _log;
 		private:
 			/**
 			 * initLocalNet Метод инициализации списка локальных адресов
@@ -432,14 +436,16 @@ namespace awh {
 		public:
 			/**
 			 * Net конструктор
+			 * @param log объект для работы с логами
 			 */
-			Net() noexcept;
+			Net(const log_t * log) noexcept;
 		private:
 			/**
 			 * Net конструктор
 			 * @param exp регулярное выражение для установки
+			 * @param log объект для работы с логами
 			 */
-			Net(const regexp_t::exp_t & exp) noexcept;
+			Net(const regexp_t::exp_t & exp, const log_t * log) noexcept;
 		public:
 			/**
 			 * ~Net деструктор

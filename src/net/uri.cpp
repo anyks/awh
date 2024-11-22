@@ -193,9 +193,21 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 			// Выполняем поиск порта запроса
 			i = uri.find(flag_t::PORT);
 			// Если порт запроса получен
-			if(i != uri.end())
-				// Выполняем извлечение порта запроса
-				result.port = stoi(i->second);
+			if(i != uri.end()){
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем извлечение порта запроса
+					result.port = ::stoi(i->second);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					// Выполняем извлечение порта запроса
+					result.port = 0;
+				}
+			}
 			// Выполняем поиск пользователя запроса
 			i = uri.find(flag_t::LOGIN);
 			// Если пользователь запроса получен
@@ -292,7 +304,7 @@ string awh::URI::encode(const string & str) const noexcept {
 	// Если строка передана
 	if(!str.empty()){
 		// Создаём поток
-		ostringstream escaped;
+		std::ostringstream escaped;
 		// Заполняем поток нулями
 		escaped.fill('0');
 		// Переключаемся на 16-ю систему счисления
@@ -1059,11 +1071,22 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 			// Получаем порт запроса
 			const string & port = match[4];
 			// Если порт получен
-			if(!port.empty())
-				// Выполняем установку порта
-				result.port = ::stoi(port);
+			if(!port.empty()){
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем установку порта
+					result.port = ::stoi(port);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					// Выполняем установку порта
+					result.port = 0;
+				}
 			// Если порт не получен но указана схема
-			else if(!schema.empty()) {
+			} else if(!schema.empty()) {
 				// Если схема принадлежит зашифрованному HTTP серверу
 				if(this->_fmk->compare(schema, "https"))
 					// Выполняем установку порта по умолчанию
@@ -1139,8 +1162,9 @@ string awh::URI::operator = (const url_t & url) const noexcept {
 /**
  * URI Конструктор
  * @param fmk объект фреймворка
+ * @param log объект для работы с логами
  */
-awh::URI::URI(const fmk_t * fmk) noexcept : _fmk(fmk) {
+awh::URI::URI(const fmk_t * fmk, const log_t * log) noexcept : _net(log), _fmk(fmk), _log(log) {
 	// Устанавливаем регулярное выражение для парсинга URI
 	this->_uri = this->_regexp.build("^(([^:/?#]+):)?(\\/\\/([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 	// Устанавливаем регулярное выражение для парсинга E-Mail
@@ -1160,8 +1184,10 @@ awh::URI::URI(const fmk_t * fmk) noexcept : _fmk(fmk) {
 ostream & awh::operator << (ostream & os, const uri_t::url_t & url) noexcept {
 	// Выполняем создание объекта фреймворка
 	fmk_t fmk{};
+	// Создаём объект для работы с логами
+	log_t log(&fmk);
 	// Выполняем создание объекта для работы с URI
-	uri_t uri(&fmk);
+	uri_t uri(&fmk, &log);
 	// Записываем в поток сгенерированный URL-адрес
 	os << (uri = url);
 	// Выводим результат

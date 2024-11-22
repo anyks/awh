@@ -447,7 +447,7 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
+ _pid(::getpid()), _uri(fmk, log), _callbacks(log), _timer(fmk, log),
  _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS),
  _pingInterval(PING_INTERVAL), _fmk(fmk), _log(log), _core(nullptr) {
@@ -463,7 +463,7 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _uri(fmk), _callbacks(log), _timer(fmk, log),
+ _pid(::getpid()), _uri(fmk, log), _callbacks(log), _timer(fmk, log),
  _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
  _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS),
  _pingInterval(PING_INTERVAL), _fmk(fmk), _log(log), _core(core) {

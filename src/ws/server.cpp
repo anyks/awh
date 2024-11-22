@@ -164,14 +164,25 @@ void awh::server::WS::commit() noexcept {
 				} else if(this->_fmk->compare(header.first, "x-awh-encryption")) {
 					// Если заголовок найден
 					if((http_t::_crypted = !header.second.empty())){
-						// Определяем размер шифрования
-						switch(static_cast <uint16_t> (::stoi(header.second))){
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Определяем размер шифрования
+							switch(static_cast <uint16_t> (::stoi(header.second))){
+								// Если шифрование произведено 128 битным ключём
+								case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
+								// Если шифрование произведено 192 битным ключём
+								case 192: this->_hash.cipher(hash_t::cipher_t::AES192); break;
+								// Если шифрование произведено 256 битным ключём
+								case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
+							}
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception &) {
 							// Если шифрование произведено 128 битным ключём
-							case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
-							// Если шифрование произведено 192 битным ключём
-							case 192: this->_hash.cipher(hash_t::cipher_t::AES192); break;
-							// Если шифрование произведено 256 битным ключём
-							case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
+							this->_hash.cipher(hash_t::cipher_t::AES128);
 						}
 					}
 				}
@@ -243,9 +254,21 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 			// Переходим по всему списку заголовков
 			for(auto & header : this->_web.headers()){
 				// Если заголовок найден
-				if(this->_fmk->compare(header.first, "sec-websocket-version"))
-					// Проверяем, совпадает ли желаемая версия протокола
-					return (static_cast <uint8_t> (::stoi(header.second)) == static_cast <uint8_t> (WS_VERSION));
+				if(this->_fmk->compare(header.first, "sec-websocket-version")){
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Проверяем, совпадает ли желаемая версия протокола
+						return (static_cast <uint8_t> (::stoi(header.second)) == static_cast <uint8_t> (WS_VERSION));
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const std::exception &) {
+						// Сообщяем, что проверка не прошла
+						return false;
+					}
+				}
 			}
 		} break;
 		// Если требуется выполнить проверки на переключение протокола

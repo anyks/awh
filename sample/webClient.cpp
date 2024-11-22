@@ -55,7 +55,7 @@ class WebClient {
 			// Если подключение выполнено
 			if(mode == client::web_t::mode_t::CONNECT){
 				// Создаём объект URI
-				uri_t uri(this->_fmk);
+				uri_t uri(this->_fmk, this->_log);
 				// Создаём объект запроса
 				client::web_t::request_t req1, req2;
 				// Устанавливаем метод запроса
@@ -191,9 +191,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект работы с адресами-URI
-	uri_t uri(&fmk);
-	// Создаём объект параметров SSL-шифрования
-	node_t::ssl_t ssl;
+	uri_t uri(&fmk, &log);
 	// Создаём объект сетевого ядра
 	client::core_t core(&fmk, &log);
 	// Создаём объект AWH-клиента
@@ -221,6 +219,8 @@ int32_t main(int32_t argc, char * argv[]){
 	});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
+	// Создаём объект параметров SSL-шифрования
+	node_t::ssl_t ssl;
 	// Отключаем валидацию сертификата
 	ssl.verify = true;
 	// Устанавливаем адрес сертификата

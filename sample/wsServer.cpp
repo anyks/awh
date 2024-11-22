@@ -178,7 +178,7 @@ class Executor {
 		 */
 		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
 			// Создаём объект URI
-			uri_t uri(this->_fmk);
+			uri_t uri(this->_fmk, this->_log);
 			// Выводим информацию в лог
 			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, bid, uri.url(url).c_str());
 			// Переходим по всем заголовкам

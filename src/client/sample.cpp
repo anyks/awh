@@ -495,7 +495,7 @@ void awh::client::Sample::init(const uint32_t port, const string & host) noexcep
 			// Если хост является IPv6-адресом, переводим IP-адрес в полную форму
 			case static_cast <uint8_t> (net_t::type_t::IPV6): {
 				// Создаём объкт для работы с адресами
-				net_t net{};
+				net_t net(this->_log);
 				// Устанавливаем IP-адрес
 				this->_scheme.url.ip = net = host;
 			} break;
@@ -714,7 +714,7 @@ void awh::client::Sample::authTypeProxy(const auth_t::type_t type, const auth_t:
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _reading(false), _complete(true), _attempt(0), _attempts(15),
- _uri(fmk), _callbacks(log), _scheme(fmk, log), _fmk(fmk), _log(log), _core(core) {
+ _net(log), _uri(fmk, log), _callbacks(log), _scheme(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента

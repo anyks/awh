@@ -461,14 +461,25 @@ void awh::Http::commit() noexcept {
 		const string & encrypt = this->_web.header("x-awh-encryption");
 		// Если заголовок найден
 		if((this->_crypted = !encrypt.empty())){
-			// Определяем размер шифрования
-			switch(static_cast <uint16_t> (::stoi(encrypt))){
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Определяем размер шифрования
+				switch(static_cast <uint16_t> (::stoi(encrypt))){
+					// Если шифрование произведено 128 битным ключём
+					case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
+					// Если шифрование произведено 192 битным ключём
+					case 192: this->_hash.cipher(hash_t::cipher_t::AES192); break;
+					// Если шифрование произведено 256 битным ключём
+					case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
+				}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const std::exception &) {
 				// Если шифрование произведено 128 битным ключём
-				case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
-				// Если шифрование произведено 192 битным ключём
-				case 192: this->_hash.cipher(hash_t::cipher_t::AES192); break;
-				// Если шифрование произведено 256 битным ключём
-				case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
+				this->_hash.cipher(hash_t::cipher_t::AES128);
 			}
 		}
 		// Отключаем сжатие тела сообщения
@@ -1461,7 +1472,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 	// Если ключ соответствует доменному имени
 	} else if(this->_fmk->compare(key, ":authority")) {
 		// Создаём объект работы с IP-адресами
-		net_t net;
+		net_t net(this->_log);
 		// Устанавливаем хост
 		this->header("Host", val);
 		// Получаем объект параметров запроса
@@ -1483,14 +1494,25 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			const string & port = request.url.host.substr(pos + 1);
 			// Если данные порта являются числом
 			if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
-				// Выполняем установку порта сервера
-				request.url.port = static_cast <uint32_t> (::stoi(port));
-				// Выполняем получение хоста сервера
-				request.url.host = request.url.host.substr(0, pos);
-				// Если порт установлен как 443
-				if(request.url.port == 443)
-					// Выполняем установку защищённую схему запроса
-					request.url.schema = "https";
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем установку порта сервера
+					request.url.port = static_cast <uint32_t> (::stoi(port));
+					// Выполняем получение хоста сервера
+					request.url.host = request.url.host.substr(0, pos);
+					// Если порт установлен как 443
+					if(request.url.port == 443)
+						// Выполняем установку защищённую схему запроса
+						request.url.schema = "https";
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception &) {
+					// Выполняем установку порта сервера
+					request.url.port = 0;
+				}
 			}
 		}
 		// Определяем тип домена
@@ -1519,16 +1541,35 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		this->_web.request(std::move(request));
 	// Если ключ соответствует статусу ответа
 	} else if(this->_fmk->compare(key, ":status")) {
-		// Получаем объект параметров ответа
-		web_t::res_t response = this->_web.response();
-		// Устанавливаем версию протокола
-		response.version = 2.0f;
-		// Выполняем установку статуса ответа
-		response.code = static_cast <uint32_t> (::stoi(val));
-		// Выполняем формирование текста ответа
-		response.message = this->message(response.code);
-		// Выполняем сохранение параметров ответа
-		this->_web.response(std::move(response));
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Получаем объект параметров ответа
+			web_t::res_t response = this->_web.response();
+			// Устанавливаем версию протокола
+			response.version = 2.0f;
+			// Выполняем установку статуса ответа
+			response.code = static_cast <uint32_t> (::stoi(val));
+			// Выполняем формирование текста ответа
+			response.message = this->message(response.code);
+			// Выполняем сохранение параметров ответа
+			this->_web.response(std::move(response));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception &) {
+			// Получаем объект параметров ответа
+			web_t::res_t response = this->_web.response();
+			// Выполняем установку статуса ответа
+			response.code = 500;
+			// Устанавливаем версию протокола
+			response.version = 2.0f;
+			// Выполняем формирование текста ответа
+			response.message = this->message(response.code);
+			// Выполняем сохранение параметров ответа
+			this->_web.response(std::move(response));
+		}
 	// Если ключ соответствует обычным заголовкам
 	} else this->header(key, val);
 }
@@ -2608,7 +2649,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							false  // Proxy-Authorization
 						};
 						// Размер тела сообщения
-						size_t length = 0;
+						uint64_t length = 0;
 						// Устанавливаем парарметры запроса
 						this->_web.request(req);
 						// Устанавливаем параметры REST-запроса
@@ -2645,9 +2686,21 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										// Запоминаем, что мы нашли заголовок размера тела
 										available[i] = this->_fmk->compare(header.first, "content-length");
 										// Устанавливаем размер тела сообщения
-										if(available[i])
-											// Устанавливаем длину передаваемого текста
-											length = static_cast <size_t> (::stoull(header.second));
+										if(available[i]){
+											/**
+											 * Выполняем отлов ошибок
+											 */
+											try {
+												// Устанавливаем длину передаваемого текста
+												length = static_cast <size_t> (::stoull(header.second));
+											/**
+											 * Если возникает ошибка
+											 */
+											} catch(const std::exception &) {
+												// Устанавливаем длину передаваемого текста
+												length = 0;
+											}
+										}
 									} break;
 								}
 								// Если заголовок разрешён для вывода
@@ -3015,7 +3068,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если заголовок размера передаваемого тела, не запрещён
 								else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 									// Устанавливаем размер передаваемого тела Content-Length
-									request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
+									request.append(this->_fmk->format("Content-Length: %llu\r\n", length));
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
@@ -3072,7 +3125,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если заголовок размера передаваемого тела, не запрещён
 								else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 									// Устанавливаем размер передаваемого тела Content-Length
-									request.append(this->_fmk->format("Content-Length: %zu\r\n", length));
+									request.append(this->_fmk->format("Content-Length: %llu\r\n", length));
 							}
 						// Если запрос не содержит тела запроса
 						} else {
@@ -3199,7 +3252,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							false  // Proxy-Authenticate
 						};
 						// Размер тела сообщения
-						size_t length = 0;
+						uint64_t length = 0;
 						// Устанавливаем парарметры ответа
 						this->_web.response(res);
 						// Список системных заголовков
@@ -3231,7 +3284,21 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										// Запоминаем, что мы нашли заголовок размера тела
 										available[i] = this->_fmk->compare(header.first, "content-length");
 										// Устанавливаем размер тела сообщения
-										if(available[i]) length = static_cast <size_t> (::stoull(header.second));
+										if(available[i]){
+											/**
+											 * Выполняем отлов ошибок
+											 */
+											try {
+												// Устанавливаем длину передаваемого текста
+												length = static_cast <size_t> (::stoull(header.second));
+											/**
+											 * Если возникает ошибка
+											 */
+											} catch(const std::exception &) {
+												// Устанавливаем длину передаваемого текста
+												length = 0;
+											}
+										}
 									} break;
 								}
 								// Если заголовок разрешён для вывода
@@ -3399,7 +3466,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если заголовок размера передаваемого тела, не запрещён
 								} else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 									// Устанавливаем размер передаваемого тела Content-Length
-									response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
+									response.append(this->_fmk->format("Content-Length: %llu\r\n", length));
 							// Если тело запроса не существует
 							} else {
 								// Проверяем нужно ли передать тело разбив на чанки
@@ -3460,7 +3527,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если заголовок размера передаваемого тела, не запрещён
 								} else if(!this->is(suite_t::BLACK, "Content-Length") && ((length > 0) || this->_web.isHeader("Content-Length")))
 									// Устанавливаем размер передаваемого тела Content-Length
-									response.append(this->_fmk->format("Content-Length: %zu\r\n", length));
+									response.append(this->_fmk->format("Content-Length: %llu\r\n", length));
 							}
 						// Очищаем тела сообщения
 						} else const_cast <http_t *> (this)->clear(suite_t::BODY);
@@ -4457,7 +4524,7 @@ void awh::Http::encryption(const string & pass, const string & salt, const hash_
  * @param log объект для работы с логами
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _callbacks(log), _web(fmk, log), _auth(fmk, log), _hash(log),
+ _uri(fmk, log), _callbacks(log), _web(fmk, log), _auth(fmk, log), _hash(log),
  _crypted(false), _encryption(false), _precise(false), _chunk(AWH_CHUNK_SIZE),
  _state(state_t::NONE), _status(status_t::NONE), _identity(identity_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {

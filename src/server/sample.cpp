@@ -439,7 +439,7 @@ void awh::server::Sample::keepAlive(const int32_t cnt, const int32_t idle, const
  */
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _alive(false), _pinging(true), _complete(true),
- _port(SERVER_PORT), _host{""}, _uri(fmk), _timer(fmk, log), _pingInterval(PING_INTERVAL),
+ _port(SERVER_PORT), _host{""}, _uri(fmk, log), _timer(fmk, log), _pingInterval(PING_INTERVAL),
  _callbacks(log), _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){

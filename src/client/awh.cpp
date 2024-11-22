@@ -1224,7 +1224,7 @@ void awh::client::AWH::network(const vector <string> & ips, const vector <string
  * @param log  объект для работы с логами
  */
 awh::client::AWH::AWH(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _dns(fmk, log), _http(core, fmk, log), _fmk(fmk), _log(log), _core(core) {
+ _uri(fmk, log), _dns(fmk, log), _http(core, fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем установку DNS-резолвера
 	const_cast <client::core_t *> (core)->resolver(&this->_dns);
 }

@@ -119,9 +119,21 @@ awh::NWT::uri_t awh::NWT::parse(const string & text) noexcept {
 					// Запоминаем якорь запроса
 					result.anchor = match[9];
 					// Если порт получен
-					if(!match[6].empty())
-						// Запоминаем порт запроса
-						result.port = ::stoi(match[6]);
+					if(!match[6].empty()){
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Запоминаем порт запроса
+							result.port = ::stoi(match[6]);
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception &) {
+							// Запоминаем порт запроса
+							result.port = 0;
+						}
+					}
 					// Запоминаем тип параметра
 					result.type = types_t::URL;
 				// Устанавливаем параметр неверных данных

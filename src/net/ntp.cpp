@@ -600,10 +600,21 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 					const size_t pos = server.rfind(":");
 					// Если позиция разделителя найдена
 					if(pos != string::npos){
-						// Извлекаем хост сервера имён
-						host = server.substr(0, pos);
-						// Извлекаем порт сервера имён
-						port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Извлекаем хост сервера имён
+							host = server.substr(0, pos);
+							// Извлекаем порт сервера имён
+							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception &) {
+							// Извлекаем порт сервера имён
+							port = 0;
+						}
 					// Извлекаем хост сервера имён
 					} else host = server;
 				} break;
@@ -615,10 +626,21 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 						const size_t pos = server.rfind("]:");
 						// Если позиция разделителя найдена
 						if(pos != string::npos){
-							// Извлекаем хост сервера имён
-							host = server.substr(1, pos - 1);
-							// Запоминаем полученный порт
-							port = static_cast <uint32_t> (::stoi(server.substr(pos + 2)));
+							/**
+							 * Выполняем отлов ошибок
+							 */
+							try {
+								// Извлекаем хост сервера имён
+								host = server.substr(1, pos - 1);
+								// Запоминаем полученный порт
+								port = static_cast <uint32_t> (::stoi(server.substr(pos + 2)));
+							/**
+							 * Если возникает ошибка
+							 */
+							} catch(const std::exception &) {
+								// Извлекаем порт сервера имён
+								port = 0;
+							}
 						// Заполняем полученный сервер
 						} else if(server.back() == ']')
 							// Извлекаем хост сервера имён
@@ -634,10 +656,21 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 					const size_t pos = server.rfind(":");
 					// Если позиция разделителя найдена
 					if(pos != string::npos){
-						// Извлекаем хост сервера имён
-						host = server.substr(0, pos);
-						// Извлекаем порт сервера имён
-						port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Извлекаем хост сервера имён
+							host = server.substr(0, pos);
+							// Извлекаем порт сервера имён
+							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception &) {
+							// Извлекаем порт сервера имён
+							port = 0;
+						}
 					// Извлекаем хост сервера имён
 					} else host = server;
 					// Выполняем получение IP адрес хоста доменного имени
@@ -655,10 +688,21 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 					const size_t pos = server.rfind(":");
 					// Если позиция разделителя найдена
 					if(pos != string::npos){
-						// Извлекаем хост сервера имён
-						host = this->_dns.host(family, server.substr(0, pos));
-						// Извлекаем порт сервера имён
-						port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Извлекаем хост сервера имён
+							host = this->_dns.host(family, server.substr(0, pos));
+							// Извлекаем порт сервера имён
+							port = static_cast <uint32_t> (::stoi(server.substr(pos + 1)));
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception &) {
+							// Извлекаем порт сервера имён
+							port = 0;
+						}
 					// Извлекаем хост сервера имён
 					} else host = this->_dns.host(family, server);
 				}
@@ -1050,7 +1094,7 @@ time_t awh::NTP::request(const int32_t family) noexcept {
  * @param log объект для работы с логами
  */
 awh::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept :
- _dns(fmk, log), _ttl(0), _timeout(5),
+ _net(log), _dns(fmk, log), _ttl(0), _timeout(5),
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
 	this->_workerIPv4 = std::unique_ptr <worker_t> (new worker_t(AF_INET, this));

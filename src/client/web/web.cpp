@@ -829,7 +829,7 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
+ _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log),
  _nossl(false), _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
  _sendPing(0), _attempt(0), _attempts(15), _pingInterval(PING_INTERVAL), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
@@ -846,7 +846,7 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _bid(0), _uri(fmk), _callbacks(log), _scheme(fmk, log),
+ _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log),
  _nossl(false), _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
  _sendPing(0), _attempt(0), _attempts(15), _pingInterval(PING_INTERVAL), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера

@@ -285,12 +285,10 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 										options->scheme.url.ip = server.host;
 									break;
 									// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-									case static_cast <uint8_t> (net_t::type_t::IPV6): {
-										// Создаём объкт для работы с адресами
-										net_t net{};
+									case static_cast <uint8_t> (net_t::type_t::IPV6):
 										// Устанавливаем IP-адрес
-										options->scheme.url.ip = net = server.host;
-									} break;
+										options->scheme.url.ip = this->_net = server.host;
+									break;
 									// Если хост является доменной зоной
 									case static_cast <uint8_t> (net_t::type_t::FQDN): {
 										// Выполняем очистку IP-адреса
@@ -788,7 +786,7 @@ void awh::server::ProxySocks5::ssl(const node_t::ssl_t & ssl) noexcept {
  * @param log объект для работы с логами
  */
 awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept :
- _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log),
+ _port(SERVER_PORT), _host{""}, _socket{""}, _dns(fmk, log), _net(log),
  _callbacks(log), _core(&_dns, fmk, log), _timer(fmk, log), _scheme(fmk, log),
  _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _fmk(fmk), _log(log) {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
