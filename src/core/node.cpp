@@ -283,7 +283,7 @@ void awh::Node::emplace(const char * buffer, const size_t size, const uint64_t b
 				// Если для потока почередь полезной нагрузки ещё не сформированна
 				else {
 					// Создаём новую очередь полезной нагрузки
-					auto ret = this->_payloads.emplace(bid, queue <payload_t> ());
+					auto ret = this->_payloads.emplace(bid, std::queue <payload_t> ());
 					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 					ret.first->second.push(std::move(payload));
 				}

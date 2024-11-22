@@ -19,7 +19,6 @@
  * Стандартные модули
  */
 #include <map>
-#include <set>
 #include <cmath>
 #include <ctime>
 #include <mutex>
@@ -100,13 +99,16 @@ namespace awh {
 				// Файловые дескрипторы для чтения и записи
 				SOCKET read, write;
 				// Объект работы с пайпом
-				shared_ptr <pipe_t> pipe;
+				std::shared_ptr <pipe_t> pipe;
 				// Функция обратного вызова
 				function <void (const uint64_t)> callback;
 				/**
 				 * Upstream Конструктор
 				 */
-				Upstream() noexcept : read(INVALID_SOCKET), write(INVALID_SOCKET), callback(nullptr) {}
+				Upstream() noexcept :
+				 read(INVALID_SOCKET),
+				 write(INVALID_SOCKET),
+				 callback(nullptr) {}
 			} upstream_t;
 			/**
 			 * Item Структура данных участника
@@ -125,7 +127,7 @@ namespace awh {
 				// Функция обратного вызова
 				callback_t callback;
 				// Объект работы с пайпом
-				shared_ptr <pipe_t> pipe;
+				std::shared_ptr <pipe_t> pipe;
 				// Список соответствия типов событий режиму работы
 				std::map <event_type_t, event_mode_t> mode;
 				/**

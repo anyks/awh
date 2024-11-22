@@ -218,7 +218,7 @@ void awh::Buffer::emplace(const char * buffer, const size_t size) noexcept {
 					// Выполняем сброс временного буфера
 					this->_tmp.reset(nullptr);
 					// Выполняем создание буфера данных
-					this->_tmp = unique_ptr <char []> (new char [this->_size]);
+					this->_tmp = std::unique_ptr <char []> (new char [this->_size]);
 					// Выполняем копирование переданного буфера данных в временный буфер данных
 					::memcpy(this->_tmp.get(), buffer, this->_size);
 				/**

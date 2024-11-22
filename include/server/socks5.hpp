@@ -85,8 +85,8 @@ namespace awh {
 				 * Payload Структура полезной нагрузки
 				 */
 				typedef struct Payload {
-					size_t size;               // Размер буфера
-					unique_ptr <char []> data; // Данные буфера
+					size_t size;                    // Размер буфера
+					std::unique_ptr <char []> data; // Данные буфера
 					/**
 					 * Payload Конструктор
 					 */
@@ -124,9 +124,9 @@ namespace awh {
 				size_t _brokerAvailableSize;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				map <uint64_t, queue <payload_t>> _payloads;
+				std::map <uint64_t, std::queue <payload_t>> _payloads;
 				// Список активных клиентов
-				map <uint64_t, unique_ptr <client::core_t>> _clients;
+				std::map <uint64_t, std::unique_ptr <client::core_t>> _clients;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;

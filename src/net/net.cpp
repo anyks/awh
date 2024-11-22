@@ -683,7 +683,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 								// Получаем нужное нам значение октета
 								::memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
 								// Переводим октет в бинарный вид
-								bitset <8> bits(oct);
+								std::bitset <8> bits(oct);
 								// Зануляем все лишние элементы
 								for(uint8_t i = (8 - (prefix % 8)); i < 8; i++)
 									// Зануляем все лишние биты
@@ -707,7 +707,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 								// Получаем нужное нам значение октета
 								::memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
 								// Переводим октет в бинарный вид
-								bitset <8> bits(oct);
+								std::bitset <8> bits(oct);
 								// Зануляем все лишние элементы
 								for(uint8_t i = 0; i < (8 - (prefix % 8)); i++)
 									// Зануляем все лишние биты
@@ -742,7 +742,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 								// Получаем нужное нам значение хексета
 								::memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
 								// Переводим хексет в бинарный вид
-								bitset <16> bits(hex);
+								std::bitset <16> bits(hex);
 								// Зануляем все лишние элементы
 								for(uint8_t i = (16 - (prefix % 16)); i < 16; i++)
 									// Зануляем все лишние биты
@@ -766,7 +766,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 								// Получаем нужное нам значение хексета
 								::memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
 								// Переводим хексет в бинарный вид
-								bitset <16> bits(hex);
+								std::bitset <16> bits(hex);
 								// Зануляем все лишние элементы
 								for(uint8_t i = 0; i < (16 - (prefix % 16)); i++)
 									// Зануляем все лишние биты
@@ -800,7 +800,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 		// Выполняем парсинг маски
 		if(net.parse(mask) && (this->_type == net.type())){
 			// Бинарный контейнер
-			bitset <8> bits;
+			std::bitset <8> bits;
 			// Определяем тип IP-адреса
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если IP-адрес определён как IPv4

@@ -655,7 +655,7 @@ void awh::Http::commit() noexcept {
 						// Если список заголовков получен
 						if(!headers.empty()){
 							// Список запрашиваемых компрессоров клиентом
-							multimap <float, compressor_t> requested;
+							std::multimap <float, compressor_t> requested;
 							// Выполняем извлечение списка нужных заголовков
 							const auto & range = headers.equal_range("accept-encoding");
 							// Выполняем перебор всего списка указанных заголовков
@@ -804,7 +804,7 @@ void awh::Http::commit() noexcept {
 						// Если список заголовков получен
 						if(!headers.empty()){
 							// Список запрашиваемых компрессоров клиентом
-							multimap <float, compressor_t> requested;
+							std::multimap <float, compressor_t> requested;
 							// Выполняем извлечение списка нужных заголовков
 							const auto & range = headers.equal_range("te");
 							// Выполняем перебор всего списка указанных заголовков
@@ -1068,7 +1068,7 @@ size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
  * @param key ключ заголовка
  * @return    список протоколов
  */
-set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexcept {
+std::set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexcept {
 	// Выполняем извлечение списка протоколов к которому принадлежит заголовок
 	return this->_web.proto(key);
 }
@@ -1334,7 +1334,7 @@ void awh::Http::header(const string & key, const string & val) noexcept {
  * headers Метод получения списка заголовков
  * @return список существующих заголовков
  */
-const unordered_multimap <string, string> & awh::Http::headers() const noexcept {
+const std::unordered_multimap <string, string> & awh::Http::headers() const noexcept {
 	// Выводим список доступных заголовков
 	return this->_web.headers();
 }
@@ -1342,7 +1342,7 @@ const unordered_multimap <string, string> & awh::Http::headers() const noexcept 
  * headers Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::Http::headers(const unordered_multimap <string, string> & headers) noexcept {
+void awh::Http::headers(const std::unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем заголовки сообщения
 	this->_web.headers(headers);
 	// Если мы работаем с клиентом
@@ -1536,7 +1536,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
  * headers2 Метод установки списка заголовков в формате HTTP/2
  * @param headers список заголовков для установки
  */
-void awh::Http::headers2(const vector <pair<string, string>> & headers) noexcept {
+void awh::Http::headers2(const vector <std::pair <string, string>> & headers) noexcept {
 	// Если список заголовков не пустой
 	if(!headers.empty()){
 		// Переходим по всему списку заголовков
@@ -2141,9 +2141,9 @@ const string & awh::Http::message(const uint32_t code) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Выполняем поиск кода сообщения
-	auto i = this->messages.find(code);
+	auto i = this->_responses.find(code);
 	// Если код сообщения найден
-	if(i != this->messages.end())
+	if(i != this->_responses.end())
 		// Выводим сообщение на код ответа
 		return i->second;
 	// Выводим результат
@@ -2275,9 +2275,9 @@ vector <char> awh::Http::trailer() const noexcept {
  * trailers2 Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
  * @return буфер данных ответа в бинарном виде
  */
-vector <pair <string, string>> awh::Http::trailers2() const noexcept {
+vector <std::pair <string, string>> awh::Http::trailers2() const noexcept {
 	// Результат работы функции
-	vector <pair <string, string>> result;
+	vector <std::pair <string, string>> result;
 	// Если разрешено добавление трейлеров
 	if(this->_te.trailers){
 		// Если список трейлеров получен
@@ -2285,7 +2285,7 @@ vector <pair <string, string>> awh::Http::trailers2() const noexcept {
 			// Переходим по всему списку доступных трейлеров
 			for(auto i = this->_trailers.begin(); i != this->_trailers.end();){
 				// Устанавливаем трейлер в список для отправки
-				result.push_back(make_pair(i->first, i->second));
+				result.push_back(std::make_pair(i->first, i->second));
 				// Выполняем удаление отправляемого трейлера из списка
 				i = const_cast <http_t *> (this)->_trailers.erase(i);
 			}
@@ -2331,7 +2331,7 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
  * @param req объект параметров REST-запроса
  * @return    буфер данных запроса в бинарном виде
  */
-vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const noexcept {
+vector <std::pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const noexcept {
 	// Если хост сервера получен
 	if(!req.url.host.empty() && (req.url.port > 0) && (req.method == web_t::method_t::CONNECT)){
 		// Добавляем в чёрный список заголовок Accept
@@ -2350,7 +2350,7 @@ vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const
 		return this->process2(process_t::REQUEST, dynamic_cast <const web_t::provider_t &> (req));
 	}
 	// Выводим результат
-	return vector <pair <string, string>> ();
+	return vector <std::pair <string, string>> ();
 }
 /**
  * reject Метод создания отрицательного ответа
@@ -2445,7 +2445,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) const noexcept {
+vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res) const noexcept {
 	// Если текст сообщения не установлен
 	if(res.message.empty())
 		// Выполняем установку сообщения
@@ -2514,7 +2514,7 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 		return this->process2(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
 	}
 	// Выводим результат
-	return vector <pair <string, string>> ();
+	return vector <std::pair <string, string>> ();
 }
 /**
  * process Метод создания выполняемого процесса в бинарном виде
@@ -2614,7 +2614,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Устанавливаем параметры REST-запроса
 						this->_auth.client.uri(this->_uri.url(req.url));
 						// Список системных заголовков
-						unordered_set <string> systemHeaders;
+						std::unordered_set <string> systemHeaders;
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Если заголовок не находится в чёрном списке и не является системным
@@ -3203,7 +3203,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Устанавливаем парарметры ответа
 						this->_web.response(res);
 						// Список системных заголовков
-						unordered_set <string> systemHeaders;
+						std::unordered_set <string> systemHeaders;
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Если заголовок не находится в чёрном списке и не является системным
@@ -3482,9 +3482,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
  * @param prov параметры провайдера обмена сообщениями
  * @return     буфер данных в бинарном виде
  */
-vector <pair <string, string>> awh::Http::process2(const process_t flag, const web_t::provider_t & prov) const noexcept {
+vector <std::pair <string, string>> awh::Http::process2(const process_t flag, const web_t::provider_t & prov) const noexcept {
 	// Результат работы функции
-	vector <pair<string, string>> result;
+	vector <std::pair <string, string>> result;
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
@@ -3498,65 +3498,65 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 					// Если метод запроса указан как GET
 					case static_cast <uint8_t> (web_t::method_t::GET):
 						// Формируем GET запрос
-						result.push_back(make_pair(":method", "GET"));
+						result.push_back(std::make_pair(":method", "GET"));
 					break;
 					// Если метод запроса указан как PUT
 					case static_cast <uint8_t> (web_t::method_t::PUT):
 						// Формируем PUT запрос
-						result.push_back(make_pair(":method", "PUT"));
+						result.push_back(std::make_pair(":method", "PUT"));
 					break;
 					// Если метод запроса указан как POST
 					case static_cast <uint8_t> (web_t::method_t::POST):
 						// Формируем POST запрос
-						result.push_back(make_pair(":method", "POST"));
+						result.push_back(std::make_pair(":method", "POST"));
 					break;
 					// Если метод запроса указан как HEAD
 					case static_cast <uint8_t> (web_t::method_t::HEAD):
 						// Формируем HEAD запрос
-						result.push_back(make_pair(":method", "HEAD"));
+						result.push_back(std::make_pair(":method", "HEAD"));
 					break;
 					// Если метод запроса указан как PATCH
 					case static_cast <uint8_t> (web_t::method_t::PATCH):
 						// Формируем PATCH запрос
-						result.push_back(make_pair(":method", "PATCH"));
+						result.push_back(std::make_pair(":method", "PATCH"));
 					break;
 					// Если метод запроса указан как TRACE
 					case static_cast <uint8_t> (web_t::method_t::TRACE):
 						// Формируем TRACE запрос
-						result.push_back(make_pair(":method", "TRACE"));
+						result.push_back(std::make_pair(":method", "TRACE"));
 					break;
 					// Если метод запроса указан как DELETE
 					case static_cast <uint8_t> (web_t::method_t::DEL):
 						// Формируем DELETE запрос
-						result.push_back(make_pair(":method", "DELETE"));
+						result.push_back(std::make_pair(":method", "DELETE"));
 					break;
 					// Если метод запроса указан как OPTIONS
 					case static_cast <uint8_t> (web_t::method_t::OPTIONS):
 						// Формируем OPTIONS запрос
-						result.push_back(make_pair(":method", "OPTIONS"));
+						result.push_back(std::make_pair(":method", "OPTIONS"));
 					break;
 					// Если метод запроса указан как CONNECT
 					case static_cast <uint8_t> (web_t::method_t::CONNECT):
 						// Формируем CONNECT запрос
-						result.push_back(make_pair(":method", "CONNECT"));
+						result.push_back(std::make_pair(":method", "CONNECT"));
 					break;
 				}
 				// Выполняем установку схемы протокола
-				result.push_back(make_pair(":scheme", "https"));
+				result.push_back(std::make_pair(":scheme", "https"));
 				// Если метод подключения установлен как CONNECT
 				if(this->_precise || (req.method == web_t::method_t::CONNECT))
 					// Формируем URI запроса
-					result.push_back(make_pair(":authority", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port)));
+					result.push_back(std::make_pair(":authority", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port)));
 				// Если метод подключения не является методом CONNECT, выполняем установку хоста сервера
-				else result.push_back(make_pair(":authority", req.url.host));
+				else result.push_back(std::make_pair(":authority", req.url.host));
 				// Выполняем установку пути запроса
-				result.push_back(make_pair(":path", this->_uri.query(req.url)));
+				result.push_back(std::make_pair(":path", this->_uri.query(req.url)));
 				// Переходим по всему списку заголовков
 				for(auto & header : this->_web.headers()){
 					// Если заголовок является системным
 					if(header.first.front() == ':')
 						// Формируем строку запроса
-						result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+						result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 				}
 				// Определяем тип HTTP-модуля
 				switch(static_cast <uint8_t> (this->_web.hid())){
@@ -3587,7 +3587,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Устанавливаем параметры REST-запроса
 						this->_auth.client.uri(this->_uri.url(req.url));
 						// Список системных заголовков
-						unordered_set <string> systemHeaders;
+						std::unordered_set <string> systemHeaders;
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Если заголовок не является системным
@@ -3640,17 +3640,17 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если заголовок не является запрещённым, добавляем заголовок в запрос
 								if(allow)
 									// Формируем строку запроса
-									result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+									result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 							}
 						}
 						// Устанавливаем Accept если не передан
 						if(!available[2] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "accept"))
 							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept", HTTP_HEADER_ACCEPT));
+							result.push_back(std::make_pair("accept", HTTP_HEADER_ACCEPT));
 						// Устанавливаем Accept-Language если не передан
 						if(!available[8] && (req.method != web_t::method_t::CONNECT) && !this->is(suite_t::BLACK, "accept-language"))
 							// Добавляем заголовок в запрос
-							result.push_back(make_pair("accept-language", HTTP_HEADER_ACCEPTLANGUAGE));
+							result.push_back(std::make_pair("accept-language", HTTP_HEADER_ACCEPTLANGUAGE));
 						// Если нужно запросить компрессию в удобном нам виде
 						if(!available[9] && (req.method != web_t::method_t::CONNECT) && (!this->_compressors.supports.empty() || (this->_compressors.selected != compressor_t::NONE)) && !this->is(suite_t::BLACK, "accept-encoding")){
 							// Если компрессор уже выбран
@@ -3660,37 +3660,37 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									// Если клиент поддерживает методот сжатия LZ4
 									case static_cast <uint8_t> (compressor_t::LZ4):
 										// Добавляем заголовок в запрос
-										result.push_back(make_pair("accept-encoding", "lz4"));
+										result.push_back(std::make_pair("accept-encoding", "lz4"));
 									break;
 									// Если клиент поддерживает методот сжатия Zstandard
 									case static_cast <uint8_t> (compressor_t::ZSTD):
 										// Добавляем заголовок в запрос
-										result.push_back(make_pair("accept-encoding", "zstd"));
+										result.push_back(std::make_pair("accept-encoding", "zstd"));
 									break;
 									// Если клиент поддерживает методот сжатия LZma
 									case static_cast <uint8_t> (compressor_t::LZMA):
 										// Добавляем заголовок в запрос
-										result.push_back(make_pair("accept-encoding", "xz"));
+										result.push_back(std::make_pair("accept-encoding", "xz"));
 									break;
 									// Если клиент поддерживает методот сжатия Brotli
 									case static_cast <uint8_t> (compressor_t::BROTLI):
 										// Добавляем заголовок в запрос
-										result.push_back(make_pair("accept-encoding", "br"));
+										result.push_back(std::make_pair("accept-encoding", "br"));
 									break;
 									// Если клиент поддерживает методот сжатия BZip2
 									case static_cast <uint8_t> (compressor_t::BZIP2):
 										// Добавляем заголовок в запрос
-										result.push_back(make_pair("accept-encoding", "bzip2"));
+										result.push_back(std::make_pair("accept-encoding", "bzip2"));
 									break;
 									// Если клиент поддерживает методот сжатия GZip
 									case static_cast <uint8_t> (compressor_t::GZIP):
 										// Добавляем заголовок в запрос
-										result.push_back(make_pair("accept-encoding", "gzip"));
+										result.push_back(std::make_pair("accept-encoding", "gzip"));
 									break;
 									// Если клиент поддерживает методот сжатия Deflate
 									case static_cast <uint8_t> (compressor_t::DEFLATE):
 										// Добавляем заголовок в запрос
-										result.push_back(make_pair("accept-encoding", "deflate"));
+										result.push_back(std::make_pair("accept-encoding", "deflate"));
 									break;
 								}
 							// Если список компрессоров установлен
@@ -3745,7 +3745,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если список компрессоров получен
 								if(!compressors.empty())
 									// Добавляем заголовок в запрос
-									result.push_back(make_pair("accept-encoding", compressors));
+									result.push_back(std::make_pair("accept-encoding", compressors));
 							}
 						}
 						// Устанавливаем User-Agent если не передан
@@ -3774,7 +3774,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
 							}
 							// Добавляем заголовок в запрос
-							result.push_back(make_pair("user-agent", this->_userAgent));
+							result.push_back(std::make_pair("user-agent", this->_userAgent));
 						}
 						// Если заголовок авторизации не передан
 						if(!available[13] && (this->_identity != identity_t::PROXY)){
@@ -3808,7 +3808,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные авторизации получены
 								if(!auth.empty())
 									// Выполняем установку заголовка
-									result.push_back(make_pair("authorization", auth));
+									result.push_back(std::make_pair("authorization", auth));
 							}
 						}
 						// Если заголовок авторизации на прокси-сервере не передан
@@ -3843,19 +3843,19 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные авторизации получены
 								if(!auth.empty())
 									// Выполняем установку заголовка
-									result.push_back(make_pair("proxy-authorization", auth));
+									result.push_back(std::make_pair("proxy-authorization", auth));
 							}
 						}
 						// Если нужно вставить заголовок TE и он не находится в чёрном списке
 						if(available[0] && !this->is(suite_t::BLACK, "te"))
 							// Устанавливаем Transfer-Encoding в запрос
-							result.push_back(make_pair("te", "trailers"));
+							result.push_back(std::make_pair("te", "trailers"));
 						// Если запрос является PUT, POST, PATCH
 						if((req.method == web_t::method_t::PUT) || (req.method == web_t::method_t::POST) || (req.method == web_t::method_t::PATCH)){
 							// Если заголовок не запрещён
 							if(!this->is(suite_t::BLACK, "date"))
 								// Добавляем заголовок даты в запрос
-								result.push_back(make_pair("date", this->date()));
+								result.push_back(std::make_pair("date", this->date()));
 							// Если тело запроса существует
 							if(!this->_web.body().empty()){
 								// Выполняем компрессию полезной нагрузки
@@ -3867,43 +3867,43 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_crypted)
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
+									result.push_back(std::make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_compressors.current)){
 									// Если нужно сжать тело методом LZ4
 									case static_cast <uint8_t> (compressor_t::LZ4):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "lz4"));
+										result.push_back(std::make_pair("content-encoding", "lz4"));
 									break;
 									// Если нужно сжать тело методом Zstandard
 									case static_cast <uint8_t> (compressor_t::ZSTD):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "zstd"));
+										result.push_back(std::make_pair("content-encoding", "zstd"));
 									break;
 									// Если нужно сжать тело методом LZma
 									case static_cast <uint8_t> (compressor_t::LZMA):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "xz"));
+										result.push_back(std::make_pair("content-encoding", "xz"));
 									break;
 									// Если нужно сжать тело методом Brotli
 									case static_cast <uint8_t> (compressor_t::BROTLI):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "br"));
+										result.push_back(std::make_pair("content-encoding", "br"));
 									break;
 									// Если нужно сжать тело методом BZip2
 									case static_cast <uint8_t> (compressor_t::BZIP2):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "bzip2"));
+										result.push_back(std::make_pair("content-encoding", "bzip2"));
 									break;
 									// Если нужно сжать тело методом GZip
 									case static_cast <uint8_t> (compressor_t::GZIP):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "gzip"));
+										result.push_back(std::make_pair("content-encoding", "gzip"));
 									break;
 									// Если нужно сжать тело методом Deflate
 									case static_cast <uint8_t> (compressor_t::DEFLATE):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "deflate"));
+										result.push_back(std::make_pair("content-encoding", "deflate"));
 									break;
 								}
 							// Если тело запроса не существует
@@ -3913,7 +3913,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
+									result.push_back(std::make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 								// Устанавливаем Content-Encoding если не передан
 								if(!this->is(suite_t::BLACK, "content-encoding")){
 									// Определяем метод компрессии полезной нагрузки
@@ -3921,37 +3921,37 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										// Если полезная нагрузка сжата методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "lz4"));
+											result.push_back(std::make_pair("content-encoding", "lz4"));
 										break;
 										// Если полезная нагрузка сжата методом Zstandard
 										case static_cast <uint8_t> (compressor_t::ZSTD):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "zstd"));
+											result.push_back(std::make_pair("content-encoding", "zstd"));
 										break;
 										// Если полезная нагрузка сжата методом LZma
 										case static_cast <uint8_t> (compressor_t::LZMA):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "xz"));
+											result.push_back(std::make_pair("content-encoding", "xz"));
 										break;
 										// Если полезная нагрузка сжата методом Brotli
 										case static_cast <uint8_t> (compressor_t::BROTLI):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "br"));
+											result.push_back(std::make_pair("content-encoding", "br"));
 										break;
 										// Если полезная нагрузка сжата методом BZip2
 										case static_cast <uint8_t> (compressor_t::BZIP2):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "bzip2"));
+											result.push_back(std::make_pair("content-encoding", "bzip2"));
 										break;
 										// Если полезная нагрузка сжата методом GZip
 										case static_cast <uint8_t> (compressor_t::GZIP):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "gzip"));
+											result.push_back(std::make_pair("content-encoding", "gzip"));
 										break;
 										// Если полезная нагрузка сжата методом Deflate
 										case static_cast <uint8_t> (compressor_t::DEFLATE):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "deflate"));
+											result.push_back(std::make_pair("content-encoding", "deflate"));
 										break;
 									}
 								}
@@ -3961,7 +3961,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Если данные зашифрованы, устанавливаем соответствующие заголовки
 							if((this->_te.chunking = (this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))))
 								// Устанавливаем X-AWH-Encryption
-								result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
+								result.push_back(std::make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 							// Устанавливаем Content-Encoding если заголовок есть в запросе
 							if(available[10] && !this->is(suite_t::BLACK, "content-encoding")){
 								// Определяем метод компрессии полезной нагрузки
@@ -3969,37 +3969,37 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									// Если полезная нагрузка сжата методом LZ4
 									case static_cast <uint8_t> (compressor_t::LZ4):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "lz4"));
+										result.push_back(std::make_pair("content-encoding", "lz4"));
 									break;
 									// Если полезная нагрузка сжата методом Zstandard
 									case static_cast <uint8_t> (compressor_t::ZSTD):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "zstd"));
+										result.push_back(std::make_pair("content-encoding", "zstd"));
 									break;
 									// Если полезная нагрузка сжата методом LZma
 									case static_cast <uint8_t> (compressor_t::LZMA):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "xz"));
+										result.push_back(std::make_pair("content-encoding", "xz"));
 									break;
 									// Если полезная нагрузка сжата методом Brotli
 									case static_cast <uint8_t> (compressor_t::BROTLI):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "br"));
+										result.push_back(std::make_pair("content-encoding", "br"));
 									break;
 									// Если полезная нагрузка сжата методом BZip2
 									case static_cast <uint8_t> (compressor_t::BZIP2):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "bzip2"));
+										result.push_back(std::make_pair("content-encoding", "bzip2"));
 									break;
 									// Если полезная нагрузка сжата методом GZip
 									case static_cast <uint8_t> (compressor_t::GZIP):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "gzip"));
+										result.push_back(std::make_pair("content-encoding", "gzip"));
 									break;
 									// Если полезная нагрузка сжата методом Deflate
 									case static_cast <uint8_t> (compressor_t::DEFLATE):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "deflate"));
+										result.push_back(std::make_pair("content-encoding", "deflate"));
 									break;
 								}
 								// Проверяем нужно ли передать тело разбив на чанки
@@ -4016,7 +4016,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Если заголовок не является системным
 							if(header.first.front() != ':')
 								// Формируем строку запроса
-								result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+								result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 						}
 					} break;
 				}
@@ -4033,7 +4033,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 			// Если сообщение получено
 			if(!res.message.empty()){
 				// Данные REST ответа
-				result.push_back(make_pair(":status", ::to_string(res.code)));
+				result.push_back(std::make_pair(":status", ::to_string(res.code)));
 				// Определяем тип HTTP-модуля
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если мы работаем с клиентом
@@ -4041,7 +4041,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers())
 							// Формируем строку ответа
-							result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+							result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -4065,7 +4065,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 						// Устанавливаем параметры ответа
 						this->_web.response(res);
 						// Список системных заголовков
-						unordered_set <string> systemHeaders;
+						std::unordered_set <string> systemHeaders;
 						// Переходим по всему списку заголовков
 						for(auto & header : this->_web.headers()){
 							// Если заголовок не находится в чёрном списке и не является системным
@@ -4125,16 +4125,16 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Если заголовок не является запрещённым, добавляем заголовок в ответ
 							if(allow)
 								// Формируем строку ответа
-								result.push_back(make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+								result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 						}
 						// Если заголовок не запрещён
 						if(!available[1] && !this->is(suite_t::BLACK, "server"))
 							// Добавляем название сервера в ответ
-							result.push_back(make_pair("server", this->_ident.name));
+							result.push_back(std::make_pair("server", this->_ident.name));
 						// Если заголовок не запрещён
 						if(!available[4] && !this->is(suite_t::BLACK, "x-powered-by"))
 							// Добавляем название рабочей системы в ответ
-							result.push_back(make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str())));
+							result.push_back(std::make_pair("x-powered-by", this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str())));
 						// Если заголовок авторизации не передан
 						if(((res.code == 401) && !available[10]) || ((res.code == 407) && !available[11])){
 							// Получаем параметры авторизации
@@ -4148,14 +4148,14 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										// Если заголовок не запрещён
 										if(!this->is(suite_t::BLACK, "www-authenticate"))
 											// Добавляем параметры авторизации
-											result.push_back(make_pair("www-authenticate", auth));
+											result.push_back(std::make_pair("www-authenticate", auth));
 									} break;
 									// Если авторизация производится для Прокси-Сервера
 									case 407: {
 										// Если заголовок не запрещён
 										if(!this->is(suite_t::BLACK, "proxy-authenticate"))
 											// Добавляем параметры авторизации
-											result.push_back(make_pair("proxy-authenticate", auth));
+											result.push_back(std::make_pair("proxy-authenticate", auth));
 									} break;
 								}
 							}
@@ -4167,7 +4167,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Запоминаем, что заголовок даты уже указан
 								available[0] = !available[0];
 								// Добавляем заголовок даты в ответ
-								result.push_back(make_pair("date", this->date()));
+								result.push_back(std::make_pair("date", this->date()));
 							}
 						}
 						// Если запрос должен содержать тело и тело ответа существует
@@ -4175,7 +4175,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Устанавливаем Content-Type если не передан
 							if(!available[5] && ((this->_identity == identity_t::HTTP) || (res.code >= 400)) && !this->is(suite_t::BLACK, "content-type"))
 								// Добавляем заголовок в ответ
-								result.push_back(make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
+								result.push_back(std::make_pair("content-type", HTTP_HEADER_CONTENTTYPE));
 							// Если тело запроса существует
 							if(!this->_web.body().empty()){
 								// Выполняем компрессию полезной нагрузки
@@ -4187,47 +4187,47 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если заголовок не запрещён
 								if(!available[0] && !this->is(suite_t::BLACK, "date"))
 									// Добавляем заголовок даты в ответ
-									result.push_back(make_pair("date", this->date()));
+									result.push_back(std::make_pair("date", this->date()));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_crypted)
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
+									result.push_back(std::make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 								// Определяем метод компрессии полезной нагрузки
 								switch(static_cast <uint8_t> (this->_compressors.current)){
 									// Если полезная нагрузка сжата методом LZ4
 									case static_cast <uint8_t> (compressor_t::LZ4):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "lz4"));
+										result.push_back(std::make_pair("content-encoding", "lz4"));
 									break;
 									// Если полезная нагрузка сжата методом Zstandard
 									case static_cast <uint8_t> (compressor_t::ZSTD):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "zstd"));
+										result.push_back(std::make_pair("content-encoding", "zstd"));
 									break;
 									// Если полезная нагрузка сжата методом LZma
 									case static_cast <uint8_t> (compressor_t::LZMA):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "xz"));
+										result.push_back(std::make_pair("content-encoding", "xz"));
 									break;
 									// Если полезная нагрузка сжата методом Brotli
 									case static_cast <uint8_t> (compressor_t::BROTLI):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "br"));
+										result.push_back(std::make_pair("content-encoding", "br"));
 									break;
 									// Если полезная нагрузка сжата методом BZip2
 									case static_cast <uint8_t> (compressor_t::BZIP2):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "bzip2"));
+										result.push_back(std::make_pair("content-encoding", "bzip2"));
 									break;
 									// Если полезная нагрузка сжата методом GZip
 									case static_cast <uint8_t> (compressor_t::GZIP):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "gzip"));
+										result.push_back(std::make_pair("content-encoding", "gzip"));
 									break;
 									// Если полезная нагрузка сжата методом Deflate
 									case static_cast <uint8_t> (compressor_t::DEFLATE):
 										// Устанавливаем Content-Encoding если не передан
-										result.push_back(make_pair("content-encoding", "deflate"));
+										result.push_back(std::make_pair("content-encoding", "deflate"));
 									break;
 								}
 							// Если тело запроса не существует
@@ -4237,11 +4237,11 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если заголовок не запрещён
 								if(!available[0] && !this->is(suite_t::BLACK, "date"))
 									// Добавляем заголовок даты в ответ
-									result.push_back(make_pair("date", this->date()));
+									result.push_back(std::make_pair("date", this->date()));
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
+									result.push_back(std::make_pair("x-awh-encryption", ::to_string(static_cast <uint16_t> (this->_hash.cipher()))));
 								// Устанавливаем Content-Encoding если не передан
 								if(!this->is(suite_t::BLACK, "content-encoding")){
 									// Определяем метод компрессии полезной нагрузки
@@ -4249,37 +4249,37 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										// Если полезная нагрузка сжата методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "lz4"));
+											result.push_back(std::make_pair("content-encoding", "lz4"));
 										break;
 										// Если полезная нагрузка сжата методом Zstandard
 										case static_cast <uint8_t> (compressor_t::ZSTD):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "zstd"));
+											result.push_back(std::make_pair("content-encoding", "zstd"));
 										break;
 										// Если полезная нагрузка сжата методом LZma
 										case static_cast <uint8_t> (compressor_t::LZMA):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "xz"));
+											result.push_back(std::make_pair("content-encoding", "xz"));
 										break;
 										// Если полезная нагрузка сжата методом Brotli
 										case static_cast <uint8_t> (compressor_t::BROTLI):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "br"));
+											result.push_back(std::make_pair("content-encoding", "br"));
 										break;
 										// Если полезная нагрузка сжата методом BZip2
 										case static_cast <uint8_t> (compressor_t::BZIP2):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "bzip2"));
+											result.push_back(std::make_pair("content-encoding", "bzip2"));
 										break;
 										// Если полезная нагрузка сжата методом GZip
 										case static_cast <uint8_t> (compressor_t::GZIP):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "gzip"));
+											result.push_back(std::make_pair("content-encoding", "gzip"));
 										break;
 										// Если полезная нагрузка сжата методом Deflate
 										case static_cast <uint8_t> (compressor_t::DEFLATE):
 											// Устанавливаем Content-Encoding если не передан
-											result.push_back(make_pair("content-encoding", "deflate"));
+											result.push_back(std::make_pair("content-encoding", "deflate"));
 										break;
 									}
 								}
@@ -4461,6 +4461,54 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
  _crypted(false), _encryption(false), _precise(false), _chunk(AWH_CHUNK_SIZE),
  _state(state_t::NONE), _status(status_t::NONE), _identity(identity_t::NONE),
  _userAgent(HTTP_HEADER_AGENT), _fmk(fmk), _log(log) {
+	// Выполняем заполнение сообщений ответов
+	this->_responses = {
+		{0, "Not Answer"},
+		{100, "Continue"},
+		{101, "Switching Protocols"},
+		{102, "Processing"},
+		{103, "Early Hints"},
+		{200, "OK"},
+		{201, "Created"},
+		{202, "Accepted"},
+		{203, "Non-Authoritative Information"},
+		{204, "No Content"},
+		{205, "Reset Content"},
+		{206, "Partial Content"},
+		{300, "Multiple Choice"},
+		{301, "Moved Permanently"},
+		{302, "Found"},
+		{303, "See Other"},
+		{304, "Not Modified"},
+		{305, "Use Proxy"},
+		{306, "Switch Proxy"},
+		{307, "Temporary Redirect"},
+		{308, "Permanent Redirect"},
+		{400, "Bad Request"},
+		{401, "Authentication Required"},
+		{402, "Payment Required"},
+		{403, "Forbidden"},
+		{404, "Not Found"},
+		{405, "Method Not Allowed"},
+		{406, "Not Acceptable"},
+		{407, "Proxy Authentication Required"},
+		{408, "Request Timeout"},
+		{409, "Conflict"},
+		{410, "Gone"},
+		{411, "Length Required"},
+		{412, "Precondition Failed"},
+		{413, "Request Entity Too Large"},
+		{414, "Request-URI Too Long"},
+		{415, "Unsupported Media Type"},
+		{416, "Requested Range Not Satisfiable"},
+		{417, "Expectation Failed"},
+		{500, "Internal Server Error"},
+		{501, "Not Implemented"},
+		{502, "Bad Gateway"},
+		{503, "Service Unavailable"},
+		{504, "Gateway Timeout"},
+		{505, "HTTP Version Not Supported"}
+	};
 	// Выполняем установку идентификатора объекта
 	this->_web.id(this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS));
 	// Устанавливаем функцию обратного вызова для получения чанков

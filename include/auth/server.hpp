@@ -49,7 +49,9 @@ namespace awh {
 					/**
 					 * Data Конструктор
 					 */
-					Data() noexcept : type(nullptr), digest(nullptr), locale(nullptr), user(nullptr), pass(nullptr) {}
+					Data() noexcept :
+					 type(nullptr), digest(nullptr),
+					 locale(nullptr), user(nullptr), pass(nullptr) {}
 				} data_t;
 			private:
 				// Логин пользователя

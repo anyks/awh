@@ -153,6 +153,30 @@ void awh::Scheme::Broker::callback(const SOCKET fd, const base_t::event_type_t e
 	}
 }
 /**
+ * stop Метод остановки работы
+ */
+void awh::Scheme::Broker::stop() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	// Выполняем остановку работы события
+	this->_event.stop();
+}
+/**
+ * start Метод запуска работы
+ */
+void awh::Scheme::Broker::start() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	// Устанавливаем базу данных событий
+	this->_event = this->_base;
+	// Устанавливаем тип события
+	this->_event = this->_addr.fd;
+	// Устанавливаем функцию обратного вызова
+	this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
+	// Выполняем запуск работы события
+	this->_event.start();
+}
+/**
  * events Метод активации/деактивации метода события сокета
  * @param mode   сигнал активации сокета
  * @param method метод режима работы
@@ -170,14 +194,6 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 				switch(static_cast <uint8_t> (mode)){
 					// Если установлен сигнал активации сокета
 					case static_cast <uint8_t> (mode_t::ENABLED): {
-						// Устанавливаем базу данных событий
-						this->_event = this->_base;
-						// Устанавливаем тип события
-						this->_event = this->_addr.fd;
-						// Устанавливаем функцию обратного вызова
-						this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
-						// Выполняем запуск работы события
-						this->_event.start();
 						// Выполняем активацию работы события
 						this->_event.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 						// Выполняем активацию события закрытий подключения
@@ -198,14 +214,6 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 				switch(static_cast <uint8_t> (mode)){
 					// Если установлен сигнал активации сокета
 					case static_cast <uint8_t> (mode_t::ENABLED): {
-						// Устанавливаем базу данных событий
-						this->_event = this->_base;
-						// Устанавливаем тип события
-						this->_event = this->_addr.fd;
-						// Устанавливаем функцию обратного вызова
-						this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
-						// Выполняем запуск работы события
-						this->_event.start();
 						// Выполняем активацию работы события
 						this->_event.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
 						// Выполняем активацию события закрытий подключения

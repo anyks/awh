@@ -148,7 +148,7 @@ void awh::server::Websocket::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::Websocket::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::server::Websocket::subprotocols(const std::set <string> & subprotocols) noexcept {
 	// Выполняем установку списка сабпротоколов поддерживаемых сервером
 	this->_ws.subprotocols(subprotocols);
 }
@@ -157,7 +157,7 @@ void awh::server::Websocket::subprotocols(const set <string> & subprotocols) noe
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::Websocket::subprotocols(const uint64_t bid) const noexcept {
+const std::set <string> & awh::server::Websocket::subprotocols(const uint64_t bid) const noexcept {
 	// Выводим извлечение списка выбранных сабпротоколов
 	return this->_ws.subprotocols(bid);
 }
@@ -235,7 +235,7 @@ void awh::server::Websocket::keepAlive(const int32_t cnt, const int32_t idle, co
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Websocket::mode(const set <web_t::flag_t> & flags) noexcept {
+void awh::server::Websocket::mode(const std::set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_ws.mode(flags);
 }
@@ -291,7 +291,7 @@ void awh::server::Websocket::alive(const time_t sec) noexcept {
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::server::Websocket::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Websocket::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку списка заголовков
 	this->_ws.setHeaders(headers);
 }
@@ -341,7 +341,7 @@ void awh::server::Websocket::addAltSvc(const string & origin, const string & fie
  * setAltSvc Метод установки списка разрешённых источников
  * @param origins список альтернативных сервисов
  */
-void awh::server::Websocket::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
+void awh::server::Websocket::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
 	// Выполняем установку списка разрешённых источников
 	this->_ws.setAltSvc(origins);
 }
@@ -349,7 +349,7 @@ void awh::server::Websocket::setAltSvc(const unordered_multimap <string, string>
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Websocket::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Websocket::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку настроек протокола HTTP/2
 	this->_ws.settings(settings);
 }

@@ -86,9 +86,9 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 			 */
 			do {
 				// Подключаем устройство генератора
-				mt19937 generator(this->_randev());
+				std::mt19937 generator(this->_randev());
 				// Выполняем генерирование случайного числа
-				std::uniform_int_distribution <mt19937::result_type> dist6(0xC000, 0xFFFF);
+				std::uniform_int_distribution <std::mt19937::result_type> dist6(0xC000, 0xFFFF);
 				// Выполняем получение порта
 				this->_port = dist6(generator);
 			// Если такой порт уже был ранее сгенерирован, пробуем ещё раз

@@ -100,14 +100,16 @@ namespace awh {
 			 * LocalNet Структура локального адреса
 			 */
 			typedef struct LocalNet {
-				bool reserved;          // Адрес является зарезервированным
-				uint8_t prefix;         // Префикс сети
-				unique_ptr <Net> end;   // Конечный диапазон адреса
-				unique_ptr <Net> begin; // Начальный IP-адрес
+				bool reserved;               // Адрес является зарезервированным
+				uint8_t prefix;              // Префикс сети
+				std::unique_ptr <Net> end;   // Конечный диапазон адреса
+				std::unique_ptr <Net> begin; // Начальный IP-адрес
 				/**
 				 * LocalNet Конструктор
 				 */
-				LocalNet() noexcept : reserved(false), prefix(0), end(new Net), begin(new Net) {}
+				LocalNet() noexcept :
+				 reserved(false), prefix(0),
+				 end(new Net), begin(new Net) {}
 			} localNet_t;
 		private:
 			// Тип обрабатываемого адреса
@@ -123,7 +125,7 @@ namespace awh {
 			vector <uint8_t> _buffer;
 		private:
 			// Список локальных адресов
-			multimap <type_t, localNet_t> _localsNet;
+			std::multimap <type_t, localNet_t> _localsNet;
 		private:
 			/**
 			 * initLocalNet Метод инициализации списка локальных адресов

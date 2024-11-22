@@ -47,7 +47,9 @@ namespace awh {
 					/**
 					 * Data Конструктор
 					 */
-					Data() noexcept : type(nullptr), digest(nullptr), user(nullptr), pass(nullptr) {}
+					Data() noexcept :
+					 type(nullptr), digest(nullptr),
+					 user(nullptr), pass(nullptr) {}
 				} data_t;
 			private:
 				// Логин пользователя
@@ -101,7 +103,8 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user{""}, _pass{""} {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept :
+				 auth_t(fmk, log), _user{""}, _pass{""} {}
 		} auth_t;
 	};
 };

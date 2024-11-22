@@ -39,7 +39,6 @@
 /**
  * Стандартные модули
  */
-#include <set>
 #include <ctime>
 #include <cstdio>
 #include <string>

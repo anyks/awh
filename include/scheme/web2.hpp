@@ -70,14 +70,14 @@ namespace awh {
 					 */
 					typedef class Options {
 						public:
-							bool alive;                                   // Флаг долгоживущего подключения
-							bool close;                                   // Флаг требования закрыть брокера
-							bool stopped;                                 // Флаг принудительной остановки
-							time_t point;                                 // Контрольная точка ответа на пинг
-							time_t sendPing;                              // Время отправленного пинга
-							size_t requests;                              // Количество выполненных запросов
-							engine_t::proto_t proto;                      // Активный прототип интернета
-							map <int32_t, unique_ptr <stream_t>> streams; // Список активных потоков
+							bool alive;                                             // Флаг долгоживущего подключения
+							bool close;                                             // Флаг требования закрыть брокера
+							bool stopped;                                           // Флаг принудительной остановки
+							time_t point;                                           // Контрольная точка ответа на пинг
+							time_t sendPing;                                        // Время отправленного пинга
+							size_t requests;                                        // Количество выполненных запросов
+							engine_t::proto_t proto;                                // Активный прототип интернета
+							std::map <int32_t, std::unique_ptr <stream_t>> streams; // Список активных потоков
 						public:
 							// Объект фреймворка
 							const fmk_t * fmk;
@@ -102,7 +102,7 @@ namespace awh {
 					vector <awh::http_t::compressor_t> compressors;
 				private:
 					// Список параметров активных клиентов
-					map <uint64_t, unique_ptr <options_t>> _options;
+					std::map <uint64_t, std::unique_ptr <options_t>> _options;
 				private:
 					// Создаём объект фреймворка
 					const fmk_t * _fmk;
@@ -135,7 +135,7 @@ namespace awh {
 					 * get Метод извлечения списка параметров активных клиентов
 					 * @return список параметров активных клиентов
 					 */
-					const map <uint64_t, unique_ptr <options_t>> & get() const noexcept;
+					const std::map <uint64_t, std::unique_ptr <options_t>> & get() const noexcept;
 				public:
 					/**
 					 * openStream Метод открытия потока
@@ -163,7 +163,8 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					WEB2(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+					WEB2(const fmk_t * fmk, const log_t * log) noexcept :
+					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * ~WEB2 Деструктор
 					 */

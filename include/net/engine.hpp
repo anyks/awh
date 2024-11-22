@@ -215,7 +215,7 @@ namespace awh {
 					socket_t _socket;
 				private:
 					// Выполняем инициализацию генератора
-					random_device _randev;
+					std::random_device _randev;
 				public:
 					// Список сетевых интерфейсов
 					vector <string> network;

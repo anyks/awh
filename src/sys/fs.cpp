@@ -826,7 +826,7 @@ void awh::FS::makePath(const string & path) const noexcept {
 			// Получаем сепаратор
 			const char sep = FS_SEPARATOR[0];
 			// Создаём буфер входящих данных
-			unique_ptr <char []> buffer(new char [path.size() + 1]);
+			std::unique_ptr <char []> buffer(new char [path.size() + 1]);
 			// Копируем переданный адрес в буфер
 			::snprintf(buffer.get(), path.size() + 1, "%s", path.c_str());
 			// Если последний символ является сепаратором тогда удаляем его
@@ -930,9 +930,9 @@ bool awh::FS::makeDir(const string & path, const string & user, const string & g
  * @param actual флаг проверки актуальных файлов
  * @param before флаг определения первой точки расширения слева
  */
-pair <string, string> awh::FS::components(const string & addr, const bool actual, const bool before) const noexcept {
+std::pair <string, string> awh::FS::components(const string & addr, const bool actual, const bool before) const noexcept {
 	// Результат работы функции
-	pair <string, string> result;
+	std::pair <string, string> result;
 	/**
 	 * Выполняем перехват ошибок
 	 */

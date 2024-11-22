@@ -671,9 +671,9 @@ awh::URI::URL awh::URI::concat(const url_t & dest, const url_t & src) const noex
  * @param uri строка URI для сплита
  * @return    список полученных частей URI
  */
-map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcept {
+std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcept {
 	// Результат работы функции
-	map <flag_t, string> result;
+	std::map <flag_t, string> result;
 	// Если URI передан
 	if(!uri.empty()){
 		// Выполняем проверку строки URI для сплита
@@ -918,9 +918,9 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
  * @param uri строка URI для сплита
  * @return    параметры полученные при сплите
  */
-vector <pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
+vector <std::pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
 	// Результат работы функции
-	vector <pair <string, string>> result;
+	vector <std::pair <string, string>> result;
 	// Если URI передано
 	if(!uri.empty()){
 		// Параметры URI
@@ -936,14 +936,16 @@ vector <pair <string, string>> awh::URI::splitParams(const string & uri) const n
 				// Если данные получены
 				if(data.size() == 2)
 					// Добавляем полученные данные
-					result.push_back(make_pair(
-						this->decode(this->_fmk->convert(data.front())),
-						this->decode(this->_fmk->convert(data.back()))
-					));
+					result.push_back(
+						std::make_pair(
+							this->decode(this->_fmk->convert(data.front())),
+							this->decode(this->_fmk->convert(data.back()))
+						)
+					);
 				// Если значения параметр не имеет
 				else if(data.size() == 1)
 					// Добавляем полученные данные
-					result.push_back(make_pair(this->decode(this->_fmk->convert(data.front())), ""));
+					result.push_back(std::make_pair(this->decode(this->_fmk->convert(data.front())), ""));
 			}
 		}
 	}
@@ -984,7 +986,7 @@ vector <string> awh::URI::splitPath(const string & path, const string & delim) c
  * @param uri параметры URI для сборки
  * @return    строка полученная при сборке параметров URI
  */
-string awh::URI::joinParams(const vector <pair <string, string>> & uri) const noexcept {
+string awh::URI::joinParams(const vector <std::pair <string, string>> & uri) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если параметры URI переданы

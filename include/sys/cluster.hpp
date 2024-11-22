@@ -94,9 +94,6 @@ namespace awh {
 					// Устанавливаем дружбу с родительским классом
 					friend class Cluster;
 				private:
-					// Мютекс для блокировки потока
-					mutex _mtx;
-				private:
 					// Флаг запуска работы
 					bool _working;
 					// Флаг автоматического перезапуска
@@ -107,6 +104,9 @@ namespace awh {
 				private:
 					// Количество рабочих процессов
 					uint16_t _count;
+				private:
+					// Мютекс для блокировки потока
+					std::mutex _mtx;
 				private:
 					// Бинарный буфер полученных данных
 					uint8_t _buffer[4096];
@@ -277,7 +277,7 @@ namespace awh {
 			 * @param wid идентификатор воркера
 			 * @return    список дочерних процессов
 			 */
-			set <pid_t> pids(const uint16_t wid) const noexcept;
+			std::set <pid_t> pids(const uint16_t wid) const noexcept;
 		public:
 			/**
 			 * send Метод отправки сообщения родительскому процессу

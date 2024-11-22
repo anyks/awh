@@ -122,7 +122,10 @@ namespace awh {
 				/**
 				 * Ident Конструктор
 				 */
-				Ident() noexcept : id{AWH_SHORT_NAME}, name{AWH_NAME}, version{AWH_VERSION} {}
+				Ident() noexcept :
+				 id{AWH_SHORT_NAME},
+				 name{AWH_NAME},
+				 version{AWH_VERSION} {}
 			} ident_t;
 		protected:
 			/**
@@ -135,19 +138,22 @@ namespace awh {
 				/**
 				 * TransferEncoding Конструктор
 				 */
-				TransferEncoding() noexcept : enabled(false), trailers(false), chunking(false) {}
+				TransferEncoding() noexcept :
+				 enabled(false), trailers(false), chunking(false) {}
 			} __attribute__((packed)) te_t;
 			/**
 			 * Compressor Структура параметров компрессора
 			 */
 			typedef struct Compressor {
-				compressor_t current;               // Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
-				compressor_t selected;              // Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
-				map <float, compressor_t> supports; // Список поддерживаемых компрессоров
+				compressor_t current;                    // Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
+				compressor_t selected;                   // Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
+				std::map <float, compressor_t> supports; // Список поддерживаемых компрессоров
 				/**
 				 * Compressor Конструктор
 				 */
-				Compressor() noexcept : current(compressor_t::NONE), selected(compressor_t::NONE) {}
+				Compressor() noexcept :
+				 current(compressor_t::NONE),
+				 selected(compressor_t::NONE) {}
 			} compressors_t;
 			/**
 			 * Auth Структура объекта авторизации
@@ -160,59 +166,8 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) : client(fmk, log), server(fmk, log) {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept : client(fmk, log), server(fmk, log) {}
 			} auth_t;
-		private:
-			/**
-			 * Список HTTP-сообщений
-			 */
-			map <uint16_t, string> messages = {
-				{0, "Not Answer"},
-				{100, "Continue"},
-				{101, "Switching Protocols"},
-				{102, "Processing"},
-				{103, "Early Hints"},
-				{200, "OK"},
-				{201, "Created"},
-				{202, "Accepted"},
-				{203, "Non-Authoritative Information"},
-				{204, "No Content"},
-				{205, "Reset Content"},
-				{206, "Partial Content"},
-				{300, "Multiple Choice"},
-				{301, "Moved Permanently"},
-				{302, "Found"},
-				{303, "See Other"},
-				{304, "Not Modified"},
-				{305, "Use Proxy"},
-				{306, "Switch Proxy"},
-				{307, "Temporary Redirect"},
-				{308, "Permanent Redirect"},
-				{400, "Bad Request"},
-				{401, "Authentication Required"},
-				{402, "Payment Required"},
-				{403, "Forbidden"},
-				{404, "Not Found"},
-				{405, "Method Not Allowed"},
-				{406, "Not Acceptable"},
-				{407, "Proxy Authentication Required"},
-				{408, "Request Timeout"},
-				{409, "Conflict"},
-				{410, "Gone"},
-				{411, "Length Required"},
-				{412, "Precondition Failed"},
-				{413, "Request Entity Too Large"},
-				{414, "Request-URI Too Long"},
-				{415, "Unsupported Media Type"},
-				{416, "Requested Range Not Satisfiable"},
-				{417, "Expectation Failed"},
-				{500, "Internal Server Error"},
-				{501, "Not Implemented"},
-				{502, "Bad Gateway"},
-				{503, "Service Unavailable"},
-				{504, "Gateway Timeout"},
-				{505, "HTTP Version Not Supported"}
-			};
 		private:
 			// Объект работы с операционной системой
 			os_t _os;
@@ -260,12 +215,15 @@ namespace awh {
 		private:
 			// User-Agent для HTTP-запроса
 			mutable string _userAgent;
+		private:
+			// Список HTTP-ответов
+			std::map <uint16_t, string> _responses;
 		protected:
 			// Чёрный список заголовков
-			mutable unordered_set <string> _black;
+			mutable std::unordered_set <string> _black;
 		protected:
 			// Список отправляемых трейлеров
-			unordered_map <string, string> _trailers;
+			std::unordered_map <string, string> _trailers;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -342,7 +300,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    список протоколов
 			 */
-			set <web_t::proto_t> proto(const string & key) const noexcept;
+			std::set <web_t::proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
 			 * payload Метод чтения чанка полезной нагрузки
@@ -412,12 +370,12 @@ namespace awh {
 			 * headers Метод получения списка заголовков
 			 * @return список существующих заголовков
 			 */
-			const unordered_multimap <string, string> & headers() const noexcept;
+			const std::unordered_multimap <string, string> & headers() const noexcept;
 			/**
 			 * headers Метод установки списка заголовков
 			 * @param headers список заголовков для установки
 			 */
-			void headers(const unordered_multimap <string, string> & headers) noexcept;
+			void headers(const std::unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
 			 * header2 Метод добавления заголовка в формате HTTP/2
@@ -429,7 +387,7 @@ namespace awh {
 			 * headers2 Метод установки списка заголовков в формате HTTP/2
 			 * @param headers список заголовков для установки
 			 */
-			void headers2(const vector <pair<string, string>> & headers) noexcept;
+			void headers2(const vector <std::pair <string, string>> & headers) noexcept;
 		public:
 			/**
 			 * auth Метод проверки статуса авторизации
@@ -554,7 +512,7 @@ namespace awh {
 			 * trailers2 Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
 			 * @return буфер данных ответа в бинарном виде
 			 */
-			vector <pair <string, string>> trailers2() const noexcept;
+			vector <std::pair <string, string>> trailers2() const noexcept;
 		public:
 			/**
 			 * proxy Метод создания запроса для авторизации на прокси-сервере
@@ -567,7 +525,7 @@ namespace awh {
 			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			virtual vector <pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
+			virtual vector <std::pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
 		public:
 			/**
 			 * reject Метод создания отрицательного ответа
@@ -580,7 +538,7 @@ namespace awh {
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			virtual vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
+			virtual vector <std::pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
 			 * process Метод создания выполняемого процесса в бинарном виде
@@ -595,7 +553,7 @@ namespace awh {
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     буфер данных в бинарном виде
 			 */
-			virtual vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
+			virtual vector <std::pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
 			/**
 			 * callbacks Метод установки функций обратного вызова

@@ -261,7 +261,7 @@ int32_t awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * f
 	// Если функция обратного вызова установлена
 	if(self->_callbacks.is("frame")){
 		// Выполняем создание флага по умолчанию
-		set <flag_t> flags;
+		std::set <flag_t> flags;
 		// Выполняем создание идентификатора фрейма по умолчанию
 		frame_t type = frame_t::NONE;
 		// Идентификатор активного потока
@@ -411,7 +411,7 @@ int32_t awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * f
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		return self->_callbacks.call <int32_t (const int32_t, const direct_t, const frame_t, const set <flag_t> &)> ("frame", sid, direct_t::RECV, type, std::move(flags));
+		return self->_callbacks.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", sid, direct_t::RECV, type, std::move(flags));
 	}
 	// Выводим результат
 	return 0;
@@ -431,7 +431,7 @@ int32_t awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * f
 	// Если функция обратного вызова установлена
 	if(self->_callbacks.is("frame")){
 		// Выполняем создание флага по умолчанию
-		set <flag_t> flags;
+		std::set <flag_t> flags;
 		// Выполняем создание идентификатора фрейма по умолчанию
 		frame_t type = frame_t::NONE;
 		// Если мы получили флаг PADDED
@@ -519,7 +519,7 @@ int32_t awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * f
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		return self->_callbacks.call <int32_t (const int32_t, const direct_t, const frame_t, const set <flag_t> &)> ("frame", frame->hd.stream_id, direct_t::SEND, type, std::move(flags));
+		return self->_callbacks.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", frame->hd.stream_id, direct_t::SEND, type, std::move(flags));
 	}
 	// Выводим результат
 	return 0;
@@ -1492,7 +1492,7 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
  * @param headers заголовки отправляемые
  * @return        результат отправки данных фрейма
  */
-bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, string>> & headers) noexcept {
+bool awh::Http2::sendTrailers(const int32_t id, const vector <std::pair <string, string>> & headers) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_TRAILERS;
 	// Если заголовки для отправки переданы и сессия инициализированна
@@ -1598,7 +1598,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				// Если для потока почередь полезной нагрузки ещё не сформированна
 				else {
 					// Создаём новую очередь полезной нагрузки
-					auto ret = this->_payloads.emplace(id, queue <payload_t> ());
+					auto ret = this->_payloads.emplace(id, std::queue <payload_t> ());
 					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 					ret.first->second.push(std::move(payload));
 				}
@@ -1653,7 +1653,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг завершения потока передачи данных
  */
-int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept {
+int32_t awh::Http2::sendPush(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Выполняем установку активного события
@@ -1730,7 +1730,7 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг завершения потока передачи данных
  */
-int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept {
+int32_t awh::Http2::sendHeaders(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Выполняем установку активного события
@@ -2027,7 +2027,7 @@ void awh::Http2::origin(const vector <string> & origins) noexcept {
  * altsvc Метод установки списка альтернативных сервисов
  * @param origins список альтернативных сервисов
  */
-void awh::Http2::altsvc(const unordered_multimap <string, string> & origins) noexcept {
+void awh::Http2::altsvc(const std::unordered_multimap <string, string> & origins) noexcept {
 	// Выполняем установку списка альтернативных сервисов
 	this->_altsvc = origins;
 }
@@ -2037,7 +2037,7 @@ void awh::Http2::altsvc(const unordered_multimap <string, string> & origins) noe
  * @param settings параметры настроек сессии
  * @return         результат выполнения инициализации
  */
-bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & settings) noexcept {
+bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> & settings) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если параметры настроек переданы

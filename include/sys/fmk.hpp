@@ -153,19 +153,19 @@ namespace awh {
 			typedef class AWHSHARED_EXPORT Symbols {
 				private:
 					// Контейнер римских чисел
-					map <char, uint16_t> _romes;
+					std::map <char, uint16_t> _romes;
 					// Контейнер арабских чисел
-					map <char, uint8_t> _arabics;
+					std::map <char, uint8_t> _arabics;
 				private:
 					// Контейнер римских чисел для UTF-8
-					map <wchar_t, uint16_t> _wideRomes;
+					std::map <wchar_t, uint16_t> _wideRomes;
 					// Контейнер арабских чисел для UTF-8
-					map <wchar_t, uint8_t> _wideArabics;
+					std::map <wchar_t, uint8_t> _wideArabics;
 				private:
 					// Контейнер латинских символов
-					map <char, wchar_t> _letters;
+					std::map <char, wchar_t> _letters;
 					// Контейнер латинских символов для UTF-8
-					map <wchar_t, char> _wideLetters;
+					std::map <wchar_t, char> _wideLetters;
 				public:
 					/**
 					 * isRome Метод проверки соответствия римской цифре

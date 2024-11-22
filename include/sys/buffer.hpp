@@ -66,7 +66,7 @@ namespace awh {
 			vector <char> _data;
 		private:
 			// Временный буфер входящих данных
-			unique_ptr <char []> _tmp;
+			std::unique_ptr <char []> _tmp;
 		public:
 			/**
 			 * clear Метод очистки буфера данных

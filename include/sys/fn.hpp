@@ -101,9 +101,9 @@ namespace awh {
 			};
 		public:
 			// Создаём тип данных возвращаемых значений функций обратного вызова
-			typedef map <uint64_t, type_t> types_t;
+			typedef std::map <uint64_t, type_t> types_t;
 			// Создаём тип данных функций обратного вызова
-			typedef map <uint64_t, std::shared_ptr <Function>> fns_t;
+			typedef std::map <uint64_t, std::shared_ptr <Function>> fns_t;
 			// Структура дампа данных конкретной функции
 			typedef std::pair <std::shared_ptr <Function>, type_t> dump_t;
 		private:

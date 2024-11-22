@@ -50,8 +50,8 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						if(this->_busy.find(i->first) == this->_busy.end()){
 							// Создаём бъект активного брокера подключения
 							awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
-							// Выполняем очистку буфера событий
-							this->disable(i->first);
+							// Выполняем остановку работы событий
+							broker->stop();
 							// Выполняем очистку контекста двигателя
 							broker->_ectx.clear();
 							// Удаляем брокера из списка подключений
@@ -310,6 +310,8 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						ret.first->second->callback <void (const uint64_t)> ("write", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::write), this, _1));
 						// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
 						ret.first->second->callback <void (const uint64_t)> ("close", std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, _1));
+						// Выполняем запуск работы события
+						ret.first->second->start();
 						// Активируем ожидание подключения
 						ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
 						// Выполняем установку таймаута ожидания
@@ -710,21 +712,6 @@ void awh::client::Core::reset(const uint64_t bid) noexcept {
 	}
 }
 /**
- * disable Метод остановки активности брокера подключения
- * @param bid идентификатор брокера
- */
-void awh::client::Core::disable(const uint64_t bid) noexcept {
-	// Если брокер существует
-	if(this->has(bid)){
-		// Выполняем извлечение брокера подключений
-		const scheme_t::broker_t * broker = this->broker(bid);
-		// Останавливаем событие чтение данных
-		const_cast <scheme_t::broker_t *> (broker)->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
-		// Останавливаем событие запись данных
-		const_cast <scheme_t::broker_t *> (broker)->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
-	}
-}
-/**
  * close Метод отключения всех брокеров
  */
 void awh::client::Core::close() noexcept {
@@ -772,8 +759,8 @@ void awh::client::Core::close() noexcept {
 						this->_busy.emplace(i->first);
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (i->second.get());
-						// Выполняем очистку буфера событий
-						this->disable(i->first);
+						// Выполняем остановку работы событий
+						broker->stop();
 						// Выполняем очистку контекста двигателя
 						broker->_ectx.clear();
 						// Удаляем брокера из списка подключений
@@ -851,8 +838,8 @@ void awh::client::Core::remove() noexcept {
 						this->_busy.emplace(j->first);
 						// Получаем бъект активного брокера подключения
 						awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
-						// Выполняем очистку буфера событий
-						this->disable(j->first);
+						// Выполняем остановку работы событий
+						broker->stop();
 						// Выполняем очистку контекста двигателя
 						broker->_ectx.clear();
 						// Удаляем брокера из списка подключений
@@ -989,8 +976,8 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 			if(i != this->_schemes.end()){
 				// Получаем объект схемы сети
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
-				// Выполняем очистку буфера событий
-				this->disable(bid);
+				// Выполняем остановку работы событий
+				broker->stop();
 				// Выполняем удаление таймаута
 				this->clearTimeout(i->first);
 				// Если прокси-сервер активирован но уже переключён на работу с сервером
@@ -1070,8 +1057,8 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 					this->_busy.emplace(j->first);
 					// Получаем бъект активного брокера подключения
 					awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (j->second.get());
-					// Выполняем очистку буфера событий
-					this->disable(j->first);
+					// Выполняем остановку работы событий
+					broker->stop();
 					// Выполняем очистку контекста двигателя
 					broker->_ectx.clear();
 					// Удаляем брокера из списка подключений

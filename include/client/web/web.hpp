@@ -99,17 +99,19 @@ namespace awh {
 				 * Request Структура запроса клиента
 				 */
 				typedef struct Request {
-					uint64_t id;                                 // Идентификатор запроса
-					agent_t agent;                               // Агент воркера выполнения запроса
-					uri_t::url_t url;                            // URL-запроса запроса
-					web_t::method_t method;                      // Метод запроса
-					vector <char> entity;                        // Тело запроса
-					vector <http_t::compressor_t> compressors;   // Список поддерживаемых компрессоров
-					unordered_multimap <string, string> headers; // Заголовки клиента
+					uint64_t id;                                      // Идентификатор запроса
+					agent_t agent;                                    // Агент воркера выполнения запроса
+					uri_t::url_t url;                                 // URL-запроса запроса
+					web_t::method_t method;                           // Метод запроса
+					vector <char> entity;                             // Тело запроса
+					vector <http_t::compressor_t> compressors;        // Список поддерживаемых компрессоров
+					std::unordered_multimap <string, string> headers; // Заголовки клиента
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : id(0), agent(agent_t::HTTP), method(web_t::method_t::NONE) {}
+					Request() noexcept :
+					 id(0), agent(agent_t::HTTP),
+					 method(web_t::method_t::NONE) {}
 				} request_t;
 			protected:
 				/**
@@ -123,7 +125,9 @@ namespace awh {
 					/**
 					 * Proxy Конструктор
 					 */
-					Proxy() noexcept : sid(-1), mode(false), connect(true), answer(0) {}
+					Proxy() noexcept :
+					 sid(-1), mode(false),
+					 connect(true), answer(0) {}
 				} __attribute__((packed)) proxy_t;
 				/**
 				 * Encryption Структура параметров шифрования
@@ -136,7 +140,9 @@ namespace awh {
 					/**
 					 * Encryption Конструктор
 					 */
-					Encryption() noexcept : mode(false), pass{""}, salt{""}, cipher(hash_t::cipher_t::AES128) {}
+					Encryption() noexcept :
+					 mode(false), pass{""}, salt{""},
+					 cipher(hash_t::cipher_t::AES128) {}
 				} encryption_t;
 			protected:
 				/**
@@ -206,7 +212,7 @@ namespace awh {
 				awh::timer_t _timer;
 			protected:
 				// Список рабочих событий
-				stack <event_t> _events;
+				std::stack <event_t> _events;
 			protected:
 				// Список поддерживаемых компрессоров
 				vector <http_t::compressor_t> _compressors;
@@ -473,7 +479,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const set <flag_t> & flags) noexcept = 0;
+				virtual void mode(const std::set <flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * chunk Метод установки размера чанка
@@ -579,7 +585,7 @@ namespace awh {
 				size_t _chunkSize;
 			protected:
 				// Список параметров настроек протокола HTTP/2
-				map <http2_t::settings_t, uint32_t> _settings;
+				std::map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
@@ -596,7 +602,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept;
+				int32_t frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
 				 * @param sid    идентификатор потока
@@ -605,7 +611,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
+				virtual int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept = 0;
 			protected:
 				/**
 				 * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
@@ -744,19 +750,19 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t send(const int32_t sid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const set <flag_t> & flags) noexcept;
+				virtual void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				virtual void settings(const map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				virtual void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка

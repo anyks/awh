@@ -171,13 +171,13 @@ namespace awh {
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const set <string> & subprotocols) noexcept;
+				void subprotocols(const std::set <string> & subprotocols) noexcept;
 				/**
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const std::set <string> & subprotocols(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * extensions Метод установки списка расширений
@@ -231,7 +231,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <web_t::flag_t> & flags) noexcept;
+				void mode(const std::set <web_t::flag_t> & flags) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера
@@ -270,7 +270,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений
@@ -305,13 +305,13 @@ namespace awh {
 				 * setAltSvc Метод установки списка разрешённых источников
 				 * @param origins список альтернативных сервисов
 				 */
-				void setAltSvc(const unordered_multimap <string, string> & origins) noexcept;
+				void setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * ident Метод установки идентификации сервера

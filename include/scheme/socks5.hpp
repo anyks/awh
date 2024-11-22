@@ -53,8 +53,8 @@ namespace awh {
 					 * Locker Структура локера
 					 */
 					typedef struct Locker {
-						bool mode;           // Флаг блокировки
-						recursive_mutex mtx; // Мютекс для блокировки потока
+						bool mode;                // Флаг блокировки
+						std::recursive_mutex mtx; // Мютекс для блокировки потока
 						/**
 						 * Locker Конструктор
 						 */
@@ -90,7 +90,8 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
-						id(0), locked(false), connect(false), stopped(false), scheme(fmk, log), socks5(log) {}
+						 id(0), locked(false), connect(false),
+						 stopped(false), scheme(fmk, log), socks5(log) {}
 						/**
 						 * ~Options Деструктор
 						 */
@@ -98,7 +99,7 @@ namespace awh {
 					} options_t;
 				private:
 					// Список параметров активных клиентов
-					map <uint64_t, unique_ptr <options_t>> _options;
+					std::map <uint64_t, std::unique_ptr <options_t>> _options;
 				private:
 					// Создаём объект фреймворка
 					const fmk_t * _fmk;
@@ -132,7 +133,8 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Socks5(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+					Socks5(const fmk_t * fmk, const log_t * log) noexcept :
+					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Socks5 Деструктор
 					 */

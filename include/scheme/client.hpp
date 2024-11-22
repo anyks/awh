@@ -73,7 +73,9 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 mode(false), type(type_t::NONE), family(scheme_t::family_t::IPV4), socks5(log), http(fmk, log) {
+				 mode(false), type(type_t::NONE),
+				 family(scheme_t::family_t::IPV4),
+				 socks5(log), http(fmk, log) {
 					// Устанавливаем идентичность протокола к прокси-серверу
 					this->http.identity(http_t::identity_t::PROXY);
 				}
@@ -126,7 +128,10 @@ namespace awh {
 					/**
 					 * Status Конструктор
 					 */
-					Status() noexcept : real(mode_t::DISCONNECT), wait(mode_t::DISCONNECT), work(work_t::ALLOW) {}
+					Status() noexcept :
+					 real(mode_t::DISCONNECT),
+					 wait(mode_t::DISCONNECT),
+					 work(work_t::ALLOW) {}
 				} status_t;
 			public:
 				// Флаг получения данных

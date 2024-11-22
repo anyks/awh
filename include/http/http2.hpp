@@ -408,7 +408,7 @@ namespace awh {
 			 * @param headers заголовки отправляемые
 			 * @return        результат отправки данных фрейма
 			 */
-			bool sendTrailers(const int32_t id, const vector <pair <string, string>> & headers) noexcept;
+			bool sendTrailers(const int32_t id, const vector <std::pair <string, string>> & headers) noexcept;
 			/**
 			 * sendData Метод отправки бинарных данных
 			 * @param id     идентификатор потока
@@ -426,7 +426,7 @@ namespace awh {
 			 * @param flag    флаг передаваемого потока по сети
 			 * @return        флаг завершения потока передачи данных
 			 */
-			int32_t sendPush(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
+			int32_t sendPush(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept;
 			/**
 			 * sendHeaders Метод отправки заголовков
 			 * @param id      идентификатор потока
@@ -434,7 +434,7 @@ namespace awh {
 			 * @param flag    флаг передаваемого потока по сети
 			 * @return        флаг завершения потока передачи данных
 			 */
-			int32_t sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
+			int32_t sendHeaders(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept;
 		public:
 			/**
 			 * goaway Метод отправки сообщения закрытия всех потоков
@@ -521,7 +521,7 @@ namespace awh {
 			 * altsvc Метод установки списка альтернативных сервисов
 			 * @param origins список альтернативных сервисов
 			 */
-			void altsvc(const unordered_multimap <string, string> & origins) noexcept;
+			void altsvc(const std::unordered_multimap <string, string> & origins) noexcept;
 		public:
 			/**
 			 * init Метод инициализации
@@ -529,7 +529,7 @@ namespace awh {
 			 * @param settings параметры настроек сессии
 			 * @return         результат выполнения инициализации
 			 */
-			bool init(const mode_t mode, const map <settings_t, uint32_t> & settings) noexcept;
+			bool init(const mode_t mode, const std::map <settings_t, uint32_t> & settings) noexcept;
 		public:
 			/**
 			 * Оператор [=] зануления фрейма Http2

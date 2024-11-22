@@ -279,9 +279,9 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 			// Если количество элементов больше 1
 			if(this->network.size() > 1){
 				// Подключаем устройство генератора
-				mt19937 random(const_cast <addr_t *> (this)->_randev());
+				std::mt19937 random(const_cast <addr_t *> (this)->_randev());
 				// Выполняем генерирование случайного числа
-				uniform_int_distribution <mt19937::result_type> dist6(0, this->network.size() - 1);
+				std::uniform_int_distribution <std::mt19937::result_type> dist6(0, this->network.size() - 1);
 				// Получаем ip адрес
 				result = this->network.at(dist6(random));
 			// Выводим только первый элемент

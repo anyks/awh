@@ -150,14 +150,14 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <pair <size_t, size_t>> match(const char * text, const exp_t & exp) const noexcept;
+			vector <std::pair <size_t, size_t>> match(const char * text, const exp_t & exp) const noexcept;
 			/**
 			 * match Метод выполнения регулярного выражения
 			 * @param text текст для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
+			vector <std::pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * build Метод сборки регулярного выражения

@@ -110,7 +110,7 @@ namespace awh {
 				// Если функция обратного вызова передана
 				if((tid > 0) && (fn != nullptr)){
 					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Выполняем установку функции обратного вызова
 					this->_callbacks.set <A> (static_cast <uint64_t> (tid), fn);
 				}
@@ -134,7 +134,8 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Timer(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _callbacks(log) {}
+			Timer(const fmk_t * fmk, const log_t * log) noexcept :
+			 awh::core_t(fmk, log), _callbacks(log) {}
 			/**
 			 * ~Timer Деструктор
 			 */

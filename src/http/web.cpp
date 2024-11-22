@@ -400,14 +400,14 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callbacks.is("headersResponse"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_res.code, this->_res.message, this->_headers);
+								this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_res.code, this->_res.message, this->_headers);
 						} break;
 						// Если мы работаем с сервером
 						case static_cast <uint8_t> (hid_t::SERVER): {
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callbacks.is("headersRequest"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_req.method, this->_req.url, this->_headers);
+								this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_req.method, this->_req.url, this->_headers);
 						} break;
 					}
 					// Получаем размер тела
@@ -1160,7 +1160,7 @@ void awh::Web::upgrade(const string & upgrade) noexcept {
  * @param key ключ заголовка
  * @return    список протоколов
  */
-set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept {
+std::set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept {
 	// Если ключ передан
 	if(!key.empty()){
 		// Выполняем поиск заголовка
@@ -1171,7 +1171,7 @@ set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept {
 			return i->second;
 	}
 	// Выводим результат
-	return set <awh::Web::proto_t> ();
+	return std::set <awh::Web::proto_t> ();
 }
 /**
  * delHeader Метод удаления заголовка
@@ -1225,7 +1225,7 @@ void awh::Web::header(const string & key, const string & val) noexcept {
  * headers Метод получения списка заголовков
  * @return список существующих заголовков
  */
-const unordered_multimap <string, string> & awh::Web::headers() const noexcept {
+const std::unordered_multimap <string, string> & awh::Web::headers() const noexcept {
 	// Выводим список доступных заголовков
 	return this->_headers;
 }
@@ -1233,7 +1233,7 @@ const unordered_multimap <string, string> & awh::Web::headers() const noexcept {
  * headers Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::Web::headers(const unordered_multimap <string, string> & headers) noexcept {
+void awh::Web::headers(const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку заголовков
 	this->_headers = headers;
 }

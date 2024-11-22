@@ -201,7 +201,7 @@ namespace awh {
 			 * @param actual флаг проверки актуальных файлов
 			 * @param before флаг определения первой точки расширения слева
 			 */
-			pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
+			std::pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
 		public:
 			/**
 			 * chmod Метод получения прав доступа к файлу или каталогу

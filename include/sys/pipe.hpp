@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <set>
 #include <ctime>
 #include <array>
 #include <vector>
@@ -78,7 +77,7 @@ namespace awh {
 			socket_t _socket;
 		private:
 			// Выполняем инициализацию генератора
-			random_device _randev;
+			std::random_device _randev;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;

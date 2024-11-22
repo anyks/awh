@@ -56,7 +56,7 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 			// Если функция обратного вызова на вывод полученных заголовков с клиента установлена
 			if(this->_callbacks.is("headers"))
 				// Устанавливаем функцию обратного вызова для получения всех заголовков запроса
-				options->http.callback <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headersRequest", std::bind(this->_callbacks.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers"), 1, _1, _2, _3, _4));
+				options->http.callback <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", std::bind(this->_callbacks.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headers"), 1, _1, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Устанавливаем функцию обратного вызова для вывода ошибок
@@ -322,7 +322,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 									// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 									if(this->_callbacks.is("complete"))
 										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", 1, bid, request.method, request.url, options->http.body(), options->http.headers());
+										this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", 1, bid, request.method, request.url, options->http.body(), options->http.headers());
 									// Если функция обратного вызова активности потока установлена
 									if(this->_callbacks.is("stream"))
 										// Выполняем функцию обратного вызова
@@ -676,7 +676,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 						if(this->_callbacks.is("complete"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
+							this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
 						// Завершаем работу
 						return;
 					// Формируем ответ, что страница не доступна
@@ -733,7 +733,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 					if(this->_callbacks.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, web->http.body(), web->http.headers());
+						this->_callbacks.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, web->http.body(), web->http.headers());
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callbacks.is("stream"))
 						// Выполняем функцию обратного вызова
@@ -1094,7 +1094,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если заголовки запроса переданы
@@ -1168,7 +1168,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -1461,7 +1461,7 @@ void awh::server::Http1::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::Http1::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::server::Http1::subprotocols(const std::set <string> & subprotocols) noexcept {
 	// Выполняем установку сабпротоколов
 	this->_ws1.subprotocols(subprotocols);
 }
@@ -1470,7 +1470,7 @@ void awh::server::Http1::subprotocols(const set <string> & subprotocols) noexcep
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::Http1::subprotocols(const uint64_t bid) const noexcept {
+const std::set <string> & awh::server::Http1::subprotocols(const uint64_t bid) const noexcept {
 	// Выполняем извлечение выбранных сабпротоколов
 	return this->_ws1.subprotocols(bid);
 }
@@ -1561,7 +1561,7 @@ void awh::server::Http1::keepAlive(const int32_t cnt, const int32_t idle, const 
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
+void awh::server::Http1::mode(const std::set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Активируем выполнение пинга

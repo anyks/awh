@@ -132,7 +132,8 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Authorization(const fmk_t * fmk, const log_t * log) noexcept : _type(type_t::NONE), _fmk(fmk), _log(log) {}
+			Authorization(const fmk_t * fmk, const log_t * log) noexcept :
+			 _type(type_t::NONE), _fmk(fmk), _log(log) {}
 			/*
 			 * ~Authorization Деструктор
 			 */

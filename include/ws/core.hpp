@@ -86,9 +86,9 @@ namespace awh {
 			compressors_t _compressors;
 		protected:
 			// Список выбранных сабпротоколов
-			set <string> _selectedProtocols;
+			std::set <string> _selectedProtocols;
 			// Список поддерживаемых сабпротоколов
-			set <string> _supportedProtocols;
+			std::set <string> _supportedProtocols;
 		protected:
 			// Список поддверживаемых расширений
 			vector <vector <string>> _extensions;
@@ -228,7 +228,7 @@ namespace awh {
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
+			vector <std::pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
 			 * process Метод создания выполняемого процесса в бинарном виде
@@ -243,7 +243,7 @@ namespace awh {
 			 * @param provider параметры провайдера обмена сообщениями
 			 * @return         буфер данных в бинарном виде
 			 */
-			vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
+			vector <std::pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
 		public:
 			/**
 			 * subprotocol Метод установки поддерживаемого сабпротокола
@@ -254,12 +254,12 @@ namespace awh {
 			 * subprotocol Метод получения списка выбранных сабпротоколов
 			 * @return список выбранных сабпротоколов
 			 */
-			const set <string> & subprotocols() const noexcept;
+			const std::set <string> & subprotocols() const noexcept;
 			/**
 			 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 			 * @param subprotocols сабпротоколы для установки
 			 */
-			void subprotocols(const set <string> & subprotocols) noexcept;
+			void subprotocols(const std::set <string> & subprotocols) noexcept;
 		public:
 			/**
 			 * takeover Метод получения флага переиспользования контекста компрессии

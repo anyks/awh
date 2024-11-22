@@ -1,3 +1,17 @@
+/**
+ * @file: global.hpp
+ * @date: 2024-11-22
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2024
+ */
+
 #ifndef AWH_GLOBAL_H
 #define AWH_GLOBAL_H
 

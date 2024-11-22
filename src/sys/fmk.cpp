@@ -2765,7 +2765,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
  */
 std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
 	// Результат работы функции
-	map <size_t, size_t> result;
+	std::map <size_t, size_t> result;
 	// Если текст передан
 	if(!text.empty()){
 		// Позиция найденного nwt адреса

@@ -65,14 +65,16 @@ namespace awh {
 				 * Header Структура работы с заголовком буфера данных
 				 */
 				typedef struct Header {
-					uint64_t id;  // Идентификатор сообщения
 					mode_t mode;  // Режим работы буфера данных
+					uint64_t id;  // Идентификатор сообщения
 					size_t size;  // Общий размер записи
 					size_t bytes; // Размер текущего чанка
 					/**
 					 * Header Конструктор
 					 */
-					Header() noexcept : id(0), mode(mode_t::NONE), size(0), bytes(0) {}
+					Header() noexcept :
+					 mode(mode_t::NONE),
+					 id(0), size(0), bytes(0) {}
 				} __attribute__((packed)) header_t;
 				/**
 				 * Buffer Структура работы с буфером данных

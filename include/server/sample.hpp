@@ -92,7 +92,7 @@ namespace awh {
 				hash_t::cipher_t _cipher;
 			private:
 				// Список отключившихся клиентов
-				map <uint64_t, time_t> _disconnected;
+				std::map <uint64_t, time_t> _disconnected;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -292,7 +292,7 @@ namespace awh {
 				 * mode Метод установки флага модуля
 				 * @param flag флаг модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const std::set <flag_t> & flags) noexcept;
 				/**
 				 * keepAlive Метод установки жизни подключения
 				 * @param cnt   максимальное количество попыток

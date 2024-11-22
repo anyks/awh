@@ -24,7 +24,7 @@ void awh::server::scheme::Socks5::clear() noexcept {
 	// Очищаем список параметров активных клиентов
 	this->_options.clear();
 	// Освобождаем выделенную память
-	map <uint64_t, unique_ptr <options_t>> ().swap(this->_options);
+	std::map <uint64_t, std::unique_ptr <options_t>> ().swap(this->_options);
 }
 /**
  * set Метод создания параметров активного клиента
@@ -34,7 +34,7 @@ void awh::server::scheme::Socks5::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (this->_options.count(bid) < 1))
 		// Создаём объект параметров активного клиента
-		this->_options.emplace(bid, unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
+		this->_options.emplace(bid, std::unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
 }
 /**
  * rm Метод удаления параметров активного клиента

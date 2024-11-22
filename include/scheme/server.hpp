@@ -66,8 +66,10 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::scheme_t(fmk, log), _ectx(fmk, log), _addr(fmk, log),
-				 _total(SERVER_TOTAL_CONNECT), _port(SERVER_PORT), _host(SERVER_HOST) {}
+				 awh::scheme_t(fmk, log),
+				 _ectx(fmk, log), _addr(fmk, log),
+				 _total(SERVER_TOTAL_CONNECT),
+				 _port(SERVER_PORT), _host(SERVER_HOST) {}
 				/**
 				 * ~Scheme Деструктор
 				 */

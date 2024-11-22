@@ -141,12 +141,6 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void reset(const uint64_t bid) noexcept;
-			private:
-				/**
-				 * disable Метод остановки активности брокера подключения
-				 * @param bid идентификатор брокера
-				 */
-				void disable(const uint64_t bid) noexcept;
 			public:
 				/**
 				 * close Метод отключения всех брокеров

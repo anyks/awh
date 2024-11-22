@@ -92,7 +92,8 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Frame(const fmk_t * fmk, const log_t * log) noexcept :
-						size(AWH_PAYLOAD_SIZE), methods(fmk, log), opcode(ws::frame_t::opcode_t::TEXT) {}
+						 size(AWH_PAYLOAD_SIZE), methods(fmk, log),
+						 opcode(ws::frame_t::opcode_t::TEXT) {}
 					} frame_t;
 				public:
 					/**
@@ -115,8 +116,8 @@ namespace awh {
 						partner_t client;                // Объект партнёра клиента
 						partner_t server;                // Объект партнёра сервера
 						server::ws_t http;               // Создаём объект для работы с HTTP
-						recursive_mutex mtx;             // Мютекс для блокировки потока
 						engine_t::proto_t proto;         // Активный прототип интернета
+						std::recursive_mutex mtx;        // Мютекс для блокировки потока
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
 						 * Options Конструктор
@@ -124,11 +125,11 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
-						close(false), shake(false), crypted(false),
-						inflate(false), stopped(false), sid(1), point(0),
-						sendPing(0), hash(log), frame(fmk, log), http(fmk, log),
-						proto(engine_t::proto_t::HTTP1_1),
-						compressor(http_t::compressor_t::NONE) {}
+						 close(false), shake(false), crypted(false),
+						 inflate(false), stopped(false), sid(1), point(0),
+						 sendPing(0), hash(log), frame(fmk, log), http(fmk, log),
+						 proto(engine_t::proto_t::HTTP1_1),
+						 compressor(http_t::compressor_t::NONE) {}
 						/**
 						 * ~Options Деструктор
 						 */
@@ -139,7 +140,7 @@ namespace awh {
 					vector <awh::http_t::compressor_t> compressors;
 				private:
 					// Список параметров активных клиентов
-					map <uint64_t, unique_ptr <options_t>> _options;
+					std::map <uint64_t, std::unique_ptr <options_t>> _options;
 				private:
 					// Создаём объект фреймворка
 					const fmk_t * _fmk;
@@ -172,14 +173,15 @@ namespace awh {
 					 * get Метод извлечения списка параметров активных клиентов
 					 * @return список параметров активных клиентов
 					 */
-					const map <uint64_t, unique_ptr <options_t>> & get() const noexcept;
+					const std::map <uint64_t, std::unique_ptr <options_t>> & get() const noexcept;
 				public:
 					/**
 					 * WebSocket Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					WebSocket(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+					WebSocket(const fmk_t * fmk, const log_t * log) noexcept :
+					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * ~WebSocket Деструктор
 					 */

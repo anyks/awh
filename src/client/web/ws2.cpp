@@ -327,7 +327,7 @@ int32_t awh::client::Websocket2::chunkSignal(const int32_t sid, const uint8_t * 
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
+int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
@@ -533,13 +533,13 @@ int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::d
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callbacks.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", sid, this->_rid, response.code, response.message, this->_http.headers());
+								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", sid, this->_rid, response.code, response.message, this->_http.headers());
 							// Если мы получили флаг завершения потока
 							if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 								// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 								if(this->_callbacks.is("complete"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
+									this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 								// Очищаем буфер собранных данных
 								this->_buffer.clear();
 								// Если установлена функция отлова завершения запроса
@@ -1011,7 +1011,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 					if(this->_callbacks.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
+						this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
@@ -1034,7 +1034,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 					if(this->_callbacks.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
+						this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 				}
 			} break;
 			// Если запрос неудачный
@@ -1056,7 +1056,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(this->_callbacks.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
+					this->_resultCallback.set <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", this->_callbacks.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 			} break;
 		}
 		// Завершаем работу
@@ -1679,7 +1679,7 @@ void awh::client::Websocket2::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::Websocket2::subprotocols() const noexcept {
+const std::set <string> & awh::client::Websocket2::subprotocols() const noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
 	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выводим список выбранных сабпротоколов
@@ -1693,7 +1693,7 @@ const set <string> & awh::client::Websocket2::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Websocket2::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::client::Websocket2::subprotocols(const std::set <string> & subprotocols) noexcept {
 	// Если список поддерживаемых сабпротоколов получен
 	if(!subprotocols.empty()){
 		// Устанавливаем список поддерживаемых сабсабпротоколов для Websocket-клиента
@@ -1766,22 +1766,6 @@ void awh::client::Websocket2::segmentSize(const size_t size) noexcept {
 	}
 }
 /**
- * mode Метод установки флагов настроек модуля
- * @param flags список флагов настроек модуля для установки
- */
-void awh::client::Websocket2::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаги настроек модуля для Websocket-клиента
-	this->_ws1.mode(flags);
-	// Устанавливаем флаг разрешающий вывод информационных сообщений
-	this->_verb = (flags.find(flag_t::NOT_INFO) == flags.end());
-	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_client.takeover = (flags.find(flag_t::TAKEOVER_CLIENT) != flags.end());
-	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_server.takeover = (flags.find(flag_t::TAKEOVER_SERVER) != flags.end());
-	// Выполняем установку флагов настроек модуля
-	web2_t::mode(flags);
-}
-/**
  * core Метод установки сетевого ядра
  * @param core объект сетевого ядра
  */
@@ -1812,6 +1796,22 @@ void awh::client::Websocket2::core(const client::core_t * core) noexcept {
 	}
 }
 /**
+ * mode Метод установки флагов настроек модуля
+ * @param flags список флагов настроек модуля для установки
+ */
+void awh::client::Websocket2::mode(const std::set <flag_t> & flags) noexcept {
+	// Устанавливаем флаги настроек модуля для Websocket-клиента
+	this->_ws1.mode(flags);
+	// Устанавливаем флаг разрешающий вывод информационных сообщений
+	this->_verb = (flags.find(flag_t::NOT_INFO) == flags.end());
+	// Устанавливаем флаг перехвата контекста компрессии для клиента
+	this->_client.takeover = (flags.find(flag_t::TAKEOVER_CLIENT) != flags.end());
+	// Устанавливаем флаг перехвата контекста компрессии для сервера
+	this->_server.takeover = (flags.find(flag_t::TAKEOVER_SERVER) != flags.end());
+	// Выполняем установку флагов настроек модуля
+	web2_t::mode(flags);
+}
+/**
  * user Метод установки параметров авторизации
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
@@ -1826,7 +1826,7 @@ void awh::client::Websocket2::user(const string & login, const string & password
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::client::Websocket2::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::Websocket2::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку HTTP-заголовков для отправки на сервер
 	this->_headers = headers;
 }

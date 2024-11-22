@@ -65,7 +65,7 @@ void awh::cmp::Encoder::Buffer::push(const uint64_t id, const mode_t mode, const
 		// Если данные переданы верные
 		if((buffer != nullptr) && (bytes > 0)){
 			// Выполняем формирование буфера данных
-			this->_payload = unique_ptr <uint8_t []> (new uint8_t [bytes]);
+			this->_payload = std::unique_ptr <uint8_t []> (new uint8_t [bytes]);
 			// Выполняем копирование буфера полученных данных
 			::memcpy(this->_payload.get(), buffer, bytes);
 		}
@@ -478,7 +478,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 								// Если данные мы собрали правильно
 								if(i->second->size == i->second->offset)
 									// Выполняем перемещение данных в очередь
-									this->_data.push(make_pair(i->second->size, std::move(i->second->payload)));
+									this->_data.push(std::make_pair(i->second->size, std::move(i->second->payload)));
 								// Выводим сообщение об ошибке
 								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, i->second->offset, i->second->size, "we received damage during the data collection process");
 								// Выполняем удаление данных из временного контейнера
@@ -495,7 +495,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 							// Если размер полезной нагрузки установлен
 							if(data->offset > 0){
 								// Выделяем память для полезной нагрузки временного буфера данных
-								data->payload = unique_ptr <uint8_t []> (new uint8_t [data->size]);
+								data->payload = std::unique_ptr <uint8_t []> (new uint8_t [data->size]);
 								// Выполняем копирование данных полезной нагрузки
 								::memcpy(data->payload.get(), reinterpret_cast <const uint8_t *> (buffer) + result, data->offset);
 							}
@@ -504,7 +504,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 								// Если данные мы собрали правильно
 								if(data->size == data->offset)
 									// Выполняем перемещение данных в очередь
-									this->_data.push(make_pair(data->size, std::move(data->payload)));
+									this->_data.push(std::make_pair(data->size, std::move(data->payload)));
 								// Выводим сообщение об ошибке
 								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, data->offset, data->size, "we received damage during the data process");
 							// Выполняем добавление записи во временный объект

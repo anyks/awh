@@ -78,7 +78,7 @@ namespace awh {
 			// Список существующих файловых дескрипторов
 			std::map <SOCKET, uint32_t> _fds;
 			// Список активных таймеров
-			multimap <time_t, SOCKET> _timers;
+			std::multimap <time_t, SOCKET> _timers;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;

@@ -110,7 +110,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * send2 Метод HTTP/2 отправки сообщения на сервер
@@ -128,7 +128,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t send2(const int32_t sid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента Websocket
@@ -148,14 +148,14 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> GET(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * DEL Метод запроса в формате HTTP методом DEL
 				 * @param url     адрес запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> DEL(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * PUT Метод запроса в формате HTTP методом PUT
@@ -164,7 +164,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PUT(const uri_t::url_t & url, const json & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * PUT Метод запроса в формате HTTP методом PUT
 				 * @param url     адрес запроса
@@ -172,7 +172,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PUT(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * PUT Метод запроса в формате HTTP методом PUT
 				 * @param url     адрес запроса
@@ -180,7 +180,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PUT(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * POST Метод запроса в формате HTTP методом POST
@@ -189,7 +189,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> POST(const uri_t::url_t & url, const json & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * POST Метод запроса в формате HTTP методом POST
 				 * @param url     адрес запроса
@@ -197,7 +197,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> POST(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * POST Метод запроса в формате HTTP методом POST
 				 * @param url     адрес запроса
@@ -205,7 +205,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> POST(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * PATCH Метод запроса в формате HTTP методом PATCH
@@ -214,7 +214,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PATCH(const uri_t::url_t & url, const json & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * PATCH Метод запроса в формате HTTP методом PATCH
 				 * @param url     адрес запроса
@@ -222,7 +222,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PATCH(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * PATCH Метод запроса в формате HTTP методом PATCH
 				 * @param url     адрес запроса
@@ -230,7 +230,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PATCH(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * HEAD Метод запроса в формате HTTP методом HEAD
@@ -238,21 +238,21 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				unordered_multimap <string, string> HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+				std::unordered_multimap <string, string> HEAD(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * TRACE Метод запроса в формате HTTP методом TRACE
 				 * @param url     адрес запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				unordered_multimap <string, string> TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+				std::unordered_multimap <string, string> TRACE(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * OPTIONS Метод запроса в формате HTTP методом OPTIONS
 				 * @param url     адрес запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				unordered_multimap <string, string> OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+				std::unordered_multimap <string, string> OPTIONS(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * REQUEST Метод выполнения запроса HTTP
@@ -261,7 +261,7 @@ namespace awh {
 				 * @param entity  тело запроса
 				 * @param headers заголовки запроса
 				 */
-				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept;
+				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * open Метод открытия подключения
@@ -337,12 +337,12 @@ namespace awh {
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @return список выбранных сабпротоколов
 				 */
-				const set <string> & subprotocols() const noexcept;
+				const std::set <string> & subprotocols() const noexcept;
 				/**
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const set <string> & subprotocols) noexcept;
+				void subprotocols(const std::set <string> & subprotocols) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений Websocket
@@ -366,13 +366,13 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <web_t::flag_t> & flags) noexcept;
+				void mode(const std::set <web_t::flag_t> & flags) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка

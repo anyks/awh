@@ -83,13 +83,13 @@ namespace awh {
 				scheme::ws_t::partner_t _server;
 			private:
 				// Поддерживаемые сабпротоколы
-				set <string> _subprotocols;
+				std::set <string> _subprotocols;
 			private:
 				// Список поддверживаемых расширений
 				vector <vector <string>> _extensions;
 			private:
 				// Полученные HTTP заголовки
-				unordered_multimap <string, string> _headers;
+				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
@@ -264,13 +264,13 @@ namespace awh {
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const set <string> & subprotocols) noexcept;
+				void subprotocols(const std::set <string> & subprotocols) noexcept;
 				/**
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const std::set <string> & subprotocols(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * extensions Метод установки списка расширений
@@ -318,7 +318,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения
@@ -341,7 +341,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений

@@ -163,13 +163,13 @@ namespace awh {
 			socket_t _socket;
 		private:
 			// Мютекс для блокировки потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
 			// Выполняем инициализацию генератора
-			random_device _randev;
+			std::random_device _randev;
 		private:
 			// Статус работы PING-клиента
-			stack <status_t> _status;
+			std::stack <status_t> _status;
 		private:
 			// Сдвиг по времени для выполнения пинга
 			time_t _shifting;
@@ -324,8 +324,10 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Ping(const fmk_t * fmk, const log_t * log) noexcept :
-			 _fd(INVALID_SOCKET), _mode(false), _verb(true), _dns(fmk, log), _socket(fmk, log),
-			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000), _fmk(fmk), _log(log), _callback(nullptr) {}
+			 _fd(INVALID_SOCKET), _mode(false), _verb(true),
+			 _dns(fmk, log), _socket(fmk, log), _shifting(3000),
+			 _timeoutRead(5000), _timeoutWrite(15000),
+			 _fmk(fmk), _log(log), _callback(nullptr) {}
 			/**
 			 * ~Ping Деструктор
 			 */

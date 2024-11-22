@@ -151,9 +151,9 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t & exp) const noexcept {
+vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t & exp) const noexcept {
 	// Результат работы функции
-	vector <pair <size_t, size_t>> result;
+	vector <std::pair <size_t, size_t>> result;
 	// Если данные переданы верные
 	if((text != nullptr) && exp->_mode){
 		/**
@@ -209,13 +209,13 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <pair <size_t, size_t>> awh::RegExp::match(const string & text, const exp_t & exp) const noexcept {
+vector <std::pair <size_t, size_t>> awh::RegExp::match(const string & text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
 	if(!text.empty() && exp->_mode)
 		// Выполняем выполнение регулярного выражения
 		return this->match(text.c_str(), exp);
 	// Выводим результат
-	return vector <pair <size_t, size_t>> ();
+	return vector <std::pair <size_t, size_t>> ();
 }
 /**
  * build Метод сборки регулярного выражения

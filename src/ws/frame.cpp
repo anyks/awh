@@ -221,13 +221,13 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Если нужно выполнить маскировку сообщения
 			if(mask){
 				// Получаем генератор случайных чисел
-				random_device randev;
+				std::random_device randev;
 				// Бинарные данные маски
 				vector <u_char> mask(4);
 				// Подключаем генератор к двигателю
-				mt19937 engine {randev()};
+				std::mt19937 engine {randev()};
 				// Устанавливаем диапазон генератора случайных чисел
-				uniform_int_distribution <u_char> dist {0, 255};
+				std::uniform_int_distribution <u_char> dist {0, 255};
 				// Выполняем заполнение маски случайными числами
 				generate(mask.begin(), mask.end(), [&dist, &engine]{
 					// Выполняем генерирование случайного числа

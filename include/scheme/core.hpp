@@ -117,14 +117,17 @@ namespace awh {
 				/**
 				 * Timeouts Конструктор
 				 */
-				Timeouts() noexcept : wait(0), read(READ_TIMEOUT), write(WRITE_TIMEOUT), connect(CONNECT_TIMEOUT) {}
+				Timeouts() noexcept :
+				 wait(0), read(READ_TIMEOUT),
+				 write(WRITE_TIMEOUT),
+				 connect(CONNECT_TIMEOUT) {}
 			} __attribute__((packed)) timeouts_t;
 			/**
 			 * Payload Структура полезной нагрузки
 			 */
 			typedef struct Payload {
-				size_t size;               // Размер буфера
-				unique_ptr <char []> data; // Данные буфера
+				size_t size;                    // Размер буфера
+				std::unique_ptr <char []> data; // Данные буфера
 				/**
 				 * Payload Конструктор
 				 */
@@ -284,6 +287,15 @@ namespace awh {
 					void callback(const SOCKET fd, const base_t::event_type_t event) noexcept;
 				public:
 					/**
+					 * stop Метод остановки работы
+					 */
+					void stop() noexcept;
+					/**
+					 * start Метод запуска работы
+					 */
+					void start() noexcept;
+				public:
+					/**
 					 * events Метод активации/деактивации метода события сокета
 					 * @param mode   сигнал активации сокета
 					 * @param method метод режима работы
@@ -335,7 +347,7 @@ namespace awh {
 			engine_t::alive_t keepAlive;
 		protected:
 			// Список подключённых брокеров
-			map <uint64_t, unique_ptr <broker_t>> _brokers;
+			std::map <uint64_t, std::unique_ptr <broker_t>> _brokers;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;

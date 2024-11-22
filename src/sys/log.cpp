@@ -455,7 +455,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
  * mode Метод добавления режимов вывода логов
  * @param mode список режимов вывода логов
  */
-void awh::Log::mode(const set <mode_t> & mode) noexcept {
+void awh::Log::mode(const std::set <mode_t> & mode) noexcept {
 	// Выполняем установку списка режимов вывода логов
 	this->_mode = mode;
 }

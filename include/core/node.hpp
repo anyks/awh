@@ -75,7 +75,9 @@ namespace awh {
 				/**
 				 * SSL Конструктор
 				 */
-				SSL() noexcept : verify(true), ca{""}, crl{""}, key{""}, cert{""}, capath{""} {}
+				SSL() noexcept :
+				 verify(true), ca{""}, crl{""},
+				 key{""}, cert{""}, capath{""} {}
 			} ssl_t;
 		protected:
 			/**
@@ -98,7 +100,9 @@ namespace awh {
 				/**
 				 * Payload Конструктор
 				 */
-				Payload() noexcept : pos(0), size(0), offset(0), data(nullptr) {}
+				Payload() noexcept :
+				 pos(0), size(0),
+				 offset(0), data(nullptr) {}
 			} payload_t;
 			/**
 			 * Settings Структура текущих параметров сети
@@ -161,7 +165,7 @@ namespace awh {
 			// Список активных схем сети
 			std::map <uint16_t, const scheme_t *> _schemes;
 			// Буферы отправляемой полезной нагрузки
-			std::map <uint64_t, queue <payload_t>> _payloads;
+			std::map <uint64_t, std::queue <payload_t>> _payloads;
 			// Список брокеров подключения
 			std::map <uint64_t, const scheme_t::broker_t *> _brokers;
 		protected:
@@ -442,8 +446,9 @@ namespace awh {
 			 */
 			Node(const fmk_t * fmk, const log_t * log) noexcept :
 			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk),
-			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT), _payloadSize(0),
-			 _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(nullptr) {}
+			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT),
+			 _payloadSize(0), _memoryAvailableSize(AWH_WINDOW_SIZE),
+			 _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(nullptr) {}
 			/**
 			 * Core Конструктор
 			 * @param dns объект DNS-резолвера
@@ -452,8 +457,9 @@ namespace awh {
 			 */
 			Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
 			 awh::core_t(fmk, log), _fs(fmk, log), _uri(fmk),
-			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT), _payloadSize(0),
-			 _memoryAvailableSize(AWH_WINDOW_SIZE), _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(dns) {}
+			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT),
+			 _payloadSize(0), _memoryAvailableSize(AWH_WINDOW_SIZE),
+			 _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(dns) {}
 			/**
 			 * ~Node Деструктор
 			 */

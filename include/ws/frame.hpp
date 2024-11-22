@@ -63,7 +63,7 @@ namespace awh {
 				/**
 				 * Коды сообщений
 				 */
-				map <uint16_t, pair <string, string>> _codes;
+				std::map <uint16_t, std::pair <string, string>> _codes;
 			private:
 				/**
 				 * find Метод поиска типа сообщения

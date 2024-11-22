@@ -77,13 +77,15 @@ namespace awh {
 		private:
 			// Объект дочернего потока
 			std::thread _thr;
+			// Мютекс ожидания данных
+			std::mutex _locker;
 			// Мютекс для блокировки потока
-			mutex _mtx1, _mtx2;
+			std::recursive_mutex _mtx;
 			// Условная переменная, ожидания поступления данных
-			condition_variable _cv;
+			std::condition_variable _cv;
 		private:
 			// Очередь полезной нагрузки
-			queue <T> _payload;
+			std::queue <T> _payload;
 			// Таймаут ожидания блокировки базы событий
 			chrono::nanoseconds _delay;
 		private:
@@ -118,11 +120,11 @@ namespace awh {
 							// Выводим сообщение лога всем подписавшимся
 							this->_callback(payload);
 						// Выполняем блокировку потока
-						this->_mtx2.lock();
+						this->_mtx.lock();
 						// Удаляем текущее задание
 						this->_payload.pop();
 						// Выполняем разблокировку потока
-						this->_mtx2.unlock();
+						this->_mtx.unlock();
 						// Если функция обратного вызова установлена
 						if(this->_state != nullptr)
 							// Выполняем функцию обратного вызова
@@ -149,7 +151,7 @@ namespace awh {
 					 */
 					try {
 						// Выполняем блокировку уникальным мютексом
-						unique_lock <mutex> lock(this->_mtx1);
+						unique_lock <std::mutex> lock(this->_locker);
 						// Выполняем ожидание на поступление новых заданий
 						this->_cv.wait_for(lock, this->_delay, std::bind(&Screen::check, this));
 						// Выполняем запуск обработки поступившей задачи
@@ -221,7 +223,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx2);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_trigger = callback;
 				/**
@@ -243,7 +245,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx2);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_callback = callback;
 				/**
@@ -265,7 +267,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx2);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_state = callback;
 				/**
@@ -288,7 +290,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx2);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Выполняем установку задержки времени
 					this->_delay = chrono::nanoseconds(delay);
 				/**
@@ -311,11 +313,11 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					this->_mtx2.lock();
+					this->_mtx.lock();
 					// Выполняем добавление данных в очередь
 					this->_payload.push(data);
 					// Выполняем разблокировку потока
-					this->_mtx2.unlock();
+					this->_mtx.unlock();
 					// Если функция обратного вызова установлена
 					if(this->_state != nullptr)
 						// Выполняем функцию обратного вызова

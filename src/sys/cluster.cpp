@@ -30,7 +30,7 @@
 	 */
 	void awh::Cluster::Worker::process(const pid_t pid, const int32_t status) noexcept {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем поиск брокера
 		auto i = this->_ctx->_brokers.find(this->_wid);
 		// Если брокер найден
@@ -744,9 +744,9 @@ bool awh::Cluster::working(const uint16_t wid) const noexcept {
  * @param wid идентификатор воркера
  * @return    список дочерних процессов
  */
-set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
+std::set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Результат работы функции
-	set <pid_t> result;
+	std::set <pid_t> result;
 	// Выполняем поиск брокеров
 	auto i = this->_brokers.find(wid);
 	// Если брокер найден

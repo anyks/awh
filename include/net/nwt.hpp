@@ -90,11 +90,11 @@ namespace awh {
 			regexp_t::exp_t _email;
 		private:
 			// Список пользовательских доменных зон интернета
-			set <string> _user;
+			std::set <string> _user;
 			// Список основных доменных зон интернета
-			set <string> _general;
+			std::set <string> _general;
 			// Список интернациональных доменных зон интернета
-			set <string> _national;
+			std::set <string> _national;
 		public:
 			/**
 			 * zone Метод установки пользовательской зоны
@@ -105,12 +105,12 @@ namespace awh {
 			/**
 			 * zones Метод извлечения списка пользовательских зон интернета
 			 */
-			const set <string> & zones() const noexcept;
+			const std::set <string> & zones() const noexcept;
 			/**
 			 * zones Метод установки списка пользовательских зон
 			 * @param zones список доменных зон интернета
 			 */
-			void zones(const set <string> & zones) noexcept;
+			void zones(const std::set <string> & zones) noexcept;
 		public:
 			/**
 			 * parse Метод парсинга URI-строки

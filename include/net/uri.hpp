@@ -74,14 +74,15 @@ namespace awh {
 			 * Params Структура параметров URI
 			 */
 			typedef struct Params {
-				uint32_t port;  // Порт
-				string host; // Хост
-				string user; // Пользователь
-				string pass; // Пароль
+				uint32_t port; // Порт
+				string host;  // Хост
+				string user;  // Пользователь
+				string pass;  // Пароль
 				/**
 				 * Params Конструктор
 				 */
-				Params() noexcept : port(0), host{""}, user{""}, pass{""} {}
+				Params() noexcept :
+				 port(0), host{""}, user{""}, pass{""} {}
 			} params_t;
 			/**
 			 * URL Структура URL адреса
@@ -107,7 +108,7 @@ namespace awh {
 					// Путь URL-запроса
 					vector <string> path;
 					// Параметры URL-запроса
-					vector <pair <string, string>> params;
+					vector <std::pair <string, string>> params;
 				public:
 					// Функция выполняемая при генерации URL адреса
 					function <string (const URL *, const URI *)> callback;
@@ -233,13 +234,13 @@ namespace awh {
 			 * @param uri строка URI для сплита
 			 * @return    список полученных частей URI
 			 */
-			map <flag_t, string> split(const string & uri) const noexcept;
+			std::map <flag_t, string> split(const string & uri) const noexcept;
 			/**
 			 * splitParams Метод выполнения сплита параметров URI
 			 * @param uri строка URI для сплита
 			 * @return    параметры полученные при сплите
 			 */
-			vector <pair <string, string>> splitParams(const string & uri) const noexcept;
+			vector <std::pair <string, string>> splitParams(const string & uri) const noexcept;
 			/**
 			 * splitPath Метод выполнения сплита пути
 			 * @param path  путь для выполнения сплита
@@ -253,7 +254,7 @@ namespace awh {
 			 * @param uri параметры URI для сборки
 			 * @return    строка полученная при сборке параметров URI
 			 */
-			string joinParams(const vector <pair <string, string>> & uri) const noexcept;
+			string joinParams(const vector <std::pair <string, string>> & uri) const noexcept;
 			/**
 			 * joinPath Метод сборки пути запроса
 			 * @param path  список параметров пути запроса

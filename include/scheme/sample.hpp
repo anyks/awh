@@ -74,7 +74,8 @@ namespace awh {
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Options(const fmk_t * fmk, const log_t * log) noexcept : alive(false), close(false), stopped(false) {}
+						Options(const fmk_t * fmk, const log_t * log) noexcept :
+						 alive(false), close(false), stopped(false) {}
 						/**
 						 * ~Options Деструктор
 						 */
@@ -82,7 +83,7 @@ namespace awh {
 					} options_t;
 				private:
 					// Список параметров активных клиентов
-					map <uint64_t, unique_ptr <options_t>> _options;
+					std::map <uint64_t, std::unique_ptr <options_t>> _options;
 				private:
 					// Создаём объект фреймворка
 					const fmk_t * _fmk;
@@ -115,14 +116,15 @@ namespace awh {
 					 * get Метод извлечения списка параметров активных клиентов
 					 * @return список параметров активных клиентов
 					 */
-					const map <uint64_t, unique_ptr <options_t>> & get() const noexcept;
+					const std::map <uint64_t, std::unique_ptr <options_t>> & get() const noexcept;
 				public:
 					/**
 					 * Sample Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Sample(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+					Sample(const fmk_t * fmk, const log_t * log) noexcept :
+					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Sample Деструктор
 					 */

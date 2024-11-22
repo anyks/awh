@@ -64,7 +64,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 					// Переходим по всему списку поддерживаемых сабпротоколов
 					for(auto & subprotocol : this->_supportedProtocols)
 						// Добавляем полученный заголовок
-						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
+						const_cast <std::unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 				}
 			}
 			// Выполняем применение расширений
@@ -217,7 +217,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 					// Переходим по всему списку выбранных сабпротоколов
 					for(auto & subprotocol : this->_selectedProtocols)
 						// Добавляем полученный заголовок
-						const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
+						const_cast <std::unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 				}
 			}
 		} break;
@@ -365,12 +365,12 @@ const string awh::WCore::key() const noexcept {
 	try {
 		// Создаём контейнер
 		string nonce = "";
-		// Адаптер для работы с случайным распределением
-		random_device randev;
 		// Резервируем память
 		nonce.reserve(16);
+		// Адаптер для работы с случайным распределением
+		std::random_device randev;
 		// Формируем равномерное распределение целых чисел в выходном инклюзивно-эксклюзивном диапазоне
-		uniform_int_distribution <uint16_t> dist(0, 255);
+		std::uniform_int_distribution <uint16_t> dist(0, 255);
 		// Формируем бинарный ключ из случайных значений
 		for(size_t c = 0; c < 16; c++)
 			// Выполняем формирование ключа
@@ -1212,7 +1212,7 @@ vector <char> awh::WCore::reject(const web_t::res_t & res) const noexcept {
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-vector <pair <string, string>> awh::WCore::reject2(const web_t::res_t & res) const noexcept {
+vector <std::pair <string, string>> awh::WCore::reject2(const web_t::res_t & res) const noexcept {
 	// Выполняем очистку выбранного сабпротокола
 	const_cast <ws_core_t *> (this)->_selectedProtocols.clear();
 	// Выполняем генерацию сообщения ответа
@@ -1328,7 +1328,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
  * @param provider параметры провайдера обмена сообщениями
  * @return         буфер данных в бинарном виде
  */
-vector <pair <string, string>> awh::WCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
+vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
 	// Определяем флаг выполняемого процесса
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
@@ -1358,7 +1358,7 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 					// Выполняем функцию обратного вызова
 					this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Address or request method for WebSocket-client is incorrect");
 				// Выходим из функции
-				return vector <pair <string, string>> ();
+				return vector <std::pair <string, string>> ();
 			}
 		} break;
 		// Если нужно сформировать данные ответа
@@ -1386,7 +1386,7 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 					// Выполняем функцию обратного вызова
 					this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "WebSocket-server response code set incorrectly");
 				// Выходим из функции
-				return vector <pair <string, string>> ();
+				return vector <std::pair <string, string>> ();
 			}
 		} break;
 	}
@@ -1409,7 +1409,7 @@ void awh::WCore::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::WCore::subprotocols() const noexcept {
+const std::set <string> & awh::WCore::subprotocols() const noexcept {
 	// Выводим список выбранных сабпротоколов
 	return this->_selectedProtocols;
 }
@@ -1417,7 +1417,7 @@ const set <string> & awh::WCore::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::WCore::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::WCore::subprotocols(const std::set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
 	if(!subprotocols.empty())
 		// Выполняем установку списка поддерживаемых сабпротоколов

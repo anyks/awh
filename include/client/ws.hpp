@@ -150,12 +150,12 @@ namespace awh {
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @return список выбранных сабпротоколов
 				 */
-				const set <string> & subprotocols() const noexcept;
+				const std::set <string> & subprotocols() const noexcept;
 				/**
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const set <string> & subprotocols) noexcept;
+				void subprotocols(const std::set <string> & subprotocols) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений Websocket
@@ -200,7 +200,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <web_t::flag_t> & flags) noexcept;
+				void mode(const std::set <web_t::flag_t> & flags) noexcept;
 				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере
@@ -231,7 +231,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * userAgent Метод установки User-Agent для HTTP-запроса

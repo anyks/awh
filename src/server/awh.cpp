@@ -128,7 +128,7 @@ bool awh::server::AWH::send(const int32_t sid, const uint64_t bid, const char * 
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Выполняем отправку заголовков сообщения клиенту
 	return this->_http.send(sid, bid, code, mess, headers, end);
 }
@@ -141,7 +141,7 @@ int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем отправку сообщения клиенту
 	this->_http.send(sid, bid, code, mess, entity, headers);
 }
@@ -185,7 +185,7 @@ bool awh::server::AWH::goaway2(const int32_t last, const uint64_t bid, const awh
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept {
 	// Выполняем отправку трейлеров
 	return this->_http.send2(sid, bid, headers);
 }
@@ -210,7 +210,7 @@ bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const char *
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку заголовков
 	return this->_http.send2(sid, bid, headers, flag);
 }
@@ -222,7 +222,7 @@ int32_t awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vec
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::AWH::push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::AWH::push2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку пуш-уведомлений
 	return this->_http.push2(sid, bid, headers, flag);
 }
@@ -320,7 +320,7 @@ void awh::server::AWH::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::AWH::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::server::AWH::subprotocols(const std::set <string> & subprotocols) noexcept {
 	// Выполняем установку списка поддерживаемых сабпротоколов
 	this->_http.subprotocols(subprotocols);
 }
@@ -329,7 +329,7 @@ void awh::server::AWH::subprotocols(const set <string> & subprotocols) noexcept 
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::AWH::subprotocols(const uint64_t bid) const noexcept {
+const std::set <string> & awh::server::AWH::subprotocols(const uint64_t bid) const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
 	return this->_http.subprotocols(bid);
 }
@@ -398,7 +398,7 @@ void awh::server::AWH::keepAlive(const int32_t cnt, const int32_t idle, const in
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::AWH::mode(const set <web_t::flag_t> & flags) noexcept {
+void awh::server::AWH::mode(const std::set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_http.mode(flags);
 }
@@ -431,7 +431,7 @@ void awh::server::AWH::addAltSvc(const string & origin, const string & field) no
  * setAltSvc Метод установки списка разрешённых источников
  * @param origins список альтернативных сервисов
  */
-void awh::server::AWH::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
+void awh::server::AWH::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
 	// Выполняем установку списка разрешённых источников
 	this->_http.setAltSvc(origins);
 }
@@ -439,7 +439,7 @@ void awh::server::AWH::setAltSvc(const unordered_multimap <string, string> & ori
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::AWH::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::AWH::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку списка настроек протокола HTTP/2
 	this->_http.settings(settings);
 }

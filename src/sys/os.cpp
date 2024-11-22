@@ -491,7 +491,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			// Если результат получен
 			if(!result.empty()){
 				// Очередь собранных данных
-				queue <pair <string, bool>> data;
+				std::queue <std::pair <string, bool>> data;
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
@@ -499,7 +499,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если запись является числом
 						if(data.back().second){
 							// Выполняем создание блока данных
-							pair <string, bool> record = make_pair("", true);
+							std::pair <string, bool> record = std::make_pair("", true);
 							// Выполняем добавление записи в очередь
 							data.push(std::move(record));
 						// Если запись является строкой, добавляем полученный символ в запись
@@ -512,7 +512,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
-							pair <string, bool> record = make_pair(string(1, item), true);
+							std::pair <string, bool> record = std::make_pair(string(1, item), true);
 							// Выполняем добавление записи в очередь
 							data.push(std::move(record));
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
@@ -522,7 +522,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
-							pair <string, bool> record = make_pair(string(1, item), false);
+							std::pair <string, bool> record = std::make_pair(string(1, item), false);
 							// Выполняем добавление записи в очередь
 							data.push(std::move(record));
 						// Если данные в очереди уже есть

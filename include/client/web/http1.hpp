@@ -66,7 +66,7 @@ namespace awh {
 				fn_t _resultCallback;
 			private:
 				// Список активых запросов
-				map <int32_t, request_t> _requests;
+				std::map <int32_t, request_t> _requests;
 			private:
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
@@ -135,7 +135,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param headers заголовки ответа сервера
 				 */
-				void headers(const uint64_t bid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+				void headers(const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -229,7 +229,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента
@@ -262,12 +262,12 @@ namespace awh {
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @return список выбранных сабпротоколов
 				 */
-				const set <string> & subprotocols() const noexcept;
+				const std::set <string> & subprotocols() const noexcept;
 				/**
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const set <string> & subprotocols) noexcept;
+				void subprotocols(const std::set <string> & subprotocols) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений
@@ -291,15 +291,15 @@ namespace awh {
 				 */
 				void segmentSize(const size_t size) noexcept;
 				/**
-				 * mode Метод установки флагов настроек модуля
-				 * @param flags список флагов настроек модуля для установки
-				 */
-				void mode(const set <flag_t> & flags) noexcept;
-				/**
 				 * core Метод установки сетевого ядра
 				 * @param core объект сетевого ядра
 				 */
 				void core(const client::core_t * core) noexcept;
+				/**
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				void mode(const std::set <flag_t> & flags) noexcept;
 				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере

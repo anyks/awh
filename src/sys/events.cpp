@@ -1099,7 +1099,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+							auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 							// Устанавливаем тип пайпа
 							pipe->type(pipe_t::type_t::NETWORK);
 							// Выполняем создание сокетов
@@ -1170,7 +1170,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+							auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 							// Устанавливаем тип пайпа
 							pipe->type(pipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
@@ -1253,7 +1253,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+							auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 							// Устанавливаем тип пайпа
 							pipe->type(pipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
@@ -2654,7 +2654,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Создаём объект пайпа
-			auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+			auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 			// Устанавливаем тип пайпа
 			pipe->type(pipe_t::type_t::NETWORK);
 			// Выполняем создание сокетов
@@ -2680,7 +2680,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 		 */
 		#else
 			// Создаём объект пайпа
-			auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+			auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 			// Устанавливаем тип пайпа
 			pipe->type(pipe_t::type_t::NATIVE);
 			// Выполняем создание сокетов

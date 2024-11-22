@@ -204,9 +204,9 @@ const string & awh::Socks5::message(const uint8_t code) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Выполняем поиск кода сообщения
-	auto i = this->messages.find(code);
+	auto i = this->_responses.find(code);
 	// Если сообщение получено, выводим его
-	if(i != this->messages.end())
+	if(i != this->_responses.end())
 		// Выполняем получение текстовое значение кода
 		return i->second;
 	// Выводим результат
@@ -227,4 +227,30 @@ const vector <char> & awh::Socks5::get() const noexcept {
 void awh::Socks5::url(const uri_t::url_t & url) noexcept {
 	// Устанавливаем URL адрес REST запроса
 	this->_url = url;
+}
+/**
+ * Socks5 Конструктор
+ * @param log объект для работы с логами
+ */
+awh::Socks5::Socks5(const log_t * log) noexcept :
+ _code(0x00), _state(state_t::METHOD), _log(log) {
+	/**
+	 * Список ответов сервера
+	 */
+	this->_responses = {
+		{0x00, "successful"},
+		{0x01, "SOCKS server error"},
+		{0x02, "connection is prohibited by a set of rules"},
+		{0x03, "network unavailable"},
+		{0x04, "host unreachable"},
+		{0x05, "connection denied"},
+		{0x06, "TTL expiration"},
+		{0x07, "command not supported"},
+		{0x08, "address type not supported"},
+		{0x09, "until X'FF' are undefined"},
+		{0x10, "login or password is not set"},
+		{0x11, "unsupported protocol version"},
+		{0x12, "login or password is not correct"},
+		{0x13, "agreement version not supported"}
+	};
 }

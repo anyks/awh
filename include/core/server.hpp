@@ -165,12 +165,6 @@ namespace awh {
 				void message(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * disable Метод остановки активности брокера подключения
-				 * @param bid идентификатор брокера
-				 */
-				void disable(const uint64_t bid) noexcept;
-			private:
-				/**
 				 * initDTLS Метод инициализации DTLS-брокера
 				 * @param sid идентификатор схемы сети
 				 */
@@ -249,7 +243,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @return    список доступных воркеров
 				 */
-				set <pid_t> workers(const uint16_t sid) const noexcept;
+				std::set <pid_t> workers(const uint16_t sid) const noexcept;
 			public:
 				/**
 				 * send Метод асинхронной отправки буфера данных в сокет

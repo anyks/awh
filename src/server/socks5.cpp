@@ -145,7 +145,7 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 						// Выводим функцию обратного вызова
 						this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid1, mode_t::CONNECT);
 					// Выполняем создание нового подключённого клиента
-					auto ret = this->_clients.emplace(bid1, unique_ptr <client::core_t> (new client::core_t(&this->_dns, this->_fmk, this->_log)));
+					auto ret = this->_clients.emplace(bid1, std::unique_ptr <client::core_t> (new client::core_t(&this->_dns, this->_fmk, this->_log)));
 					// Выполняем отключение информационных сообщений сетевого ядра клиента
 					ret.first->second->verbose(false);
 					// Устанавливаем параметры SSL-шифрвоания
@@ -439,7 +439,7 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 			// Устанавливаем размер буфера данных
 			payload.size = size;
 			// Выполняем создание буфера данных
-			payload.data = unique_ptr <char []> (new char [size]);
+			payload.data = std::unique_ptr <char []> (new char [size]);
 			// Выполняем копирование буфера полезной нагрузки
 			::memcpy(payload.data.get(), buffer, size);
 			// Ещем для указанного потока очередь полезной нагрузки
@@ -451,7 +451,7 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, queue <payload_t> ());
+				auto ret = this->_payloads.emplace(bid, std::queue <payload_t> ());
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 				ret.first->second.push(std::move(payload));
 			}
@@ -690,7 +690,7 @@ void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const u
  * mode Метод установки флагов модуля
  * @param flags список флагов модуля для установки
  */
-void awh::server::ProxySocks5::mode(const set <flag_t> & flags) noexcept {
+void awh::server::ProxySocks5::mode(const std::set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_core.verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
