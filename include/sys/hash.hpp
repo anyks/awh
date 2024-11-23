@@ -65,7 +65,6 @@
 #include <openssl/aes.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
-#include <openssl/buffer.h>
 
 /**
  * Наши модули

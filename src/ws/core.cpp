@@ -402,7 +402,7 @@ const string awh::WCore::key() const noexcept {
 		// Формируем равномерное распределение целых чисел в выходном инклюзивно-эксклюзивном диапазоне
 		std::uniform_int_distribution <uint16_t> dist(0, 255);
 		// Формируем бинарный ключ из случайных значений
-		for(size_t i = 0; i < 16; i++)
+		for(uint8_t i = 0; i < 16; i++)
 			// Выполняем формирование ключа
 			nonce += static_cast <char> (dist(randev));
 		// Выполняем создание ключа
