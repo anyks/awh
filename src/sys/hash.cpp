@@ -78,10 +78,34 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 						} break;
 						// Если производится декодирование данных
 						case static_cast <uint8_t> (awh::hash_t::event_t::DECODE): {
-							// Инициализируем объект base64
+							// Инициализируем объект BASE64
 							BIO * b64 = BIO_new(BIO_f_base64());
-							// Если объект base64 инициализирован
+							// Если объект BASE64 инициализирован
 							if(b64 != nullptr){
+								// Инициализируем объект BIO
+								BIO * bio = BIO_new(BIO_s_mem());
+								// Если объект bio инициализирован
+								if(bio != nullptr){
+									// Устанавливаем флаги
+									BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+									// Записываем параметры
+									BIO_push(b64, bio);
+									// Выполняем декодирование из BASE64
+									const ssize_t length = BIO_write(bio, buffer, size);
+									// Выполняем очистку объекта
+									BIO_flush(bio);
+									// Если запись выполнена
+									if(length > 0){
+										// Выделяем память под запрошенный результат
+										result.resize(length, 0);
+										// Выполняем чтение полученного результата
+										BIO_read(b64, result.data(), result.size());
+									}
+									// Очищаем всю выделенную память
+									BIO_free_all(bio);
+								// Очищаем объект base64
+								} else BIO_free(b64);
+								/*
 								// Выполняем инициализацию буфера данных bio
 								BIO * bio = BIO_new_mem_buf(buffer, -1);
 								// Если буфер данных bio инициализирован удачно
@@ -104,6 +128,7 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 									BIO_free_all(bio);
 								// Очищаем объект base64
 								} else BIO_free(b64);
+								*/
 							}
 						} break;
 					}
