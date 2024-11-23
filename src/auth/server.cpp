@@ -241,18 +241,22 @@ void awh::server::Auth::header(const string & header) noexcept {
 				size_t pos = header.find(type);
 				// Если авторизация получена
 				if((pos != string::npos) && ((pos + type.length()) < header.length())){
-					// Получаем хэш авторизации
-					const string & base64 = base64_t().decode(header.substr(pos + type.length() + 1));
+					// Результат извлечения закодированного занчения заголовка
+					string result = "";
+					// Получаем значение заголовка для дешифрования
+					const string & value = header.substr(pos + type.length() + 1);
+					// Выполняем шифрование полезной нагрузки
+					this->_hash.decode(value.data(), value.size(), awh::hash_t::cipher_t::BASE64, result);
 					// Если хэш получен
-					if(!base64.empty()){
+					if(!result.empty()){
 						// Выполняем поиск разделителя
-						pos = base64.find(":");
+						pos = result.find(":");
 						// Если разделитель получен
 						if(pos != string::npos){
 							// Записываем полученный логин клиента
-							this->_user = base64.substr(0, pos);
+							this->_user = result.substr(0, pos);
 							// Записываем полученный пароль клиента
-							this->_pass = base64.substr(pos + 1);
+							this->_pass = result.substr(pos + 1);
 						}
 					}
 				}
@@ -392,14 +396,9 @@ awh::server::Auth::operator std::string() noexcept {
 				break;
 			}	
 		// Выполняем прехват ошибки
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+		} catch(const std::exception & error) {
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		}
 	}
 	// Выводим результат

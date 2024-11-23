@@ -21,188 +21,203 @@
 void awh::client::WS::commit() noexcept {
 	// Если данные ещё не зафиксированы
 	if(this->_status == status_t::NONE){
-		// Выполняем проверку авторизации
-		this->_status = this->status();
-		// Если ключ соответствует
-		if(this->_status == status_t::GOOD)
-			// Устанавливаем стейт рукопожатия
-			this->_state = state_t::GOOD;
-		// Поменяем данные как бракованные
-		else this->_state = state_t::BROKEN;
-		{
-			// Список доступных расширений
-			vector <string> extensions;
-			// Отключаем сжатие ответа с сервера
-			this->_compressors.selected = compressor_t::NONE;
-			// Отключаем сжатие тела сообщения
-			http_t::_compressors.current = compressor_t::NONE;
-			// Отключаем сжатие тела сообщения
-			http_t::_compressors.selected = compressor_t::NONE;
-			// Переходим по всему списку заголовков
-			for(auto & header : this->_web.headers()){
-				// Если заголовок получен с описанием методов компрессии
-				if(this->_fmk->compare(header.first, "content-encoding")){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Список компрессоров которым выполненно сжатие
-						vector <string> compressors;
-						// Выполняем извлечение списка компрессоров
-						this->_fmk->split(header.second, ",", compressors);
-						// Если список компрессоров получен
-						if(!compressors.empty()){
-							/**
-							 * extractFn Функция выбора типа компрессора
-							 * @param compressor название компрессора в текстовом виде
-							 */
-							auto extractFn = [this](const string & compressor) noexcept -> void {
-								// Если данные пришли сжатые методом LZ4
-								if(this->_fmk->compare(compressor, "lz4"))
-									// Устанавливаем тип компрессии полезной нагрузки
-									http_t::_compressors.current = compressor_t::LZ4;
-								// Если данные пришли сжатые методом Zstandard
-								else if(this->_fmk->compare(compressor, "zstd"))
-									// Устанавливаем тип компрессии полезной нагрузки
-									http_t::_compressors.current = compressor_t::ZSTD;
-								// Если данные пришли сжатые методом LZma
-								else if(this->_fmk->compare(compressor, "xz"))
-									// Устанавливаем тип компрессии полезной нагрузки
-									http_t::_compressors.current = compressor_t::LZMA;
-								// Если данные пришли сжатые методом Brotli
-								else if(this->_fmk->compare(compressor, "br"))
-									// Устанавливаем тип компрессии полезной нагрузки
-									http_t::_compressors.current = compressor_t::BROTLI;
-								// Если данные пришли сжатые методом BZip2
-								else if(http_t::_fmk->compare(compressor, "bzip2"))
-									// Устанавливаем тип компрессии полезной нагрузки
-									http_t::_compressors.current = compressor_t::BZIP2;
-								// Если данные пришли сжатые методом GZip
-								else if(http_t::_fmk->compare(compressor, "gzip"))
-									// Устанавливаем тип компрессии полезной нагрузки
-									http_t::_compressors.current = compressor_t::GZIP;
-								// Если данные пришли сжатые методом Deflate
-								else if(this->_fmk->compare(compressor, "deflate"))
-									// Устанавливаем тип компрессии полезной нагрузки
-									http_t::_compressors.current = compressor_t::DEFLATE;
-							};
-							// Если компрессоров в списке больше 1-го
-							if(compressors.size() > 1){
-								// Выполняем перебор всех компрессоров
-								for(size_t i = (compressors.size() - 1); i > 0; i--){
-									// Выполняем определение типа компрессора
-									extractFn(compressors.at(i));
-									// Выполняем декомпрессию
-									this->decompress();
-								}
-							}
-							// Выполняем определение типа компрессора
-							extractFn(compressors.front());
-							// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
-							http_t::_compressors.selected = http_t::_compressors.current;
-						}
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const std::exception & error) {
-						// Выводим сообщение об ошибке
-						this->_log->print("WebSocket client: %s", log_t::flag_t::CRITICAL, error.what());
-					}
-				// Если заголовок расширения найден
-				} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Запись названия расширения
-						string extension = "";
-						// Выполняем перебор записи расширения
-						for(auto & letter : header.second){
-							// Определяем чему соответствует буква
-							switch(letter){
-								// Если буква соответствует разделителю расширения
-								case ';': {
-									// Если слово собранно
-									if(!extension.empty() && !this->extractExtension(extension))
-										// Выполняем добавление слова в список записей
-										extensions.push_back(std::move(extension));
-									// Выполняем очистку слова записи
-									extension.clear();
-									// Если список записей собран
-									if(!extensions.empty()){
-										// Выполняем добавление списка записей в список расширений
-										this->_extensions.push_back(std::move(extensions));
-										// Выполняем очистку списка расширений
-										extensions.clear();
-									}
-								} break;
-								// Если буква соответствует разделителю группы расширений
-								case ',': {
-									// Если слово собранно
-									if(!extension.empty() && !this->extractExtension(extension))
-										// Выполняем добавление слова в список записей
-										extensions.push_back(std::move(extension));
-									// Выполняем очистку слова записи
-									extension.clear();
-								} break;
-								// Если буква соответствует пробелу
-								case ' ': break;
-								// Если буква соответствует знаку табуляции
-								case '\t': break;
-								// Если буква соответствует букве
-								default: extension.append(1, letter);
-							}
-						}
-						// Если слово собранно
-						if(!extension.empty() && !this->extractExtension(extension))
-							// Выполняем добавление слова в список записей
-							extensions.push_back(std::move(extension));
-						// Выполняем очистку слова записи
-						extension.clear();
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const std::exception & error) {
-						// Выводим сообщение об ошибке
-						this->_log->print("WebSocket client: %s", log_t::flag_t::CRITICAL, error.what());
-					}
-				// Если заголовок сабпротокола найден
-				} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")) {
-					// Проверяем, соответствует ли желаемый подпротокол нашему установленному
-					if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
-						// Устанавливаем выбранный подпротокол
-						this->_selectedProtocols.emplace(header.second);
-				// Если заголовок получен зашифрованных данных
-				} else if(this->_fmk->compare(header.first, "x-awh-encryption")) {
-					// Если заголовок найден
-					if((http_t::_crypted = !header.second.empty())){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем проверку авторизации
+			this->_status = this->status();
+			// Если ключ соответствует
+			if(this->_status == status_t::GOOD)
+				// Устанавливаем стейт рукопожатия
+				this->_state = state_t::GOOD;
+			// Поменяем данные как бракованные
+			else this->_state = state_t::BROKEN;
+			{
+				// Список доступных расширений
+				vector <string> extensions;
+				// Отключаем сжатие ответа с сервера
+				this->_compressors.selected = compressor_t::NONE;
+				// Отключаем сжатие тела сообщения
+				http_t::_compressors.current = compressor_t::NONE;
+				// Отключаем сжатие тела сообщения
+				http_t::_compressors.selected = compressor_t::NONE;
+				// Переходим по всему списку заголовков
+				for(auto & header : this->_web.headers()){
+					// Если заголовок получен с описанием методов компрессии
+					if(this->_fmk->compare(header.first, "content-encoding")){
 						/**
 						 * Выполняем отлов ошибок
 						 */
 						try {
-							// Определяем размер шифрования
-							switch(static_cast <uint16_t> (::stoi(header.second))){
-								// Если шифрование произведено 128 битным ключём
-								case 128: this->_hash.cipher(hash_t::cipher_t::AES128); break;
-								// Если шифрование произведено 192 битным ключём
-								case 192: this->_hash.cipher(hash_t::cipher_t::AES192); break;
-								// Если шифрование произведено 256 битным ключём
-								case 256: this->_hash.cipher(hash_t::cipher_t::AES256); break;
+							// Список компрессоров которым выполненно сжатие
+							vector <string> compressors;
+							// Выполняем извлечение списка компрессоров
+							this->_fmk->split(header.second, ",", compressors);
+							// Если список компрессоров получен
+							if(!compressors.empty()){
+								/**
+								 * extractFn Функция выбора типа компрессора
+								 * @param compressor название компрессора в текстовом виде
+								 */
+								auto extractFn = [this](const string & compressor) noexcept -> void {
+									// Если данные пришли сжатые методом LZ4
+									if(this->_fmk->compare(compressor, "lz4"))
+										// Устанавливаем тип компрессии полезной нагрузки
+										http_t::_compressors.current = compressor_t::LZ4;
+									// Если данные пришли сжатые методом Zstandard
+									else if(this->_fmk->compare(compressor, "zstd"))
+										// Устанавливаем тип компрессии полезной нагрузки
+										http_t::_compressors.current = compressor_t::ZSTD;
+									// Если данные пришли сжатые методом LZma
+									else if(this->_fmk->compare(compressor, "xz"))
+										// Устанавливаем тип компрессии полезной нагрузки
+										http_t::_compressors.current = compressor_t::LZMA;
+									// Если данные пришли сжатые методом Brotli
+									else if(this->_fmk->compare(compressor, "br"))
+										// Устанавливаем тип компрессии полезной нагрузки
+										http_t::_compressors.current = compressor_t::BROTLI;
+									// Если данные пришли сжатые методом BZip2
+									else if(http_t::_fmk->compare(compressor, "bzip2"))
+										// Устанавливаем тип компрессии полезной нагрузки
+										http_t::_compressors.current = compressor_t::BZIP2;
+									// Если данные пришли сжатые методом GZip
+									else if(http_t::_fmk->compare(compressor, "gzip"))
+										// Устанавливаем тип компрессии полезной нагрузки
+										http_t::_compressors.current = compressor_t::GZIP;
+									// Если данные пришли сжатые методом Deflate
+									else if(this->_fmk->compare(compressor, "deflate"))
+										// Устанавливаем тип компрессии полезной нагрузки
+										http_t::_compressors.current = compressor_t::DEFLATE;
+								};
+								// Если компрессоров в списке больше 1-го
+								if(compressors.size() > 1){
+									// Выполняем перебор всех компрессоров
+									for(size_t i = (compressors.size() - 1); i > 0; i--){
+										// Выполняем определение типа компрессора
+										extractFn(compressors.at(i));
+										// Выполняем декомпрессию
+										this->decompress();
+									}
+								}
+								// Выполняем определение типа компрессора
+								extractFn(compressors.front());
+								// Устанавливаем флаг в каком виде у нас хранится полезная нагрузка
+								http_t::_compressors.selected = http_t::_compressors.current;
 							}
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
-							// Если шифрование произведено 128 битным ключём
-							this->_hash.cipher(hash_t::cipher_t::AES128);
+						} catch(const std::exception & error) {
+							// Выводим сообщение об ошибке
+							this->_log->print("WebSocket client: %s", log_t::flag_t::CRITICAL, error.what());
+						}
+					// Если заголовок расширения найден
+					} else if(this->_fmk->compare(header.first, "sec-websocket-extensions")) {
+						/**
+						 * Выполняем отлов ошибок
+						 */
+						try {
+							// Запись названия расширения
+							string extension = "";
+							// Выполняем перебор записи расширения
+							for(auto & letter : header.second){
+								// Определяем чему соответствует буква
+								switch(letter){
+									// Если буква соответствует разделителю расширения
+									case ';': {
+										// Если слово собранно
+										if(!extension.empty() && !this->extractExtension(extension))
+											// Выполняем добавление слова в список записей
+											extensions.push_back(std::move(extension));
+										// Выполняем очистку слова записи
+										extension.clear();
+										// Если список записей собран
+										if(!extensions.empty()){
+											// Выполняем добавление списка записей в список расширений
+											this->_extensions.push_back(std::move(extensions));
+											// Выполняем очистку списка расширений
+											extensions.clear();
+										}
+									} break;
+									// Если буква соответствует разделителю группы расширений
+									case ',': {
+										// Если слово собранно
+										if(!extension.empty() && !this->extractExtension(extension))
+											// Выполняем добавление слова в список записей
+											extensions.push_back(std::move(extension));
+										// Выполняем очистку слова записи
+										extension.clear();
+									} break;
+									// Если буква соответствует пробелу
+									case ' ': break;
+									// Если буква соответствует знаку табуляции
+									case '\t': break;
+									// Если буква соответствует букве
+									default: extension.append(1, letter);
+								}
+							}
+							// Если слово собранно
+							if(!extension.empty() && !this->extractExtension(extension))
+								// Выполняем добавление слова в список записей
+								extensions.push_back(std::move(extension));
+							// Выполняем очистку слова записи
+							extension.clear();
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							// Выводим сообщение об ошибке
+							this->_log->print("WebSocket client: %s", log_t::flag_t::CRITICAL, error.what());
+						}
+					// Если заголовок сабпротокола найден
+					} else if(this->_fmk->compare(header.first, "sec-websocket-protocol")) {
+						// Проверяем, соответствует ли желаемый подпротокол нашему установленному
+						if(this->_supportedProtocols.find(header.second) != this->_supportedProtocols.end())
+							// Устанавливаем выбранный подпротокол
+							this->_selectedProtocols.emplace(header.second);
+					// Если заголовок получен зашифрованных данных
+					} else if(this->_fmk->compare(header.first, "x-awh-encryption")) {
+						// Если заголовок найден
+						if((http_t::_crypted = !header.second.empty())){
+							/**
+							 * Выполняем отлов ошибок
+							 */
+							try {
+								// Определяем размер шифрования
+								switch(static_cast <uint16_t> (::stoi(header.second))){
+									// Если шифрование произведено 128 битным ключём
+									case 128: this->_cipher = hash_t::cipher_t::AES128; break;
+									// Если шифрование произведено 192 битным ключём
+									case 192: this->_cipher = hash_t::cipher_t::AES192; break;
+									// Если шифрование произведено 256 битным ключём
+									case 256: this->_cipher = hash_t::cipher_t::AES256; break;
+								}
+							/**
+							 * Если возникает ошибка
+							 */
+							} catch(const std::exception &) {
+								// Если шифрование произведено 128 битным ключём
+								this->_cipher = hash_t::cipher_t::AES128;
+							}
 						}
 					}
 				}
+				// Если список записей собран
+				if(!extensions.empty())
+					// Выполняем добавление списка записей в список расширений
+					this->_extensions.push_back(std::move(extensions));
 			}
-			// Если список записей собран
-			if(!extensions.empty())
-				// Выполняем добавление списка записей в список расширений
-				this->_extensions.push_back(std::move(extensions));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			// Выводим сообщение об ошибке
+			this->_log->print("WebSocket commit: %s", log_t::flag_t::WARNING, error.what());
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callbacks.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		}
 	}
 }
@@ -213,47 +228,62 @@ void awh::client::WS::commit() noexcept {
 awh::Http::status_t awh::client::WS::status() noexcept {
 	// Результат работы функции
 	http_t::status_t result = http_t::status_t::FAULT;
-	// Получаем объект параметров ответа
-	const web_t::res_t & response = this->_web.response();
-	// Проверяем код ответа
-	switch(response.code){
-		// Если требуется авторизация
-		case 401:
-		case 407: {
-			// Получаем параметры авторизации
-			const string & auth = this->_web.header(response.code == 401 ? "www-authenticate" : "proxy-authenticate");
-			// Если параметры авторизации найдены
-			if(!auth.empty()){
-				// Устанавливаем заголовок HTTP в параметры авторизации
-				this->_auth.client.header(auth);
-				// Просим повторить авторизацию ещё раз
-				result = http_t::status_t::RETRY;
-			}
-		} break;
-		// Если нужно произвести редирект
-		case 301:
-		case 302:
-		case 303:
-		case 307:
-		case 308: {
-			// Получаем параметры переадресации
-			const string & location = this->_web.header("location");
-			// Если адрес перенаправления найден
-			if(!location.empty()){
-				// Получаем объект параметров запроса
-				web_t::req_t request = this->_web.request();
-				// Выполняем парсинг полученного URL-адреса
-				request.url = this->_uri.parse(location);
-				// Выполняем установку параметров запроса
-				this->_web.request(std::move(request));
-				// Просим повторить авторизацию ещё раз
-				result = http_t::status_t::RETRY;
-			}
-		} break;
-		// Сообщаем, что авторизация прошла успешно если протокол соответствует HTTP/1.1
-		case 101: result = (response.version < 2.0f ? http_t::status_t::GOOD : result); break;
-		// Сообщаем, что авторизация прошла успешно если протокол соответствует HTTP/2
-		case 200: result = (response.version >= 2.0f ? http_t::status_t::GOOD : result); break;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Получаем объект параметров ответа
+		const web_t::res_t & response = this->_web.response();
+		// Проверяем код ответа
+		switch(response.code){
+			// Если требуется авторизация
+			case 401:
+			case 407: {
+				// Получаем параметры авторизации
+				const string & auth = this->_web.header(response.code == 401 ? "www-authenticate" : "proxy-authenticate");
+				// Если параметры авторизации найдены
+				if(!auth.empty()){
+					// Устанавливаем заголовок HTTP в параметры авторизации
+					this->_auth.client.header(auth);
+					// Просим повторить авторизацию ещё раз
+					result = http_t::status_t::RETRY;
+				}
+			} break;
+			// Если нужно произвести редирект
+			case 301:
+			case 302:
+			case 303:
+			case 307:
+			case 308: {
+				// Получаем параметры переадресации
+				const string & location = this->_web.header("location");
+				// Если адрес перенаправления найден
+				if(!location.empty()){
+					// Получаем объект параметров запроса
+					web_t::req_t request = this->_web.request();
+					// Выполняем парсинг полученного URL-адреса
+					request.url = this->_uri.parse(location);
+					// Выполняем установку параметров запроса
+					this->_web.request(std::move(request));
+					// Просим повторить авторизацию ещё раз
+					result = http_t::status_t::RETRY;
+				}
+			} break;
+			// Сообщаем, что авторизация прошла успешно если протокол соответствует HTTP/1.1
+			case 101: result = (response.version < 2.f ? http_t::status_t::GOOD : result); break;
+			// Сообщаем, что авторизация прошла успешно если протокол соответствует HTTP/2
+			case 200: result = (response.version >= 2.f ? http_t::status_t::GOOD : result); break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("WebSocket status: %s", log_t::flag_t::WARNING, error.what());
+		// Если функция обратного вызова на на вывод ошибок установлена
+		if(this->_callbacks.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 	}
 	// Выводим результат
 	return result;

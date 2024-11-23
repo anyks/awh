@@ -244,21 +244,20 @@ string awh::client::Auth::auth(const string & method) noexcept {
 					}
 				} break;
 				// Если тип авторизации Basic
-				case static_cast <uint8_t> (type_t::BASIC):
+				case static_cast <uint8_t> (type_t::BASIC): {
+					// Получаем значение заголовка для шифрования
+					const string & value = this->_fmk->format("%s:%s", this->_user.c_str(), this->_pass.c_str());
+					// Выполняем шифрование полезной нагрузки
+					this->_hash.encode(value.data(), value.size(), awh::hash_t::cipher_t::BASE64, result);
 					// Формируем заголовок авторизации
-					result = this->_fmk->format("Basic %s", base64_t().encode(this->_fmk->format("%s:%s", this->_user.c_str(), this->_pass.c_str())).c_str());
-				break;
+					result = this->_fmk->format("Basic %s", result.c_str());
+				} break;
 			}
 		}
 	// Выполняем прехват ошибки
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+	} catch(const std::exception & error) {
+		// Выводим сообщение об ошибке
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 	}
 	// Выводим результат
 	return result;

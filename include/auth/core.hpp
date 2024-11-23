@@ -26,7 +26,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <hash/base64.hpp>
+#include <sys/hash.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -87,6 +87,8 @@ namespace awh {
 			type_t _type;
 			// Параметры Digest авторизации
 			digest_t _digest;
+			// Создаём объект для работы с сжатыми данными
+			awh::hash_t _hash;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -132,8 +134,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Authorization(const fmk_t * fmk, const log_t * log) noexcept :
-			 _type(type_t::NONE), _fmk(fmk), _log(log) {}
+			Authorization(const fmk_t * fmk, const log_t * log) noexcept : _type(type_t::NONE), _hash(log), _fmk(fmk), _log(log) {}
 			/*
 			 * ~Authorization Деструктор
 			 */

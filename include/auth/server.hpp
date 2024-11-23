@@ -121,8 +121,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept :
-				 auth_t(fmk, log), _user{""}, _pass{""}, _callbacks(log) {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user{""}, _pass{""}, _callbacks(log) {}
 		} auth_t;
 	};
 };

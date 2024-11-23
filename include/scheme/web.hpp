@@ -63,6 +63,7 @@ namespace awh {
 						size_t requests;                 // Количество выполненных запросов
 						http_t http;                     // Создаём объект для работы с HTTP
 						buffer_t buffer;                 // Буфер бинарных необработанных данных
+						hash_t::cipher_t cipher;         // Формат шифрования
 						engine_t::proto_t proto;         // Активный прототип интернета
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
@@ -74,6 +75,7 @@ namespace awh {
 						 mode(false), alive(false), close(false),
 						 crypted(false), stopped(false), sid(1),
 						 point(0), requests(0), http(fmk, log),
+						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),
 						 compressor(awh::http_t::compressor_t::NONE) {}
 						/**

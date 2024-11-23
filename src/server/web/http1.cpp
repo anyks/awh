@@ -517,12 +517,12 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 		if(options != nullptr){
 			// Если данные необходимо зашифровать
 			if(this->_encryption.mode){
+				// Устанавливаем размер шифрования
+				options->cipher = this->_encryption.cipher;
 				// Устанавливаем соль шифрования
 				options->hash.salt(this->_encryption.salt);
 				// Устанавливаем пароль шифрования
-				options->hash.pass(this->_encryption.pass);
-				// Устанавливаем размер шифрования
-				options->hash.cipher(this->_encryption.cipher);
+				options->hash.password(this->_encryption.pass);
 			}
 			// Выполняем установку идентификатора объекта
 			options->http.id(bid);

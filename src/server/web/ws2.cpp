@@ -635,12 +635,12 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 											options->crypted = options->http.crypted();
 											// Если клиент согласился на шифрование данных
 											if(this->_encryption.mode){
+												// Устанавливаем размер шифрования
+												options->cipher = this->_encryption.cipher;
 												// Устанавливаем соль шифрования
 												options->hash.salt(this->_encryption.salt);
 												// Устанавливаем пароль шифрования
-												options->hash.pass(this->_encryption.pass);
-												// Устанавливаем размер шифрования
-												options->hash.cipher(this->_encryption.cipher);
+												options->hash.password(this->_encryption.pass);
 												// Устанавливаем параметры шифрования
 												options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 											}
@@ -953,12 +953,14 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const vector <char>
 				if(!data.empty()){
 					// Если нужно производить дешифрование
 					if(options->crypted){
-						// Выполняем шифрование переданных данных
-						const auto & res = options->hash.decrypt(data.data(), data.size());
+						// Результат работы дешифрования
+						vector <char> result;
+						// Выполняем дешифрование полезной нагрузки
+						options->hash.decode(data.data(), data.size(), options->cipher, result);
 						// Отправляем полученный результат
-						if(!res.empty()){
+						if(!result.empty()){
 							// Выводим данные полученного сообщения
-							this->_callbacks.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, res, text);
+							this->_callbacks.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, result, text);
 							// Выходим из функции
 							return;
 						}
@@ -982,12 +984,14 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const vector <char>
 			} else {
 				// Если нужно производить дешифрование
 				if(options->crypted){
-					// Выполняем шифрование переданных данных
-					const auto & res = options->hash.decrypt(buffer.data(), buffer.size());
+					// Результат работы дешифрования
+					vector <char> result;
+					// Выполняем дешифрование полезной нагрузки
+					options->hash.decode(buffer.data(), buffer.size(), options->cipher, result);
 					// Отправляем полученный результат
-					if(!res.empty()){
+					if(!result.empty()){
 						// Отправляем полученный результат
-						this->_callbacks.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, res, text);
+						this->_callbacks.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, result, text);
 						// Выходим из функции
 						return;
 					}
@@ -1285,14 +1289,9 @@ bool awh::server::Websocket2::sendMessage(const uint64_t bid, const vector <char
 					// Создаём объект заголовка для отправки
 					ws::frame_t::head_t head(true, false);
 					// Если нужно производить шифрование
-					if(options->crypted){
-						// Выполняем шифрование переданных данных
-						const auto & payload = options->hash.encrypt(message.data(), message.size());
-						// Если данные зашифрованны
-						if(!payload.empty())
-							// Заменяем сообщение для передачи
-							const_cast <vector <char> &> (message).assign(payload.begin(), payload.end());
-					}
+					if(options->crypted)
+						// Выполняем шифрование полезной нагрузки
+						options->hash.encode(message.data(), message.size(), options->cipher, const_cast <vector <char> &> (message));
 					// Устанавливаем опкод сообщения
 					head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 					// Указываем, что сообщение передаётся в сжатом виде

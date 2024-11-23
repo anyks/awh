@@ -145,6 +145,9 @@ namespace awh {
 				// Объект партнёра сервера
 				partner_t _server;
 			private:
+				// Формат шифрования
+				hash_t::cipher_t _cipher;
+			private:
 				// Хранилище функций обратного вызова для вывода результата
 				fn_t _resultCallback;
 			private:

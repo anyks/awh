@@ -116,6 +116,7 @@ namespace awh {
 						partner_t client;                // Объект партнёра клиента
 						partner_t server;                // Объект партнёра сервера
 						server::ws_t http;               // Создаём объект для работы с HTTP
+						hash_t::cipher_t cipher;         // Формат шифрования
 						engine_t::proto_t proto;         // Активный прототип интернета
 						std::recursive_mutex mtx;        // Мютекс для блокировки потока
 						http_t::compressor_t compressor; // Метод компрессии данных
@@ -128,6 +129,7 @@ namespace awh {
 						 close(false), shake(false), crypted(false),
 						 inflate(false), stopped(false), sid(1), point(0),
 						 sendPing(0), hash(log), frame(fmk, log), http(fmk, log),
+						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),
 						 compressor(http_t::compressor_t::NONE) {}
 						/**

@@ -134,40 +134,49 @@ awh::ws::Message::Message(const uint16_t code, const string & text) noexcept : c
 void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size) const noexcept {
 	// Если данные переданы
 	if((buffer != nullptr) && (size >= 2)){
-		// Определяем является ли сообщение последним
-		head.fin = (buffer[0] & 0x80);
-		// Получаем наличие маски
-		head.mask = (buffer[1] & 0x80);
-		// Определяем байты расширенного протокола
-		head.rsv[0] = (buffer[0] & 0x40);
-		head.rsv[1] = (buffer[0] & 0x20);
-		head.rsv[2] = (buffer[0] & 0x10);
-		// Получаем опкод
-		head.optcode = opcode_t(buffer[0] & 0x0F);
-		// Получаем малый размер полезной нагрузки
-		head.payload = static_cast <uint64_t> (buffer[1] & 0x7F);
-		// Если размер пересылаемых данных, имеет малый размер
-		if(head.payload < 0x7E)
-			// Получаем размер блока заголовков
-			head.size = 2;
-		// Если размер пересылаемых данных, имеет более высокий размер
-		else if((head.payload == 0x7E) && (size >= 4)) {
-			// Получаем размер блока заголовков
-			head.size = 4;
-			// Размер полезной нагрузки
-			uint16_t size = 0;
-			// Получаем размер данных
-			::memcpy(&size, buffer + 2, sizeof(size));
-			// Преобразуем сетевой порядок расположения байтов
-			head.payload = static_cast <uint64_t> (ntohs(size));
-		// Если размер пересылаемых данных, имеет очень большой размер
-		} else if((head.payload == 0x7F) && (size >= 10)) {
-			// Получаем размер блока заголовков
-			head.size = 10;
-			// Получаем размер данных
-			::memcpy(&head.payload, buffer + 2, sizeof(head.payload));
-			// Преобразуем сетевой порядок расположения байтов
-			head.payload = static_cast <uint64_t> (ntohl(head.payload));
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Определяем является ли сообщение последним
+			head.fin = (buffer[0] & 0x80);
+			// Получаем наличие маски
+			head.mask = (buffer[1] & 0x80);
+			// Определяем байты расширенного протокола
+			head.rsv[0] = (buffer[0] & 0x40);
+			head.rsv[1] = (buffer[0] & 0x20);
+			head.rsv[2] = (buffer[0] & 0x10);
+			// Получаем опкод
+			head.optcode = opcode_t(buffer[0] & 0x0F);
+			// Получаем малый размер полезной нагрузки
+			head.payload = static_cast <uint64_t> (buffer[1] & 0x7F);
+			// Если размер пересылаемых данных, имеет малый размер
+			if(head.payload < 0x7E)
+				// Получаем размер блока заголовков
+				head.size = 2;
+			// Если размер пересылаемых данных, имеет более высокий размер
+			else if((head.payload == 0x7E) && (size >= 4)) {
+				// Получаем размер блока заголовков
+				head.size = 4;
+				// Размер полезной нагрузки
+				uint16_t size = 0;
+				// Получаем размер данных
+				::memcpy(&size, buffer + 2, sizeof(size));
+				// Преобразуем сетевой порядок расположения байтов
+				head.payload = static_cast <uint64_t> (ntohs(size));
+			// Если размер пересылаемых данных, имеет очень большой размер
+			} else if((head.payload == 0x7F) && (size >= 10)) {
+				// Получаем размер блока заголовков
+				head.size = 10;
+				// Получаем размер данных
+				::memcpy(&head.payload, buffer + 2, sizeof(head.payload));
+				// Преобразуем сетевой порядок расположения байтов
+				head.payload = static_cast <uint64_t> (ntohl(head.payload));
+			}
+		// Выполняем прехват ошибки
+		} catch(const std::exception & error) {
+			// Выводим сообщение об ошибке
+			this->_log->print("WebSocket head: %s", log_t::flag_t::CRITICAL, error.what());
 		}
 	}
 }
@@ -229,7 +238,7 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 				// Устанавливаем диапазон генератора случайных чисел
 				std::uniform_int_distribution <u_char> dist {0, 255};
 				// Выполняем заполнение маски случайными числами
-				generate(mask.begin(), mask.end(), [&dist, &engine]{
+				std::generate(mask.begin(), mask.end(), [&dist, &engine]() noexcept -> u_char {
 					// Выполняем генерирование случайного числа
 					return dist(engine);
 				});
@@ -245,9 +254,9 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Выполняем копирования оставшихся данных в буфер
 			payload.insert(payload.end(), buffer, buffer + size);
 		// Выполняем прехват ошибки
-		} catch(const exception & error) {
+		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
-			this->_log->print("WebSocket Frame: %s", log_t::flag_t::CRITICAL, error.what());
+			this->_log->print("WebSocket frame: %s", log_t::flag_t::CRITICAL, error.what());
 		}
 	}
 }
@@ -261,41 +270,50 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 	vector <char> result;
 	// Если сообщение передано
 	if(mess.code > 0){
-		// Увеличиваем память на 4 байта
-		result.resize(4, 0x0);
-		// Устанавливаем первый байт
-		result.front() = (static_cast <char> (0x80) | (0x0F & static_cast <u_char> (opcode_t::CLOSE)));
-		// Размер смещения в буфере
-		uint16_t offset = 0;
-		// Размер передаваемых данных
-		uint64_t size = static_cast <uint64_t> (mess.text.size());
-		// Если размер строки меньше 126 байт, значит строка умещается во второй байт
-		if(size < 0x7E){
-			// Устанавливаем смещение в буфере
-			offset = 2;
-			// Устанавливаем размер строки
-			result.at(1) = (static_cast <char> (0x7F & (size + 2)));
-		// Если строка не помещается во второй байт
-		} else if(size < 0x10000) {
-			// Устанавливаем смещение в буфере
-			offset = 4;
-			// Увеличиваем память ещё на два байта
-			result.resize(offset + 2, 0x0);
-			// Заполняем второй байт максимальным значением
-			result.at(1) = (static_cast <char> (0x7F & 0x7E));
-			// Выполняем перерасчёт размера передаваемых данных
-			const uint16_t bytes = static_cast <uint64_t> (htons(static_cast <uint16_t> (size + 2)));
-			// Устанавливаем размер строки в следующие 2 байта
-			::memcpy(result.data() + 2, &bytes, sizeof(bytes));
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Увеличиваем память на 4 байта
+			result.resize(4, 0x0);
+			// Устанавливаем первый байт
+			result.front() = (static_cast <char> (0x80) | (0x0F & static_cast <u_char> (opcode_t::CLOSE)));
+			// Размер смещения в буфере
+			uint16_t offset = 0;
+			// Размер передаваемых данных
+			uint64_t size = static_cast <uint64_t> (mess.text.size());
+			// Если размер строки меньше 126 байт, значит строка умещается во второй байт
+			if(size < 0x7E){
+				// Устанавливаем смещение в буфере
+				offset = 2;
+				// Устанавливаем размер строки
+				result.at(1) = (static_cast <char> (0x7F & (size + 2)));
+			// Если строка не помещается во второй байт
+			} else if(size < 0x10000) {
+				// Устанавливаем смещение в буфере
+				offset = 4;
+				// Увеличиваем память ещё на два байта
+				result.resize(offset + 2, 0x0);
+				// Заполняем второй байт максимальным значением
+				result.at(1) = (static_cast <char> (0x7F & 0x7E));
+				// Выполняем перерасчёт размера передаваемых данных
+				const uint16_t bytes = static_cast <uint64_t> (htons(static_cast <uint16_t> (size + 2)));
+				// Устанавливаем размер строки в следующие 2 байта
+				::memcpy(result.data() + 2, &bytes, sizeof(bytes));
+			}
+			// Получаем код сообщения
+			const uint16_t code = htons(mess.code);
+			// Устанавливаем код сообщения
+			::memcpy(result.data() + offset, &code, sizeof(code));
+			// Если данные текстового сообщения получены
+			if(!mess.text.empty())
+				// Выполняем копирования оставшихся данных в буфер
+				result.insert(result.end(), mess.text.begin(), mess.text.end());
+		// Выполняем прехват ошибки
+		} catch(const std::exception & error) {
+			// Выводим сообщение об ошибке
+			this->_log->print("WebSocket message: %s", log_t::flag_t::CRITICAL, error.what());
 		}
-		// Получаем код сообщения
-		const uint16_t code = htons(mess.code);
-		// Устанавливаем код сообщения
-		::memcpy(result.data() + offset, &code, sizeof(code));
-		// Если данные текстового сообщения получены
-		if(!mess.text.empty())
-			// Выполняем копирования оставшихся данных в буфер
-			result.insert(result.end(), mess.text.begin(), mess.text.end());
 	}
 	// Выводим результат
 	return result;
@@ -330,16 +348,11 @@ awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noex
 				// Иначе запоминаем, что текст не установлен
 				else result.text.clear();
 			// Выполняем прехват ошибки
-			} catch(const exception & error) {
+			} catch(const std::exception & error) {
 				// Устанавливаем текст ошибки
 				result = this->_fmk->format("%s", error.what());
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
+				// Выводим сообщение об ошибке
+				this->_log->print("WebSocket message: %s", log_t::flag_t::CRITICAL, error.what());
 			}
 		// Запоминаем размер смещения
 		} else result = 1007;
@@ -413,76 +426,85 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 	vector <char> result;
 	// Если данные переданы в достаточном объёме
 	if((buffer != nullptr) && (size > 0)){
-		// Выполняем чтение заголовков
-		this->head(head, buffer, size);
-		// Устанавливаем стейт фрейма
-		head.state = state_t::GOOD;
-		// Получаем размер смещения
-		head.frame = static_cast <uint64_t> (head.size);
-		// Получаем общее количество байтов
-		uint64_t bytes = (head.payload + head.frame);
-		// Если данные переданы в достаточном объёме для проверки входящих данных
-		if(static_cast <size_t> (bytes) <= size){
-			// Если входящие данные не являются мусоромы
-			if((head.optcode == opcode_t::TEXT) || (head.optcode == opcode_t::BINARY) ||
-			   (head.optcode == opcode_t::PING) || (head.optcode == opcode_t::PONG) ||
-			   (head.optcode == opcode_t::CLOSE) || (head.optcode == opcode_t::CONTINUATION)){
-				// Если маска требуется, маскируем данные
-				if(head.mask)
-					// Увеличиваем количество ожидаемых байт
-					bytes += 4;
-				// Если ожидаемых байт фрейма достаточно для обработки
-				if(static_cast <size_t> (bytes) <= size){
-					// Бинарные данные маски
-					u_char mask[4];
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем чтение заголовков
+			this->head(head, buffer, size);
+			// Устанавливаем стейт фрейма
+			head.state = state_t::GOOD;
+			// Получаем размер смещения
+			head.frame = static_cast <uint64_t> (head.size);
+			// Получаем общее количество байтов
+			uint64_t bytes = (head.payload + head.frame);
+			// Если данные переданы в достаточном объёме для проверки входящих данных
+			if(static_cast <size_t> (bytes) <= size){
+				// Если входящие данные не являются мусоромы
+				if((head.optcode == opcode_t::TEXT) || (head.optcode == opcode_t::BINARY) ||
+				   (head.optcode == opcode_t::PING) || (head.optcode == opcode_t::PONG) ||
+				   (head.optcode == opcode_t::CLOSE) || (head.optcode == opcode_t::CONTINUATION)){
 					// Если маска требуется, маскируем данные
-					if(head.mask){
-						// Считываем ключ маски
-						::memcpy(mask, buffer + head.frame, 4);
+					if(head.mask)
+						// Увеличиваем количество ожидаемых байт
+						bytes += 4;
+					// Если ожидаемых байт фрейма достаточно для обработки
+					if(static_cast <size_t> (bytes) <= size){
+						// Бинарные данные маски
+						u_char mask[4];
+						// Если маска требуется, маскируем данные
+						if(head.mask){
+							// Считываем ключ маски
+							::memcpy(mask, buffer + head.frame, 4);
+							// Увеличиваем размер смещения
+							head.frame += 4;
+						}
+						// Получаем оставшиеся данные полезной нагрузки
+						result.assign(buffer + head.frame, buffer + (head.payload + head.frame));
+						// Если маска требуется, размаскируем данные
+						if(head.mask){
+							// Выполняем перебор всех байт передаваемых данных
+							for(size_t i = 0; i < result.size(); i++)
+								// Выполняем шифрование данных
+								result.at(i) ^= mask[i % 4];
+						}
 						// Увеличиваем размер смещения
-						head.frame += 4;
+						head.frame += head.payload;
+						// Если размер не установлен
+						if(head.payload == 0)
+							// Устанавливаем статус битого фрейма
+							head.state = state_t::BAD;
+						// Проверяем состояние флагов RSV2 и RSV3
+						else if(head.rsv[1] || head.rsv[2])
+							// Устанавливаем статус битого фрейма
+							head.state = state_t::BAD;
+						// Если флаг компресси включён а данные пришли не сжатые
+						else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) || ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
+							// Устанавливаем статус битого фрейма
+							head.state = state_t::BAD;
+						// Если опкоды требуют финального фрейма
+						else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))
+							// Устанавливаем статус битого фрейма
+							head.state = state_t::BAD;
+						// Если фрейм испорчен
+						if(head.state == state_t::BAD){
+							// Очищаем результирующий буфер
+							result.clear();
+							// Выполняем очистку выделенной памяти
+							vector <char> ().swap(result);
+						}
 					}
-					// Получаем оставшиеся данные полезной нагрузки
-					result.assign(buffer + head.frame, buffer + (head.payload + head.frame));
-					// Если маска требуется, размаскируем данные
-					if(head.mask){
-						// Выполняем перебор всех байт передаваемых данных
-						for(size_t i = 0; i < result.size(); i++)
-							// Выполняем шифрование данных
-							result.at(i) ^= mask[i % 4];
-					}
-					// Увеличиваем размер смещения
-					head.frame += head.payload;
-					// Если размер не установлен
-					if(head.payload == 0)
-						// Устанавливаем статус битого фрейма
-						head.state = state_t::BAD;
-					// Проверяем состояние флагов RSV2 и RSV3
-					else if(head.rsv[1] || head.rsv[2])
-						// Устанавливаем статус битого фрейма
-						head.state = state_t::BAD;
-					// Если флаг компресси включён а данные пришли не сжатые
-					else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) || ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
-						// Устанавливаем статус битого фрейма
-						head.state = state_t::BAD;
-					// Если опкоды требуют финального фрейма
-					else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))
-						// Устанавливаем статус битого фрейма
-						head.state = state_t::BAD;
-					// Если фрейм испорчен
-					if(head.state == state_t::BAD){
-						// Очищаем результирующий буфер
-						result.clear();
-						// Выполняем очистку выделенной памяти
-						vector <char> ().swap(result);
-					}
-				}
-			// Устанавливаем статус битого фрейма
-			} else head.state = state_t::BAD;
-		// Если размер данных уже слишком большой, выводим сообщение об ошибке
-		} else if((size > sizeof(head_t)) && (head.payload > MAX_FRAME_SIZE))
-			// Устанавливаем статус битого фрейма
-			head.state = state_t::BAD;
+				// Устанавливаем статус битого фрейма
+				} else head.state = state_t::BAD;
+			// Если размер данных уже слишком большой, выводим сообщение об ошибке
+			} else if((size > sizeof(head_t)) && (head.payload > MAX_FRAME_SIZE))
+				// Устанавливаем статус битого фрейма
+				head.state = state_t::BAD;
+		// Выполняем прехват ошибки
+		} catch(const std::exception & error) {
+			// Выводим сообщение об ошибке
+			this->_log->print("WebSocket get: %s", log_t::flag_t::CRITICAL, error.what());
+		}
 	}
 	// Выводим результат
 	return result;

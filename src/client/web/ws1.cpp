@@ -653,12 +653,12 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Если данные необходимо зашифровать
 					if(this->_encryption.mode && this->_crypted){
+						// Устанавливаем размер шифрования
+						this->_cipher = this->_encryption.cipher;
 						// Устанавливаем соль шифрования
 						this->_hash.salt(this->_encryption.salt);
 						// Устанавливаем пароль шифрования
-						this->_hash.pass(this->_encryption.pass);
-						// Устанавливаем размер шифрования
-						this->_hash.cipher(this->_encryption.cipher);
+						this->_hash.password(this->_encryption.pass);
 					}
 					// Разрешаем перехватывать контекст компрессии для клиента
 					this->_hash.takeoverCompress(this->_http.takeover(awh::web_t::hid_t::CLIENT));
@@ -972,12 +972,14 @@ void awh::client::Websocket1::extraction(const vector <char> & buffer, const boo
 			if(!data.empty()){
 				// Если нужно производить дешифрование
 				if(this->_crypted){
-					// Выполняем шифрование переданных данных
-					const auto & res = this->_hash.decrypt(data.data(), data.size());
+					// Результат работы дешифрования
+					vector <char> result;
+					// Выполняем дешифрование полезной нагрузки
+					this->_hash.decode(data.data(), data.size(), this->_cipher, result);
 					// Если данные сообщения получилось удачно расшифровать
-					if(!res.empty())
+					if(!result.empty())
 						// Выводим данные полученного сообщения
-						this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", res, text);
+						this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", result, text);
 					// Иначе выводим сообщение так - как оно пришло
 					else this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", data, text);
 				// Отправляем полученный результат
@@ -995,12 +997,14 @@ void awh::client::Websocket1::extraction(const vector <char> & buffer, const boo
 		} else {
 			// Если нужно производить дешифрование
 			if(this->_crypted){
-				// Выполняем шифрование переданных данных
-				const auto & res = this->_hash.decrypt(buffer.data(), buffer.size());
+				// Результат работы дешифрования
+				vector <char> result;
+				// Выполняем дешифрование полезной нагрузки
+				this->_hash.decode(buffer.data(), buffer.size(), this->_cipher, result);
 				// Если данные сообщения получилось удачно распаковать
-				if(!res.empty())
+				if(!result.empty())
 					// Выводим данные полученного сообщения
-					this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", res, text);
+					this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", result, text);
 				// Иначе выводим сообщение так - как оно пришло
 				else this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", buffer, text);
 			// Отправляем полученный результат
@@ -1089,14 +1093,9 @@ bool awh::client::Websocket1::sendMessage(const vector <char> & message, const b
 				// Создаём объект заголовка для отправки
 				ws::frame_t::head_t head(true, true);
 				// Если нужно производить шифрование
-				if(this->_crypted){
-					// Выполняем шифрование переданных данных
-					const auto & payload = this->_hash.encrypt(message.data(), message.size());
-					// Если данные зашифрованны
-					if(!payload.empty())
-						// Заменяем сообщение для передачи
-						const_cast <vector <char> &> (message).assign(payload.begin(), payload.end());
-				}
+				if(this->_crypted)
+					// Выполняем шифрование полезной нагрузки
+					this->_hash.encode(message.data(), message.size(), this->_cipher, const_cast <vector <char> &> (message));
 				// Устанавливаем опкод сообщения
 				head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 				// Указываем, что сообщение передаётся в сжатом виде
@@ -1570,8 +1569,8 @@ void awh::client::Websocket1::encryption(const string & pass, const string & sal
 awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _waitPong(_pingInterval * 2), _http(fmk, log), _hash(log),
- _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
+ _point(0), _waitPong(_pingInterval * 2), _http(fmk, log), _hash(log), _frame(fmk, log),
+ _cipher(hash_t::cipher_t::AES128), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
@@ -1592,8 +1591,8 @@ awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
 awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _waitPong(_pingInterval * 2), _http(fmk, log), _hash(log),
- _frame(fmk, log), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
+ _point(0), _waitPong(_pingInterval * 2), _http(fmk, log), _hash(log), _frame(fmk, log),
+ _cipher(hash_t::cipher_t::AES128), _resultCallback(log), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&ws1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос

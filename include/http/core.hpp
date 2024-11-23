@@ -29,8 +29,8 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/hash.hpp>
 #include <http/web.hpp>
-#include <hash/hash.hpp>
 #include <auth/client.hpp>
 #include <auth/server.hpp>
 
@@ -209,6 +209,9 @@ namespace awh {
 		protected:
 			// Идентичность протокола
 			identity_t _identity;
+		protected:
+			// Формат шифрования
+			hash_t::cipher_t _cipher;
 		protected:
 			// Компрессор для жатия данных
 			compressors_t _compressors;

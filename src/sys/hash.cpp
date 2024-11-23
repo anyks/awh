@@ -13,106 +13,237 @@
  */
 
 // Подключаем заголовочный файл
-#include <hash/hash.hpp>
+#include <sys/hash.hpp>
 
 /**
- * init Метод инициализации AES шифрования
- * @return результат инициализации
+ * Шаблон метода хэширования данных
+ * @tparam T сигнатура функции
  */
-bool awh::Hash::init() const {
-	// Размеры массивов IV и KEY
-	uint8_t keySize = 0, ivSize = 0;
+template <typename T>
+/**
+ * hashing Метод хэширования данных
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @param state  объект стейта шифрования
+ * @param result строка куда следует положить результат
+ * @return       результирующая строка
+ */
+static void hashing(const char * buffer, const size_t size, const awh::hash_t::cipher_t cipher, const awh::hash_t::event_t event, awh::hash_t::state_t & state, T & result) noexcept {
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем очистку блока с результатом
+			result.clear();
+			// Определяем тип шифрования
+			switch(static_cast <uint8_t> (cipher)){
+				// Если производится работы с BASE64
+				case static_cast <uint8_t> (awh::hash_t::cipher_t::BASE64): {
+					// Определяем событие кодирование или декодирование
+					switch(static_cast <uint8_t> (event)){
+						// Если производится кодирование данных
+						case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
+							// Инициализируем объект bio
+							BIO * bio = BIO_new(BIO_s_mem());
+							// Если объект bio инициализирован
+							if(bio != nullptr){
+								// Инициализируем объект base64
+								BIO * b64 = BIO_new(BIO_f_base64());
+								// Если объект bio инициализирован
+								if(b64 != nullptr){
+									// Записываем параметры base64
+									bio = BIO_push(b64, bio);
+									// Выполняем кодирование в base64
+									BIO_write(bio, buffer, size);
+									// Выполняем очистку объекта base64
+									BIO_flush(bio);
+									{
+										// Инициализируем буфер данных для извлечения хэша base64
+										BUF_MEM * buffer = nullptr;
+										// Извлекаем данные из буфера
+										BIO_get_mem_ptr(bio, &buffer);
+										// Если буфер инициализирован удачно
+										if(buffer != nullptr)
+											// Формируем полученный результат
+											result.assign(buffer->data, buffer->data + buffer->length);
+									}
+									// Очищаем всю выделенную память
+									BIO_free_all(bio);
+								// Очищаем объект BIO
+								} else BIO_free(bio);
+							}
+						} break;
+						// Если производится декодирование данных
+						case static_cast <uint8_t> (awh::hash_t::event_t::DECODE): {
+							// Инициализируем объект base64
+							BIO * b64 = BIO_new(BIO_f_base64());
+							// Если объект base64 инициализирован
+							if(b64 != nullptr){
+								// Выполняем инициализацию буфера данных bio
+								BIO * bio = BIO_new_mem_buf(buffer, -1);
+								// Если буфер данных bio инициализирован удачно
+								if(bio != nullptr){
+									// Записываем параметры base64
+									bio = BIO_push(b64, bio);
+									// Выделяем память под запрошенный результат
+									result.resize(size, 0);
+									{
+										// Считываем декодированные данные из хэша base64
+										const ssize_t size = BIO_read(bio, result.data(), result.size());
+										// Если размер получен
+										if(size > 0)
+											// Удаляем лишние символы из буфера
+											result.erase(result.begin() + size, result.end());
+										// Очищаем весь результирующий буфер
+										else result.clear();
+									}
+									// Очищаем всю выделенную память
+									BIO_free_all(bio);
+								// Очищаем объект base64
+								} else BIO_free(b64);
+							}
+						} break;
+					}
+				} break;
+				// Если производится работы с AES128
+				case static_cast <uint8_t> (awh::hash_t::cipher_t::AES128):
+				// Если производится работы с AES192
+				case static_cast <uint8_t> (awh::hash_t::cipher_t::AES192):
+				// Если производится работы с AES256
+				case static_cast <uint8_t> (awh::hash_t::cipher_t::AES256): {
+					// Смещение в бинарном буфере
+					size_t offset = 0;
+					// Размер записываемых данных
+					size_t length = 0;
+					// Определяем размер данных для считывания
+					size_t actual = size;
+					// Выделяем память для буфера данных
+					vector <u_char> output(AES_BLOCK_SIZE, 0);
+					/**
+					 * Выполняем шифровку всех данных
+					 */
+					do {
+						// Максимальный размер считываемых данных
+						length = (actual > AES_BLOCK_SIZE ? AES_BLOCK_SIZE : actual);
+						// Определяем событие кодирование или декодирование
+						switch(static_cast <uint8_t> (event)){
+							// Если производится кодирование данных
+							case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE):
+								// Выполняем сжатие данных
+								AES_cfb128_encrypt(reinterpret_cast <const u_char *> (buffer) + offset, output.data(), length, &state.key, state.ivec, &state.num, AES_ENCRYPT);
+							break;
+							// Если производится декодирование данных
+							case static_cast <uint8_t> (awh::hash_t::event_t::DECODE):
+								// Выполняем сжатие данных
+								AES_cfb128_encrypt(reinterpret_cast <const u_char *> (buffer) + offset, output.data(), length, &state.key, state.ivec, &state.num, AES_DECRYPT);
+							break;
+						}
+						// Увеличиваем смещение
+						offset += length;
+						// Вычитаем считанные данные
+						actual -= length;
+						// Выполняем добавление полученных данных
+						result.insert(result.end(), output.data(), output.data() + length);
+					// Если данные ещё не зашифрованны
+					} while(actual > 0);
+				} break;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception &) {
+			// Выполняем очистку блока с результатом
+			result.clear();
+		}
+	}
+}
+/**
+ * cipher Метод инициализации AES шифрования
+ * @param cipher тип шифрования (AES128, AES192, AES256)
+ * @return       результат инициализации
+ */
+bool awh::Hash::cipher(const cipher_t cipher) noexcept {
+	// Формируем массивы для шифрования
+	vector <u_char> iv, key;
 	// Создаем тип шифрования
-	const EVP_CIPHER * cipher = EVP_enc_null();
+	const EVP_CIPHER * evp = EVP_enc_null();
 	// Определяем длину шифрования
-	switch(static_cast <uint16_t> (this->_cipher)){
+	switch(static_cast <uint16_t> (cipher)){
 		// Устанавливаем шифрование в 128
 		case static_cast <uint16_t> (cipher_t::AES128): {
 			// Устанавливаем размер массива IV
-			ivSize = 8;
+			iv.resize(8, 0);
 			// Устанавливаем размер массива KEY
-			keySize = 16;
+			key.resize(16, 0);
 			// Устанавливаем функцию шифрования
-			cipher = EVP_aes_128_ecb();
+			evp = EVP_aes_128_ecb();
 		} break;
 		// Устанавливаем шифрование в 192
 		case static_cast <uint16_t> (cipher_t::AES192): {
 			// Устанавливаем размер массива IV
-			ivSize = 12;
+			iv.resize(12, 0);
 			// Устанавливаем размер массива KEY
-			keySize = 24;
+			key.resize(24, 0);
 			// Устанавливаем функцию шифрования
-			cipher = EVP_aes_192_ecb();
+			evp = EVP_aes_192_ecb();
 		} break;
 		// Устанавливаем шифрование в 256
 		case static_cast <uint16_t> (cipher_t::AES256): {
 			// Устанавливаем размер массива IV
-			ivSize = 16;
+			iv.resize(16, 0);
 			// Устанавливаем размер массива KEY
-			keySize = 32;
+			key.resize(32, 0);
 			// Устанавливаем функцию шифрования
-			cipher = EVP_aes_256_ecb();
+			evp = EVP_aes_256_ecb();
 		} break;
 		// Если ничего не выбрано, сбрасываем
 		default: return false;
 	}
 	// Создаем контекст
 	EVP_CIPHER_CTX * ctx = EVP_CIPHER_CTX_new();
-	// Привязываем контекст к типу шифрования
-	EVP_EncryptInit_ex(ctx, cipher, nullptr, nullptr, nullptr);
-	// Выделяем нужное количество памяти
-	vector <u_char> iv(ivSize, 0);
-	vector <u_char> key(keySize, 0);
-	/*
-	// Выделяем нужное количество памяти
-	vector <u_char> iv(EVP_CIPHER_CTX_iv_length(ctx), 0);
-	vector <u_char> key(EVP_CIPHER_CTX_key_length(ctx), 0);
-	*/
-	// Выполняем инициализацию ключа
-	const int32_t ok = EVP_BytesToKey(
-		cipher, EVP_sha256(),
-		(this->_salt.empty() ? nullptr : reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_salt.data())),
-		reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_pass.data()),
-		this->_pass.length(), this->_rounds, key.data(), iv.data()
-	);
-	// Очищаем контекст
-	EVP_CIPHER_CTX_free(ctx);
-	// Если инициализация не произошла
-	if(ok == 0)
-		// Выходим из функции
-		return false;
-	// Устанавливаем ключ шифрования
-	const int32_t res = AES_set_encrypt_key(key.data(), key.size() * 8, &this->_key);
-	// Если установка ключа не произошло
-	if(res != 0)
-		// Выходим из функции
-		return false;
-	// Обнуляем номер
-	this->_state.num = 0;
-	// Заполняем половину структуры нулями
-	::memset(this->_state.ivec, 0, sizeof(this->_state.ivec));
-	// Копируем данные шифрования
-	::memcpy(this->_state.ivec, iv.data(), iv.size());
-	// Выполняем шифрование
-	// AES_encrypt(this->_state.ivec, this->_state.count, &this->_key);
+	// Если контекст для шифрования удачно инициализирован
+	if(ctx != nullptr){
+		// Привязываем контекст к типу шифрования
+		EVP_EncryptInit_ex(ctx, evp, nullptr, nullptr, nullptr);
+		/*
+		// Выделяем нужное количество памяти
+		vector <u_char> iv(EVP_CIPHER_CTX_iv_length(ctx), 0);
+		vector <u_char> key(EVP_CIPHER_CTX_key_length(ctx), 0);
+		*/
+		// Выполняем инициализацию ключа
+		const int32_t ok = EVP_BytesToKey(
+			evp, EVP_sha256(),
+			(this->_salt.empty() ? nullptr : reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_salt.data())),
+			reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_password.data()),
+			this->_password.length(), this->_rounds, key.data(), iv.data()
+		);
+		// Очищаем контекст
+		EVP_CIPHER_CTX_free(ctx);
+		// Если инициализация не произошла
+		if(ok == 0)
+			// Выходим из функции
+			return false;
+		// Устанавливаем ключ шифрования
+		const int32_t res = AES_set_encrypt_key(key.data(), key.size() * 8, &this->_state.key);
+		// Если установка ключа не произошло
+		if(res != 0)
+			// Выходим из функции
+			return false;
+		// Обнуляем номер
+		this->_state.num = 0;
+		// Заполняем половину структуры нулями
+		::memset(this->_state.ivec, 0, sizeof(this->_state.ivec));
+		// Копируем данные шифрования
+		::memcpy(this->_state.ivec, iv.data(), iv.size());
+		// Выполняем шифрование
+		// AES_encrypt(this->_state.ivec, this->_state.count, &this->_state.key);
+	// Выводим сообщение об ошибке
+	} else this->_log->print("%s", log_t::flag_t::CRITICAL, "Context for encryption/decryption could not be initialized");
 	// Сообщаем что всё удачно
 	return true;
-}
-/**
- * cipher Метод получения размера шифрования
- * @return размер шифрования
- */
-awh::Hash::cipher_t awh::Hash::cipher() const {
-	// Выводим размер шифрования
-	return this->_cipher;
-}
-/**
- * cipher Метод установки размера шифрования
- * @param cipher размер шифрования (128, 192, 256)
- */
-void awh::Hash::cipher(const cipher_t cipher) noexcept {
-	// Устанавливаем размер шифрования
-	this->_cipher = cipher;
 }
 /**
  * rmTail Метод удаления хвостовых данных
@@ -150,7 +281,7 @@ vector <char> awh::Hash::lz4(const char * buffer, const size_t size, const event
 		// Определяем событие выполнения операции
 		switch(static_cast <uint8_t> (event)){
 			// Если необходимо выполнить компрессию данных
-			case static_cast <uint8_t> (event_t::COMPRESS): {
+			case static_cast <uint8_t> (event_t::ENCODE): {
 				// Выполняем получение размер результирующего буфера
 				int32_t actual = ::LZ4_compressBound(size);
 				// Если размер выделен
@@ -175,7 +306,7 @@ vector <char> awh::Hash::lz4(const char * buffer, const size_t size, const event
 				result.resize(actual);
 			} break;
 			// Если необходимо выполнить декомпрессию данных
-			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+			case static_cast <uint8_t> (event_t::DECODE): {
 				// Множитель
 				size_t factor = 2;
 				/**
@@ -227,7 +358,7 @@ vector <char> awh::Hash::lzma(const char * buffer, const size_t size, const even
 		// Определяем событие выполнения операции
 		switch(static_cast <uint8_t> (event)){
 			// Если необходимо выполнить компрессию данных
-			case static_cast <uint8_t> (event_t::COMPRESS): {
+			case static_cast <uint8_t> (event_t::ENCODE): {
 				// Инициализируем опции компрессора LZma
 				static const lzma_options_lzma options = {
 					1u << 20u, nullptr, 0, LZMA_LC_DEFAULT, LZMA_LP_DEFAULT,
@@ -255,7 +386,7 @@ vector <char> awh::Hash::lzma(const char * buffer, const size_t size, const even
 				result.resize(actual);
 			} break;
 			// Если необходимо выполнить декомпрессию данных
-			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+			case static_cast <uint8_t> (event_t::DECODE): {
 				// Указатель позиции в буфере для распаковки
 				char * ptr = nullptr;
 				// Индекс потока LZma компрессора
@@ -324,7 +455,7 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 		// Определяем событие выполнения операции
 		switch(static_cast <uint8_t> (event)){
 			// Если необходимо выполнить компрессию данных
-			case static_cast <uint8_t> (event_t::COMPRESS): {
+			case static_cast <uint8_t> (event_t::ENCODE): {
 				// Выполняем создание контекста потока
 				ZSTD_CStream * ctx = ::ZSTD_createCStream();
 				// Если контекст потока создан
@@ -423,7 +554,7 @@ vector <char> awh::Hash::zstd(const char * buffer, const size_t size, const even
 				*/
 			} break;
 			// Если необходимо выполнить декомпрессию данных
-			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+			case static_cast <uint8_t> (event_t::DECODE): {
 				// Выполняем создание контекста потока
 				ZSTD_DStream * ctx = ::ZSTD_createDStream();
 				// Если контекст потока создан
@@ -530,7 +661,7 @@ vector <char> awh::Hash::gzip(const char * buffer, const size_t size, const even
 		// Определяем событие выполнения операции
 		switch(static_cast <uint8_t> (event)){
 			// Если необходимо выполнить компрессию данных
-			case static_cast <uint8_t> (event_t::COMPRESS): {
+			case static_cast <uint8_t> (event_t::ENCODE): {
 				// Результирующий размер данных
 				int32_t rv = Z_OK;
 				// Если поток инициализировать не удалось, выходим
@@ -571,7 +702,7 @@ vector <char> awh::Hash::gzip(const char * buffer, const size_t size, const even
 				::deflateEnd(&zs);
 			} break;
 			// Если необходимо выполнить декомпрессию данных
-			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+			case static_cast <uint8_t> (event_t::DECODE): {
 				// Результирующий размер данных
 				int32_t rv = Z_OK;
 				// Если поток инициализировать не удалось, выходим
@@ -645,7 +776,7 @@ vector <char> awh::Hash::bzip2(const char * buffer, const size_t size, const eve
 		// Определяем событие выполнения операции
 		switch(static_cast <uint8_t> (event)){
 			// Если необходимо выполнить компрессию данных
-			case static_cast <uint8_t> (event_t::COMPRESS): {
+			case static_cast <uint8_t> (event_t::ENCODE): {
 				// Выполняем инициализацию потока
 				if(::BZ2_bzCompressInit(&stream, 5, 0, 0) != BZ_OK){
 					// Выводим сообщение об ошибке
@@ -685,7 +816,7 @@ vector <char> awh::Hash::bzip2(const char * buffer, const size_t size, const eve
 				::BZ2_bzCompressEnd(&stream);
 			} break;
 			// Если необходимо выполнить декомпрессию данных
-			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+			case static_cast <uint8_t> (event_t::DECODE): {
 				// Выполняем инициализацию потока
 				if(::BZ2_bzDecompressInit(&stream, 0, 0) != BZ_OK){
 					// Выводим сообщение об ошибке
@@ -759,7 +890,7 @@ vector <char> awh::Hash::brotli(const char * buffer, const size_t size, const ev
 		// Определяем событие выполнения операции
 		switch(static_cast <uint8_t> (event)){
 			// Если необходимо выполнить компрессию данных
-			case static_cast <uint8_t> (event_t::COMPRESS): {
+			case static_cast <uint8_t> (event_t::ENCODE): {
 				// Инициализируем стейт энкодера Brotli
 				BrotliEncoderState * encoder = ::BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
 				// Выполняем сжатие данных
@@ -789,7 +920,7 @@ vector <char> awh::Hash::brotli(const char * buffer, const size_t size, const ev
 				::BrotliEncoderDestroyInstance(encoder);
 			} break;
 			// Если необходимо выполнить декомпрессию данных
-			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+			case static_cast <uint8_t> (event_t::DECODE): {
 				// Полный размер обработанных данных
 				size_t total = 0, size = 0;
 				// Активируем работу декодера
@@ -858,7 +989,7 @@ vector <char> awh::Hash::deflate(const char * buffer, const size_t size, const e
 		// Определяем событие выполнения операции
 		switch(static_cast <uint8_t> (event)){
 			// Если необходимо выполнить компрессию данных
-			case static_cast <uint8_t> (event_t::COMPRESS): {
+			case static_cast <uint8_t> (event_t::ENCODE): {
 				// Если поток инициализировать не удалось, выходим
 				if(this->_takeOverCompress || (::deflateInit2(&zs, this->_level[1], Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
 					// Если поток декомпрессора не создан ранее
@@ -910,7 +1041,7 @@ vector <char> awh::Hash::deflate(const char * buffer, const size_t size, const e
 				}
 			} break;
 			// Если необходимо выполнить декомпрессию данных
-			case static_cast <uint8_t> (event_t::DECOMPRESS): {
+			case static_cast <uint8_t> (event_t::DECODE): {
 				// Если поток инициализировать не удалось, выходим
 				if(this->_takeOverDecompress || (::inflateInit2(&zs, -1 * this->_wbit) == Z_OK)){
 					// Если поток декомпрессора не создан ранее
@@ -967,100 +1098,188 @@ vector <char> awh::Hash::deflate(const char * buffer, const size_t size, const e
 	return result;
 }
 /**
- * encrypt Метод шифрования текста
+ * encode Метод кодирования в BASE64
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
- * @return       результат шифрования
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @param result строка куда следует положить результат
+ * @return       результирующая строка
  */
-vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) const noexcept {
-	// Результат работы функции
-	vector <char> result;
+void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Если пароль установлен
-		if(!this->_pass.empty()){
-			// Выполняем инициализацию AES
-			if(this->init()){
-				// Максимальный размер считываемых данных
-				int32_t chunk = 0;
-				// Размер буфера полученных данных
-				size_t count = 0;
-				// Определяем размер данных для считывания
-				size_t actual = size;
-				// Выделяем память для буфера данных
-				vector <u_char> output(actual, 0);
-				// Входные данные
-				const Bytef * input = reinterpret_cast <const Bytef *> (buffer);
-				/**
-				 * Выполняем шифровку всех данных
-				 */
-				do {
-					// Максимальный размер считываемых данных
-					chunk = (actual > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : actual);
-					// Выполняем сжатие данных
-					AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->_key, this->_state.ivec, &this->_state.num, AES_ENCRYPT);
-					// Увеличиваем смещение
-					count += chunk;
-					// Вычитаем считанные данные
-					actual -= chunk;
-				// Если данные ещё не зашифрованны
-				} while(actual > 0);
-				// Запоминаем полученные данные
-				result.insert(result.end(), output.data(), output.data() + count);
-			}
-		// Выводим тот же самый буфер как он был передан
-		} else result.insert(result.end(), buffer, buffer + size);
+		// Определяем тип шифрования
+		switch(static_cast <uint8_t> (cipher)){
+			// Если производится работы с BASE64
+			case static_cast <uint8_t> (hash_t::cipher_t::BASE64): {
+				// Выполняем кодирование строки BASE64
+				hashing(buffer, size, cipher, event_t::ENCODE, const_cast <state_t &> (this->_state), result);
+				// Если кодирование не вышло
+				if(result.empty())
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to encode \"%s\" string data into BASE64 format", log_t::flag_t::WARNING, string(buffer, size).c_str());
+			} break;
+			// Если производится работы с AES128
+			case static_cast <uint8_t> (hash_t::cipher_t::AES128):
+			// Если производится работы с AES192
+			case static_cast <uint8_t> (hash_t::cipher_t::AES192):
+			// Если производится работы с AES256
+			case static_cast <uint8_t> (hash_t::cipher_t::AES256): {
+				// Если пароль установлен
+				if(!this->_password.empty()){
+					// Выполняем инициализацию AES
+					if(const_cast <hash_t *> (this)->cipher(cipher))
+						// Выполняем шифрование данных
+						hashing(buffer, size, cipher, event_t::ENCODE, const_cast <state_t &> (this->_state), result);
+				}
+				// Если кодирование не вышло
+				if(result.empty()){
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to encode data into AES", log_t::flag_t::WARNING);
+					// Выводим тот же самый буфер как он был передан
+					result.assign(buffer, buffer + size);
+				}
+			} break;
+		}
 	}
-	// Выводим результат
-	return result;
 }
 /**
- * decrypt Метод дешифрования текста
- * @param buffer буфер данных для дешифрования
- * @param size   размер данных для дешифрования
- * @return       результат дешифрования
+ * decode Метод декодирования из BASE64
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @param result строка куда следует положить результат
+ * @return       результирующая строка
  */
-vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) const noexcept {
-	// Результат работы функции
-	vector <char> result;
+void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Если пароль установлен
-		if(!this->_pass.empty()){
-			// Выполняем инициализацию AES
-			if(this->init()){
-				// Максимальный размер считываемых данных
-				int32_t chunk = 0;
-				// Размер буфера полученных данных
-				size_t count = 0;
-				// Определяем размер данных для считывания
-				size_t actual = size;
-				// Выделяем память для буфера данных
-				vector <u_char> output(actual, 0);
-				// Входные данные
-				const Bytef * input = reinterpret_cast <const Bytef *> (buffer);
-				/**
-				 * Выполняем дешифровку всех данных
-				 */
-				do {
-					// Максимальный размер считываемых данных
-					chunk = (actual > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : actual);
-					// Выполняем сжатие данных
-					AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->_key, this->_state.ivec, &this->_state.num, AES_DECRYPT);
-					// Увеличиваем смещение
-					count += chunk;
-					// Вычитаем считанные данные
-					actual -= chunk;
-				// Если данные ещё не дешифрованны
-				} while(actual > 0);
-				// Запоминаем полученные данные
-				result.insert(result.end(), output.data(), output.data() + count);
-			}
-		// Выводим тот же самый буфер как он был передан
-		} else result.insert(result.end(), buffer, buffer + size);
+		// Определяем тип шифрования
+		switch(static_cast <uint8_t> (cipher)){
+			// Если производится работы с BASE64
+			case static_cast <uint8_t> (hash_t::cipher_t::BASE64): {
+				// Выполняем декодирование строки BASE64
+				hashing(buffer, size, cipher, event_t::DECODE, const_cast <state_t &> (this->_state), result);
+				// Если декодирование не вышло
+				if(result.empty())
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to extract data from base64 encoded \"%s\" hash", log_t::flag_t::WARNING, string(buffer, size).c_str());
+			} break;
+			// Если производится работы с AES128
+			case static_cast <uint8_t> (hash_t::cipher_t::AES128):
+			// Если производится работы с AES192
+			case static_cast <uint8_t> (hash_t::cipher_t::AES192):
+			// Если производится работы с AES256
+			case static_cast <uint8_t> (hash_t::cipher_t::AES256): {
+				// Если пароль установлен
+				if(!this->_password.empty()){
+					// Выполняем инициализацию AES
+					if(const_cast <hash_t *> (this)->cipher(cipher))
+						// Выполняем шифрование данных
+						hashing(buffer, size, cipher, event_t::DECODE, const_cast <state_t &> (this->_state), result);
+				}
+				// Если кодирование не вышло
+				if(result.empty()){
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to decode data from AES", log_t::flag_t::WARNING);
+					// Выводим тот же самый буфер как он был передан
+					result.assign(buffer, buffer + size);
+				}
+			} break;
+		}
 	}
-	// Выводим результат
-	return result;
+}
+/**
+ * encode Метод кодирования в BASE64
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @param result буфер куда следует положить результат
+ * @return       результирующая строка
+ */
+void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept {
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0)){
+		// Определяем тип шифрования
+		switch(static_cast <uint8_t> (cipher)){
+			// Если производится работы с BASE64
+			case static_cast <uint8_t> (hash_t::cipher_t::BASE64): {
+				// Выполняем кодирование строки BASE64
+				hashing(buffer, size, cipher, event_t::ENCODE, const_cast <state_t &> (this->_state), result);
+				// Если кодирование не вышло
+				if(result.empty())
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to encode \"%s\" string data into BASE64 format", log_t::flag_t::WARNING, string(buffer, size).c_str());
+			} break;
+			// Если производится работы с AES128
+			case static_cast <uint8_t> (hash_t::cipher_t::AES128):
+			// Если производится работы с AES192
+			case static_cast <uint8_t> (hash_t::cipher_t::AES192):
+			// Если производится работы с AES256
+			case static_cast <uint8_t> (hash_t::cipher_t::AES256): {
+				// Если пароль установлен
+				if(!this->_password.empty()){
+					// Выполняем инициализацию AES
+					if(const_cast <hash_t *> (this)->cipher(cipher))
+						// Выполняем шифрование данных
+						hashing(buffer, size, cipher, event_t::ENCODE, const_cast <state_t &> (this->_state), result);
+				}
+				// Если кодирование не вышло
+				if(result.empty()){
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to encode data into AES", log_t::flag_t::WARNING);
+					// Выводим тот же самый буфер как он был передан
+					result.assign(buffer, buffer + size);
+				}
+			} break;
+		}
+	}
+}
+/**
+ * decode Метод декодирования из BASE64
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @param result буфер куда следует положить результат
+ * @return       результирующая строка
+ */
+void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept {
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0)){
+		// Определяем тип шифрования
+		switch(static_cast <uint8_t> (cipher)){
+			// Если производится работы с BASE64
+			case static_cast <uint8_t> (hash_t::cipher_t::BASE64): {
+				// Выполняем декодирование строки BASE64
+				hashing(buffer, size, cipher, event_t::DECODE, const_cast <state_t &> (this->_state), result);
+				// Если декодирование не вышло
+				if(result.empty())
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to extract data from base64 encoded \"%s\" hash", log_t::flag_t::WARNING, string(buffer, size).c_str());
+			} break;
+			// Если производится работы с AES128
+			case static_cast <uint8_t> (hash_t::cipher_t::AES128):
+			// Если производится работы с AES192
+			case static_cast <uint8_t> (hash_t::cipher_t::AES192):
+			// Если производится работы с AES256
+			case static_cast <uint8_t> (hash_t::cipher_t::AES256): {
+				// Если пароль установлен
+				if(!this->_password.empty()){
+					// Выполняем инициализацию AES
+					if(const_cast <hash_t *> (this)->cipher(cipher))
+						// Выполняем шифрование данных
+						hashing(buffer, size, cipher, event_t::DECODE, const_cast <state_t &> (this->_state), result);
+				}
+				// Если кодирование не вышло
+				if(result.empty()){
+					// Выводим сообщение об ошибке
+					this->_log->print("Unable to decode data from AES", log_t::flag_t::WARNING);
+					// Выводим тот же самый буфер как он был передан
+					result.assign(buffer, buffer + size);
+				}
+			} break;
+		}
+	}
 }
 /**
  * compress Метод компрессии данных
@@ -1075,31 +1294,31 @@ vector <char> awh::Hash::compress(const char * buffer, const size_t size, const 
 		// Если метод компрессии установлен Lz4
 		case static_cast <uint8_t> (method_t::LZ4):
 			// Выполняем компрессию данных методом Lz4
-			return this->lz4(buffer, size, event_t::COMPRESS);
+			return this->lz4(buffer, size, event_t::ENCODE);
 		// Если метод компрессии установлен LZma
 		case static_cast <uint8_t> (method_t::LZMA):
 			// Выполняем компрессию данных методом LZma
-			return this->lzma(buffer, size, event_t::COMPRESS);
+			return this->lzma(buffer, size, event_t::ENCODE);
 		// Если метод компрессии установлен Zstandard
 		case static_cast <uint8_t> (method_t::ZSTD):
 			// Выполняем компрессию данных методом Zstandard
-			return this->zstd(buffer, size, event_t::COMPRESS);
+			return this->zstd(buffer, size, event_t::ENCODE);
 		// Если метод компрессии установлен GZip
 		case static_cast <uint8_t> (method_t::GZIP):
 			// Выполняем компрессию данных методом GZip
-			return this->gzip(buffer, size, event_t::COMPRESS);
+			return this->gzip(buffer, size, event_t::ENCODE);
 		// Если метод компрессии установлен BZip2
 		case static_cast <uint8_t> (method_t::BZIP2):
 			// Выполняем компрессию данных методом BZip2
-			return this->bzip2(buffer, size, event_t::COMPRESS);
+			return this->bzip2(buffer, size, event_t::ENCODE);
 		// Если метод компрессии установлен Brotli
 		case static_cast <uint8_t> (method_t::BROTLI):
 			// Выполняем компрессию данных методом Brotli
-			return this->brotli(buffer, size, event_t::COMPRESS);
+			return this->brotli(buffer, size, event_t::ENCODE);
 		// Если метод компрессии установлен Deflate
 		case static_cast <uint8_t> (method_t::DEFLATE):
 			// Выполняем компрессию данных методом Deflate
-			return this->deflate(buffer, size, event_t::COMPRESS);
+			return this->deflate(buffer, size, event_t::ENCODE);
 		// Если метод компрессии не установлен
 		case static_cast <uint8_t> (method_t::NONE):
 			// Выводим переданный буфер данных
@@ -1121,31 +1340,31 @@ vector <char> awh::Hash::decompress(const char * buffer, const size_t size, cons
 		// Если метод декомпрессии установлен Lz4
 		case static_cast <uint8_t> (method_t::LZ4):
 			// Выполняем декомпрессию данных методом Lz4
-			return this->lz4(buffer, size, event_t::DECOMPRESS);
+			return this->lz4(buffer, size, event_t::DECODE);
 		// Если метод декомпрессии установлен LZma
 		case static_cast <uint8_t> (method_t::LZMA):
 			// Выполняем декомпрессию данных методом LZma
-			return this->lzma(buffer, size, event_t::DECOMPRESS);
+			return this->lzma(buffer, size, event_t::DECODE);
 		// Если метод декомпрессии установлен Zstandard
 		case static_cast <uint8_t> (method_t::ZSTD):
 			// Выполняем декомпрессию данных методом Zstandard
-			return this->zstd(buffer, size, event_t::DECOMPRESS);
+			return this->zstd(buffer, size, event_t::DECODE);
 		// Если метод декомпрессии установлен GZip
 		case static_cast <uint8_t> (method_t::GZIP):
 			// Выполняем декомпрессию данных методом GZip
-			return this->gzip(buffer, size, event_t::DECOMPRESS);
+			return this->gzip(buffer, size, event_t::DECODE);
 		// Если метод декомпрессии установлен BZip2
 		case static_cast <uint8_t> (method_t::BZIP2):
 			// Выполняем декомпрессию данных методом BZip2
-			return this->bzip2(buffer, size, event_t::DECOMPRESS);
+			return this->bzip2(buffer, size, event_t::DECODE);
 		// Если метод декомпрессии установлен Brotli
 		case static_cast <uint8_t> (method_t::BROTLI):
 			// Выполняем декомпрессию данных методом Brotli
-			return this->brotli(buffer, size, event_t::DECOMPRESS);
+			return this->brotli(buffer, size, event_t::DECODE);
 		// Если метод декомпрессии установлен Deflate
 		case static_cast <uint8_t> (method_t::DEFLATE):
 			// Выполняем декомпрессию данных методом Deflate
-			return this->deflate(buffer, size, event_t::DECOMPRESS);
+			return this->deflate(buffer, size, event_t::DECODE);
 		// Если метод компрессии не установлен
 		case static_cast <uint8_t> (method_t::NONE):
 			// Выводим переданный буфер данных
@@ -1165,22 +1384,6 @@ void awh::Hash::wbit(const int16_t wbit) noexcept {
 	this->takeoverCompress(this->_takeOverCompress);
 	// Выполняем пересборку контекстов LZ77 для декомпрессии
 	this->takeoverDecompress(this->_takeOverDecompress);
-}
-/**
- * salt Метод установки соли шифрования
- * @param salt соль для шифрования
- */
-void awh::Hash::salt(const string & salt) noexcept {
-	// Если соль передана
-	this->_salt = salt;
-}
-/**
- * pass Метод установки пароля шифрования
- * @param pass пароль шифрования
- */
-void awh::Hash::pass(const string & pass) noexcept {
-	// Если пароль передан
-	this->_pass = pass;
 }
 /**
  * round Метод установки количества раундов шифрования
@@ -1225,6 +1428,22 @@ void awh::Hash::level(const level_t level) noexcept {
 			this->_level[2] = 22;
 		} break;
 	}
+}
+/**
+ * salt Метод установки соли шифрования
+ * @param salt соль для шифрования
+ */
+void awh::Hash::salt(const string & salt) noexcept {
+	// Если соль передана
+	this->_salt = salt;
+}
+/**
+ * password Метод установки пароля шифрования
+ * @param password пароль шифрования
+ */
+void awh::Hash::password(const string & password) noexcept {
+	// Если пароль передан
+	this->_password = password;
 }
 /**
  * takeoverCompress Метод установки флага переиспользования контекста компрессии

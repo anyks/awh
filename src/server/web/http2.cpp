@@ -998,12 +998,12 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 					options->http.clear();
 					// Если клиент согласился на шифрование данных
 					if(this->_encryption.mode){
+						// Устанавливаем размер шифрования
+						options->cipher = this->_encryption.cipher;
 						// Устанавливаем соль шифрования
 						options->hash.salt(this->_encryption.salt);
 						// Устанавливаем пароль шифрования
-						options->hash.pass(this->_encryption.pass);
-						// Устанавливаем размер шифрования
-						options->hash.cipher(this->_encryption.cipher);
+						options->hash.password(this->_encryption.pass);
 						// Устанавливаем параметры шифрования
 						options->http.encryption(this->_encryption.pass, this->_encryption.salt, this->_encryption.cipher);
 					}

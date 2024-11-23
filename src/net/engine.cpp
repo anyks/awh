@@ -289,7 +289,7 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const exception & error) {
+		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("Engine host: %s", log_t::flag_t::WARNING, error.what());
 			// Выводим только первый элемент
