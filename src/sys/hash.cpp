@@ -42,24 +42,26 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 			switch(static_cast <uint8_t> (cipher)){
 				// Если производится работы с BASE64
 				case static_cast <uint8_t> (awh::hash_t::cipher_t::BASE64): {
-					// Определяем событие кодирование или декодирование
-					switch(static_cast <uint8_t> (event)){
-						// Если производится кодирование данных
-						case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
-							// Инициализируем объект BASE64
-							BIO * b64 = BIO_new(BIO_f_base64());
-							// Если объект BASE64 инициализирован
-							if(b64 != nullptr){
-								// Инициализируем объект BIO
-								BIO * bio = BIO_new(BIO_s_mem());
-								// Если объект BIO инициализирован
-								if(bio != nullptr){
-									// Устанавливаем флаги
-									BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-									// Записываем параметры
-									BIO_push(b64, bio);
+					// Инициализируем объект BASE64
+					BIO * b64 = BIO_new(BIO_f_base64());
+					// Если объект BASE64 инициализирован
+					if(b64 != nullptr){
+						// Инициализируем объект BIO
+						BIO * bio = BIO_new(BIO_s_mem());
+						// Если объект BIO инициализирован
+						if(bio != nullptr){
+							// Размер обработанных данных
+							ssize_t length = 0;
+							// Устанавливаем флаги
+							BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+							// Записываем параметры
+							BIO_push(b64, bio);
+							// Определяем событие кодирование или декодирование
+							switch(static_cast <uint8_t> (event)){
+								// Если производится кодирование данных
+								case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
 									// Выполняем кодирование в BASE64
-									ssize_t length = BIO_write(b64, buffer, size);
+									length = BIO_write(b64, buffer, size);
 									// Выполняем очистку объекта
 									BIO_flush(b64);
 									// Если запись выполнена
@@ -68,35 +70,13 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 										result.resize((4 * ((length + 2) / 3)) + 1, 0);
 										// Выполняем чтение полученного результата
 										length = BIO_read(bio, result.data(), result.size());
-										// Если получение хэша произведено успешно
-										if(length > 0)
-											// Удаляем все лишние символы
-											result.erase(result.begin() + length, result.end());
-										// Выполняем сброс результата
-										else result.clear();
+										
 									}
-									// Очищаем всю выделенную память
-									BIO_free_all(bio);
-								// Очищаем объект base64
-								} else BIO_free(b64);
-							}
-						} break;
-						// Если производится декодирование данных
-						case static_cast <uint8_t> (awh::hash_t::event_t::DECODE): {
-							// Инициализируем объект BASE64
-							BIO * b64 = BIO_new(BIO_f_base64());
-							// Если объект BASE64 инициализирован
-							if(b64 != nullptr){
-								// Инициализируем объект BIO
-								BIO * bio = BIO_new(BIO_s_mem());
-								// Если объект BIO инициализирован
-								if(bio != nullptr){
-									// Устанавливаем флаги
-									BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-									// Записываем параметры
-									BIO_push(b64, bio);
+								} break;
+								// Если производится декодирование данных
+								case static_cast <uint8_t> (awh::hash_t::event_t::DECODE): {
 									// Выполняем декодирование из BASE64
-									ssize_t length = BIO_write(bio, buffer, size);
+									length = BIO_write(bio, buffer, size);
 									// Выполняем очистку объекта
 									BIO_flush(bio);
 									// Если запись выполнена
@@ -105,19 +85,19 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 										result.resize((3 * length / 4) + 1, 0);
 										// Выполняем чтение полученного результата
 										length = BIO_read(b64, result.data(), result.size());
-										// Если декодирование хэша произведено успешно
-										if(length > 0)
-											// Удаляем все лишние символы
-											result.erase(result.begin() + length, result.end());
-										// Выполняем сброс результата
-										else result.clear();
 									}
-									// Очищаем всю выделенную память
-									BIO_free_all(bio);
-								// Очищаем объект base64
-								} else BIO_free(b64);
+								} break;
 							}
-						} break;
+							// Если получение хэша произведено успешно
+							if(length > 0)
+								// Удаляем все лишние символы
+								result.erase(result.begin() + length, result.end());
+							// Выполняем сброс результата
+							else result.clear();
+							// Очищаем всю выделенную память
+							BIO_free_all(bio);
+						// Очищаем объект base64
+						} else BIO_free(b64);
 					}
 				} break;
 				// Если производится работы с AES128
