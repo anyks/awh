@@ -109,7 +109,9 @@ string awh::DNS::Worker::host() const noexcept {
 				result = this->_network.at(dist6(generator));
 			// Выводим только первый элемент
 			} else result = this->_network.front();
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const runtime_error & error) {
 			// Выводим сообщение об ошибке
 			this->_self->_log->print("DNS host: %s", log_t::flag_t::WARNING, error.what());
@@ -1414,7 +1416,9 @@ void awh::DNS::shuffle(const int32_t family) noexcept {
 				::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
 			break;
 		}
-	// Выполняем прехват ошибки
+	/**
+	 * Если возникает ошибка
+	 */
 	} catch(const runtime_error & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("DNS shuffle: %s", log_t::flag_t::WARNING, error.what());
@@ -1524,7 +1528,9 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 				std::uniform_int_distribution <std::mt19937::result_type> dist6(0, ips.size() - 1);
 				// Выполняем получение результата
 				result = std::forward <string> (ips.at(dist6(generator)));
-			// Выполняем прехват ошибки
+			/**
+			 * Если возникает ошибка
+			 */
 			} catch(const runtime_error & error) {
 				// Выводим сообщение об ошибке
 				this->_log->print("DNS cache: %s", log_t::flag_t::WARNING, error.what());
@@ -2151,7 +2157,9 @@ string awh::DNS::server(const int32_t family) noexcept {
 				result = ::inet_ntop(family, &i->ip, reinterpret_cast <char *> (this->_buffer.get(buffer_t::type_t::ADDR)), size);
 			} break;
 		}
-	// Выполняем прехват ошибки
+	/**
+	 * Если возникает ошибка
+	 */
 	} catch(const runtime_error & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("DNS server: %s", log_t::flag_t::WARNING, error.what());
@@ -2899,7 +2907,9 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 						std::uniform_int_distribution <std::mt19937::result_type> dist6(0, ips.size() - 1);
 						// Выполняем получение результата
 						result = std::forward <string> (ips.at(dist6(generator)));
-					// Выполняем прехват ошибки
+					/**
+					 * Если возникает ошибка
+					 */
 					} catch(const runtime_error & error) {
 						// Выводим сообщение об ошибке
 						this->_log->print("DNS host: %s", log_t::flag_t::WARNING, error.what());

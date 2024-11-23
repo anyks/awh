@@ -1332,7 +1332,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(this->_scheme.url, request.url);
 							// Создаём объек запроса
-							awh::web_t::req_t query(2.0f, request.method, this->_scheme.url);
+							awh::web_t::req_t query(2.f, request.method, this->_scheme.url);
 							// Если активирован режим прокси-сервера
 							if(this->_proxy.mode){
 								// Активируем точную установку хоста
@@ -1686,7 +1686,7 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 				// Устанавливаем новый адрес запроса
 				this->_uri.combine(this->_scheme.url, url);
 				// Создаём объек запроса
-				awh::web_t::req_t query(2.0f, method, this->_scheme.url);
+				awh::web_t::req_t query(2.f, method, this->_scheme.url);
 				// Если активирован режим прокси-сервера
 				if(this->_proxy.mode){
 					// Активируем точную установку хоста

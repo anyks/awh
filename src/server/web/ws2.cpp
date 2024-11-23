@@ -592,7 +592,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 							// Если рукопожатие не выполнено
 							if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 								// Ответ клиенту по умолчанию успешный
-								awh::web_t::res_t response(2.0f, static_cast <uint32_t> (200));
+								awh::web_t::res_t response(2.f, static_cast <uint32_t> (200));
 								/**
 								 * Если включён режим отладки
 								 */
@@ -625,7 +625,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 											// Проверяем версию протокола
 											if(!options->http.check(ws_core_t::flag_t::VERSION)){
 												// Получаем бинарные данные REST запроса
-												response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (505), "Unsupported protocol version");
+												response = awh::web_t::res_t(2.f, static_cast <uint32_t> (505), "Unsupported protocol version");
 												// Завершаем работу
 												break;
 											}
@@ -727,17 +727,17 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 												// Завершаем работу
 												return 0;
 											// Формируем ответ, что произошла внутренняя ошибка сервера
-											} else response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (500));
+											} else response = awh::web_t::res_t(2.f, static_cast <uint32_t> (500));
 										// Формируем ответ, что страница не доступна
-										} else response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (403), "Handshake failed");
+										} else response = awh::web_t::res_t(2.f, static_cast <uint32_t> (403), "Handshake failed");
 									} break;
 									// Если запрос неудачный
 									case static_cast <uint8_t> (http_t::status_t::FAULT):
 										// Формируем ответ на запрос об авторизации
-										response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (401));
+										response = awh::web_t::res_t(2.f, static_cast <uint32_t> (401));
 									break;
 									// Если результат определить не получилось
-									default: response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (506), "Unknown request");
+									default: response = awh::web_t::res_t(2.f, static_cast <uint32_t> (506), "Unknown request");
 								}
 								// Выполняем очистку HTTP-парсера
 								options->http.clear();

@@ -41,7 +41,7 @@ void awh::client::Websocket2::send(const uint64_t bid) noexcept {
 	// Разрешаем перехватывать контекст для сервера
 	this->_http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeover);
 	// Создаём объек запроса
-	awh::web_t::req_t query(2.0f, awh::web_t::method_t::CONNECT, this->_scheme.url);
+	awh::web_t::req_t query(2.f, awh::web_t::method_t::CONNECT, this->_scheme.url);
 	// Если активирован режим прокси-сервера
 	if(this->_proxy.mode){
 		// Активируем точную установку хоста

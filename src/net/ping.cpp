@@ -67,7 +67,9 @@ string awh::Ping::host(const int32_t family) const noexcept {
 				result = network->at(dist6(generator));
 			// Выводим только первый элемент
 			} else result = network->front();
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("Ping host: %s", log_t::flag_t::WARNING, error.what());
@@ -278,7 +280,9 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 				return result;
 			}
 		}
-	// Выполняем прехват ошибки
+	/**
+	 * Если возникает ошибка
+	 */
 	} catch(const std::exception & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("Ping send: %s", log_t::flag_t::WARNING, error.what());

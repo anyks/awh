@@ -127,7 +127,9 @@ string awh::Authorization::response(const string & method, const string & user, 
 					}
 				} break;
 			}
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());

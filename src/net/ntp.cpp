@@ -38,7 +38,9 @@ string awh::NTP::Worker::host() const noexcept {
 				result = this->_network.at(dist6(generator));
 			// Выводим только первый элемент
 			} else result = this->_network.front();
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_self->_log->print("NTP host: %s", log_t::flag_t::WARNING, error.what());
@@ -453,7 +455,9 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
 				::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
 			break;
 		}
-	// Выполняем прехват ошибки
+	/**
+	 * Если возникает ошибка
+	 */
 	} catch(const std::exception & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("NTP shuffle: %s", log_t::flag_t::WARNING, error.what());
@@ -534,7 +538,9 @@ string awh::NTP::server(const int32_t family) noexcept {
 				result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
 			} break;
 		}
-	// Выполняем прехват ошибки
+	/**
+	 * Если возникает ошибка
+	 */
 	} catch(const std::exception & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("NTP server: %s", log_t::flag_t::WARNING, error.what());

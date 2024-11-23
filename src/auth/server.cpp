@@ -395,7 +395,9 @@ awh::server::Auth::operator std::string() noexcept {
 					result = this->_fmk->format("Basic realm=\"%s\", charset=\"UTF-8\"", "Please login for access");
 				break;
 			}	
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());

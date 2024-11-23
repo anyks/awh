@@ -226,7 +226,9 @@ void awh::WCore::init(const process_t flag) noexcept {
 				}
 			} break;
 		}
-	// Выполняем прехват ошибки
+	/**
+	 * Если возникает ошибка
+	 */
 	} catch(const std::exception & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("WebSocket init: %s", log_t::flag_t::WARNING, error.what());
@@ -368,7 +370,9 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 				this->header("Sec-WebSocket-Extensions", records);
 			}
 		}
-	// Выполняем прехват ошибки
+	/**
+	 * Если возникает ошибка
+	 */
 	} catch(const std::exception & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("WebSocket applyExtensions: %s", log_t::flag_t::WARNING, error.what());
@@ -403,7 +407,9 @@ const string awh::WCore::key() const noexcept {
 			nonce += static_cast <char> (dist(randev));
 		// Выполняем создание ключа
 		this->_hash.encode(nonce.data(), nonce.size(), hash_t::cipher_t::BASE64, result);
-	// Выполняем прехват ошибки
+	/**
+	 * Если возникает ошибка
+	 */
 	} catch(const std::exception & error) {
 		// Выводим сообщение об ошибке
 		this->_log->print("WebSocket Key: %s", log_t::flag_t::WARNING, error.what());

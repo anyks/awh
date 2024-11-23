@@ -661,7 +661,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 							// Выполняем сброс состояния HTTP-парсера
 							stream->http.reset();
 							// Формируем ответ на запрос об авторизации
-							const awh::web_t::res_t & response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (505), "Requested protocol is not supported by this server");
+							const awh::web_t::res_t & response = awh::web_t::res_t(2.f, static_cast <uint32_t> (505), "Requested protocol is not supported by this server");
 							// Получаем заголовки ответа удалённому клиенту
 							const auto & headers = stream->http.reject2(response);
 							// Если бинарные данные ответа получены
@@ -787,12 +787,12 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 						// Если сервер соответствует HTTP-серверу
 						case static_cast <uint8_t> (http_t::identity_t::HTTP):
 							// Формируем ответ на запрос об авторизации
-							response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (401));
+							response = awh::web_t::res_t(2.f, static_cast <uint32_t> (401));
 						break;
 						// Если сервер соответствует PROXY-серверу
 						case static_cast <uint8_t> (http_t::identity_t::PROXY):
 							// Формируем ответ на запрос об авторизации
-							response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (407));
+							response = awh::web_t::res_t(2.f, static_cast <uint32_t> (407));
 						break;
 					}
 					// Получаем заголовки ответа удалённому клиенту
@@ -982,13 +982,13 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 				// Выполняем коммит полученного результата
 				options->http.commit();
 				// Ответ клиенту по умолчанию успешный
-				awh::web_t::res_t response(2.0f, static_cast <uint32_t> (200));
+				awh::web_t::res_t response(2.f, static_cast <uint32_t> (200));
 				// Если рукопожатие выполнено
 				if((options->shake = options->http.handshake(http_t::process_t::REQUEST))){
 					// Проверяем версию протокола
 					if(!options->http.check(ws_core_t::flag_t::VERSION)){
 						// Получаем бинарные данные REST запроса
-						response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (400), "Unsupported protocol version");
+						response = awh::web_t::res_t(2.f, static_cast <uint32_t> (400), "Unsupported protocol version");
 						// Завершаем работу
 						goto End;
 					}
@@ -1080,9 +1080,9 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						// Завершаем работу
 						return;
 					// Формируем ответ, что произошла внутренняя ошибка сервера
-					} else response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (500));
+					} else response = awh::web_t::res_t(2.f, static_cast <uint32_t> (500));
 				// Формируем ответ, что страница не доступна
-				} else response = awh::web_t::res_t(2.0f, static_cast <uint32_t> (403), "Handshake failed");
+				} else response = awh::web_t::res_t(2.f, static_cast <uint32_t> (403), "Handshake failed");
 				// Устанавливаем метку завершения запроса
 				End:
 				// Выполняем очистку HTTP-парсера
@@ -1937,7 +1937,7 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const ui
 										// Выполняем установку сообщения по умолчанию
 										const_cast <string &> (mess) = stream->http.message(code);
 									// Формируем ответ на запрос клиента
-									awh::web_t::res_t response(2.0f, code, mess);
+									awh::web_t::res_t response(2.f, code, mess);
 									// Получаем заголовки ответа удалённому клиенту
 									const auto & headers = stream->http.process2(http_t::process_t::RESPONSE, response);
 									// Если заголовки запроса получены
@@ -2041,7 +2041,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 										const_cast <string &> (mess) = stream->http.message(code);
 									{
 										// Формируем ответ на запрос клиента
-										awh::web_t::res_t response(2.0f, code, mess);
+										awh::web_t::res_t response(2.f, code, mess);
 										// Получаем заголовки ответа удалённому клиенту
 										const auto & headers = stream->http.process2(http_t::process_t::RESPONSE, response);
 										// Если бинарные данные ответа получены

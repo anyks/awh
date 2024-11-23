@@ -173,7 +173,9 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 				// Преобразуем сетевой порядок расположения байтов
 				head.payload = static_cast <uint64_t> (ntohl(head.payload));
 			}
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("WebSocket head: %s", log_t::flag_t::CRITICAL, error.what());
@@ -253,7 +255,9 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			}
 			// Выполняем копирования оставшихся данных в буфер
 			payload.insert(payload.end(), buffer, buffer + size);
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("WebSocket frame: %s", log_t::flag_t::CRITICAL, error.what());
@@ -309,7 +313,9 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 			if(!mess.text.empty())
 				// Выполняем копирования оставшихся данных в буфер
 				result.insert(result.end(), mess.text.begin(), mess.text.end());
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("WebSocket message: %s", log_t::flag_t::CRITICAL, error.what());
@@ -347,7 +353,9 @@ awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noex
 					result.text.assign(buffer.begin() + sizeof(result.code), buffer.end());
 				// Иначе запоминаем, что текст не установлен
 				else result.text.clear();
-			// Выполняем прехват ошибки
+			/**
+			 * Если возникает ошибка
+			 */
 			} catch(const std::exception & error) {
 				// Устанавливаем текст ошибки
 				result = this->_fmk->format("%s", error.what());
@@ -500,7 +508,9 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 			} else if((size > sizeof(head_t)) && (head.payload > MAX_FRAME_SIZE))
 				// Устанавливаем статус битого фрейма
 				head.state = state_t::BAD;
-		// Выполняем прехват ошибки
+		/**
+		 * Если возникает ошибка
+		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
 			this->_log->print("WebSocket get: %s", log_t::flag_t::CRITICAL, error.what());
