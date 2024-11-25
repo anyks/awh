@@ -931,32 +931,32 @@ void awh::client::Websocket1::extraction(const vector <char> & buffer, const boo
 				// Если метод компрессии выбран LZ4
 				case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 					// Выполняем декомпрессию полученных данных
-					data = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::LZ4);
+					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::LZ4, data);
 				break;
 				// Если метод компрессии выбран Zstandard
 				case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 					// Выполняем декомпрессию полученных данных
-					data = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::ZSTD);
+					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::ZSTD, data);
 				break;
 				// Если метод компрессии выбран LZma
 				case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 					// Выполняем декомпрессию полученных данных
-					data = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::LZMA);
+					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::LZMA, data);
 				break;
 				// Если метод компрессии выбран Brotli
 				case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 					// Выполняем декомпрессию полученных данных
-					data = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::BROTLI);
+					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::BROTLI, data);
 				break;
 				// Если метод компрессии выбран BZip2
 				case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 					// Выполняем декомпрессию полученных данных
-					data = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::BZIP2);
+					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::BZIP2, data);
 				break;
 				// Если метод компрессии выбран GZip
 				case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 					// Выполняем декомпрессию полученных данных
-					data = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::GZIP);
+					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::GZIP, data);
 				break;
 				// Если метод компрессии выбран Deflate
 				case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
@@ -965,7 +965,7 @@ void awh::client::Websocket1::extraction(const vector <char> & buffer, const boo
 					// Добавляем хвост в полученные данные
 					this->_hash.setTail(* const_cast <vector <char> *> (&buffer));
 					// Выполняем декомпрессию полученных данных
-					data = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
+					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE, data);
 				} break;
 			}
 			// Если данные получены
@@ -1091,7 +1091,7 @@ bool awh::client::Websocket1::sendMessage(const vector <char> & message, const b
 				// Если нужно производить шифрование
 				if(this->_crypted)
 					// Выполняем шифрование полезной нагрузки
-					this->_hash.encode(message.data(), message.size(), this->_cipher, const_cast <vector <char> &> (message));
+					const_cast <vector <char> &> (message) = this->_hash.encode <vector <char>> (message.data(), message.size(), this->_cipher);
 				// Устанавливаем опкод сообщения
 				head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 				// Указываем, что сообщение передаётся в сжатом виде
@@ -1105,39 +1105,39 @@ bool awh::client::Websocket1::sendMessage(const vector <char> & message, const b
 						// Если метод компрессии выбран LZ4
 						case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress <vector <char>> (message.data(), message.size(), hash_t::method_t::LZ4);
+							this->_hash.compress(message.data(), message.size(), hash_t::method_t::LZ4, data);
 						break;
 						// Если метод компрессии выбран Zstandard
 						case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress <vector <char>> (message.data(), message.size(), hash_t::method_t::ZSTD);
+							this->_hash.compress(message.data(), message.size(), hash_t::method_t::ZSTD, data);
 						break;
 						// Если метод компрессии выбран LZma
 						case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress <vector <char>> (message.data(), message.size(), hash_t::method_t::LZMA);
+							this->_hash.compress(message.data(), message.size(), hash_t::method_t::LZMA, data);
 						break;
 						// Если метод компрессии выбран Brotli
 						case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress <vector <char>> (message.data(), message.size(), hash_t::method_t::BROTLI);
+							this->_hash.compress(message.data(), message.size(), hash_t::method_t::BROTLI, data);
 						break;
 						// Если метод компрессии выбран BZIP2
 						case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress <vector <char>> (message.data(), message.size(), hash_t::method_t::BZIP2);
+							this->_hash.compress(message.data(), message.size(), hash_t::method_t::BZIP2, data);
 						break;
 						// Если метод компрессии выбран GZip
 						case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress <vector <char>> (message.data(), message.size(), hash_t::method_t::GZIP);
+							this->_hash.compress(message.data(), message.size(), hash_t::method_t::GZIP, data);
 						break;
 						// Если метод компрессии выбран Deflate
 						case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
 							// Устанавливаем размер скользящего окна
 							this->_hash.wbit(this->_client.wbit);
 							// Выполняем компрессию полученных данных
-							data = this->_hash.compress <vector <char>> (message.data(), message.size(), hash_t::method_t::DEFLATE);
+							this->_hash.compress(message.data(), message.size(), hash_t::method_t::DEFLATE, data);
 							// Удаляем хвост в полученных данных
 							this->_hash.rmTail(data);
 						} break;

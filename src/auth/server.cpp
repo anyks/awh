@@ -305,11 +305,11 @@ awh::server::Auth::operator std::string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_digest.nonce = this->_hash.hashing <string> (std::to_string(::time(nullptr)), awh::hash_t::type_t::MD5);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::MD5, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
-								this->_digest.opaque = this->_hash.hashing <string> (AWH_SITE, awh::hash_t::type_t::MD5);
+								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::MD5, this->_digest.opaque);
 						} break;
 						// Если алгоритм шифрования SHA1
 						case static_cast <uint16_t> (hash_t::SHA1): {
@@ -318,11 +318,11 @@ awh::server::Auth::operator std::string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_digest.nonce = this->_hash.hashing <string> (std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA1);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA1, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
-								this->_digest.opaque = this->_hash.hashing <string> (AWH_SITE, awh::hash_t::type_t::SHA1);
+								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA1, this->_digest.opaque);
 						} break;
 						// Если алгоритм шифрования SHA224
 						case static_cast <uint16_t> (hash_t::SHA224): {
@@ -331,11 +331,11 @@ awh::server::Auth::operator std::string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_digest.nonce = this->_hash.hashing <string> (std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA224);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA224, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
-								this->_digest.opaque = this->_hash.hashing <string> (AWH_SITE, awh::hash_t::type_t::SHA224);
+								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA224, this->_digest.opaque);
 						} break;
 						// Если алгоритм шифрования SHA256
 						case static_cast <uint16_t> (hash_t::SHA256): {
@@ -344,11 +344,11 @@ awh::server::Auth::operator std::string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_digest.nonce = this->_hash.hashing <string> (std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA256);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA256, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
-								this->_digest.opaque = this->_hash.hashing <string> (AWH_SITE, awh::hash_t::type_t::SHA256);
+								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA256, this->_digest.opaque);
 						} break;
 						// Если алгоритм шифрования SHA384
 						case static_cast <uint16_t> (hash_t::SHA384): {
@@ -357,11 +357,11 @@ awh::server::Auth::operator std::string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_digest.nonce = this->_hash.hashing <string> (std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA384);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA384, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
-								this->_digest.opaque = this->_hash.hashing <string> (AWH_SITE, awh::hash_t::type_t::SHA384);
+								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA384, this->_digest.opaque);
 						} break;
 						// Если алгоритм шифрования SHA512
 						case static_cast <uint16_t> (hash_t::SHA512): {
@@ -370,11 +370,11 @@ awh::server::Auth::operator std::string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_digest.nonce = this->_hash.hashing <string> (std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA512);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA512, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
-								this->_digest.opaque = this->_hash.hashing <string> (AWH_SITE, awh::hash_t::type_t::SHA512);
+								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA512, this->_digest.opaque);
 						} break;
 					}
 					// Создаём строку запроса авторизации

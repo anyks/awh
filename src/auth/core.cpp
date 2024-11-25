@@ -53,7 +53,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 						// Если второй этап создан
 						if(!ha2.empty())
 							// Создаём результат ответа
-							result = this->_hash.hashing <string> (this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::MD5);
+							this->_hash.hashing(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::MD5, result);
 					}
 				} break;
 				// Если алгоритм шифрования SHA1
@@ -67,7 +67,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 						// Если второй этап создан
 						if(!ha2.empty())
 							// Создаём результат ответа
-							result = this->_hash.hashing <string> (this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA1);
+							this->_hash.hashing(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA1, result);
 					}
 				} break;
 				// Если алгоритм шифрования SHA224
@@ -81,7 +81,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 						// Если второй этап создан
 						if(!ha2.empty())
 							// Создаём результат ответа
-							result = this->_hash.hashing <string> (this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA224);
+							this->_hash.hashing(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA224, result);
 					}
 				} break;
 				// Если алгоритм шифрования SHA256
@@ -95,7 +95,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 						// Если второй этап создан
 						if(!ha2.empty())
 							// Создаём результат ответа
-							result = this->_hash.hashing <string> (this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA256);
+							this->_hash.hashing(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA256, result);
 					}
 				} break;
 				// Если алгоритм шифрования SHA384
@@ -109,7 +109,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 						// Если второй этап создан
 						if(!ha2.empty())
 							// Создаём результат ответа
-							result = this->_hash.hashing <string> (this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA384);
+							this->_hash.hashing(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA384, result);
 					}
 				} break;
 				// Если алгоритм шифрования SHA512
@@ -123,7 +123,7 @@ string awh::Authorization::response(const string & method, const string & user, 
 						// Если второй этап создан
 						if(!ha2.empty())
 							// Создаём результат ответа
-							result = this->_hash.hashing <string> (this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA512);
+							this->_hash.hashing(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), awh::hash_t::type_t::SHA512, result);
 					}
 				} break;
 			}
