@@ -392,7 +392,7 @@ namespace awh {
 					~Worker() noexcept;
 			} worker_t;
 		private:
-			// Объект для работы с IP-адресами
+			// Объект IP-адресов
 			net_t _net;
 		private:
 			// Таймаут ожидания выполнения запроса (в секундах)
@@ -431,9 +431,9 @@ namespace awh {
 			// Список кэша полученных IPv6-адресов
 			std::unordered_multimap <string, cache_t <4>> _cacheIPv6;
 		private:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		public:
 			/**

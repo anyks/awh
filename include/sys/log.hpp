@@ -129,7 +129,7 @@ namespace awh {
 			// Функция обратного вызова которая срабатывает при появлении лога
 			function <void (const flag_t, const string &)> _fn;
 		private:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
 		private:
 			/**

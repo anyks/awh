@@ -169,15 +169,15 @@ namespace awh {
 				public:
 					// Контекст двигателя для работы с передачей данных
 					engine_t::ctx_t _ectx;
-					// Создаём объект подключения клиента
+					// Объект подключения клиента
 					engine_t::addr_t _addr;
 				private:
 					// Мютекс для блокировки потока
 					std::recursive_mutex _mtx;
 				private:
-					// Создаём объект фреймворка
+					// Объект фреймворка
 					const fmk_t * _fmk;
-					// Создаём объект работы с логами
+					// Объект работы с логами
 					const log_t * _log;
 				private:
 					// База данных событий
@@ -349,9 +349,9 @@ namespace awh {
 			// Список подключённых брокеров
 			std::map <uint64_t, std::unique_ptr <broker_t>> _brokers;
 		protected:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		public:
 			/**

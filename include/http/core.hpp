@@ -172,20 +172,20 @@ namespace awh {
 			// Объект работы с операционной системой
 			os_t _os;
 		protected:
-			// Создаём объект работы с URI
+			// Объект работы с URI
 			uri_t _uri;
 			// Хранилище функций обратного вызова
 			fn_t _callbacks;
 		private:
-			// Объект для работы с Transfer-Encoding
+			// Объект Transfer-Encoding
 			mutable te_t _te;
 		protected:
-			// Создаём объект HTTP-парсера
+			// Объект HTTP-парсера
 			mutable web_t _web;
-			// Создаём объект для работы с авторизацией
+			// Объект авторизации
 			mutable auth_t _auth;
 		protected:
-			// Создаём объект для работы с сжатыми данными
+			// Объект хэширования
 			mutable hash_t _hash;
 		protected:
 			// Флаг зашифрованной полезной нагрузки
@@ -228,9 +228,9 @@ namespace awh {
 			// Список отправляемых трейлеров
 			std::unordered_map <string, string> _trailers;
 		protected:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		private:
 			/**

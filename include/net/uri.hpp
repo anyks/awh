@@ -44,6 +44,7 @@
 #include <net/net.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/hash.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
@@ -141,8 +142,10 @@ namespace awh {
 					 anchor{""}, callback(nullptr) {}
 			} url_t;
 		private:
-			// Объект работы с IP-адресами
+			// Объект IP-адресов
 			net_t _net;
+			// Объект хэширования
+			hash_t _hash;
 		private:
 			// Объект регулярного выражения
 			regexp_t _regexp;
@@ -154,9 +157,9 @@ namespace awh {
 			// Регулярное выражение для парсинга параметров
 			regexp_t::exp_t _params;
 		private:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Объект для работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		public:
 			/**

@@ -61,7 +61,7 @@ namespace awh {
 						int32_t sid;                     // Идентификатор потока
 						time_t point;                    // Контрольная точка ответа на пинг
 						size_t requests;                 // Количество выполненных запросов
-						http_t http;                     // Создаём объект для работы с HTTP
+						http_t http;                     // Объект для работы с HTTP
 						buffer_t buffer;                 // Буфер бинарных необработанных данных
 						hash_t::cipher_t cipher;         // Формат шифрования
 						engine_t::proto_t proto;         // Активный прототип интернета
@@ -90,9 +90,9 @@ namespace awh {
 					// Список параметров активных клиентов
 					std::map <uint64_t, std::unique_ptr <options_t>> _options;
 				private:
-					// Создаём объект фреймворка
+					// Объект фреймворка
 					const fmk_t * _fmk;
-					// Создаём объект работы с логами
+					// Объект работы с логами
 					const log_t * _log;
 				public:
 					/**

@@ -41,7 +41,7 @@ namespace awh {
 		 */
 		typedef class AWHSHARED_EXPORT AWH {
 			private:
-				// Объект работы с URI ссылками
+				// Объект работы с URI
 				uri_t _uri;
 				// Объект DNS-резолвера
 				dns_t _dns;

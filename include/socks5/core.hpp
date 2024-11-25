@@ -187,7 +187,7 @@ namespace awh {
 			// Буфер бинарных данных
 			mutable vector <char> _buffer;
 		protected:
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		protected:
 			/**

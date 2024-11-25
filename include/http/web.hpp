@@ -268,7 +268,7 @@ namespace awh {
 			// Размер тела сообщения
 			int64_t _bodySize;
 		private:
-			// Создаём объект работы с URI
+			// Объект работы с URI
 			uri_t _uri;
 			// Объект собираемого чанка
 			chunk_t _chunk;
@@ -293,9 +293,9 @@ namespace awh {
 			// Список стандартных заголовков
 			std::unordered_map <string, std::set <proto_t>> _standardHeaders;
 		private:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		private:
 			/**

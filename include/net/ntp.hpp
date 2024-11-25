@@ -271,9 +271,9 @@ namespace awh {
 					~Worker() noexcept;
 			} worker_t;
 		private:
-			// Объект для работы с IP-адресами
+			// Объект IP-адресов
 			net_t _net;
-			// Объект работы с DNS-резолвингом
+			// Объект DNS-резолвера
 			dns_t _dns;
 		private:
 			// Время жизни кэша в миллисекундах
@@ -304,9 +304,9 @@ namespace awh {
 			// Адреса серверов имён NTP для IPv6
 			vector <server_t <4>> _serversIPv6;
 		private:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		public:
 			/**

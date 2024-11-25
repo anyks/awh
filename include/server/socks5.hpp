@@ -102,7 +102,7 @@ namespace awh {
 			private:
 				// Объект DNS-резолвера
 				dns_t _dns;
-				// Объект для работы с сетью
+				// Объект IP-адресов
 				net_t _net;
 				// Хранилище функций обратного вызова
 				fn_t _callbacks;
@@ -128,9 +128,9 @@ namespace awh {
 				// Список активных клиентов
 				std::map <uint64_t, std::unique_ptr <client::core_t>> _clients;
 			private:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
 			private:
 				/**

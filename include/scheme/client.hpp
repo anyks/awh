@@ -62,9 +62,9 @@ namespace awh {
 			public:
 				// Создаем объект сети
 				net_t net;
-				// Создаём объект для работы с Socks5
+				// Объект для работы с Socks5
 				socks5_t socks5;
-				// Создаём объект для работы с HTTP
+				// Объект для работы с HTTP
 				client::http_t http;
 			public:
 				/**

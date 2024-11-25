@@ -154,7 +154,7 @@ class WebClient {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 			
 			if(mode == client::web_t::mode_t::CONNECT){
-				uri_t uri(this->_fmk);
+				uri_t uri(this->_fmk, this->_log);
 
 				client::web_t::request_t req1, req2;
 
@@ -286,7 +286,7 @@ using namespace awh;
 int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk{};
 	log_t log(&fmk);
-	uri_t uri(&fmk);
+	uri_t uri(&fmk, &log);
 
 	client::core_t core(&fmk, &log);
 	client::awh_t awh(&core, &fmk, &log);
@@ -352,6 +352,8 @@ using namespace std;
 using namespace awh;
 
 class WebServer {
+	private:
+		hash_t _hash;
 	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
@@ -419,7 +421,7 @@ class WebServer {
 					awh->trailer(sid, bid, "Goga", "Hello");
 					awh->trailer(sid, bid, "Hello", "World");
 					awh->trailer(sid, bid, "Anyks", "Best of the best");
-					awh->trailer(sid, bid, "Checksum", this->_fmk->hash(body, fmk_t::hash_t::MD5));
+					awh->trailer(sid, bid, "Checksum", this->_hash.hashing <string> (body, hash_t::type_t::MD5));
 
 				}
 
@@ -469,7 +471,7 @@ class WebServer {
 			}
 		}
 	public:
-		WebServer(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log), _method(awh::web_t::method_t::NONE) {}
+		WebServer(const fmk_t * fmk, const log_t * log) : _hash(log), _fmk(fmk), _log(log), _method(awh::web_t::method_t::NONE) {}
 };
 
 int32_t main(int32_t argc, char * argv[]){
@@ -495,8 +497,6 @@ int32_t main(int32_t argc, char * argv[]){
 	ssl.key    = "./certs/certificates/server-key.pem";
 	ssl.cert   = "./certs/certificates/server-cert.pem";
 	core.ssl(ssl);
-
-	awh.clusterAutoRestart(true);
 
 	// awh.authType(auth_t::type_t::BASIC);
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
@@ -733,7 +733,7 @@ class Executor {
 			(void) bid;
 			(void) method;
 
-			uri_t uri(this->_fmk);
+			uri_t uri(this->_fmk, this->_log);
 
 			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, bid, uri.url(url).c_str());
 
@@ -805,6 +805,8 @@ using namespace awh;
 
 class WebServer {
 	private:
+		hash_t _hash;
+	private:
 		const fmk_t * _fmk;
 		const log_t * _log;
 	private:
@@ -875,7 +877,7 @@ class WebServer {
 					awh->trailer(sid, bid, "Goga", "Hello");
 					awh->trailer(sid, bid, "Hello", "World");
 					awh->trailer(sid, bid, "Anyks", "Best of the best");
-					awh->trailer(sid, bid, "Checksum", this->_fmk->hash(body, fmk_t::hash_t::MD5));
+					awh->trailer(sid, bid, "Checksum", this->_hash.hashing <string> (body, hash_t::type_t::MD5));
 				}
 
 				awh->send(sid, bid, 200, "OK", vector <char> (body.begin(), body.end()));
@@ -924,7 +926,7 @@ class WebServer {
 			}
 		}
 	public:
-		WebServer(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log), _method(awh::web_t::method_t::NONE) {}
+		WebServer(const fmk_t * fmk, const log_t * log) : _hash(log), _fmk(fmk), _log(log), _method(awh::web_t::method_t::NONE) {}
 };
 
 int32_t main(int32_t argc, char * argv[]){
@@ -957,8 +959,6 @@ int32_t main(int32_t argc, char * argv[]){
 	ssl.key    = "./certs/certificates/server-key.pem";
 	ssl.cert   = "./certs/certificates/server-cert.pem";
 	core.ssl(ssl);
-
-	awh.clusterAutoRestart(true);
 
 	// awh.authType(auth_t::type_t::BASIC);
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
@@ -2334,7 +2334,9 @@ using namespace std;
 using namespace awh;
 
 int32_t main(int32_t argc, char * argv[]){
-	net_t net{};
+	fmk_t fmk;
+	log_t log(&fmk);
+	net_t net(&log);
 
 	net = "[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]";
 	cout << " [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] || " << net << " === " << net.get(net_t::format_t::LONG_IPV4) << " === " << net.get(net_t::format_t::MIDDLE_IPV4) << " === " << net.get(net_t::format_t::SHORT_IPV4) << endl;

@@ -133,7 +133,7 @@ namespace awh {
 				// Очередь данных буферов записи
 				std::deque <std::unique_ptr <buffer_t>> _data;
 			private:
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
 			public:
 				/**
@@ -271,7 +271,7 @@ namespace awh {
 				// Набор собранных данных
 				std::queue <std::pair <size_t, std::unique_ptr <uint8_t []>>> _data;
 			private:
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
 			public:
 				/**

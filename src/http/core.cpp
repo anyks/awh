@@ -41,10 +41,8 @@ void awh::Http::encrypt() noexcept {
 			const auto & body = this->_web.body();
 			// Если тело сообщения получено
 			if(!body.empty()){
-				// Результат работы шифрования
-				vector <char> result;
 				// Выполняем шифрование полезной нагрузки
-				this->_hash.encode(body.data(), body.size(), this->_cipher, result);
+				const vector <char> & result = this->_hash.encode <vector <char>> (body.data(), body.size(), this->_cipher);
 				// Если шифрование выполнено
 				if((this->_crypted = !result.empty())){
 					// Выполняем очистку данных тела
@@ -88,10 +86,8 @@ void awh::Http::decrypt() noexcept {
 			const auto & body = this->_web.body();
 			// Если тело сообщения получено
 			if(!body.empty()){
-				// Результат работы дешифрования
-				vector <char> result;
 				// Выполняем дешифрование полезной нагрузки
-				this->_hash.decode(body.data(), body.size(), this->_cipher, result);
+				const vector <char> & result = this->_hash.decode <vector <char>> (body.data(), body.size(), this->_cipher);
 				// Если дешифрование выполнено
 				if(!(this->_crypted = result.empty())){
 					// Выполняем очистку данных тела
@@ -140,7 +136,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::LZ4);
+						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::LZ4);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -162,7 +158,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом Zstandard
 					case static_cast <uint8_t> (compressor_t::ZSTD): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::ZSTD);
+						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::ZSTD);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -184,7 +180,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом LZma
 					case static_cast <uint8_t> (compressor_t::LZMA): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::LZMA);
+						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::LZMA);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -206,7 +202,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом Brotli
 					case static_cast <uint8_t> (compressor_t::BROTLI): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::BROTLI);
+						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::BROTLI);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -228,7 +224,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом BZip2
 					case static_cast <uint8_t> (compressor_t::BZIP2): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::BZIP2);
+						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::BZIP2);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -250,7 +246,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом GZip
 					case static_cast <uint8_t> (compressor_t::GZIP): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::GZIP);
+						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::GZIP);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -272,7 +268,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом Deflate
 					case static_cast <uint8_t> (compressor_t::DEFLATE): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_hash.compress(body.data(), body.size(), hash_t::method_t::DEFLATE);
+						auto result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::DEFLATE);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -327,7 +323,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::LZ4);
+						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::LZ4);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -341,7 +337,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом Zstandard
 					case static_cast <uint8_t> (compressor_t::ZSTD): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::ZSTD);
+						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::ZSTD);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -355,7 +351,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом LZma
 					case static_cast <uint8_t> (compressor_t::LZMA): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::LZMA);
+						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::LZMA);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -369,7 +365,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом Brotli
 					case static_cast <uint8_t> (compressor_t::BROTLI): {
 						// Выполняем декомпрессию данных
-						const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::BROTLI);
+						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::BROTLI);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -383,7 +379,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом BZip2
 					case static_cast <uint8_t> (compressor_t::BZIP2): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::BZIP2);
+						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::BZIP2);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -397,7 +393,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом GZip
 					case static_cast <uint8_t> (compressor_t::GZIP): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress(body.data(), body.size(), hash_t::method_t::GZIP);
+						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::GZIP);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -415,7 +411,7 @@ void awh::Http::decompress() noexcept {
 						// Добавляем хвост в полученные данные
 						this->_hash.setTail(buffer);
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
+						const auto & result = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела

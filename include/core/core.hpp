@@ -90,9 +90,9 @@ namespace awh {
 					// Функция обратного вызова при остановки модуля
 					function <void (const bool, const bool)> _closedown;
 				private:
-					// Создаём объект фреймворка
+					// Объект фреймворка
 					const fmk_t * _fmk;
-					// Создаём объект работы с логами
+					// Объект работы с логами
 					const log_t * _log;
 				public:
 					/**
@@ -178,9 +178,9 @@ namespace awh {
 			// Флаг обработки сигналов
 			scheme_t::mode_t _signals;
 		protected:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		private:
 			/**

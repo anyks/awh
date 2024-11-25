@@ -101,9 +101,9 @@ namespace awh {
 					// Список параметров активных клиентов
 					std::map <uint64_t, std::unique_ptr <options_t>> _options;
 				private:
-					// Создаём объект фреймворка
+					// Объект фреймворка
 					const fmk_t * _fmk;
-					// Создаём объект работы с логами
+					// Объект работы с логами
 					const log_t * _log;
 				public:
 					/**

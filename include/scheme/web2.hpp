@@ -54,7 +54,7 @@ namespace awh {
 					typedef struct Stream {
 						bool crypted;                    // Флаг шифрования сообщений
 						int32_t sid;                     // Идентификатор потока
-						http_t http;                     // Создаём объект для работы с HTTP
+						http_t http;                     // Объект для работы с HTTP
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
 						 * Stream Конструктор
@@ -104,9 +104,9 @@ namespace awh {
 					// Список параметров активных клиентов
 					std::map <uint64_t, std::unique_ptr <options_t>> _options;
 				private:
-					// Создаём объект фреймворка
+					// Объект фреймворка
 					const fmk_t * _fmk;
-					// Создаём объект работы с логами
+					// Объект работы с логами
 					const log_t * _log;
 				public:
 					/**

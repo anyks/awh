@@ -108,14 +108,14 @@ namespace awh {
 						int32_t sid;                     // Идентификатор потока
 						time_t point;                    // Контрольная точка ответа на пинг
 						time_t sendPing;                 // Время отправленного пинга
-						hash_t hash;                     // Создаём объект для компрессии-декомпрессии данных
+						hash_t hash;                     // Объект хэширования
 						allow_t allow;                   // Объект разрешения обмена данными
-						frame_t frame;                   // Объект для работы с фреймом WebSocket
+						frame_t frame;                   // Объект фрейма WebSocket
 						ws::mess_t mess;                 // Объект отправляемого сообщения
 						buffer_t buffer;                 // Объект буфера данных
 						partner_t client;                // Объект партнёра клиента
 						partner_t server;                // Объект партнёра сервера
-						server::ws_t http;               // Создаём объект для работы с HTTP
+						server::ws_t http;               // Объект для работы с HTTP
 						hash_t::cipher_t cipher;         // Формат шифрования
 						engine_t::proto_t proto;         // Активный прототип интернета
 						std::recursive_mutex mtx;        // Мютекс для блокировки потока
@@ -144,9 +144,9 @@ namespace awh {
 					// Список параметров активных клиентов
 					std::map <uint64_t, std::unique_ptr <options_t>> _options;
 				private:
-					// Создаём объект фреймворка
+					// Объект фреймворка
 					const fmk_t * _fmk;
-					// Создаём объект работы с логами
+					// Объект работы с логами
 					const log_t * _log;
 				public:
 					/**

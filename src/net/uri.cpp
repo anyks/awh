@@ -279,7 +279,7 @@ string awh::URI::etag(const string & text) const noexcept {
 	// Если текст передан
 	if(!text.empty()){
 		// Получаем sha1 хэш строки
-		const string & sha1 = this->_fmk->hash(text, fmk_t::hash_t::SHA1);
+		const string & sha1 = this->_hash.hashing <string> (text, hash_t::type_t::SHA1);
 		// Если строка получена
 		if(!sha1.empty()){
 			// Извлекаем первую часть хэша
@@ -1164,7 +1164,7 @@ string awh::URI::operator = (const url_t & url) const noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::URI::URI(const fmk_t * fmk, const log_t * log) noexcept : _net(log), _fmk(fmk), _log(log) {
+awh::URI::URI(const fmk_t * fmk, const log_t * log) noexcept : _net(log), _hash(log), _fmk(fmk), _log(log) {
 	// Устанавливаем регулярное выражение для парсинга URI
 	this->_uri = this->_regexp.build("^(([^:/?#]+):)?(\\/\\/([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 	// Устанавливаем регулярное выражение для парсинга E-Mail

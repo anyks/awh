@@ -264,7 +264,7 @@ namespace awh {
 					}) {}
 				} settings_t;
 			private:
-				// Объект работы с URI ссылками
+				// Объект работы с URI
 				uri_t _uri;
 				// Объект идентификации сервиса
 				ident_t _ident;

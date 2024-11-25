@@ -74,7 +74,7 @@ namespace awh {
 				// Хости сервера
 				string _host;
 			private:
-				// Объект работы с URI ссылками
+				// Объект работы с URI
 				uri_t _uri;
 			private:
 				// Ядро для локального таймера
@@ -94,11 +94,11 @@ namespace awh {
 				// Список отключившихся клиентов
 				std::map <uint64_t, time_t> _disconnected;
 			private:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
-				// Создаём объект сетевого ядра
+				// Объект сетевого ядра
 				const server::core_t * _core;
 			private:
 				/**

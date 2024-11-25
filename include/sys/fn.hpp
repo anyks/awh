@@ -115,7 +115,7 @@ namespace awh {
 			// Функция обратного вызова при получении события установки или удаления функции
 			function <void (const event_t, const uint64_t, const string &, const dump_t *)> _callback;
 		private:
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		private:
 			/**

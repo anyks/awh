@@ -202,7 +202,7 @@ string awh::client::Auth::auth(const string & method) noexcept {
 						// Если ключ клиента не создан, создаём его
 						if(this->_digest.cnonce.empty()){
 							// Устанавливаем ключ клиента
-							this->_digest.cnonce = this->_fmk->hash(std::to_string(time(nullptr)), fmk_t::hash_t::MD5);
+							this->_digest.cnonce = this->_hash.hashing <string> (std::to_string(::time(nullptr)), awh::hash_t::type_t::MD5);
 							// Обрезаем лишние символы
 							this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
 						}

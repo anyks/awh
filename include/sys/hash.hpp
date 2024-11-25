@@ -21,6 +21,7 @@
 #include <ctime>
 #include <string>
 #include <vector>
+#include <cstdio>
 #include <csignal>
 #include <cstring>
 #include <sys/stat.h>
@@ -62,9 +63,11 @@
  * Подключаем OpenSSL
  */
 #include <openssl/md5.h>
+#include <openssl/sha.h>
 #include <openssl/aes.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 
 /**
  * Наши модули
@@ -113,6 +116,15 @@ namespace awh {
 				DECODE = 0x02  // Декодирование данных
 			};
 			/**
+			 * Уровень компрессии
+			 */
+			enum class level_t : uint8_t {
+				NONE   = 0x00, // Уровень сжатия не установлен
+				BEST   = 0x01, // Максимальный уровень компрессии
+				SPEED  = 0x02, // Максимальная скорость компрессии
+				NORMAL = 0x03  // Нормальный уровень компрессии
+			};
+			/**
 			 * Набор размеров шифрования
 			 */
 			enum class cipher_t : uint16_t {
@@ -136,13 +148,16 @@ namespace awh {
 				DEFLATE = 0x07  // Метод сжатия Deflate
 			};
 			/**
-			 * Уровень компрессии
+			 * type_t Тип хэш-суммы
 			 */
-			enum class level_t : uint8_t {
-				NONE   = 0x00, // Уровень сжатия не установлен
-				BEST   = 0x01, // Максимальный уровень компрессии
-				SPEED  = 0x02, // Максимальная скорость компрессии
-				NORMAL = 0x03  // Нормальный уровень компрессии
+			enum class type_t : uint8_t {
+				NONE   = 0x00, // Не установлено
+				MD5    = 0x01, // Хэш MD5
+				SHA1   = 0x02, // Хэш SHA1
+				SHA224 = 0x03, // Хэш SHA224
+				SHA256 = 0x04, // Хэш SHA256
+				SHA384 = 0x05, // Хэш SHA384
+				SHA512 = 0x06  // Хэш SHA512
 			};
 		private:
 			// Стейт шифрования
@@ -172,13 +187,8 @@ namespace awh {
 			// Создаем поток ZLib для компрессии
 			mutable z_stream _zdef;
 		private:
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
-		private:
-			// Устанавливаем уровень сжатия
-			static constexpr uint16_t DEFAULT_MEM_LEVEL = 4;
-			// Размер буфера чанка в байтах
-			static constexpr uint32_t CHUNK_BUFFER_SIZE = 0x4000;
 		private:
 			/**
 			 * cipher Метод инициализации AES шифрования
@@ -197,102 +207,168 @@ namespace awh {
 			 * @param buffer буфер для добавления хвоста
 			 */
 			void setTail(vector <char> & buffer) const noexcept;
-		private:
-			/**
-			 * lz4 Метод работы с компрессором Lz4
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param event  событие выполнения операции
-			 * @return       результат выполнения операции
-			 */
-			vector <char> lz4(const char * buffer, const size_t size, const event_t event) noexcept;
-			/**
-			 * lzma Метод работы с компрессором LZma
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param event  событие выполнения операции
-			 * @return       результат выполнения операции
-			 */
-			vector <char> lzma(const char * buffer, const size_t size, const event_t event) noexcept;
-			/**
-			 * zstd Метод работы с компрессором Zstandard
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param event  событие выполнения операции
-			 * @return       результат выполнения операции
-			 */
-			vector <char> zstd(const char * buffer, const size_t size, const event_t event) noexcept;
-			/**
-			 * gzip Метод работы с компрессором GZip
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param event  событие выполнения операции
-			 * @return       результат выполнения операции
-			 */
-			vector <char> gzip(const char * buffer, const size_t size, const event_t event) noexcept;
-			/**
-			 * bzip2 Метод работы с компрессором BZip2
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param event  событие выполнения операции
-			 * @return       результат выполнения операции
-			 */
-			vector <char> bzip2(const char * buffer, const size_t size, const event_t event) noexcept;
-			/**
-			 * brotli Метод работы с компрессором Brotli
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param event  событие выполнения операции
-			 * @return       результат выполнения операции
-			 */
-			vector <char> brotli(const char * buffer, const size_t size, const event_t event) noexcept;
-			/**
-			 * deflate Метод работы с компрессором Deflate
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param event  событие выполнения операции
-			 * @return       результат выполнения операции
-			 */
-			vector <char> deflate(const char * buffer, const size_t size, const event_t event) noexcept;
 		public:
 			/**
-			 * encode Метод кодирования в BASE64
+			 * Шаблон метода хэширования текста
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * hashing Метод хэширования текста
+			 * @param text текст для хэширования
+			 * @param type тип хэш-суммы
+			 * @return     результат хэширования
+			 */
+			auto hashing(const string & text, const type_t type) const noexcept -> T {
+				// Результат работы функции
+				T result;
+				// Если текст передан
+				if(!text.empty())
+					// Выполняем хэширование
+					this->hashing(text, type, result);
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * hashing Метод хэширования текста
+			 * @param text   текст для хэширования
+			 * @param type   тип хэш-суммы
+			 * @param result строка куда следует положить результат
+			 */
+			void hashing(const string & text, const type_t type, string & result) const noexcept;
+			/**
+			 * hash Метод хэширования текста
+			 * @param text   текст для хэширования
+			 * @param type   тип хэш-суммы
+			 * @param result буфер куда следует положить результат
+			 */
+			void hashing(const string & text, const type_t type, vector <char> & result) const noexcept;
+		public:
+			/**
+			 * Шаблон метода хэширования текста с ключом
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * hmac Метод хэширования текста с ключом
+			 * @param key  ключ для подписи
+			 * @param text текст для хэширования
+			 * @param type тип хэш-суммы
+			 * @return     результат хэширования
+			 */
+			auto hmac(const string & key, const string & text, const type_t type) const noexcept -> T {
+				// Результат работы функции
+				T result;
+				// Если текст передан
+				if(!text.empty())
+					// Выполняем хэширование
+					this->hmac(key, text, type, result);
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * hmac Метод хэширования текста с ключом
+			 * @param key    ключ для подписи
+			 * @param text   текст для хэширования
+			 * @param type   тип хэш-суммы
+			 * @param result строка куда следует положить результат
+			 */
+			void hmac(const string & key, const string & text, const type_t type, string & result) const noexcept;
+			/**
+			 * hmac Метод хэширования текста с ключом
+			 * @param key    ключ для подписи
+			 * @param text   текст для хэширования
+			 * @param type   тип хэш-суммы
+			 * @param result буфер куда следует положить результат
+			 */
+			void hmac(const string & key, const string & text, const type_t type, vector <char> & result) const noexcept;
+		public:
+			/**
+			 * Шаблон метода кодирования
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * encode Метод кодирования
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       результат кодирования
+			 */
+			auto encode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T {
+				// Результат работы функции
+				T result;
+				// Если буфер данных передан
+				if((buffer != nullptr) && (size > 0))
+					// Выполняем кодирование
+					this->encode(buffer, size, cipher, result);
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * Шаблон метода декодирования
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * decode Метод декодирования
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       результат кодирования
+			 */
+			auto decode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T {
+				// Результат работы функции
+				T result;
+				// Если буфер данных передан
+				if((buffer != nullptr) && (size > 0))
+					// Выполняем декодирование
+					this->decode(buffer, size, cipher, result);
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * encode Метод кодирования
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @param result строка куда следует положить результат
-			 * @return       результирующая строка
 			 */
 			void encode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept;
 			/**
-			 * decode Метод декодирования из BASE64
+			 * encode Метод кодирования
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @param result буфер куда следует положить результат
+			 */
+			void encode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
+		public:
+			/**
+			 * decode Метод декодирования
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @param result строка куда следует положить результат
-			 * @return       результирующая строка
 			 */
 			void decode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept;
-		public:
 			/**
-			 * encode Метод кодирования в BASE64
+			 * decode Метод декодирования
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @param result буфер куда следует положить результат
-			 * @return       результирующая строка
-			 */
-			void encode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
-			/**
-			 * decode Метод декодирования из BASE64
-			 * @param buffer буфер данных для шифрования
-			 * @param size   размер данных для шифрования
-			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
-			 * @param result буфер куда следует положить результат
-			 * @return       результирующая строка
 			 */
 			void decode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
 		public:
+			/**
+			 * Шаблон метода декодирования
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
 			/**
 			 * compress Метод компрессии данных
 			 * @param buffer буфер данных для компрессии
@@ -300,7 +376,21 @@ namespace awh {
 			 * @param method метод компрессии
 			 * @return       результат компрессии
 			 */
-			vector <char> compress(const char * buffer, const size_t size, const method_t method) noexcept;
+			auto compress(const char * buffer, const size_t size, const method_t method) const noexcept -> T {
+				// Результат работы функции
+				T result;
+				// Если буфер данных передан
+				if((buffer != nullptr) && (size > 0))
+					// Выполняем кодирование
+					this->compress(buffer, size, method, result);
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * Шаблон метода декодирования
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
 			/**
 			 * decompress Метод декомпрессии данных
 			 * @param buffer буфер данных для декомпрессии
@@ -308,7 +398,50 @@ namespace awh {
 			 * @param method метод компрессии
 			 * @return       результат декомпрессии
 			 */
-			vector <char> decompress(const char * buffer, const size_t size, const method_t method) noexcept;
+			auto decompress(const char * buffer, const size_t size, const method_t method) const noexcept -> T {
+				// Результат работы функции
+				T result;
+				// Если буфер данных передан
+				if((buffer != nullptr) && (size > 0))
+					// Выполняем декомпрессию
+					this->decompress(buffer, size, method, result);
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * compress Метод компрессии данных
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @param method метод компрессии
+			 * @param result строка куда следует положить результат
+			 */
+			void compress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept;
+			/**
+			 * compress Метод компрессии данных
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @param method метод компрессии
+			 * @param result буфер куда следует положить результат
+			 */
+			void compress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept;
+		public:
+			/**
+			 * decompress Метод декомпрессии данных
+			 * @param buffer буфер данных для декомпрессии
+			 * @param size   размер данных для декомпрессии
+			 * @param method метод компрессии
+			 * @param result строка куда следует положить результат
+			 */
+			void decompress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept;
+			/**
+			 * decompress Метод декомпрессии данных
+			 * @param buffer буфер данных для декомпрессии
+			 * @param size   размер данных для декомпрессии
+			 * @param method метод компрессии
+			 * @param result буфер куда следует положить результат
+			 */
+			void decompress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept;
 		public:
 			/**
 			 * wbit Метод установки размера скользящего окна

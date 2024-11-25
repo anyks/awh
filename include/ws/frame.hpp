@@ -162,9 +162,9 @@ namespace awh {
 					 payload(0), optcode(opcode_t::TEXT) {}
 				} __attribute__((packed)) head_t;
 			private:
-				// Создаём объект фреймворка
+				// Объект фреймворка
 				const fmk_t * _fmk;
-				// Создаём объект работы с логами
+				// Объект работы с логами
 				const log_t * _log;
 			private:
 				/**

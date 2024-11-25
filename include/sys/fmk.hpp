@@ -44,13 +44,6 @@
 #include <net/nwt.hpp>
 
 /**
- * Подключаем OpenSSL
- */
-#include <openssl/md5.h>
-#include <openssl/sha.h>
-#include <openssl/hmac.h>
-
-/**
  * Выполняем работу не для OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -101,24 +94,6 @@ namespace awh {
 				MILLISECONDS = 0x08, // Миллисекунды
 				MICROSECONDS = 0x09, // Микросекунды
 				NANOSECONDS  = 0x0A  // Наносекунды
-			};
-			/**
-			 * hash_t Тип хэш-суммы
-			 */
-			enum class hash_t : uint8_t {
-				NONE        = 0x00, // Не установлено
-				MD5         = 0x01, // Хэш MD5
-				SHA1        = 0x02, // Хэш SHA1
-				SHA224      = 0x03, // Хэш SHA224
-				SHA256      = 0x04, // Хэш SHA256
-				SHA384      = 0x05, // Хэш SHA384
-				SHA512      = 0x06, // Хэш SHA512
-				HMAC_MD5    = 0x07, // Хэш HMAC MD5
-				HMAC_SHA1   = 0x08, // Хэш HMAC SHA1
-				HMAC_SHA224 = 0x09, // Хэш HMAC SHA224
-				HMAC_SHA256 = 0x0A, // Хэш HMAC SHA256
-				HMAC_SHA384 = 0x0B, // Хэш HMAC SHA384
-				HMAC_SHA512 = 0x0C  // Хэш HMAC SHA512
 			};
 			/**
 			 * Флаги трансформации строк
@@ -439,22 +414,6 @@ namespace awh {
 			 * @return      штамп времени в указанных единицах измерения
 			 */
 			time_t timestamp(const stamp_t stamp) const noexcept;
-		public:
-			/**
-			 * hash Метод хэширования текста
-			 * @param text текст для хэширования
-			 * @param hash тип хэш-суммы
-			 * @return     полученная хэш-сумма
-			 */
-			string hash(const string & text, const hash_t hash) const noexcept;
-			/**
-			 * hash Метод хэширования текста
-			 * @param key  ключ для подписи
-			 * @param text текст для хэширования
-			 * @param hash тип хэш-суммы
-			 * @return     полученная хэш-сумма
-			 */
-			string hash(const string & key, const string & text, const hash_t hash) const noexcept;
 		public:
 			/**
 			 * iconv Метод конвертирования строки кодировки

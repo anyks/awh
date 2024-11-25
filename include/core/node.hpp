@@ -139,11 +139,11 @@ namespace awh {
 		protected:
 			// Объект работы с файловой системой
 			fs_t _fs;
-			// Объект работы с IP-адресами
+			// Объект IP-адресов
 			net_t _net;
-			// Объект работы с URI-адресами
+			// Объект работы с URI
 			uri_t _uri;
-			// Объект для работы с сетевым двигателем
+			// Объект сетевого двигателя
 			engine_t _engine;
 			// Режим отправки сообщений
 			sending_t _sending;
@@ -169,7 +169,7 @@ namespace awh {
 			// Список брокеров подключения
 			std::map <uint64_t, const scheme_t::broker_t *> _brokers;
 		protected:
-			// Создаём объект DNS-резолвера
+			// Объект DNS-резолвера
 			const dns_t * _dns;
 		protected:
 			/**

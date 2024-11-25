@@ -140,9 +140,9 @@ namespace awh {
 			// Максимальный размер сетевого буфера
 			static constexpr uint16_t IF_BUFFER_SIZE = 4000;
 		private:
-			// Создаём объект фреймворка
+			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Создаём объект работы с логами
+			// Объект работы с логами
 			const log_t * _log;
 		private:
 			/**
