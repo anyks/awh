@@ -276,7 +276,7 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
-### Example simple WEB-client
+### Example WEB-client
 ```c++
 #include <client/awh.hpp>
 
