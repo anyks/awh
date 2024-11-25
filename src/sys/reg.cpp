@@ -123,7 +123,7 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим сообщение в лог
-			fprintf(stderr, "RegExp exec: %s", "memory allocation error");
+			::fprintf(stderr, "RegExp exec: %s", "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -195,7 +195,7 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим сообщение в лог
-			fprintf(stderr, "RegExp exec: %s", "memory allocation error");
+			::fprintf(stderr, "RegExp exec: %s", "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -321,7 +321,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 		 */
 		} catch(const bad_alloc &) {
 			// Выводим сообщение в лог
-			fprintf(stderr, "RegExp build: %s", "memory allocation error");
+			::fprintf(stderr, "RegExp build: %s", "memory allocation error");
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

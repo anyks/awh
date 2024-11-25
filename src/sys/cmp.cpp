@@ -74,7 +74,7 @@ void awh::cmp::Encoder::Buffer::push(const uint64_t id, const mode_t mode, const
 	 */
 	} catch(const bad_alloc &) {
 		// Выводим сообщение об ошибке
-		fprintf(stderr, "CMP Encoder: %s", "memory allocation error");
+		::fprintf(stderr, "CMP Encoder: %s", "memory allocation error");
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}
