@@ -375,8 +375,9 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 							else result.clear();
 							// Очищаем всю выделенную память
 							::BIO_free_all(bio);
+						}
 						// Очищаем объект BASE64
-						} else ::BIO_free(b64);
+						::BIO_free(b64);
 					}
 				} break;
 				// Если производится работы с AES128
