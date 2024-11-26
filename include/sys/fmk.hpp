@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 #include <limits>
+#include <cstdarg>
 #include <sstream>
 #include <cstring>
 #include <iomanip>
