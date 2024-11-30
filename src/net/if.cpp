@@ -61,7 +61,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			// Выполняем получение сетевого интерфейса
 			struct ifreq * ifr = reinterpret_cast <struct ifreq *> (ptr);
 			// Выполняем смещение указателя в цикле
-			ptr += (sizeof(ifr->ifr_name) + max(sizeof(struct sockaddr), static_cast <size_t> (ifr->ifr_addr.sa_len)));
+			ptr += (sizeof(ifr->ifr_name) + ::max(sizeof(struct sockaddr), static_cast <size_t> (ifr->ifr_addr.sa_len)));
 			// Если сетевой интерфейс отличается от IPv4 пропускаем
 			if(ifr->ifr_addr.sa_family != family)
 				// Выполняем пропуск
@@ -321,16 +321,16 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 				// Получаем сетевой интерфейс
 				struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (&ifr->ifr_addr);
 				// Копируем MAC-адрес из сетевого интерфейса
-				strcpy(temp, reinterpret_cast <char *> (ether_ntoa(reinterpret_cast <struct ether_addr *> (LLADDR(sdl)))));
+				::strcpy(temp, reinterpret_cast <char *> (ether_ntoa(reinterpret_cast <struct ether_addr *> (LLADDR(sdl)))));
 				// Устанавливаем сетевые октеты
-				sscanf(temp, "%x:%x:%x:%x:%x:%x", &a, &b, &c, &d, &e, &f);
+				::sscanf(temp, "%x:%x:%x:%x:%x:%x", &a, &b, &c, &d, &e, &f);
 				// Формируем MAC-адрес удобный для вывода
-				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", a, b, c, d, e, f);
+				::sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", a, b, c, d, e, f);
 				// Добавляем MAC-адрес в список сетевых интерфейсов
 				this->_ifs.emplace(ifr->ifr_name, temp);
 			}
 			// Выполняем смещение указателя в цикле
-			cp += (sizeof(ifr->ifr_name) + max(sizeof(ifr->ifr_addr), static_cast <size_t> (ifr->ifr_addr.sa_len)));
+			cp += (sizeof(ifr->ifr_name) + ::max(sizeof(ifr->ifr_addr), static_cast <size_t> (ifr->ifr_addr.sa_len)));
 		}
 		// Закрываем сетевой сокет
 		this->close(fd);
@@ -391,7 +391,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 						// Выполняем копирование MAC-адреса
 						::memcpy(mac, ifrc.ifr_hwaddr.sa_data, 6);
 						// Выполняем получение MAC-адреса
-						sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+						::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 						// Добавляем MAC-адрес в список сетевых интерфейсов
 						this->_ifs.emplace(i->ifr_name, hardware);
 					}
@@ -438,7 +438,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 					// Заполняем нуляем наши буферы
 					::memset(hardware, 0, sizeof(hardware));
 					// Выполняем получение MAC-адреса
-					sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", adapter->PhysicalAddress[0], adapter->PhysicalAddress[1], adapter->PhysicalAddress[2], adapter->PhysicalAddress[3], adapter->PhysicalAddress[4], adapter->PhysicalAddress[5]);
+					::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", adapter->PhysicalAddress[0], adapter->PhysicalAddress[1], adapter->PhysicalAddress[2], adapter->PhysicalAddress[3], adapter->PhysicalAddress[4], adapter->PhysicalAddress[5]);
 					// Добавляем MAC-адрес в список сетевых интерфейсов
 					this->_ifs.emplace(adapter->AdapterName, hardware);
 				}
@@ -675,7 +675,7 @@ const string awh::IfNet::mac(const string & ip, const int32_t family) const noex
 							// Извлекаем MAC-адрес
 							const u_char * cp = reinterpret_cast <u_char *> (LLADDR(sdl));
 							// Выполняем получение MAC-адреса
-							sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+							::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 							// Получаем результат MAC-адреса
 							result = std::move(hardware);
 							// Выходим из цикла
@@ -779,7 +779,7 @@ const string awh::IfNet::mac(const string & ip, const int32_t family) const noex
 							// Извлекаем MAC-адрес
 							const u_char * cp = reinterpret_cast <u_char *> (LLADDR(sdl));
 							// Выполняем получение MAC-адреса
-							sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+							::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 							// Получаем результат MAC-адреса
 							result = std::move(hardware);
 							// Выходим из цикла
@@ -913,7 +913,7 @@ const string awh::IfNet::mac(const string & ip, const int32_t family) const noex
 						// Извлекаем MAC-адрес
 						const u_char * cp = reinterpret_cast <u_char *> (mac.sa_data);
 						// Выполняем получение MAC-адреса
-						sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+						::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 						// Получаем результат MAC-адреса
 						result = std::move(hardware);
 					}
@@ -1002,7 +1002,7 @@ const string awh::IfNet::mac(const string & ip, const int32_t family) const noex
 								// Извлекаем MAC-адрес
 								const u_char * cp = reinterpret_cast <u_char *> (mac.sa_data);
 								// Выполняем получение MAC-адреса
-								sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+								::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 								// Получаем результат MAC-адреса
 								result = std::move(hardware);
 							// Если извлечь MAC-адрес не вышло, извлекаем его напрямую
@@ -1017,7 +1017,7 @@ const string awh::IfNet::mac(const string & ip, const int32_t family) const noex
 								mac[4] = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr.s6_addr[14];
 								mac[5] = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr.s6_addr[15];
 								// Выполняем получение MAC-адреса
-								sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+								::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 								// Получаем результат MAC-адреса
 								result = std::move(hardware);
 							}
@@ -1058,7 +1058,7 @@ const string awh::IfNet::mac(const string & ip, const int32_t family) const noex
 						// Получаем данные MAC-адреса
 						BYTE * mac = reinterpret_cast <BYTE *> (&buffer);
 						// Выполняем получение MAC-адреса
-						sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+						::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 						// Получаем результат MAC-адреса
 						result = std::move(hardware);
 					}
@@ -1116,7 +1116,7 @@ const string awh::IfNet::mac(const string & ip, const int32_t family) const noex
 									// Получаем данные MAC-адреса
 									BYTE * mac = reinterpret_cast <BYTE *> (pipTable->Table[i].PhysicalAddress);
 									// Выполняем получение MAC-адреса
-									sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+									::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 									// Получаем результат MAC-адреса
 									result = std::move(hardware);
 								}
@@ -1217,7 +1217,7 @@ const string awh::IfNet::mac(struct sockaddr * sin, const int32_t family) const 
 				// Извлекаем MAC-адрес
 				const u_char * cp = reinterpret_cast <u_char *> (sin->sa_data);
 				// Выполняем получение MAC-адреса
-				sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+				::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Выводим данные мак адреса
 				result = std::move(hardware);
 			} break;
@@ -1233,7 +1233,7 @@ const string awh::IfNet::mac(struct sockaddr * sin, const int32_t family) const 
 				mac[4] = reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr.s6_addr[14];
 				mac[5] = reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr.s6_addr[15];
 				// Выполняем получение MAC-адреса
-				sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+				::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 				// Получаем результат MAC-адреса
 				result = std::move(hardware);
 			} break;

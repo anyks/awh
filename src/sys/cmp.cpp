@@ -21,9 +21,9 @@
  * data данные буфера в бинарном виде
  * @return буфер в бинарном виде
  */
-std::vector <char> awh::cmp::Encoder::Buffer::data() const noexcept {
+vector <char> awh::cmp::Encoder::Buffer::data() const noexcept {
 	// Результат работы функции
-	std::vector <char> result;
+	vector <char> result;
 	// Выполняем добавление данных заголовка в итоговый буфер
 	result.insert(result.end(), reinterpret_cast <const char *> (&this->_header), reinterpret_cast <const char *> (&this->_header) + sizeof(this->_header));
 	// Если буфер полезной нагрузки не пустой
@@ -37,7 +37,7 @@ std::vector <char> awh::cmp::Encoder::Buffer::data() const noexcept {
  * Оператор извлечения бинарного буфера в бинарном виде
  * @return бинарный буфер в бинарном виде
  */
-awh::cmp::Encoder::Buffer::operator std::vector <char> () const noexcept {
+awh::cmp::Encoder::Buffer::operator vector <char> () const noexcept {
 	// Выполняем формирование общего буфера данных
 	return this->data();
 }
@@ -83,25 +83,25 @@ void awh::cmp::Encoder::Buffer::push(const uint64_t id, const mode_t mode, const
  * back Метод получения последней записи протокола
  * @return объект данных последней записи
  */
-std::vector <char> awh::cmp::Encoder::back() const noexcept {
+vector <char> awh::cmp::Encoder::back() const noexcept {
 	// Если записи в протоколе существуют
 	if(!this->_data.empty())
 		// Выводим запрошенный буфер данных
 		return this->_data.back()->data();
 	// Выводим результат
-	return std::vector <char> ();
+	return vector <char> ();
 }
 /**
  * front Метод получения первой записи протокола
  * @return объект данных первой записи
  */
-std::vector <char> awh::cmp::Encoder::front() const noexcept {
+vector <char> awh::cmp::Encoder::front() const noexcept {
 	// Если записи в протоколе существуют
 	if(!this->_data.empty())
 		// Выводим запрошенный буфер данных
 		return this->_data.front()->data();
 	// Выводим результат
-	return std::vector <char> ();
+	return vector <char> ();
 }
 /**
  * empty Метод проверки на пустоту контейнера
@@ -286,9 +286,9 @@ awh::cmp::Encoder & awh::cmp::Encoder::operator = (const size_t size) noexcept {
  * back Метод получения последней записи протокола
  * @return объект данных последней записи
  */
-std::vector <char> awh::cmp::Decoder::back() const noexcept {
+vector <char> awh::cmp::Decoder::back() const noexcept {
 	// Результат работы функции
-	std::vector <char> result;
+	vector <char> result;
 	// Если записи в протоколе существуют
 	if(!this->_data.empty() && (this->_data.back().first > 0)){
 		// Выделяем память под указанный буфер данных
@@ -303,9 +303,9 @@ std::vector <char> awh::cmp::Decoder::back() const noexcept {
  * front Метод получения первой записи протокола
  * @return объект данных первой записи
  */
-std::vector <char> awh::cmp::Decoder::front() const noexcept {
+vector <char> awh::cmp::Decoder::front() const noexcept {
 	// Результат работы функции
-	std::vector <char> result;
+	vector <char> result;
 	// Если записи в протоколе существуют
 	if(!this->_data.empty() && (this->_data.front().first > 0)){
 		// Выделяем память под указанный буфер данных
@@ -441,36 +441,16 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 		 * Выполняем обработку ошибки
 		 */
 		try {
+			// Получаем размер заголовка
+			const size_t length = sizeof(header_t);
 			// Если данных достаточно для извлечения заголовка
-			if(size >= sizeof(header_t)){
+			if(size >= length){
 				// Создаём объект заголовка
 				header_t header{};
-				// Смещение в бинарном буфере и длина данных в байтах
-				uint8_t offset = 0, length = sizeof(header.mode);
 				// Выполняем получение режима работы буфера данных
-				::memcpy(&header.mode, reinterpret_cast <const char *> (buffer) + offset, length);
-				// Увеличиваем смещение в бинарном буфере
-				offset += length;
-				// Выполняем получение длину идентификатора сообщения
-				length = sizeof(header.id);
-				// Выполняем получение идентификатор сообщения
-				::memcpy(&header.id, reinterpret_cast <const char *> (buffer) + offset, length);
-				// Увеличиваем смещение в бинарном буфере
-				offset += length;
-				// Выполняем получение длину общего размера записи
-				length = sizeof(header.size);
-				// Выполняем получение общего размера записи
-				::memcpy(&header.size, reinterpret_cast <const char *> (buffer) + offset, length);
-				// Увеличиваем смещение в бинарном буфере
-				offset += length;
-				// Выполняем получение длину размера текущего чанка
-				length = sizeof(header.bytes);
-				// Выполняем получение размера текущего чанка
-				::memcpy(&header.bytes, reinterpret_cast <const char *> (buffer) + offset, length);
-				// Увеличиваем смещение в бинарном буфере
-				offset += length;
+				::memcpy(&header, reinterpret_cast <const char *> (buffer), sizeof(header));
 				// Если общий размер блока слишком большой
-				if(header.bytes > (this->_chunkSize - offset)){
+				if(header.bytes > (this->_chunkSize - length)){
 					// Выводим в лог сообщение
 					this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "data buffer has been corrupted");
 					// Очищаем все данные декодера
@@ -478,9 +458,9 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 				// Продолжаем дальнейшую работу
 				} else {
 					// Если данных достаточно для извлечения полезной нагрузки
-					if(size >= (offset + header.bytes)){
+					if(size >= (length + header.bytes)){
 						// Выполняем смещение в буфере данных
-						result += offset;
+						result += length;
 						// Получаем индекс текущей записи
 						const uint64_t id = header.id;
 						// Выполняем поиск указанной записи во временном объекте
@@ -533,7 +513,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 						// Выполняем увеличение смещения
 						result += header.bytes;
 						// Если мы извлекли не все данные из буфера
-						if((size > result) && ((size - result) >= offset))
+						if((size > result) && ((size - result) >= length))
 							// Выполняем извлечение слещующей порции данных
 							result += this->prepare(reinterpret_cast <const char *> (buffer) + result, size - result);
 					}

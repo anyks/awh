@@ -44,38 +44,38 @@ namespace awh {
 	 */
 	namespace cmp {
 		/**
+		 * Режим передачи буфера данных
+		 */
+		enum class mode_t : uint8_t {
+			NONE    = 0x00, // Режим буфера данных не установлен
+			END     = 0x01, // Режим буфера данных конец передачи
+			BEGIN   = 0x02, // Режим буфера данных начало передачи
+			CONTINE = 0x03  // Режим буфера данных продолжение передачи
+		};
+		/**
+		 * Header Структура работы с заголовком буфера данных
+		 */
+		typedef struct Header {
+			mode_t mode;  // Режим работы буфера данных
+			uint64_t id;  // Идентификатор сообщения
+			size_t size;  // Общий размер записи
+			size_t bytes; // Размер текущего чанка
+			/**
+			 * Header Конструктор
+			 */
+			Header() noexcept :
+			 mode(mode_t::NONE),
+			 id(0), size(0), bytes(0) {}
+		} __attribute__((packed)) header_t;
+		/**
+		 * Устанавливаем максимальный размер одного буфера данных
+		 */
+		static constexpr size_t CHUNK_SIZE = 0x1000;
+		/**
 		 * Encoder Класс для работы с протоколом передачи данных
 		 */
 		typedef class AWHSHARED_EXPORT Encoder {
-			public:
-				// Устанавливаем максимальный размер одного буфера данных
-				static constexpr size_t CHUNK_SIZE = 0x1000;
 			private:
-				/**
-				 * Режим передачи буфера данных
-				 */
-				enum class mode_t : uint8_t {
-					NONE    = 0x00, // Режим буфера данных не установлен
-					END     = 0x01, // Режим буфера данных конец передачи
-					BEGIN   = 0x02, // Режим буфера данных начало передачи
-					CONTINE = 0x03  // Режим буфера данных продолжение передачи
-				};
-			private:
-				/**
-				 * Header Структура работы с заголовком буфера данных
-				 */
-				typedef struct Header {
-					mode_t mode;  // Режим работы буфера данных
-					uint64_t id;  // Идентификатор сообщения
-					size_t size;  // Общий размер записи
-					size_t bytes; // Размер текущего чанка
-					/**
-					 * Header Конструктор
-					 */
-					Header() noexcept :
-					 mode(mode_t::NONE),
-					 id(0), size(0), bytes(0) {}
-				} __attribute__((packed)) header_t;
 				/**
 				 * Buffer Структура работы с буфером данных
 				 */
@@ -93,13 +93,13 @@ namespace awh {
 						 * data данные буфера в бинарном виде
 						 * @return буфер в бинарном виде
 						 */
-						std::vector <char> data() const noexcept;
+						vector <char> data() const noexcept;
 					public:
 						/**
 						 * Оператор извлечения бинарного буфера в бинарном виде
 						 * @return бинарный буфер в бинарном виде
 						 */
-						operator std::vector <char> () const noexcept;
+						operator vector <char> () const noexcept;
 					public:
 						/**
 						 * push Метод добавления в буфер записи данных для отправки
@@ -140,12 +140,12 @@ namespace awh {
 				 * back Метод получения последней записи протокола
 				 * @return объект данных последней записи
 				 */
-				std::vector <char> back() const noexcept;
+				vector <char> back() const noexcept;
 				/**
 				 * front Метод получения первой записи протокола
 				 * @return объект данных первой записи
 				 */
-				std::vector <char> front() const noexcept;
+				vector <char> front() const noexcept;
 			public:
 				/**
 				 * empty Метод проверки на пустоту контейнера
@@ -214,19 +214,6 @@ namespace awh {
 		 * Decoder Класс для работы с протоколом получения данных
 		 */
 		typedef class AWHSHARED_EXPORT Decoder {
-			public:
-				// Устанавливаем максимальный размер одного буфера данных
-				static constexpr size_t CHUNK_SIZE = 0x1000;
-			private:
-				/**
-				 * Режим передачи буфера данных
-				 */
-				enum class mode_t : uint8_t {
-					NONE    = 0x00, // Режим буфера данных не установлен
-					END     = 0x01, // Режим буфера данных конец передачи
-					BEGIN   = 0x02, // Режим буфера данных начало передачи
-					CONTINE = 0x03  // Режим буфера данных продолжение передачи
-				};
 			private:
 				/**
 				 * Buffer Структура работы с буферами данных
@@ -243,19 +230,6 @@ namespace awh {
 					 */
 					Buffer() noexcept : size(0), offset(0), payload(nullptr) {}
 				} buffer_t;
-				/**
-				 * Header Структура работы с заголовком буфера данных
-				 */
-				typedef struct Header {
-					uint64_t id;  // Идентификатор сообщения
-					mode_t mode;  // Режим работы буфера данных
-					size_t size;  // Общий размер записи
-					size_t bytes; // Размер текущего чанка
-					/**
-					 * Header Конструктор
-					 */
-					Header() noexcept : id(0), mode(mode_t::NONE), size(0), bytes(0) {}
-				} __attribute__((packed)) header_t;
 			private:
 				// Мютекс для блокировки потока
 				std::mutex _mtx;
@@ -278,12 +252,12 @@ namespace awh {
 				 * back Метод получения последней записи протокола
 				 * @return объект данных последней записи
 				 */
-				std::vector <char> back() const noexcept;
+				vector <char> back() const noexcept;
 				/**
 				 * front Метод получения первой записи протокола
 				 * @return объект данных первой записи
 				 */
-				std::vector <char> front() const noexcept;
+				vector <char> front() const noexcept;
 			public:
 				/**
 				 * empty Метод проверки на пустоту контейнера
@@ -343,8 +317,7 @@ namespace awh {
 				 * Decoder Конструктор
 				 * @param log объект для работы с логами
 				 */
-				Decoder(const log_t * log) noexcept :
-				 _chunkSize(CHUNK_SIZE), _buffer(awh::buffer_t::mode_t::COPY), _log(log) {}
+				Decoder(const log_t * log) noexcept : _chunkSize(CHUNK_SIZE), _buffer(awh::buffer_t::mode_t::COPY), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */

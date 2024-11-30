@@ -226,7 +226,7 @@ void awh::Buffer::emplace(const char * buffer, const size_t size) noexcept {
 				 */
 				} catch(const bad_alloc &) {
 					// Выводим сообщение в лог
-					fprintf(stderr, "Buffer emplace: %s", "memory allocation error");
+					::fprintf(stderr, "Buffer emplace: %s", "memory allocation error");
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				}
