@@ -40,7 +40,7 @@
 				// Если процесс найден
 				if((broker->end = (broker->pid == pid))){
 					// Выполняем остановку чтение сообщений
-					broker->mess.stop();
+					broker->ev.stop();
 					// Выполняем закрытие файловых дескрипторов
 					::close(broker->cfds[0]);
 					::close(broker->mfds[1]);
@@ -267,7 +267,7 @@
 								// Если брокер не является текущим брокером
 								if((broker->cfds[0] != item->cfds[0]) && (broker->mfds[1] != item->mfds[1])){
 									// Выполняем остановку чтение сообщений
-									item->mess.stop();
+									item->ev.stop();
 									// Закрываем файловый дескриптор на чтение из дочернего процесса
 									::close(item->cfds[0]);
 									// Закрываем файловый дескриптор на запись в основной процесс
@@ -275,7 +275,7 @@
 								}
 							}
 							// Выполняем остановку чтение сообщений
-							broker->mess.stop();
+							broker->ev.stop();
 							// Выходим из функции
 							return;
 						}
@@ -500,7 +500,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Выполняем поиск завершившегося процесса
 							for(auto & broker : j->second)
 								// Выполняем остановку чтение сообщений
-								broker->mess.stop();
+								broker->ev.stop();
 							// Выполняем остановку работы
 							this->stop(i->first);
 							// Выходим принудительно из приложения
@@ -513,7 +513,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Выполняем поиск завершившегося процесса
 							for(auto & broker : j->second)
 								// Выполняем остановку чтение сообщений
-								broker->mess.stop();
+								broker->ev.stop();
 							// Выполняем остановку работы
 							this->stop(i->first);
 							// Выходим принудительно из приложения
@@ -584,17 +584,17 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									// Устанавливаем время начала жизни процесса
 									broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 									// Устанавливаем базу событий для чтения
-									broker->mess = this->_core->eventBase();
+									broker->ev = this->_core->eventBase();
 									// Устанавливаем сокет для чтения
-									broker->mess = broker->cfds[0];
+									broker->ev = broker->cfds[0];
 									// Устанавливаем событие на чтение данных от основного процесса
-									broker->mess = std::bind(&worker_t::message, i->second.get(), _1, _2);
+									broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
 									// Запускаем чтение данных с основного процесса
-									broker->mess.start();
+									broker->ev.start();
 									// Выполняем активацию работы события чтения данных с сокета
-									broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+									broker->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 									// выполняем активацию работы события закрытия подключения
-									broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+									broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 									// Создаём мютекс для блокировки потока
 									this->_mtx = std::unique_ptr <std::recursive_mutex> (new std::recursive_mutex);
 									// Создаём новый объект протокола передачи данных
@@ -644,13 +644,13 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Устанавливаем время начала жизни процесса
 							broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 							// Устанавливаем базу событий для чтения
-							broker->mess = this->_core->eventBase();
+							broker->ev = this->_core->eventBase();
 							// Устанавливаем сокет для чтения
-							broker->mess = broker->mfds[0];
+							broker->ev = broker->mfds[0];
 							// Устанавливаем событие на чтение данных от дочернего процесса
-							broker->mess = std::bind(&worker_t::message, i->second.get(), _1, _2);
+							broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
 							// Выполняем запуск работы чтения данных с дочерних процессов
-							broker->mess.start();
+							broker->ev.start();
 							// Если не нужно останавливаться на создании процессов
 							if(!stop)
 								// Выполняем создание новых процессов
@@ -658,9 +658,9 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							// Если нужно остановиться после создания всех прцоессов
 							else {
 								// Выполняем активацию работы чтения данных с дочерних процессов
-								broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+								broker->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 								// выполняем активацию работы события закрытия подключения
-								broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+								broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 							}
 							// Создаём новый объект протокола получения данных
 							i->second->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
@@ -690,9 +690,9 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						// Выполняем перебор всех доступных брокеров
 						for(auto & broker : j->second){
 							// Выполняем активацию работы чтения данных с дочерних процессов
-							broker->mess.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+							broker->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 							// выполняем активацию работы события закрытия подключения
-							broker->mess.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+							broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						}
 						// Создаём мютекс для блокировки потока
 						this->_mtx = std::unique_ptr <std::recursive_mutex> (new std::recursive_mutex);
@@ -1026,7 +1026,7 @@ void awh::Cluster::close() noexcept {
 				// Переходим по всему списку брокеров
 				for(auto & broker : item.second){
 					// Выполняем остановку чтение сообщений
-					broker->mess.stop();
+					broker->ev.stop();
 					// Выполняем закрытие файловых дескрипторов
 					::close(broker->cfds[0]);
 					::close(broker->mfds[1]);
@@ -1060,7 +1060,7 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 			// Переходим по всему списку брокеров
 			for(auto & broker : i->second){
 				// Выполняем остановку чтение сообщений
-				broker->mess.stop();
+				broker->ev.stop();
 				// Выполняем закрытие файловых дескрипторов
 				::close(broker->cfds[0]);
 				::close(broker->mfds[1]);

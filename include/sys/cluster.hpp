@@ -166,22 +166,22 @@ namespace awh {
 				 * Broker Структура брокера
 				 */
 				typedef struct Broker {
-					bool end;          // Флаг завершения работы процессом
-					pid_t pid;         // Пид активного процесса
-					SOCKET mfds[2];    // Список файловых дескрипторов родительского процесса
-					SOCKET cfds[2];    // Список файловых дескрипторов дочернего процесса
-					time_t date;       // Время начала жизни процесса
-					awh::event_t mess; // Объект события на получения сообщений
+					bool end;        // Флаг завершения работы процессом
+					pid_t pid;       // Идентификатор активного процесса
+					time_t date;     // Время начала жизни процесса
+					SOCKET mfds[2];  // Список файловых дескрипторов родительского процесса
+					SOCKET cfds[2];  // Список файловых дескрипторов дочернего процесса
+					awh::event_t ev; // Объект события на получения сообщений
 					/**
 					 * Broker Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Broker(const fmk_t * fmk, const log_t * log) noexcept :
-					 end(false), pid(::getpid()),
+					 end(false), pid(::getpid()), date(0),
 					 mfds{INVALID_SOCKET,INVALID_SOCKET},
-					 cfds{INVALID_SOCKET,INVALID_SOCKET}, date(0),
-					 mess(awh::event_t::type_t::EVENT, fmk, log) {}
+					 cfds{INVALID_SOCKET,INVALID_SOCKET},
+					 ev(awh::event_t::type_t::EVENT, fmk, log) {}
 					/**
 					 * ~Broker Деструктор
 					 */
@@ -195,7 +195,7 @@ namespace awh {
 				 * Broker Структура брокера
 				 */
 				typedef struct Broker {
-					pid_t pid;   // Пид активного процесса
+					pid_t pid;   // Идентификатор активного процесса
 					time_t date; // Время начала жизни процесса
 					/**
 					 * Broker Конструктор

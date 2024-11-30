@@ -441,16 +441,36 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 		 * Выполняем обработку ошибки
 		 */
 		try {
-			// Получаем размер заголовка
-			const size_t headerSize = sizeof(header_t);
 			// Если данных достаточно для извлечения заголовка
-			if(size >= headerSize){
+			if(size >= sizeof(header_t)){
 				// Создаём объект заголовка
-				header_t header;
-				// Выполняем получение данных заголовков
-				::memcpy(&header, buffer, headerSize);
+				header_t header{};
+				// Смещение в бинарном буфере и длина данных в байтах
+				uint8_t offset = 0, length = sizeof(header.mode);
+				// Выполняем получение режима работы буфера данных
+				::memcpy(&header.mode, reinterpret_cast <const char *> (buffer) + offset, length);
+				// Увеличиваем смещение в бинарном буфере
+				offset += length;
+				// Выполняем получение длину идентификатора сообщения
+				length = sizeof(header.id);
+				// Выполняем получение идентификатор сообщения
+				::memcpy(&header.id, reinterpret_cast <const char *> (buffer) + offset, length);
+				// Увеличиваем смещение в бинарном буфере
+				offset += length;
+				// Выполняем получение длину общего размера записи
+				length = sizeof(header.size);
+				// Выполняем получение общего размера записи
+				::memcpy(&header.size, reinterpret_cast <const char *> (buffer) + offset, length);
+				// Увеличиваем смещение в бинарном буфере
+				offset += length;
+				// Выполняем получение длину размера текущего чанка
+				length = sizeof(header.bytes);
+				// Выполняем получение размера текущего чанка
+				::memcpy(&header.bytes, reinterpret_cast <const char *> (buffer) + offset, length);
+				// Увеличиваем смещение в бинарном буфере
+				offset += length;
 				// Если общий размер блока слишком большой
-				if(header.bytes > (this->_chunkSize - headerSize)){
+				if(header.bytes > (this->_chunkSize - offset)){
 					// Выводим в лог сообщение
 					this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "data buffer has been corrupted");
 					// Очищаем все данные декодера
@@ -458,9 +478,9 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 				// Продолжаем дальнейшую работу
 				} else {
 					// Если данных достаточно для извлечения полезной нагрузки
-					if(size >= (headerSize + header.bytes)){
+					if(size >= (offset + header.bytes)){
 						// Выполняем смещение в буфере данных
-						result += headerSize;
+						result += offset;
 						// Получаем индекс текущей записи
 						const uint64_t id = header.id;
 						// Выполняем поиск указанной записи во временном объекте
@@ -513,7 +533,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 						// Выполняем увеличение смещения
 						result += header.bytes;
 						// Если мы извлекли не все данные из буфера
-						if((size > result) && ((size - result) >= headerSize))
+						if((size > result) && ((size - result) >= offset))
 							// Выполняем извлечение слещующей порции данных
 							result += this->prepare(reinterpret_cast <const char *> (buffer) + result, size - result);
 					}
