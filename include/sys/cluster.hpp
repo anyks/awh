@@ -105,9 +105,6 @@ namespace awh {
 					// Количество рабочих процессов
 					uint16_t _count;
 				private:
-					// Мютекс для блокировки потока
-					std::mutex _mtx;
-				private:
 					// Бинарный буфер полученных данных
 					uint8_t _buffer[4096];
 				private:
@@ -123,19 +120,6 @@ namespace awh {
 					 * Если операционной системой не является Windows
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
-						/**
-						 * process Метод перезапуска упавшего процесса
-						 * @param pid    идентификатор упавшего процесса
-						 * @param status статус остановившегося процесса
-						 */
-						void process(const pid_t pid, const int32_t status) noexcept;
-						/**
-						 * child Функция фильтр перехватчика сигналов
-						 * @param signal номер сигнала полученного системой
-						 * @param info   объект информации полученный системой
-						 * @param ctx    передаваемый внутренний контекст
-						 */
-						static void child(int32_t signal, siginfo_t * info, void * ctx) noexcept;
 						/**
 						 * message Функция обратного вызова получении сообщений
 						 * @param fd    файловый дескриптор (сокет)
@@ -179,8 +163,8 @@ namespace awh {
 					 */
 					Broker(const fmk_t * fmk, const log_t * log) noexcept :
 					 end(false), pid(::getpid()), date(0),
-					 mfds{INVALID_SOCKET,INVALID_SOCKET},
-					 cfds{INVALID_SOCKET,INVALID_SOCKET},
+					 mfds{INVALID_SOCKET, INVALID_SOCKET},
+					 cfds{INVALID_SOCKET, INVALID_SOCKET},
 					 ev(awh::event_t::type_t::EVENT, fmk, log) {}
 					/**
 					 * ~Broker Деструктор
@@ -206,9 +190,6 @@ namespace awh {
 		private:
 			// Идентификатор родительского процесса
 			pid_t _pid;
-		private:
-			// Флаг отслеживания падения дочерних процессов
-			bool _crash;
 		private:
 			// Хранилище функций обратного вызова
 			fn_t _callbacks;
@@ -245,6 +226,25 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				/**
+				 * process Метод перезапуска упавшего процесса
+				 * @param pid    идентификатор упавшего процесса
+				 * @param status статус остановившегося процесса
+				 */
+				void process(const pid_t pid, const int32_t status) noexcept;
+				/**
+				 * child Функция фильтр перехватчика сигналов
+				 * @param signal номер сигнала полученного системой
+				 * @param info   объект информации полученный системой
+				 * @param ctx    передаваемый внутренний контекст
+				 */
+				static void child(int32_t signal, siginfo_t * info, void * ctx) noexcept;
+			#endif
+		private:
+			/**
 			 * write Метод записи буфера данных в сокет
 			 * @param wid идентификатор воркера
 			 * @param fd  идентификатор файлового дескриптора
@@ -252,12 +252,16 @@ namespace awh {
 			void write(const uint16_t wid, const SOCKET fd) noexcept;
 		private:
 			/**
-			 * fork Метод отделения от основного процесса (создание дочерних процессов)
+			 * fork Метод создания нового дочернего процесса
+			 * @param wid идентификатор воркера
+			 */
+			void fork(const uint16_t wid) noexcept;
+			/**
+			 * fork Метод создания указанного количества дочерних процессов
 			 * @param wid   идентификатор воркера
 			 * @param index индекс инициализированного процесса
-			 * @param stop  флаг остановки итерации создания дочерних процессов
 			 */
-			void fork(const uint16_t wid, const uint16_t index = 0, const bool stop = false) noexcept;
+			void fork(const uint16_t wid, const uint16_t index) noexcept;
 		public:
 			/**
 			 * master Метод проверки является ли процесс родительским
@@ -360,10 +364,16 @@ namespace awh {
 			void core(core_t * core) noexcept;
 		public:
 			/**
-			 * trackCrash Метод отключения отслеживания падения дочерних процессов
-			 * @param mode флаг отслеживания падения дочерних процессов
+			 * emplace Метод размещения нового воркера
+			 * @param wid идентификатор воркера
 			 */
-			void trackCrash(const bool mode) noexcept;
+			void emplace(const uint16_t wid) noexcept;
+			/**
+			 * erase Метод удаления активного процесса
+			 * @param wid идентификатор воркера
+			 * @param pid идентификатор процесса
+			 */
+			void erase(const uint16_t wid, const pid_t pid) noexcept;
 		public:
 			/**
 			 * count Метод получения максимального количества процессов
@@ -429,18 +439,14 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(::getpid()), _crash(true), _callbacks(log), _socket(fmk, log),
-			 _mtx(nullptr), _core(nullptr), _fmk(fmk), _log(log) {}
+			Cluster(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * Cluster Конструктор
 			 * @param core объект сетевого ядра
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(::getpid()), _crash(true), _callbacks(log), _socket(fmk, log),
-			 _mtx(nullptr), _core(core), _fmk(fmk), _log(log) {}
+			Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Cluster Деструктор
 			 */

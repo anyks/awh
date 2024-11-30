@@ -42,6 +42,8 @@ class Executor {
 						const string message = "Hi!";
 						// Отправляем проиветствие всем дочерним процессам
 						core->broadcast(message.data(), message.size());
+						// Выполняем создание нового процесса
+						core->emplace();
 					} break;
 					// Если событие пришло от дочернего процесса
 					case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {

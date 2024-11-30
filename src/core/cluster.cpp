@@ -23,12 +23,10 @@ void awh::cluster::Core::active(const status_t status) noexcept {
 	// Определяем статус активности сетевого ядра
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
-		case static_cast <uint8_t> (status_t::START): {
-			// Устанавливаем перехват сигналов падения процессов
-			this->_cluster.trackCrash(this->_signals == scheme_t::mode_t::ENABLED);
+		case static_cast <uint8_t> (status_t::START):
 			// Выполняем запуск кластера
 			this->_cluster.start(0);
-		} break;
+		break;
 		// Если система остановлена
 		case static_cast <uint8_t> (status_t::STOP): {
 			// Выполняем остановку кластера
@@ -96,11 +94,26 @@ std::set <pid_t> awh::cluster::Core::pids() const noexcept {
 	return this->_cluster.pids(0);
 }
 /**
+ * emplace Метод размещения нового воркера
+ */
+void awh::cluster::Core::emplace() noexcept {
+	// Выполняем добавление нового процесса
+	this->_cluster.emplace(0);
+}
+/**
+ * erase Метод удаления активного процесса
+ * @param pid идентификатор процесса
+ */
+void awh::cluster::Core::erase(const pid_t pid) noexcept {
+	// Выполняем удаление дочернего процесса
+	this->_cluster.erase(0, pid);
+}
+/**
  * send Метод отправки сообщение родительскому процессу
  */
 void awh::cluster::Core::send() const noexcept {
 	// Выполняем отправку сообщения родительскому процессу
-	const_cast <cluster_t *> (&this->_cluster)->send(0);
+	const_cast <cluster_t &> (this->_cluster).send(0);
 }
 /**
  * send Метод отправки сообщение родительскому процессу
@@ -109,7 +122,7 @@ void awh::cluster::Core::send() const noexcept {
  */
 void awh::cluster::Core::send(const char * buffer, const size_t size) const noexcept {
 	// Выполняем отправку сообщения родительскому процессу
-	const_cast <cluster_t *> (&this->_cluster)->send(0, buffer, size);
+	const_cast <cluster_t &> (this->_cluster).send(0, buffer, size);
 }
 /**
  * send Метод отправки сообщение процессу
@@ -117,7 +130,7 @@ void awh::cluster::Core::send(const char * buffer, const size_t size) const noex
  */
 void awh::cluster::Core::send(const pid_t pid) const noexcept {
 	// Выполняем отправку сообщения указанному процессу
-	const_cast <cluster_t *> (&this->_cluster)->send(0, pid);
+	const_cast <cluster_t &> (this->_cluster).send(0, pid);
 }
 /**
  * send Метод отправки сообщение процессу
@@ -127,14 +140,14 @@ void awh::cluster::Core::send(const pid_t pid) const noexcept {
  */
 void awh::cluster::Core::send(const pid_t pid, const char * buffer, const size_t size) const noexcept {
 	// Выполняем отправку сообщения указанному процессу
-	const_cast <cluster_t *> (&this->_cluster)->send(0, pid, buffer, size);
+	const_cast <cluster_t &> (this->_cluster).send(0, pid, buffer, size);
 }
 /**
  * broadcast Метод отправки сообщения всем дочерним процессам
  */
 void awh::cluster::Core::broadcast() const noexcept {
 	// Выполняем отправку сообщения всем процессам
-	const_cast <cluster_t *> (&this->_cluster)->broadcast(0);
+	const_cast <cluster_t &> (this->_cluster).broadcast(0);
 }
 /**
  * broadcast Метод отправки сообщения всем дочерним процессам
@@ -143,7 +156,7 @@ void awh::cluster::Core::broadcast() const noexcept {
  */
 void awh::cluster::Core::broadcast(const char * buffer, const size_t size) const noexcept {
 	// Выполняем отправку сообщения всем процессам
-	const_cast <cluster_t *> (&this->_cluster)->broadcast(0, buffer, size);
+	const_cast <cluster_t &> (this->_cluster).broadcast(0, buffer, size);
 }
 /**
  * stop Метод остановки клиента
@@ -261,8 +274,6 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем установку флага автоматического перезапуска убитых дочерних процессов
 		this->_cluster.restart(0, mode);
-		// Устанавливаем флаг отслеживания упавших процессов
-		this->_cluster.trackCrash(mode);
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -283,8 +294,6 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _size(1), _cluster(this, fmk, log) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
-	// Отключаем отслеживание упавших процессов
-	this->_cluster.trackCrash(false);
 	// Выполняем инициализацию кластера
 	this->_cluster.init(0, this->_size);
 	// Устанавливаем функцию получения статуса кластера

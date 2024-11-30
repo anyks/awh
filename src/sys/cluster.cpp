@@ -20,107 +20,6 @@
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * Глобальный объект воркера
-	 */
-	static awh::cluster_t::worker_t * worker = nullptr;
-	/**
-	 * process Метод перезапуска упавшего процесса
-	 * @param pid    идентификатор упавшего процесса
-	 * @param status статус остановившегося процесса
-	 */
-	void awh::Cluster::Worker::process(const pid_t pid, const int32_t status) noexcept {
-		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
-		// Выполняем поиск брокера
-		auto i = this->_ctx->_brokers.find(this->_wid);
-		// Если брокер найден
-		if(i != this->_ctx->_brokers.end()){
-			// Выполняем поиск завершившегося процесса
-			for(auto & broker : i->second){
-				// Если процесс найден
-				if((broker->end = (broker->pid == pid))){
-					// Выполняем остановку чтение сообщений
-					broker->ev.stop();
-					// Выполняем закрытие файловых дескрипторов
-					::close(broker->cfds[0]);
-					::close(broker->mfds[1]);
-					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					this->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::WARNING, broker->pid, status);
-					// Если статус сигнала, ручной остановкой процесса
-					if(status == SIGINT){
-						// Выполняем остановку работы
-						const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
-						// Выходим из приложения
-						::exit(SIGINT);
-					// Если время жизни процесса составляет меньше 3-х минут
-					} else if((this->_ctx->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - broker->date) <= 180000) {
-						// Выполняем остановку работы
-						const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					}
-					// Если функция обратного вызова установлена
-					if(this->_ctx->_callbacks.is("process"))
-						// Выполняем функцию обратного вызова
-						this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::STOP);
-					// Выполняем поиск воркера
-					auto j = this->_ctx->_workers.find(i->first);
-					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
-					if((j != this->_ctx->_workers.end()) && j->second->_restart){
-						// Получаем индекс упавшего процесса
-						const uint16_t index = this->_ctx->_pids.at(broker->pid);
-						// Удаляем процесс из списка процессов
-						const_cast <cluster_t *> (this->_ctx)->_pids.erase(broker->pid);
-						// Выполняем создание нового процесса
-						const_cast <cluster_t *> (this->_ctx)->fork(i->first, index, j->second->_restart);
-					// Просто удаляем процесс из списка процессов
-					} else const_cast <cluster_t *> (this->_ctx)->_pids.erase(broker->pid);
-					// Выходим из цикла
-					break;
-				}
-			}
-		}
-	}
-	/**
-	 * child Функция фильтр перехватчика сигналов
-	 * @param signal номер сигнала полученного системой
-	 * @param info   объект информации полученный системой
-	 * @param ctx    передаваемый внутренний контекст
-	 */
-	void awh::Cluster::Worker::child(int32_t signal, siginfo_t * info, void * ctx) noexcept {
-		// Зануляем неиспользуемые переменные
-		(void) ctx;
-		(void) info;
-		(void) signal;
-		// Идентификатор упавшего процесса
-		pid_t pid = 0;
-		// Статус упавшего процесса
-		int32_t status = 0;
-		// Выполняем получение идентификатора упавшего процесса
-		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0){
-			// Если работа процесса завершена
-			if(status > 0){
-				// Если объект воркера инициализирован
-				if(worker != nullptr)
-					// Выполняем создание дочернего потока
-					std::thread(&worker_t::process, worker, pid, status).detach();
-				// Выходим из цикла
-				break;
-			// Если нужно выполнить нормальное завершение работы
-			} else {
-				// Если объект воркера инициализирован
-				if(worker != nullptr){
-					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					worker->_log->print("Child process stopped, PID=%d, STATUS=%x", log_t::flag_t::WARNING, pid, status);
-					// Выполняем остановку работы
-					const_cast <cluster_t *> (worker->_ctx)->stop(worker->_wid);
-				}
-				// Выполняем завершение работы
-				::exit(status);
-			}
-		}
-	}
-	/**
 	 * message Функция обратного вызова получении сообщений
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event произошедшее событие
@@ -132,21 +31,40 @@
 			switch(static_cast <uint8_t> (event)){
 				// Если выполняется событие закрытие подключения
 				case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
+					// Идентификатор процесса приславший сообщение
+					pid_t pid = 0;
+					// Выполняем поиск текущего брокера
+					auto i = const_cast <cluster_t *> (this->_ctx)->_brokers.find(this->_wid);
+					// Если текущий брокер найден
+					if(i != const_cast <cluster_t *> (this->_ctx)->_brokers.end()){
+						// Переходим по всему списку брокеров
+						for(auto j = i->second.begin(); j != i->second.end(); ++j){
+							// Если файловый дескриптор соответствует
+							if(static_cast <SOCKET> ((* j)->mfds[0]) == fd){
+								// Получаем идентификатор процесса приславшего сообщение
+								pid = (* j)->pid;
+								// Выполняем остановку чтение сообщений
+								(* j)->ev.stop();
+								// Выполняем закрытие файловых дескрипторов
+								::close((* j)->mfds[0]);
+								::close((* j)->cfds[1]);
+								// Выполняем удаление указанного брокера
+								i->second.erase(j);
+								// Выходим из цикла
+								break;
+							}
+						}
+					}
 					// Выводим сообщение об ошибке в лог
-					this->_log->print("[%u] Data from child process [%u] is closed", log_t::flag_t::CRITICAL, this->_ctx->_pid, ::getpid());
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выходим из функции
-						return;
-					/**
-					 * Если режим отладки не активирован
-					 */
-					#else
+					this->_log->print("[%u] Data from child process [%u] is closed", log_t::flag_t::CRITICAL, this->_ctx->_pid, pid);
+					// Если установлен флаг аннигиляции
+					if(!this->_restart){
+						// Останавливаем чтение данных с родительского процесса
+						const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
-					#endif
+					// Выходим из функции
+					} else return;
 				} break;
 				// Если выполняется событие чтения данных с сокета
 				case static_cast <uint8_t> (base_t::event_type_t::READ): {
@@ -212,19 +130,8 @@
 					} else {
 						// Выводим сообщение об ошибке в лог
 						this->_log->print("[%u] Data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->_ctx->_pid, pid);
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выходим из функции
-							return;
-						/**
-						 * Если режим отладки не активирован
-						 */
-						#else
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						#endif
+						// Выходим из функции
+						return;
 					}
 				} break;
 			}
@@ -234,21 +141,25 @@
 			switch(static_cast <uint8_t> (event)){
 				// Если выполняется событие закрытие подключения
 				case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
+					// Выполняем поиск текущего брокера
+					auto i = this->_ctx->_brokers.find(this->_wid);
+					// Если текущий брокер найден
+					if(i != this->_ctx->_brokers.end()){
+						// Получаем индекс текущего процесса
+						const uint16_t index = this->_ctx->_pids.at(::getpid());
+						// Получаем объект текущего брокера
+						broker_t * broker = i->second.at(index).get();
+						// Выполняем остановку чтение сообщений
+						broker->ev.stop();
+						// Закрываем файловый дескриптор на чтение из дочернего процесса
+						::close(broker->cfds[0]);
+						// Закрываем файловый дескриптор на запись в основной процесс
+						::close(broker->mfds[1]);
+					}
 					// Выводим сообщение об ошибке в лог
 					this->_log->print("[%u] Data from main process is closed", log_t::flag_t::CRITICAL, ::getpid());
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выходим из функции
-						return;
-					/**
-					 * Если режим отладки не активирован
-					 */
-					#else
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					#endif
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
 				} break;
 				// Если выполняется событие чтения данных с сокета
 				case static_cast <uint8_t> (base_t::event_type_t::READ): {
@@ -313,19 +224,8 @@
 						} else {
 							// Выводим сообщение об ошибке в лог
 							this->_log->print("[%u] Data from main process could not be received", log_t::flag_t::CRITICAL, ::getpid());
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Выходим из функции
-								return;
-							/**
-							 * Если режим отладки не активирован
-							 */
-							#else
-								// Выходим из приложения
-								::exit(EXIT_FAILURE);
-							#endif
+							// Выходим из функции
+							return;
 						}
 					}
 				} break;
@@ -336,19 +236,108 @@
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 			// Останавливаем чтение данных с родительского процесса
 			const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выходим из функции
-				return;
-			/**
-			 * Если режим отладки не активирован
-			 */
-			#else
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	}
+#endif
+/**
+ * Если операционной системой не является Windows
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * Глобальный объект воркера
+	 */
+	static awh::cluster_t * cluster = nullptr;
+	/**
+	 * process Метод перезапуска упавшего процесса
+	 * @param pid    идентификатор упавшего процесса
+	 * @param status статус остановившегося процесса
+	 */
+	void awh::Cluster::process(const pid_t pid, const int32_t status) noexcept {
+		// Выполняем перебор всего списка процессов
+		for(auto & item : this->_brokers){
+			// Выполняем поиск завершившегося процесса
+			for(auto & broker : item.second){
+				// Если процесс найден
+				if((broker->end = (broker->pid == pid))){
+					// Выполняем остановку чтение сообщений
+					broker->ev.stop();
+					// Выполняем закрытие файловых дескрипторов
+					::close(broker->mfds[0]);
+					::close(broker->cfds[1]);
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, broker->pid, status);
+					// Если статус сигнала, ручной остановкой процесса
+					if(status == SIGINT){
+						// Выполняем остановку работы
+						this->stop(item.first);
+						// Выходим из приложения
+						::exit(SIGINT);
+					// Если время жизни процесса составляет меньше 3-х минут
+					} else if((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - broker->date) <= 180000) {
+						// Выполняем остановку работы
+						this->stop(item.first);
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
+					}
+					// Если функция обратного вызова установлена
+					if(this->_callbacks.is("process"))
+						// Выполняем функцию обратного вызова
+						this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", item.first, pid, event_t::STOP);
+					// Выполняем поиск воркера
+					auto j = this->_workers.find(item.first);
+					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
+					if((j != this->_workers.end()) && j->second->_restart){
+						// Удаляем процесс из списка процессов
+						this->_pids.erase(broker->pid);
+						// Выполняем создание нового процесса
+						this->fork(item.first);
+					// Просто удаляем процесс из списка процессов
+					} else {
+						// Выполняем остановку работы
+						this->stop(item.first);
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
+					}
+					// Выходим функции
+					return;
+				}
+			}
+		}
+	}
+	/**
+	 * child Функция фильтр перехватчика сигналов
+	 * @param signal номер сигнала полученного системой
+	 * @param info   объект информации полученный системой
+	 * @param ctx    передаваемый внутренний контекст
+	 */
+	void awh::Cluster::child(int32_t signal, siginfo_t * info, void * ctx) noexcept {
+		// Зануляем неиспользуемые переменные
+		(void) ctx;
+		(void) info;
+		(void) signal;
+		// Идентификатор упавшего процесса
+		pid_t pid = 0;
+		// Статус упавшего процесса
+		int32_t status = 0;
+		// Выполняем получение идентификатора упавшего процесса
+		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0){
+			// Если работа процесса завершена
+			if(status > 0){
+				// Выполняем создание дочернего потока
+				const_cast <cluster_t *> (cluster)->process(pid, status);
+				// Выходим из цикла
+				break;
+			// Если нужно выполнить нормальное завершение работы
+			} else {
+				// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+				cluster->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, pid, status);
+				// Выполняем остановку работы
+				const_cast <cluster_t *> (cluster)->clear();
+				// Выполняем завершение работы
+				::exit(status);
+			}
 		}
 	}
 #endif
@@ -408,19 +397,8 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 						this->_log->print("Cluster write: %s", log_t::flag_t::WARNING, this->_socket.message().c_str());
 						// Выполняем остановку работы
 						this->stop(wid);
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выходим из функции
-							return;
-						/**
-						 * Если режим отладки не активирован
-						 */
-						#else
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						#endif
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
 					}
 				}
 			}
@@ -434,12 +412,164 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 	#endif
 }
 /**
- * fork Метод отделения от основного процесса (создание дочерних процессов)
+ * fork Метод создания нового дочернего процесса
+ * @param wid идентификатор воркера
+ */
+void awh::Cluster::fork(const uint16_t wid) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		/**
+		 * Выполняем обработку ошибки
+		 */
+		try {
+			// Выполняем поиск воркера
+			auto i = this->_workers.find(wid);
+			// Если воркер найден
+			if(i != this->_workers.end()){
+				// Выполняем поиск брокера
+				auto j = this->_brokers.find(i->first);
+				// Если список брокеров ещё пустой
+				if(j != this->_brokers.end()){
+					// Создаём объект брокера
+					std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+					// Выполняем подписку на основной канал передачи данных
+					if(::pipe(broker->mfds) != 0){
+						// Выводим в лог сообщение
+						this->_log->print("Cluster fork child: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+						// Выходим принудительно из приложения
+						::exit(EXIT_FAILURE);
+					}
+					// Выполняем подписку на дочерний канал передачи данных
+					if(::pipe(broker->cfds) != 0){
+						// Выводим в лог сообщение
+						this->_log->print("Cluster fork child: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+						// Выходим принудительно из приложения
+						::exit(EXIT_FAILURE);
+					}
+					// Выполняем добавление брокера в список брокеров
+					j->second.push_back(std::move(broker));
+				}
+				// Устанавливаем идентификатор процесса
+				pid_t pid = -1;
+				// Определяем тип потока
+				switch((pid = ::fork())){
+					// Если поток не создан
+					case -1: {
+						// Выводим в лог сообщение
+						this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
+					} break;
+					// Если процесс является дочерним
+					case 0: {
+						// Если идентификатор процесса соответствует
+						if((i->second->_working = (this->_pid == static_cast <pid_t> (::getppid())))){
+							// Получаем идентификатор текущего процесса
+							const pid_t pid = ::getpid();
+							// Добавляем в список дочерних процессов, идентификатор процесса
+							this->_pids.emplace(pid, j->second.size() - 1);
+							{
+								// Выполняем переинициализацию базы событий
+								this->_core->reinit();
+								// Получаем объект текущего брокера
+								broker_t * broker = j->second.back().get();
+								// Закрываем файловый дескриптор на запись в дочерний процесс
+								::close(broker->cfds[1]);
+								// Закрываем файловый дескриптор на чтение из основного процесса
+								::close(broker->mfds[0]);
+								// Делаем сокет на чтение неблокирующим
+								this->_socket.blocking(broker->cfds[0], socket_t::mode_t::DISABLED);
+								// Делаем сокет на запись неблокирующим
+								this->_socket.blocking(broker->mfds[1], socket_t::mode_t::ENABLED);
+								// Устанавливаем идентификатор процесса
+								broker->pid = pid;
+								// Устанавливаем время начала жизни процесса
+								broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								// Устанавливаем базу событий для чтения
+								broker->ev = this->_core->eventBase();
+								// Устанавливаем сокет для чтения
+								broker->ev = broker->cfds[0];
+								// Устанавливаем событие на чтение данных от основного процесса
+								broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
+								// Запускаем чтение данных с основного процесса
+								broker->ev.start();
+								// Выполняем активацию работы события чтения данных с сокета
+								broker->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+								// выполняем активацию работы события закрытия подключения
+								broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+								// Создаём мютекс для блокировки потока
+								this->_mtx = std::unique_ptr <std::recursive_mutex> (new std::recursive_mutex);
+								// Создаём новый объект протокола передачи данных
+								this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
+								// Создаём новый объект протокола получения данных
+								i->second->_cmp.emplace(this->_pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+								// Если функция обратного вызова установлена
+								if(this->_callbacks.is("process"))
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
+							}
+						// Если процесс превратился в зомби
+						} else {
+							// Процесс превратился в зомби, самоликвидируем его
+							this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+							// Выходим из приложения
+							::exit(EXIT_FAILURE);
+						}
+					} break;
+					// Если процесс является родительским
+					default: {
+						// Добавляем в список дочерних процессов, идентификатор процесса
+						this->_pids.emplace(pid, j->second.size() - 1);
+						// Получаем объект текущего брокера
+						broker_t * broker = j->second.back().get();
+						// Закрываем файловый дескриптор на запись в основной процесс
+						::close(broker->mfds[1]);
+						// Закрываем файловый дескриптор на чтение из дочернего процесса
+						::close(broker->cfds[0]);
+						// Делаем сокет на чтение неблокирующим
+						this->_socket.blocking(broker->mfds[0], socket_t::mode_t::DISABLED);
+						// Делаем сокет на запись неблокирующим
+						this->_socket.blocking(broker->cfds[1], socket_t::mode_t::ENABLED);
+						// Устанавливаем PID-процесса
+						broker->pid = pid;
+						// Устанавливаем время начала жизни процесса
+						broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						// Устанавливаем базу событий для чтения
+						broker->ev = this->_core->eventBase();
+						// Устанавливаем сокет для чтения
+						broker->ev = broker->mfds[0];
+						// Устанавливаем событие на чтение данных от дочернего процесса
+						broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
+						// Выполняем запуск работы чтения данных с дочерних процессов
+						broker->ev.start();
+						// Выполняем активацию работы чтения данных с дочерних процессов
+						broker->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+						// выполняем активацию работы события закрытия подключения
+						broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+						// Создаём новый объект протокола получения данных
+						i->second->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			// Выводим в лог сообщение
+			this->_log->print("Cluster fork: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	#endif
+}
+/**
+ * fork Метод создания указанного количества дочерних процессов
  * @param wid   идентификатор воркера
  * @param index индекс инициализированного процесса
- * @param stop  флаг остановки итерации создания дочерних процессов
  */
-void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool stop) noexcept {
+void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -530,19 +660,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 						case -1: {
 							// Выводим в лог сообщение
 							this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Выходим из функции
-								return;
-							/**
-							 * Если режим отладки не активирован
-							 */
-							#else
-								// Выходим из приложения
-								::exit(EXIT_FAILURE);
-							#endif
+							// Выходим из приложения
+							::exit(EXIT_FAILURE);
 						} break;
 						// Если процесс является дочерним
 						case 0: {
@@ -557,22 +676,20 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 									this->_core->reinit();
 									// Получаем объект текущего брокера
 									broker_t * broker = j->second.at(index).get();
+									// Закрываем файловый дескриптор на запись в дочерний процесс
+									::close(broker->cfds[1]);
+									// Закрываем файловый дескриптор на чтение из основного процесса
+									::close(broker->mfds[0]);
 									// Выполняем перебор всего списка брокеров
-									for(size_t i = 0; i < j->second.size(); i++){
-										// Если индекс брокера совпадает
-										if(i == static_cast <uint16_t> (index)){
+									for(auto & item : j->second){
+										// Если найдены остальные брокеры
+										if(item->cfds[1] != broker->cfds[1]){
 											// Закрываем файловый дескриптор на запись в дочерний процесс
-											::close(j->second.at(i)->cfds[1]);
+											::close(item->cfds[0]);
+											::close(item->cfds[1]);
 											// Закрываем файловый дескриптор на чтение из основного процесса
-											::close(j->second.at(i)->mfds[0]);
-										// Закрываем все файловые дескрипторы для всех остальных брокеров
-										} else {
-											// Закрываем файловый дескриптор на запись в дочерний процесс
-											::close(j->second.at(i)->cfds[0]);
-											::close(j->second.at(i)->cfds[1]);
-											// Закрываем файловый дескриптор на чтение из основного процесса
-											::close(j->second.at(i)->mfds[0]);
-											::close(j->second.at(i)->mfds[1]);
+											::close(item->mfds[0]);
+											::close(item->mfds[1]);
 										}
 									}
 									// Делаем сокет на чтение неблокирующим
@@ -610,19 +727,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							} else {
 								// Процесс превратился в зомби, самоликвидируем его
 								this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Выходим из функции
-									return;
-								/**
-								 * Если режим отладки не активирован
-								 */
-								#else
-									// Выходим из приложения
-									::exit(EXIT_FAILURE);
-								#endif
+								// Выходим из приложения
+								::exit(EXIT_FAILURE);
 							}
 						} break;
 						// Если процесс является родительским
@@ -651,42 +757,18 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index, const bool sto
 							broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
 							// Выполняем запуск работы чтения данных с дочерних процессов
 							broker->ev.start();
-							// Если не нужно останавливаться на создании процессов
-							if(!stop)
-								// Выполняем создание новых процессов
-								this->fork(i->first, index + 1, stop);
-							// Если нужно остановиться после создания всех прцоессов
-							else {
-								// Выполняем активацию работы чтения данных с дочерних процессов
-								broker->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
-								// выполняем активацию работы события закрытия подключения
-								broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-							}
+							// Выполняем создание новых процессов
+							this->fork(i->first, index + 1);
 							// Создаём новый объект протокола получения данных
 							i->second->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
 						}
 					}
 				// Если все процессы удачно созданы
-				} else if((i->second->_working = !stop)) {
+				} else {
 					// Выполняем поиск брокера
 					auto j = this->_brokers.find(i->first);
 					// Если идентификатор воркера получен
-					if(j != this->_brokers.end()){
-						// Если нужно отслеживать падение дочерних процессов
-						if(this->_crash){
-							// Запоминаем текущий объект воркера
-							worker = i->second.get();
-							// Выполняем зануление структур перехватчиков событий
-							::memset(&this->_sa, 0, sizeof(this->_sa));
-							// Устанавливаем функцию перехвадчика событий
-							this->_sa.sa_sigaction = worker_t::child;
-							// Устанавливаем флаги перехвата сигналов
-							this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
-							// Устанавливаем маску перехвата
-							sigemptyset(&this->_sa.sa_mask);
-							// Активируем перехватчик событий
-							::sigaction(SIGCHLD, &this->_sa, nullptr);
-						}
+					if((i->second->_working = (j != this->_brokers.end()))){
 						// Выполняем перебор всех доступных брокеров
 						for(auto & broker : j->second){
 							// Выполняем активацию работы чтения данных с дочерних процессов
@@ -797,19 +879,8 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
 				// Выполняем остановку работы
 				this->stop(wid);
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выходим из функции
-					return;
-				/**
-				 * Если режим отладки не активирован
-				 */
-				#else
-					// Выходим из приложения
-					::exit(EXIT_FAILURE);
-				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
 			// Если процесс не является родительским
 			} else if((this->_pid != pid) && (size > 0)) {
 				// Выполняем поиск брокеров
@@ -886,19 +957,8 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 				this->stop(wid);
 				// Процесс превратился в зомби, самоликвидируем его
 				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выходим из функции
-					return;
-				/**
-				 * Если режим отладки не активирован
-				 */
-				#else
-					// Выходим из приложения
-					::exit(EXIT_FAILURE);
-				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
 			}
 		// Выводим предупредительное сообщение в лог
 		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
@@ -963,19 +1023,8 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 				this->stop(wid);
 				// Процесс превратился в зомби, самоликвидируем его
 				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выходим из функции
-					return;
-				/**
-				 * Если режим отладки не активирован
-				 */
-				#else
-					// Выходим из приложения
-					::exit(EXIT_FAILURE);
-				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
 			}
 		// Выводим предупредительное сообщение в лог
 		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
@@ -1119,19 +1168,8 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			this->close(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выходим из функции
-				return;
-			/**
-			 * Если режим отладки не активирован
-			 */
-			#else
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
 		}
 		// Если воркер найден, снимаем флаг запуска кластера
 		if(i != this->_workers.end())
@@ -1146,12 +1184,34 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
  * @param wid идентификатор воркера
  */
 void awh::Cluster::start(const uint16_t wid) noexcept {
-	// Выполняем поиск идентификатора воркера
-	auto i = this->_workers.find(wid);
-	// Если вокер найден
-	if(i != this->_workers.end())
-		// Выполняем запуск процесса
-		this->fork(i->first);
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если процесс является родительским
+		if(this->_pid == static_cast <pid_t> (::getpid())){
+			// Выполняем поиск идентификатора воркера
+			auto i = this->_workers.find(wid);
+			// Если вокер найден
+			if((i != this->_workers.end()) && !i->second->_working)
+				// Выполняем запуск процесса
+				this->fork(i->first, 0);
+		// Если процесс превратился в зомби
+		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+			// Выполняем остановку работы
+			this->stop(wid);
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
 }
 /**
  * restart Метод установки флага перезапуска процессов
@@ -1159,12 +1219,34 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
  * @param mode флаг перезапуска процессов
  */
 void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
-	// Выполняем поиск идентификатора воркера
-	auto i = this->_workers.find(wid);
-	// Если вокер найден
-	if(i != this->_workers.end())
-		// Устанавливаем флаг автоматического перезапуска процесса
-		i->second->_restart = mode;
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если процесс является родительским
+		if(this->_pid == static_cast <pid_t> (::getpid())){
+			// Выполняем поиск идентификатора воркера
+			auto i = this->_workers.find(wid);
+			// Если вокер найден
+			if(i != this->_workers.end())
+				// Устанавливаем флаг автоматического перезапуска процесса
+				i->second->_restart = mode;
+		// Если процесс превратился в зомби
+		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+			// Выполняем остановку работы
+			this->stop(wid);
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
 }
 /**
  * base Метод установки сетевого ядра
@@ -1182,12 +1264,105 @@ void awh::Cluster::core(core_t * core) noexcept {
 	this->_core = core;
 }
 /**
- * trackCrash Метод отключения отслеживания падения дочерних процессов
- * @param mode флаг отслеживания падения дочерних процессов
+ * emplace Метод размещения нового воркера
+ * @param wid идентификатор воркера
  */
-void awh::Cluster::trackCrash(const bool mode) noexcept {
-	// Выполняем установку флага отслеживания падения дочерних процессов
-	this->_crash = mode;
+void awh::Cluster::emplace(const uint16_t wid) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если мютекс инициализирован
+		if(this->_mtx != nullptr){
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(* this->_mtx.get());
+			// Если процесс является родительским
+			if(this->_pid == static_cast <pid_t> (::getpid())){
+				// Выполняем поиск идентификатора воркера
+				auto i = this->_workers.find(wid);
+				// Если воркер существует
+				if(i != this->_workers.end()){
+					// Увеличиваем количество активных воркеров
+					i->second->_count++;
+					// Выполняем запуск нового процесса
+					this->fork(i->first);
+				}
+			// Если процесс превратился в зомби
+			} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+				// Выполняем остановку работы
+				this->stop(wid);
+				// Процесс превратился в зомби, самоликвидируем его
+				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			}
+		// Выводим предупредительное сообщение в лог
+		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
+}
+/**
+ * erase Метод удаления активного процесса
+ * @param wid идентификатор воркера
+ * @param pid идентификатор процесса
+ */
+void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если мютекс инициализирован
+		if(this->_mtx != nullptr){
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(* this->_mtx.get());
+			// Если процесс является родительским
+			if(this->_pid == static_cast <pid_t> (::getpid())){
+				// Выполняем поиск брокеров
+				auto i = this->_brokers.find(wid);
+				// Если брокер найден
+				if(i != this->_brokers.end()){
+					// Выполняем поиск индекса брокера
+					auto j = this->_pids.find(pid);
+					// Если индекс найден
+					if((j != this->_pids.end()) && (static_cast <size_t> (j->second) < i->second.size())){
+						// Получаем объект текущего брокера
+						broker_t * broker = i->second.at(j->second).get();
+						// Выполняем остановку чтение сообщений
+						broker->ev.stop();
+						// Выполняем закрытие открытых файловых дескрипторов
+						::close(broker->mfds[0]);
+						::close(broker->cfds[1]);
+						// Выполняем удаление указанного брокера
+						i->second.erase(std::next(i->second.begin(), j->second));
+						// Выполняем удаление процесса из списка
+						this->_pids.erase(j);
+						// Выполняем убийство процесса
+						::kill(pid, SIGTERM);
+					}
+				}
+			// Если процесс превратился в зомби
+			} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+				// Выполняем остановку работы
+				this->stop(wid);
+				// Процесс превратился в зомби, самоликвидируем его
+				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			}
+		// Выводим предупредительное сообщение в лог
+		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
 }
 /**
  * count Метод получения максимального количества процессов
@@ -1263,6 +1438,49 @@ void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("process", callbacks);
 	// Выполняем установку функции обратного вызова при получении сообщения
 	this->_callbacks.set("message", callbacks);
+}
+/**
+ * Cluster Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
+ _pid(::getpid()), _callbacks(log), _socket(fmk, log),
+ _mtx(nullptr), _core(nullptr), _fmk(fmk), _log(log) {
+	// Выполняем установку объекта кластера
+	cluster = this;
+	// Выполняем зануление структур перехватчиков событий
+	::memset(&this->_sa, 0, sizeof(this->_sa));
+	// Устанавливаем функцию перехвадчика событий
+	this->_sa.sa_sigaction = cluster_t::child;
+	// Устанавливаем флаги перехвата сигналов
+	this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
+	// Устанавливаем маску перехвата
+	sigemptyset(&this->_sa.sa_mask);
+	// Активируем перехватчик событий
+	::sigaction(SIGCHLD, &this->_sa, nullptr);
+}
+/**
+ * Cluster Конструктор
+ * @param core объект сетевого ядра
+ * @param fmk  объект фреймворка
+ * @param log  объект для работы с логами
+ */
+awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+ _pid(::getpid()), _callbacks(log), _socket(fmk, log),
+ _mtx(nullptr), _core(core), _fmk(fmk), _log(log) {
+	// Выполняем установку объекта кластера
+	cluster = this;
+	// Выполняем зануление структур перехватчиков событий
+	::memset(&this->_sa, 0, sizeof(this->_sa));
+	// Устанавливаем функцию перехвадчика событий
+	this->_sa.sa_sigaction = cluster_t::child;
+	// Устанавливаем флаги перехвата сигналов
+	this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
+	// Устанавливаем маску перехвата
+	sigemptyset(&this->_sa.sa_mask);
+	// Активируем перехватчик событий
+	::sigaction(SIGCHLD, &this->_sa, nullptr);
 }
 /**
  * ~Cluster Деструктор

@@ -1718,8 +1718,6 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 			switch(static_cast <uint8_t> (this->_clusterMode)){
 				// Если кластер необходимо активировать
 				case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
-					// Устанавливаем флаг отслеживания упавших процессов
-					this->_cluster.trackCrash(this->_clusterAutoRestart);
 					// Устанавливаем флаг автоматического перезапуска упавших процессов
 					this->_cluster.restart(sid, this->_clusterAutoRestart);
 					// Если количество процессов установленно
@@ -3019,8 +3017,6 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
-	// Отключаем отслеживание упавших процессов
-	this->_cluster.trackCrash(this->_clusterAutoRestart);
 	// Устанавливаем функцию получения сообщений процессов кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", std::bind(&core_t::message, this, _1, _2, _3, _4));
 	// Устанавливаем функцию получения статуса кластера
@@ -3038,8 +3034,6 @@ awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log)
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
-	// Отключаем отслеживание упавших процессов
-	this->_cluster.trackCrash(this->_clusterAutoRestart);
 	// Устанавливаем функцию получения сообщений процессов кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", std::bind(&core_t::message, this, _1, _2, _3, _4));
 	// Устанавливаем функцию получения статуса кластера

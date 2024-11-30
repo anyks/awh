@@ -99,6 +99,16 @@ namespace awh {
 				std::set <pid_t> pids() const noexcept;
 			public:
 				/**
+				 * emplace Метод размещения нового воркера
+				 */
+				void emplace() noexcept;
+				/**
+				 * erase Метод удаления активного процесса
+				 * @param pid идентификатор процесса
+				 */
+				void erase(const pid_t pid) noexcept;
+			public:
+				/**
 				 * send Метод отправки сообщение родительскому процессу
 				 */
 				void send() const noexcept;
