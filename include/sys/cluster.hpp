@@ -205,9 +205,6 @@ namespace awh {
 				struct sigaction _sa;
 			#endif
 		private:
-			// Мютекс для блокировки потока
-			std::unique_ptr <std::recursive_mutex> _mtx;
-		private:
 			// Список активных дочерних процессов
 			std::map <pid_t, uint16_t> _pids;
 			// Список активных воркеров

@@ -499,8 +499,6 @@ void awh::Cluster::fork(const uint16_t wid) noexcept {
 								broker->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 								// выполняем активацию работы события закрытия подключения
 								broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-								// Создаём мютекс для блокировки потока
-								this->_mtx = std::unique_ptr <std::recursive_mutex> (new std::recursive_mutex);
 								// Создаём новый объект протокола передачи данных
 								this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 								// Создаём новый объект протокола получения данных
@@ -712,8 +710,6 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 									broker->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 									// выполняем активацию работы события закрытия подключения
 									broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-									// Создаём мютекс для блокировки потока
-									this->_mtx = std::unique_ptr <std::recursive_mutex> (new std::recursive_mutex);
 									// Создаём новый объект протокола передачи данных
 									this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 									// Создаём новый объект протокола получения данных
@@ -776,8 +772,6 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 							// выполняем активацию работы события закрытия подключения
 							broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						}
-						// Создаём мютекс для блокировки потока
-						this->_mtx = std::unique_ptr <std::recursive_mutex> (new std::recursive_mutex);
 						// Создаём новый объект протокола передачи данных
 						this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 						// Если функция обратного вызова установлена
@@ -867,39 +861,33 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr){
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(* this->_mtx.get());
-			// Получаем идентификатор текущего процесса
-			const pid_t pid = ::getpid();
-			// Если процесс превратился в зомби
-			if((this->_pid != pid) && (this->_pid != static_cast <pid_t> (::getppid()))){
-				// Процесс превратился в зомби, самоликвидируем его
-				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
-				// Выполняем остановку работы
-				this->stop(wid);
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			// Если процесс не является родительским
-			} else if((this->_pid != pid) && (size > 0)) {
-				// Выполняем поиск брокеров
-				auto i = this->_brokers.find(wid);
-				// Если брокер найден
-				if((i != this->_brokers.end()) && (this->_pids.find(pid) != this->_pids.end())){
-					// Выполняем поиск активных протоколов кластера
-					auto j = this->_cmp.find(i->first);
-					// Если протокол кластера найден
-					if(j != this->_cmp.end()){
-						// Выполняем добавление буфера данных в протокол
-						j->second->push(buffer, size);
-						// Выполняем отправку сообщения мастер-процессу
-						this->write(i->first, i->second.at(this->_pids.at(pid))->mfds[1]);
-					}
+		// Получаем идентификатор текущего процесса
+		const pid_t pid = ::getpid();
+		// Если процесс превратился в зомби
+		if((this->_pid != pid) && (this->_pid != static_cast <pid_t> (::getppid()))){
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
+			// Выполняем остановку работы
+			this->stop(wid);
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		// Если процесс не является родительским
+		} else if((this->_pid != pid) && (size > 0)) {
+			// Выполняем поиск брокеров
+			auto i = this->_brokers.find(wid);
+			// Если брокер найден
+			if((i != this->_brokers.end()) && (this->_pids.find(pid) != this->_pids.end())){
+				// Выполняем поиск активных протоколов кластера
+				auto j = this->_cmp.find(i->first);
+				// Если протокол кластера найден
+				if(j != this->_cmp.end()){
+					// Выполняем добавление буфера данных в протокол
+					j->second->push(buffer, size);
+					// Выполняем отправку сообщения мастер-процессу
+					this->write(i->first, i->second.at(this->_pids.at(pid))->mfds[1]);
 				}
 			}
-		// Выводим предупредительное сообщение в лог
-		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
+		}
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -931,37 +919,31 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr){
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(* this->_mtx.get());
-			// Если процесс является родительским
-			if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
-				// Выполняем поиск брокеров
-				auto i = this->_brokers.find(wid);
-				// Если брокер найден
-				if((i != this->_brokers.end()) && (this->_pids.find(pid) != this->_pids.end())){
-					// Выполняем поиск активных протоколов кластера
-					auto j = this->_cmp.find(i->first);
-					// Если протокол кластера найден
-					if(j != this->_cmp.end()){
-						// Выполняем добавление буфера данных в протокол
-						j->second->push(buffer, size);
-						// Выполняем отправку сообщения дочернему-процессу
-						this->write(i->first, i->second.at(this->_pids.at(pid))->cfds[1]);
-					}
+		// Если процесс является родительским
+		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
+			// Выполняем поиск брокеров
+			auto i = this->_brokers.find(wid);
+			// Если брокер найден
+			if((i != this->_brokers.end()) && (this->_pids.find(pid) != this->_pids.end())){
+				// Выполняем поиск активных протоколов кластера
+				auto j = this->_cmp.find(i->first);
+				// Если протокол кластера найден
+				if(j != this->_cmp.end()){
+					// Выполняем добавление буфера данных в протокол
+					j->second->push(buffer, size);
+					// Выполняем отправку сообщения дочернему-процессу
+					this->write(i->first, i->second.at(this->_pids.at(pid))->cfds[1]);
 				}
-			// Если процесс превратился в зомби
-			} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-				// Выполняем остановку работы
-				this->stop(wid);
-				// Процесс превратился в зомби, самоликвидируем его
-				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
 			}
-		// Выводим предупредительное сообщение в лог
-		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
+		// Если процесс превратился в зомби
+		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+			// Выполняем остановку работы
+			this->stop(wid);
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -991,43 +973,37 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr){
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(* this->_mtx.get());
-			// Если процесс является родительским
-			if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
-				// Выполняем поиск брокеров
-				auto i = this->_brokers.find(wid);
-				// Если брокер найден
-				if((i != this->_brokers.end()) && !i->second.empty()){
-					// Выполняем поиск активных протоколов кластера
-					auto j = this->_cmp.find(i->first);
-					// Если протокол кластера найден
-					if(j != this->_cmp.end()){
-						// Переходим по всем дочерним процессам
-						for(auto & broker : i->second){
-							// Если идентификатор процесса не нулевой
-							if(broker->pid > 0){
-								// Выполняем добавление буфера данных в протокол
-								j->second->push(buffer, size);
-								// Выполняем отправку сообщения дочернему-процессу
-								this->write(i->first, broker->cfds[1]);
-							}
+		// Если процесс является родительским
+		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
+			// Выполняем поиск брокеров
+			auto i = this->_brokers.find(wid);
+			// Если брокер найден
+			if((i != this->_brokers.end()) && !i->second.empty()){
+				// Выполняем поиск активных протоколов кластера
+				auto j = this->_cmp.find(i->first);
+				// Если протокол кластера найден
+				if(j != this->_cmp.end()){
+					// Переходим по всем дочерним процессам
+					for(auto & broker : i->second){
+						// Если идентификатор процесса не нулевой
+						if(broker->pid > 0){
+							// Выполняем добавление буфера данных в протокол
+							j->second->push(buffer, size);
+							// Выполняем отправку сообщения дочернему-процессу
+							this->write(i->first, broker->cfds[1]);
 						}
 					}
 				}
-			// Если процесс превратился в зомби
-			} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-				// Выполняем остановку работы
-				this->stop(wid);
-				// Процесс превратился в зомби, самоликвидируем его
-				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
 			}
-		// Выводим предупредительное сообщение в лог
-		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
+		// Если процесс превратился в зомби
+		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+			// Выполняем остановку работы
+			this->stop(wid);
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -1272,32 +1248,26 @@ void awh::Cluster::emplace(const uint16_t wid) noexcept {
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr){
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(* this->_mtx.get());
-			// Если процесс является родительским
-			if(this->_pid == static_cast <pid_t> (::getpid())){
-				// Выполняем поиск идентификатора воркера
-				auto i = this->_workers.find(wid);
-				// Если воркер существует
-				if(i != this->_workers.end()){
-					// Увеличиваем количество активных воркеров
-					i->second->_count++;
-					// Выполняем запуск нового процесса
-					this->fork(i->first);
-				}
-			// Если процесс превратился в зомби
-			} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-				// Выполняем остановку работы
-				this->stop(wid);
-				// Процесс превратился в зомби, самоликвидируем его
-				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
+		// Если процесс является родительским
+		if(this->_pid == static_cast <pid_t> (::getpid())){
+			// Выполняем поиск идентификатора воркера
+			auto i = this->_workers.find(wid);
+			// Если вокер найден и работа кластера запущена
+			if((i != this->_workers.end()) && i->second->_working){
+				// Увеличиваем количество активных воркеров
+				i->second->_count++;
+				// Выполняем запуск нового процесса
+				this->fork(i->first);
 			}
-		// Выводим предупредительное сообщение в лог
-		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
+		// Если процесс превратился в зомби
+		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+			// Выполняем остановку работы
+			this->stop(wid);
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -1316,46 +1286,40 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если мютекс инициализирован
-		if(this->_mtx != nullptr){
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(* this->_mtx.get());
-			// Если процесс является родительским
-			if(this->_pid == static_cast <pid_t> (::getpid())){
-				// Выполняем поиск брокеров
-				auto i = this->_brokers.find(wid);
-				// Если брокер найден
-				if(i != this->_brokers.end()){
-					// Выполняем поиск индекса брокера
-					auto j = this->_pids.find(pid);
-					// Если индекс найден
-					if((j != this->_pids.end()) && (static_cast <size_t> (j->second) < i->second.size())){
-						// Получаем объект текущего брокера
-						broker_t * broker = i->second.at(j->second).get();
-						// Выполняем остановку чтение сообщений
-						broker->ev.stop();
-						// Выполняем закрытие открытых файловых дескрипторов
-						::close(broker->mfds[0]);
-						::close(broker->cfds[1]);
-						// Выполняем удаление указанного брокера
-						i->second.erase(std::next(i->second.begin(), j->second));
-						// Выполняем удаление процесса из списка
-						this->_pids.erase(j);
-						// Выполняем убийство процесса
-						::kill(pid, SIGTERM);
-					}
+		// Если процесс является родительским
+		if(this->_pid == static_cast <pid_t> (::getpid())){
+			// Выполняем поиск брокеров
+			auto i = this->_brokers.find(wid);
+			// Если брокер найден и работа кластера запущена
+			if(i != this->_brokers.end()){
+				// Выполняем поиск индекса брокера
+				auto j = this->_pids.find(pid);
+				// Если индекс найден
+				if((j != this->_pids.end()) && (static_cast <size_t> (j->second) < i->second.size())){
+					// Получаем объект текущего брокера
+					broker_t * broker = i->second.at(j->second).get();
+					// Выполняем остановку чтение сообщений
+					broker->ev.stop();
+					// Выполняем закрытие открытых файловых дескрипторов
+					::close(broker->mfds[0]);
+					::close(broker->cfds[1]);
+					// Выполняем удаление указанного брокера
+					i->second.erase(std::next(i->second.begin(), j->second));
+					// Выполняем удаление процесса из списка
+					this->_pids.erase(j);
+					// Выполняем убийство процесса
+					::kill(pid, SIGTERM);
 				}
-			// Если процесс превратился в зомби
-			} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-				// Выполняем остановку работы
-				this->stop(wid);
-				// Процесс превратился в зомби, самоликвидируем его
-				this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
 			}
-		// Выводим предупредительное сообщение в лог
-		} else this->_log->print("Cluster has not yet been initialized", log_t::flag_t::WARNING);
+		// Если процесс превратился в зомби
+		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+			// Выполняем остановку работы
+			this->stop(wid);
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -1445,8 +1409,7 @@ void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
  * @param log объект для работы с логами
  */
 awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _callbacks(log), _socket(fmk, log),
- _mtx(nullptr), _core(nullptr), _fmk(fmk), _log(log) {
+ _pid(::getpid()), _callbacks(log), _socket(fmk, log), _core(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем установку объекта кластера
 	cluster = this;
 	// Выполняем зануление структур перехватчиков событий
@@ -1467,8 +1430,7 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _callbacks(log), _socket(fmk, log),
- _mtx(nullptr), _core(core), _fmk(fmk), _log(log) {
+ _pid(::getpid()), _callbacks(log), _socket(fmk, log), _core(core), _fmk(fmk), _log(log) {
 	// Выполняем установку объекта кластера
 	cluster = this;
 	// Выполняем зануление структур перехватчиков событий
