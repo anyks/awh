@@ -755,6 +755,12 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					options->http.reset();
 					// Выполняем очистку буфера данных
 					options->buffer.payload.clear();
+					// Выполняем очистку фрагментированных сообщений
+					options->buffer.fragmes.clear();
+					// Если размер выделенной памяти выше максимального размера буфера
+					if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+						// Выполняем очистку временного буфера данных
+						vector <char> ().swap(options->buffer.fragmes);
 					// Завершаем работу
 					return;
 				}

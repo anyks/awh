@@ -184,6 +184,10 @@ void awh::client::Websocket2::disconnectEvent(const uint64_t bid, const uint16_t
 		this->_buffer.clear();
 		// Выполняем очистку оставшихся фрагментов
 		this->_fragmes.clear();
+		// Если размер выделенной памяти выше максимального размера буфера
+		if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+			// Выполняем очистку временного буфера данных
+			vector <char> ().swap(this->_fragmes);
 	// Если подключение не является постоянным
 	} else {
 		// Выполняем сброс параметров запроса
@@ -207,6 +211,10 @@ void awh::client::Websocket2::disconnectEvent(const uint64_t bid, const uint16_t
 	this->_buffer.clear();
 	// Выполняем очистку оставшихся фрагментов
 	this->_fragmes.clear();
+	// Если размер выделенной памяти выше максимального размера буфера
+	if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+		// Выполняем очистку временного буфера данных
+		vector <char> ().swap(this->_fragmes);
 	// Выполняем переключение протокола интернета обратно на HTTP/1.1
 	this->_proto = engine_t::proto_t::HTTP1_1;
 	// Если функция обратного вызова при подключении/отключении установлена
@@ -598,6 +606,10 @@ int32_t awh::client::Websocket2::beginSignal(const int32_t sid) noexcept {
 			this->_buffer.clear();
 			// Выполняем очистку оставшихся фрагментов
 			this->_fragmes.clear();
+			// Если размер выделенной памяти выше максимального размера буфера
+			if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+				// Выполняем очистку временного буфера данных
+				vector <char> ().swap(this->_fragmes);
 		}
 	}
 	// Выводим результат
@@ -798,12 +810,16 @@ void awh::client::Websocket2::flush() noexcept {
 		this->_close = false;
 		// Снимаем флаг принудительной остановки
 		this->_stopped = false;
+		// Устанавливаем флаг разрешающий обмен данных
+		this->_allow = allow_t();
 		// Выполняем очистку оставшихся данных
 		this->_buffer.clear();
 		// Выполняем очистку оставшихся фрагментов
 		this->_fragmes.clear();
-		// Устанавливаем флаг разрешающий обмен данных
-		this->_allow = allow_t();
+		// Если размер выделенной памяти выше максимального размера буфера
+		if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+			// Выполняем очистку временного буфера данных
+			vector <char> ().swap(this->_fragmes);
 	}
 }
 /**
@@ -969,6 +985,10 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
 					this->_fragmes.clear();
+					// Если размер выделенной памяти выше максимального размера буфера
+					if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+						// Выполняем очистку временного буфера данных
+						vector <char> ().swap(this->_fragmes);
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
@@ -1107,6 +1127,10 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 						} else if(!this->_fragmes.empty()) {
 							// Очищаем список фрагментированных сообщений
 							this->_fragmes.clear();
+							// Если размер выделенной памяти выше максимального размера буфера
+							if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+								// Выполняем очистку временного буфера данных
+								vector <char> ().swap(this->_fragmes);
 							// Создаём сообщение
 							this->_mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
@@ -1141,6 +1165,10 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 							else this->extraction(this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 							// Очищаем список фрагментированных сообщений
 							this->_fragmes.clear();
+							// Если размер выделенной памяти выше максимального размера буфера
+							if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+								// Выполняем очистку временного буфера данных
+								vector <char> ().swap(this->_fragmes);
 						}
 					} break;
 					// Если ответом является CLOSE
@@ -1191,6 +1219,10 @@ void awh::client::Websocket2::error(const ws::mess_t & message) const noexcept {
 	const_cast <ws2_t *> (this)->_buffer.clear();
 	// Очищаем список фрагментированных сообщений
 	const_cast <ws2_t *> (this)->_fragmes.clear();
+	// Если размер выделенной памяти выше максимального размера буфера
+	if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+		// Выполняем очистку временного буфера данных
+		vector <char> ().swap(const_cast <ws2_t *> (this)->_fragmes);
 	// Если код ошибки указан
 	if(message.code > 0){
 		// Если сообщение об ошибке пришло

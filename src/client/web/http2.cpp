@@ -748,6 +748,10 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 												j->second->entity.clear();
 												// Выполняем установку метода запроса
 												j->second->method = awh::web_t::method_t::GET;
+												// Если размер выделенной памяти выше максимального размера буфера
+												if(j->second->entity.capacity() > AWH_BUFFER_SIZE)
+													// Выполняем очистку временного буфера данных
+													vector <char> ().swap(j->second->entity);
 											}
 										}
 										// Выполняем установку следующего экшена на открытие подключения
@@ -818,6 +822,10 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 											j->second->entity.clear();
 											// Выполняем установку метода запроса
 											j->second->method = awh::web_t::method_t::GET;
+											// Если размер выделенной памяти выше максимального размера буфера
+											if(j->second->entity.capacity() > AWH_BUFFER_SIZE)
+												// Выполняем очистку временного буфера данных
+												vector <char> ().swap(j->second->entity);
 										}
 									}
 									// Выполняем установку следующего экшена на открытие подключения
@@ -1068,8 +1076,15 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 						if(!j->second->entity.empty())
 							// Устанавливаем тело запроса
 							request.entity.assign(j->second->entity.begin(), j->second->entity.end());
-						// Выполняем очистку полученных данных тела запроса
-						else request.entity.clear();
+						// Если тело запроса не существует
+						else {
+							// Выполняем очистку полученных данных тела запроса
+							request.entity.clear();
+							// Если размер выделенной памяти выше максимального размера буфера
+							if(request.entity.capacity() > AWH_BUFFER_SIZE)
+								// Выполняем очистку временного буфера данных
+								vector <char> ().swap(request.entity);
+						}
 					}
 					// Выполняем извлечение полученных данных запроса
 					i->second->http.mapping(http_t::process_t::REQUEST, this->_http);

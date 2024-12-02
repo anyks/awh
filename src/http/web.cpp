@@ -16,6 +16,21 @@
 #include <http/web.hpp>
 
 /**
+ * clear Метод очистки данных чанка
+ */
+void awh::Web::Chunk::clear() noexcept {
+	// Обнуляем размер чанка
+	this->size = 0;
+	// Обнуляем буфер данных
+	this->data.clear();
+	// Выполняем сброс стейта чанка
+	this->state = process_t::SIZE;
+	// Если размер выделенной памяти выше максимального размера чанка
+	if(this->data.capacity() > AWH_CHUNK_SIZE)
+		// Выполняем удаление памяти чанка
+		vector <char> ().swap(this->data);
+}
+/**
  * parseBody Метод извлечения полезной нагрузки
  * @param buffer буфер данных для чтения
  * @param size   размер буфера данных для чтения
@@ -495,7 +510,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											// Устанавливаем стейт ожидания получения заголовков
 											this->_state = state_t::HEADERS;
 											// Получаем версию протокол запроса
-											this->_res.version = ::stof(string(buffer + 5, this->_pos[0] - 5));
+											this->_res.version = ::stod(string(buffer + 5, this->_pos[0] - 5));
 											// Получаем сообщение ответа
 											this->_res.message.assign(buffer + (this->_pos[1] + 1), size - (this->_pos[1] + 1));
 											// Получаем код ответа
@@ -550,7 +565,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											// Получаем параметры URI-запроса
 											const string uri(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1));
 											// Получаем версию протокол запроса
-											this->_req.version = ::stof(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
+											this->_req.version = ::stod(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
 											// Выполняем установку URI-параметров запроса
 											this->_req.url = this->_uri.parse(uri);
 											// Если метод определён как GET
@@ -1051,6 +1066,10 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
  * clear Метод очистки собранных данных
  */
 void awh::Web::clear() noexcept {
+	// Выполняем сброс параметров запроса
+	this->_req = req_t();
+	// Выполняем сброс параметров ответа
+	this->_res = res_t();
 	// Выполняем очистку тела HTTP-запроса
 	this->_body.clear();
 	// Выполняем сброс параметров чанка
@@ -1059,10 +1078,12 @@ void awh::Web::clear() noexcept {
 	this->_headers.clear();
 	// Выполняем сброс списка трейлеров
 	this->_trailers.clear();
-	// Выполняем сброс параметров запроса
-	this->_req = req_t();
-	// Выполняем сброс параметров ответа
-	this->_res = res_t();
+	// Выполняем удаление памяти тела
+	vector <char> ().swap(this->_body);
+	// Выполняем удаление памяти списка трейлеров
+	std::unordered_set <string> ().swap(this->_trailers);
+	// Выполняем удаление памяти полученных HTTP заголовков
+	std::unordered_multimap <string, string> ().swap(this->_headers);
 }
 /**
  * reset Метод сброса стейтов парсера

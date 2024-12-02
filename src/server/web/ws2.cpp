@@ -286,6 +286,10 @@ int32_t awh::server::Websocket2::beginSignal(const int32_t sid, const uint64_t b
 		options->buffer.payload.clear();
 		// Выполняем очистку оставшихся фрагментов
 		options->buffer.fragmes.clear();
+		// Если размер выделенной памяти выше максимального размера буфера
+		if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+			// Выполняем очистку временного буфера данных
+			vector <char> ().swap(options->buffer.fragmes);
 	}
 	// Выводим результат
 	return 0;
@@ -477,6 +481,10 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 												} else if(!options->buffer.fragmes.empty()) {
 													// Очищаем список фрагментированных сообщений
 													options->buffer.fragmes.clear();
+													// Если размер выделенной памяти выше максимального размера буфера
+													if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+														// Выполняем очистку временного буфера данных
+														vector <char> ().swap(options->buffer.fragmes);
 													// Создаём сообщение
 													options->mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 													// Выполняем отключение брокера
@@ -509,6 +517,10 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 													else this->extraction(bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
 													// Очищаем список фрагментированных сообщений
 													options->buffer.fragmes.clear();
+													// Если размер выделенной памяти выше максимального размера буфера
+													if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+														// Выполняем очистку временного буфера данных
+														vector <char> ().swap(options->buffer.fragmes);
 												}
 											} break;
 											// Если ответом является CLOSE
@@ -866,6 +878,10 @@ void awh::server::Websocket2::error(const uint64_t bid, const ws::mess_t & messa
 		options->buffer.payload.clear();
 		// Очищаем список фрагментированных сообщений
 		options->buffer.fragmes.clear();
+		// Если размер выделенной памяти выше максимального размера буфера
+		if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+			// Выполняем очистку временного буфера данных
+			vector <char> ().swap(options->buffer.fragmes);
 	}
 	// Если идентификатор брокера передан и код ошибки указан
 	if((bid > 0) && (message.code > 0)){
@@ -1065,6 +1081,10 @@ void awh::server::Websocket2::erase(const uint64_t bid) noexcept {
 				options->buffer.payload.clear();
 				// Выполняем очистку оставшихся фрагментов
 				options->buffer.fragmes.clear();
+				// Если размер выделенной памяти выше максимального размера буфера
+				if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+					// Выполняем очистку временного буфера данных
+					vector <char> ().swap(options->buffer.fragmes);
 				// Если переключение протокола на HTTP/2 не выполнено
 				if(options->proto != engine_t::proto_t::HTTP2)
 					// Выполняем очистку отключившихся брокеров у Websocket-сервера

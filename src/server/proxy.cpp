@@ -548,8 +548,15 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
 			if(this->_callbacks.is("entityServer"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *)> ("entityServer", bid, method, url, &i->second->request.entity);
-		// Выполняем очистку тела запроса
-		} else i->second->request.entity.clear();
+		// Если тело запроса с сервера не получено
+		} else {
+			// Выполняем очистку тела запроса
+			i->second->request.entity.clear();
+			// Если размер выделенной памяти выше максимального размера буфера
+			if(i->second->request.entity.capacity() > AWH_BUFFER_SIZE)
+				// Выполняем очистку временного буфера данных
+				vector <char> ().swap(i->second->request.entity);
+		}
 	}
 }
 /**
@@ -574,8 +581,15 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			if(this->_callbacks.is("entityClient"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, vector <char> *)> ("entityClient", bid, code, message, &i->second->response.entity);
-		// Выполняем очистку тела ответа
-		} else i->second->response.entity.clear();
+		// Если тело ответа с сервера не получено
+		} else {
+			// Выполняем очистку тела ответа
+			i->second->response.entity.clear();
+			// Если размер выделенной памяти выше максимального размера буфера
+			if(i->second->response.entity.capacity() > AWH_BUFFER_SIZE)
+				// Выполняем очистку временного буфера данных
+				vector <char> ().swap(i->second->response.entity);
+		}
 		// Снимаем флаг отправки результата
 		i->second->sending = false;
 		// Выполняем поиск идентификатора потока

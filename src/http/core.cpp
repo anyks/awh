@@ -867,7 +867,7 @@ void awh::Http::commit() noexcept {
 					// Если заголовок с параметрами передачи данных Transfer-Encoding существует
 					if((this->_te.enabled = this->_web.isHeader("te"))){
 						// Если версия протокола подключения выше чем HTTP/1.1
-						if(this->_web.request().version > 1.1f){
+						if(this->_web.request().version > 1.1){
 							// Выполняем активации получение трейлеров
 							this->_te.trailers = true;
 							// Выполняем активацию передачу данных чанками
@@ -1178,7 +1178,7 @@ const vector <char> awh::Http::payload() const noexcept {
 		// Если данные тела ещё существуют
 		if(!body->empty()){
 			// Версия протокола HTTP
-			float version = 1.1f;
+			double version = 1.1;
 			// Определяем тип HTTP-модуля
 			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если мы работаем с клиентом
@@ -1193,9 +1193,9 @@ const vector <char> awh::Http::payload() const noexcept {
 				break;
 			}
 			// Если нужно тело выводить в виде чанков
-			if((version > 1.f) && this->_te.chunking){
+			if((version > 1.) && this->_te.chunking){
 				// Если версия протокола интернета выше 1.1
-				if(version > 1.1f){
+				if(version > 1.1){
 					// Если тело сообщения больше размера чанка
 					if(body->size() >= this->_chunk){
 						// Формируем результат
@@ -2885,47 +2885,47 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 						// Если метод запроса указан как GET
 						case static_cast <uint8_t> (web_t::method_t::GET):
 							// Формируем GET запрос
-							request = this->_fmk->format("GET %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
+							request = this->_fmk->format("GET %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						break;
 						// Если метод запроса указан как PUT
 						case static_cast <uint8_t> (web_t::method_t::PUT):
 							// Формируем PUT запрос
-							request = this->_fmk->format("PUT %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
+							request = this->_fmk->format("PUT %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						break;
 						// Если метод запроса указан как POST
 						case static_cast <uint8_t> (web_t::method_t::POST):
 							// Формируем POST запрос
-							request = this->_fmk->format("POST %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
+							request = this->_fmk->format("POST %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						break;
 						// Если метод запроса указан как HEAD
 						case static_cast <uint8_t> (web_t::method_t::HEAD):
 							// Формируем HEAD запрос
-							request = this->_fmk->format("HEAD %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
+							request = this->_fmk->format("HEAD %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						break;
 						// Если метод запроса указан как PATCH
 						case static_cast <uint8_t> (web_t::method_t::PATCH):
 							// Формируем PATCH запрос
-							request = this->_fmk->format("PATCH %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
+							request = this->_fmk->format("PATCH %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						break;
 						// Если метод запроса указан как TRACE
 						case static_cast <uint8_t> (web_t::method_t::TRACE):
 							// Формируем TRACE запрос
-							request = this->_fmk->format("TRACE %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
+							request = this->_fmk->format("TRACE %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						break;
 						// Если метод запроса указан как DELETE
 						case static_cast <uint8_t> (web_t::method_t::DEL):
 							// Формируем DELETE запрос
-							request = this->_fmk->format("DELETE %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
+							request = this->_fmk->format("DELETE %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						break;
 						// Если метод запроса указан как OPTIONS
 						case static_cast <uint8_t> (web_t::method_t::OPTIONS):
 							// Формируем OPTIONS запрос
-							request = this->_fmk->format("OPTIONS %s HTTP/%.1f\r\n", this->_uri.query(req.url).c_str(), req.version);
+							request = this->_fmk->format("OPTIONS %s HTTP/%s\r\n", this->_uri.query(req.url).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						break;
 						// Если метод запроса указан как CONNECT
 						case static_cast <uint8_t> (web_t::method_t::CONNECT): {
 							// Формируем CONNECT запрос
-							request = this->_fmk->format("CONNECT %s HTTP/%.1f\r\n", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port).c_str(), req.version);
+							request = this->_fmk->format("CONNECT %s HTTP/%s\r\n", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						} break;
 					}
 					// Определяем тип HTTP-модуля
@@ -3519,7 +3519,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				// Если сообщение получено
 				if(!res.message.empty()){
 					// Данные REST-ответа
-					string response = this->_fmk->format("HTTP/%.1f %u %s\r\n", res.version, res.code, res.message.c_str());
+					string response = this->_fmk->format("HTTP/%s %u %s\r\n", this->_fmk->noexp(res.version, true).c_str(), res.code, res.message.c_str());
 					// Определяем тип HTTP-модуля
 					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом

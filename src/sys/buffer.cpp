@@ -36,8 +36,12 @@ void awh::Buffer::clear() noexcept {
 			this->_buffer = nullptr;
 		break;
 	}
-	// Выполняем очистку временного буфера данных
-	vector <char> ().swap(this->_data);
+	// Выполняем очистку буфера данных
+	this->_data.clear();
+	// Если размер выделенной памяти выше максимального размера буфера
+	if(this->_data.capacity() > AWH_BUFFER_SIZE)
+		// Выполняем очистку временного буфера данных
+		vector <char> ().swap(this->_data);
 }
 /**
  * empty Метод проверки на пустоту буфера
@@ -137,8 +141,15 @@ void awh::Buffer::erase(const size_t size) noexcept {
 				// Удаляем количество обработанных байт
 				this->_data.erase(this->_data.begin(), this->_data.begin() + size);
 				// vector <decltype(this->_data)::value_type> (this->_data.begin() + bytes, this->_data.end()).swap(this->_data);
-			// Если байт в буфере меньше, просто очищаем буфер
-			else this->_data.clear();
+			// Если байт в буфере меньше
+			else {
+				// Выполняем очистку буфера данных
+				this->_data.clear();
+				// Если размер выделенной памяти выше максимального размера буфера
+				if(this->_data.capacity() > AWH_BUFFER_SIZE)
+					// Выполняем очистку временного буфера данных
+					vector <char> ().swap(this->_data);
+			}
 		// Если временный буфер не заполнен
 		} else {
 			// Если размер используемых данных превышает переданный размер

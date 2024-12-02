@@ -351,6 +351,10 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid) noexce
 								request.entity.clear();
 								// Выполняем установку метода запроса
 								request.method = awh::web_t::method_t::GET;
+								// Если размер выделенной памяти выше максимального размера буфера
+								if(request.entity.capacity() > AWH_BUFFER_SIZE)
+									// Выполняем очистку временного буфера данных
+									vector <char> ().swap(request.entity);
 							}
 							// Выполняем установку следующего экшена на открытие подключения
 							this->open();

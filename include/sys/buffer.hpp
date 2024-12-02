@@ -26,6 +26,7 @@
 /**
  * Разрешаем сборку под Windows
  */
+#include <sys/lib.hpp>
 #include <sys/global.hpp>
 
 // Подписываемся на стандартное пространство имён
