@@ -39,6 +39,30 @@ void awh::cluster::Core::active(const status_t status) noexcept {
 	}
 }
 /**
+ * rebase Метод события пересоздании процесса
+ * @param wid  идентификатор воркера
+ * @param pid  идентификатор процесса
+ * @param opid идентификатор старого процесса
+ */
+void awh::cluster::Core::rebase(const uint16_t wid, const pid_t pid, const pid_t opid) const noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.is("rebase"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const uint16_t, const pid_t, const pid_t)> ("rebase", wid, pid, opid);
+}
+/**
+ * exit Метод события завершения работы процесса
+ * @param wid    идентификатор воркера
+ * @param pid    идентификатор процесса
+ * @param status статус остановки работы процесса
+ */
+void awh::cluster::Core::exit(const uint16_t wid, const pid_t pid, const int32_t status) const noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.is("exit"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", wid, pid, status);
+}
+/**
  * cluster Метод информирования о статусе кластера
  * @param wid   идентификатор воркера
  * @param pid   идентификатор процесса
@@ -230,9 +254,13 @@ void awh::cluster::Core::close() noexcept {
  */
 void awh::cluster::Core::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функций обратного вызова
 	awh::core_t::callbacks(callbacks);
+	// Выполняем установку функции обратного вызова при завершении работы процесса
+	this->_callbacks.set("exit", callbacks);
+	// Выполняем установку функции обратного вызова при пересоздании процесса
+	this->_callbacks.set("rebase", callbacks);
 	// Выполняем установку функции обратного вызова при получении события
 	this->_callbacks.set("events", callbacks);
 	// Выполняем установку функции обратного вызова при получении сообщения
@@ -296,6 +324,10 @@ awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::c
 	this->_type = engine_t::type_t::SERVER;
 	// Выполняем инициализацию кластера
 	this->_cluster.init(0, this->_size);
+	// Устанавливаем функцию получения события завершения работы процесса
+	this->_cluster.callback <void (const uint16_t, const pid_t, const int32_t)> ("exit", std::bind(&core_t::exit, this, _1, _2, _3));
+	// Устанавливаем функцию получения события пересоздании процесса
+	this->_cluster.callback <void (const uint16_t, const pid_t, const pid_t)> ("rebase", std::bind(&core_t::rebase, this, _1, _2, _3));
 	// Устанавливаем функцию получения статуса кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, cluster_t::event_t)> ("process", std::bind(&core_t::cluster, this, _1, _2, _3));
 	// Устанавливаем функцию получения входящих сообщений

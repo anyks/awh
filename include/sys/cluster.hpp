@@ -249,16 +249,17 @@ namespace awh {
 			void write(const uint16_t wid, const SOCKET fd) noexcept;
 		private:
 			/**
-			 * fork Метод создания нового дочернего процесса
+			 * emplace Метод размещения нового дочернего процесса
 			 * @param wid идентификатор воркера
+			 * @param pid идентификатор предыдущего процесса
 			 */
-			void fork(const uint16_t wid) noexcept;
+			void emplace(const uint16_t wid, const pid_t pid) noexcept;
 			/**
-			 * fork Метод создания указанного количества дочерних процессов
+			 * create Метод создания дочерних процессов при запуске кластера
 			 * @param wid   идентификатор воркера
 			 * @param index индекс инициализированного процесса
 			 */
-			void fork(const uint16_t wid, const uint16_t index) noexcept;
+			void create(const uint16_t wid, const uint16_t index = 0) noexcept;
 		public:
 			/**
 			 * master Метод проверки является ли процесс родительским
@@ -361,7 +362,7 @@ namespace awh {
 			void core(core_t * core) noexcept;
 		public:
 			/**
-			 * emplace Метод размещения нового воркера
+			 * emplace Метод размещения нового дочернего процесса
 			 * @param wid идентификатор воркера
 			 */
 			void emplace(const uint16_t wid) noexcept;

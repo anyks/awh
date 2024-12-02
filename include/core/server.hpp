@@ -149,6 +149,20 @@ namespace awh {
 				void createTimeout(const uint16_t sid, const uint64_t bid, const time_t msec, const mode_t mode) noexcept;
 			private:
 				/**
+				 * rebase Метод события пересоздании процесса
+				 * @param sid  идентификатор схемы сети
+				 * @param pid  идентификатор процесса
+				 * @param opid идентификатор старого процесса
+				 */
+				void rebase(const uint16_t sid, const pid_t pid, const pid_t opid) const noexcept;
+				/**
+				 * exit Метод события завершения работы процесса
+				 * @param sid    идентификатор схемы сети
+				 * @param pid    идентификатор процесса
+				 * @param status статус остановки работы процесса
+				 */
+				void exit(const uint16_t sid, const pid_t pid, const int32_t status) const noexcept;
+				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
 				 * @param sid   идентификатор схемы сети
 				 * @param pid   идентификатор процесса

@@ -59,8 +59,8 @@
 					this->_log->print("[%u] Data from child process [%u] is closed", log_t::flag_t::CRITICAL, this->_ctx->_pid, pid);
 					// Если установлен флаг аннигиляции
 					if(!this->_restart){
-						// Останавливаем чтение данных с родительского процесса
-						const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
+						// Выполняем остановку работы
+						const_cast <cluster_t *> (this->_ctx)->clear();
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					// Выходим из функции
@@ -158,6 +158,8 @@
 					}
 					// Выводим сообщение об ошибке в лог
 					this->_log->print("[%u] Data from main process is closed", log_t::flag_t::CRITICAL, ::getpid());
+					// Останавливаем чтение данных с родительского процесса
+					const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				} break;
@@ -271,34 +273,40 @@
 					// Если статус сигнала, ручной остановкой процесса
 					if(status == SIGINT){
 						// Выполняем остановку работы
-						this->stop(item.first);
+						this->clear();
 						// Выходим из приложения
 						::exit(SIGINT);
 					// Если время жизни процесса составляет меньше 3-х минут
 					} else if((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - broker->date) <= 180000) {
 						// Выполняем остановку работы
-						this->stop(item.first);
+						this->clear();
 						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						::exit(status);
 					}
+					// Если функция обратного вызова установлена
+					if(this->_callbacks.is("exit"))
+						// Выполняем функцию обратного вызова
+						this->_callbacks.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", item.first, pid, status);
 					// Если функция обратного вызова установлена
 					if(this->_callbacks.is("process"))
 						// Выполняем функцию обратного вызова
 						this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", item.first, pid, event_t::STOP);
 					// Выполняем поиск воркера
-					auto j = this->_workers.find(item.first);
+					auto i = this->_workers.find(item.first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
-					if((j != this->_workers.end()) && j->second->_restart){
+					if((i != this->_workers.end()) && i->second->_restart){
 						// Удаляем процесс из списка процессов
 						this->_pids.erase(broker->pid);
-						// Выполняем создание нового процесса
-						this->fork(item.first);
+						// Если процесс завершился не сам, перезапускаем его
+						if(status > 0)
+							// Выполняем создание нового процесса
+							this->emplace(item.first, pid);
 					// Просто удаляем процесс из списка процессов
 					} else {
 						// Выполняем остановку работы
-						this->stop(item.first);
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						this->clear();
+						// Выполняем завершение работы
+						::exit(status);
 					}
 					// Выходим функции
 					return;
@@ -322,23 +330,9 @@
 		// Статус упавшего процесса
 		int32_t status = 0;
 		// Выполняем получение идентификатора упавшего процесса
-		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0){
-			// Если работа процесса завершена
-			if(status > 0){
-				// Выполняем создание дочернего потока
-				const_cast <cluster_t *> (cluster)->process(pid, status);
-				// Выходим из цикла
-				break;
-			// Если нужно выполнить нормальное завершение работы
-			} else {
-				// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-				cluster->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, pid, status);
-				// Выполняем остановку работы
-				const_cast <cluster_t *> (cluster)->clear();
-				// Выполняем завершение работы
-				::exit(status);
-			}
-		}
+		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0)
+			// Выполняем создание дочернего потока
+			const_cast <cluster_t *> (cluster)->process(pid, status);
 	}
 #endif
 /**
@@ -412,10 +406,11 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 	#endif
 }
 /**
- * fork Метод создания нового дочернего процесса
+ * emplace Метод размещения нового дочернего процесса
  * @param wid идентификатор воркера
+ * @param pid идентификатор предыдущего процесса
  */
-void awh::Cluster::fork(const uint16_t wid) noexcept {
+void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -424,6 +419,8 @@ void awh::Cluster::fork(const uint16_t wid) noexcept {
 		 * Выполняем обработку ошибки
 		 */
 		try {
+			// Запоминаем идентификатор предыдущего процесса
+			const pid_t opid = pid;
 			// Выполняем поиск воркера
 			auto i = this->_workers.find(wid);
 			// Если воркер найден
@@ -438,6 +435,8 @@ void awh::Cluster::fork(const uint16_t wid) noexcept {
 					if(::pipe(broker->mfds) != 0){
 						// Выводим в лог сообщение
 						this->_log->print("Cluster fork child: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+						// Выполняем остановку работы
+						this->clear();
 						// Выходим принудительно из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -445,6 +444,8 @@ void awh::Cluster::fork(const uint16_t wid) noexcept {
 					if(::pipe(broker->cfds) != 0){
 						// Выводим в лог сообщение
 						this->_log->print("Cluster fork child: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+						// Выполняем остановку работы
+						this->clear();
 						// Выходим принудительно из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -459,6 +460,8 @@ void awh::Cluster::fork(const uint16_t wid) noexcept {
 					case -1: {
 						// Выводим в лог сообщение
 						this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
+						// Выполняем остановку работы
+						this->clear();
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					} break;
@@ -512,6 +515,8 @@ void awh::Cluster::fork(const uint16_t wid) noexcept {
 						} else {
 							// Процесс превратился в зомби, самоликвидируем его
 							this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+							// Выполняем остановку работы
+							this->stop(wid);
 							// Выходим из приложения
 							::exit(EXIT_FAILURE);
 						}
@@ -548,6 +553,10 @@ void awh::Cluster::fork(const uint16_t wid) noexcept {
 						broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						// Создаём новый объект протокола получения данных
 						i->second->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+						// Если функция обратного вызова установлена
+						if(this->_callbacks.is("rebase") && (opid > 0))
+							// Выполняем функцию обратного вызова
+							this->_callbacks.call <void (const uint16_t, const pid_t, const pid_t)> ("rebase", i->first, pid, opid);
 					}
 				}
 			}
@@ -563,11 +572,11 @@ void awh::Cluster::fork(const uint16_t wid) noexcept {
 	#endif
 }
 /**
- * fork Метод создания указанного количества дочерних процессов
+ * create Метод создания дочерних процессов при запуске кластера
  * @param wid   идентификатор воркера
  * @param index индекс инициализированного процесса
  */
-void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
+void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -603,6 +612,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 							if(::pipe(broker->mfds) != 0){
 								// Выводим в лог сообщение
 								this->_log->print("Cluster fork child: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+								// Выполняем остановку работы
+								this->clear();
 								// Выходим принудительно из приложения
 								::exit(EXIT_FAILURE);
 							}
@@ -610,6 +621,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 							if(::pipe(broker->cfds) != 0){
 								// Выводим в лог сообщение
 								this->_log->print("Cluster fork child: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+								// Выполняем остановку работы
+								this->clear();
 								// Выходим принудительно из приложения
 								::exit(EXIT_FAILURE);
 							}
@@ -630,7 +643,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 								// Выполняем остановку чтение сообщений
 								broker->ev.stop();
 							// Выполняем остановку работы
-							this->stop(i->first);
+							this->clear();
 							// Выходим принудительно из приложения
 							::exit(EXIT_FAILURE);
 						}
@@ -643,7 +656,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 								// Выполняем остановку чтение сообщений
 								broker->ev.stop();
 							// Выполняем остановку работы
-							this->stop(i->first);
+							this->clear();
 							// Выходим принудительно из приложения
 							::exit(EXIT_FAILURE);
 						}
@@ -658,6 +671,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 						case -1: {
 							// Выводим в лог сообщение
 							this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
+							// Выполняем остановку работы
+							this->clear();
 							// Выходим из приложения
 							::exit(EXIT_FAILURE);
 						} break;
@@ -723,6 +738,8 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 							} else {
 								// Процесс превратился в зомби, самоликвидируем его
 								this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+								// Выполняем остановку работы
+								this->stop(wid);
 								// Выходим из приложения
 								::exit(EXIT_FAILURE);
 							}
@@ -754,7 +771,7 @@ void awh::Cluster::fork(const uint16_t wid, const uint16_t index) noexcept {
 							// Выполняем запуск работы чтения данных с дочерних процессов
 							broker->ev.start();
 							// Выполняем создание новых процессов
-							this->fork(i->first, index + 1);
+							this->create(i->first, index + 1);
 							// Создаём новый объект протокола получения данных
 							i->second->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
 						}
@@ -997,10 +1014,10 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-			// Выполняем остановку работы
-			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выполняем остановку работы
+			this->stop(wid);
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -1140,10 +1157,10 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			this->close(wid);
 		// Если процесс превратился в зомби
 		else {
-			// Выполняем закрытие подключения передачи сообщений
-			this->close(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выполняем закрытие подключения передачи сообщений
+			this->close(wid);
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -1171,13 +1188,13 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
 			// Если вокер найден
 			if((i != this->_workers.end()) && !i->second->_working)
 				// Выполняем запуск процесса
-				this->fork(i->first, 0);
+				this->create(i->first);
 		// Если процесс превратился в зомби
 		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-			// Выполняем остановку работы
-			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выполняем остановку работы
+			this->stop(wid);
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -1209,10 +1226,10 @@ void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
 				i->second->_restart = mode;
 		// Если процесс превратился в зомби
 		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-			// Выполняем остановку работы
-			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выполняем остановку работы
+			this->stop(wid);
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -1240,7 +1257,7 @@ void awh::Cluster::core(core_t * core) noexcept {
 	this->_core = core;
 }
 /**
- * emplace Метод размещения нового воркера
+ * emplace Метод размещения нового дочернего процесса
  * @param wid идентификатор воркера
  */
 void awh::Cluster::emplace(const uint16_t wid) noexcept {
@@ -1257,14 +1274,14 @@ void awh::Cluster::emplace(const uint16_t wid) noexcept {
 				// Увеличиваем количество активных воркеров
 				i->second->_count++;
 				// Выполняем запуск нового процесса
-				this->fork(i->first);
+				this->emplace(i->first, 0);
 			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-			// Выполняем остановку работы
-			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выполняем остановку работы
+			this->stop(wid);
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -1313,10 +1330,10 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != static_cast <pid_t> (::getpid())) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-			// Выполняем остановку работы
-			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выполняем остановку работы
+			this->stop(wid);
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -1398,6 +1415,10 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
  * @param callbacks функции обратного вызова
  */
 void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
+	// Выполняем установку функции обратного вызова при завершении работы процесса
+	this->_callbacks.set("exit", callbacks);
+	// Выполняем установку функции обратного вызова при пересоздании процесса
+	this->_callbacks.set("rebase", callbacks);
 	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
 	this->_callbacks.set("process", callbacks);
 	// Выполняем установку функции обратного вызова при получении сообщения

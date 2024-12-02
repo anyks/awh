@@ -70,6 +70,22 @@ namespace awh {
 				void active(const status_t status) noexcept;
 			private:
 				/**
+				 * rebase Метод события пересоздании процесса
+				 * @param wid  идентификатор воркера
+				 * @param pid  идентификатор процесса
+				 * @param opid идентификатор старого процесса
+				 */
+				void rebase(const uint16_t wid, const pid_t pid, const pid_t opid) const noexcept;
+			private:
+				/**
+				 * exit Метод события завершения работы процесса
+				 * @param wid    идентификатор воркера
+				 * @param pid    идентификатор процесса
+				 * @param status статус остановки работы процесса
+				 */
+				void exit(const uint16_t wid, const pid_t pid, const int32_t status) const noexcept;
+			private:
+				/**
 				 * cluster Метод информирования о статусе кластера
 				 * @param wid   идентификатор воркера
 				 * @param pid   идентификатор процесса

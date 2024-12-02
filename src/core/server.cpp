@@ -1040,6 +1040,30 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 	}
 }
 /**
+ * rebase Метод события пересоздании процесса
+ * @param sid  идентификатор схемы сети
+ * @param pid  идентификатор процесса
+ * @param opid идентификатор старого процесса
+ */
+void awh::server::Core::rebase(const uint16_t sid, const pid_t pid, const pid_t opid) const noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.is("rebase"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const uint16_t, const pid_t, const pid_t)> ("rebase", sid, pid, opid);
+}
+/**
+ * exit Метод события завершения работы процесса
+ * @param sid    идентификатор схемы сети
+ * @param pid    идентификатор процесса
+ * @param status статус остановки работы процесса
+ */
+void awh::server::Core::exit(const uint16_t sid, const pid_t pid, const int32_t status) const noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.is("exit"))
+		// Выполняем функцию обратного вызова
+		this->_callbacks.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", sid, pid, status);
+}
+/**
  * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
  * @param sid   идентификатор схемы сети
  * @param pid   идентификатор процесса
@@ -2679,6 +2703,8 @@ void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функций обратного вызова
 	awh::core_t::callbacks(callbacks);
+	// Выполняем установку функции обратного вызова при завершении работы процесса кластера
+	this->_callbacks.set("exit", callbacks);
 	// Выполняем установку функции обратного вызова при открытии подключения
 	this->_callbacks.set("open", callbacks);
 	// Выполняем установку функции обратного вызова при чтении данных из сокета
@@ -2689,6 +2715,8 @@ void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("error", callbacks);
 	// Выполняем установку функции обратного вызова при проверки подключения клиента
 	this->_callbacks.set("accept", callbacks);
+	// Выполняем установку функции обратного вызова при пересоздании процесса кластера
+	this->_callbacks.set("rebase", callbacks);
 	// Выполняем установку функции обратного вызова при активации работы кластера
 	this->_callbacks.set("cluster", callbacks);
 	// Выполняем установку функции обратного вызова при подключении клиента к серверу
@@ -3017,6 +3045,10 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
+	// Устанавливаем функцию получения события завершения работы процесса
+	this->_cluster.callback <void (const uint16_t, const pid_t, const int32_t)> ("exit", std::bind(&core_t::exit, this, _1, _2, _3));
+	// Устанавливаем функцию получения события пересоздании процесса
+	this->_cluster.callback <void (const uint16_t, const pid_t, const pid_t)> ("rebase", std::bind(&core_t::rebase, this, _1, _2, _3));
 	// Устанавливаем функцию получения сообщений процессов кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", std::bind(&core_t::message, this, _1, _2, _3, _4));
 	// Устанавливаем функцию получения статуса кластера
@@ -3034,6 +3066,10 @@ awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log)
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
+	// Устанавливаем функцию получения события завершения работы процесса
+	this->_cluster.callback <void (const uint16_t, const pid_t, const int32_t)> ("exit", std::bind(&core_t::exit, this, _1, _2, _3));
+	// Устанавливаем функцию получения события пересоздании процесса
+	this->_cluster.callback <void (const uint16_t, const pid_t, const pid_t)> ("rebase", std::bind(&core_t::rebase, this, _1, _2, _3));
 	// Устанавливаем функцию получения сообщений процессов кластера
 	this->_cluster.callback <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", std::bind(&core_t::message, this, _1, _2, _3, _4));
 	// Устанавливаем функцию получения статуса кластера
