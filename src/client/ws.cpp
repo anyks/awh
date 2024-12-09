@@ -34,12 +34,23 @@ void awh::client::Websocket::sendError(const ws::mess_t & mess) noexcept {
 /**
  * sendMessage Метод отправки сообщения на сервер
  * @param message передаваемое сообщения в бинарном виде
- * @param utf8    данные передаются в текстовом виде
+ * @param text    данные передаются в текстовом виде
  * @return        результат отправки сообщения
  */
-bool awh::client::Websocket::sendMessage(const vector <char> & message, const bool utf8) noexcept {
+bool awh::client::Websocket::sendMessage(const vector <char> & message, const bool text) noexcept {
 	// Выполняем отправку сообщения на сервер
-	return this->_ws.sendMessage(message, utf8);
+	return this->_ws.sendMessage(message, text);
+}
+/**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param message передаваемое сообщения в бинарном виде
+ * @param size    размер передаваемого сообещния
+ * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
+ */
+bool awh::client::Websocket::sendMessage(const char * message, const size_t size, const bool text) noexcept {
+	// Выполняем отправку сообщения на сервер
+	return this->_ws.sendMessage(message, size, text);
 }
 /**
  * pause Метод установки на паузу клиента

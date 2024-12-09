@@ -87,24 +87,8 @@ class WebClient {
 			(void) rid;
 			// Увеличиваем количество выполненных запросов
 			this->_count++;
-			/**
-			 * Выполняем обработку ошибки
-			 */
-			try {
-				// Получаем результат
-				const string result(entity.begin(), entity.end());
-				// Создаём объект JSON
-				json data = json::parse(result);
-				// Выводим полученный результат
-				cout << " =========== " << data.dump(4) << endl;
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {
-				// Выводим полученный результат
-				cout << " =========== " << string(entity.begin(), entity.end()) << endl;
-			}
-			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
+			// Выводим полученный результат
+			cout << " =========== " << string(entity.begin(), entity.end()) << endl;
 			// Если оба запроса выполнены
 			if(this->_count == 2)
 				// Выполняем остановку
@@ -147,24 +131,8 @@ class WebClient {
 			for(auto & header : headers)
 				// Выводим информацию в лог
 				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
-			/**
-			 * Выполняем обработку ошибки
-			 */
-			try {
-				// Получаем результат
-				const string result(entity.begin(), entity.end());
-				// Создаём объект JSON
-				json data = json::parse(result);
-				// Выводим полученный результат
-				cout << " =========== " << data.dump(4) << endl;
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {
-				// Выводим полученный результат
-				cout << " =========== " << string(entity.begin(), entity.end()) << endl;
-			}
-			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
+			// Выводим полученный результат
+			cout << " =========== " << string(entity.begin(), entity.end()) << endl;
 			// Если оба запроса выполнены
 			if(this->_count == 2)
 				// Выполняем остановку
@@ -341,13 +309,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим время запроса
 	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
 	// Если данные получены
-	if(!body.empty()){
-		// Создаём объект JSON
-		// json data = json::parse(body);
+	if(!body.empty())
 		// Выводим полученный результат
-		// cout << " =========== " << data.dump(4) << endl;
 		cout << " =========== " << string(body.begin(), body.end()) << endl;
-	}
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

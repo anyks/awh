@@ -1717,6 +1717,59 @@ bool awh::server::Http2::sendMessage(const uint64_t bid, const vector <char> & m
 	return false;
 }
 /**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param bid     идентификатор брокера
+ * @param message передаваемое сообщения в бинарном виде
+ * @param size    размер передаваемого сообещния
+ * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
+ */
+bool awh::server::Http2::sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text) noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			// Определяем протокола подключения
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto i = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен
+					if(i != this->_http1._agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (i->second)){
+							// Если протокол соответствует протоколу Websocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем передачу данных клиенту
+								return this->_http1.sendMessage(bid, message, size, text);
+						}
+					}
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto i = this->_agents.find(bid);
+					// Если активный агент клиента установлен
+					if(i != this->_agents.end()){
+						// Определяем тип активного протокола
+						switch(static_cast <uint8_t> (i->second)){
+							// Если протокол соответствует протоколу Websocket
+							case static_cast <uint8_t> (agent_t::WEBSOCKET):
+								// Выполняем передачу данных клиенту Websocket
+								return this->_ws2.sendMessage(bid, message, size, text);
+						}
+					}
+				} break;
+			}
+		}
+	}
+	// Сообщаем что ничего не найдено
+	return false;
+}
+/**
  * send Метод отправки данных в бинарном виде клиенту
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту

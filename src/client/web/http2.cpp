@@ -1278,6 +1278,27 @@ bool awh::client::Http2::sendMessage(const vector <char> & message, const bool t
 	return false;
 }
 /**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param message передаваемое сообщения в бинарном виде
+ * @param size    размер передаваемого сообещния
+ * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
+ */
+bool awh::client::Http2::sendMessage(const char * message, const size_t size, const bool text) noexcept {
+	// Если список воркеров активен
+	if(!this->_workers.empty()){
+		// Выполняем перебор всего списка воркеров
+		for(auto & worker : this->_workers){
+			// Если найден воркер Websocket-клиента
+			if(worker.second->agent == agent_t::WEBSOCKET)
+				// Выполняем отправку сообщения на Websocket-сервер
+				return this->_ws2.sendMessage(message, size, text);
+		}
+	}
+	// Сообщаем что ничего не найдено
+	return false;
+}
+/**
  * send Метод отправки сообщения на сервер
  * @param request параметры запроса на удалённый сервер
  * @return        идентификатор отправленного запроса

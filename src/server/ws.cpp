@@ -64,6 +64,18 @@ bool awh::server::Websocket::sendMessage(const uint64_t bid, const vector <char>
 	return this->_ws.sendMessage(bid, message, text);
 }
 /**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param bid     идентификатор брокера
+ * @param message передаваемое сообщения в бинарном виде
+ * @param size    размер передаваемого сообещния
+ * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
+ */
+bool awh::server::Websocket::sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text) noexcept {
+	// Выполняем отправку сообщения клиенту
+	return this->_ws.sendMessage(bid, message, size, text);
+}
+/**
  * callbacks Метод установки функций обратного вызова
  * @param callbacks функции обратного вызова
  */

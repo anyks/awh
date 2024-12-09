@@ -1014,6 +1014,27 @@ bool awh::server::Http1::sendMessage(const uint64_t bid, const vector <char> & m
 	return false;
 }
 /**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param bid     идентификатор брокера
+ * @param message передаваемое сообщения в бинарном виде
+ * @param size    размер передаваемого сообещния
+ * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
+ */
+bool awh::server::Http1::sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text) noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Выполняем поиск агента которому соответствует клиент
+		auto i = this->_agents.find(bid);
+		// Если агент соответствует Websocket-у
+		if((i != this->_agents.end()) && (i->second == agent_t::WEBSOCKET))
+			// Выполняем передачу данных клиенту Websocket
+			return this->_ws1.sendMessage(bid, message, size, text);
+	}
+	// Сообщаем что ничего не найдено
+	return false;
+}
+/**
  * send Метод отправки тела сообщения клиенту
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту

@@ -11,15 +11,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <client/ws.hpp>
-#include <nlohmann/json.hpp>
 
 // Подключаем пространство имён
 using namespace std;
 using namespace awh;
 using namespace awh::client;
-
-// Активируем json в качестве объекта пространства имён
-using json = nlohmann::json;
 
 /**
  * Executor Класс объекта исполнителя
@@ -111,119 +107,10 @@ class Executor {
 				this->_log->print("Handshake", log_t::flag_t::INFO);
 				// Выполняем установку ограничения пропускной способности сети
 				ws->bandwidth("1Mbps", "1Mbps");
-				// Создаём объект JSON
-				json data = json::object();
-				// Формируем идентификатор объекта
-				data["id"] = 1;
-				// Формируем метод подписки
-				data["method"] = "SUBSCRIBE";
-				// Формируем параметры запрашиваемых криптовалютных пар
-				data["params"] = json::array();
-				// Формируем параметры криптовалютных пар
-				data["params"][0] = "omgusdt@aggTrade";
-				data["params"][1] = "umausdt@aggTrade";
-				data["params"][2] = "radusdt@aggTrade";
-				data["params"][3] = "fttusdt@aggTrade";
-				data["params"][4] = "xrpusdt@aggTrade";
-				data["params"][5] = "adausdt@aggTrade";
-				data["params"][6] = "solusdt@aggTrade";
-				data["params"][7] = "dotusdt@aggTrade";
-				data["params"][8] = "ethusdt@aggTrade";
-				data["params"][9] = "bnbusdt@aggTrade";
-				data["params"][10] = "btcusdt@aggTrade";
-				data["params"][11] = "ltcusdt@aggTrade";
-				data["params"][12] = "trxusdt@aggTrade";
-				data["params"][13] = "xlmusdt@aggTrade";
-				data["params"][14] = "zecusdt@aggTrade";
-				data["params"][15] = "zilusdt@aggTrade";
-				data["params"][16] = "vetusdt@aggTrade";
-				data["params"][17] = "wrxusdt@aggTrade";
-				data["params"][18] = "oneusdt@aggTrade";
-				data["params"][19] = "xtzusdt@aggTrade";
-				data["params"][20] = "filusdt@aggTrade";
-				data["params"][21] = "eosusdt@aggTrade";
-				data["params"][22] = "xmrusdt@aggTrade";
-				data["params"][23] = "neousdt@aggTrade";
-				data["params"][24] = "kdausdt@aggTrade";
-				data["params"][25] = "ksmusdt@aggTrade";
-				data["params"][26] = "icxusdt@aggTrade";
-				data["params"][27] = "dgbusdt@aggTrade";
-				data["params"][28] = "bchusdt@aggTrade";
-				data["params"][29] = "ontusdt@aggTrade";
-				data["params"][30] = "etcusdt@aggTrade";
-				data["params"][31] = "chzusdt@aggTrade";
-				data["params"][32] = "kncusdt@aggTrade";
-				data["params"][33] = "astusdt@aggTrade";
-				data["params"][34] = "atausdt@aggTrade";
-				data["params"][35] = "snxusdt@aggTrade";
-				data["params"][36] = "grtusdt@aggTrade";
-				data["params"][37] = "mkrusdt@aggTrade";
-				data["params"][38] = "dcrusdt@aggTrade";
-				data["params"][39] = "c98usdt@aggTrade";
-				data["params"][40] = "uniusdt@aggTrade";
-				data["params"][41] = "rvnusdt@aggTrade";
-				data["params"][42] = "zenusdt@aggTrade";
-				data["params"][43] = "lrcusdt@aggTrade";
-				data["params"][44] = "ftmusdt@aggTrade";
-				data["params"][45] = "xecusdt@aggTrade";
-				data["params"][46] = "xemusdt@aggTrade";
-				data["params"][47] = "btgusdt@aggTrade";
-				data["params"][48] = "srmusdt@aggTrade";
-				data["params"][49] = "ckbusdt@aggTrade";
-				data["params"][50] = "xvgusdt@aggTrade";
-				data["params"][51] = "lskusdt@aggTrade";
-				data["params"][52] = "ernusdt@aggTrade";
-				data["params"][53] = "stxusdt@aggTrade";
-				data["params"][54] = "bcdusdt@aggTrade";
-				data["params"][55] = "sysusdt@aggTrade";
-				data["params"][56] = "axsusdt@aggTrade";
-				data["params"][57] = "qntusdt@aggTrade";
-				data["params"][58] = "enjusdt@aggTrade";
-				data["params"][59] = "hotusdt@aggTrade";
-				data["params"][60] = "algousdt@aggTrade";
-				data["params"][61] = "arpausdt@aggTrade";
-				data["params"][62] = "compusdt@aggTrade";
-				data["params"][63] = "iostusdt@aggTrade";
-				data["params"][64] = "flowusdt@aggTrade";
-				data["params"][65] = "aaveusdt@aggTrade";
-				data["params"][66] = "runeusdt@aggTrade";
-				data["params"][67] = "celrusdt@aggTrade";
-				data["params"][68] = "linkusdt@aggTrade";
-				data["params"][69] = "qtumusdt@aggTrade";
-				data["params"][70] = "egldusdt@aggTrade";
-				data["params"][71] = "dashusdt@aggTrade";
-				data["params"][72] = "lunausdt@aggTrade";
-				data["params"][73] = "cakeusdt@aggTrade";
-				data["params"][74] = "atomusdt@aggTrade";
-				data["params"][75] = "minausdt@aggTrade";
-				data["params"][76] = "idexusdt@aggTrade";
-				data["params"][77] = "dogeusdt@aggTrade";
-				data["params"][78] = "avaxusdt@aggTrade";
-				data["params"][79] = "iotausdt@aggTrade";
-				data["params"][80] = "hbarusdt@aggTrade";
-				data["params"][81] = "nearusdt@aggTrade";
-				data["params"][82] = "klayusdt@aggTrade";
-				data["params"][83] = "maskusdt@aggTrade";
-				data["params"][84] = "iotxusdt@aggTrade";
-				data["params"][85] = "celousdt@aggTrade";
-				data["params"][86] = "waxpusdt@aggTrade";
-				data["params"][87] = "scrtusdt@aggTrade";
-				data["params"][88] = "manausdt@aggTrade";
-				data["params"][89] = "reefusdt@aggTrade";
-				data["params"][90] = "nanousdt@aggTrade";
-				data["params"][91] = "shibusdt@aggTrade";
-				data["params"][92] = "sandusdt@aggTrade";
-				data["params"][93] = "thetausdt@aggTrade";
-				data["params"][94] = "wavesusdt@aggTrade";
-				data["params"][95] = "audiousdt@aggTrade";
-				data["params"][96] = "maticusdt@aggTrade";
-				data["params"][97] = "sushiusdt@aggTrade";
-				data["params"][98] = "1inchusdt@aggTrade";
-				data["params"][99] = "oceanusdt@aggTrade";
 				// Получаем параметры запроса в виде строки
-				const string query = data.dump();
+				const string query = R"({"id":1,"method":"SUBSCRIBE","params":["omgusdt@aggTrade","umausdt@aggTrade","radusdt@aggTrade","fttusdt@aggTrade","xrpusdt@aggTrade","adausdt@aggTrade","solusdt@aggTrade","dotusdt@aggTrade","ethusdt@aggTrade","bnbusdt@aggTrade","btcusdt@aggTrade","ltcusdt@aggTrade","trxusdt@aggTrade","xlmusdt@aggTrade","zecusdt@aggTrade","zilusdt@aggTrade","vetusdt@aggTrade","wrxusdt@aggTrade","oneusdt@aggTrade","xtzusdt@aggTrade","filusdt@aggTrade","eosusdt@aggTrade","xmrusdt@aggTrade","neousdt@aggTrade","kdausdt@aggTrade","ksmusdt@aggTrade","icxusdt@aggTrade","dgbusdt@aggTrade","bchusdt@aggTrade","ontusdt@aggTrade","etcusdt@aggTrade","chzusdt@aggTrade","kncusdt@aggTrade","astusdt@aggTrade","atausdt@aggTrade","snxusdt@aggTrade","grtusdt@aggTrade","mkrusdt@aggTrade","dcrusdt@aggTrade","c98usdt@aggTrade","uniusdt@aggTrade","rvnusdt@aggTrade","zenusdt@aggTrade","lrcusdt@aggTrade","ftmusdt@aggTrade","xecusdt@aggTrade","xemusdt@aggTrade","btgusdt@aggTrade","srmusdt@aggTrade","ckbusdt@aggTrade","xvgusdt@aggTrade","lskusdt@aggTrade","ernusdt@aggTrade","stxusdt@aggTrade","bcdusdt@aggTrade","sysusdt@aggTrade","axsusdt@aggTrade","qntusdt@aggTrade","enjusdt@aggTrade","hotusdt@aggTrade","algousdt@aggTrade","arpausdt@aggTrade","compusdt@aggTrade","iostusdt@aggTrade","flowusdt@aggTrade","aaveusdt@aggTrade","runeusdt@aggTrade","celrusdt@aggTrade","linkusdt@aggTrade","qtumusdt@aggTrade","egldusdt@aggTrade","dashusdt@aggTrade","lunausdt@aggTrade","cakeusdt@aggTrade","atomusdt@aggTrade","minausdt@aggTrade","idexusdt@aggTrade","dogeusdt@aggTrade","avaxusdt@aggTrade","iotausdt@aggTrade","hbarusdt@aggTrade","nearusdt@aggTrade","klayusdt@aggTrade","maskusdt@aggTrade","iotxusdt@aggTrade","celousdt@aggTrade","waxpusdt@aggTrade","scrtusdt@aggTrade","manausdt@aggTrade","reefusdt@aggTrade","nanousdt@aggTrade","shibusdt@aggTrade","sandusdt@aggTrade","thetausdt@aggTrade","wavesusdt@aggTrade","audiousdt@aggTrade","maticusdt@aggTrade","sushiusdt@aggTrade","1inchusdt@aggTrade","oceanusdt@aggTrade"]})";
 				// Отправляем сообщение на сервер
-				ws->sendMessage(vector <char> (query.begin(), query.end()));
+				ws->sendMessage(query.data(), query.size());
 			}
 		}
 	public:
@@ -262,16 +149,11 @@ class Executor {
 				// Выполняем получение выбранного сабпротокола
 				subprotocol = (* subprotocols.begin());
 			// Если данные пришли в виде текста, выводим
-			if(utf8){
-				try {
-					// Создаём объект JSON
-					json data = json::parse(buffer.begin(), buffer.end());
-					// Выводим полученный результат
-					cout << " +++++++++++++ " << data.dump(4) << " == " << subprotocol << endl;
-				// Обрабатываем ошибку
-				} catch(const exception & e) {}
+			if(utf8)
+				// Выводим полученный результат
+				cout << " +++++++++++++ " << string(buffer.begin(), buffer.end()) << " == " << subprotocol << endl;
 			// Сообщаем количество полученных байт
-			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
+			else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
 		}
 	public:
 		/**

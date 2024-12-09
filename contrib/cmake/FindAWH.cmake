@@ -13,7 +13,6 @@ find_path(ZSTD_INCLUDE_DIR NAMES zstd.h PATHS ${CMAKE_SOURCE_DIR}/third_party/in
 find_path(LZMA_INCLUDE_DIR NAMES lzma.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/lzma NO_DEFAULT_PATH)
 find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/zlib NO_DEFAULT_PATH)
 find_path(CITY_INCLUDE_DIR NAMES cityhash/city.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
-find_path(JSON_INCLUDE_DIR NAMES json.hpp PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nlohmann NO_DEFAULT_PATH)
 find_path(AWH_INCLUDE_DIR NAMES server/awh.hpp PATHS ${CMAKE_SOURCE_DIR}/third_party/include/awh NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
@@ -59,7 +58,6 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
             OPENSSL_INCLUDE_DIR
             PCRE_INCLUDE_DIR
             NGHTTP2_INCLUDE_DIR
-            JSON_INCLUDE_DIR
             IDN2_INCLUDE_DIR
             ICONV_INCLUDE_DIR
 
@@ -84,7 +82,6 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
             OPENSSL_INCLUDE_DIR
             PCRE_INCLUDE_DIR
             NGHTTP2_INCLUDE_DIR
-            JSON_INCLUDE_DIR
             IDN2_INCLUDE_DIR
             ICONV_INCLUDE_DIR
 
@@ -106,7 +103,6 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         ${OPENSSL_INCLUDE_DIR}
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
-        ${JSON_INCLUDE_DIR}
         ${IDN2_INCLUDE_DIR}
         ${ICONV_INCLUDE_DIR}
     )
@@ -133,7 +129,6 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
             OPENSSL_INCLUDE_DIR
             PCRE_INCLUDE_DIR
             NGHTTP2_INCLUDE_DIR
-            JSON_INCLUDE_DIR
 
             FAIL_MESSAGE "AWH library is not found"
         )
@@ -156,7 +151,6 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
             OPENSSL_INCLUDE_DIR
             PCRE_INCLUDE_DIR
             NGHTTP2_INCLUDE_DIR
-            JSON_INCLUDE_DIR
 
             FAIL_MESSAGE "AWH library is not found"
         )
@@ -176,7 +170,6 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${OPENSSL_INCLUDE_DIR}
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
-        ${JSON_INCLUDE_DIR}
     )
 # Если операцинная система относится к Nix-подобной
 else()
@@ -198,7 +191,6 @@ else()
             OPENSSL_INCLUDE_DIR
             PCRE_INCLUDE_DIR
             NGHTTP2_INCLUDE_DIR
-            JSON_INCLUDE_DIR
 
             FAIL_MESSAGE "AWH library is not found"
         )
@@ -221,7 +213,6 @@ else()
             OPENSSL_INCLUDE_DIR
             PCRE_INCLUDE_DIR
             NGHTTP2_INCLUDE_DIR
-            JSON_INCLUDE_DIR
 
             FAIL_MESSAGE "AWH library is not found"
         )
@@ -241,7 +232,6 @@ else()
         ${OPENSSL_INCLUDE_DIR}
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
-        ${JSON_INCLUDE_DIR}
     )
 endif()
 
@@ -256,7 +246,6 @@ endif()
 
 # Выполняем установку оставшихся заголовочных файлов зависимостей
 install(DIRECTORY "${AWH_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hpp")
-install(DIRECTORY "${JSON_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hpp")
 install(DIRECTORY "${LZ4_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BZ2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZSTD_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")

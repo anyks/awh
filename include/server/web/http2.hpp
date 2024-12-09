@@ -227,6 +227,7 @@ namespace awh {
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const uint64_t bid, const ws::mess_t & mess) noexcept;
+			public:
 				/**
 				 * sendMessage Метод отправки сообщения клиенту
 				 * @param bid     идентификатор брокера
@@ -235,6 +236,15 @@ namespace awh {
 				 * @return        результат отправки сообщения
 				 */
 				bool sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
+				/**
+				 * sendMessage Метод отправки сообщения на сервер
+				 * @param bid     идентификатор брокера
+				 * @param message передаваемое сообщения в бинарном виде
+				 * @param size    размер передаваемого сообещния
+				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
+				 */
+				bool sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки данных в бинарном виде клиенту

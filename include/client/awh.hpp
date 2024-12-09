@@ -16,17 +16,9 @@
 #define __AWH_CLIENT__
 
 /**
- * Стандартные модули
- */
-#include <nlohmann/json.hpp>
-
-/**
  * Наши модули
  */
 #include <client/web/http2.hpp>
-
-// Активируем json в качестве объекта пространства имён
-using json = nlohmann::json;
 
 /**
  * awh пространство имён
@@ -69,6 +61,7 @@ namespace awh {
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
+			public:
 				/**
 				 * sendMessage Метод отправки сообщения на сервер
 				 * @param message передаваемое сообщения в бинарном виде
@@ -76,6 +69,14 @@ namespace awh {
 				 * @return        результат отправки сообщения
 				 */
 				bool sendMessage(const vector <char> & message, const bool text = true) noexcept;
+				/**
+				 * sendMessage Метод отправки сообщения на сервер
+				 * @param message передаваемое сообщения в бинарном виде
+				 * @param size    размер передаваемого сообещния
+				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
+				 */
+				bool sendMessage(const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер HTTP/2
@@ -164,15 +165,16 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PUT(const uri_t::url_t & url, const json & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PUT(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * PUT Метод запроса в формате HTTP методом PUT
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
+				 * @param size    размер тела запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PUT(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PUT(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * PUT Метод запроса в формате HTTP методом PUT
 				 * @param url     адрес запроса
@@ -189,15 +191,16 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> POST(const uri_t::url_t & url, const json & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> POST(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * POST Метод запроса в формате HTTP методом POST
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
+				 * @param size    размер тела запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> POST(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> POST(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * POST Метод запроса в формате HTTP методом POST
 				 * @param url     адрес запроса
@@ -214,15 +217,16 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PATCH(const uri_t::url_t & url, const json & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PATCH(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * PATCH Метод запроса в формате HTTP методом PATCH
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
+				 * @param size    размер тела запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> PATCH(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> PATCH(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * PATCH Метод запроса в формате HTTP методом PATCH
 				 * @param url     адрес запроса
@@ -262,6 +266,16 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 */
 				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, std::unordered_multimap <string, string> & headers) noexcept;
+				/**
+				 * REQUEST Метод выполнения запроса HTTP
+				 * @param method  метод запроса
+				 * @param url     адрес запроса
+				 * @param entity  тело запроса
+				 * @param size    размер тела запроса
+				 * @param headers заголовки запроса
+				 * @param result  результат работы функции
+				 */
+				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, const char * entity, const size_t size, std::unordered_multimap <string, string> & headers, vector <char> & result) noexcept;
 			public:
 				/**
 				 * open Метод открытия подключения

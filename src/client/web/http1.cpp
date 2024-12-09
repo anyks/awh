@@ -795,6 +795,17 @@ bool awh::client::Http1::sendMessage(const vector <char> & message, const bool t
 	// Выполняем отправку сообщения на Websocket-сервер
 	return this->_ws1.sendMessage(message, text);
 }
+/**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param message передаваемое сообщения в бинарном виде
+ * @param size    размер передаваемого сообещния
+ * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
+ */
+bool awh::client::Http1::sendMessage(const char * message, const size_t size, const bool text) noexcept {
+	// Выполняем отправку сообщения на Websocket-сервер
+	return this->_ws1.sendMessage(message, size, text);
+}
 /** 
  * submit Метод выполнения удалённого запроса на сервер
  * @param request объект запроса на удалённый сервер

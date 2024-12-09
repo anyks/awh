@@ -95,6 +95,18 @@ bool awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & mes
 	return this->_http.sendMessage(bid, message, text);
 }
 /**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param bid     идентификатор брокера
+ * @param message передаваемое сообщения в бинарном виде
+ * @param size    размер передаваемого сообещния
+ * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
+ */
+bool awh::server::AWH::sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text) noexcept {
+	// Выполняем отправку сообщения клиенту
+	return this->_http.sendMessage(bid, message, size, text);
+}
+/**
  * send Метод отправки данных в бинарном виде клиенту
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту

@@ -320,13 +320,13 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 			// Буфер данных для логирования
 			vector <char> buffer(1024);
 			// Выполняем перебор всех аргументов
-			while(true){
+			for(;;){
 				// Создаем список аргументов
 				va_list args2;
 				// Копируем список аргументов
 				va_copy(args2, args);
 				// Выполняем запись в буфер данных
-				size_t res = vsnprintf(buffer.data(), buffer.size(), format.c_str(), args2);
+				size_t res = ::vsnprintf(buffer.data(), buffer.size(), format.c_str(), args2);
 				// Если результат получен
 				if((res >= 0) && (res < buffer.size())){
 					// Завершаем список аргументов

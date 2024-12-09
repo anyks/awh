@@ -255,6 +255,7 @@ namespace awh {
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
+			public:
 				/**
 				 * sendMessage Метод отправки сообщения на сервер
 				 * @param message передаваемое сообщения в бинарном виде
@@ -262,6 +263,14 @@ namespace awh {
 				 * @return        результат отправки сообщения
 				 */
 				bool sendMessage(const vector <char> & message, const bool text = true) noexcept;
+				/**
+				 * sendMessage Метод отправки сообщения на сервер
+				 * @param message передаваемое сообщения в бинарном виде
+				 * @param size    размер передаваемого сообещния
+				 * @param text    данные передаются в текстовом виде
+				 * @return        результат отправки сообщения
+				 */
+				bool sendMessage(const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения на сервер

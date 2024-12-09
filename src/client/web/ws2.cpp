@@ -1252,89 +1252,69 @@ void awh::client::Websocket2::error(const ws::mess_t & message) const noexcept {
 void awh::client::Websocket2::extraction(const vector <char> & buffer, const bool text) noexcept {
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->_freeze && this->_callbacks.is("messageWebsocket")){
+		// Декомпрессионные данные
+		vector <char> result(buffer.begin(), buffer.end());
+		// Если нужно производить дешифрование
+		if(this->_crypted)
+			// Выполняем дешифрование полезной нагрузки
+			result = this->_hash.decode <vector <char>> (result.data(), result.size(), this->_cipher);
 		// Если данные пришли в сжатом виде
 		if(this->_inflate && (this->_compressor != http_t::compressor_t::NONE)){
-			// Декомпрессионные данные
-			vector <char> data;
 			// Определяем метод компрессии
 			switch(static_cast <uint8_t> (this->_compressor)){
 				// Если метод компрессии выбран LZ4
 				case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 					// Выполняем декомпрессию полученных данных
-					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::LZ4, data);
+					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::LZ4);
 				break;
 				// Если метод компрессии выбран Zstandard
 				case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 					// Выполняем декомпрессию полученных данных
-					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::ZSTD, data);
+					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::ZSTD);
 				break;
 				// Если метод компрессии выбран LZma
 				case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 					// Выполняем декомпрессию полученных данных
-					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::LZMA, data);
+					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::LZMA);
 				break;
 				// Если метод компрессии выбран Brotli
 				case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 					// Выполняем декомпрессию полученных данных
-					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::BROTLI, data);
+					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::BROTLI);
 				break;
 				// Если метод компрессии выбран BZip2
 				case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 					// Выполняем декомпрессию полученных данных
-					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::BZIP2, data);
+					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::BZIP2);
 				break;
 				// Если метод компрессии выбран GZip
 				case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 					// Выполняем декомпрессию полученных данных
-					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::GZIP, data);
+					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::GZIP);
 				break;
 				// Если метод компрессии выбран Deflate
 				case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
 					// Устанавливаем размер скользящего окна
 					this->_hash.wbit(this->_server.wbit);
 					// Добавляем хвост в полученные данные
-					this->_hash.setTail(* const_cast <vector <char> *> (&buffer));
+					this->_hash.setTail(result);
 					// Выполняем декомпрессию полученных данных
-					this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE, data);
+					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::DEFLATE);
 				} break;
 			}
-			// Если данные получены
-			if(!data.empty()){
-				// Если нужно производить дешифрование
-				if(this->_crypted){
-					// Выполняем дешифрование полезной нагрузки
-					const vector <char> & result = this->_hash.decode <vector <char>> (data.data(), data.size(), this->_cipher);
-					// Если данные сообщения получилось удачно расшифровать
-					if(!result.empty())
-						// Выводим данные полученного сообщения
-						this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", result, text);
-					// Иначе выводим сообщение так - как оно пришло
-					else this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", data, text);
-				// Отправляем полученный результат
-				} else this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", data, text);
-			// Выводим сообщение об ошибке
-			} else {
-				// Иначе выводим сообщение так - как оно пришло
-				this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", buffer, text);
-				// Создаём сообщение
-				this->_mess = ws::mess_t(1007, "Received data decompression error");
-				// Выполняем отправку сообщения об ошибке
-				this->sendError(this->_mess);
-			}
-		// Если функция обратного вызова установлена, выводим полученное сообщение
-		} else {
-			// Если нужно производить дешифрование
-			if(this->_crypted){
-				// Выполняем дешифрование полезной нагрузки
-				const vector <char> & result = this->_hash.decode <vector <char>> (buffer.data(), buffer.size(), this->_cipher);
-				// Если данные сообщения получилось удачно распаковать
-				if(!result.empty())
-					// Выводим данные полученного сообщения
-					this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", result, text);
-				// Иначе выводим сообщение так - как оно пришло
-				else this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", buffer, text);
+		}
+		// Если данные получены
+		if(!result.empty())
 			// Отправляем полученный результат
-			} else this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", buffer, text);
+			this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", result, text);
+		// Выводим сообщение об ошибке
+		else {
+			// Иначе выводим сообщение так - как оно пришло
+			this->_callbacks.call <void (const vector <char> &, const bool)> ("messageWebsocket", buffer, text);
+			// Создаём сообщение
+			this->_mess = ws::mess_t(1007, "Received data decompression error");
+			// Выполняем отправку сообщения об ошибке
+			this->sendError(this->_mess);
 		}
 	}
 }
@@ -1393,12 +1373,23 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
  * @return        результат отправки сообщения
  */
 bool awh::client::Websocket2::sendMessage(const vector <char> & message, const bool text) noexcept {
+	// Выполняем отправку сообщения на сервер
+	return this->sendMessage(message.data(), message.size(), text);
+}
+/**
+ * sendMessage Метод отправки сообщения на сервер
+ * @param message передаваемое сообщения в бинарном виде
+ * @param size    размер передаваемого сообещния
+ * @param text    данные передаются в текстовом виде
+ * @return        результат отправки сообщения
+ */
+bool awh::client::Websocket2::sendMessage(const char * message, const size_t size, const bool text) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если переключение протокола на HTTP/2 не выполнено
 	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выполняем отправку сообщения на клиент Websocket
-		return this->_ws1.sendMessage(message, text);
+		return this->_ws1.sendMessage(message, size, text);
 	// Если переключение протокола на HTTP/2 выполнено
 	else {
 		// Создаём объект холдирования
@@ -1410,7 +1401,7 @@ bool awh::client::Websocket2::sendMessage(const vector <char> & message, const b
 				// Выполняем блокировку отправки сообщения
 				this->_allow.send = !this->_allow.send;
 				// Если рукопожатие выполнено
-				if(!message.empty() && this->_http.handshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
+				if((message != nullptr) && (size > 0) && this->_http.handshake(http_t::process_t::RESPONSE) && (this->_bid > 0)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1420,89 +1411,91 @@ bool awh::client::Websocket2::sendMessage(const vector <char> & message, const b
 						// Если отправляемое сообщение является текстом
 						if(text)
 							// Выводим параметры ответа
-							cout << string(message.begin(), message.end()) << endl << endl;
+							cout << string(message, size) << endl << endl;
 						// Выводим сообщение о выводе чанка полезной нагрузки
-						else cout << this->_fmk->format("<bytes %zu>", message.size()) << endl << endl;
+						else cout << this->_fmk->format("<bytes %zu>", size) << endl << endl;
 					#endif
+					// Бинарный буфер для отправки
+					vector <char> buffer;
 					// Создаём объект заголовка для отправки
 					ws::frame_t::head_t head(true, true);
-					// Если нужно производить шифрование
-					if(this->_crypted)
-						// Выполняем шифрование полезной нагрузки
-						const_cast <vector <char> &> (message) = this->_hash.encode <vector <char>> (message.data(), message.size(), this->_cipher);
 					// Устанавливаем опкод сообщения
 					head.optcode = (text ? ws::frame_t::opcode_t::TEXT : ws::frame_t::opcode_t::BINARY);
 					// Указываем, что сообщение передаётся в сжатом виде
-					head.rsv[0] = ((message.size() >= 1024) && (this->_compressor != http_t::compressor_t::NONE));
+					head.rsv[0] = ((size >= 1024) && (this->_compressor != http_t::compressor_t::NONE));
 					// Если необходимо сжимать сообщение перед отправкой
 					if(head.rsv[0]){
-						// Компрессионные данные
-						vector <char> data;
 						// Определяем метод компрессии
 						switch(static_cast <uint8_t> (this->_compressor)){
 							// Если метод компрессии выбран LZ4
 							case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 								// Выполняем компрессию полученных данных
-								this->_hash.compress(message.data(), message.size(), hash_t::method_t::LZ4, data);
+								this->_hash.compress(message, size, hash_t::method_t::LZ4, buffer);
 							break;
 							// Если метод компрессии выбран Zstandard
 							case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 								// Выполняем компрессию полученных данных
-								this->_hash.compress(message.data(), message.size(), hash_t::method_t::ZSTD, data);
+								this->_hash.compress(message, size, hash_t::method_t::ZSTD, buffer);
 							break;
 							// Если метод компрессии выбран LZma
 							case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 								// Выполняем компрессию полученных данных
-								this->_hash.compress(message.data(), message.size(), hash_t::method_t::LZMA, data);
+								this->_hash.compress(message, size, hash_t::method_t::LZMA, buffer);
 							break;
 							// Если метод компрессии выбран Brotli
 							case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 								// Выполняем компрессию полученных данных
-								this->_hash.compress(message.data(), message.size(), hash_t::method_t::BROTLI, data);
+								this->_hash.compress(message, size, hash_t::method_t::BROTLI, buffer);
 							break;
 							// Если метод компрессии выбран BZip2
 							case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 								// Выполняем компрессию полученных данных
-								this->_hash.compress(message.data(), message.size(), hash_t::method_t::BZIP2, data);
+								this->_hash.compress(message, size, hash_t::method_t::BZIP2, buffer);
 							break;
 							// Если метод компрессии выбран GZip
 							case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 								// Выполняем компрессию полученных данных
-								this->_hash.compress(message.data(), message.size(), hash_t::method_t::GZIP, data);
+								this->_hash.compress(message, size, hash_t::method_t::GZIP, buffer);
 							break;
 							// Если метод компрессии выбран Deflate
 							case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
 								// Устанавливаем размер скользящего окна
 								this->_hash.wbit(this->_client.wbit);
 								// Выполняем компрессию полученных данных
-								this->_hash.compress(message.data(), message.size(), hash_t::method_t::DEFLATE, data);
+								this->_hash.compress(message, size, hash_t::method_t::DEFLATE, buffer);
 								// Удаляем хвост в полученных данных
-								this->_hash.rmTail(data);
+								this->_hash.rmTail(buffer);
 							} break;
 						}
-						// Если сжатие данных прошло удачно
-						if(!data.empty())
-							// Заменяем сообщение для передачи
-							const_cast <vector <char> &> (message).assign(data.begin(), data.end());
-						// Снимаем флаг сжатых данных
-						else head.rsv[0] = !head.rsv[0];
-					}
+						// Если сжатие данных не выполнено
+						if(buffer.empty()){
+							// Снимаем флаг сжатых данных
+							head.rsv[0] = !head.rsv[0];
+							// Заполняем бинарный буфер данными в том виде как они пришли
+							buffer.assign(message, message + size);
+						}
+					// Заполняем бинарный буфер данными в том виде как они пришли
+					} else buffer.assign(message, message + size);
+					// Если нужно производить шифрование
+					if(this->_crypted)
+						// Выполняем шифрование полезной нагрузки
+						buffer = this->_hash.encode <vector <char>> (buffer.data(), buffer.size(), this->_cipher);
 					// Если требуется фрагментация сообщения
-					if(message.size() > this->_frame.size){
+					if(buffer.size() > this->_frame.size){
 						// Бинарный буфер чанка данных
 						vector <char> chunk(this->_frame.size);
 						// Смещение в бинарном буфере
 						size_t start = 0, stop = this->_frame.size;
 						// Выполняем разбивку полезной нагрузки на сегменты
-						while(stop < message.size()){
+						while(stop < buffer.size()){
 							// Увеличиваем длину чанка
 							stop += this->_frame.size;
 							// Если длина чанка слишком большая, компенсируем
-							stop = (stop > message.size() ? message.size() : stop);
+							stop = (stop > buffer.size() ? buffer.size() : stop);
 							// Устанавливаем флаг финального сообщения
-							head.fin = (stop == message.size());
+							head.fin = (stop == buffer.size());
 							// Формируем чанк бинарных данных
-							chunk.assign(message.data() + start, message.data() + stop);
+							chunk.assign(buffer.data() + start, buffer.data() + stop);
 							// Создаём буфер для отправки
 							const auto & payload = this->_frame.methods.set(head, chunk.data(), chunk.size());
 							// Если бинарный буфер для отправки данных получен
@@ -1523,7 +1516,7 @@ bool awh::client::Websocket2::sendMessage(const vector <char> & message, const b
 					// Если фрагментация сообщения не требуется
 					} else {
 						// Создаём буфер для отправки
-						const auto & payload = this->_frame.methods.set(head, message.data(), message.size());
+						const auto & payload = this->_frame.methods.set(head, buffer.data(), buffer.size());
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
 							// Выполняем отправку сообщения на сервер
