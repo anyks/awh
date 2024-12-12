@@ -175,18 +175,19 @@ namespace awh {
 			 * @return     хэш etag
 			 */
 			string etag(const string & text) const noexcept;
+		public:
 			/**
 			 * encode Метод кодирования строки в URL-адресе
-			 * @param str строка для кодирования
-			 * @return    результат кодирования
+			 * @param text строка текста для кодирования
+			 * @return     результат кодирования
 			 */
-			string encode(const string & str) const noexcept;
+			string encode(const string & text) const noexcept;
 			/**
 			 * decode Метод декодирования строки в URL-адресе
-			 * @param str строка для декодирования
-			 * @return    результат декодирования
+			 * @param text строка текста для декодирования
+			 * @return     результат декодирования
 			 */
-			string decode(const string & str) const noexcept;
+			string decode(const string & text) const noexcept;
 		public:
 			/**
 			 * url Метод создания строки URL-запросы из параметров
@@ -253,7 +254,7 @@ namespace awh {
 			 * @param delim сепаратор-разделитель для сплита
 			 * @return      список параметров пути
 			 */
-			vector <string> splitPath(const string & path, const string & delim = "/") const noexcept;
+			vector <string> splitPath(const string & path, const char delim = '/') const noexcept;
 		public:
 			/**
 			 * joinParams Метод сборки параметров URI
@@ -267,7 +268,7 @@ namespace awh {
 			 * @param delim сепаратор-разделитель для сплита
 			 * @return      строка собранного пути
 			 */
-			string joinPath(const vector <string> & path, const string & delim = "/") const noexcept;
+			string joinPath(const vector <string> & path, const char delim = '/') const noexcept;
 		public:
 			/**
 			 * params Метод получения параметров URI

@@ -1150,7 +1150,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 						// Если прочитать файла не вышло
 						else {
 							// Открываем файл на чтение
-							ifstream file(path, ios::in | ios::binary);
+							std::ifstream file(path, ios::in | ios::binary);
 							// Если файл открыт
 							if(file.is_open()){
 								// Перемещаем указатель в конец файла
@@ -1549,7 +1549,7 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 			 */
 			#else
 				// Файловый поток для записи
-				ofstream file(filename, ios::binary);
+				std::ofstream file(filename, ios::binary);
 				// Если файл открыт на запись
 				if(file.is_open()){
 					// Выполняем запись данных в файл
@@ -1604,7 +1604,7 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 			 */
 			#else
 				// Файловый поток для добавления
-				ofstream file(filename, (ios::binary | ios::app));
+				std::ofstream file(filename, (ios::binary | ios::app));
 				// Если файл открыт на добавление
 				if(file.is_open()){
 					// Выполняем добавление данных в файл
@@ -1835,7 +1835,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 					// Получаем размер файла
 					size = static_cast <uintmax_t> (info.st_size);
 				// Открываем файл на чтение
-				ifstream file(filename, ios::in | ios::binary);
+				std::ifstream file(filename, ios::in | ios::binary);
 				// Если файл открыт
 				if(file.is_open()){
 					// Если арзмер файла не получен
@@ -1890,7 +1890,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Открываем файл на чтение
-				ifstream file(this->_fmk->convert(filename).c_str(), ios::in | ios::binary);
+				std::ifstream file(this->_fmk->convert(filename).c_str(), ios::in | ios::binary);
 				// Если файл открыт
 				if(file.is_open()){
 					// Результат полученный из потока
@@ -1907,7 +1907,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 			 */
 			#else
 				// Открываем файл на чтение
-				ifstream file(filename, ios::in | ios::binary);
+				std::ifstream file(filename, ios::in | ios::binary);
 				// Если файл открыт
 				if(file.is_open()){
 					// Результат полученный из потока
