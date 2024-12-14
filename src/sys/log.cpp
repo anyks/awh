@@ -58,20 +58,32 @@ void awh::Log::rotate() const noexcept {
 				 * Выполняем работу для Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
-					// Прочитанная строка из файла
-					string filedata(size, 0);
-					// Получаем компоненты адреса
-					const auto & cmp = this->components(this->_filename);
-					// Открываем файл на сжатие
-					gzFile gz = gzopen_w(this->_fmk->convert(this->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.str().c_str())).c_str(), "wb9h");
+					// Буфер данных для чтения
+					vector <char> buffer(size, 0);
 					// Выполняем чтение из файла в буфер данные
-					ReadFile(file, static_cast <LPVOID> (filedata.data()), static_cast <DWORD> (filedata.size()), 0, nullptr);
+					ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
 					// Если данные строки получены
-					if(!filedata.empty())
-						// Выполняем сжатие файла
-						gzwrite(gz, filedata.data(), filedata.size());
-					// Закрываем сжатый файл
-					gzclose(gz);
+					if(!buffer.empty()){
+						// Получаем компоненты адреса
+						const auto & cmp = this->components(this->_filename);
+						// Открываем файл на сжатие
+						gzFile gz = ::gzopen_w(this->_fmk->convert(this->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.str().c_str())).c_str(), "wb9h");
+						// Если файл открыт удачно
+						if(gz != nullptr){
+							// Выполняем сжатие файла
+							::gzwrite(gz, buffer.data(), buffer.size());
+							// Закрываем сжатый файл
+							::gzclose(gz);
+						// Если произошла ошибка
+						} else {
+							// Создаём буфер сообщения ошибки
+							wchar_t message[256] = {0};
+							// Выполняем формирование текста ошибки
+							FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, WSAGetLastError(), 0, message, 256, 0);
+							// Выводим текст полученной ошибки
+							::fprintf(stderr, "Log rotate: %s", this->_fmk->convert(message).c_str());
+						}
+					}
 				/**
 				 * Выполняем работу для Unix
 				 */
@@ -80,23 +92,25 @@ void awh::Log::rotate() const noexcept {
 					ifstream file(this->_filename, ios::in);
 					// Если файл открыт
 					if(file.is_open()){
-						// Прочитанная строка из файла
-						string filedata = "";
-						// Получаем компоненты адреса
-						const auto & cmp = this->components(this->_filename);
-						// Открываем файл на сжатие
-						gzFile gz = gzopen(this->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.str().c_str()).c_str(), "wb9h");
-						// Считываем до тех пор пока все удачно
-						while(file.good()){
-							// Считываем строку из файла
-							getline(file, filedata);
-							// Если данные строки получены
-							if(!filedata.empty())
+						// Буфер данных для чтения
+						vector <char> buffer(size, 0);
+						// Выполняем чтение данных из файла
+						file.read(buffer.data(), buffer.size());
+						// Если данные строки получены
+						if(!buffer.empty()){
+							// Получаем компоненты адреса
+							const auto & cmp = this->components(this->_filename);
+							// Открываем файл на сжатие
+							gzFile gz = ::gzopen(this->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.str().c_str()).c_str(), "wb9h");
+							// Если файл открыт удачно
+							if(gz != nullptr){
 								// Выполняем сжатие файла
-								gzwrite(gz, filedata.data(), filedata.size());
+								::gzwrite(gz, buffer.data(), buffer.size());
+								// Закрываем сжатый файл
+								::gzclose(gz);
+							// Если произошла ошибка
+							} else ::fprintf(stderr, "Log rotate: %s", ::strerror(errno));
 						}
-						// Закрываем сжатый файл
-						gzclose(gz);
 						// Закрываем файл
 						file.close();
 						// Удаляем исходный файл логов

@@ -30,22 +30,33 @@ uint32_t awh::Version::num() const noexcept {
 string awh::Version::str(const uint8_t octets) const noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если количество октетов не указанно
-	if(octets == 0)
-		// Выполняем корректировку
-		const_cast <uint8_t &> (octets) = 1;
-	// Если октетов больше 4-х
-	else if(octets > 4)
-		// Выполняем корректировку
-		const_cast <uint8_t &> (octets) = 4;
-	// Переходим по всему массиву
-	for(uint8_t i = 0; i < octets; i++){
-		// Если строка уже существует, добавляем разделитель
-		if(!result.empty())
-			// Добавляем разделитель
-			result.append(1, '.');
-		// Добавляем октет в версию
-		result.append(std::to_string(reinterpret_cast <const uint8_t *> (&this->_version)[i]));
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если количество октетов не указанно
+		if(octets == 0)
+			// Выполняем корректировку
+			const_cast <uint8_t &> (octets) = 1;
+		// Если октетов больше 4-х
+		else if(octets > 4)
+			// Выполняем корректировку
+			const_cast <uint8_t &> (octets) = 4;
+		// Переходим по всему массиву
+		for(uint8_t i = 0; i < octets; i++){
+			// Если строка уже существует, добавляем разделитель
+			if(!result.empty())
+				// Добавляем разделитель
+				result.append(1, '.');
+			// Добавляем октет в версию
+			result.append(std::to_string(reinterpret_cast <const uint8_t *> (&this->_version)[i]));
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		// Выводим сообщение об ошибке
+		::fprintf(stderr, "Version str: %s", error.what());
 	}
 	// Выводим результат
 	return result;
@@ -91,8 +102,9 @@ void awh::Version::set(const string & ver) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
-			/* Ничего не делаем */
+		} catch(const std::exception & error) {
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Version set: %s", error.what());
 		}
 	}
 }
