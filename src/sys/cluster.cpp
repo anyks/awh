@@ -1431,18 +1431,23 @@ void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
  */
 awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _callbacks(log), _socket(fmk, log), _core(nullptr), _fmk(fmk), _log(log) {
-	// Выполняем установку объекта кластера
-	cluster = this;
-	// Выполняем зануление структур перехватчиков событий
-	::memset(&this->_sa, 0, sizeof(this->_sa));
-	// Устанавливаем функцию перехвадчика событий
-	this->_sa.sa_sigaction = cluster_t::child;
-	// Устанавливаем флаги перехвата сигналов
-	this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
-	// Устанавливаем маску перехвата
-	sigemptyset(&this->_sa.sa_mask);
-	// Активируем перехватчик событий
-	::sigaction(SIGCHLD, &this->_sa, nullptr);
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем установку объекта кластера
+		cluster = this;
+		// Выполняем зануление структур перехватчиков событий
+		::memset(&this->_sa, 0, sizeof(this->_sa));
+		// Устанавливаем функцию перехвадчика событий
+		this->_sa.sa_sigaction = cluster_t::child;
+		// Устанавливаем флаги перехвата сигналов
+		this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
+		// Устанавливаем маску перехвата
+		sigemptyset(&this->_sa.sa_mask);
+		// Активируем перехватчик событий
+		::sigaction(SIGCHLD, &this->_sa, nullptr);
+	#endif
 }
 /**
  * Cluster Конструктор
@@ -1452,18 +1457,23 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _callbacks(log), _socket(fmk, log), _core(core), _fmk(fmk), _log(log) {
-	// Выполняем установку объекта кластера
-	cluster = this;
-	// Выполняем зануление структур перехватчиков событий
-	::memset(&this->_sa, 0, sizeof(this->_sa));
-	// Устанавливаем функцию перехвадчика событий
-	this->_sa.sa_sigaction = cluster_t::child;
-	// Устанавливаем флаги перехвата сигналов
-	this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
-	// Устанавливаем маску перехвата
-	sigemptyset(&this->_sa.sa_mask);
-	// Активируем перехватчик событий
-	::sigaction(SIGCHLD, &this->_sa, nullptr);
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем установку объекта кластера
+		cluster = this;
+		// Выполняем зануление структур перехватчиков событий
+		::memset(&this->_sa, 0, sizeof(this->_sa));
+		// Устанавливаем функцию перехвадчика событий
+		this->_sa.sa_sigaction = cluster_t::child;
+		// Устанавливаем флаги перехвата сигналов
+		this->_sa.sa_flags = SA_RESTART | SA_SIGINFO;
+		// Устанавливаем маску перехвата
+		sigemptyset(&this->_sa.sa_mask);
+		// Активируем перехватчик событий
+		::sigaction(SIGCHLD, &this->_sa, nullptr);
+	#endif
 }
 /**
  * ~Cluster Деструктор
