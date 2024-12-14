@@ -81,7 +81,7 @@ void awh::Log::rotate() const noexcept {
 							// Выполняем формирование текста ошибки
 							FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, WSAGetLastError(), 0, message, 256, 0);
 							// Выводим текст полученной ошибки
-							::fprintf(stderr, "Log rotate: %s", this->_fmk->convert(message).c_str());
+							::fprintf(stderr, "Log rotate: %s\n", this->_fmk->convert(message).c_str());
 						}
 					}
 				/**
@@ -109,7 +109,7 @@ void awh::Log::rotate() const noexcept {
 								// Закрываем сжатый файл
 								::gzclose(gz);
 							// Если произошла ошибка
-							} else ::fprintf(stderr, "Log rotate: %s", ::strerror(errno));
+							} else ::fprintf(stderr, "Log rotate: %s\n", ::strerror(errno));
 						}
 						// Закрываем файл
 						file.close();

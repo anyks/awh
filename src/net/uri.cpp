@@ -132,13 +132,13 @@ awh::URI::URL & awh::URI::URL::operator = (const URL & url) noexcept {
 	 */
 	} catch(const std::length_error & error) {
 		// Выводим сообщение об ошибке
-		::fprintf(stderr, "URL: %s", error.what());
+		::fprintf(stderr, "URL: %s\n", error.what());
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
 		// Выводим сообщение об ошибке
-		::fprintf(stderr, "URL: %s", error.what());
+		::fprintf(stderr, "URL: %s\n", error.what());
 	}
 	// Выводим результат
 	return (* this);

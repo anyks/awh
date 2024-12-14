@@ -135,7 +135,7 @@ namespace awh {
 				 */
 				} catch(const std::exception & error) {
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen process: %s", error.what());
+					::fprintf(stderr, "Screen process: %s\n", error.what());
 				}
 			}
 		private:
@@ -230,7 +230,7 @@ namespace awh {
 				 */
 				} catch(const std::exception & error) {
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen on: %s", error.what());
+					::fprintf(stderr, "Screen on: %s\n", error.what());
 				}
 			}
 			/**
@@ -251,7 +251,7 @@ namespace awh {
 				 */
 				} catch(const std::exception & error) {
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen on: %s", error.what());
+					::fprintf(stderr, "Screen on: %s\n", error.what());
 				}
 			}
 			/**
@@ -272,7 +272,7 @@ namespace awh {
 				 */
 				} catch(const std::exception & error) {
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen on: %s", error.what());
+					::fprintf(stderr, "Screen on: %s\n", error.what());
 				}
 			}
 		public:
@@ -294,7 +294,7 @@ namespace awh {
 				 */
 				} catch(const std::exception & error) {
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen timeout: %s", error.what());
+					::fprintf(stderr, "Screen timeout: %s\n", error.what());
 				}
 			}
 		public:
@@ -324,7 +324,7 @@ namespace awh {
 				 */
 				} catch(const std::exception & error) {
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen send: %s", error.what());
+					::fprintf(stderr, "Screen send: %s\n", error.what());
 				}
 			}
 		public:
@@ -350,9 +350,13 @@ namespace awh {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen stop: %s", error.what());
+				} catch(const std::exception &) {
+					/**
+					 * Пропускаем полученную ошибку.
+					 * 
+					 * Этот метод вызывается также в деструкторе,
+					 * по этому ошибку выводить не надо, так-как она всплывает всегда
+					 */
 				}
 			}
 			/**
@@ -381,7 +385,7 @@ namespace awh {
 				 */
 				} catch(const std::exception & error) {
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen start: %s", error.what());
+					::fprintf(stderr, "Screen start: %s\n", error.what());
 				}
 			}
 		public:

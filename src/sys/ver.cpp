@@ -56,7 +56,7 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 	 */
 	} catch(const std::exception & error) {
 		// Выводим сообщение об ошибке
-		::fprintf(stderr, "Version str: %s", error.what());
+		::fprintf(stderr, "Version str: %s\n", error.what());
 	}
 	// Выводим результат
 	return result;
@@ -104,7 +104,7 @@ void awh::Version::set(const string & ver) noexcept {
 		 */
 		} catch(const std::exception & error) {
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Version set: %s", error.what());
+			::fprintf(stderr, "Version set: %s\n", error.what());
 		}
 	}
 }
