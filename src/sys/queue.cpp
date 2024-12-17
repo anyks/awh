@@ -355,7 +355,7 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 			this->realloc();
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
-			// Выделяем память для добавления данных			
+			// Выделяем память для добавления данных
 			uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
 			// Выполняем копирование переданных данных в выделенную память
 			::memcpy(data, buffer, size);
