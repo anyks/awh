@@ -177,7 +177,7 @@ void awh::Node::available(const uint64_t bid) noexcept {
 			// Если размер полезной нагрузки найден
 			if(i != this->_available.end())
 				// Выполняем функцию обратного вызова сообщая об освобождении памяти
-				this->_callbacks.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < i->second) ? 0 : min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize));
+				this->_callbacks.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < i->second) ? 0 : std::min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize));
 		}
 	}
 }
@@ -666,9 +666,9 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 		// Если размер полезной нагрузки найден
 		if(i != this->_available.end())
 			// Если места не достаточно
-			unavailable = ((this->_brokerAvailableSize < i->second) || (min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize) < size));
+			unavailable = ((this->_brokerAvailableSize < i->second) || (std::min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize) < size));
 		// Если память ещё не потрачена для отправки
-		else unavailable = (min(this->_brokerAvailableSize, this->_memoryAvailableSize) < size);
+		else unavailable = (std::min(this->_brokerAvailableSize, this->_memoryAvailableSize) < size);
 		// Если свободной памяти в буфере обмена данными достаточно
 		if((result = !unavailable)){
 			// Ещем для указанного потока очередь полезной нагрузки

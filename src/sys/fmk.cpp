@@ -536,6 +536,11 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 		try {
 			// Выполняем определение флага проверки
 			switch(static_cast <uint8_t> (flag)){
+				// Если установлен флаг проверки на печатаемый символ
+				case static_cast <uint8_t> (check_t::PRINT):
+					// Выполняем проверку символа
+					result = (std::isprint(letter) != 0);
+				break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER):
 					// Выполняем проверку совпадают ли символы
@@ -595,6 +600,11 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 		try {
 			// Выполняем определение флага проверки
 			switch(static_cast <uint8_t> (flag)){
+				// Если установлен флаг проверки на печатаемый символ
+				case static_cast <uint8_t> (check_t::PRINT):
+					// Выполняем проверку символа
+					result = (std::iswprint(letter) != 0);
+				break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER):
 					// Выполняем проверку совпадают ли символы
@@ -662,6 +672,18 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					const auto & url = this->_nwt.parse(text);
 					// Если ссылка найдена
 					result = ((url.type != nwt_t::types_t::NONE) && (url.type != nwt_t::types_t::WRONG));
+				} break;
+				// Если установлен флаг проверки на печатаемый символ
+				case static_cast <uint8_t> (check_t::PRINT): {
+					// Выполняем перебор всех символов строки
+					for(char letter : text){
+						// Выполняем проверку символа
+						result = (std::isprint(letter) != 0);
+						// Если символ не печатаемый
+						if(!result)
+							// Выходим из цикла
+							break;
+					}
 				} break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER): {
@@ -952,6 +974,18 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					const auto & url = this->_nwt.parse(this->convert(text));
 					// Если ссылка найдена
 					result = ((url.type != nwt_t::types_t::NONE) && (url.type != nwt_t::types_t::WRONG));
+				} break;
+				// Если установлен флаг проверки на печатаемый символ
+				case static_cast <uint8_t> (check_t::PRINT): {
+					// Выполняем перебор всех символов строки
+					for(wchar_t letter : text){
+						// Выполняем проверку символа
+						result = (std::iswprint(letter) != 0);
+						// Если символ не печатаемый
+						if(!result)
+							// Выходим из цикла
+							break;
+					}
 				} break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER): {
