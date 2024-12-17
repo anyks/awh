@@ -30,6 +30,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/queue.hpp>
 #include <sys/buffer.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -231,6 +232,9 @@ namespace awh {
 					Buffer() noexcept : size(0), offset(0), payload(nullptr) {}
 				} buffer_t;
 			private:
+				// Набор собранных данных
+				queue_t _data;
+			private:
 				// Мютекс для блокировки потока
 				std::mutex _mtx;
 			private:
@@ -242,8 +246,6 @@ namespace awh {
 			private:
 				// Набор временных буферов данных
 				std::map <uint64_t, std::unique_ptr <buffer_t>> _tmp;
-				// Набор собранных данных
-				std::queue <std::pair <size_t, std::unique_ptr <uint8_t []>>> _data;
 			private:
 				// Объект работы с логами
 				const log_t * _log;
@@ -317,7 +319,9 @@ namespace awh {
 				 * Decoder Конструктор
 				 * @param log объект для работы с логами
 				 */
-				Decoder(const log_t * log) noexcept : _chunkSize(CHUNK_SIZE), _buffer(awh::buffer_t::mode_t::COPY), _log(log) {}
+				Decoder(const log_t * log) noexcept :
+				 _data(log), _chunkSize(CHUNK_SIZE),
+				 _buffer(awh::buffer_t::mode_t::COPY), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */

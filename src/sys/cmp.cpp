@@ -290,11 +290,11 @@ vector <char> awh::cmp::Decoder::back() const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если записи в протоколе существуют
-	if(!this->_data.empty() && (this->_data.back().first > 0)){
+	if(!this->_data.empty() && (this->_data.size(queue_t::pos_t::BACK) > 0)){
 		// Выделяем память под указанный буфер данных
-		result.resize(this->_data.back().first, 0);
+		result.resize(this->_data.size(queue_t::pos_t::BACK), 0);
 		// Выполняем копирование буфера данных
-		::memcpy(result.data(), reinterpret_cast <char *> (this->_data.back().second.get()), this->_data.back().first);
+		::memcpy(result.data(), reinterpret_cast <const char *> (this->_data.get(queue_t::pos_t::BACK)), this->_data.size(queue_t::pos_t::BACK));
 	}
 	// Выводим результат
 	return result;
@@ -307,11 +307,11 @@ vector <char> awh::cmp::Decoder::front() const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если записи в протоколе существуют
-	if(!this->_data.empty() && (this->_data.front().first > 0)){
+	if(!this->_data.empty() && (this->_data.size(queue_t::pos_t::FRONT) > 0)){
 		// Выделяем память под указанный буфер данных
-		result.resize(this->_data.front().first, 0);
+		result.resize(this->_data.size(queue_t::pos_t::FRONT), 0);
 		// Выполняем копирование буфера данных
-		::memcpy(result.data(), reinterpret_cast <char *> (this->_data.front().second.get()), this->_data.front().first);
+		::memcpy(result.data(), reinterpret_cast <const char *> (this->_data.get(queue_t::pos_t::FRONT)), this->_data.size(queue_t::pos_t::FRONT));
 	}
 	// Выводим результат
 	return result;
@@ -344,12 +344,12 @@ void awh::cmp::Decoder::clear() noexcept {
 		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем удаление всех временных данных
 		this->_tmp.clear();
+		// Выполняем очистку очереди данных
+		this->_data.clear();
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Очищаем выделенную память для временных данных
 		std::map <uint64_t, std::unique_ptr <buffer_t>> ().swap(this->_tmp);
-		// Очищаем выделенную память для собранных данных
-		std::queue <std::pair <size_t, std::unique_ptr <uint8_t []>>> ().swap(this->_data);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -478,7 +478,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 								// Если данные мы собрали правильно
 								if(i->second->size == i->second->offset)
 									// Выполняем перемещение данных в очередь
-									this->_data.push(std::make_pair(i->second->size, std::move(i->second->payload)));
+									this->_data.push(i->second->payload.get(), i->second->size);
 								// Выводим сообщение об ошибке
 								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, i->second->offset, i->second->size, "we received damage during the data collection process");
 								// Выполняем удаление данных из временного контейнера
@@ -504,7 +504,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 								// Если данные мы собрали правильно
 								if(data->size == data->offset)
 									// Выполняем перемещение данных в очередь
-									this->_data.push(std::make_pair(data->size, std::move(data->payload)));
+									this->_data.push(data->payload.get(), data->size);
 								// Выводим сообщение об ошибке
 								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, data->offset, data->size, "we received damage during the data process");
 							// Выполняем добавление записи во временный объект

@@ -3231,9 +3231,9 @@ string awh::Framework::icon(const bool end) const noexcept {
 		"🏁","🧾","💶","💷","💴","💵"
 	};
 	// рандомизация генератора случайных чисел
-	srand(time(nullptr));
+	::srand(::time(nullptr));
 	// Получаем иконку
-	return (!end ? iconBegin[rand() % iconBegin.size()] : iconEnd[rand() % iconEnd.size()]);
+	return (!end ? iconBegin[::rand() % iconBegin.size()] : iconEnd[::rand() % iconEnd.size()]);
 }
 /**
  * bytes Метод конвертации байт в строку

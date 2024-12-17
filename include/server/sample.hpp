@@ -16,11 +16,6 @@
 #define __AWH_SAMPLE_SERVER__
 
 /**
- * Стандартные модули
- */
-#include <queue>
-
-/**
  * Наши модули
  */
 #include <sys/fn.hpp>

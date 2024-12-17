@@ -27,6 +27,7 @@
 /**
  * Наши модули
  */
+#include <sys/queue.hpp>
 #include <client/awh.hpp>
 #include <server/awh.hpp>
 
@@ -84,17 +85,6 @@ namespace awh {
 					vector <char> entity;                             // Тело ответа
 					std::unordered_multimap <string, string> headers; // Заголовки ответа
 				} response_t;
-				/**
-				 * Payload Структура полезной нагрузки
-				 */
-				typedef struct Payload {
-					size_t size;                    // Размер буфера
-					std::unique_ptr <char []> data; // Данные буфера
-					/**
-					 * Payload Конструктор
-					 */
-					Payload() noexcept : size(0), data(nullptr) {}
-				} payload_t;
 				/**
 				 * KeepAlive Структура параметров жизни подключения
 				 */
@@ -291,7 +281,7 @@ namespace awh {
 				std::set <flag_t> _flags;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				std::map <uint64_t, std::queue <payload_t>> _payloads;
+				std::map <uint64_t, std::unique_ptr <queue_t>> _payloads;
 				// Список активных клиентов
 				std::map <uint64_t, std::unique_ptr <client_t>> _clients;
 			private:

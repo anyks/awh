@@ -175,6 +175,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/cmp.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/pipe.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/hash.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/events.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/cluster.cpp"

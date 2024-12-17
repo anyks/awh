@@ -70,9 +70,9 @@ void awh::server::Proxy::available(const broker_t broker, const uint64_t bid, co
 	// Ещем для указанного потока очередь полезной нагрузки
 	auto i = this->_payloads.find(bid);
 	// Если для потока очередь полезной нагрузки получена
-	if((i != this->_payloads.end()) && !i->second.empty()){
+	if((i != this->_payloads.end()) && !i->second->empty()){
 		// Если места достаточно в буфере данных для отправки
-		if(i->second.front().size <= size){
+		if(i->second->size() <= size){
 			// Если сетевое ядро уже инициализированно
 			if(core != nullptr){
 				// Флаг разрешения отправки ранее неотправленных данных из временного буфера полезной нагрузки
@@ -88,21 +88,21 @@ void awh::server::Proxy::available(const broker_t broker, const uint64_t bid, co
 						// Если брокером является клиент
 						case static_cast <uint8_t> (broker_t::CLIENT): {
 							// Выполняем отправку заголовков запроса на сервер
-							if(dynamic_cast <client::core_t *> (core)->send(i->second.front().data.get(), i->second.front().size, bid))
+							if(dynamic_cast <client::core_t *> (core)->send(reinterpret_cast <const char *> (i->second->get()), i->second->size(), bid))
 								// Выполняем удаление буфера полезной нагрузки
-								i->second.pop();
+								i->second->pop();
 						} break;
 						// Если брокером является сервер
 						case static_cast <uint8_t> (broker_t::SERVER): {
 							// Выполняем отправку заголовков запроса на сервер
-							if(dynamic_cast <server::core_t *> (core)->send(i->second.front().data.get(), i->second.front().size, bid))
+							if(dynamic_cast <server::core_t *> (core)->send(reinterpret_cast <const char *> (i->second->get()), i->second->size(), bid))
 								// Выполняем удаление буфера полезной нагрузки
-								i->second.pop();
+								i->second->pop();
 						} break;
 					}
 				}
 			// Выполняем удаление буфера полезной нагрузки
-			} else i->second.pop();
+			} else i->second->pop();
 		}
 	}
 }
@@ -129,26 +129,18 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Объект полезной нагрузки для отправки
-			payload_t payload;
-			// Устанавливаем размер буфера данных
-			payload.size = size;
-			// Выполняем создание буфера данных
-			payload.data = std::unique_ptr <char []> (new char [size]);
-			// Выполняем копирование буфера полезной нагрузки
-			::memcpy(payload.data.get(), buffer, size);
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
 			if(i != this->_payloads.end())
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-				i->second.push(std::move(payload));
+				i->second->push(buffer, size);
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, std::queue <payload_t> ());
+				auto ret = this->_payloads.emplace(bid, std::unique_ptr <queue_t> (new queue_t(this->_log)));
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-				ret.first->second.push(std::move(payload));
+				ret.first->second->push(buffer, size);
 			}
 		/**
 		 * Если возникает ошибка

@@ -19,6 +19,7 @@
  * Наши модули
  */
 #include <sys/fn.hpp>
+#include <sys/queue.hpp>
 #include <core/client.hpp>
 #include <core/server.hpp>
 #include <scheme/socks5.hpp>
@@ -81,17 +82,6 @@ namespace awh {
 					 */
 					Settings() noexcept : verify(false) {}
 				} settings_t;
-				/**
-				 * Payload Структура полезной нагрузки
-				 */
-				typedef struct Payload {
-					size_t size;                    // Размер буфера
-					std::unique_ptr <char []> data; // Данные буфера
-					/**
-					 * Payload Конструктор
-					 */
-					Payload() noexcept : size(0), data(nullptr) {}
-				} payload_t;
 			private:
 				// Порт сервера
 				uint32_t _port;
@@ -124,7 +114,7 @@ namespace awh {
 				size_t _brokerAvailableSize;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				std::map <uint64_t, std::queue <payload_t>> _payloads;
+				std::map <uint64_t, std::unique_ptr <queue_t>> _payloads;
 				// Список активных клиентов
 				std::map <uint64_t, std::unique_ptr <client::core_t>> _clients;
 			private:
