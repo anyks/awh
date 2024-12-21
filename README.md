@@ -26,6 +26,7 @@
 - [LibIconv](https://www.gnu.org/software/libiconv)
 - [LibIdn2](https://www.gnu.org/software/libidn)
 - [NgHttp2](https://nghttp2.org/documentation)
+- [GPerfTools](https://github.com/gperftools/gperftools)
 
 ## To build and launch the project
 

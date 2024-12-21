@@ -399,9 +399,20 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const exception & error) {
-			// Выводим в лог сообщение
-			this->_log->print("Write message to process", log_t::flag_t::CRITICAL);
+		} catch(const std::exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, fd), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	#endif
 }
@@ -563,9 +574,20 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим в лог сообщение
-			this->_log->print("Cluster fork: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, pid), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -801,9 +823,20 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим в лог сообщение
-			this->_log->print("Cluster fork: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, index), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -1403,9 +1436,20 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const bad_alloc &) {
-		// Выводим в лог сообщение
-		this->_log->print("Cluster init: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+	} catch(const std::bad_alloc &) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, count), log_t::flag_t::CRITICAL, "Memory allocation error");
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+		#endif
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}

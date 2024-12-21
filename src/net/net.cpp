@@ -371,8 +371,19 @@ void awh::Net::initLocalNet() noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -399,8 +410,19 @@ int64_t awh::Net::atoi(const string & value) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -446,8 +468,19 @@ string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, radix), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -474,8 +507,19 @@ string & awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(num, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -515,8 +559,19 @@ vector <string> & awh::Net::split(const string & str, const string & delim, vect
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 		// Выводим результат
 		return result;
@@ -550,8 +605,19 @@ vector <string> & awh::Net::split(const string & str, const string & delim, vect
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str, delim), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -619,8 +685,19 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -645,8 +722,19 @@ uint64_t awh::Net::mac() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -673,8 +761,19 @@ void awh::Net::mac(const uint64_t addr) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -697,8 +796,19 @@ uint32_t awh::Net::v4() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -725,8 +835,19 @@ void awh::Net::v4(const uint32_t addr) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -749,8 +870,19 @@ array <uint64_t, 2> awh::Net::v6() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -777,8 +909,19 @@ void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr.front(), addr.back()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -935,8 +1078,19 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(prefix, "addr"), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -992,8 +1146,19 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(mask), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1048,8 +1213,19 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(prefix), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1128,8 +1304,19 @@ bool awh::Net::mapping(const string & network) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(network), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1158,8 +1345,19 @@ bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1240,8 +1438,19 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) c
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1319,8 +1528,19 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(begin, end, prefix), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1403,8 +1623,19 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(network, prefix, "addr"), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1503,8 +1734,19 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1567,8 +1809,19 @@ string awh::Net::arpa() const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -1614,8 +1867,19 @@ bool awh::Net::arpa(const string & addr) noexcept {
 			 * Если возникает ошибка
 			 */
 			} catch(const std::exception & error) {
-				// Выводим сообщение об ошибке
-				this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		// Если адрес является адресом IPv6
 		} else if((result = (addr.substr(addr.length() - 9).compare(".ip6.arpa") == 0))) {
@@ -1674,8 +1938,19 @@ bool awh::Net::arpa(const string & addr) noexcept {
 			 * Если возникает ошибка
 			 */
 			} catch(const std::exception & error) {
-				// Выводим сообщение об ошибке
-				this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		}
 	}
@@ -1854,8 +2129,19 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2024,8 +2310,19 @@ string awh::Net::get(const format_t format) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2074,8 +2371,19 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2116,8 +2424,19 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2158,8 +2477,19 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2200,8 +2530,19 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2240,8 +2581,19 @@ bool awh::Net::operator != (const net_t & addr) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -2281,8 +2633,19 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2315,8 +2678,19 @@ awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Net: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим текущий объект
 	return (* this);

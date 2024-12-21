@@ -25,3 +25,6 @@
 [submodule "submodules/zstd"]
 	path = submodules/zstd
 	url = https://github.com/facebook/zstd.git
+[submodule "submodules/gperftools"]
+	path = submodules/gperftools
+	url = https://github.com/gperftools/gperftools.git

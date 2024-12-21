@@ -397,8 +397,19 @@ awh::server::Auth::operator std::string() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат

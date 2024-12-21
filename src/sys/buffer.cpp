@@ -235,9 +235,20 @@ void awh::Buffer::emplace(const char * buffer, const size_t size) noexcept {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const bad_alloc &) {
-					// Выводим сообщение в лог
-					::fprintf(stderr, "Buffer emplace: %s\n", "memory allocation error");
+				} catch(const std::bad_alloc &) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", "Memory allocation error");
+					#endif
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				}

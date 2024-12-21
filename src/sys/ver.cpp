@@ -55,8 +55,19 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		::fprintf(stderr, "Version str: %s\n", error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -103,8 +114,19 @@ void awh::Version::set(const string & ver) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Version set: %s\n", error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
 		}
 	}
 }

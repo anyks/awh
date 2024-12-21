@@ -214,9 +214,20 @@ void awh::Node::createBuffer(const uint64_t bid) noexcept {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const bad_alloc &) {
-					// Выводим в лог сообщение
-					this->_log->print("Server createBuffer: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+				} catch(const std::bad_alloc &) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bid), log_t::flag_t::CRITICAL, "Memory allocation error");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+					#endif
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				}
@@ -294,9 +305,20 @@ void awh::Node::emplace(const char * buffer, const size_t size, const uint64_t b
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим в лог сообщение
-			this->_log->print("Server emplace: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, bid), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

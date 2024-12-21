@@ -42,8 +42,19 @@ string awh::NTP::Worker::host() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_self->_log->print("NTP host: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_self->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_self->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 			// Выводим только первый элемент
 			result = this->_network.front();
 		}
@@ -459,8 +470,19 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("NTP shuffle: %s", log_t::flag_t::WARNING, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 }
 /**
@@ -542,8 +564,19 @@ string awh::NTP::server(const int32_t family) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("NTP server: %s", log_t::flag_t::WARNING, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;

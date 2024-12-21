@@ -760,9 +760,37 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const bad_alloc & error) {
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					} catch(const std::bad_alloc &) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, "Memory allocation error");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+						#endif
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const std::exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
 					}
 				}
 			}
@@ -817,9 +845,37 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const bad_alloc & error) {
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					} catch(const std::bad_alloc &) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, "Memory allocation error");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+						#endif
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const std::exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
 					}
 				}
 			}
@@ -871,9 +927,37 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const bad_alloc & error) {
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					} catch(const std::bad_alloc &) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, "Memory allocation error");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+						#endif
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const std::exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
 					}
 				}
 			}
@@ -930,9 +1014,37 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const bad_alloc & error) {
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					} catch(const std::bad_alloc &) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, "Memory allocation error");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+						#endif
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const std::exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
 					}
 				}
 			}
@@ -1032,8 +1144,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1075,8 +1215,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1118,8 +1286,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1163,8 +1359,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1206,8 +1430,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1253,8 +1505,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1289,8 +1569,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1325,8 +1633,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1374,8 +1710,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}
@@ -1427,8 +1791,36 @@ namespace awh {
 						 * Если возникает ошибка
 						 */
 						} catch(const std::bad_function_call & error) {
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception & error) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							#endif
 						}
 					}
 				}

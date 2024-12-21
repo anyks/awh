@@ -200,12 +200,23 @@ void awh::server::WS::commit() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("WebSocket commit: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -252,12 +263,23 @@ awh::Http::status_t awh::server::WS::status() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("WebSocket status: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	// Сообщаем, что авторизация прошла успешно
 	} else result = http_t::status_t::GOOD;
@@ -314,12 +336,23 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("WebSocket check: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return false;

@@ -72,9 +72,20 @@ void awh::cmp::Encoder::Buffer::push(const uint64_t id, const mode_t mode, const
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const bad_alloc &) {
-		// Выводим сообщение об ошибке
-		::fprintf(stderr, "CMP Encoder: %s\n", "memory allocation error");
+	} catch(const std::bad_alloc &) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", "Memory allocation error");
+		#endif
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}
@@ -137,8 +148,19 @@ void awh::cmp::Encoder::clear() noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("CMP Encoder: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -159,8 +181,19 @@ void awh::cmp::Encoder::pop() noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("CMP Encoder: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -219,17 +252,39 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим в лог сообщение
-			this->_log->print("CMP Encoder: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("CMP Encoder: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	// Выводим сообщение об ошибке
 	} else this->_log->print("CMP Encoder: %s", log_t::flag_t::WARNING, "non-existent data was sent to the encoder");
@@ -251,8 +306,19 @@ void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("CMP Encoder: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -354,8 +420,19 @@ void awh::cmp::Decoder::clear() noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -376,8 +453,19 @@ void awh::cmp::Decoder::pop() noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -420,8 +508,19 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	// Выводим сообщение об ошибке
 	} else this->_log->print("CMP Decoder: %s", log_t::flag_t::WARNING, "non-existent data was sent to the decoder");
@@ -522,17 +621,39 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим в лог сообщение
-			this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	// Выводим сообщение об ошибке
 	} else this->_log->print("CMP Decoder: %s", log_t::flag_t::WARNING, "non-existent data was sent to the decoder");
@@ -556,8 +677,19 @@ void awh::cmp::Decoder::chunkSize(const size_t size) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**

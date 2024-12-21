@@ -33,6 +33,25 @@ namespace awh {
 		 */
 		typedef class AWHSHARED_EXPORT AWH {
 			private:
+				/**
+				 * Response Структура ответа сервера
+				 */
+				typedef struct Response {
+					int32_t sid;                                        // Идентификатор потока
+					uint64_t rid;                                       // Идентификатор запроса
+					uint32_t code;                                      // Код ответа сервера
+					string message;                                     // Сообщение ответа сервера
+					vector <char> & entity;                             // Тело ответа
+					std::unordered_multimap <string, string> & headers; // Заголовки ответа
+					/**
+					 * Response Конструктор
+					 * @param headers заголовки ответа
+					 * @param entity  тело ответа
+					 */
+					Response(std::unordered_multimap <string, string> & headers, vector <char> & entity) noexcept :
+					 sid(-1), rid(0), code(0), message{""}, entity(entity), headers(headers) {}
+				} response_t;
+			private:
 				// Объект работы с URI
 				uri_t _uri;
 				// Объект DNS-резолвера

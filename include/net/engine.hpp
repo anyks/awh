@@ -323,7 +323,7 @@ namespace awh {
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
 					 fd(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP),
 					 _async(false), _encrypted(false), status(status_t::DISCONNECTED),
-					 port(0), ip(""), mac(""), _fs(fmk, log), _ifnet(fmk, log),
+					 port(0), ip{""}, mac{""}, _fs(fmk, log), _ifnet(fmk, log),
 					 _socket(fmk, log), _bio(nullptr), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Address Деструктор
@@ -385,14 +385,16 @@ namespace awh {
 					// Протокол подключения
 					proto_t _proto;
 				private:
-					BIO * _bio;         // Объект BIO
-					SSL * _ssl;         // Объект SSL
-					SSL_CTX * _ctx;     // Контекст SSL
-					addr_t * _addr;     // Объект подключения
-					verify_t * _verify; // Параметры валидации домена
+					BIO * _bio;     // Объект BIO
+					SSL * _ssl;     // Объект SSL
+					SSL_CTX * _ctx; // Контекст SSL
+					addr_t * _addr; // Объект подключения
 				public:
 					// Список поддерживаемых протоколов
-					vector <u_char> protocols;
+					vector <uint8_t> protocols;
+				private:
+					// Параметры валидации домена
+					std::unique_ptr <verify_t> _verify;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
@@ -485,13 +487,6 @@ namespace awh {
 					bool timeout(const time_t msec, const method_t method) noexcept;
 				public:
 					/**
-					 * availability Метод проверки количества находящихся байт в сокете
-					 * @param method метод для выполнения операции
-					 * @return       количество байт в сокете
-					 */
-					u_long availability(const method_t method) const noexcept;
-				public:
-					/**
 					 * buffer Метод получения размеров буфера
 					 * @param method метод для выполнения операции с буфером
 					 * @return       размер буфера
@@ -504,6 +499,13 @@ namespace awh {
 					 * @return      результат работы функции
 					 */
 					bool buffer(const int32_t read, const int32_t write) noexcept;
+				public:
+					/**
+					 * availability Метод проверки количества находящихся байт в сокете
+					 * @param method метод для выполнения операции
+					 * @return       количество байт в сокете
+					 */
+					int32_t availability(const method_t method) const noexcept;
 				private:
 					/**
 					 * selectProto Метод выполнения выбора следующего протокола
@@ -515,7 +517,7 @@ namespace awh {
 					 * @param keySize размер ключа для копирования
 					 * @return        результат переключения протокола
 					 */
-					bool selectProto(u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, const char * key, uint32_t keySize) const noexcept;
+					bool selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, const char * key, uint32_t keySize) const noexcept;
 				public:
 					/**
 					 * Context Конструктор
@@ -559,7 +561,7 @@ namespace awh {
 			// Флаг инициализации куков
 			static bool _cookieInit;
 			// Буфер для создания куков
-			static u_char _cookies[16];
+			static uint8_t _cookies[16];
 		private:
 			// Объект CRL-файла сертификата
 			X509_CRL * _crl;
@@ -642,7 +644,7 @@ namespace awh {
 				 * @param ctx  передаваемый контекст
 				 * @return     результат переключения протокола
 				 */
-				static int32_t nextProto(SSL * ssl, const u_char ** data, uint32_t * len, void * ctx = nullptr) noexcept;
+				static int32_t nextProto(SSL * ssl, const uint8_t ** data, uint32_t * len, void * ctx = nullptr) noexcept;
 				/**
 				 * selectNextProtoClient Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
 				 * @param ssl     объект SSL
@@ -653,7 +655,7 @@ namespace awh {
 				 * @param ctx     передаваемый контекст
 				 * @return        результат выбора протокола
 				 */
-				static int32_t selectNextProtoClient(SSL * ssl, u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, void * ctx = nullptr) noexcept;
+				static int32_t selectNextProtoClient(SSL * ssl, uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx = nullptr) noexcept;
 			#endif // !OPENSSL_NO_NEXTPROTONEG
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 1.0.2
@@ -669,7 +671,7 @@ namespace awh {
 				 * @param ctx     передаваемый контекст
 				 * @return        результат выбора протокола
 				 */
-				static int32_t selectNextProtoServer(SSL * ssl, const u_char ** out, u_char * outSize, const u_char * in, uint32_t inSize, void * ctx = nullptr) noexcept;
+				static int32_t selectNextProtoServer(SSL * ssl, const uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx = nullptr) noexcept;
 			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 		private:
 			/**
@@ -679,7 +681,7 @@ namespace awh {
 			 * @param size   количество символов
 			 * @return       результат проверки
 			 */
-			static int32_t generateCookie(SSL * ssl, u_char * cookie, uint32_t * size) noexcept;
+			static int32_t generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept;
 			/**
 			 * verifyCookie Функция обратного вызова для проверки куков
 			 * @param ssl    объект SSL
@@ -687,7 +689,7 @@ namespace awh {
 			 * @param size   количество символов
 			 * @return       результат проверки
 			 */
-			static int32_t verifyCookie(SSL * ssl, const u_char * cookie, uint32_t size) noexcept;
+			static int32_t verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept;
 			/**
 			 * generateCookie Функция обратного вызова для генерации куков
 			 * @param ssl    объект SSL
@@ -695,7 +697,7 @@ namespace awh {
 			 * @param size   количество символов
 			 * @return       результат проверки
 			 */
-			static int32_t generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * size) noexcept;
+			static int32_t generateStatelessCookie(SSL * ssl, uint8_t * cookie, size_t * size) noexcept;
 			/**
 			 * verifyCookie Функция обратного вызова для проверки куков
 			 * @param ssl    объект SSL
@@ -703,7 +705,7 @@ namespace awh {
 			 * @param size   количество символов
 			 * @return       результат проверки
 			 */
-			static int32_t verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t size) noexcept;
+			static int32_t verifyStatelessCookie(SSL * ssl, const uint8_t * cookie, size_t size) noexcept;
 		private:
 			/**
 			 * matchesCommonName Метод проверки доменного имени по данным из сертификата

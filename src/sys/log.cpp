@@ -132,6 +132,40 @@ void awh::Log::rotate() const noexcept {
 		#endif
 }
 /**
+ * cleaner Метод очистки строки от символов форматирования
+ * @param text текст для очистки
+ * @return     ощиченный текста
+ */
+string & awh::Log::cleaner(string & text) const noexcept {
+	// Позиция найденного элемента
+	size_t pos = 0;
+	// Значение текущего символа
+	char letter = 0;
+	// Выполняем поиск символов экранирования
+	while((pos = text.find("\x1B[", pos)) != string::npos){
+		// Выполняем поиск завершения блока экранирования
+		for(size_t i = (pos + 3); i < text.length(); i++){
+			// Выполняем получение текущего символа
+			letter = text.at(i);
+			// Если мы получили символ завершения блока
+			if(letter == 'm'){
+				// Выполняем удаление
+				text.erase(pos, (i + 1) - pos);
+				// Выходим из цикла
+				break;
+			// Если символ не является числом, выходим
+			} else if(!this->_fmk->is(letter, fmk_t::check_t::NUMBER)) {
+				// Выполняем удаление
+				text.erase(pos, i - pos);
+				// Выходим из функции
+				return text;
+			}
+		}
+	}
+	// Выводим полученный результат
+	return text;
+}
+/**
  * receiving Метод получения данных
  * @param payload объект полезной нагрузки
  */
@@ -147,13 +181,53 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Выполняем извлечение даты
 	date << std::put_time(tm, this->_format.c_str());
 	// Если размер буфера меньше 3-х байт
-	if(payload.data.length() < 3)
+	if(payload.text.length() < 3)
 		// Проверяем является ли это переводом строки
-		isEnd = ((payload.data.compare("\r\n") == 0) || (payload.data.compare("\n") == 0));
+		isEnd = ((payload.text.compare(AWH_STRING_BREAK) == 0) || (payload.text.compare(AWH_STRING_BREAK) == 0));
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	// Если функция подписки на логи установлена, выводим результат
+	if((this->_mode.find(mode_t::DEFERRED) != this->_mode.end()) && (this->_fn != nullptr))
+		// Выводим сообщение лога всем подписавшимся
+		this->_fn(payload.flag, payload.text);
+	// Если вывод сообщения в консоль разрешён
+	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end()){
+		// Если тип сообщение не является пустым
+		if(payload.flag != flag_t::NONE)
+			// Выводим обозначение начала вывода лога
+			cout << "*************** START ***************" << endl << endl;
+		// Определяем тип сообщения
+		switch(static_cast <uint8_t> (payload.flag)){
+			// Выводим сообщение так-как оно есть
+			case static_cast <uint8_t> (flag_t::NONE):
+				// Формируем текстовый вид лога
+				cout << this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+			break;
+			// Выводим информационное сообщение
+			case static_cast <uint8_t> (flag_t::INFO):
+				// Формируем текстовый вид лога
+				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+			break;
+			// Выводим сообщение об ошибке
+			case static_cast <uint8_t> (flag_t::CRITICAL):
+				// Формируем текстовый вид лога
+				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+			break;
+			// Выводим сообщение предупреждения
+			case static_cast <uint8_t> (flag_t::WARNING):
+				// Формируем текстовый вид лога
+				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+			break;
+		}
+		// Если тип сообщение не является пустым
+		if(payload.flag != flag_t::NONE)
+			// Выводим обозначение конца вывода лога
+			cout << "---------------- END ----------------" << endl << endl;
+	}
 	// Если файл для вывода лога указан
 	if((this->_mode.find(mode_t::FILE) != this->_mode.end()) && !this->_filename.empty()){
+		// Выполняем очистку от символов форматирования
+		this->cleaner(const_cast <string &> (payload.text));
 		/**
 		 * Выполняем работу для Windows
 		 */
@@ -169,22 +243,22 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 					// Выводим сообщение так-как оно есть
 					case static_cast <uint8_t> (flag_t::NONE):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+						logData = this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим информационное сообщение
 					case static_cast <uint8_t> (flag_t::INFO):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Info %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+						logData = this->_fmk->format("Info %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение об ошибке
 					case static_cast <uint8_t> (flag_t::CRITICAL):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Error %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+						logData = this->_fmk->format("Error %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение предупреждения
 					case static_cast <uint8_t> (flag_t::WARNING):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Warning %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+						logData = this->_fmk->format("Warning %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 				}
 				// Выполняем запись в файл
@@ -207,22 +281,22 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 					// Выводим сообщение так-как оно есть
 					case static_cast <uint8_t> (flag_t::NONE):
 						// Формируем текстовый вид лога
-						file << this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+						file << this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим информационное сообщение
 					case static_cast <uint8_t> (flag_t::INFO):
 						// Формируем текстовый вид лога
-						file << this->_fmk->format("Info %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+						file << this->_fmk->format("Info %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение об ошибке
 					case static_cast <uint8_t> (flag_t::CRITICAL):
 						// Формируем текстовый вид лога
-						file << this->_fmk->format("Error %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+						file << this->_fmk->format("Error %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение предупреждения
 					case static_cast <uint8_t> (flag_t::WARNING):
 						// Формируем текстовый вид лога
-						file << this->_fmk->format("Warning %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+						file << this->_fmk->format("Warning %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 				}
 				// Закрываем файл
@@ -232,44 +306,6 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 			}
 		#endif
 	}
-	// Если вывод сообщения в консоль разрешён
-	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end()){
-		// Если тип сообщение не является пустым
-		if(payload.flag != flag_t::NONE)
-			// Выводим обозначение начала вывода лога
-			cout << "*************** START ***************" << endl << endl;
-		// Определяем тип сообщения
-		switch(static_cast <uint8_t> (payload.flag)){
-			// Выводим сообщение так-как оно есть
-			case static_cast <uint8_t> (flag_t::NONE):
-				// Формируем текстовый вид лога
-				cout << this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-			break;
-			// Выводим информационное сообщение
-			case static_cast <uint8_t> (flag_t::INFO):
-				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-			break;
-			// Выводим сообщение об ошибке
-			case static_cast <uint8_t> (flag_t::CRITICAL):
-				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-			break;
-			// Выводим сообщение предупреждения
-			case static_cast <uint8_t> (flag_t::WARNING):
-				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-			break;
-		}
-		// Если тип сообщение не является пустым
-		if(payload.flag != flag_t::NONE)
-			// Выводим обозначение конца вывода лога
-			cout << "---------------- END ----------------" << endl << endl;
-	}
-	// Если функция подписки на логи установлена, выводим результат
-	if((this->_mode.find(mode_t::DEFERRED) != this->_mode.end()) && (this->_fn != nullptr))
-		// Выводим сообщение лога всем подписавшимся
-		this->_fn(payload.flag, payload.data);
 }
 /**
  * components Метод извлечения компонента адреса файла
@@ -380,7 +416,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				// Устанавливаем флаг логирования
 				payload.flag = flag;
 				// Устанавливаем даныне сообщения
-				payload.data.assign(buffer.begin(), buffer.end());
+				payload.text.assign(buffer.begin(), buffer.end());
 				// Если асинхронный режим работы активирован
 				if(this->_async){
 					// Получаем идентификатор текущего процесса
@@ -416,11 +452,11 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
  * print Метод вывода текстовой информации в консоль или файл
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
- * @param items  список аргументов для замены
+ * @param args   список аргументов для замены
  */
-void awh::Log::print(const string & format, flag_t flag, const vector <string> & items) const noexcept {
+void awh::Log::print(const string & format, flag_t flag, const vector <string> & args) const noexcept {
 	// Если формат передан
-	if(!format.empty() && !items.empty()){
+	if(!format.empty() && !args.empty()){
 		// Если уровень логирования соответствует
 		if((this->_level == level_t::ALL) ||
 		  ((this->_level == level_t::INFO) && (flag == flag_t::INFO)) ||
@@ -434,7 +470,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			// Устанавливаем флаг логирования
 			payload.flag = flag;
 			// Устанавливаем даныне сообщения
-			payload.data = this->_fmk->format(format, items);
+			payload.text = this->_fmk->format(format, args);
 			// Если асинхронный режим работы активирован
 			if(this->_async){
 				// Получаем идентификатор текущего процесса

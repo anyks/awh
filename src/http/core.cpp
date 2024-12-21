@@ -63,12 +63,23 @@ void awh::Http::encrypt() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web encrypt: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -108,12 +119,23 @@ void awh::Http::decrypt() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web decrypt: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -295,12 +317,23 @@ void awh::Http::compress() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web compress: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -494,12 +527,23 @@ void awh::Http::decompress() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web decompress: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -1058,12 +1102,23 @@ void awh::Http::commit() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web commit: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -1295,12 +1350,23 @@ const vector <char> awh::Http::payload() const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web payload: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -1417,12 +1483,23 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web trailer: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(key, val), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -1685,12 +1762,23 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web header2: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(key, val), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 }
 /**
@@ -1785,12 +1873,23 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) con
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web auth: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return "";
@@ -1845,12 +1944,23 @@ void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept 
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web compressors: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -1946,12 +2056,23 @@ vector <char> awh::Http::dump() const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web dump: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -2129,12 +2250,23 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web dump: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(data.data(), data.size()), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -2253,12 +2385,23 @@ bool awh::Http::is(const state_t state) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web is: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (state)), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return false;
@@ -2370,12 +2513,23 @@ const string awh::Http::date(const time_t stamp) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web date: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(stamp), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 		// Выводим пустое значение
 		return "";
 	}
@@ -2497,12 +2651,23 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web mapping: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 }
 /**
@@ -2541,12 +2706,23 @@ vector <char> awh::Http::trailer() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web trailer: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2579,12 +2755,23 @@ vector <std::pair <string, string>> awh::Http::trailers2() const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web trailers2: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2626,12 +2813,23 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Web proxy: %s", log_t::flag_t::WARNING, error.what());
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
 				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -2756,12 +2954,23 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web reject: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return vector <char> ();
@@ -2847,12 +3056,23 @@ vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res)
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web reject2: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return vector <std::pair <string, string>> ();
@@ -3890,12 +4110,23 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web process: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -4723,12 +4954,23 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Web process2: %s", log_t::flag_t::WARNING, error.what());
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;

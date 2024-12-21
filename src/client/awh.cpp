@@ -158,8 +158,19 @@ vector <char> awh::client::AWH::GET(const uri_t::url_t & url, const std::unorder
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH GET: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::GET), url, headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -183,8 +194,19 @@ vector <char> awh::client::AWH::DEL(const uri_t::url_t & url, const std::unorder
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH DEL: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::DEL), url, headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -209,8 +231,19 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const vector <char
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH PUT: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::PUT), url, entity.size(), headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -236,8 +269,19 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const char * entit
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH PUT: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::PUT), url, entity, size, headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -291,8 +335,19 @@ vector <char> awh::client::AWH::PUT(const uri_t::url_t & url, const std::unorder
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH PUT: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::PUT), url, entity.size(), headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -317,8 +372,19 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const vector <cha
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH POST: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::POST), url, entity.size(), headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -344,8 +410,19 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const char * enti
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH POST: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::POST), url, entity, size, headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -399,8 +476,19 @@ vector <char> awh::client::AWH::POST(const uri_t::url_t & url, const std::unorde
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH POST: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::POST), url, entity.size(), headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -425,8 +513,19 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const vector <ch
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH PATCH: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::PATCH), url, entity.size(), headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -452,8 +551,19 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const char * ent
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH PATCH: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::PATCH), url, entity, size, headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -507,8 +617,19 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const std::unord
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH PATCH: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::PATCH), url, entity.size(), headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -520,25 +641,38 @@ vector <char> awh::client::AWH::PATCH(const uri_t::url_t & url, const std::unord
  * @return        результат запроса
  */
 std::unordered_multimap <string, string> awh::client::AWH::HEAD(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept {
-	// Устанавливаем тепло запроса
-	std::unordered_multimap <string, string> result = headers;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Устанавливаем тепло запроса
 		vector <char> entity;
+		// Устанавливаем тепло запроса
+		std::unordered_multimap <string, string> result = headers;
 		// Выполняем HTTP-запрос на сервер
 		this->REQUEST(awh::web_t::method_t::HEAD, url, nullptr, 0, result, entity);
+		// Выводим результат
+		return result;
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH HEAD: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::HEAD), url, headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
-	return result;
+	return std::unordered_multimap <string, string> ();
 }
 /**
  * TRACE Метод запроса в формате HTTP методом TRACE
@@ -547,25 +681,38 @@ std::unordered_multimap <string, string> awh::client::AWH::HEAD(const uri_t::url
  * @return        результат запроса
  */
 std::unordered_multimap <string, string> awh::client::AWH::TRACE(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept {
-	// Устанавливаем тепло запроса
-	std::unordered_multimap <string, string> result = headers;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Устанавливаем тепло запроса
 		vector <char> entity;
+		// Устанавливаем тепло запроса
+		std::unordered_multimap <string, string> result = headers;
 		// Выполняем HTTP-запрос на сервер
 		this->REQUEST(awh::web_t::method_t::TRACE, url, nullptr, 0, result, entity);
+		// Выводим результат
+		return result;
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH TRACE: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::TRACE), url, headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
-	return result;
+	return std::unordered_multimap <string, string> ();
 }
 /**
  * OPTIONS Метод запроса в формате HTTP методом OPTIONS
@@ -574,25 +721,38 @@ std::unordered_multimap <string, string> awh::client::AWH::TRACE(const uri_t::ur
  * @return        результат запроса
  */
 std::unordered_multimap <string, string> awh::client::AWH::OPTIONS(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept {
-	// Устанавливаем тепло запроса
-	std::unordered_multimap <string, string> result = headers;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Устанавливаем тепло запроса
 		vector <char> entity;
+		// Устанавливаем тепло запроса
+		std::unordered_multimap <string, string> result = headers;
 		// Выполняем HTTP-запрос на сервер
 		this->REQUEST(awh::web_t::method_t::OPTIONS, url, nullptr, 0, result, entity);
+		// Выводим результат
+		return result;
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("AWH OPTIONS: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (awh::web_t::method_t::OPTIONS), url, headers.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
-	return result;
+	return std::unordered_multimap <string, string> ();
 }
 /**
  * REQUEST Метод выполнения запроса HTTP
@@ -624,139 +784,187 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 	// Если данные запроса переданы
 	if(!url.empty()){
 		/**
-		 * Подписываемся на событие коннекта и дисконнекта клиента
-		 * @param mode событие модуля HTTP
+		 * Выполняем отлов ошибок
 		 */
-		this->callback <void (const web_t::mode_t)> ("active", [&](const web_t::mode_t mode) noexcept -> void {
-			// Если подключение выполнено
-			if(mode == client::web_t::mode_t::CONNECT){
-				/**
-				 * Выполняем отлов ошибок
-				 */
-				try {
-					// Создаём объект запроса
-					web_t::request_t request;
-					// Устанавливаем адрес запроса
-					request.url = url;
-					// Устанавливаем метод запроса
-					request.method = method;
-					// Запоминаем переданные заголовки
-					request.headers = headers;
-					// Если тело запроса передано
-					if((entity != nullptr) && (size > 0))
-						// Устанавливаем тепло запроса
-						request.entity.assign(entity, entity + size);
+		try {
+			// Создаём объект запроса
+			web_t::request_t request;
+			// Устанавливаем адрес запроса
+			request.url = url;
+			// Устанавливаем метод запроса
+			request.method = method;
+			// Запоминаем переданные заголовки
+			request.headers = headers;
+			// Если тело запроса передано
+			if((entity != nullptr) && (size > 0))
+				// Устанавливаем тепло запроса
+				request.entity.assign(entity, entity + size);
+			// Создаём объект ответа сервера
+			response_t response(headers, result);
+			/**
+			 * Подписываемся на событие коннекта и дисконнекта клиента
+			 * @param mode событие модуля HTTP
+			 */
+			this->callback <void (const web_t::mode_t)> ("active", [&request, this](const web_t::mode_t mode) noexcept -> void {
+				// Если подключение выполнено
+				if(mode == client::web_t::mode_t::CONNECT)
 					// Выполняем запрос на сервер
 					this->send(request);
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const std::length_error & error) {
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				}
-			// Выполняем остановку работы модуля
-			} else this->stop();
-		});
-		/**
-		 * Подписываемся на получение сообщения сервера
-		 * @param sid  идентификатор потока
-		 * @param rid  идентификатор запроса
-		 * @param code код ответа сервера
-		 * @param mess сообщение ответа сервера
-		 */
-		this->callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", [this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & mess) noexcept -> void {
-			// Блокируем пустые переменные
-			(void) sid;
-			(void) rid;
-			// Если возникла ошибка, выводим сообщение
-			if(code >= 300){
-				/**
-				 * Выполняем отлов ошибок
-				 */
-				try {
-					// Выводим сообщение о неудачном запросе
-					this->_log->print("Request failed: %u %s", log_t::flag_t::WARNING, code, mess.c_str());
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const std::length_error & error) {
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				}
-			}
-		});
-		/**
-		 * Подписываем на событие получения ответа с сервера
-		 * @param sid   идентификатор потока
-		 * @param rid   идентификатор запроса
-		 * @param code  код ответа сервера
-		 * @param mess  сообщение ответа сервера
-		 * @param body  данные полученного тела сообщения
-		 * @param heads данные полученных заголовков сообщения
-		 */
-		this->callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", [&](const int32_t sid, const uint64_t rid, const uint32_t code, const string & mess, const vector <char> & body, const std::unordered_multimap <string, string> & heads) noexcept -> void {
-			// Блокируем пустую переменную
-			(void) sid;
-			(void) rid;
-			(void) code;
-			(void) mess;
-			// Если заголовки ответа получены
-			if(!heads.empty()){
-				/**
-				 * Выполняем отлов ошибок
-				 */
-				try {
-					// Извлекаем полученный список заголовков
-					headers = heads;
-					// Если тело ответа получено
-					if(!body.empty())
-						// Формируем результат ответа
-						result.assign(body.begin(), body.end());
-					// Выполняем очистку тела запроса
-					else result.clear();
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const std::length_error & error) {
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				}
-			}
-			// Выполняем остановку
-			this->stop();
-		});
-		// Если список доступных компрессоров пустой
-		if(this->_compressors.empty()){
-			// Выполняем инициализацию подключения
-			this->init(this->_uri.origin(url), {
-				awh::http_t::compressor_t::ZSTD,
-				awh::http_t::compressor_t::BROTLI,
-				awh::http_t::compressor_t::GZIP,
-				awh::http_t::compressor_t::DEFLATE
+				// Выполняем остановку работы модуля
+				else this->stop();
 			});
-		// Выполняем инициализацию клиента
-		} else this->init(this->_uri.origin(url), this->_compressors);
-		// Выполняем запуск работы
-		this->start();
+			/**
+			 * Подписываемся на получение сообщения сервера
+			 * @param sid     идентификатор потока
+			 * @param rid     идентификатор запроса
+			 * @param code    код ответа сервера
+			 * @param message сообщение ответа сервера
+			 */
+			this->callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", [&response, this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & message) noexcept -> void {
+				// Устанавливаем идентификатор потока
+				response.sid = sid;
+				// Устанавливаем идентификатор запроса
+				response.rid = rid;
+				// Устанавливаем код ответа сервера
+				response.code = code;
+				// Устанавливаем сообщение ответа сервера
+				response.message = message;
+				// Если возникла ошибка, выводим сообщение
+				if(response.code >= 300){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s: %u %s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Request failed", response.code, response.message.c_str());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s: %u %s", log_t::flag_t::WARNING, "Request failed", response.code, response.message.c_str());
+					#endif
+				}
+			});
+			/**
+			 * Подписываем на событие получения ответа с сервера
+			 * @param sid     идентификатор потока
+			 * @param rid     идентификатор запроса
+			 * @param code    код ответа сервера
+			 * @param message сообщение ответа сервера
+			 * @param entity  данные полученного тела сообщения
+			 * @param headers данные полученных заголовков сообщения
+			 */
+			this->callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", [&response, this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept -> void {
+				// Устанавливаем идентификатор потока
+				response.sid = sid;
+				// Устанавливаем идентификатор запроса
+				response.rid = rid;
+				// Устанавливаем код ответа сервера
+				response.code = code;
+				// Устанавливаем сообщение ответа сервера
+				response.message = message;
+				// Если заголовки ответа получены
+				if(!headers.empty()){
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Извлекаем полученный список заголовков
+						response.headers = headers;
+						// Если тело ответа получено
+						if(!entity.empty())
+							// Формируем результат ответа
+							response.entity.assign(entity.begin(), entity.end());
+						// Выполняем очистку тела запроса
+						else response.entity.clear();
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const std::length_error & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(response.sid, response.rid, response.code, response.message, response.entity.data(), response.entity.size(), response.headers.size()), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const std::exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(response.sid, response.rid, response.code, response.message, response.entity.data(), response.entity.size(), response.headers.size()), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
+					}
+				}
+				// Выполняем остановку
+				this->stop();
+			});
+			// Если список доступных компрессоров пустой
+			if(this->_compressors.empty()){
+				// Выполняем инициализацию подключения
+				this->init(this->_uri.origin(url), {
+					awh::http_t::compressor_t::ZSTD,
+					awh::http_t::compressor_t::BROTLI,
+					awh::http_t::compressor_t::GZIP,
+					awh::http_t::compressor_t::DEFLATE
+				});
+			// Выполняем инициализацию клиента
+			} else this->init(this->_uri.origin(url), this->_compressors);
+			// Выполняем запуск работы
+			this->start();
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::length_error & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (method), url, entity, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (method), url, entity, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
 	}
 }
 /**

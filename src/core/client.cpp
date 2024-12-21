@@ -396,9 +396,20 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const bad_alloc &) {
-				// Выводим в лог сообщение
-				this->_log->print("Client connect: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+			} catch(const std::bad_alloc &) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid), log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
 			}

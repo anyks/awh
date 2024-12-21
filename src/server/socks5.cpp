@@ -448,9 +448,20 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим в лог сообщение
-			this->_log->print("Socks5 unavailable: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (broker), bid, buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

@@ -85,7 +85,7 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int32_
 				// Создаём буфер строки адреса
 				char str[INET_ADDRSTRLEN];
 				// Выполняем конвертацию
-				if(inet_ntop(family, buffer, str, INET_ADDRSTRLEN) == nullptr)
+				if(::inet_ntop(family, buffer, str, INET_ADDRSTRLEN) == nullptr)
 					// Выводим сообщение об ошибке
 					this->_log->print("IP-address could not be obtained", log_t::flag_t::CRITICAL);
 				// Получаем IPv4 адрес
@@ -96,7 +96,7 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int32_
 				// Создаём буфер строки адреса
 				char str[INET6_ADDRSTRLEN];
 				// Выполняем конвертацию
-				if(inet_ntop(family, buffer, str, INET6_ADDRSTRLEN) == nullptr)
+				if(::inet_ntop(family, buffer, str, INET6_ADDRSTRLEN) == nullptr)
 					// Выводим сообщение об ошибке
 					this->_log->print("IP-address could not be obtained", log_t::flag_t::CRITICAL);
 				// Получаем IPv6 адрес

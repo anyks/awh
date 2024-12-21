@@ -112,9 +112,20 @@ string awh::DNS::Worker::host() const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const runtime_error & error) {
-			// Выводим сообщение об ошибке
-			this->_self->_log->print("DNS host: %s", log_t::flag_t::WARNING, error.what());
+		} catch(const std::runtime_error & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_self->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_self->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 			// Выводим только первый элемент
 			result = this->_network.front();
 		}
@@ -1419,9 +1430,20 @@ void awh::DNS::shuffle(const int32_t family) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const runtime_error & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("DNS shuffle: %s", log_t::flag_t::WARNING, error.what());
+	} catch(const std::runtime_error & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 }
 /**
@@ -1531,9 +1553,20 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const runtime_error & error) {
-				// Выводим сообщение об ошибке
-				this->_log->print("DNS cache: %s", log_t::flag_t::WARNING, error.what());
+			} catch(const std::runtime_error & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family, domain), log_t::flag_t::WARNING, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+				#endif
 				// Выполняем извлечение первого адреса из списка
 				result = ips.front();
 			}
@@ -2160,9 +2193,20 @@ string awh::DNS::server(const int32_t family) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const runtime_error & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("DNS server: %s", log_t::flag_t::WARNING, error.what());
+	} catch(const std::runtime_error & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -2910,9 +2954,20 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const runtime_error & error) {
-						// Выводим сообщение об ошибке
-						this->_log->print("DNS host: %s", log_t::flag_t::WARNING, error.what());
+					} catch(const std::runtime_error & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family, name), log_t::flag_t::WARNING, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+						#endif
 						// Выполняем извлечение первого адреса из списка
 						result = ips.front();
 					}

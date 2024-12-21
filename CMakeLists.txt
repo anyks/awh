@@ -11,22 +11,22 @@ set(PROJECT_COPYRIGHT "Copyright (c) ${CURRENT_YEAR} ${PROJECT_VENDOR_LONG}")
 
 # Тип сборки
 # cmake -DCMAKE_BUILD_TYPE=YES ..
-if(NOT CMAKE_BUILD_TYPE)
+if (NOT CMAKE_BUILD_TYPE)
     # Активируем режим отладки
     set(CMAKE_BUILD_TYPE Debug)
-endif(NOT CMAKE_BUILD_TYPE)
+endif (NOT CMAKE_BUILD_TYPE)
 
 # Выводим сообщение о типе сборки
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 
 # Сборка модуля AWH_IDN
-if(CMAKE_BUILD_IDN)
+if (CMAKE_BUILD_IDN)
     add_compile_definitions(AWH_IDN)
     message(STATUS "Build AWH IDN: YES\n")
 # Сборка модуля AWH_IDN не требуется
-else(CMAKE_BUILD_IDN)
+else (CMAKE_BUILD_IDN)
     message(STATUS "Build AWH IDN: NO\n")
-endif(CMAKE_BUILD_IDN)
+endif (CMAKE_BUILD_IDN)
 
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
@@ -37,18 +37,18 @@ message(STATUS "Architecture: ${ARCHITECTURE}")
 
 # Проверка версии OS
 string(REGEX MATCH "Linux" PROJECT_OS_LINUX ${CMAKE_SYSTEM_NAME})
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
     set(DEBUGGER "-ggdb3")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    if(NOT MACOS_VERSION)
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    if (NOT MACOS_VERSION)
         EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE MACOS_VERSION)
     endif()
     message(STATUS "Detected OS: MacOS X v${MACOS_VERSION}")
     set(DEBUGGER "-glldb")    
     set(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION})
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     message(STATUS "Detected OS: FreeBSD")
     set(DEBUGGER "-ggdb3")
 else()
@@ -71,19 +71,19 @@ string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 # Опции компилятора
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     set(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     set(AWH_PARAMS "-lutil -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 else()
     set(AWH_PARAMS "-Wno-unknown-attributes")
 endif()
 
-if(${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
+if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
 else()
@@ -93,9 +93,9 @@ endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+if (CMAKE_BUILD_TYPE MATCHES Debug)
     # Если операцинная система не относится к MS Windows
-    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Устанавливаем сборку профилировщика
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
         SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
@@ -120,11 +120,11 @@ else()
 endif()
 
 # Если нужно собрать и динамическую библиотеку
-if(CMAKE_SHARED_BUILD_LIB)
-    if(MSVC)
+if (CMAKE_SHARED_BUILD_LIB)
+    if (MSVC)
         set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-    endif(MSVC)
-endif(CMAKE_SHARED_BUILD_LIB)
+    endif (MSVC)
+endif (CMAKE_SHARED_BUILD_LIB)
 
 # Добавляем модули cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -133,7 +133,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(Dependence REQUIRED)
 
 # Провекра Dependence
-if(Dependence_FOUND)
+if (Dependence_FOUND)
     message(STATUS "Dependence lib found: " ${DEPEND_LIBRARY})
     message(STATUS "LZ4 include dir found: " ${LZ4_INCLUDE_DIR})
     message(STATUS "BZ2 include dir found: " ${BZ2_INCLUDE_DIR})
@@ -146,16 +146,16 @@ if(Dependence_FOUND)
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
 
     # Если операцинная система не относится к MS Windows
-    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Сборка модуля AWH_IDN
-        if(CMAKE_BUILD_IDN)
+        if (CMAKE_BUILD_IDN)
             message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})
             message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
         endif()
     endif()
-else(Dependence_FOUND)
+else (Dependence_FOUND)
     message(FATAL_ERROR "Dependence not found")
-endif(Dependence_FOUND)
+endif (Dependence_FOUND)
 
 # Выполняем подключение хидеров
 include_directories(SYSTEM ${DEPEND_INCLUDE_DIRS})
@@ -261,25 +261,25 @@ set(INVESTIGATOR_APP_NAME investigator)
 set(AWH_LIB_NAME ${PROJECT_NAME})
 
 # Если операционной системой не является Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(CLUSTER_APP_NAME cluster)
 endif()
 
 # Если нужно собрать и динамическую библиотеку
-if(CMAKE_SHARED_BUILD_LIB)
+if (CMAKE_SHARED_BUILD_LIB)
     # Добавляем динамическую библиотеку
     add_library(${AWH_LIB_NAME} SHARED ${SOURCE_FILES})
     target_compile_definitions(${AWH_LIB_NAME} PRIVATE AWH_SHARED_LIBRARY_EXPORT)
 # Если нужно собрать и статическую библиотеку
-else(CMAKE_SHARED_BUILD_LIB)
+else (CMAKE_SHARED_BUILD_LIB)
     # Активируем сборку статической библиотеки
     add_compile_definitions(AWH_STATICLIB)
     # Добавляем статическу библиотеку
     add_library(${AWH_LIB_NAME} STATIC ${SOURCE_FILES})
-endif(CMAKE_SHARED_BUILD_LIB)
+endif (CMAKE_SHARED_BUILD_LIB)
 
  # Если операционной системой является Windows
- if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
     # Устанавливаем необходимые зависимости для MS Windows
     set(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
@@ -326,9 +326,9 @@ else()
 endif()
 
 # Если нужно собрать и динамическую библиотеку
-if(CMAKE_SHARED_BUILD_LIB)
+if (CMAKE_SHARED_BUILD_LIB)
     # Если операционной системой является Windows
-    if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 
         # Выполняем сборку динамической библиотеки
         target_link_libraries(
@@ -452,7 +452,7 @@ if(CMAKE_SHARED_BUILD_LIB)
         )
 
     # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
-    elseif(CMAKE_BUILD_IDN)
+    elseif (CMAKE_BUILD_IDN)
 
         # Выполняем сборку динамической библиотеки
         target_link_libraries(
@@ -669,9 +669,9 @@ if(CMAKE_SHARED_BUILD_LIB)
 
     endif()
 # Если нужно собрать и статическую библиотеку
-else(CMAKE_SHARED_BUILD_LIB)
+else (CMAKE_SHARED_BUILD_LIB)
     # Если операционной системой является Windows
-    if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
@@ -800,7 +800,7 @@ else(CMAKE_SHARED_BUILD_LIB)
         )
 
     # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
-    elseif(CMAKE_BUILD_IDN)
+    elseif (CMAKE_BUILD_IDN)
 
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
@@ -1031,11 +1031,11 @@ else(CMAKE_SHARED_BUILD_LIB)
         )
 
     endif()
-endif(CMAKE_SHARED_BUILD_LIB)
+endif (CMAKE_SHARED_BUILD_LIB)
 
 # Активация формирования дампа ядра в реже отладки под MacOS X
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-    if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
         set(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
         
         add_custom_command(TARGET "${IP_APP_NAME}" POST_BUILD
@@ -1130,7 +1130,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
 
     endif()
     # Сборка модуля CMAKE_ENABLED_PVS
-    if(CMAKE_ENABLED_PVS)
+    if (CMAKE_ENABLED_PVS)
         include(FetchContent)
         FetchContent_Declare(
             PVS_CMakeModule
@@ -1156,11 +1156,11 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         pvs_studio_add_target(TARGET ${CLUSTER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLUSTER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${INVESTIGATOR_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${INVESTIGATOR_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
 
-    endif(CMAKE_ENABLED_PVS)
+    endif (CMAKE_ENABLED_PVS)
 endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
-if("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local" OR "${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local/")
+if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local" OR "${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local/")
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
 endif()
 
@@ -1173,9 +1173,9 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/" DESTINATION "${CMAKE_IN
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/contrib/include/" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h" PATTERN "*.hh" PATTERN "*.hpp")
 
 # Устанавливаем библиотеку
-if(NOT CMAKE_SHARED_BUILD_LIB)
+if (NOT CMAKE_SHARED_BUILD_LIB)
     # Если режим отладки не активирован
-    if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
+    if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
         # Выполняем запуск скрипта объединения библиотек
         add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
@@ -1207,7 +1207,7 @@ install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/
 install(TARGETS ${INVESTIGATOR_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Если операционной системой не является Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 endif()
 

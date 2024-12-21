@@ -55,8 +55,19 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 				int32_t fds[2];
 				// Выполняем инициализацию таймера
 				if(::_pipe(fds, sizeof(time_t), O_BINARY) == INVALID_SOCKET){
-					// Выводим сообщение об ошибке
-					this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					#endif
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				}
@@ -70,8 +81,19 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 			#else
 				// Выполняем инициализацию таймера
 				if(::pipe(result.data()) == INVALID_SOCKET){
-					// Выводим сообщение об ошибке
-					this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					#endif
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				}
@@ -95,8 +117,19 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 			} while(!this->_socket.isBind(AF_INET, SOCK_DGRAM, this->_port));
 			// Если сокет не создан выводим сообщение об ошибке
 			if((result[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET){
-				// Выводим сообщение об ошибке
-				this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+				#endif
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
 			}
@@ -114,8 +147,19 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 			this->_peer.server.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 			// Выполняем бинд на сокет
 			if(::bind(result[0], reinterpret_cast <struct sockaddr *> (&this->_peer.server), sizeof(this->_peer.server)) == INVALID_SOCKET){
-				// Выводим в лог сообщение
-				this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+				#endif
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
 			}

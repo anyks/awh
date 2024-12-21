@@ -121,9 +121,20 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим сообщение в лог
-			::fprintf(stderr, "RegExp exec: %s\n", "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -193,9 +204,20 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим сообщение в лог
-			::fprintf(stderr, "RegExp exec: %s\n", "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
@@ -319,9 +341,20 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const bad_alloc &) {
-			// Выводим сообщение в лог
-			::fprintf(stderr, "RegExp build: %s\n", "memory allocation error");
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}

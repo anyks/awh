@@ -472,8 +472,19 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					 * Если возникает ошибка
 					 */
 					} catch(const std::exception & error) {
-						// Выводим сообщение об ошибке
-						this->_log->print("Web: %s", log_t::flag_t::CRITICAL, error.what());
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
 					}
 					// Устанавливаем метку завершения работы
 					end:
@@ -534,8 +545,19 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									 * Если возникает ошибка
 									 */
 									} catch(const std::exception & error) {
-										// Выводим сообщение об ошибке
-										this->_log->print("Web: %s", log_t::flag_t::CRITICAL, error.what());
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+										#endif
 									}
 								} break;
 								// Если мы работаем с сервером
@@ -623,8 +645,19 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									 * Если возникает ошибка
 									 */
 									} catch(const std::exception & error) {
-										// Выводим сообщение об ошибке
-										this->_log->print("Web: %s", log_t::flag_t::CRITICAL, error.what());
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+										#endif
 									}
 								} break;
 							}
@@ -716,8 +749,19 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							 * Если возникает ошибка
 							 */
 							} catch(const std::exception & error) {
-								// Выводим сообщение об ошибке
-								this->_log->print("Web: %s", log_t::flag_t::CRITICAL, error.what());
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+								#endif
 							}
 						} break;
 					}

@@ -147,7 +147,7 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const exception & error) {
+					} catch(const std::exception &) {
 						// Выполняем блокировку потока
 						const lock_guard <std::mutex> lock(this->_mtx);
 						// Выполняем поиск идентификатор таймера
@@ -217,7 +217,7 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const exception & error) {
+					} catch(const std::exception &) {
 						// Выполняем блокировку потока
 						const lock_guard <std::mutex> lock(this->_mtx);
 						// Выполняем поиск идентификатор таймера

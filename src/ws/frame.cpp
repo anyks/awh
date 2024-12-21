@@ -177,8 +177,19 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("WebSocket head: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -259,8 +270,19 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("WebSocket frame: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, mask), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -317,8 +339,19 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("WebSocket message: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -359,8 +392,19 @@ awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noex
 			} catch(const std::exception & error) {
 				// Устанавливаем текст ошибки
 				result = this->_fmk->format("%s", error.what());
-				// Выводим сообщение об ошибке
-				this->_log->print("WebSocket message: %s", log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		// Запоминаем размер смещения
 		} else result = 1007;
@@ -512,8 +556,19 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("WebSocket get: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат

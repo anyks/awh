@@ -229,15 +229,37 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for address %s", log_t::flag_t::CRITICAL, error.what(), addr.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for address %s", log_t::flag_t::CRITICAL, error.what(), addr.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -425,15 +447,37 @@ int32_t awh::FS::delPath(const string & path) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -649,15 +693,37 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch (const std::ios_base::failure & error) {
-		// Выводим сообщение инициализации метода класса скрипта торговой платформы
-		this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+	} catch(const std::ios_base::failure & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение инициализации метода класса скрипта торговой платформы
-		this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -754,15 +820,37 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for address %s", log_t::flag_t::CRITICAL, error.what(), addr1.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for address %s", log_t::flag_t::CRITICAL, error.what(), addr1.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -798,15 +886,37 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for address %s", log_t::flag_t::CRITICAL, error.what(), addr1.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for address %s", log_t::flag_t::CRITICAL, error.what(), addr1.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -873,22 +983,55 @@ void awh::FS::makePath(const string & path) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::bad_alloc &) {
-			// Выводим сообщение в лог
-			this->_log->print("FS: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -969,15 +1112,37 @@ std::pair <string, string> awh::FS::components(const string & addr, const bool a
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch (const std::ios_base::failure & error) {
-		// Выводим сообщение инициализации метода класса скрипта торговой платформы
-		this->_log->print("%s for address %s", log_t::flag_t::CRITICAL, error.what(), addr.c_str());
+	} catch(const std::ios_base::failure & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение инициализации метода класса скрипта торговой платформы
-		this->_log->print("%s for address %s", log_t::flag_t::CRITICAL, error.what(), addr.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -1277,15 +1442,37 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1415,15 +1602,37 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not dir", log_t::flag_t::WARNING, path.c_str());
@@ -1504,15 +1713,37 @@ vector <char> awh::FS::read(const string & filename) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1561,15 +1792,37 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -1616,15 +1869,37 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -1733,15 +2008,37 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch (const std::ios_base::failure & error) {
-		// Выводим сообщение инициализации метода класса скрипта торговой платформы
-		this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+	} catch(const std::ios_base::failure & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение инициализации метода класса скрипта торговой платформы
-		this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -1860,15 +2157,37 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Filename: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
@@ -1923,15 +2242,37 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch (const std::ios_base::failure & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+		} catch(const std::ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение инициализации метода класса скрипта торговой платформы
-			this->_log->print("%s for filename %s", log_t::flag_t::CRITICAL, error.what(), filename.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Filename: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
@@ -2077,15 +2418,37 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch (const std::ios_base::failure & error) {
-				// Выводим сообщение инициализации метода класса скрипта торговой платформы
-				this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+			} catch(const std::ios_base::failure & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			/**
 			 * Если возникает ошибка
 			 */
 			} catch(const std::exception & error) {
-				// Выводим сообщение инициализации метода класса скрипта торговой платформы
-				this->_log->print("%s for path %s", log_t::flag_t::CRITICAL, error.what(), path.c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		};
 		// Запрашиваем данные первого каталога

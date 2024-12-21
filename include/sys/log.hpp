@@ -16,10 +16,27 @@
 #define __AWH_LOG__
 
 /**
+ * Для операционной системы Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	// Формируем переносы строк лога
+	#define AWH_STRING_BREAK "\r\n"
+	#define AWH_STRING_BREAKS AWH_STRING_BREAK""AWH_STRING_BREAK
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	// Формируем переносы строк лога
+	#define AWH_STRING_BREAK "\n"
+	#define AWH_STRING_BREAKS AWH_STRING_BREAK""AWH_STRING_BREAK
+#endif
+
+/**
  * Стандартные модули
  */
 #include <set>
 #include <ctime>
+#include <tuple>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -88,11 +105,11 @@ namespace awh {
 			 */
 			typedef struct Payload {
 				flag_t flag; // Флаг полезной нагрузки
-				string data; // Данные полезной нагрузки
+				string text; // Текст полезной нагрузки
 				/**
 				 * Payload Конструктор
 				 */
-				Payload() noexcept : flag(flag_t::NONE), data{""} {}
+				Payload() noexcept : flag(flag_t::NONE), text{""} {}
 			} payload_t;
 		private:
 			// Идентификатор родительского процесса
@@ -133,9 +150,70 @@ namespace awh {
 			const fmk_t * _fmk;
 		private:
 			/**
+			 * Шаблон типа аргументов
+			 * @tparam TupType тип аргументов
+			 */
+			template <typename TupType>
+			/**
+			 * count Метод определения количества аргументов
+			 * @param args аргументы для определения их количества
+			 * @return     количество найденных аргументов
+			 */
+			size_t count(TupType args) const noexcept {
+				// Зануляем неиспользуемую переменную
+				(void) args;
+				// Выводим количество переданных аргументов
+				return std::tuple_size_v <TupType>;
+			}
+		private:
+			/**
+			 * Шаблон входных параметров для серриализатора
+			 * @param TupType тип аргументов
+			 */
+			template <class TupType, size_t... I>
+			/**
+			 * formation Метод формирования строки аргументов
+			 * @param args аргументы для формирования строки
+			 * @return     сформированная строка аргументов
+			 */
+			string formation(const TupType & args, std::index_sequence <I...>) const noexcept {
+				// Создаём объект строкового потока
+				std::stringstream stream;
+				// Выполняем добавление открывающую скобку
+				stream << "(";
+				// Выполняем запись всех аргументов
+				(..., (stream << (I == 0 ? "" : ", ") << std::get <I> (args)));
+				// Выполняем добавление закрывающую скобку
+				stream << ")";
+				// Выводим полученный результат
+				return stream.str();
+			}
+			/**
+			 * Шаблон входных параметров для серриализатора
+			 * @param TupType тип аргументов
+			 */
+			template <class... TupType>
+			/**
+			 * serialization Метод серриализации входных аргументов
+			 * @param args аргументы для серриализации
+			 * @return     сформированная строка аргументов
+			 */
+			string serialization(const std::tuple <TupType...> & args) const noexcept {
+				// Выполняем серриализацию полученных аргументов
+				return this->formation(args, std::make_index_sequence <sizeof...(TupType)> ());
+			}
+		private:
+			/**
 			 * rotate Метод выполнения ротации логов
 			 */
 			void rotate() const noexcept;
+		private:
+			/**
+			 * cleaner Метод очистки строки от символов форматирования
+			 * @param text текст для очистки
+			 * @return     ощиченный текста
+			 */
+			string & cleaner(string & text) const noexcept;
 		private:
 			/**
 			 * receiving Метод получения данных
@@ -151,6 +229,90 @@ namespace awh {
 			std::pair <string, string> components(const string & filename) const noexcept;
 		public:
 			/**
+			 * Шаблон входных аргументов функции
+			 * @tparam T    тип входных аргументов функции
+			 * @tparam Args список входящих аргументов
+			 */
+			template <class... T, typename... Args>
+			/**
+			 * print Метод вывода текстовой информации в консоль или файл
+			 * @param format формат строки вывода
+			 * @param method название вызываемого метода
+			 * @param params параметры переданные в метод
+			 * @param flag   флаг типа логирования
+			 * @param args   аргументы формирования лога
+			 */
+			void debug(const string & format, const string & method, const std::tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
+				// Если формат строки вывода передан
+				if(!format.empty()){
+					// Если метод названия функции передан
+					if(!method.empty()){
+						// Формируем результирующую строку отладки
+						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m"AWH_STRING_BREAK;
+						// Добавляем название метода
+						debug.append(method);
+						// Добавляем перенос строки
+						debug.append(AWH_STRING_BREAKS);
+						// Если аргументы функции переданы
+						if(this->count(params) > 0){
+							// Добавляем входные аргументы функции
+							debug.append("\x1B[1mArguments function:\x1B[0m"AWH_STRING_BREAK);
+							// Добавляем список аргументов функции
+							debug.append(this->serialization(params));
+							// Добавляем перенос строки
+							debug.append(AWH_STRING_BREAKS);
+							// Добавляем описание входящего сообщения
+							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
+						}
+						// Выводим полученный нами лог
+						this->print(debug + format, flag, args...);
+					// Выводим лог в том виде как он пришёл
+					} else this->print(format, flag, args...);
+				}
+			}
+			/**
+			 * Шаблон входных аргументов функции
+			 * @tparam T тип входных аргументов функции
+			 */
+			template <class... T>
+			/**
+			 * print Метод вывода текстовой информации в консоль или файл
+			 * @param format формат строки вывода
+			 * @param method название вызываемого метода
+			 * @param params параметры переданные в метод
+			 * @param flag   флаг типа логирования
+			 * @param args   список аргументов для замены
+			 */
+			void debug(const string & format, const string & method, const std::tuple <T...> & params, flag_t flag, const vector <string> & args) const noexcept {
+				// Если формат строки вывода передан
+				if(!format.empty()){
+					// Если метод названия функции передан
+					if(!method.empty()){
+						// Формируем результирующую строку отладки
+						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m"AWH_STRING_BREAK;
+						// Добавляем название метода
+						debug.append(method);
+						// Добавляем перенос строки
+						debug.append(AWH_STRING_BREAKS);
+						// Если аргументы функции переданы
+						if(this->count(params) > 0){
+							// Добавляем входные аргументы функции
+							debug.append("\x1B[1mArguments function:\x1B[0m"AWH_STRING_BREAK);
+							// Добавляем список аргументов функции
+							debug.append(this->serialization(params));
+							// Добавляем перенос строки
+							debug.append(AWH_STRING_BREAKS);
+							// Добавляем описание входящего сообщения
+							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
+						}
+						// Выводим полученный нами лог
+						this->print(debug + format, flag, args);
+					// Выводим лог в том виде как он пришёл
+					} else this->print(format, flag, args);
+				}
+			}
+		public:
+			/**
 			 * print Метод вывода текстовой информации в консоль или файл
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
@@ -160,9 +322,9 @@ namespace awh {
 			 * print Метод вывода текстовой информации в консоль или файл
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
-			 * @param items  список аргументов для замены
+			 * @param args   список аргументов для замены
 			 */
-			void print(const string & format, flag_t flag, const vector <string> & items) const noexcept;
+			void print(const string & format, flag_t flag, const vector <string> & args) const noexcept;
 		public:
 			/**
 			 * mode Метод добавления режимов вывода логов

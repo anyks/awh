@@ -134,8 +134,19 @@ namespace awh {
 				 * Если возникает ошибка
 				 */
 				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen process: %s\n", error.what());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
 				}
 			}
 		private:
@@ -229,8 +240,19 @@ namespace awh {
 				 * Если возникает ошибка
 				 */
 				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen on: %s\n", error.what());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
 				}
 			}
 			/**
@@ -250,8 +272,19 @@ namespace awh {
 				 * Если возникает ошибка
 				 */
 				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen on: %s\n", error.what());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
 				}
 			}
 			/**
@@ -271,8 +304,19 @@ namespace awh {
 				 * Если возникает ошибка
 				 */
 				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen on: %s\n", error.what());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
 				}
 			}
 		public:
@@ -293,8 +337,19 @@ namespace awh {
 				 * Если возникает ошибка
 				 */
 				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen timeout: %s\n", error.what());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
 				}
 			}
 		public:
@@ -323,8 +378,19 @@ namespace awh {
 				 * Если возникает ошибка
 				 */
 				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen send: %s\n", error.what());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
 				}
 			}
 		public:
@@ -384,8 +450,19 @@ namespace awh {
 				 * Если возникает ошибка
 				 */
 				} catch(const std::exception & error) {
-					// Выводим сообщение об ошибке
-					::fprintf(stderr, "Screen start: %s\n", error.what());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
 				}
 			}
 		public:

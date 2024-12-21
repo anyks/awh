@@ -159,9 +159,20 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const bad_alloc &) {
-						// Выводим в лог сообщение
-						this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+					} catch(const std::bad_alloc &) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd, sid), log_t::flag_t::CRITICAL, "Memory allocation error");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+						#endif
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -541,9 +552,20 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const bad_alloc &) {
-						// Выводим в лог сообщение
-						this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+					} catch(const std::bad_alloc &) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd, sid), log_t::flag_t::CRITICAL, "Memory allocation error");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+						#endif
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -1148,9 +1170,20 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 									/**
 									 * Если возникает ошибка
 									 */
-									} catch(const bad_alloc &) {
-										// Выводим в лог сообщение
-										this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+									} catch(const std::bad_alloc &) {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid, pid, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, "Memory allocation error");
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+										#endif
 										// Выходим из приложения
 										::exit(EXIT_FAILURE);
 									}
@@ -1256,9 +1289,20 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const bad_alloc &) {
-				// Выводим в лог сообщение
-				this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+			} catch(const std::bad_alloc &) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid), log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
 			}
@@ -2639,9 +2683,20 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 										/**
 										 * Если возникает ошибка
 										 */
-										} catch(const bad_alloc &) {
-											// Выводим в лог сообщение
-											this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+										} catch(const std::bad_alloc &) {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid, ip, family), log_t::flag_t::CRITICAL, "Memory allocation error");
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+											#endif
 											// Выходим из приложения
 											::exit(EXIT_FAILURE);
 										}

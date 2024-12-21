@@ -131,14 +131,36 @@ awh::URI::URL & awh::URI::URL::operator = (const URL & url) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::length_error & error) {
-		// Выводим сообщение об ошибке
-		::fprintf(stderr, "URL: %s\n", error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		::fprintf(stderr, "URL: %s\n", error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
 	}
 	// Выводим результат
 	return (* this);
@@ -274,8 +296,19 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri parse: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -310,8 +343,19 @@ string awh::URI::etag(const string & text) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri etag: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -363,8 +407,19 @@ string awh::URI::encode(const string & text) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri encode: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -422,8 +477,19 @@ string awh::URI::decode(const string & text) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri decode: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -500,8 +566,19 @@ string awh::URI::url(const url_t & url) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri url: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -535,8 +612,19 @@ string awh::URI::query(const url_t & url) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri query: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -598,8 +686,19 @@ string awh::URI::origin(const url_t & url) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri origin: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -665,8 +764,19 @@ void awh::URI::create(url_t & dest, const url_t & src) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Uri create: %s", log_t::flag_t::WARNING, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dest, src), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 }
 /**
@@ -729,8 +839,19 @@ void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Uri combine: %s", log_t::flag_t::WARNING, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dest, src), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 }
 /**
@@ -777,8 +898,19 @@ void awh::URI::append(url_t & url, const string & params) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri append: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url, params), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -1047,8 +1179,19 @@ std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const no
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri split: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uri), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1112,8 +1255,19 @@ vector <std::pair <string, string>> awh::URI::splitParams(const string & uri) co
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri splitParams: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uri), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1192,8 +1346,19 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri splitPath: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, delim), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1232,8 +1397,19 @@ string awh::URI::joinParams(const vector <std::pair <string, string>> & uri) con
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri joinParams: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1268,8 +1444,19 @@ string awh::URI::joinPath(const vector <string> & path, const char delim) const 
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri joinPath: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	// Выводим путь из одного разделителя
 	} else result.assign(1, delim);
@@ -1374,8 +1561,19 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Uri params: %s", log_t::flag_t::WARNING, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uri, schema), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1438,8 +1636,19 @@ ostream & awh::operator << (ostream & os, const uri_t::url_t & url) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		log.print("Uri params: %s", log_t::flag_t::WARNING, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			log.debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			log.print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
 	}
 	// Выводим результат
 	return os;

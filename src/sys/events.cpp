@@ -149,8 +149,19 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 					int32_t error = 0;
 					// Выполняем инициализацию сетевого контекста
 					if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
-						// Выводим сообщение об ошибке
-						this->_log->print("Events base is not init: %s", log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
+						#endif
 						// Очищаем сетевой контекст
 						WSACleanup();
 						// Выходим из приложения
@@ -172,26 +183,48 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 			#elif __linux__
 				// Выполняем инициализацию EPoll
 				if((this->_efd = ::epoll_create(this->_maxCount)) == INVALID_SOCKET){
-					// Выводим сообщение об ошибке
-					this->_log->print("Events base is not init: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+					#endif
 					// Выходим принудительно из приложения
 					::exit(EXIT_FAILURE);
 				}
 				// Выполняем открытие файлового дескриптора
-				fcntl(this->_efd, F_SETFD, FD_CLOEXEC);
+				::fcntl(this->_efd, F_SETFD, FD_CLOEXEC);
 			/**
 			 * Если это FreeBSD или MacOS X
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__
 				// Выполняем инициализацию Kqueue
 				if((this->_kq = kqueue()) == INVALID_SOCKET){
-					// Выводим сообщение об ошибке
-					this->_log->print("Events base is not init: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+					#endif
 					// Выходим принудительно из приложения
 					::exit(EXIT_FAILURE);
 				}
 				// Выполняем открытие файлового дескриптора
-				fcntl(this->_kq, F_SETFD, FD_CLOEXEC);
+				::fcntl(this->_kq, F_SETFD, FD_CLOEXEC);
 			#endif
 		} break;
 		// Если необходимо деактивировать сетевые методы
@@ -427,8 +460,19 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Del event in event base: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -618,8 +662,19 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Del event in event base: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -1049,8 +1104,19 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Del event in event base: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1229,9 +1295,21 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 							// Устанавливаем флаг ожидания отключения сокета
 							this->_change.back().events = EPOLLERR;
 							// Выполняем изменение параметров события
-							if(!(result = (::epoll_ctl(this->_efd, EPOLL_CTL_ADD, fd, &this->_change.back()) == 0)))
-								// Выводим сообщение об ошибке
-								this->_log->print("Add event SOCKET=%d to event base: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+							if(!(result = (::epoll_ctl(this->_efd, EPOLL_CTL_ADD, fd, &this->_change.back()) == 0))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								#endif
+							}
 						}
 					}
 				/**
@@ -1326,8 +1404,19 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Add event to event base: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1453,22 +1542,44 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= (EPOLLIN | EPOLLET);
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("Mode enable event TIMER for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
 												// Выполняем активацию таймера на указанное время
-												else this->_timeout.set(i->second.timer, i->second.delay * 1000000);
+												} else this->_timeout.set(i->second.timer, i->second.delay * 1000000);
 											} break;
 											// Если нужно деактивировать событие таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= (EPOLLIN | EPOLLET);
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("Mode disable event TIMER for SOCKET=%d", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
 												// Выполняем деактивацию таймера
-												else this->_timeout.del(i->second.timer);
+												} else this->_timeout.del(i->second.timer);
 											} break;
 										}
 									} break;
@@ -1481,18 +1592,42 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Выполняем установку флагов отслеживания закрытия подключения
 												k->events |= (EPOLLRDHUP | EPOLLHUP);
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("Mode enable event CLOSE for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
 											} break;
 											// Если нужно деактивировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Выполняем удаление флагов отслеживания закрытия подключения
 												k->events ^= (EPOLLRDHUP | EPOLLHUP);
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("Mode disable event CLOSE for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
 											} break;
 										}
 									} break;
@@ -1505,18 +1640,42 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= EPOLLIN;
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("Mode enable event READ for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
 											} break;
 											// Если нужно деактивировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= EPOLLIN;
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("Mode disable event READ for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
 											} break;
 										}
 									} break;
@@ -1529,18 +1688,42 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг отслеживания записи данных в сокет
 												k->events |= EPOLLOUT;
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("Mode enable event WRITE for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
 											} break;
 											// Если нужно деактивировать событие записи в сокет
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Снимаем флаг ожидания готовности файлового дескриптора на запись
 												k->events ^= EPOLLOUT;
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0)
-													// Выводим сообщение об ошибке
-													this->_log->print("Mode disable event WRITE for SOCKET=%d: %s", log_t::flag_t::CRITICAL, fd, this->_socket.message().c_str());
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
 											} break;
 										}
 									} break;
@@ -1634,8 +1817,19 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Set mode event base: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1783,8 +1977,19 @@ void awh::Base::clear() noexcept {
 	} catch(const std::exception & error) {
 		// Выполняем разблокировку чтения базы событий
 		this->_locker = false;
-		// Выводим сообщение об ошибке
-		this->_log->print("Clear event base: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -1838,8 +2043,19 @@ void awh::Base::kick() noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Kick event base: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -1874,8 +2090,19 @@ void awh::Base::stop() noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const std::exception & error) {
-		// Выводим сообщение об ошибке
-		this->_log->print("Stop event base: %s", log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -1931,11 +2158,22 @@ void awh::Base::start() noexcept {
 							// Выполняем опрос базы событий
 							poll = WSAPoll(this->_fds.data(), this->_fds.size(), (!this->_easily ? this->_baseDelay : 0));
 							// Если мы получили ошибку
-							if(poll == SOCKET_ERROR)
-								// Выводим сообщение об ошибке
-								this->_log->print("Event base dispatch: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+							if(poll == SOCKET_ERROR){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								#endif
 							// Если сработал таймаут
-							else if(poll == 0)
+							} else if(poll == 0)
 								// Компенсируем условие
 								poll = 0;
 							// Если опрос прошёл успешно
@@ -1956,18 +2194,20 @@ void awh::Base::start() noexcept {
 									if(i < this->_fds.size()){
 										// Зануляем идентификатор события
 										id = 0;
+										// Получаем объект файлового дескриптора
+										auto & event = this->_fds.at(i);
 										// Получаем файловый дескриптор
-										fd = this->_fds.at(i).fd;
+										fd = event.fd;
 										// Получаем флаг достуности чтения из сокета
-										isRead = (this->_fds.at(i).revents & POLLIN);
+										isRead = (event.revents & POLLIN);
 										// Получаем флаг доступности сокета на запись
-										isWrite = (this->_fds.at(i).revents & POLLOUT);
+										isWrite = (event.revents & POLLOUT);
 										// Получаем флаг получения ошибки сокета
-										isError = (this->_fds.at(i).revents & POLLERR);
+										isError = (event.revents & POLLERR);
 										// Получаем флаг закрытия подключения
-										isClose = (this->_fds.at(i).revents & POLLHUP);
+										isClose = (event.revents & POLLHUP);
 										// Обнуляем количество событий
-										this->_fds.at(i).revents = 0;
+										event.revents = 0;
 										// Если флаг на чтение данных из сокета установлен
 										if(isRead){
 											// Выполняем поиск указанной записи
@@ -2050,9 +2290,21 @@ void awh::Base::start() noexcept {
 										// Если сокет отключился или произошла ошибка
 										if(isClose || isError){
 											// Если мы реально получили ошибку
-											if(WSAGetLastError() > 0)
-												// Выводим сообщение об ошибке
-												this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
+											if(WSAGetLastError() > 0){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+												/**
+												* Если режим отладки не включён
+												*/
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+												#endif
+											}
 											// Выполняем поиск указанной записи
 											auto j = this->_items.find(fd);
 											// Если сокет в списке найден
@@ -2116,11 +2368,22 @@ void awh::Base::start() noexcept {
 							// Выполняем опрос базы событий
 							poll = ::epoll_wait(this->_efd, this->_events.data(), this->_maxCount, (!this->_easily ? this->_baseDelay : 0));
 							// Если мы получили ошибку
-							if(poll == INVALID_SOCKET)
-								// Выводим сообщение об ошибке
-								this->_log->print("Event base dispatch: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+							if(poll == INVALID_SOCKET){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								#endif
 							// Если сработал таймаут
-							else if(poll == 0)
+							} else if(poll == 0)
 								// Компенсируем условие
 								poll = 0;
 							// Если опрос прошёл успешно
@@ -2137,16 +2400,18 @@ void awh::Base::start() noexcept {
 								for(int32_t i = 0; i < poll; i++){
 									// Если записей достаточно в списке
 									if(static_cast <size_t> (i) < this->_events.size()){
+										// Получаем объект файлового дескриптора
+										const auto & event = this->_events.at(i);
 										// Получаем флаг достуности чтения из сокета
-										isRead = (this->_events.at(i).events & EPOLLIN);
+										isRead = (event.events & EPOLLIN);
 										// Получаем флаг доступности сокета на запись
-										isWrite = (this->_events.at(i).events & EPOLLOUT);
+										isWrite = (event.events & EPOLLOUT);
 										// Получаем флаг получения ошибки сокета
-										isError = (this->_events.at(i).events & EPOLLERR);
+										isError = (event.events & EPOLLERR);
 										// Получаем флаг закрытия подключения
-										isClose = (this->_events.at(i).events & (EPOLLRDHUP | EPOLLHUP));
+										isClose = (event.events & (EPOLLRDHUP | EPOLLHUP));
 										// Получаем объект текущего события
-										item_t * item = reinterpret_cast <item_t *> (this->_events.at(i).data.ptr);
+										item_t * item = reinterpret_cast <item_t *> (event.data.ptr);
 										// Если объект текущего события получен
 										if(item != nullptr){
 											// Получаем идентификатор события
@@ -2223,9 +2488,21 @@ void awh::Base::start() noexcept {
 											// Если сокет отключился или произошла ошибка
 											if(isClose || isError){
 												// Если была вызвана ошибка
-												if(isError)
-													// Выводим сообщение об ошибке
-													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message().c_str(), fd);
+												if(isError){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
 												// Выполняем поиск файлового дескриптора в базе событий
 												auto i = this->_items.find(fd);
 												// Если файловый дескриптор есть в базе событий
@@ -2255,9 +2532,9 @@ void awh::Base::start() noexcept {
 												} else this->del(fd);
 											}
 										// Если файловый дескриптор не нулевой
-										} else if(this->_events.at(i).data.fd > 0)
+										} else if(event.data.fd > 0)
 											// Выводим сообщение об ошибке
-											this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).data.fd);
+											this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, event.data.fd);
 									// Выходим из цикла
 									} else break;
 								}
@@ -2291,11 +2568,22 @@ void awh::Base::start() noexcept {
 							// Выполняем опрос базы событий
 							poll = kevent(this->_kq, this->_change.data(), this->_change.size(), this->_events.data(), this->_events.size(), ((this->_baseDelay > -1) || this->_easily ? &baseDelay : nullptr));
 							// Если мы получили ошибку
-							if(poll == INVALID_SOCKET)
-								// Выводим сообщение об ошибке
-								this->_log->print("Event base dispatch: %s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+							if(poll == INVALID_SOCKET){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								#endif
 							// Если сработал таймаут
-							else if(poll == 0)
+							} else if(poll == 0)
 								// Компенсируем условие
 								poll = 0;
 							// Если опрос прошёл успешно
@@ -2314,18 +2602,20 @@ void awh::Base::start() noexcept {
 								for(int32_t i = 0; i < poll; i++){
 									// Если записей достаточно в списке
 									if(static_cast <size_t> (i) < this->_events.size()){
+										// Получаем объект файлового дескриптора
+										const auto & event = this->_events.at(i);
 										// Получаем код ошибки переданный ядром
-										code = this->_events.at(i).data;
+										code = event.data;
 										// Получаем флаг закрытия подключения
-										isClose = (this->_events.at(i).flags & EV_EOF);
+										isClose = (event.flags & EV_EOF);
 										// Получаем флаг получения ошибки сокета
-										isError = (this->_events.at(i).flags & EV_ERROR);
+										isError = (event.flags & EV_ERROR);
 										// Получаем флаг достуности чтения из сокета
-										isRead = (this->_events.at(i).filter & EVFILT_READ);
+										isRead = (event.filter & EVFILT_READ);
 										// Получаем флаг доступности сокета на запись
-										isWrite = (this->_events.at(i).filter & EVFILT_WRITE);
+										isWrite = (event.filter & EVFILT_WRITE);
 										// Выполняем поиск файлового дескриптора в базе событий
-										auto j = this->_items.find(this->_events.at(i).ident);
+										auto j = this->_items.find(event.ident);
 										// Если файловый дескриптор есть в базе событий
 										if(j != this->_items.end()){
 											// Получаем объект текущего события
@@ -2404,9 +2694,21 @@ void awh::Base::start() noexcept {
 											// Если сокет отключился или произошла ошибка
 											if(isClose || isError){
 												// Если была вызвана ошибка
-												if(isError)
-													// Выводим сообщение об ошибке
-													this->_log->print("Event base dispatch: %s, SOCKET=%d", log_t::flag_t::CRITICAL, this->_socket.message(code).c_str(), fd);
+												if(isError){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message(code).c_str());
+													/**
+													* Если режим отладки не включён
+													*/
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(code).c_str());
+													#endif
+												}
 												// Выполняем поиск файлового дескриптора в базе событий
 												j = this->_items.find(fd);
 												// Если файловый дескриптор есть в базе событий
@@ -2436,9 +2738,9 @@ void awh::Base::start() noexcept {
 												} else this->del(fd);
 											}
 										// Если файловый дескриптор не нулевой
-										} else if(this->_events.at(i).ident > 0)
+										} else if(event.ident > 0)
 											// Выводим сообщение об ошибке
-											this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, this->_events.at(i).ident);
+											this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, event.ident);
 									// Выходим из цикла
 									} else break;
 								}
@@ -2472,11 +2774,22 @@ void awh::Base::start() noexcept {
 		 */
 		} catch(const std::exception & error) {
 			// Если не происходит отключение работы базы событий
-			if(this->_started)
-				// Выводим сообщение об ошибке
-				this->_log->print("Event base dispatch: %s", log_t::flag_t::CRITICAL, error.what());
+			if(this->_started){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			// Снимаем флаг запущенного опроса базы событий
-			else this->_launched = this->_started;
+			} else this->_launched = this->_started;
 		}
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
@@ -2530,8 +2843,19 @@ void awh::Base::rebase() noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const std::exception & error) {
-			// Выводим сообщение об ошибке
-			this->_log->print("Rebase event base: %s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }

@@ -43,6 +43,7 @@ if [ -n "$1" ]; then
 		clean_submodule "pcre2"
 		clean_submodule "openssl"
 		clean_submodule "nghttp2"
+		clean_submodule "gperftools"
 
 		# Если операционная система не является Windows
 		if [[ ! $OS = "Windows" ]]; then
@@ -1333,6 +1334,86 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	make install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка GPerfTools
+src="$ROOT/submodules/gperftools"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** GPerfTools ******\n"
+	cd "$src" || exit 1
+
+	# Версия GPerfTools
+	VER="2.16"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на master
+	git reset --hard origin/master
+	# Переключаемся на master
+	git checkout master
+	# Выполняем обновление данных
+	git pull origin master
+	# Удаляем старую ветку
+	git branch -D gperftools-v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b gperftools-v${VER}-branch gperftools-${VER}
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DBUILD_TESTING="OFF" \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DDEFAULT_BUILD_MINIMAL="ON" \
+		 -DDEFAULT_BUILD_DEBUGALLOC="OFF" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DBUILD_TESTING="OFF" \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DDEFAULT_BUILD_MINIMAL="ON" \
+		 -DDEFAULT_BUILD_DEBUGALLOC="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	make -j"$numproc" || exit 1
+	
+	# Создаём каталог GPerfTools
+	mkdir "$PREFIX/include/gperftools"
+
+	# Производим установку собранных библиотек
+	for i in $(ls "$src/build" | grep ".*\.a$");
+	do
+		echo "Move \"$src/build/$i\" to \"$PREFIX/lib/$i\""
+		cp "$src/build/$i" "$PREFIX/lib/$i" || exit 1
+	done
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$src/src" | grep ".*\.h$");
+	do
+		echo "Move \"$src/src/$i\" to \"$PREFIX/include/gperftools/$i\""
+		cp "$src/src/$i" "$PREFIX/include/gperftools/$i" || exit 1
+	done
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"

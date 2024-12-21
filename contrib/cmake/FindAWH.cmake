@@ -1,7 +1,7 @@
 set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 
 # Если операцинная система относится к MS Windows
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
 endif()
@@ -21,7 +21,7 @@ find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/i
 find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp2 NO_DEFAULT_PATH)
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
-if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
+if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     find_path(IDN2_INCLUDE_DIR NAMES idn2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/idn2 NO_DEFAULT_PATH)
     find_path(ICONV_INCLUDE_DIR NAMES iconv.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/iconv NO_DEFAULT_PATH)
 endif()
@@ -30,7 +30,7 @@ endif()
 find_library(AWH_LIBRARY NAMES awh PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 
 # Если активирован режим отладки
-if(CMAKE_AWH_BUILD_DEBUG)
+if (CMAKE_AWH_BUILD_DEBUG)
     # Поиск библиотеки AWH
     find_library(DEPEND_LIBRARY NAMES dependence PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 endif()
@@ -39,9 +39,9 @@ endif()
 include(FindPackageHandleStandardArgs)
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
-if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
+if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     # Если активирован режим отладки
-    if(CMAKE_AWH_BUILD_DEBUG)
+    if (CMAKE_AWH_BUILD_DEBUG)
         # Выполняем проверку на существование зависимостей
         find_package_handle_standard_args(AWH REQUIRED_VARS
             DEPEND_LIBRARY
@@ -110,9 +110,9 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
     install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 # Если операцинная система относится к MS Windows
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если активирован режим отладки
-    if(CMAKE_AWH_BUILD_DEBUG)
+    if (CMAKE_AWH_BUILD_DEBUG)
         # Выполняем проверку на существование зависимостей
         find_package_handle_standard_args(AWH REQUIRED_VARS
             DEPEND_LIBRARY
@@ -174,7 +174,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 # Если операцинная система относится к Nix-подобной
 else()
     # Если активирован режим отладки
-    if(CMAKE_AWH_BUILD_DEBUG)
+    if (CMAKE_AWH_BUILD_DEBUG)
         # Выполняем проверку на существование зависимостей
         find_package_handle_standard_args(AWH REQUIRED_VARS
             DEPEND_LIBRARY
@@ -239,7 +239,7 @@ endif()
 install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Если активирован режим отладки
-if(CMAKE_AWH_BUILD_DEBUG)
+if (CMAKE_AWH_BUILD_DEBUG)
     # Устанавливаем статическую библиотеку
     install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")    
 endif()
