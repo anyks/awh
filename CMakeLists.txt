@@ -129,7 +129,7 @@ endif (CMAKE_SHARED_BUILD_LIB)
 # Добавляем модули cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Выполняем поиск нужных библиотек
+# Выполняем библиотек зависимостей
 find_package(Dependence REQUIRED)
 
 # Провекра Dependence
@@ -156,6 +156,16 @@ if (Dependence_FOUND)
 else (Dependence_FOUND)
     message(FATAL_ERROR "Dependence not found")
 endif (Dependence_FOUND)
+
+# Выполняем поиск библиотеки TcMalloc
+find_package(TcMalloc REQUIRED)
+
+# Провекра TcMalloc
+if (TcMalloc_FOUND)
+    message(STATUS "TcMalloc lib found: " ${TCMALLOC_LIBRARY} " " ${TCMALLOC_COMMON_LIBRARY})
+else (TcMalloc_FOUND)
+    message(FATAL_ERROR "TcMalloc not found")
+endif (TcMalloc_FOUND)
 
 # Выполняем подключение хидеров
 include_directories(SYSTEM ${DEPEND_INCLUDE_DIRS})
@@ -335,6 +345,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -343,6 +354,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -351,6 +363,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -359,6 +372,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -367,6 +381,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -375,6 +390,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -383,6 +399,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -391,6 +408,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -399,6 +417,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -407,6 +426,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -415,6 +435,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -423,6 +444,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -431,6 +453,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -439,6 +462,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -447,6 +471,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -459,6 +484,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
         
@@ -466,6 +492,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -473,6 +500,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -480,6 +508,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -487,6 +516,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -494,6 +524,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -501,6 +532,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -508,6 +540,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -515,6 +548,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -522,6 +556,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -529,6 +564,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -536,6 +572,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -543,6 +580,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${CLUSTER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -550,6 +588,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -557,6 +596,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -564,6 +604,7 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -575,96 +616,112 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
         
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения кластера
         target_link_libraries(
             ${CLUSTER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения дознавателя
         target_link_libraries(
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
         )
 
     endif()
@@ -678,6 +735,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -687,6 +745,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -696,6 +755,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -705,6 +765,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -714,6 +775,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -723,6 +785,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -732,6 +795,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -741,6 +805,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -750,6 +815,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -759,6 +825,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -768,6 +835,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -777,6 +845,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -786,6 +855,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -795,6 +865,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
             ${AWH_IDN}
         )
@@ -807,6 +878,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -815,6 +887,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -823,6 +896,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -831,6 +905,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -839,6 +914,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -847,6 +923,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -855,6 +932,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -863,6 +941,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -871,6 +950,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -879,6 +959,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -887,6 +968,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -895,6 +977,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${CLUSTER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -903,6 +986,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -911,6 +995,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -919,6 +1004,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
 
@@ -930,6 +1016,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
@@ -937,6 +1024,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
@@ -944,6 +1032,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения DNS-резолвер
@@ -951,6 +1040,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения NTP-клиента
@@ -958,6 +1048,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Proxy-сервера
@@ -965,6 +1056,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Socks5-сервера
@@ -972,6 +1064,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Ping-клиента
@@ -979,6 +1072,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения таймера
@@ -986,6 +1080,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения клиента
@@ -993,6 +1088,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения сервера
@@ -1000,6 +1096,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения кластера
@@ -1007,6 +1104,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${CLUSTER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения HTTP-клиента
@@ -1014,6 +1112,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения HTTP-сервера
@@ -1021,6 +1120,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения дознавателя
@@ -1028,6 +1128,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
         )
 
     endif()
@@ -1187,8 +1288,10 @@ if (NOT CMAKE_SHARED_BUILD_LIB)
     endif()
 endif()
 
-# Устанавливаем статическую библиотеку
+# Устанавливаем статическую библиотеку AWH
 install(TARGETS ${AWH_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+# Устанавливаем статическую библиотеку TcMalloc
+install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Устанавливаем исполнительные файлы
 install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

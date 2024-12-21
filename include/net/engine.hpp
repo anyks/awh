@@ -361,7 +361,7 @@ namespace awh {
 				 * @param engine основной родительский объект двигателя
 				 * @param host   хост для которого производится проверка
 				 */
-				Verify(const string & host = "", const Engine * engine = nullptr) noexcept : host(host), engine(engine) {}
+				Verify(const string & host = "", const Engine * engine = nullptr) noexcept : host{host}, engine(engine) {}
 			} verify_t;
 		public:
 			/**
@@ -525,10 +525,10 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Context(const fmk_t * fmk, const log_t * log) noexcept :
-					 _verb(false), _encrypted(false), _type(type_t::NONE),
-					 _proto(proto_t::RAW), _bio(nullptr), _ssl(nullptr),
-					 _ctx(nullptr), _addr(nullptr), _verify(nullptr),
-					 _fmk(fmk), _log(log), _crl(nullptr) {}
+					 _verb(false), _encrypted(false),
+					 _type(type_t::NONE), _proto(proto_t::RAW),
+					 _bio(nullptr), _ssl(nullptr), _ctx(nullptr),
+					 _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log), _crl(nullptr) {}
 					/**
 					 * ~Context Деструктор
 					 */

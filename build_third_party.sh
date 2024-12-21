@@ -1340,6 +1340,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
+# Выполняем объединение статических библиотек
+bash "$ROOT/merge_static_libs.sh"
+
 # Сборка GPerfTools
 src="$ROOT/submodules/gperftools"
 if [ ! -f "$src/.stamp_done" ]; then
@@ -1419,9 +1422,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	touch "$src/.stamp_done"
 	cd "$ROOT" || exit 1
 fi
-
-# Выполняем объединение статических библиотек
-bash "$ROOT/merge_static_libs.sh"
 
 # Переименовываем расширение библиотек для Windows
 if [ $OS = "Windows" ]; then # Windows
