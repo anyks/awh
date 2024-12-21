@@ -1903,7 +1903,7 @@ bool awh::Net::arpa(const string & addr) noexcept {
 				// Выполняем очистку буфера данных
 				this->_buffer.clear();
 				// Выполняем инициализацию буфера
-				this->_buffer.resize(16, '\0');
+				this->_buffer.resize(16);
 				// Устанавливаем тип адреса
 				this->_type = type_t::IPV6;
 				// Позиция разделителя
