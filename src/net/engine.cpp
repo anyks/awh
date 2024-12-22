@@ -3069,7 +3069,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 					return result;
 				};
 				// Проверяем существует ли путь
-				if((::addCertToStoreFn(store, "CA") < 0) || (::addCertToStoreFn(store, "AuthRoot") < 0) || (::addCertToStoreFn(store, "ROOT") < 0))
+				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0))
 					// Выводим сформированный результат
 					return result;
 			#endif
