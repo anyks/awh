@@ -745,14 +745,14 @@ uint64_t awh::Net::mac() const noexcept {
  * @param addr аппаратный адрес в чистом виде
  */
 void awh::Net::mac(const uint64_t addr) noexcept {
-	// Выполняем выделение памяти для MAC адреса
-	this->_buffer.resize(6, 0);
 	// Если MAC адрес передан
 	if(addr > 0){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем выделение памяти для MAC адреса
+			this->_buffer.resize(6);
 			// Устанавливаем тип MAC адреса
 			this->_type = type_t::MAC;
 			// Выполняем копирование данных адреса MAC
@@ -819,14 +819,14 @@ uint32_t awh::Net::v4() const noexcept {
  * @param addr адрес IPv4 в чистом виде
  */
 void awh::Net::v4(const uint32_t addr) noexcept {
-	// Выполняем выделение памяти для IPv4 адреса
-	this->_buffer.resize(4, 0);
 	// Если IPv4 адрес передан
 	if(addr > 0){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем выделение памяти для IPv4 адреса
+			this->_buffer.resize(4);
 			// Устанавливаем тип IP-адреса
 			this->_type = type_t::IPV4;
 			// Выполняем копирование данных адреса IPv4
@@ -893,14 +893,14 @@ array <uint64_t, 2> awh::Net::v6() const noexcept {
  * @param addr адрес IPv6 в чистом виде
  */
 void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
-	// Выполняем выделение памяти для IPv6 адреса
-	this->_buffer.resize(16, 0);
 	// Если IPv6 адрес передан
 	if(!addr.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем выделение памяти для IPv6 адреса
+			this->_buffer.resize(16);
 			// Устанавливаем тип IP-адреса
 			this->_type = type_t::IPV6;
 			// Выполняем копирование данных адреса IPv6
@@ -1994,7 +1994,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
-					this->_buffer.resize(6, 0);
+					this->_buffer.resize(6);
 					// Выполняем парсинг MAC адреса
 					const int32_t rc = sscanf(
 						addr.c_str(),
@@ -2034,7 +2034,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
-					this->_buffer.resize(16, 0);
+					this->_buffer.resize(16);
 					// Выполняем сплит данных IP-адреса
 					this->split(((addr.front() == '[') && (addr.back() == ']') ? addr.substr(1, addr.length() - 2) : addr), ":", data);
 					// Если данные IP-адреса получены
