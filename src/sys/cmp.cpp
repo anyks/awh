@@ -18,109 +18,12 @@
 #include <sys/cmp.hpp>
 
 /**
- * data данные буфера в бинарном виде
- * @return буфер в бинарном виде
- */
-vector <char> awh::cmp::Encoder::Buffer::data() const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Выполняем добавление данных заголовка в итоговый буфер
-	result.insert(result.end(), reinterpret_cast <const char *> (&this->_header), reinterpret_cast <const char *> (&this->_header) + sizeof(this->_header));
-	// Если буфер полезной нагрузки не пустой
-	if((this->_payload != nullptr) && (this->_header.bytes > 0))
-		// Выполняем вставку данных полезной нагрузки
-		result.insert(result.end(), this->_payload.get(), this->_payload.get() + this->_header.bytes);
-	// Выводим результат
-	return result;
-}
-/**
- * Оператор извлечения бинарного буфера в бинарном виде
- * @return бинарный буфер в бинарном виде
- */
-awh::cmp::Encoder::Buffer::operator vector <char> () const noexcept {
-	// Выполняем формирование общего буфера данных
-	return this->data();
-}
-/**
- * push Метод добавления в буфер записи данных для отправки
- * @param id     идентификатор сообщения
- * @param mode   режим отправки буфера данных
- * @param size   общий размер записи целиком
- * @param buffer буфер данных единичного чанка
- * @param bytes  размер буфера данных единичного чанка
- */
-void awh::cmp::Encoder::Buffer::push(const uint64_t id, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept {
-	/**
-	 * Выполняем обработку ошибки
-	 */
-	try {
-		// Устанавливаем идентификатор сообщения
-		this->_header.id = id;
-		// Устанавливаем режим отравки буфера данных
-		this->_header.mode = mode;
-		// Выполняем установку общего размера записи
-		this->_header.size = size;
-		// Устанавливаем актуальный размер данных
-		this->_header.bytes = bytes;
-		// Если данные переданы верные
-		if((buffer != nullptr) && (bytes > 0)){
-			// Выполняем формирование буфера данных
-			this->_payload = std::unique_ptr <uint8_t []> (new uint8_t [bytes]);
-			// Выполняем копирование буфера полученных данных
-			::memcpy(this->_payload.get(), buffer, bytes);
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const std::bad_alloc &) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", "Memory allocation error");
-		#endif
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
-	}
-}
-/**
- * back Метод получения последней записи протокола
- * @return объект данных последней записи
- */
-vector <char> awh::cmp::Encoder::back() const noexcept {
-	// Если записи в протоколе существуют
-	if(!this->_data.empty())
-		// Выводим запрошенный буфер данных
-		return this->_data.back()->data();
-	// Выводим результат
-	return vector <char> ();
-}
-/**
- * front Метод получения первой записи протокола
- * @return объект данных первой записи
- */
-vector <char> awh::cmp::Encoder::front() const noexcept {
-	// Если записи в протоколе существуют
-	if(!this->_data.empty())
-		// Выводим запрошенный буфер данных
-		return this->_data.front()->data();
-	// Выводим результат
-	return vector <char> ();
-}
-/**
  * empty Метод проверки на пустоту контейнера
  * @return результат проверки
  */
 bool awh::cmp::Encoder::empty() const noexcept {
 	// Выводим результат проверки
-	return this->_data.empty();
+	return this->_queue.empty();
 }
 /**
  * size Метод получения количества подготовленных буферов
@@ -128,7 +31,7 @@ bool awh::cmp::Encoder::empty() const noexcept {
  */
 size_t awh::cmp::Encoder::size() const noexcept {
 	// Выводим количество записей в протоколе
-	return this->_data.size();
+	return this->_queue.size();
 }
 /**
  * clear Метод очистки данных
@@ -140,10 +43,8 @@ void awh::cmp::Encoder::clear() noexcept {
 	try {
 		// Выполняем блокировку потока
 		const lock_guard <std::mutex> lock(this->_mtx);
-		// Выполняем удаление всех данных
-		this->_data.clear();
-		// Очищаем выделенную память для записей
-		std::deque <std::unique_ptr <buffer_t>> ().swap(this->_data);
+		// Выполняем очистку очереди данных
+		this->_queue.clear();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -164,6 +65,20 @@ void awh::cmp::Encoder::clear() noexcept {
 	}
 }
 /**
+ * get Метод получения записи протокола
+ * @return объект данных записи
+ */
+awh::queue_t::buffer_t awh::cmp::Encoder::get() const noexcept {
+	// Результат работы функции
+	queue_t::buffer_t result;
+	// Устанавливаем размер данных
+	result.second = this->_queue.size(queue_t::pos_t::FRONT);
+	// Устанавливаем адрес заднных
+	result.first = reinterpret_cast <const char *> (this->_queue.get(queue_t::pos_t::FRONT));
+	// Выводим результат
+	return result;
+}
+/**
  * pop Метод удаления первой записи протокола
  */
 void awh::cmp::Encoder::pop() noexcept {
@@ -174,9 +89,9 @@ void awh::cmp::Encoder::pop() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <std::mutex> lock(this->_mtx);
 		// Если список записей не пустой
-		if(!this->_data.empty())
+		if(!this->_queue.empty())
 			// Выполняем удаление первой записи
-			this->_data.pop_front();
+			this->_queue.pop();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -210,64 +125,58 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		try {
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
+			// Заголовоки блока данных
+			header_t header;
+			// Выполняем установку общего размера записи
+			header.size = size;
+			// Устанавливаем идентификатор сообщения
+			header.id = this->_count++;
 			// Получаем размер заголовка
-			const size_t headerSize = sizeof(header_t);
+			const size_t headerSize = sizeof(header);
 			// Если размер данных больше размера чанка
 			if((headerSize + size) > this->_chunkSize){
-				// Параметры обхода буфера данных
-				size_t actual = 0, offset = 0;
-				// Получаем индекс новой записи
-				const uint64_t id = this->_count++;
+				// Смещение в буфере бинарных и размер заголовка
+				size_t offset = 0;
 				// Выполняем формирование буфера до тех пор пока все не добавим
 				while((size - offset) > 0){
-					// Выполняем создание буфера данных
-					std::unique_ptr <buffer_t> data = std::unique_ptr <buffer_t> (new buffer_t);
 					// Если данные не помещаются в буфере
-					if((headerSize + (size - offset)) > this->_chunkSize){
+					if((headerSize + (header.size - offset)) > this->_chunkSize){
 						// Формируем актуальный размер данных буфера
-						actual = (this->_chunkSize - headerSize);
+						header.bytes = (this->_chunkSize - headerSize);
+						// Устанавливаем режим отравки буфера данных
+						header.mode = (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE);
 						// Добавляем в буфер новую запись
-						data->push(id, (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE), size, reinterpret_cast <const char *> (buffer) + offset, actual);
+						this->_queue.push(vector <queue_t::buffer_t> ({
+							{&header, headerSize},
+							{reinterpret_cast <const char *> (buffer) + offset, header.bytes}
+						}), header.bytes + headerSize);
 					// Если данные помещаются в буфере
 					} else {
+						// Устанавливаем режим отравки буфера данных
+						header.mode = mode_t::END;
 						// Формируем актуальный размер данных буфера
-						actual = (size - offset);
+						header.bytes = (header.size - offset);
 						// Добавляем в буфер новую запись
-						data->push(id, mode_t::END, size, reinterpret_cast <const char *> (buffer) + offset, actual);
+						this->_queue.push(vector <queue_t::buffer_t> ({
+							{&header, headerSize},
+							{reinterpret_cast <const char *> (buffer) + offset, header.bytes}
+						}), header.bytes + headerSize);
 					}
 					// Увеличиваем смещение в буфере
-					offset += actual;
-					// Выполняем добавление буфера данных в список
-					this->_data.push_back(std::move(data));
+					offset += header.bytes;
 				}
 			// Если размер данных помещается в буфер
 			} else {
-				// Выполняем создание буфера данных
-				std::unique_ptr <buffer_t> data = std::unique_ptr <buffer_t> (new buffer_t);
-				// Добавляем в буфер данных наши записи
-				data->push(this->_count++, mode_t::END, size, buffer, size);
-				// Выполняем добавление буфера данных в список
-				this->_data.push_back(std::move(data));
+				// Формируем актуальный размер данных буфера
+				header.bytes = size;
+				// Устанавливаем режим отравки буфера данных
+				header.mode = mode_t::END;
+				// Добавляем в буфер новую запись
+				this->_queue.push(vector <queue_t::buffer_t> ({
+					{&header, headerSize},
+					{reinterpret_cast <const char *> (buffer), header.bytes}
+				}), header.bytes + headerSize);
 			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const std::bad_alloc &) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -349,46 +258,12 @@ awh::cmp::Encoder & awh::cmp::Encoder::operator = (const size_t size) noexcept {
 	return (* this);
 }
 /**
- * back Метод получения последней записи протокола
- * @return объект данных последней записи
- */
-vector <char> awh::cmp::Decoder::back() const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если записи в протоколе существуют
-	if(!this->_data.empty() && (this->_data.size(queue_t::pos_t::BACK) > 0)){
-		// Выделяем память под указанный буфер данных
-		result.resize(this->_data.size(queue_t::pos_t::BACK), 0);
-		// Выполняем копирование буфера данных
-		::memcpy(result.data(), reinterpret_cast <const char *> (this->_data.get(queue_t::pos_t::BACK)), this->_data.size(queue_t::pos_t::BACK));
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * front Метод получения первой записи протокола
- * @return объект данных первой записи
- */
-vector <char> awh::cmp::Decoder::front() const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если записи в протоколе существуют
-	if(!this->_data.empty() && (this->_data.size(queue_t::pos_t::FRONT) > 0)){
-		// Выделяем память под указанный буфер данных
-		result.resize(this->_data.size(queue_t::pos_t::FRONT), 0);
-		// Выполняем копирование буфера данных
-		::memcpy(result.data(), reinterpret_cast <const char *> (this->_data.get(queue_t::pos_t::FRONT)), this->_data.size(queue_t::pos_t::FRONT));
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * empty Метод проверки на пустоту контейнера
  * @return результат проверки
  */
 bool awh::cmp::Decoder::empty() const noexcept {
 	// Выводим результат проверки
-	return this->_data.empty();
+	return this->_queue.empty();
 }
 /**
  * size Метод получения количества подготовленных буферов
@@ -396,7 +271,7 @@ bool awh::cmp::Decoder::empty() const noexcept {
  */
 size_t awh::cmp::Decoder::size() const noexcept {
 	// Выводим количество записей в протоколе
-	return this->_data.size();
+	return this->_queue.size();
 }
 /**
  * clear Метод очистки данных
@@ -411,7 +286,7 @@ void awh::cmp::Decoder::clear() noexcept {
 		// Выполняем удаление всех временных данных
 		this->_tmp.clear();
 		// Выполняем очистку очереди данных
-		this->_data.clear();
+		this->_queue.clear();
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Очищаем выделенную память для временных данных
@@ -436,6 +311,20 @@ void awh::cmp::Decoder::clear() noexcept {
 	}
 }
 /**
+ * get Метод получения записи протокола
+ * @return объект данных записи
+ */
+awh::queue_t::buffer_t awh::cmp::Decoder::get() const noexcept {
+	// Результат работы функции
+	queue_t::buffer_t result;
+	// Устанавливаем размер данных
+	result.second = this->_queue.size(queue_t::pos_t::FRONT);
+	// Устанавливаем адрес заднных
+	result.first = reinterpret_cast <const char *> (this->_queue.get(queue_t::pos_t::FRONT));
+	// Выводим результат
+	return result;
+}
+/**
  * pop Метод удаления первой записи протокола
  */
 void awh::cmp::Decoder::pop() noexcept {
@@ -446,9 +335,9 @@ void awh::cmp::Decoder::pop() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <std::mutex> lock(this->_mtx);
 		// Если список записей не пустой
-		if(!this->_data.empty())
+		if(!this->_queue.empty())
 			// Выполняем удаление первой записи
-			this->_data.pop();
+			this->_queue.pop();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -485,16 +374,13 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 			// Если данные в бинарном буфере существуют
 			if(!this->_buffer.empty()){
 				// Добавляем полученные данные в бинарный буфер
-				this->_buffer.emplace(reinterpret_cast <const char *> (buffer), size);
+				this->_buffer.push(reinterpret_cast <const char *> (buffer), size);
 				// Запускаем препарирование данных
-				const size_t result = this->prepare(static_cast <awh::buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+				const size_t result = this->prepare(static_cast <const char *> (this->_buffer), static_cast <size_t> (this->_buffer));
 				// Если количество обработанных данных больше нуля
-				if(result > 0){
+				if(result > 0)
 					// Удаляем количество обработанных байт
 					this->_buffer.erase(result);
-					// Фиксируем изменение в буфере
-					this->_buffer.commit();
-				}
 			// Если данных во временном буфере ещё нет
 			} else {
 				// Запускаем препарирование данных напрямую
@@ -502,7 +388,7 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 				// Если данных из буфера обработано меньше чем передано
 				if((size - result) > 0)
 					// Добавляем полученные данные в бинарный буфер
-					this->_buffer.emplace(reinterpret_cast <const char *> (buffer) + result, size - result);
+					this->_buffer.push(reinterpret_cast <const char *> (buffer) + result, size - result);
 			}
 		/**
 		 * Если возникает ошибка
@@ -569,45 +455,31 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 							// Если размер полезной нагрузки установлен
 							if(header.bytes > 0)
 								// Выполняем копирование данных полезной нагрузки
-								::memcpy(i->second->payload.get() + i->second->offset, reinterpret_cast <const uint8_t *> (buffer) + result, header.bytes);
-							// Устанавливаем смещение в временном буфере данных
-							i->second->offset += header.bytes;
+								i->second->push(reinterpret_cast <const uint8_t *> (buffer) + result, header.bytes);
 							// Если запись мы получили последнюю
 							if(header.mode == mode_t::END){
-								// Если данные мы собрали правильно
-								if(i->second->size == i->second->offset)
-									// Выполняем перемещение данных в очередь
-									this->_data.push(i->second->payload.get(), i->second->size);
-								// Выводим сообщение об ошибке
-								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, i->second->offset, i->second->size, "we received damage during the data collection process");
+								// Выполняем перемещение данных в очередь
+								this->_queue.push(i->second->get(), i->second->size());
 								// Выполняем удаление данных из временного контейнера
 								this->_tmp.erase(i);
 							}
 						// Если запись не найдена во временном блоке данных
 						} else {
-							// Выполняем создание нового буфера данных
-							std::unique_ptr <buffer_t> data = std::unique_ptr <buffer_t> (new buffer_t);
-							// Выполняем установку размера буфера данных полезной нагрузки
-							data->size = header.size;
-							// Устанавливаем смещение в временном буфере данных
-							data->offset = header.bytes;
-							// Если размер полезной нагрузки установлен
-							if(data->offset > 0){
-								// Выделяем память для полезной нагрузки временного буфера данных
-								data->payload = std::unique_ptr <uint8_t []> (new uint8_t [data->size]);
-								// Выполняем копирование данных полезной нагрузки
-								::memcpy(data->payload.get(), reinterpret_cast <const uint8_t *> (buffer) + result, data->offset);
-							}
 							// Если запись мы получили последнюю
-							if(header.mode == mode_t::END){
-								// Если данные мы собрали правильно
-								if(data->size == data->offset)
-									// Выполняем перемещение данных в очередь
-									this->_data.push(data->payload.get(), data->size);
-								// Выводим сообщение об ошибке
-								else this->_log->print("CMP Decoder: [SIZE=%zu, MAX_SIZE=%zu] %s", log_t::flag_t::CRITICAL, data->offset, data->size, "we received damage during the data process");
-							// Выполняем добавление записи во временный объект
-							} else this->_tmp.emplace(id, std::move(data));
+							if(header.mode == mode_t::END)
+								// Выполняем перемещение данных в очередь
+								this->_queue.push(reinterpret_cast <const uint8_t *> (buffer) + result, header.size);
+							// Если мы получили одну из записей
+							else {
+								// Выполняем добавление записи во временный объект
+								auto ret = this->_tmp.emplace(id, std::unique_ptr <buffer_t> (new buffer_t(this->_log)));
+								// Выделяем достаточно данных для формирования объекта
+								ret.first->second->reserve(header.size);
+								// Если размер полезной нагрузки установлен
+								if(header.bytes > 0)
+									// Выполняем копирование данных полезной нагрузки
+									ret.first->second->push(reinterpret_cast <const uint8_t *> (buffer) + result, header.bytes);
+							}
 						}
 						// Выполняем увеличение смещения
 						result += header.bytes;

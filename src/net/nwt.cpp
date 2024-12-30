@@ -16,6 +16,152 @@
 #include <net/nwt.hpp>
 
 /**
+ * Оператор перемещения
+ * @param url параметры падреса
+ * @return    параметры URL-запроса
+ */
+awh::NWT::URL & awh::NWT::URL::operator = (url_t && url) noexcept {
+	// Выполняем копирование тип URL-адреса
+	this->type = url.type;
+	// Выполняем копирование порта URL-адреса
+	this->port = url.port;
+	// Выполняем перемещение полного URI-параметров
+	this->uri = std::move(url.uri);
+	// Выполняем перемещение хоста URL-адреса
+	this->host = std::move(url.host);
+	// Выполняем перемещение пути URL-адреса
+	this->path = std::move(url.path);
+	// Выполняем перемещение ника пользователя (для электронной почты)
+	this->user = std::move(url.user);
+	// Выполняем перемещение пароля пользователя
+	this->pass = std::move(url.pass);
+	// Выполняем перемещение якоря URL-адреса
+	this->anchor = std::move(url.anchor);
+	// Выполняем перемещение домена верхнего уровня
+	this->domain = std::move(url.domain);
+	// Выполняем перемещение параметров URL-адреса
+	this->params = std::move(url.params);
+	// Выполняем перемещение протокола URL-адреса
+	this->schema = std::move(url.schema);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор присванивания
+ * @param url параметры падреса
+ * @return    параметры URL-запроса
+ */
+awh::NWT::URL & awh::NWT::URL::operator = (const url_t & url) noexcept {
+	// Выполняем копирование тип URL-адреса
+	this->type = url.type;
+	// Выполняем копирование порта URL-адреса
+	this->port = url.port;
+	// Выполняем копирование полного URI-параметров
+	this->uri = url.uri;
+	// Выполняем копирование хоста URL-адреса
+	this->host = url.host;
+	// Выполняем копирование пути URL-адреса
+	this->path = url.path;
+	// Выполняем копирование ника пользователя (для электронной почты)
+	this->user = url.user;
+	// Выполняем копирование пароля пользователя
+	this->pass = url.pass;
+	// Выполняем копирование якоря URL-адреса
+	this->anchor = url.anchor;
+	// Выполняем копирование домена верхнего уровня
+	this->domain = url.domain;
+	// Выполняем копирование параметров URL-адреса
+	this->params = url.params;
+	// Выполняем копирование протокола URL-адреса
+	this->schema = url.schema;
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор сравнения
+ * @param url параметры падреса
+ * @return    результат сравнения
+ */
+bool awh::NWT::URL::operator == (const url_t & url) noexcept {
+	// Выполняем сравнение параметров
+	return (
+		(this->type == url.type) &&
+		(this->port == url.port) &&
+		(this->uri.compare(url.uri) == 0) &&
+		(this->host.compare(url.host) == 0) &&
+		(this->path.compare(url.path) == 0) &&
+		(this->user.compare(url.user) == 0) &&
+		(this->pass.compare(url.pass) == 0) &&
+		(this->anchor.compare(url.anchor) == 0) &&
+		(this->domain.compare(url.domain) == 0) &&
+		(this->params.compare(url.params) == 0) &&
+		(this->schema.compare(url.schema) == 0)
+	);
+}
+/**
+ * URL Конструктор перемещения
+ * @param uri параметры падреса
+ */
+awh::NWT::URL::URL(url_t && url) noexcept {
+	// Выполняем копирование тип URL-адреса
+	this->type = url.type;
+	// Выполняем копирование порта URL-адреса
+	this->port = url.port;
+	// Выполняем перемещение полного URI-параметров
+	this->uri = std::move(url.uri);
+	// Выполняем перемещение хоста URL-адреса
+	this->host = std::move(url.host);
+	// Выполняем перемещение пути URL-адреса
+	this->path = std::move(url.path);
+	// Выполняем перемещение ника пользователя (для электронной почты)
+	this->user = std::move(url.user);
+	// Выполняем перемещение пароля пользователя
+	this->pass = std::move(url.pass);
+	// Выполняем перемещение якоря URL-адреса
+	this->anchor = std::move(url.anchor);
+	// Выполняем перемещение домена верхнего уровня
+	this->domain = std::move(url.domain);
+	// Выполняем перемещение параметров URL-адреса
+	this->params = std::move(url.params);
+	// Выполняем перемещение протокола URL-адреса
+	this->schema = std::move(url.schema);
+}
+/**
+ * URL Конструктор копирования
+ * @param url параметры падреса
+ */
+awh::NWT::URL::URL(const url_t & url) noexcept {
+	// Выполняем копирование тип URL-адреса
+	this->type = url.type;
+	// Выполняем копирование порта URL-адреса
+	this->port = url.port;
+	// Выполняем копирование полного URI-параметров
+	this->uri = url.uri;
+	// Выполняем копирование хоста URL-адреса
+	this->host = url.host;
+	// Выполняем копирование пути URL-адреса
+	this->path = url.path;
+	// Выполняем копирование ника пользователя (для электронной почты)
+	this->user = url.user;
+	// Выполняем копирование пароля пользователя
+	this->pass = url.pass;
+	// Выполняем копирование якоря URL-адреса
+	this->anchor = url.anchor;
+	// Выполняем копирование домена верхнего уровня
+	this->domain = url.domain;
+	// Выполняем копирование параметров URL-адреса
+	this->params = url.params;
+	// Выполняем копирование протокола URL-адреса
+	this->schema = url.schema;
+}
+/**
+ * URL Конструктор
+ */
+awh::NWT::URL::URL() noexcept :
+ type(types_t::NONE), port(0), uri{""},
+ host{""}, path{""}, user{""}, pass{""},
+ anchor{""}, domain{""}, params{""}, schema{""} {}
+/**
  * zone Метод установки пользовательской зоны
  * @param zone пользовательская зона
  */
@@ -54,18 +200,18 @@ void awh::NWT::clear() noexcept {
  * @param text текст для парсинга
  * @return     параметры полученные в результате парсинга
  */
-awh::NWT::uri_t awh::NWT::parse(const string & text) noexcept {
+awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 	// Результат работы функции
-	uri_t result;
+	url_t result;
 	// Если текст передан
 	if(!text.empty()){
 		/**
 		 * emailFn Функция извлечения данных электронного адреса
 		 * @param text текст для парсинга
 		 */
-		auto emailFn = [this](const string & text) noexcept -> uri_t {
+		auto emailFn = [this](const string & text) noexcept -> url_t {
 			// Результат работы функции
-			uri_t result;
+			url_t result;
 			// Если текст передан
 			if(!text.empty()){
 				// Выполняем проверку электронной почты
@@ -91,9 +237,9 @@ awh::NWT::uri_t awh::NWT::parse(const string & text) noexcept {
 		 * urlFn Функция извлечения данных URL адресов
 		 * @param text текст для парсинга
 		 */
-		auto urlFn = [this](const string & text) noexcept -> uri_t {
+		auto urlFn = [this](const string & text) noexcept -> url_t {
 			// Результат работы функции
-			uri_t result;
+			url_t result;
 			// Если текст передан
 			if(!text.empty()){
 				// Выполняем проверку URL адреса
@@ -146,9 +292,9 @@ awh::NWT::uri_t awh::NWT::parse(const string & text) noexcept {
 		 * ipFn Функция извлечения данных IP адресов
 		 * @param text текст для парсинга
 		 */
-		auto ipFn = [this](const string & text) noexcept -> uri_t {
+		auto ipFn = [this](const string & text) noexcept -> url_t {
 			// Результат работы функции
-			uri_t result;
+			url_t result;
 			// Если текст передан
 			if(!text.empty()){
 				// Выполняем проверку IP адреса
@@ -190,7 +336,7 @@ awh::NWT::uri_t awh::NWT::parse(const string & text) noexcept {
 		// Очищаем результаты предыдущей работы
 		this->clear();
 		// Запрашиваем данные URL адреса
-		uri_t url = urlFn(text);
+		url_t url = urlFn(text);
 		// Если мы получили какие-то достоверные параметры
 		if((url.type == types_t::URL) && ((url.port > 0) ||
 		   !url.path.empty() || !url.pass.empty() ||
@@ -200,7 +346,7 @@ awh::NWT::uri_t awh::NWT::parse(const string & text) noexcept {
 		// Если URL адрес мы не получили
 		else {
 			// Выполняем извлечение E-Mail адреса
-			uri_t email = emailFn(text);
+			url_t email = emailFn(text);
 			// Если мы получили E-Mail адрес
 			if(email.type == types_t::EMAIL)
 				// Устанавливаем полученный результат
@@ -208,7 +354,7 @@ awh::NWT::uri_t awh::NWT::parse(const string & text) noexcept {
 			// Если E-Mail адрес мы не получили
 			else {
 				// Выполняем извлечение IP адреса
-				uri_t ip = ipFn(text);
+				url_t ip = ipFn(text);
 				// Если мы получили IP адрес
 				if((ip.type == types_t::IPV4) || (ip.type == types_t::IPV6) || (ip.type == types_t::MAC) || (ip.type == types_t::NETWORK))
 					// Устанавливаем полученный результат

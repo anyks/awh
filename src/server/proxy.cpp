@@ -112,11 +112,8 @@ void awh::server::Proxy::available(const broker_t broker, const uint64_t bid, co
  * @param bid    идентификатор брокера
  * @param buffer буфер полезной нагрузки которую не получилось отправить
  * @param size   размер буфера полезной нагрузки
- * @param core   объект сетевого ядра
  */
-void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size, awh::core_t * core) noexcept {
-	// Блокируем неиспользуемую переменную
-	(void) core;
+void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Флаг разрешения добавления неотправленных данных во временный буфер полезной нагрузки
 	bool allow = true;
 	// Если функция обратного вызова установлена
@@ -171,10 +168,7 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
  * @param name  название функции обратного вызова
  * @param dump  дамп данных функции обратного вызова
  */
-void awh::server::Proxy::eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
-	// Блокируем пустые переменные
-	(void) idw;
-	(void) dump;
+void awh::server::Proxy::eventCallback(const fn_t::event_t event, [[maybe_unused]] const uint64_t idw, const string & name, [[maybe_unused]] const fn_t::dump_t * dump) noexcept {
 	// Определяем входящее событие контейнера функций обратного вызова
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
@@ -219,10 +213,7 @@ void awh::server::Proxy::eraseClient(const uint64_t bid) noexcept {
  * @param rid    идентификатор запроса
  * @param direct направление передачи данных
  */
-void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const client::web_t::direct_t direct) noexcept {
-	// Блокируем пустые переменные
-	(void) sid;
-	(void) rid;
+void awh::server::Proxy::endClient([[maybe_unused]] const int32_t sid, const uint64_t bid, [[maybe_unused]] const uint64_t rid, const client::web_t::direct_t direct) noexcept {
 	// Если мы получили данные
 	if(direct == client::web_t::direct_t::RECV){
 		// Выполняем поиск объекта клиента
@@ -249,10 +240,7 @@ void awh::server::Proxy::endClient(const int32_t sid, const uint64_t bid, const 
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  */
-void awh::server::Proxy::responseClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message) noexcept {
-	// Блокируем пустую переменную
-	(void) sid;
-	(void) rid;
+void awh::server::Proxy::responseClient([[maybe_unused]] const int32_t sid, const uint64_t bid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message) noexcept {
 	// Если возникла ошибка, выводим сообщение
 	if(code >= 300)
 		// Выводим сообщение о неудачном запросе
@@ -283,7 +271,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
 			ret.first->second->core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&server::proxy_t::available, this, broker_t::CLIENT, _1, _2, &ret.first->second->core));
 			// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-			ret.first->second->core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&server::proxy_t::unavailable, this, broker_t::CLIENT, _1, _2, _3, &ret.first->second->core));
+			ret.first->second->core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&server::proxy_t::unavailable, this, broker_t::CLIENT, _1, _2, _3));
 			// Если чёрный список DNS-адресов установлен
 			if(!this->_settings.dns.blacklist.empty()){
 				// Выполняем перебор всего чёрного списка DNS-адресов
@@ -835,10 +823,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
  * @param url     URL-адрес параметров запроса
  * @param headers заголовки HTTP-запроса
  */
-void awh::server::Proxy::pushClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const awh::web_t::method_t method, const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept {
-	// Блокируем пустую переменную
-	(void) sid;
-	(void) rid;
+void awh::server::Proxy::pushClient([[maybe_unused]] const int32_t sid, const uint64_t bid, [[maybe_unused]] const uint64_t rid, const awh::web_t::method_t method, const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.is("push"))
 		// Выполняем функцию обратного вызова
@@ -2151,7 +2136,7 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
 	this->_core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&server::proxy_t::available, this, broker_t::SERVER, _1, _2, &this->_core));
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-	this->_core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&server::proxy_t::unavailable, this, broker_t::SERVER, _1, _2, _3, &this->_core));
+	this->_core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&server::proxy_t::unavailable, this, broker_t::SERVER, _1, _2, _3));
 	// Устанавливаем функцию удаления клиента из стека подключений сервера
 	this->_server.callback <void (const uint64_t)> ("erase", std::bind(&server::proxy_t::eraseClient, this, _1));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

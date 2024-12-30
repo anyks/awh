@@ -121,11 +121,7 @@ void awh::client::Sample::readEvent(const char * buffer, const size_t size, cons
  * @param sid идентификатор схемы сети
  * @return    результат активации зашифрованного канала SSL
  */
-bool awh::client::Sample::enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid) noexcept {
-	// Блокируем переменные которые не используем
-	(void) url;
-	(void) bid;
-	(void) sid;
+bool awh::client::Sample::enableSSLEvent([[maybe_unused]] const uri_t::url_t & url, [[maybe_unused]] const uint64_t bid, [[maybe_unused]] const uint16_t sid) noexcept {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Получаем тип активного протокола
@@ -142,9 +138,7 @@ bool awh::client::Sample::enableSSLEvent(const uri_t::url_t & url, const uint64_
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::client::Sample::chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
-	// Блокируем переменные которые не используем
-	(void) bid;
+void awh::client::Sample::chunking([[maybe_unused]] const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty())
 		// Выполняем добавление полученного чанка в тело ответа
@@ -188,9 +182,9 @@ void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t s
 					// Выполняем очистку параметров HTTP-запроса
 					this->_scheme.proxy.http.clear();
 					// Создаём объек запроса
-					awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
+					awh::web_t::req_t request(awh::web_t::method_t::CONNECT, this->_scheme.url);
 					// Получаем бинарные данные WEB запроса
-					const auto & buffer = this->_scheme.proxy.http.proxy(std::move(query));
+					const auto & buffer = this->_scheme.proxy.http.proxy(std::move(request));
 					// Если бинарные данные запроса получены
 					if(!buffer.empty()){
 						/**
@@ -227,7 +221,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::PROXY_CONNECT, event_t::PROXY_READ}, event_t::PROXY_READ)){
 			// Добавляем полученные данные в буфер
-			this->_buffer.emplace(buffer, size);
+			this->_buffer.push(buffer, size);
 			// Определяем тип прокси-сервера
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
@@ -235,7 +229,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 					// Если данные не получены
 					if(!this->_scheme.proxy.socks5.is(socks5_t::state_t::END)){
 						// Выполняем парсинг входящих данных
-						this->_scheme.proxy.socks5.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+						this->_scheme.proxy.socks5.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
 						// Получаем данные запроса
 						const auto & buffer = this->_scheme.proxy.socks5.get();
 						// Если данные получены
@@ -291,7 +285,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 					// Выполняем обработку полученных данных
 					while(this->_reading){
 						// Выполняем парсинг полученных данных
-						const size_t bytes = this->_scheme.proxy.http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+						const size_t bytes = this->_scheme.proxy.http.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
 						// Если все данные получены
 						if((bytes > 0) && this->_scheme.proxy.http.is(http_t::state_t::END)){
 							// Выполняем очистку буфера данных
@@ -373,7 +367,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 						// Если парсер обработал какое-то количество байт
 						if((bytes > 0) && !this->_buffer.empty()){
 							// Если размер буфера больше количества удаляемых байт
-							if(static_cast <size_t> (this->_buffer) >= bytes)
+							if(this->_buffer.size() >= bytes)
 								// Удаляем количество обработанных байт
 								this->_buffer.erase(bytes);
 						}
@@ -382,8 +376,6 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 							// Выходим из цикла
 							break;
 					}
-					// Фиксируем изменение в буфере
-					this->_buffer.commit();
 				} break;
 				// Иначе завершаем работу
 				default: const_cast <client::core_t *> (this->_core)->close(bid);
@@ -713,8 +705,8 @@ void awh::client::Sample::authTypeProxy(const auth_t::type_t type, const auth_t:
  * @param log  объект для работы с логами
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _bid(0), _reading(false), _complete(true), _attempt(0), _attempts(15),
- _net(log), _uri(fmk, log), _callbacks(log), _scheme(fmk, log), _fmk(fmk), _log(log), _core(core) {
+ _bid(0), _reading(false), _complete(true), _attempt(0), _attempts(15), _net(log),
+ _uri(fmk, log), _callbacks(log), _scheme(fmk, log), _buffer(log), _fmk(fmk), _log(log), _core(core) {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента

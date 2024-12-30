@@ -103,13 +103,53 @@ namespace awh {
 			/**
 			 * Payload Структура полезной нагрузки
 			 */
-			typedef struct Payload {
-				flag_t flag; // Флаг полезной нагрузки
-				string text; // Текст полезной нагрузки
-				/**
-				 * Payload Конструктор
-				 */
-				Payload() noexcept : flag(flag_t::NONE), text{""} {}
+			typedef class AWHSHARED_EXPORT Payload {
+				public:
+					// Флаг полезной нагрузки
+					flag_t flag;
+					// Текст полезной нагрузки
+					string text;
+				public:
+					/**
+					 * Оператор [=] перемещения параметров полезной нагрузки
+					 * @param payload объект полезной нагрузки для перемещения
+					 * @return        текущий объект полезной нагрузки
+					 */
+					Payload & operator = (Payload && payload) noexcept;
+					/**
+					 * Оператор [=] присванивания параметров полезной нагрузки
+					 * @param payload объект полезной нагрузки для копирования
+					 * @return        текущий объект полезной нагрузки
+					 */
+					Payload & operator = (const Payload & payload) noexcept;
+				public:
+					/**
+					 * Оператор сравнения
+					 * @param payload объект полезной нагрузки для сравнения
+					 * @return        результат сравнения
+					 */
+					bool operator == (const Payload & payload) noexcept;
+				public:
+					/**
+					 * Payload Конструктор перемещения
+					 * @param payload объект полезной нагрузки для перемещения
+					 */
+					Payload(Payload && payload) noexcept;
+					/**
+					 * Payload Конструктор копирования
+					 * @param payload объект полезной нагрузки для копирования
+					 */
+					Payload(const Payload & payload) noexcept;
+				public:
+					/**
+					 * Payload Конструктор
+					 */
+					Payload() noexcept;
+				public:
+					/**
+					 * ~Payload Деструктор
+					 */
+					~Payload() noexcept {}
 			} payload_t;
 		private:
 			// Идентификатор родительского процесса
@@ -159,9 +199,7 @@ namespace awh {
 			 * @param args аргументы для определения их количества
 			 * @return     количество найденных аргументов
 			 */
-			size_t count(TupType args) const noexcept {
-				// Зануляем неиспользуемую переменную
-				(void) args;
+			size_t count(TupType) const noexcept {
 				// Выводим количество переданных аргументов
 				return std::tuple_size_v <TupType>;
 			}

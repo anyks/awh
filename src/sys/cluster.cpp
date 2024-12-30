@@ -113,11 +113,11 @@
 									// Выполняем извлечение записей
 									while(!i->second->empty()){
 										// Получаем буфер бинарных данных
-										const auto & buffer = i->second->front();
+										const auto & buffer = i->second->get();
 										// Если буфер данных получен
-										if(!buffer.empty())
+										if((buffer.first != nullptr) && (buffer.second > 0))
 											// Выполняем функцию обратного вызова
-											this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, buffer.data(), buffer.size());
+											this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, reinterpret_cast <const char *> (buffer.first), buffer.second);
 										// Выводим значение по умолчанию
 										else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, nullptr, 0);
 										// Выполняем удаление указанной записи
@@ -209,11 +209,11 @@
 										// Выполняем извлечение записей
 										while(!i->second->empty()){
 											// Получаем буфер бинарных данных
-											const auto & buffer = i->second->front();
+											const auto & buffer = i->second->get();
 											// Если буфер данных получен
-											if(!buffer.empty())
+											if((buffer.first != nullptr) && (buffer.second > 0))
 												// Выполняем функцию обратного вызова
-												this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, buffer.data(), buffer.size());
+												this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, reinterpret_cast <const char *> (buffer.first), buffer.second);
 											// Выводим значение по умолчанию
 											else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, nullptr, 0);
 											// Выполняем удаление указанной записи
@@ -320,11 +320,7 @@
 	 * @param info   объект информации полученный системой
 	 * @param ctx    передаваемый внутренний контекст
 	 */
-	void awh::Cluster::child(int32_t signal, siginfo_t * info, void * ctx) noexcept {
-		// Зануляем неиспользуемые переменные
-		(void) ctx;
-		(void) info;
-		(void) signal;
+	void awh::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]] siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
 		// Идентификатор упавшего процесса
 		pid_t pid = 0;
 		// Статус упавшего процесса
@@ -356,9 +352,9 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 				// Выполняем перебор всех чанков протокола
 				while(!i->second->empty()){
 					// Получаем бинарный буфер данных
-					const auto & buffer = i->second->front();
+					const auto & buffer = i->second->get();
 					// Если данных в буфере нету, выходим из цикла
-					if(buffer.empty()){
+					if((buffer.first == nullptr) || (buffer.second == 0)){
 						// Процесс превратился в зомби, самоликвидируем его
 						this->_log->print("Cluster message sending stack was broken for process [%u]", log_t::flag_t::WARNING, ::getpid());
 						// Выходим из цикла
@@ -367,7 +363,7 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 					// Устанавливаем метку отправки данных
 					Send:
 					// Выполняем запись в сокет
-					const ssize_t bytes = ::write(fd, buffer.data(), buffer.size());
+					const ssize_t bytes = ::write(fd, reinterpret_cast <const char *> (buffer.first), buffer.second);
 					// Если данные доставлены успешно
 					if(bytes > 0)
 						// Удаляем чанк из объекта протокола

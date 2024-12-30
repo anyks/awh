@@ -249,7 +249,7 @@ void awh::server::Http2::callbacksEvents(const fn_t::event_t event, const uint64
 					// Выполняем установку функций обратного вызова для Websocket-сервера
 					this->_ws2.callbacks(callbacks);
 					// Выполняем установку функций обратного вызова для HTTP-сервера
-					this->_http1.callbacks(std::move(callbacks));
+					this->_http1.callbacks(callbacks);
 				}
 			}
 		} break;
@@ -2496,7 +2496,7 @@ void awh::server::Http2::callbacks(const fn_t & callbacks) noexcept {
 			// Выполняем установку функций обратного вызова для Websocket-сервера
 			this->_ws2.callbacks(callbacks);
 			// Выполняем установку функций обратного вызова для HTTP-сервера
-			this->_http1.callbacks(std::move(callbacks));
+			this->_http1.callbacks(callbacks);
 		}
 	}
 }

@@ -60,9 +60,7 @@ static std::function <void (const int32_t)> callbackFn = nullptr;
 	 * @param info   объект информации полученный системой
 	 * @param ctx    передаваемый внутренний контекст
 	 */
-	static void signalHandler(int32_t signal, siginfo_t * info, void * ctx) noexcept {
-		// Зануляем неиспользуемые переменные
-		(void) ctx;
+	static void signalHandler(int32_t signal, siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
 		// Если функция обратного вызова установлена, выводим её
 		if(callbackFn != nullptr){
 			// Если произошло убийство приложения
@@ -266,7 +264,7 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Signals::Signals(const fmk_t * fmk, const log_t * log) noexcept : _mode(false), _callback(nullptr) {
+awh::Signals::Signals([[maybe_unused]] const fmk_t * fmk, [[maybe_unused]] const log_t * log) noexcept : _mode(false), _callback(nullptr) {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -275,13 +273,6 @@ awh::Signals::Signals(const fmk_t * fmk, const log_t * log) noexcept : _mode(fal
 		awhFmk = fmk;
 		// Запоминаем объект для работы с логами
 		awhLog = log;
-	/**
-	 * Если операционной системой является MS Windows
-	 */
-	#else
-		// Зануляем неиспользуемые переменные
-		(void) fmk;
-		(void) log;
 	#endif
 }
 /**

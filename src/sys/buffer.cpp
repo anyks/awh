@@ -1,6 +1,6 @@
 /**
  * @file: buffer.cpp
- * @date: 2024-03-31
+ * @date: 2024-12-28
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -16,274 +16,332 @@
 #include <sys/buffer.hpp>
 
 /**
- * clear Метод очистки буфера данных
+ * clear Метод очистки всех данных очереди
  */
 void awh::Buffer::clear() noexcept {
-	// Выполняем сброс размера основного буфера данных
-	this->_size = 0;
-	// Выполняем сброс смещения в основном буфере данных
-	this->_offset = 0;
-	// Определяем режим работы буфера
-	switch(static_cast <uint8_t> (this->_mode)){
-		// Если установлен режим копирования полученных данных
-		case static_cast <uint8_t> (mode_t::COPY):
-			// Выполняем сброс временного буфера
-			this->_tmp.reset(nullptr);
-		break;
-		// Если установлен режим не копировать полученные данные
-		case static_cast <uint8_t> (mode_t::NO_COPY):
-			// Выполняем сброс основного буфера данных
-			this->_buffer = nullptr;
-		break;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::mutex> lock(this->_mtx);
+		// Память уже выделена для хранения данных
+		if(this->_data != nullptr){
+			// Выполняем удаление блока данных
+			::free(this->_data);
+			// Зануляем блок данных
+			this->_data = nullptr;
+		}
+		// Выполняем сброс последнего элемента в очереди
+		this->_end = 0;
+		// Выполняем сброс первого элемента в очереди
+		this->_begin = 0;
+		// Выполняем сброс текущего размера очереди
+		this->_size = 0;
+		// Выполняем сброс всего размера добавленных данных
+		this->_bytes = 0;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::bad_alloc &) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+		#endif
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
-	// Выполняем очистку буфера данных
-	this->_data.clear();
-	// Если размер выделенной памяти выше максимального размера буфера
-	if(this->_data.capacity() > AWH_BUFFER_SIZE)
-		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(this->_data);
 }
 /**
- * empty Метод проверки на пустоту буфера
+ * empty Метод проверки на заполненность очереди
  * @return результат проверки
  */
 bool awh::Buffer::empty() const noexcept {
 	// Выводим результат проверки
-	return (this->_data.empty() && ((this->_size == this->_offset) || (this->_size == 0)));
+	return (this->_end <= this->_begin);
 }
 /**
- * size Метод получения размера данных в буфере
- * @return размер данных в буфере
+ * size Метод получения размера добавленных данных
+ * @return размер всех добавленных данных
  */
 size_t awh::Buffer::size() const noexcept {
-	// Если буфер данных уже заполнен
-	if(!this->_data.empty())
-		// Выводим размер буфера данных
-		return this->_data.size();
-	// Если буфер данных ещё не заполнен
-	else return (this->_size - this->_offset);
+	// Если мы не дошли до конца
+	if(!this->empty())
+		// Выводим размер данных в буфере
+		return (this->_end - this->_begin);
+	// Выводим пустое значение
+	return 0;
 }
 /**
- * data Метод получения бинарных данных буфера
- * @return бинарные данные буфера
+ * get Получения данных указанного элемента в очереди
+ * @return указатель на элемент очереди
  */
-awh::Buffer::data_t awh::Buffer::data() const noexcept {
-	// Если буфер данных уже заполнен
-	if(!this->_data.empty())
-		// Выводим бинарные данные буфера полезной нагрузки
-		return this->_data.data();
-	// Если буфер данных ещё не заполнен
-	else {
-		// Определяем режим работы буфера
-		switch(static_cast <uint8_t> (this->_mode)){
-			// Если установлен режим копирования полученных данных
-			case static_cast <uint8_t> (mode_t::COPY):
-				// Выводим бинарные данные буфера полезной нагрузки
-				return (this->_tmp.get() + this->_offset);
-			// Если установлен режим не копировать полученные данные
-			case static_cast <uint8_t> (mode_t::NO_COPY):
-				// Выводим бинарные данные буфера полезной нагрузки
-				return (this->_buffer + this->_offset);
-		}
-	}
-	// Сообщаем, что ничего не найдено
+const uint8_t * awh::Buffer::get() const noexcept {
+	// Если мы не дошли до конца
+	if(!this->empty())
+		// Выводим буфер данных
+		return (this->_data + this->_begin);
+	// Выводим пустое значение
 	return nullptr;
 }
 /**
- * commit Метод фиксации изменений в буфере для перехода к следующей итерации
- */
-void awh::Buffer::commit() noexcept {
-	// Если буфер данных не заполнен
-	if(this->_data.empty() && (this->_offset < this->_size)){
-		// Определяем режим работы буфера
-		switch(static_cast <uint8_t> (this->_mode)){
-			// Если установлен режим копирования полученных данных
-			case static_cast <uint8_t> (mode_t::COPY):
-				// Выполняем добавление буфера
-				this->_data.insert(this->_data.end(), this->_tmp.get() + this->_offset, this->_tmp.get() + this->_size);
-			break;
-			// Если установлен режим не копировать полученные данные
-			case static_cast <uint8_t> (mode_t::NO_COPY):
-				// Выполняем добавление буфера
-				this->_data.insert(this->_data.end(), this->_buffer + this->_offset, this->_buffer + this->_size);
-			break;
-		}
-		// Выполняем сброс размера основного буфера данных
-		this->_size = 0;
-		// Выполняем сброс смещения в основном буфере данных
-		this->_offset = 0;
-		// Определяем режим работы буфера
-		switch(static_cast <uint8_t> (this->_mode)){
-			// Если установлен режим копирования полученных данных
-			case static_cast <uint8_t> (mode_t::COPY):
-				// Выполняем сброс временного буфера
-				this->_tmp.reset(nullptr);
-			break;
-			// Если установлен режим не копировать полученные данные
-			case static_cast <uint8_t> (mode_t::NO_COPY):
-				// Выполняем сброс основного буфера данных
-				this->_buffer = nullptr;
-			break;
-		}
-	}
-}
-/**
- * erase Метод удаления из буфера байт
+ * erase Метод удаления указанного количества байт
  * @param size количество байт для удаления
  */
 void awh::Buffer::erase(const size_t size) noexcept {
-	// Если количество байт для удаления передано
-	if(size > 0){
-		// Если буфер данных уже заполнен
-		if(!this->_data.empty()){
-			// Если размер буфера больше количества удаляемых байт
-			if(this->_data.size() >= size)
-				// Удаляем количество обработанных байт
-				this->_data.erase(this->_data.begin(), this->_data.begin() + size);
-				// vector <decltype(this->_data)::value_type> (this->_data.begin() + bytes, this->_data.end()).swap(this->_data);
-			// Если байт в буфере меньше
-			else {
-				// Выполняем очистку буфера данных
-				this->_data.clear();
-				// Если размер выделенной памяти выше максимального размера буфера
-				if(this->_data.capacity() > AWH_BUFFER_SIZE)
-					// Выполняем очистку временного буфера данных
-					vector <char> ().swap(this->_data);
-			}
-		// Если временный буфер не заполнен
-		} else {
-			// Если размер используемых данных превышает переданный размер
-			if((this->_size - this->_offset) >= size)
-				// Выполняем увеличение смещения в буфере
-				this->_offset += size;
-			// Иначе просто зануляем размеры
-			else {
-				// Выполняем сброс размера основного буфера данных
-				this->_size = 0;
-				// Выполняем сброс смещения в основном буфере данных
-				this->_offset = 0;
-				// Определяем режим работы буфера
-				switch(static_cast <uint8_t> (this->_mode)){
-					// Если установлен режим копирования полученных данных
-					case static_cast <uint8_t> (mode_t::COPY):
-						// Выполняем сброс временного буфера
-						this->_tmp.reset(nullptr);
-					break;
-					// Если установлен режим не копировать полученные данные
-					case static_cast <uint8_t> (mode_t::NO_COPY):
-						// Выполняем сброс основного буфера данных
-						this->_buffer = nullptr;
-					break;
-				}
-			}
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если мы не дошли до конца
+		if(!this->empty()){
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
+			// Выполняем смещение начала чтения в буфере
+			this->_begin += size;
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::bad_alloc &) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Memory allocation error");
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+		#endif
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
- * emplace Метод добавления нового сырого буфера
- * @param buffer бинарный буфер данных для добавления
- * @param size   размер бинарного буфера данных
+ * batch Метод установки размера выделяемой памяти
+ * @param batch размер выделяемой памяти
  */
-void awh::Buffer::emplace(const char * buffer, const size_t size) noexcept {
-	// Если буфер данных уже заполнен
-	if(!this->_data.empty()){
-		// Выполняем сброс размера основного буфера данных
-		this->_size = 0;
-		// Выполняем сброс смещения в основном буфере данных
-		this->_offset = 0;
-		// Определяем режим работы буфера
-		switch(static_cast <uint8_t> (this->_mode)){
-			// Если установлен режим копирования полученных данных
-			case static_cast <uint8_t> (mode_t::COPY):
-				// Выполняем сброс временного буфера
-				this->_tmp.reset(nullptr);
-			break;
-			// Если установлен режим не копировать полученные данные
-			case static_cast <uint8_t> (mode_t::NO_COPY):
-				// Выполняем сброс основного буфера данных
-				this->_buffer = nullptr;
-			break;
-		}
-		// Выполняем добавление буфера
-		this->_data.insert(this->_data.end(), buffer, buffer + size);
-		/*
-		// Выполняем увеличение буфера данных
-		this->_data.resize(this->_data.size() + size);
-		// Выполняем копирование новых полученных данных
-		::memcpy(this->_data.data() + (this->_data.size() - size), buffer, size);
+void awh::Buffer::batch(const size_t batch) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <std::mutex> lock(this->_mtx);
+	// Если размер батча увеличен
+	if(batch > 0)
+		// Выполняем установку нового значения батча
+		this->_batch = batch;
+	// Выполняем установку батча по умолчанию
+	else this->_batch = static_cast <size_t> (BATCH);
+}
+/**
+ * reserve Метод резервирования размера очереди
+ * @param size размер выделяемой памяти
+ */
+void awh::Buffer::reserve(const size_t size) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::mutex> lock(this->_mtx);
+		// Если данные ещё не выделены
+		if(this->_data == nullptr)
+			// Выделяем память для добавления данных
+			this->_data = reinterpret_cast <uint8_t *> (::malloc((size > 0 ? size : static_cast <size_t> (BATCH)) * sizeof(uint8_t)));
+		// Если размер батча стал выше чем был
+		else if((size > this->_batch) && (size > this->_size))
+			// Выполняем увеличение размеров памяти
+			this->_data = reinterpret_cast <uint8_t *> (::realloc(this->_data, size * sizeof(uint8_t)));
+		// Если размер батча увеличен
+		if(size > 0)
+			// Выполняем установку нового значения батча
+			this->_batch = size;
+		// Выполняем установку батча по умолчанию
+		else this->_batch = static_cast <size_t> (BATCH);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::bad_alloc &) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Memory allocation error");
+		/**
+		* Если режим отладки не включён
 		*/
-	// Если временный буфер не заполнен, тогда работаем с основным
-	} else if((this->_offset == this->_size) || (this->_size == 0)) {
-		// Выполняем сброс смещения в основном буфере данных
-		this->_offset = 0;
-		// Запоминаем размер буфера данных
-		this->_size = size;
-		// Определяем режим работы буфера
-		switch(static_cast <uint8_t> (this->_mode)){
-			// Если установлен режим копирования полученных данных
-			case static_cast <uint8_t> (mode_t::COPY): {
-				/**
-				 * Выполняем отлов ошибок
-				 */
-				try {
-					// Выполняем сброс временного буфера
-					this->_tmp.reset(nullptr);
-					// Выполняем создание буфера данных
-					this->_tmp = std::unique_ptr <char []> (new char [this->_size]);
-					// Выполняем копирование переданного буфера данных в временный буфер данных
-					::memcpy(this->_tmp.get(), buffer, this->_size);
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const std::bad_alloc &) {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						::fprintf(stderr, "%s\n", "Memory allocation error");
-					#endif
-					// Выходим из приложения
-					::exit(EXIT_FAILURE);
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+		#endif
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * push Метод добавления бинарного буфера данных в очередь
+ * @param buffer бинарный буфер для добавления
+ * @param size   размер бинарного буфера
+ */
+void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
+	// Если данные переданы правильно
+	if((buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если произошён сбой параметров буфера
+			if(this->_end > this->_size)
+				// Выполняем очистку буфера данных
+				this->clear();
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
+			// Если память ещё не выделена
+			if(this->_data == nullptr){
+				// Увеличиваем размер хранимых данных
+				this->_size += size;
+				// Выделяем память для добавления данных
+				this->_data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
+				// Выполняем копирование переданных данных в выделенную память
+				::memcpy(this->_data, buffer, size);
+			// Если данные уже выделены
+			} else {
+				// Если размер буфера выше размера блока данных
+				if(this->_size > this->_batch){
+					// Получаем размер актуальных данных в буфере
+					const size_t actual = (this->_end - this->_begin);
+					// Если мы можем перенести данные в начало
+					if((this->_size - actual) >= size){
+						// Выделяем новую порцию данных
+						uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(this->_size * sizeof(uint8_t)));
+						// Копируем в новую порцию данных список указателей
+						::memcpy(data, this->_data + this->_begin, actual * sizeof(uint8_t));
+						// Выполняем удаление старого буфера данных
+						::free(this->_data);
+						// Присваиваем старому буферу данных новый указатель
+						this->_data = data;
+						// Выполняем сброс начала расположения данных
+						this->_begin = 0;
+						// Выполняем сброс конца расположения данных
+						this->_end = actual;
+					}
 				}
-			} break;
-			// Если установлен режим не копировать полученные данные
-			case static_cast <uint8_t> (mode_t::NO_COPY):
-				// Запоминаем полученный буфер данных
-				this->_buffer = buffer;
-			break;
+				// Если в буфере данных достаточно памяти для добавления новых данных
+				if((this->_size - this->_end) >= size)
+					// Выполняем копирование переданных данных в выделенную память
+					::memcpy(this->_data + this->_end, buffer, size);
+				// Если в буфере данных места больше нет
+				else {
+					// Увеличиваем размер хранимых данных
+					this->_size += size;
+					// Выделяем новую порцию данных	
+					this->_data = reinterpret_cast <uint8_t *> (::realloc(this->_data, this->_size * sizeof(uint8_t)));
+					// Выполняем копирование переданных данных в выделенную память
+					::memcpy(this->_data + this->_end, buffer, size);
+				}
+			}
+			// Увеличиваем общий размер данных
+			this->_end += size;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	// Если в буфере ещё не обработанны предыдущие байты
-	} else if(this->_size > this->_offset) {
-		// Определяем режим работы буфера
-		switch(static_cast <uint8_t> (this->_mode)){
-			// Если установлен режим копирования полученных данных
-			case static_cast <uint8_t> (mode_t::COPY): {
-				// Устанавливаем ранее скопированные данные
-				this->_data.insert(this->_data.end(), this->_tmp.get() + this->_offset, this->_tmp.get() + this->_size);
-				// Выполняем сброс временного буфера
-				this->_tmp.reset(nullptr);
-			} break;
-			// Если установлен режим не копировать полученные данные
-			case static_cast <uint8_t> (mode_t::NO_COPY): {
-				// Устанавливаем ранее полученные данные
-				this->_data.insert(this->_data.end(), this->_buffer + this->_offset, this->_buffer + this->_size);
-				// Выполняем сброс основного буфера данных
-				this->_buffer = nullptr;
-			} break;
-		}
-		// Выполняем сброс размера основного буфера данных
-		this->_size = 0;
-		// Выполняем сброс смещения в основном буфере данных
-		this->_offset = 0;
-		// Устанавливаем только что полученные данные
-		this->_data.insert(this->_data.end(), buffer, buffer + size);
 	}
 }
 /**
@@ -291,35 +349,253 @@ void awh::Buffer::emplace(const char * buffer, const size_t size) noexcept {
  * @return размер данных в буфере
  */
 awh::Buffer::operator size_t() const noexcept {
-	// Выводим размер данных в буфере
+	// Выводим размер контейнера
 	return this->size();
 }
 /**
  * operator Получения бинарных данных буфера
  * @return бинарные данные буфера
  */
-awh::Buffer::operator awh::Buffer::data_t() const noexcept {
-	// Выводим бинарные данные буфера
-	return this->data();
+awh::Buffer::operator const char * () const noexcept {
+	// Выводим содержимое контейнера
+	return reinterpret_cast <const char *> (this->get());
 }
 /**
- * operator Получения режима работы буфера
- * @return режим работы буфера
+ * operator Оператор перемещения
+ * @param buffer буфер для перемещения
+ * @return       текущий контейнер буфера
  */
-awh::Buffer::operator awh::Buffer::mode_t() const noexcept {
-	// Выводим режим работы буфера
-	return this->_mode;
-}
-/**
- * Оператор [=] установки режима работы буфера
- * @param mode режим работы буфера для установки
- * @return     текущий объект
- */
-awh::Buffer & awh::Buffer::operator = (const mode_t mode) noexcept {
-	// Выполняем очистку буфера данных
-	this->clear();
-	// Выполняем установку режима работы буфера
-	this->_mode = mode;
+awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
+	// Если данные переданы правильно
+	if(!buffer.empty()){
+		// Выполняем очистку буфера данных
+		this->clear();
+		// Выполняем установку указателя на память
+		this->_data = buffer._data;
+		// Выполняем установку конечной позиции в буфере
+		this->_end = buffer._end;
+		// Выполням установку текущего размера очереди
+		this->_size = buffer._size;
+		// Выполняем установку начальной позиции в буфере
+		this->_begin = buffer._begin;
+		// Выполняем установку максимального размера блока памяти
+		this->_batch = buffer._batch;
+		// Выполняем установку размера всех добавленных данных
+		this->_bytes = buffer._bytes;
+		// Выполняем зануление конца позиции в буфере
+		buffer._end = 0;
+		// Выполняем зануление текущего размера очереди
+		buffer._size = 0;
+		// Выполняем зануление начальной позиции в буфере
+		buffer._begin = 0;
+		// Выполняем зануление максимального размера блока памяти
+		buffer._batch = 0;
+		// Выполняем зануление размера всех добавленных данных
+		buffer._bytes = 0;
+		// Выполняем удаление данных в буфере
+		buffer._data = nullptr;
+	}
 	// Выводим текущий объект
 	return (* this);
+}
+/**
+ * operator Оператор копирования
+ * @param buffer буфер для копирования
+ * @return       текущий контейнер буфера
+ */
+awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
+	// Если данные переданы правильно
+	if(!buffer.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем очистку буфера данных
+			this->clear();
+			// Выполняем установку максимального размера блока памяти
+			this->_batch = buffer._batch;
+			// Выполняем добавление памяти из полученного буфера
+			this->push(buffer.get(), buffer.size());
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * operator Оператор извлечения символов буфера по его индексу
+ * @param index индекс буфера
+ * @return      символ находящийся в буфере
+ */
+uint8_t awh::Buffer::operator [](const size_t index) const noexcept {
+	// Если буфер не пустой и индекс существует
+	if(!this->empty() && (index >= this->_begin) && (index < this->_end))
+		// Выводим индекс массива
+		return this->get()[index];
+	// Выводим пустое значение
+	return 0;
+}
+/**
+ * operator Оператор сравнения двух буферов
+ * @param buffer буфер для сравнения
+ * @return       результат сравнения
+ */
+bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
+	// Выполняем сравнение данных
+	return (
+		(this->_end == buffer._end) &&
+		(this->_begin == buffer._begin) &&
+		(this->_size == buffer._size) &&
+		(this->_batch == buffer._batch) &&
+		(this->_bytes == buffer._bytes) &&
+		(::memcmp(this->_data, buffer._data, this->_size) == 0)
+	);
+}
+/**
+ * Buffer Конструктор перемещения
+ * @param buffer буфер данных для перемещения
+ */
+awh::Buffer::Buffer(buffer_t && buffer) noexcept {
+	// Если данные переданы правильно
+	if(!buffer.empty()){
+		// Выполняем очистку буфера данных
+		this->clear();
+		// Выполняем установку указателя на память
+		this->_data = buffer._data;
+		// Выполняем установку конечной позиции в буфере
+		this->_end = buffer._end;
+		// Выполням установку текущего размера очереди
+		this->_size = buffer._size;
+		// Выполняем установку начальной позиции в буфере
+		this->_begin = buffer._begin;
+		// Выполняем установку максимального размера блока памяти
+		this->_batch = buffer._batch;
+		// Выполняем установку размера всех добавленных данных
+		this->_bytes = buffer._bytes;
+		// Выполняем зануление конца позиции в буфере
+		buffer._end = 0;
+		// Выполняем зануление текущего размера очереди
+		buffer._size = 0;
+		// Выполняем зануление начальной позиции в буфере
+		buffer._begin = 0;
+		// Выполняем зануление максимального размера блока памяти
+		buffer._batch = 0;
+		// Выполняем зануление размера всех добавленных данных
+		buffer._bytes = 0;
+		// Выполняем удаление данных в буфере
+		buffer._data = nullptr;
+	}
+}
+/**
+ * Buffer Конструктор копирования
+ * @param buffer буфер данных для копирования
+ */
+awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
+	// Если данные переданы правильно
+	if(!buffer.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем очистку буфера данных
+			this->clear();
+			// Выполняем установку максимального размера блока памяти
+			this->_batch = buffer._batch;
+			// Выполняем добавление памяти из полученного буфера
+			this->push(buffer.get(), buffer.size());
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+}
+/**
+ * Buffer Конструктор
+ * @param log объект для работы с логами
+ */
+awh::Buffer::Buffer(const log_t * log) noexcept :
+ _end(0), _begin(0), _size(0), _batch(BATCH), _bytes(0), _data(nullptr), _log(log) {}
+/**
+ * Buffer Конструктор
+ * @param batch максимальный размер выделяемой памяти
+ * @param log   объект для работы с логами
+ */
+awh::Buffer::Buffer(const size_t batch, const log_t * log) noexcept :
+ _end(0), _begin(0), _size(0), _batch(batch), _bytes(0), _data(nullptr), _log(log) {}
+/**
+ * ~Buffer Деструктор
+ */
+awh::Buffer::~Buffer() noexcept {
+	// Память уже выделена для хранения данных
+	if(this->_data != nullptr)
+		// Выполняем удаление блока данных
+		::free(this->_data);
 }

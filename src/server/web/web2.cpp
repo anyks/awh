@@ -67,7 +67,7 @@ void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid) no
 			// Выполняем создание нового объекта сессии HTTP/2
 			auto ret = this->_sessions.emplace(bid, std::unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
 			// Выполняем установку функции обратного вызова
-			ret.first->second->callbacks(std::move(callbacks));
+			ret.first->second->callbacks(callbacks);
 			// Если инициализация модуля NgHttp2 не выполнена
 			if(!ret.first->second->init(http2_t::mode_t::SERVER, this->_settings))
 				// Выполняем удаление созданного ранее объекта

@@ -33,6 +33,7 @@
  * Стандартная библиотека
  */
 #include <mutex>
+#include <vector>
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
@@ -62,6 +63,11 @@ namespace awh {
 				BACK  = 0x01, // Конец очереди
 				FRONT = 0x02  // Начало очереди
 			};
+		public:
+			/**
+			 * Создаём тип данных инарного буфера
+			 */
+			typedef std::pair <const void *, size_t> buffer_t;
 		private:
 			// Количество аллоцированных элементов
 			static constexpr uint16_t BATCH = 0x3E8;
@@ -145,6 +151,12 @@ namespace awh {
 			 * @param size   размер бинарного буфера
 			 */
 			void push(const void * buffer, const size_t size) noexcept;
+			/**
+			 * push Метод добавления бинарного буфера данных в очередь
+			 * @param buffers список бинарных буферов для добавления
+			 * @param size    общий размер добавляемых данных
+			 */
+			void push(const vector <buffer_t> & buffers, const size_t size) noexcept;
 		public:
 			/**
 			 * Queue Конструктор

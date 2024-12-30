@@ -329,9 +329,8 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер полезной нагрузки которую не получилось отправить
 				 * @param size   размер буфера полезной нагрузки
-				 * @param core   объект сетевого ядра
 				 */
-				void unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size, awh::core_t * core) noexcept;
+				void unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова

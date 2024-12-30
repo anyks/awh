@@ -764,7 +764,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
 						}) == this->_serversIPv4.end()){
 							// Выполняем добавление полученный сервер в список NTP-серверов
-							this->_serversIPv4.push_back(std::move(server));
+							this->_serversIPv4.push_back(server);
 							/**
 							 * Если включён режим отладки
 							 */
@@ -790,7 +790,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
 						}) == this->_serversIPv6.end()){
 							// Выполняем добавление полученный сервер в список NTP-серверов
-							this->_serversIPv6.push_back(std::move(server));
+							this->_serversIPv6.push_back(server);
 							/**
 							 * Если включён режим отладки
 							 */

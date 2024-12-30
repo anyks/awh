@@ -920,7 +920,7 @@ void awh::client::Http2::eventCallback(const fn_t::event_t event, const uint64_t
 					// Выполняем установку функций обратного вызова для Websocket-клиента
 					this->_ws2.callbacks(callbacks);
 					// Выполняем установку функции обратного вызова для HTTP-клиента
-					this->_http1.callbacks(std::move(callbacks));
+					this->_http1.callbacks(callbacks);
 				}
 			}
 		} break;
@@ -1881,7 +1881,7 @@ void awh::client::Http2::callbacks(const fn_t & callbacks) noexcept {
 		// Если функции обратного вызова установлены
 		if(!callbacks.empty())
 			// Выполняем установку функций обратного вызова для Websocket-клиента
-			this->_ws2.callbacks(std::move(callbacks));
+			this->_ws2.callbacks(callbacks);
 	}{
 		// Создаём локальный контейнер функций обратного вызова
 		fn_t callbacks(this->_log);
@@ -1910,7 +1910,7 @@ void awh::client::Http2::callbacks(const fn_t & callbacks) noexcept {
 		// Если функции обратного вызова установлены
 		if(!callbacks.empty())
 			// Выполняем установку функции обратного вызова для HTTP-клиента
-			this->_http1.callbacks(std::move(callbacks));
+			this->_http1.callbacks(callbacks);
 	}
 }
 /**

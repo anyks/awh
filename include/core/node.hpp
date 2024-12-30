@@ -31,6 +31,7 @@
 #include <net/uri.hpp>
 #include <net/dns.hpp>
 #include <net/engine.hpp>
+#include <sys/buffer.hpp>
 #include <core/core.hpp>
 #include <scheme/core.hpp>
 
@@ -89,21 +90,6 @@ namespace awh {
 				// Для отправки сообщений
 				std::recursive_mutex send;
 			} mtx_t;
-			/**
-			 * Payload Структура полезной нагрузки
-			 */
-			typedef struct Payload {
-				size_t pos;                     // Позиция в буфере
-				size_t size;                    // Размер буфера
-				size_t offset;                  // Смещение в бинарном буфере
-				std::unique_ptr <char []> data; // Данные буфера
-				/**
-				 * Payload Конструктор
-				 */
-				Payload() noexcept :
-				 pos(0), size(0),
-				 offset(0), data(nullptr) {}
-			} payload_t;
 			/**
 			 * Settings Структура текущих параметров сети
 			 */
@@ -164,10 +150,10 @@ namespace awh {
 			std::map <uint64_t, size_t> _available;
 			// Список активных схем сети
 			std::map <uint16_t, const scheme_t *> _schemes;
-			// Буферы отправляемой полезной нагрузки
-			std::map <uint64_t, std::queue <payload_t>> _payloads;
 			// Список брокеров подключения
 			std::map <uint64_t, const scheme_t::broker_t *> _brokers;
+			// Буферы отправляемой полезной нагрузки
+			std::map <uint64_t, std::unique_ptr <buffer_t>> _payloads;
 		protected:
 			// Объект DNS-резолвера
 			const dns_t * _dns;
@@ -208,15 +194,16 @@ namespace awh {
 			uint16_t sid(const uint64_t bid) const noexcept;
 		protected:
 			/**
-			 * available Метод освобождение памяти занятой для хранение полезной нагрузки брокера
+			 * initBuffer Метод инициализации буфера полезной нагрузки
 			 * @param bid идентификатор брокера
 			 */
-			void available(const uint64_t bid) noexcept;
+			void initBuffer(const uint64_t bid) noexcept;
 			/**
-			 * createBuffer Метод инициализации буфера полезной нагрузки
-			 * @param bid идентификатор брокера
+			 * erase Метод освобождение памяти занятой для хранение полезной нагрузки брокера
+			 * @param bid  идентификатор брокера
+			 * @param size размер байт удаляемых из буфера
 			 */
-			void createBuffer(const uint64_t bid) noexcept;
+			void erase(const uint64_t bid, const size_t size) noexcept;
 		protected:
 			/**
 			 * broker Метод извлечения брокера подключения
@@ -224,14 +211,6 @@ namespace awh {
 			 * @return    объект брокера подключения
 			 */
 			const scheme_t::broker_t * broker(const uint64_t bid) const noexcept;
-		private:
-			/**
-			 * emplace Метод добавления нового буфера полезной нагрузки
-			 * @param buffer бинарный буфер полезной нагрузки
-			 * @param size   размер бинарного буфера полезной нагрузки
-			 * @param bid    идентификатор брокера
-			 */
-			void emplace(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 		public:
 			/**
 			 * scheme Метод добавления схемы сети

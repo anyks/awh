@@ -43,9 +43,7 @@ void awh::Timer::closedown(const bool mode, const bool status) noexcept {
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
-void awh::Timer::event(const uint16_t tid, const SOCKET fd, const base_t::event_type_t event) noexcept {
-	// Блокируем неиспользуемые переменные
-	(void) fd;
+void awh::Timer::event([[maybe_unused]] const uint16_t tid, const SOCKET fd, const base_t::event_type_t event) noexcept {
 	// Определяем тип события
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие таймера

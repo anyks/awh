@@ -54,8 +54,15 @@ namespace awh {
 					 * Buffer Структура буфера данных
 					 */
 					typedef struct Buffer {
-						awh::buffer_t payload; // Бинарный буфер полезной нагрузки
-						vector <char> fragmes; // Данные фрагметрированного сообщения
+						// Бинарный буфер полезной нагрузки
+						awh::buffer_t payload;
+						// Данные фрагметрированного сообщения
+						vector <char> fragmes;
+						/**
+						 * Buffer Конструктор
+						 * @param log объект для работы с логами
+						 */
+						Buffer(const log_t * log) noexcept : payload(log) {}
 					} buffer_t;
 					/**
 					 * Allow Структура флагов разрешения обменом данных
@@ -126,9 +133,9 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
-						 close(false), shake(false), crypted(false),
-						 inflate(false), stopped(false), sid(1), point(0),
-						 sendPing(0), hash(log), frame(fmk, log), http(fmk, log),
+						 close(false), shake(false), crypted(false), inflate(false),
+						 stopped(false), sid(1), point(0), sendPing(0), hash(log),
+						 frame(fmk, log), buffer(log), http(fmk, log),
 						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),
 						 compressor(http_t::compressor_t::NONE) {}

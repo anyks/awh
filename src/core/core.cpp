@@ -422,9 +422,7 @@ void awh::Core::start() noexcept {
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
  */
-void awh::Core::launching(const bool mode, const bool status) noexcept {
-	// Блокируем неиспользуемую переменную
-	(void) mode;
+void awh::Core::launching([[maybe_unused]] const bool mode, const bool status) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.status);
 	// Если требуется изменить статус
@@ -448,9 +446,7 @@ void awh::Core::launching(const bool mode, const bool status) noexcept {
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
  */
-void awh::Core::closedown(const bool mode, const bool status) noexcept {
-	// Блокируем неиспользуемую переменную
-	(void) mode;
+void awh::Core::closedown([[maybe_unused]] const bool mode, const bool status) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.status);
 	// Если требуется изменить статус

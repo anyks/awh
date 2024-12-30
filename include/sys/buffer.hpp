@@ -1,6 +1,6 @@
 /**
  * @file: buffer.hpp
- * @date: 2024-03-31
+ * @date: 2024-12-28
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,22 +12,35 @@
  * @copyright: Copyright © 2024
  */
 
-#ifndef __AWH_WEB_BUFFER__
-#define __AWH_WEB_BUFFER__
+#ifndef __AWH_BUFFER__
+#define __AWH_BUFFER__
 
 /**
- * Стандартные модули
+ * Подстраиваемся под операционную систему
  */
-#include <vector>
-#include <memory>
-#include <string>
+#if defined(__BORLANDC__)
+	typedef unsigned char uint8_t;
+	typedef __int64 int64_t;
+	typedef unsigned long uintptr_t;
+#elif defined(_MSC_VER)
+	typedef unsigned char uint8_t;
+	typedef __int64 int64_t;
+#else
+	#include <stdint.h>
+#endif
+
+/**
+ * Стандартная библиотека
+ */
+#include <mutex>
 #include <cstring>
+#include <cstdlib>
+#include <algorithm>
 
 /**
- * Разрешаем сборку под Windows
+ * Подключаем наши заголовочные файлы
  */
-#include <sys/lib.hpp>
-#include <sys/global.hpp>
+#include <sys/log.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -37,78 +50,205 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Buffer Клас динамического смарт-буфера
+	 * Buffer Класс создания очереди
 	 */
 	typedef class AWHSHARED_EXPORT Buffer {
-		public:
-			/**
-			 * Режим работы буфера
-			 */
-			enum class mode_t : uint8_t {
-				COPY    = 0x01, // Копировать полученные данные
-				NO_COPY = 0x02  // Не копировать полученные данные
-			};
-		public:
-			// Создаём новый тип данных буфера
-			typedef const char * data_t;
 		private:
-			// Режим работы буфера
-			mode_t _mode;
+			// Количество аллоцированных элементов 100Mb
+			static constexpr uint32_t BATCH = 0x6400000;
 		private:
-			// Размер буфера
+			// Последний элемент в очереди
+			size_t _end;
+			// Первый элемент в очереди
+			size_t _begin;
+		private:
+			// Текущий размер очереди
 			size_t _size;
-			// Смещение в буфере
-			size_t _offset;
 		private:
-			// Данные входящего буфера
-			data_t _buffer;
+			// Максимальный размер выделяемой памяти
+			size_t _batch;
 		private:
-			// Постоянный буфер ожидания
-			vector <char> _data;
+			// Размер всех добавленных данных
+			size_t _bytes;
 		private:
-			// Временный буфер входящих данных
-			std::unique_ptr <char []> _tmp;
+			// Мютекс для блокировки потока
+			std::mutex _mtx;
+		private:
+			// Адреса добавленных данных
+			uint8_t * _data;
+		private:
+			// Объект для работы с логами
+			const log_t * _log;
 		public:
 			/**
-			 * clear Метод очистки буфера данных
+			 * clear Метод очистки всех данных очереди
 			 */
 			void clear() noexcept;
 		public:
 			/**
-			 * empty Метод проверки на пустоту буфера
+			 * empty Метод проверки на заполненность очереди
 			 * @return результат проверки
 			 */
 			bool empty() const noexcept;
 		public:
 			/**
-			 * size Метод получения размера данных в буфере
-			 * @return размер данных в буфере
+			 * size Метод получения размера добавленных данных
+			 * @return размер всех добавленных данных
 			 */
 			size_t size() const noexcept;
 		public:
 			/**
-			 * data Метод получения бинарных данных буфера
-			 * @return бинарные данные буфера
+			 * Шаблон для метода удаления верхних записей
+			 * @tparam T тип данных для удаления
 			 */
-			data_t data() const noexcept;
+			template <typename T>
+			/**
+			 * pop Метод удаления верхних записей
+			 */
+			void pop() noexcept {
+				// Если мы не дошли до конца
+				if(!this->empty())
+					// Выполняем удаление указанного количества байт
+					this->erase(sizeof(T));
+			}
 		public:
 			/**
-			 * commit Метод фиксации изменений в буфере для перехода к следующей итерации
+			 * Шаблон для метода получения количества элементов в бинарном буфере
+			 * @tparam T тип данных для подсчёта
 			 */
-			void commit() noexcept;
+			template <typename T>
+			/**
+			 * count Метод получения количества элементов в бинарном буфере
+			 * @return количество всех добавленных лементов
+			 */
+			size_t count() const noexcept {
+				// Если мы не дошли до конца
+				if(!this->empty())
+					// Выводим размер данных в буфере
+					return (this->size() / sizeof(T));
+				// Выводим пустое значение
+				return 0;
+			}
 		public:
 			/**
-			 * erase Метод удаления из буфера байт
+			 * Шаблон для метода извлечения нижнего значения в буфере
+			 * @tparam T тип данных для извлечения
+			 */
+			template <typename T>
+			/**
+			 * back Метод извлечения нижнего значения в буфере
+			 * @return данные содержащиеся в буфере
+			 */
+			T back() const noexcept {
+				// Результат работы функции
+				T result = 0;
+				// Если контейнер не пустой
+				if(!this->empty()){
+					// Получаем размер данных
+					const size_t size = sizeof(result);
+					// Выполняем копирование данных контейнера
+					::memcpy(&result, this->get() + (this->_end - size), size);
+				}
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * Шаблон для метода извлечения верхнего значения в буфере
+			 * @tparam T тип данных для извлечения
+			 */
+			template <typename T>
+			/**
+			 * front Метод извлечения верхнего значения в буфере
+			 * @return данные содержащиеся в буфере
+			 */
+			T front() const noexcept {
+				// Результат работы функции
+				T result = 0;
+				// Если контейнер не пустой
+				if(!this->empty()){
+					// Получаем размер данных
+					const size_t size = sizeof(result);
+					// Выполняем копирование данных контейнера
+					::memcpy(&result, this->get(), size);
+				}
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * Шаблон для метода извлечения содержимого контейнера по его индексу
+			 * @tparam T тип данных для извлечения
+			 */
+			template <typename T>
+			/**
+			 * at Метод извлечения содержимого контейнера по его индексу
+			 * @param index индекс массива для извлечения
+			 * @return      данные содержащиеся в буфере
+			 */
+			T at(const size_t index) const noexcept {
+				// Результат работы функции
+				T result = 0;
+				// Если контейнер не пустой
+				if(!this->empty() && (index < this->size())){
+					// Получаем размер данных
+					const size_t size = sizeof(result);
+					// Выполняем копирование данных контейнера
+					::memcpy(&result, this->get() + (index * size), size);
+				}
+				// Выводим результат
+				return result;
+			}
+		public:
+			/**
+			 * Шаблон для метода установки значений в уже существующем буфере
+			 * @tparam T тип данных для установки
+			 */
+			template <typename T>
+			/**
+			 * set Метод установки значений в уже существующем буфере
+			 * @param value значение для установки
+			 * @param index индекс значения для установки
+			 */
+			void set(const T value, const size_t index) noexcept {
+				// Если контейнер не пустой
+				if(!this->empty() && (index < this->size())){
+					// Получаем размер данных
+					const size_t size = sizeof(value);
+					// Выполняем установку значения
+					::memcpy(const_cast <uint8_t *> (this->get() + (index * size)), &value, size);
+				}
+			}
+		public:
+			/**
+			 * get Получения данных указанного элемента в очереди
+			 * @return указатель на элемент очереди
+			 */
+			const uint8_t * get() const noexcept;
+		public:
+			/**
+			 * erase Метод удаления указанного количества байт
 			 * @param size количество байт для удаления
 			 */
 			void erase(const size_t size) noexcept;
 		public:
 			/**
-			 * emplace Метод добавления нового сырого буфера
-			 * @param buffer бинарный буфер данных для добавления
-			 * @param size   размер бинарного буфера данных
+			 * batch Метод установки размера выделяемой памяти
+			 * @param batch размер выделяемой памяти
 			 */
-			void emplace(data_t buffer, const size_t size) noexcept;
+			void batch(const size_t batch) noexcept;
+		public:
+			/**
+			 * reserve Метод резервирования размера очереди
+			 * @param size размер выделяемой памяти
+			 */
+			void reserve(const size_t size = 0) noexcept;
+		public:
+			/**
+			 * push Метод добавления бинарного буфера данных в очередь
+			 * @param buffer бинарный буфер для добавления
+			 * @param size   размер бинарного буфера
+			 */
+			void push(const void * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * operator Получения размера данных в буфере
@@ -119,34 +259,63 @@ namespace awh {
 			 * operator Получения бинарных данных буфера
 			 * @return бинарные данные буфера
 			 */
-			operator data_t() const noexcept;
-			/**
-			 * operator Получения режима работы буфера
-			 * @return режим работы буфера
-			 */
-			operator mode_t() const noexcept;
+			operator const char * () const noexcept;
 		public:
 			/**
-			 * Оператор [=] установки режима работы буфера
-			 * @param mode режим работы буфера для установки
-			 * @return     текущий объект
+			 * operator Оператор перемещения
+			 * @param buffer буфер для перемещения
+			 * @return       текущий контейнер буфера
 			 */
-			Buffer & operator = (const mode_t mode) noexcept;
+			Buffer & operator = (Buffer && buffer) noexcept;
+			/**
+			 * operator Оператор копирования
+			 * @param buffer буфер для копирования
+			 * @return       текущий контейнер буфера
+			 */
+			Buffer & operator = (const Buffer & buffer) noexcept;
+		public:
+			/**
+			 * operator Оператор извлечения символов буфера по его индексу
+			 * @param index индекс буфера
+			 * @return      символ находящийся в буфере
+			 */
+			uint8_t operator [](const size_t index) const noexcept;
+		public:
+			/**
+			 * operator Оператор сравнения двух буферов
+			 * @param buffer буфер для сравнения
+			 * @return       результат сравнения
+			 */
+			bool operator == (const Buffer & buffer) const noexcept;
+		public:
+			/**
+			 * Buffer Конструктор перемещения
+			 * @param buffer буфер данных для перемещения
+			 */
+			Buffer(Buffer && buffer) noexcept;
+			/**
+			 * Buffer Конструктор копирования
+			 * @param buffer буфер данных для копирования
+			 */
+			Buffer(const Buffer & buffer) noexcept;
 		public:
 			/**
 			 * Buffer Конструктор
+			 * @param log объект для работы с логами
 			 */
-			Buffer() noexcept : _mode(mode_t::NO_COPY), _size(0), _offset(0), _buffer(nullptr), _tmp(nullptr) {}
+			Buffer(const log_t * log) noexcept;
 			/**
 			 * Buffer Конструктор
-			 * @param mode режим работы буфера
+			 * @param batch максимальный размер выделяемой памяти
+			 * @param log   объект для работы с логами
 			 */
-			Buffer(const mode_t mode) noexcept : _mode(mode), _size(0), _offset(0), _buffer(nullptr), _tmp(nullptr) {}
+			Buffer(const size_t batch, const log_t * log) noexcept;
+		public:
 			/**
 			 * ~Buffer Деструктор
 			 */
-			~Buffer() noexcept {}
+			~Buffer() noexcept;
 	} buffer_t;
 };
 
-#endif // __AWH_WEB_BUFFER__
+#endif // __AWH_BUFFER__

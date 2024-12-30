@@ -16,6 +16,68 @@
 #include <sys/log.hpp>
 
 /**
+ * Оператор [=] перемещения параметров полезной нагрузки
+ * @param payload объект полезной нагрузки для перемещения
+ * @return        текущий объект полезной нагрузки
+ */
+awh::Log::Payload & awh::Log::Payload::operator = (payload_t && payload) noexcept {
+	// Выполняем установку флага
+	this->flag = payload.flag;
+	// Выполняем перемещение текста
+	this->text = std::move(payload.text);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присванивания параметров полезной нагрузки
+ * @param payload объект полезной нагрузки для копирования
+ * @return        текущий объект полезной нагрузки
+ */
+awh::Log::Payload & awh::Log::Payload::operator = (const payload_t & payload) noexcept {
+	// Выполняем установку флага
+	this->flag = payload.flag;
+	// Выполняем копирование текста
+	this->text = payload.text;
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор сравнения
+ * @param payload объект полезной нагрузки для сравнения
+ * @return        результат сравнения
+ */
+bool awh::Log::Payload::operator == (const payload_t & payload) noexcept {
+	// Выполняем проверку полезной нагрузки
+	return (
+		(this->flag == payload.flag) &&
+		(this->text.compare(payload.text) == 0)
+	);
+}
+/**
+ * Payload Конструктор перемещения
+ * @param payload объект полезной нагрузки для перемещения
+ */
+awh::Log::Payload::Payload(payload_t && payload) noexcept {
+	// Выполняем установку флага
+	this->flag = payload.flag;
+	// Выполняем перемещение текста
+	this->text = std::move(payload.text);
+}
+/**
+ * Payload Конструктор копирования
+ * @param payload объект полезной нагрузки для копирования
+ */
+awh::Log::Payload::Payload(const payload_t & payload) noexcept {
+	// Выполняем установку флага
+	this->flag = payload.flag;
+	// Выполняем копирование текста
+	this->text = payload.text;
+}
+/**
+ * Payload Конструктор
+ */
+awh::Log::Payload::Payload() noexcept : flag(flag_t::NONE), text{""} {}
+/**
  * rotate Метод выполнения ротации логов
  */
 void awh::Log::rotate() const noexcept {

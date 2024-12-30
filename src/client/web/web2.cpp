@@ -243,10 +243,8 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 							this->implementation(bid);
 							// Если флаг инициализации сессии HTTP/2 установлен
 							if(this->_http2.is()){
-								// Устанавливаем режим работы буфера
-								this->_buffer = buffer_t::mode_t::COPY;
 								// Создаём объек запроса
-								awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
+								awh::web_t::req_t request(awh::web_t::method_t::CONNECT, this->_scheme.url);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -254,12 +252,12 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 									// Выводим заголовок запроса
 									cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
 									// Получаем бинарные данные HTTP-запроса
-									const auto & buffer = this->_scheme.proxy.http.proxy(query);
+									const auto & buffer = this->_scheme.proxy.http.proxy(request);
 									// Выводим параметры запроса
 									cout << string(buffer.begin(), buffer.end()) << endl << endl;
 								#endif
 								// Выполняем запрос на получение заголовков
-								const auto & headers = this->_scheme.proxy.http.proxy2(std::move(query));
+								const auto & headers = this->_scheme.proxy.http.proxy2(std::move(request));
 								// Выполняем заголовки запроса на сервер
 								this->_proxy.sid = this->_http2.sendHeaders(-1, headers, http2_t::flag_t::NONE);
 								// Если запрос не получилось отправить
@@ -389,7 +387,7 @@ void awh::client::Web2::implementation(const uint64_t bid) noexcept {
 			// Выполняем установку функции обратного вызова получения фрейма
 			callbacks.set <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
 			// Выполняем установку функции обратного вызова
-			this->_http2.callbacks(std::move(callbacks));
+			this->_http2.callbacks(callbacks);
 			// Выполняем инициализацию модуля NgHttp2
 			this->_http2.init(http2_t::mode_t::CLIENT, this->_settings);
 		}

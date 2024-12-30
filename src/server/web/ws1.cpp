@@ -165,7 +165,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 				// Если разрешено получение данных
 				if(options->allow.receive){
 					// Добавляем полученные данные в буфер
-					options->buffer.payload.emplace(buffer, size);
+					options->buffer.payload.push(buffer, size);
 					// Обнуляем время последнего ответа на пинг
 					options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
@@ -173,18 +173,16 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 					// Если рукопожатие не выполнено
 					if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 						// Выполняем парсинг полученных данных
-						const size_t bytes = options->http.parse(static_cast <buffer_t::data_t> (options->buffer.payload), static_cast <size_t> (options->buffer.payload));
+						const size_t bytes = options->http.parse(reinterpret_cast <const char *> (options->buffer.payload.get()), options->buffer.payload.size());
 						// Если парсер обработал какое-то количество байт
 						if((bytes > 0) && !options->buffer.payload.empty()){
 							// Если размер буфера больше количества удаляемых байт
-							if(static_cast <size_t> (options->buffer.payload) >= bytes)
+							if(options->buffer.payload.size() >= bytes)
 								// Удаляем количество обработанных байт
 								options->buffer.payload.erase(bytes);
 							// Если байт в буфере меньше, просто очищаем буфер
 							else options->buffer.payload.clear();
 						}
-						// Фиксируем изменение в буфере
-						options->buffer.payload.commit();
 						// Если все данные получены
 						if(options->http.is(http_t::state_t::END)){
 							// Буфер данных для записи в сокет
@@ -458,7 +456,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 						// Выполняем обработку полученных данных
 						while(!options->close && options->allow.receive && !options->buffer.payload.empty()){
 							// Выполняем чтение фрейма Websocket
-							const auto & payload = options->frame.methods.get(head, static_cast <buffer_t::data_t> (options->buffer.payload), static_cast <size_t> (options->buffer.payload));
+							const auto & payload = options->frame.methods.get(head, reinterpret_cast <const char *> (options->buffer.payload.get()), options->buffer.payload.size());
 							// Если буфер данных получен
 							if(!payload.empty()){
 								// Определяем тип ответа
@@ -554,7 +552,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								// Если парсер обработал какое-то количество байт
 								if((head.frame > 0) && !options->buffer.payload.empty()){
 									// Если размер буфера больше количества удаляемых байт
-									if((receive = (static_cast <size_t> (options->buffer.payload) >= head.frame)))
+									if((receive = (options->buffer.payload.size() >= head.frame)))
 										// Удаляем количество обработанных байт
 										options->buffer.payload.erase(head.frame);
 								}
@@ -570,8 +568,6 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								// Выходим из условия
 								break;
 						}
-						// Фиксируем изменение в буфере
-						options->buffer.payload.commit();
 						// Выходим из функции
 						return;
 					}
@@ -1075,34 +1071,28 @@ bool awh::server::Websocket1::sendMessage(const uint64_t bid, const char * messa
 					buffer = options->hash.encode <vector <char>> (buffer.data(), buffer.size(), options->cipher);
 				// Если требуется фрагментация сообщения
 				if(buffer.size() > options->frame.size){
-					// Бинарный буфер чанка данных
-					vector <char> chunk(options->frame.size);
-					// Смещение в бинарном буфере
-					size_t start = 0, stop = options->frame.size;
+					// Смещение в бинарном буфере и актуальный размер блока
+					size_t offset = 0, actual = 0;
 					// Выполняем разбивку полезной нагрузки на сегменты
-					while(stop < buffer.size()){
-						// Увеличиваем длину чанка
-						stop += options->frame.size;
-						// Если длина чанка слишком большая, компенсируем
-						stop = (stop > buffer.size() ? buffer.size() : stop);
+					while(offset < buffer.size()){
+						// Поулчаем количество оставшихся байт в буфере
+						actual = (buffer.size() - offset);
+						// Выполняем получение актуального размера отправляемых данных
+						actual = ((actual > options->frame.size) ? options->frame.size : actual);
 						// Устанавливаем флаг финального сообщения
-						head.fin = (stop == buffer.size());
-						// Формируем чанк бинарных данных
-						chunk.assign(buffer.data() + start, buffer.data() + stop);
+						head.fin = ((offset + actual) == buffer.size());
 						// Создаём буфер для отправки
-						const auto & payload = options->frame.methods.set(head, chunk.data(), chunk.size());
+						const auto & payload = options->frame.methods.set(head, buffer.data() + offset, actual);
+						// Увеличиваем смещение в буфере
+						offset += actual;
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
-							// Отправляем серверу сообщение
+							// Выполняем отправку сообщения на сервер
 							result = const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
-						// Иначе просто выходим
-						else break;
 						// Выполняем сброс RSV1
 						head.rsv[0] = false;
 						// Устанавливаем опкод сообщения
 						head.optcode = ws::frame_t::opcode_t::CONTINUATION;
-						// Увеличиваем смещение в буфере
-						start = stop;
 						// Если запрос не отправлен
 						if(!result)
 							// Выходим из цикла
@@ -1162,9 +1152,7 @@ uint32_t awh::server::Websocket1::port(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    агент к которому относится подключённый клиент
  */
-awh::server::web_t::agent_t awh::server::Websocket1::agent(const uint64_t bid) const noexcept {
-	// Выполняем блокировку неиспользуемой переменной
-	(void) bid;
+awh::server::web_t::agent_t awh::server::Websocket1::agent([[maybe_unused]] const uint64_t bid) const noexcept {
 	// Выводим сообщение, что ничего не найдено
 	return agent_t::WEBSOCKET;
 }

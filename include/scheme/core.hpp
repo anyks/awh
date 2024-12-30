@@ -28,6 +28,7 @@
 #include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/buffer.hpp>
 #include <sys/events.hpp>
 #include <net/engine.hpp>
 
@@ -123,16 +124,20 @@ namespace awh {
 				 connect(CONNECT_TIMEOUT) {}
 			} __attribute__((packed)) timeouts_t;
 			/**
-			 * Payload Структура полезной нагрузки
+			 * Buffer Структура буфера полезной нагрузки
 			 */
-			typedef struct Payload {
+			typedef struct Buffer {
 				size_t size;                    // Размер буфера
 				std::unique_ptr <char []> data; // Данные буфера
 				/**
-				 * Payload Конструктор
+				 * Buffer Конструктор
 				 */
-				Payload() noexcept : size(0), data(nullptr) {}
-			} payload_t;
+				Buffer() noexcept : size(0), data(nullptr) {}
+				/**
+				 * ~Buffer Деструктор
+				 */
+				~Buffer() noexcept {}
+			} buffer_t;
 		private:
 			/**
 			 * Broker Класс брокера подключения
@@ -162,7 +167,7 @@ namespace awh {
 					fn_t _callbacks;
 				public:
 					// Буфер полезной нагрузки
-					payload_t _payload;
+					buffer_t _buffer;
 				public:
 					// Объект таймаутов
 					timeouts_t _timeouts;

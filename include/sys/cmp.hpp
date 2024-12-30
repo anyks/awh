@@ -19,8 +19,6 @@
  * Стандартные модули
  */
 #include <map>
-#include <queue>
-#include <deque>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -77,50 +75,8 @@ namespace awh {
 		 */
 		typedef class AWHSHARED_EXPORT Encoder {
 			private:
-				/**
-				 * Buffer Структура работы с буфером данных
-				 */
-				typedef class AWHSHARED_EXPORT Buffer {
-					private:
-						// Устанавливаем дружбу с родительским классом
-						friend class Encoder;
-					private:
-						// Заголовок буфера данных
-						header_t _header;
-						// Данные полезной нагрузки
-						std::unique_ptr <uint8_t []> _payload;
-					public:
-						/**
-						 * data данные буфера в бинарном виде
-						 * @return буфер в бинарном виде
-						 */
-						vector <char> data() const noexcept;
-					public:
-						/**
-						 * Оператор извлечения бинарного буфера в бинарном виде
-						 * @return бинарный буфер в бинарном виде
-						 */
-						operator vector <char> () const noexcept;
-					public:
-						/**
-						 * push Метод добавления в буфер записи данных для отправки
-						 * @param id     идентификатор сообщения
-						 * @param mode   режим отправки буфера данных
-						 * @param size   общий размер записи целиком
-						 * @param buffer буфер данных единичного чанка
-						 * @param bytes  размер буфера данных единичного чанка
-						 */
-						void push(const uint64_t id, const mode_t mode, const size_t size, const void * buffer, const size_t bytes) noexcept;
-					public:
-						/**
-						 * Buffer Конструктор
-						 */
-						Buffer() noexcept : _payload(nullptr) {}
-						/**
-						 * ~Buffer Деструктор
-						 */
-						~Buffer() noexcept {}
-				} buffer_t;
+				// Набор собранных данных
+				queue_t _queue;
 			private:
 				// Мютекс для блокировки потока
 				std::mutex _mtx;
@@ -131,22 +87,8 @@ namespace awh {
 				// Размер одного блока данных
 				size_t _chunkSize;
 			private:
-				// Очередь данных буферов записи
-				std::deque <std::unique_ptr <buffer_t>> _data;
-			private:
 				// Объект работы с логами
 				const log_t * _log;
-			public:
-				/**
-				 * back Метод получения последней записи протокола
-				 * @return объект данных последней записи
-				 */
-				vector <char> back() const noexcept;
-				/**
-				 * front Метод получения первой записи протокола
-				 * @return объект данных первой записи
-				 */
-				vector <char> front() const noexcept;
 			public:
 				/**
 				 * empty Метод проверки на пустоту контейнера
@@ -164,6 +106,12 @@ namespace awh {
 				 * clear Метод очистки данных
 				 */
 				void clear() noexcept;
+			public:
+				/**
+				 * get Метод получения записи протокола
+				 * @return объект данных записи
+				 */
+				queue_t::buffer_t get() const noexcept;
 			public:
 				/**
 				 * pop Метод удаления первой записи протокола
@@ -205,7 +153,8 @@ namespace awh {
 				 * Encoder Конструктор
 				 * @param log объект для работы с логами
 				 */
-				Encoder(const log_t * log) noexcept : _count(0), _chunkSize(CHUNK_SIZE), _log(log) {}
+				Encoder(const log_t * log) noexcept :
+				 _queue(log), _count(0), _chunkSize(CHUNK_SIZE), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */
@@ -216,24 +165,8 @@ namespace awh {
 		 */
 		typedef class AWHSHARED_EXPORT Decoder {
 			private:
-				/**
-				 * Buffer Структура работы с буферами данных
-				 */
-				typedef struct Buffer {
-					// Общий размер записи
-					size_t size;
-					// Смещение в бинарном буфере
-					size_t offset;
-					// Данные полезной нагрузки
-					std::unique_ptr <uint8_t []> payload;
-					/**
-					 * Buffer Конструктор
-					 */
-					Buffer() noexcept : size(0), offset(0), payload(nullptr) {}
-				} buffer_t;
-			private:
 				// Набор собранных данных
-				queue_t _data;
+				queue_t _queue;
 			private:
 				// Мютекс для блокировки потока
 				std::mutex _mtx;
@@ -251,17 +184,6 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
-				 * back Метод получения последней записи протокола
-				 * @return объект данных последней записи
-				 */
-				vector <char> back() const noexcept;
-				/**
-				 * front Метод получения первой записи протокола
-				 * @return объект данных первой записи
-				 */
-				vector <char> front() const noexcept;
-			public:
-				/**
 				 * empty Метод проверки на пустоту контейнера
 				 * @return результат проверки
 				 */
@@ -277,6 +199,12 @@ namespace awh {
 				 * clear Метод очистки данных
 				 */
 				void clear() noexcept;
+			public:
+				/**
+				 * get Метод получения записи протокола
+				 * @return объект данных записи
+				 */
+				queue_t::buffer_t get() const noexcept;
 			public:
 				/**
 				 * pop Метод удаления первой записи протокола
@@ -320,8 +248,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Decoder(const log_t * log) noexcept :
-				 _data(log), _chunkSize(CHUNK_SIZE),
-				 _buffer(awh::buffer_t::mode_t::COPY), _log(log) {}
+				 _queue(log), _chunkSize(CHUNK_SIZE), _buffer(log), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */

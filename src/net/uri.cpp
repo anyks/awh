@@ -43,6 +43,24 @@ void awh::URI::URL::clear() noexcept {
 	this->family = AF_INET;
 	// Зануляем функцию выполняемую при генерации URL адреса
 	this->callback = nullptr;
+	// Выполняем освобождение памяти IP-адреса
+	string().swap(this->ip);
+	// Выполняем освобождение памяти хоста сервера
+	string().swap(this->host);
+	// Выполняем освобождение памяти имени пользователя
+	string().swap(this->user);
+	// Выполняем освобождение памяти пароля пользователя
+	string().swap(this->pass);
+	// Выполняем освобождение памяти доменного имени
+	string().swap(this->domain);
+	// Выполняем освобождение памяти протокола передачи данных
+	string().swap(this->schema);
+	// Выполняем освобождение памяти якоря URL-запроса
+	string().swap(this->anchor);
+	// Выполняем освобождение памяти пути URL-запроса
+	vector <string> ().swap(this->path);
+	// Выполняем освобождение памяти параметров URL-запроса
+	vector <std::pair <string, string>> ().swap(this->params);
 }
 /**
  * empty Метод проверки на существование данных
@@ -51,18 +69,126 @@ void awh::URI::URL::clear() noexcept {
 bool awh::URI::URL::empty() const noexcept {
 	// Выполняем проверку на существование данных
 	return (
-		this->host.empty()   && this->ip.empty()     &&
-		this->user.empty()   && this->pass.empty()   &&
-		this->domain.empty() && this->path.empty()   &&
+		this->host.empty() && this->ip.empty() &&
+		this->user.empty() && this->pass.empty() &&
+		this->domain.empty() && this->path.empty() &&
 		this->params.empty() && this->anchor.empty()
 	);
 }
 /**
- * Оператор [=] получения параметров URL-запроса
- * @param url объект URL-запроса для получения параметров
- * @return    параметры URL-запроса
+ * Оператор [=] перемещения параметров URL-адреса
+ * @param url объект URL-адреса для получения параметров
+ * @return    параметры URL-адреса
  */
-awh::URI::URL & awh::URI::URL::operator = (const URL & url) noexcept {
+awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем копирование порта
+		this->port = url.port;
+		// Выполняем копирование протокола интернета
+		this->family = url.family;
+		// Если IP-адрес передан
+		if(!url.ip.empty())
+			// Выполняем копирование IP-адреса
+			this->ip = std::move(url.ip);
+		// Выполняем удаление IP-адреса
+		else this->ip.clear();
+		// Если хост сервера передан
+		if(!url.host.empty())
+			// Выполняем копирование хоста сервера
+			this->host = std::move(url.host);
+		// Выполняем удаление хоста сервера
+		else this->host.clear();
+		// Если доменное имя сервера передано
+		if(!url.domain.empty())
+			// Выполняем копирование доменного имени сервера
+			this->domain = std::move(url.domain);
+		// Выполняем удаление доменного имени сервера
+		else this->domain.clear();
+		// Если протокол передачи данных передан
+		if(!url.schema.empty())
+			// Выполняем копирование протокола передачи данных
+			this->schema = std::move(url.schema);
+		// Выполняем удаление протокола передачи данных
+		else this->schema.clear();
+		// Если якорь URL-запроса передан
+		if(!url.anchor.empty())
+			// Выполняем копирование якоря URL-запроса
+			this->anchor = std::move(url.anchor);
+		// Выполняем удаление якоря URL-запроса
+		else this->anchor.clear();
+		// Если пользователь передан
+		if(!url.user.empty())
+			// Выполняем копирование пользователя
+			this->user = std::move(url.user);
+		// Выполняем удаление пользователя
+		else this->user.clear();
+		// Если пароль передан
+		if(!url.pass.empty())
+			// Выполняем копирование пароля
+			this->pass = std::move(url.pass);
+		// Выполняем удаление пароля
+		else this->pass.clear();
+		// Если путь передан
+		if(!url.path.empty())
+			// Выполняем копирование пути
+			this->path = std::move(url.path);
+		// Выполняем удаление пути
+		else this->path.clear();
+		// Если параметры переданы
+		if(!url.params.empty())
+			// Выполняем копирование параметров
+			this->params = std::move(url.params);
+		// Выполняем удаление параметров
+		else this->params.clear();
+		// Выполняем копирование функции обратного вызова
+		this->callback = url.callback;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::length_error & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	}
+	// Выводим результат
+	return (* this);
+}
+/**
+ * Оператор [=] присванивания параметров URL-адреса
+ * @param url объект URL-адреса для получения параметров
+ * @return    параметры URL-адреса
+ */
+awh::URI::URL & awh::URI::URL::operator = (const url_t & url) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -165,6 +291,276 @@ awh::URI::URL & awh::URI::URL::operator = (const URL & url) noexcept {
 	// Выводим результат
 	return (* this);
 }
+/**
+ * Оператор сравнения
+ * @param url параметры URL-адреса
+ * @return    результат сравнения
+ */
+bool awh::URI::URL::operator == (const url_t & url) noexcept {
+	// Выполняем проверку на соответствие основным параметрам
+	bool result = (
+		(this->port == url.port) &&
+		(this->family == url.family) &&
+		(this->ip.compare(url.ip) == 0) &&
+		(this->host.compare(url.host) == 0) &&
+		(this->user.compare(url.user) == 0) &&
+		(this->pass.compare(url.pass) == 0) &&
+		(this->domain.compare(url.domain) == 0) &&
+		(this->schema.compare(url.schema) == 0) &&
+		(this->anchor.compare(url.anchor) == 0)
+	);
+	// Если параметры соответствуют
+	if(result){
+		// Если пути заполненны
+		if((result = (this->path.size() == url.path.size()))){
+			// Выполняем проверку соответствия путей
+			for(size_t i = 0; i < this->path.size(); i++){
+				// Выполняем проверку соответствия путей
+				result = (this->path.at(i).compare(url.path.at(i)) == 0);
+				// Если пути не соответствуют
+				if(!result)
+					// Выходим из функции
+					return result;
+			}
+			// Если размеры параметров соответствуют
+			if((result = (this->params.size() == url.params.size()))){
+				// Выполняем перебор всего списка параметров
+				for(size_t i = 0; i < this->params.size(); i++){
+					// Получаем текущее значение параметра
+					const auto & params = this->params.at(i);
+					// Если параметры соответствуют
+					result = (
+						(params.first.compare(params.first) == 0) &&
+						(params.second.compare(params.second) == 0)
+					);
+					// Если пути не соответствуют
+					if(!result)
+						// Выходим из функции
+						return result;
+				}
+			}
+		}
+	}
+	// Выполняем сравнение URL-параметров
+	return result;
+}
+/**
+ * URL Конструктор перемещения
+ * @param url параметры URL-адреса
+ */
+awh::URI::URL::URL(url_t && url) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем копирование порта
+		this->port = url.port;
+		// Выполняем копирование протокола интернета
+		this->family = url.family;
+		// Если IP-адрес передан
+		if(!url.ip.empty())
+			// Выполняем копирование IP-адреса
+			this->ip = std::move(url.ip);
+		// Выполняем удаление IP-адреса
+		else this->ip.clear();
+		// Если хост сервера передан
+		if(!url.host.empty())
+			// Выполняем копирование хоста сервера
+			this->host = std::move(url.host);
+		// Выполняем удаление хоста сервера
+		else this->host.clear();
+		// Если доменное имя сервера передано
+		if(!url.domain.empty())
+			// Выполняем копирование доменного имени сервера
+			this->domain = std::move(url.domain);
+		// Выполняем удаление доменного имени сервера
+		else this->domain.clear();
+		// Если протокол передачи данных передан
+		if(!url.schema.empty())
+			// Выполняем копирование протокола передачи данных
+			this->schema = std::move(url.schema);
+		// Выполняем удаление протокола передачи данных
+		else this->schema.clear();
+		// Если якорь URL-запроса передан
+		if(!url.anchor.empty())
+			// Выполняем копирование якоря URL-запроса
+			this->anchor = std::move(url.anchor);
+		// Выполняем удаление якоря URL-запроса
+		else this->anchor.clear();
+		// Если пользователь передан
+		if(!url.user.empty())
+			// Выполняем копирование пользователя
+			this->user = std::move(url.user);
+		// Выполняем удаление пользователя
+		else this->user.clear();
+		// Если пароль передан
+		if(!url.pass.empty())
+			// Выполняем копирование пароля
+			this->pass = std::move(url.pass);
+		// Выполняем удаление пароля
+		else this->pass.clear();
+		// Если путь передан
+		if(!url.path.empty())
+			// Выполняем копирование пути
+			this->path = std::move(url.path);
+		// Выполняем удаление пути
+		else this->path.clear();
+		// Если параметры переданы
+		if(!url.params.empty())
+			// Выполняем копирование параметров
+			this->params = std::move(url.params);
+		// Выполняем удаление параметров
+		else this->params.clear();
+		// Выполняем копирование функции обратного вызова
+		this->callback = url.callback;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::length_error & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	}
+}
+/**
+ * URL Конструктор копирования
+ * @param url параметры URL-адреса
+ */
+awh::URI::URL::URL(const url_t & url) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем копирование порта
+		this->port = url.port;
+		// Выполняем копирование протокола интернета
+		this->family = url.family;
+		// Если IP-адрес передан
+		if(!url.ip.empty())
+			// Выполняем копирование IP-адреса
+			this->ip.assign(url.ip.begin(), url.ip.end());
+		// Выполняем удаление IP-адреса
+		else this->ip.clear();
+		// Если хост сервера передан
+		if(!url.host.empty())
+			// Выполняем копирование хоста сервера
+			this->host.assign(url.host.begin(), url.host.end());
+		// Выполняем удаление хоста сервера
+		else this->host.clear();
+		// Если доменное имя сервера передано
+		if(!url.domain.empty())
+			// Выполняем копирование доменного имени сервера
+			this->domain.assign(url.domain.begin(), url.domain.end());
+		// Выполняем удаление доменного имени сервера
+		else this->domain.clear();
+		// Если протокол передачи данных передан
+		if(!url.schema.empty())
+			// Выполняем копирование протокола передачи данных
+			this->schema.assign(url.schema.begin(), url.schema.end());
+		// Выполняем удаление протокола передачи данных
+		else this->schema.clear();
+		// Если якорь URL-запроса передан
+		if(!url.anchor.empty())
+			// Выполняем копирование якоря URL-запроса
+			this->anchor.assign(url.anchor.begin(), url.anchor.end());
+		// Выполняем удаление якоря URL-запроса
+		else this->anchor.clear();
+		// Если пользователь передан
+		if(!url.user.empty())
+			// Выполняем копирование пользователя
+			this->user.assign(url.user.begin(), url.user.end());
+		// Выполняем удаление пользователя
+		else this->user.clear();
+		// Если пароль передан
+		if(!url.pass.empty())
+			// Выполняем копирование пароля
+			this->pass.assign(url.pass.begin(), url.pass.end());
+		// Выполняем удаление пароля
+		else this->pass.clear();
+		// Если путь передан
+		if(!url.path.empty())
+			// Выполняем копирование пути
+			this->path.assign(url.path.begin(), url.path.end());
+		// Выполняем удаление пути
+		else this->path.clear();
+		// Если параметры переданы
+		if(!url.params.empty())
+			// Выполняем копирование параметров
+			this->params.assign(url.params.begin(), url.params.end());
+		// Выполняем удаление параметров
+		else this->params.clear();
+		// Выполняем копирование функции обратного вызова
+		this->callback = url.callback;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::length_error & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const std::exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	}
+}
+/**
+ * URL Конструктор
+ */
+awh::URI::URL::URL() noexcept :
+ port(0), family(AF_INET), ip{""}, host{""},
+ user{""}, pass{""}, domain{""}, schema{""},
+ anchor{""}, callback(nullptr) {}
 /**
  * parse Метод получения параметров URL-запроса
  * @param url строка URL-запроса для получения параметров

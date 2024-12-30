@@ -71,9 +71,7 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус обработки полученных данных
  */
-int32_t awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменной
-	(void) session;
+int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -151,9 +149,7 @@ int32_t awh::Http2::begin(nghttp2_session * session, const nghttp2_frame * frame
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус обработки полученных данных
  */
-int32_t awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменной
-	(void) session;
+int32_t awh::Http2::create([[maybe_unused]] nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept {
 	// Выполняем создание идентификатора фрейма по умолчанию
 	frame_t type = frame_t::NONE;
 	// Получаем объект родительского объекта
@@ -253,9 +249,7 @@ int32_t awh::Http2::create(nghttp2_session * session, const nghttp2_frame_hd * h
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус обработки полученных данных
  */
-int32_t awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменной
-	(void) session;
+int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -366,37 +360,30 @@ int32_t awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * f
 				if(!self->_payloads.empty()){
 					// Если получен идентификатор нулевого потока
 					if(sid == 0){
-						// Флаг завершения перебора потоков
-						bool mode = true;
-						// Выполняем перебор всего списка потоков
-						for(auto & payload : self->_payloads){
-							// Если список полезной нагрузки получен
-							if(!payload.second.empty()){
-								// Выполняем перебор всех буферов данных для текущего потока
-								while(!payload.second.empty()){
-									// Если на принимаемой стороне достаточно памяти для получения отправляемых данных
-									if((mode = (self->available(payload.first) >= payload.second.front().size)))
-										// Выполняем отправку данных полезной нагрузки для указанного потока
-										self->submit(payload.first, payload.second.front().flag);
-									// Если данных не достаточно, выходим
-									else break;
-								}
+						// Выполняем перебор всего списка записей
+						for(auto & record : self->_records){
+							// Выполняем перебор всего списка записей для которых есть неотправленные данные
+							while(!record.second.empty()){
+								// Если на принимаемой стороне достаточно памяти для получения данных
+								if(self->available(record.first) >= record.second.front().first)
+									// Выполняем отправку данных полезной нагрузки для указанного потока
+									self->submit(record.first, record.second.front().second);
+								// Если данных не достаточно, выходим
+								else break;
 							}
-							// Если перебор нужно завершить, выходим из цикла
-							if(!mode) break;
 						}
 					// Если получен идентификатор потока
 					} else {
-						// Выполняем поиск указанного потока
-						auto i = self->_payloads.find(sid);
-						// Если список полезной нагрузки получен
-						if((i != self->_payloads.end()) && !i->second.empty()){
-							// Выполняем перебор всех буферов данных для текущего потока
+						// Выполняем поиск записей для потока
+						auto i = self->_records.find(sid);
+						// Если список неотправленных записей для потока существуют
+						if((i != self->_records.end()) && !i->second.empty()){
+							// Выполняем перебор всего списка записей которые ещё не отправленны
 							while(!i->second.empty()){
-								// Если на принимаемой стороне достаточно памяти для получения отправляемых данных
-								if(self->available(sid) >= i->second.front().size)
-									// Выполняем отправку данных полезной нагрузки для указанного потока
-									self->submit(sid, i->second.front().flag);
+								// Если на принимаемой стороне достаточно памяти для получения данных
+								if(self->available(i->first) >= i->second.front().first)
+									// Выполняем отправку записи для указанного потока
+									self->submit(i->first, i->second.front().second);
 								// Если данных не достаточно, выходим
 								else break;
 							}
@@ -423,9 +410,7 @@ int32_t awh::Http2::frameRecv(nghttp2_session * session, const nghttp2_frame * f
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус обработки полученных данных
  */
-int32_t awh::Http2::frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменной
-	(void) session;
+int32_t awh::Http2::frameSend([[maybe_unused]] nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -732,10 +717,7 @@ int32_t awh::Http2::error(nghttp2_session * session, const int32_t code, const c
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус обработки полученных данных
  */
-int32_t awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменных
-	(void) flags;
-	(void) session;
+int32_t awh::Http2::chunk([[maybe_unused]] nghttp2_session * session, [[maybe_unused]] const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
 	// Результат работы функции
 	int32_t result = 0;
 	// Получаем объект родительского объекта
@@ -779,10 +761,7 @@ int32_t awh::Http2::chunk(nghttp2_session * session, const uint8_t flags, const 
  * @param ctx     передаваемый промежуточный контекст
  * @return        статус обработки полученных данных
  */
-int32_t awh::Http2::header(nghttp2_session * session, const nghttp2_frame * frame, nghttp2_rcbuf * name, nghttp2_rcbuf * value, const uint8_t flags, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменных
-	(void) flags;
-	(void) session;
+int32_t awh::Http2::header([[maybe_unused]] nghttp2_session * session, const nghttp2_frame * frame, nghttp2_rcbuf * name, nghttp2_rcbuf * value, [[maybe_unused]] const uint8_t flags, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -846,10 +825,7 @@ int32_t awh::Http2::header(nghttp2_session * session, const nghttp2_frame * fram
  * @param ctx     передаваемый промежуточный контекст
  * @return        количество отправленных байт
  */
-ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int32_t flags, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменных
-	(void) flags;
-	(void) session;
+ssize_t awh::Http2::send([[maybe_unused]] nghttp2_session * session, const uint8_t * buffer, const size_t size, [[maybe_unused]] const int32_t flags, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
@@ -870,48 +846,52 @@ ssize_t awh::Http2::send(nghttp2_session * session, const uint8_t * buffer, cons
  * @param ctx     передаваемый промежуточный контекст
  * @return        количество отправленных байт
  */
-ssize_t awh::Http2::send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
-	// Выполняем блокировку неиспользуемой переменных
-	(void) source;
-	(void) session;
+ssize_t awh::Http2::send([[maybe_unused]] nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, [[maybe_unused]] nghttp2_data_source * source, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
-	// Выполняем поиск очереди полезной нагрузки для потока
-	auto i = self->_payloads.find(sid);
-	// Если очередь для полезной нагрузки найдена
-	if(i != self->_payloads.end()){
-		// Смещение в бинарном буфере и количество доступных байт для отправки
-		size_t offset = 0, bytes = 0;
-		// Если очередь полезной нагрузки заполнена
-		if(!i->second.empty()){
-			// Получаем количество доступных буфером для отправки
-			bytes = (i->second.front().size - i->second.front().offset);
-			// Если на принимаемой стороне достаточно памяти для получения отправляемых данных
-			if(bytes <= (size - offset)){
-				// Выполняем копирование всего буфера полезной нагрузки
-				::memcpy(buffer + offset, i->second.front().buffer.get() + i->second.front().offset, bytes);
-				// Увеличиваем смещение в бинарном буфере
-				offset += bytes;
-				// Удаляем отправленное сообщение из очереди
+	// Выполняем поиск неотправленных записей для потока
+	auto i = self->_records.find(sid);
+	// Если неотправленные записи для потока найдены
+	if((i != self->_records.end()) && !i->second.empty()){
+		// Количество доступных байт для отправки
+		ssize_t result = 0;
+		// Выполняем поиск буфера данных для потока
+		auto j = self->_payloads.find(sid);
+		// Если в буфере есть данные для отправки
+		if((j != self->_payloads.end()) && !j->second->empty() && (j->second->size() >= i->second.front().first)){
+			// Определяем размер данных который мы можем отправить
+			result = static_cast <ssize_t> (i->second.front().first > size ? size : i->second.front().first);
+			// Выполняем копирование нужного нам количества данных
+			::memcpy(buffer, j->second->get(), result);
+			// Выполняем удаление из буфера отправленные данные
+			j->second->erase(result);
+			// Уменьшаем размер отправленных данных записи
+			i->second.front().first -= result;
+			// Если все данные записи отправленны
+			if(i->second.front().first == 0){
+				// Выполняем удаление записи
 				i->second.pop();
-			// Если в буфере ещё осталось чуть-чуть данных
-			} else if((size - offset) > 0) {
-				// Выполняем копирование всего буфера полезной нагрузки
-				::memcpy(buffer + offset, i->second.front().buffer.get() + i->second.front().offset, (size - offset));
-				// Увеличиваем смещение в бинарном буфере полезной нагрузки
-				i->second.front().offset += (size - offset);
-				// Увеличиваем смещение в бинарном буфере
-				offset += (size - offset);
-				// Если установленно требование завершить работу потока
-				if(i->second.front().flag == flag_t::END_STREAM)
-					// Отменяем завершение работы подключения
-					(* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
-			}
+				// Если буфер пустой
+				if(j->second->empty())
+					// Очищаем буфер
+					j->second->clear();
+			// Если установленно требование завершить работу потока
+			} else if(i->second.front().second == flag_t::END_STREAM)
+				// Отменяем завершение работы подключения
+				(* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
+		// Если произошла рассинхронизация буфера и потоков
+		} else {
+			// Удаляем записи для потока
+			self->_records.erase(i);
+			// Удаляем буфер данных
+			self->_payloads.erase(sid);
+			// Выводим сообщение об ошибке
+			return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 		}
-		// Устанавливаем флаг, завершения чтения данных
+		// Устанавливаем флаг, завершения отправки данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
 		// Выводим результат количество отправленных байт
-		return offset;
+		return result;
 	// Выводим сообщение об ошибке
 	} else return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 }
@@ -1577,66 +1557,104 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			 * Выполняем отлов ошибок
 			 */
 			try {
-				// Объект полезной нагрузки для отправки
-				payload_t payload;
-				// Устанавливаем идентификатор потока
-				payload.sid = id;
-				// Устанавливаем размер буфера данных
-				payload.size = size;
-				// Устанавливаем флаг передаваемого потока по сети
-				payload.flag = flag;
-				// Выполняем создание буфера данных
-				payload.buffer = std::unique_ptr <uint8_t []> (new uint8_t [size]);
-				// Выполняем копирование буфера полезной нагрузки
-				::memcpy(payload.buffer.get(), buffer, size);
-				// Ещем для указанного потока очередь полезной нагрузки
-				auto i = this->_payloads.find(id);
-				// Если для потока очередь полезной нагрузки получена
-				if(i != this->_payloads.end())
-					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-					i->second.push(std::move(payload));
-				// Если для потока почередь полезной нагрузки ещё не сформированна
-				else {
-					// Создаём новую очередь полезной нагрузки
-					auto ret = this->_payloads.emplace(id, std::queue <payload_t> ());
-					// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-					ret.first->second.push(std::move(payload));
+				{
+					// Выполняем поиск буфера полезной нагрузки
+					auto i = this->_payloads.find(id);
+					// Если буфер полезной нагрузки существует
+					if(i != this->_payloads.end())
+						// Выполняем добавление в буфер данных полезной нагрузки
+						i->second->push(buffer, size);
+					// Если буфер полезной нагрузки не существует
+					else {
+						// Выполняем создание буфера полезной нагрузки
+						auto ret = this->_payloads.emplace(id, std::unique_ptr <buffer_t> (new buffer_t(this->_log)));
+						// Выполняем добавление в буфер данных полезной нагрузки
+						ret.first->second->push(buffer, size);
+					}
+				}{
+					// Выполняем получение списка записей для потока
+					auto i = this->_records.find(id);
+					// Если список записей для потока получен
+					if(i != this->_records.end())
+						// Выполняем добавление новой записи
+						i->second.push(std::make_pair(size, flag));
+					// Выполняем создание нового списка записей для потока
+					else {
+						// Выполняем создание нового списка записей для потока
+						auto ret = this->_records.emplace(id, std::queue <std::pair <size_t, flag_t>> ());
+						// Выполняем добавление новой записи
+						ret.first->second.push(std::make_pair(size, flag));
+					}
 				}
+				// Если библиотека не готова отдать или принять данные, тогда закрываем подключение
+				if((nghttp2_session_want_read(this->_session) == 0) && (nghttp2_session_want_write(this->_session) == 0))
+					// Выполняем завершение работы
+					goto End;
+				{
+					// Выполняем поиск записей для потока
+					auto i = this->_records.find(id);
+					// Если список неотправленных записей для потока существуют
+					if((i != this->_records.end()) && !i->second.empty()){
+						// Выполняем перебор всего списка записей которые ещё не отправленны
+						while(!i->second.empty()){
+							// Если на принимаемой стороне достаточно памяти для получения данных
+							if(this->available(i->first) >= i->second.front().first)
+								// Выполняем отправку записи для указанного потока
+								this->submit(i->first, i->second.front().second);
+							// Если данных не достаточно, выходим
+							else break;
+						}
+					}
+				}
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_DATA);
+				// Выводим результат
+				return true;
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const bad_alloc &) {
-				// Выводим в лог сообщение
-				this->_log->print("Http2 sendData: %s", log_t::flag_t::CRITICAL, "memory allocation error");
+			} catch(const std::bad_alloc &) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const std::exception & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
-			// Если библиотека не готова отдать или принять данные, тогда закрываем подключение
-			if((nghttp2_session_want_read(this->_session) == 0) && (nghttp2_session_want_write(this->_session) == 0))
-				// Выполняем завершение работы
-				goto End;
-			// Выполняем поиск указанного потока
-			auto i = this->_payloads.find(id);
-			// Если список полезной нагрузки получен
-			if((i != this->_payloads.end()) && !i->second.empty()){
-				// Выполняем перебор всех буферов данных для текущего потока
-				while(!i->second.empty()){
-					// Если на принимаемой стороне достаточно памяти для получения отправляемых данных
-					if(this->available(id) >= i->second.front().size)
-						// Выполняем отправку данных полезной нагрузки для указанного потока
-						this->submit(id, i->second.front().flag);
-					// Если данных не достаточно, выходим
-					else break;
-				}
-			}
-			// Выполняем вызов метода выполненного события
-			this->completed(event_t::SEND_DATA);
-			// Выводим результат
-			return true;
 		}
 	}
 	// Устанавливаем метку завершения работы
 	End:
+	// Если записи для потока существуют
+	if(this->_records.find(id) != this->_records.end())
+		// Выполняем очистку всех записей для потока
+		this->_records.erase(id);
 	// Если буферы полезной нагрузки для потока существуют
 	if(this->_payloads.find(id) != this->_payloads.end())
 		// Выполняем очистку буферов полезной нагрузки
@@ -1945,6 +1963,10 @@ void awh::Http2::free() noexcept {
 	if(!this->_payloads.empty())
 		// Выполняем очистку очередей полезной нагрузки
 		this->_payloads.clear();
+	// Если список записей существует
+	if(!this->_records.empty())
+		// Выполняем удаление всего списка записей
+		this->_records.clear();
 }
 /**
  * close Метод закрытия подключения
@@ -2303,6 +2325,8 @@ awh::Http2 & awh::Http2::operator = (const http2_t & ctx) noexcept {
  * ~Http2 Деструктор
  */
 awh::Http2::~Http2() noexcept {
-	// Выполняем удаление созданную ранее сессию
-	this->free();
+	// Если сессия создана удачно
+	if(this->_session != nullptr)
+		// Выполняем удаление сессии
+		nghttp2_session_del(this->_session);
 }

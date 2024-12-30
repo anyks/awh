@@ -60,13 +60,13 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 			// Выполняем генерацию идентификатора запроса
 			this->_rid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 		// Создаём объек запроса
-		awh::web_t::req_t query(awh::web_t::method_t::GET, this->_scheme.url);
+		awh::web_t::req_t request(awh::web_t::method_t::GET, this->_scheme.url);
 		// Если активирован режим прокси-сервера
 		if(this->_proxy.mode){
 			// Активируем точную установку хоста
 			this->_http.precise(!this->_proxy.connect);
 			// Выполняем извлечение заголовка авторизации на прокси-сервера
-			const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
+			const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, request);
 			// Если заголовок авторизации получен
 			if(!header.empty())
 				// Выполняем установки заголовка авторизации на прокси-сервере
@@ -79,7 +79,7 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 			else this->_http.header("Proxy-Connection", "close");
 		}
 		// Получаем бинарные данные REST запроса		
-		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
+		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(request));
 		// Если бинарные данные запроса получены
 		if(!buffer.empty()){
 			/**
@@ -175,17 +175,15 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 				// Если рукопожатие не выполнено
 				if(!(this->_shake = reinterpret_cast <http_t &> (this->_http).is(http_t::state_t::HANDSHAKE))){
 					// Добавляем полученные данные в буфер
-					this->_buffer.emplace(buffer, size);
+					this->_buffer.push(buffer, size);
 					// Выполняем парсинг полученных данных
-					const size_t bytes = this->_http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+					const size_t bytes = this->_http.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
 					// Есла данных передано больше чем обработано
 					if(this->_buffer.size() > bytes)
 						// Удаляем количество обработанных байт
 						this->_buffer.erase(bytes);
 					// Если данных в буфере больше нет, очищаем буфер собранных данных
 					else this->_buffer.clear();
-					// Фиксируем изменение в буфере
-					this->_buffer.commit();
 					// Если все данные получены
 					if(this->_http.is(http_t::state_t::END)){
 						/**
@@ -257,7 +255,7 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 				// Если рукопожатие выполнено
 				} else if(this->_allow.receive) {
 					// Добавляем полученные данные в буфер
-					this->_buffer.emplace(buffer, size);
+					this->_buffer.push(buffer, size);
 					// Обнуляем время последнего ответа на пинг
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
@@ -376,9 +374,7 @@ bool awh::client::Websocket1::redirect() noexcept {
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
  */
-void awh::client::Websocket1::response(const uint64_t bid, const uint32_t code, const string & message) noexcept {
-	// Выполняем неиспользуемую переменную
-	(void) bid;
+void awh::client::Websocket1::response([[maybe_unused]] const uint64_t bid, const uint32_t code, const string & message) noexcept {
 	// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 	if(this->_callbacks.is("response"))
 		// Выполняем функцию обратного вызова
@@ -390,9 +386,7 @@ void awh::client::Websocket1::response(const uint64_t bid, const uint32_t code, 
  * @param key   ключ заголовка
  * @param value значение заголовка
  */
-void awh::client::Websocket1::header(const uint64_t bid, const string & key, const string & value) noexcept {
-	// Выполняем неиспользуемую переменную
-	(void) bid;
+void awh::client::Websocket1::header([[maybe_unused]] const uint64_t bid, const string & key, const string & value) noexcept {
 	// Если функция обратного вызова на полученного заголовка с сервера установлена
 	if(this->_callbacks.is("header"))
 		// Выполняем функцию обратного вызова
@@ -405,9 +399,7 @@ void awh::client::Websocket1::header(const uint64_t bid, const string & key, con
  * @param message сообщение ответа сервера
  * @param headers заголовки ответа сервера
  */
-void awh::client::Websocket1::headers(const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept {
-	// Выполняем неиспользуемую переменную
-	(void) bid;
+void awh::client::Websocket1::headers([[maybe_unused]] const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 	if(this->_callbacks.is("headers"))
 		// Выполняем функцию обратного вызова
@@ -419,11 +411,9 @@ void awh::client::Websocket1::headers(const uint64_t bid, const uint32_t code, c
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::client::Websocket1::chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
+void awh::client::Websocket1::chunking([[maybe_unused]] const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()){
-		// Блокируем переменные которые не используем
-		(void) bid;
 		// Если функция обратного вызова на перехват входящих чанков установлена
 		if(this->_callbacks.is("chunking"))
 			// Выполняем функцию обратного вызова
@@ -762,7 +752,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 		// Выполняем обработку полученных данных
 		while(!this->_close && this->_allow.receive && !this->_buffer.empty()){
 			// Выполняем чтение фрейма Websocket
-			const auto & payload = this->_frame.methods.get(head, static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+			const auto & payload = this->_frame.methods.get(head, reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
 			// Если буфер данных получен
 			if(!payload.empty()){
 				// Определяем тип ответа
@@ -870,7 +860,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 				// Если парсер обработал какое-то количество байт
 				if((head.frame > 0) && !this->_buffer.empty()){
 					// Если размер буфера больше количества удаляемых байт
-					if((receive = (static_cast <size_t> (this->_buffer) >= head.frame)))
+					if((receive = (this->_buffer.size() >= head.frame)))
 						// Удаляем количество обработанных байт
 						this->_buffer.erase(head.frame);
 				}
@@ -892,8 +882,6 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 				// Выходим из условия
 				break;
 		}
-		// Фиксируем изменение в буфере
-		this->_buffer.commit();
 		// Выполняем завершение работы
 		return status_t::STOP;
 	}
@@ -1168,32 +1156,28 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
 					buffer = this->_hash.encode <vector <char>> (buffer.data(), buffer.size(), this->_cipher);
 				// Если требуется фрагментация сообщения
 				if(buffer.size() > this->_frame.size){
-					// Бинарный буфер чанка данных
-					vector <char> chunk(this->_frame.size);
-					// Смещение в бинарном буфере
-					size_t start = 0, stop = this->_frame.size;
+					// Смещение в бинарном буфере и актуальный размер блока
+					size_t offset = 0, actual = 0;
 					// Выполняем разбивку полезной нагрузки на сегменты
-					while(stop < buffer.size()){
-						// Увеличиваем длину чанка
-						stop += this->_frame.size;
-						// Если длина чанка слишком большая, компенсируем
-						stop = (stop > buffer.size() ? buffer.size() : stop);
+					while(offset < buffer.size()){
+						// Поулчаем количество оставшихся байт в буфере
+						actual = (buffer.size() - offset);
+						// Выполняем получение актуального размера отправляемых данных
+						actual = ((actual > this->_frame.size) ? this->_frame.size : actual);
 						// Устанавливаем флаг финального сообщения
-						head.fin = (stop == buffer.size());
-						// Формируем чанк бинарных данных
-						chunk.assign(buffer.data() + start, buffer.data() + stop);
+						head.fin = ((offset + actual) == buffer.size());
 						// Создаём буфер для отправки
-						const auto & payload = this->_frame.methods.set(head, chunk.data(), chunk.size());
+						const auto & payload = this->_frame.methods.set(head, buffer.data() + offset, actual);
+						// Увеличиваем смещение в буфере
+						offset += actual;
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
-							// Отправляем серверу сообщение
+							// Выполняем отправку сообщения на сервер
 							result = const_cast <client::core_t *> (this->_core)->send(payload.data(), payload.size(), this->_bid);
 						// Выполняем сброс RSV1
 						head.rsv[0] = false;
 						// Устанавливаем опкод сообщения
 						head.optcode = ws::frame_t::opcode_t::CONTINUATION;
-						// Увеличиваем смещение в буфере
-						start = stop;
 						// Если запрос не отправлен
 						if(!result)
 							// Выходим из цикла

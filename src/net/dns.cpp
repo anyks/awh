@@ -1755,7 +1755,7 @@ void awh::DNS::setToCache(const int32_t family, const string & domain, const str
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &cache.ip);
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
-					this->_cacheIPv4.emplace(domain, std::move(cache));
+					this->_cacheIPv4.emplace(domain, cache);
 				}
 			} break;
 			// Если тип протокола подключения IPv6
@@ -1788,7 +1788,7 @@ void awh::DNS::setToCache(const int32_t family, const string & domain, const str
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &cache.ip);
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
-					this->_cacheIPv6.emplace(domain, std::move(cache));
+					this->_cacheIPv6.emplace(domain, cache);
 				}
 			} break;
 		}
@@ -1980,7 +1980,7 @@ void awh::DNS::setToBlackList(const int32_t family, const string & domain, const
 				// Если список кэша является пустым
 				if(this->_cacheIPv4.empty())
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
-					this->_cacheIPv4.emplace(domain, std::move(cache));
+					this->_cacheIPv4.emplace(domain, cache);
 				// Если данные в кэше уже есть
 				else {
 					// Результат поиска IP-адреса
@@ -2004,7 +2004,7 @@ void awh::DNS::setToBlackList(const int32_t family, const string & domain, const
 					// Если адрес не найден
 					if(!result)
 						// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
-						this->_cacheIPv4.emplace(domain, std::move(cache));
+						this->_cacheIPv4.emplace(domain, cache);
 				}
 			} break;
 			// Если тип протокола подключения IPv6
@@ -2018,7 +2018,7 @@ void awh::DNS::setToBlackList(const int32_t family, const string & domain, const
 				// Если список кэша является пустым
 				if(this->_cacheIPv6.empty())
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
-					this->_cacheIPv6.emplace(domain, std::move(cache));
+					this->_cacheIPv6.emplace(domain, cache);
 				// Если данные в кэше уже есть
 				else {
 					// Результат поиска IP-адреса
@@ -2042,7 +2042,7 @@ void awh::DNS::setToBlackList(const int32_t family, const string & domain, const
 					// Если адрес не найден
 					if(!result)
 						// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
-						this->_cacheIPv6.emplace(domain, std::move(cache));
+						this->_cacheIPv6.emplace(domain, cache);
 				}
 			} break;
 		}
@@ -2396,7 +2396,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
 						}) == this->_serversIPv4.end()){
 							// Выполняем добавление полученный сервер в список DNS-серверов
-							this->_serversIPv4.push_back(std::move(server));
+							this->_serversIPv4.push_back(server);
 							/**
 							 * Если включён режим отладки
 							 */
@@ -2422,7 +2422,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
 						}) == this->_serversIPv6.end()){
 							// Выполняем добавление полученный сервер в список DNS-серверов
-							this->_serversIPv6.push_back(std::move(server));
+							this->_serversIPv6.push_back(server);
 							/**
 							 * Если включён режим отладки
 							 */

@@ -1042,7 +1042,7 @@ void awh::FS::makePath(const string & path) const noexcept {
  * @param group идентификатор группы
  * @return      результат создания каталога
  */
-bool awh::FS::makeDir(const string & path, const string & user, const string & group) const noexcept {
+bool awh::FS::makeDir(const string & path, [[maybe_unused]] const string & user, [[maybe_unused]] const string & group) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Проверяем существует ли нужный нам каталог
@@ -1055,13 +1055,6 @@ bool awh::FS::makeDir(const string & path, const string & user, const string & g
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Устанавливаем права на каталог
 			this->chown(path, user, group);
-		/**
-		 * Выполняем работу для MS Windows
-		 */
-		#else
-			// Зануляем неиспользуемые переменные
-			(void) user;
-			(void) group;
 		#endif
 	}
 	// Сообщаем что каталог и так существует

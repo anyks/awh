@@ -41,13 +41,13 @@ void awh::client::Websocket2::send(const uint64_t bid) noexcept {
 	// Разрешаем перехватывать контекст для сервера
 	this->_http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeover);
 	// Создаём объек запроса
-	awh::web_t::req_t query(2.f, awh::web_t::method_t::CONNECT, this->_scheme.url);
+	awh::web_t::req_t request(2.f, awh::web_t::method_t::CONNECT, this->_scheme.url);
 	// Если активирован режим прокси-сервера
 	if(this->_proxy.mode){
 		// Активируем точную установку хоста
 		this->_http.precise(!this->_proxy.connect);
 		// Выполняем извлечение заголовка авторизации на прокси-сервера
-		const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, query);
+		const string & header = this->_scheme.proxy.http.auth(http_t::process_t::REQUEST, request);
 		// Если заголовок авторизации получен
 		if(!header.empty())
 			// Выполняем установки заголовка авторизации на прокси-сервере
@@ -60,7 +60,7 @@ void awh::client::Websocket2::send(const uint64_t bid) noexcept {
 		// Выводим заголовок запроса
 		cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 		// Получаем бинарные данные REST запроса
-		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
+		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, request);
 		// Если бинарные данные запроса получены
 		if(!buffer.empty())
 			// Выводим параметры запроса
@@ -69,7 +69,7 @@ void awh::client::Websocket2::send(const uint64_t bid) noexcept {
 	// Запоминаем предыдущее значение идентификатора потока
 	const int32_t sid = this->_sid;
 	// Выполняем запрос на получение заголовков
-	const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+	const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(request));
 	// Выполняем запрос на удалённый сервер	
 	this->_sid = web2_t::send(-1, headers, http2_t::flag_t::NONE);
 	// Если запрос не получилось отправить
@@ -101,8 +101,6 @@ void awh::client::Websocket2::connectEvent(const uint64_t bid, const uint16_t si
 		web2_t::connectEvent(bid, sid);
 		// Если флаг инициализации сессии HTTP/2 установлен
 		if(this->_http2.is()){
-			// Устанавливаем режим работы буфера
-			this->_buffer = buffer_t::mode_t::COPY;
 			// Выполняем переключение протокола интернета на HTTP/2
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Выполняем отправку запроса на удалённый сервер
@@ -315,7 +313,7 @@ int32_t awh::client::Websocket2::chunkSignal(const int32_t sid, const uint8_t * 
 					// Обновляем время отправленного пинга
 					this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Добавляем полученные данные в буфер
-					this->_buffer.emplace(reinterpret_cast <const char *> (buffer), size);
+					this->_buffer.push(buffer, size);
 				}
 				// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 				if(this->_callbacks.is("chunks"))
@@ -791,7 +789,7 @@ void awh::client::Websocket2::eventCallback(const fn_t::event_t event, const uin
 				// Если функции обратного вызова установлены
 				if(!callbacks.empty())
 					// Выполняем установку функций обратного вызова для Websocket-клиента
-					this->_ws1.callbacks(std::move(callbacks));
+					this->_ws1.callbacks(callbacks);
 			}
 		} break;
 	}
@@ -1090,7 +1088,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 		// Выполняем обработку полученных данных
 		while(!this->_close && this->_allow.receive && !this->_buffer.empty()){
 			// Выполняем чтение фрейма Websocket
-			const auto & payload = this->_frame.methods.get(head, static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+			const auto & payload = this->_frame.methods.get(head, reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
 			// Если буфер данных получен
 			if(!payload.empty()){
 				// Определяем тип ответа
@@ -1186,7 +1184,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 				// Если парсер обработал какое-то количество байт
 				if((head.frame > 0) && !this->_buffer.empty()){
 					// Если размер буфера больше количества удаляемых байт
-					if((receive = (static_cast <size_t> (this->_buffer) >= head.frame)))
+					if((receive = (this->_buffer.size() >= head.frame)))
 						// Удаляем количество обработанных байт
 						this->_buffer.erase(head.frame);
 				}
@@ -1204,8 +1202,6 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 				// Выходим из условия
 				break;
 		}
-		// Фиксируем изменение в буфере
-		this->_buffer.commit();
 	}
 	// Выполняем завершение работы
 	return status_t::STOP;
@@ -1482,22 +1478,20 @@ bool awh::client::Websocket2::sendMessage(const char * message, const size_t siz
 						buffer = this->_hash.encode <vector <char>> (buffer.data(), buffer.size(), this->_cipher);
 					// Если требуется фрагментация сообщения
 					if(buffer.size() > this->_frame.size){
-						// Бинарный буфер чанка данных
-						vector <char> chunk(this->_frame.size);
-						// Смещение в бинарном буфере
-						size_t start = 0, stop = this->_frame.size;
+						// Смещение в бинарном буфере и актуальный размер блока
+						size_t offset = 0, actual = 0;
 						// Выполняем разбивку полезной нагрузки на сегменты
-						while(stop < buffer.size()){
-							// Увеличиваем длину чанка
-							stop += this->_frame.size;
-							// Если длина чанка слишком большая, компенсируем
-							stop = (stop > buffer.size() ? buffer.size() : stop);
+						while(offset < buffer.size()){
+							// Поулчаем количество оставшихся байт в буфере
+							actual = (buffer.size() - offset);
+							// Выполняем получение актуального размера отправляемых данных
+							actual = ((actual > this->_frame.size) ? this->_frame.size : actual);
 							// Устанавливаем флаг финального сообщения
-							head.fin = (stop == buffer.size());
-							// Формируем чанк бинарных данных
-							chunk.assign(buffer.data() + start, buffer.data() + stop);
+							head.fin = ((offset + actual) == buffer.size());
 							// Создаём буфер для отправки
-							const auto & payload = this->_frame.methods.set(head, chunk.data(), chunk.size());
+							const auto & payload = this->_frame.methods.set(head, buffer.data() + offset, actual);
+							// Увеличиваем смещение в буфере
+							offset += actual;
 							// Если бинарный буфер для отправки данных получен
 							if(!payload.empty())
 								// Выполняем отправку сообщения на сервер
@@ -1506,8 +1500,6 @@ bool awh::client::Websocket2::sendMessage(const char * message, const size_t siz
 							head.rsv[0] = false;
 							// Устанавливаем опкод сообщения
 							head.optcode = ws::frame_t::opcode_t::CONTINUATION;
-							// Увеличиваем смещение в буфере
-							start = stop;
 							// Если запрос не отправлен
 							if(!result)
 								// Выходим из цикла
@@ -1679,7 +1671,7 @@ void awh::client::Websocket2::callbacks(const fn_t & callbacks) noexcept {
 		// Если функции обратного вызова установлены
 		if(!callbacks.empty())
 			// Выполняем установку функций обратного вызова для Websocket-клиента
-			this->_ws1.callbacks(std::move(callbacks));
+			this->_ws1.callbacks(callbacks);
 	}
 }
 /**

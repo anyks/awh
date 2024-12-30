@@ -475,6 +475,107 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 	}
 }
 /**
+ * push Метод добавления бинарного буфера данных в очередь
+ * @param buffers список бинарных буферов для добавления
+ * @param size    общий размер добавляемых данных
+ */
+void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noexcept {
+	// Если данные переданы правильно
+	if(!buffers.empty() && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем увеличения записей под данные
+			this->realloc();
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
+			// Выделяем память для добавления данных
+			uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
+			// Смещение в бинарном буфере
+			size_t offset = 0, bytes = 0;
+			// Выполняем перебор всего списка добавляемых буферов
+			for(auto & buffer : buffers){
+				// Увеличиваем количество переданных байт
+				bytes += buffer.second;
+				// Если буфер установлен правильно
+				if((buffer.first != nullptr) && (buffer.second > 0) && (bytes <= size)){
+					// Выполняем копирование переданных данных в выделенную память
+					::memcpy(data + offset, buffer.first, buffer.second);
+					// Выполняем смещение в буфере
+					offset += buffer.second;
+				// Если размеры оказались битыми
+				} else if(bytes > size) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bytes, size), log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
+					#endif
+					// Выполняем удаление выделенной памяти
+					::free(data);
+					// Выходим из функции
+					return;
+				}
+			}
+			// Если количество байт не совпадает
+			if(bytes != size){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bytes, size), log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
+				#endif
+				// Выполняем удаление выделенной памяти
+				::free(data);
+				// Выходим из функции
+				return;
+			}
+			// Получаем адрес указателя выделенных данных
+			const uint64_t ptr = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (data));
+			// Выполням установку данных в очередь
+			::memcpy(this->_data + this->_end, &ptr, sizeof(ptr));
+			// Выполняем установку добавление размера буфера данных в очередь
+			::memcpy(this->_sizes + this->_end, &size, sizeof(size));
+			// Выполняем смещение в буфере
+			this->_end++;
+			// Увеличиваем размер добавленных данных
+			this->_bytes += size;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+}
+/**
  * Queue Конструктор
  * @param log объект для работы с логами
  */

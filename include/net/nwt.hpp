@@ -36,11 +36,11 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * NWT Структура списка параметров URI
+	 * NWT Структура списка параметров URL
 	 */
 	typedef class AWHSHARED_EXPORT NWT {
 		public:
-			// Типы n-грамм
+			// Типы URL-адреса
 			enum class types_t : uint8_t {
 				MAC     = 0x00, // MAC адрес
 				URL     = 0x01, // URL адрес
@@ -53,28 +53,62 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Uri Структура ответа
+			 * URL Структура ответа
 			 */
-			typedef struct Uri {
-				uint32_t port;    // Порт запроса если существует
-				types_t type;  // Тип URI
-				string uri;    // Полный URI
-				string host;   // Хост URL адреса
-				string path;   // Путь запроса если существует
-				string user;   // Ник пользователя (для электронной почты)
-				string pass;   // Пароль пользователя
-				string anchor; // Якорь URI параметров запроса
-				string domain; // Домен верхнего уровня если существует
-				string params; // Параметры запроса если существуют
-				string schema; // Протокол запроса если существует
-				/**
-				 * Uri Конструктор
-				 */
-				Uri() noexcept :
-				 port(0), type(types_t::NONE), uri{""},
-				 host{""}, path{""}, user{""}, pass{""},
-				 anchor{""}, domain{""}, params{""}, schema{""} {}
-			} uri_t;
+			typedef class AWHSHARED_EXPORT URL {
+				public:
+					types_t type;  // Тип URL-адреса
+					uint32_t port; // Порт URL-адреса
+					string uri;    // Полный URI-параметры
+					string host;   // Хост URL-адреса
+					string path;   // Путь URL-адреса
+					string user;   // Ник пользователя (для электронной почты)
+					string pass;   // Пароль пользователя
+					string anchor; // Якорь URL-адреса
+					string domain; // Домен верхнего уровня
+					string params; // Параметры URL-адреса
+					string schema; // Протокол URL-адреса
+				public:
+					/**
+					 * Оператор перемещения
+					 * @param url параметры падреса
+					 * @return    параметры URL-запроса
+					 */
+					URL & operator = (URL && url) noexcept;
+					/**
+					 * Оператор присванивания
+					 * @param url параметры падреса
+					 * @return    параметры URL-запроса
+					 */
+					URL & operator = (const URL & url) noexcept;
+				public:
+					/**
+					 * Оператор сравнения
+					 * @param url параметры падреса
+					 * @return    результат сравнения
+					 */
+					bool operator == (const URL & url) noexcept;
+				public:
+					/**
+					 * URL Конструктор перемещения
+					 * @param url параметры падреса
+					 */
+					URL(URL && url) noexcept;
+					/**
+					 * URL Конструктор копирования
+					 * @param url параметры падреса
+					 */
+					URL(const URL & url) noexcept;
+				public:
+					/**
+					 * URL Конструктор
+					 */
+					URL() noexcept;
+					/**
+					 * ~URL Деструктор
+					 */
+					~URL() noexcept {}
+			} url_t;
 		private:
 			// Список букв разрешенных в последовательности
 			string _letters;
@@ -117,7 +151,7 @@ namespace awh {
 			 * @param text текст для парсинга
 			 * @return     параметры полученные в результате парсинга
 			 */
-			uri_t parse(const string & text) noexcept;
+			url_t parse(const string & text) noexcept;
 		public:
 			/**
 			 * clear Метод очистки результатов парсинга

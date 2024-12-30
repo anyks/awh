@@ -127,19 +127,44 @@ namespace awh {
 					bool empty() const noexcept;
 				public:
 					/**
-					 * Оператор [=] получения параметров URL-запроса
-					 * @param url объект URL-запроса для получения параметров
-					 * @return    параметры URL-запроса
+					 * Оператор [=] перемещения параметров URL-адреса
+					 * @param url объект URL-адреса для получения параметров
+					 * @return    параметры URL-адреса
+					 */
+					URL & operator = (URL && url) noexcept;
+					/**
+					 * Оператор [=] присванивания параметров URL-адреса
+					 * @param url объект URL-адреса для получения параметров
+					 * @return    параметры URL-адреса
 					 */
 					URL & operator = (const URL & url) noexcept;
 				public:
 					/**
+					 * Оператор сравнения
+					 * @param url параметры URL-адреса
+					 * @return    результат сравнения
+					 */
+					bool operator == (const URL & url) noexcept;
+				public:
+					/**
+					 * URL Конструктор перемещения
+					 * @param url параметры URL-адреса
+					 */
+					URL(URL && url) noexcept;
+					/**
+					 * URL Конструктор копирования
+					 * @param url параметры URL-адреса
+					 */
+					URL(const URL & url) noexcept;
+				public:
+					/**
 					 * URL Конструктор
 					 */
-					URL() noexcept :
-					 port(0), family(AF_INET), ip{""}, host{""},
-					 user{""}, pass{""}, domain{""}, schema{""},
-					 anchor{""}, callback(nullptr) {}
+					URL() noexcept;
+					/**
+					 * ~URL Деструктор
+					 */
+					~URL() noexcept {}
 			} url_t;
 		private:
 			// Объект IP-адресов

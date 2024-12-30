@@ -16,6 +16,228 @@
 #include <http/web.hpp>
 
 /**
+ * Оператор [=] перемещения параметров запроса клиента
+ * @param request объект параметров запроса клиента
+ * @return        текущие параметры запроса клиента
+ */
+awh::Web::Request & awh::Web::Request::operator = (req_t && request) noexcept {
+	// Выполняем установку метода запроса клиента
+	this->method = request.method;
+	// Выполняем установку версии протокола
+	this->version = request.version;
+	// Выполняем перемещение данных ссылки
+	this->url = std::move(request.url);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присванивания параметров запроса клиента
+ * @param request объект параметров запроса клиента
+ * @return        текущие параметры запроса клиента
+ */
+awh::Web::Request & awh::Web::Request::operator = (const req_t & request) noexcept {
+	// Выполняем копирование данных ссылки
+	this->url = request.url;
+	// Выполняем установку метода запроса клиента
+	this->method = request.method;
+	// Выполняем установку версии протокола
+	this->version = request.version;
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор сравнения
+ * @param request объект параметров запроса клиента
+ * @return        результат сравнения
+ */
+bool awh::Web::Request::operator == (const req_t & request) noexcept {
+	// Выполняем сравнение параметров
+	return (
+		(this->method == request.method) &&
+		(this->version == request.version) &&
+		(this->url == request.url)
+	);
+}
+/**
+ * Request Конструктор перемещения
+ * @param request объект параметров запроса клиента
+ */
+awh::Web::Request::Request(req_t && request) noexcept {
+	// Выполняем установку метода запроса клиента
+	this->method = request.method;
+	// Выполняем установку версии протокола
+	this->version = request.version;
+	// Выполняем перемещение данных ссылки
+	this->url = std::move(request.url);
+}
+/**
+ * Request Конструктор копирования
+ * @param request объект параметров запроса клиента
+ */
+awh::Web::Request::Request(const req_t & request) noexcept {
+	// Выполняем копирование данных ссылки
+	this->url = request.url;
+	// Выполняем установку метода запроса клиента
+	this->method = request.method;
+	// Выполняем установку версии протокола
+	this->version = request.version;
+}
+/**
+ * Request Конструктор
+ */
+awh::Web::Request::Request() noexcept : provider_t(), method(method_t::NONE) {}
+/**
+ * Request Конструктор
+ * @param method метод запроса клиента
+ */
+awh::Web::Request::Request(const method_t method) noexcept : provider_t(), method(method) {}
+/**
+ * Request Конструктор
+ * @param version версия протокола
+ */
+awh::Web::Request::Request(const double version) noexcept : provider_t(version), method(method_t::NONE) {}
+/**
+ * Request Конструктор
+ * @param url адрес URL-запроса
+ */
+awh::Web::Request::Request(const uri_t::url_t & url) noexcept : provider_t(), method(method_t::NONE), url(url) {}
+/**
+ * Request Конструктор
+ * @param version версия протокола
+ * @param method  метод запроса клиента
+ */
+awh::Web::Request::Request(const double version, const method_t method) noexcept : provider_t(version), method(method) {}
+/**
+ * Request Конструктор
+ * @param method метод запроса клиента
+ * @param url    адрес URL-запроса
+ */
+awh::Web::Request::Request(const method_t method, const uri_t::url_t & url) noexcept : provider_t(), method(method), url(url) {}
+/**
+ * Request Конструктор
+ * @param version версия протокола
+ * @param url     адрес URL-запроса
+ */
+awh::Web::Request::Request(const double version, const uri_t::url_t & url) noexcept : provider_t(version), method(method_t::NONE), url(url) {}
+/**
+ * Request Конструктор
+ * @param version версия протокола
+ * @param method  метод запроса клиента
+ * @param url     адрес URL-запроса
+ */
+awh::Web::Request::Request(const double version, const method_t method, const uri_t::url_t & url) noexcept : provider_t(version), method(method), url(url) {}
+/**
+ * Оператор [=] перемещения параметров ответа сервера
+ * @param response объект параметров ответа сервера
+ * @return         текущие параметры ответа сервера
+ */
+awh::Web::Response & awh::Web::Response::operator = (res_t && response) noexcept {
+	// Выполняем установку кода ответа сервера
+	this->code = response.code;
+	// Выполняем установку версии протокола
+	this->version = response.version;
+	// Выполняем перемещение сообщение сервера
+	this->message = std::move(response.message);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присванивания параметров ответа сервера
+ * @param response объект параметров ответа сервера
+ * @return         текущие параметры ответа сервера
+ */
+awh::Web::Response & awh::Web::Response::operator = (const res_t & response) noexcept {
+	// Выполняем установку кода ответа сервера
+	this->code = response.code;
+	// Выполняем установку версии протокола
+	this->version = response.version;
+	// Выполняем копирование сообщение сервера
+	this->message = response.message;
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор сравнения
+ * @param response объект параметров ответа сервера
+ * @return         результат сравнения
+ */
+bool awh::Web::Response::operator == (const res_t & response) noexcept {
+	// Выполняем сравнение параметров
+	return (
+		(this->code == response.code) &&
+		(this->version == response.version) &&
+		(this->message.compare(response.message) == 0)
+	);
+}
+/**
+ * Response Конструктор перемещения
+ * @param response объект параметров ответа сервера
+ */
+awh::Web::Response::Response(res_t && response) noexcept {
+	// Выполняем установку кода ответа сервера
+	this->code = response.code;
+	// Выполняем установку версии протокола
+	this->version = response.version;
+	// Выполняем перемещение сообщение сервера
+	this->message = std::move(response.message);
+}
+/**
+ * Response Конструктор копирования
+ * @param response объект параметров ответа сервера
+ */
+awh::Web::Response::Response(const res_t & response) noexcept {
+	// Выполняем установку кода ответа сервера
+	this->code = response.code;
+	// Выполняем установку версии протокола
+	this->version = response.version;
+	// Выполняем копирование сообщение сервера
+	this->message = response.message;
+}
+/**
+ * Response Конструктор
+ */
+awh::Web::Response::Response() noexcept : provider_t(), code(0), message{""} {}
+/**
+ * Response Конструктор
+ * @param code код ответа сервера
+ */
+awh::Web::Response::Response(const uint32_t code) noexcept : provider_t(), code(code), message{""} {}
+/**
+ * Response Конструктор
+ * @param version версия протокола
+ */
+awh::Web::Response::Response(const double version) noexcept : provider_t(version), code(0), message{""} {}
+/**
+ * Response Конструктор
+ * @param message сообщение сервера
+ */
+awh::Web::Response::Response(const string & message) noexcept : provider_t(), code(0), message(message) {}
+/**
+ * Response Конструктор
+ * @param version версия протокола
+ * @param code    код ответа сервера
+ */
+awh::Web::Response::Response(const double version, const uint32_t code) noexcept : provider_t(version), code(code), message{""} {}
+/**
+ * Response Конструктор
+ * @param code    код ответа сервера
+ * @param message сообщение сервера
+ */
+awh::Web::Response::Response(const uint32_t code, const string & message) noexcept : provider_t(), code(code), message(message) {}
+/**
+ * Response Конструктор
+ * @param version версия протокола
+ * @param message сообщение сервера
+ */
+awh::Web::Response::Response(const double version, const string & message) noexcept : provider_t(version), code(0), message(message) {}
+/**
+ * Response Конструктор
+ * @param version версия протокола
+ * @param code    код ответа сервера
+ * @param message сообщение сервера
+ */
+awh::Web::Response::Response(const double version, const uint32_t code, const string & message) noexcept : provider_t(version), code(code), message(message) {}
+/**
  * clear Метод очистки данных чанка
  */
 void awh::Web::Chunk::clear() noexcept {

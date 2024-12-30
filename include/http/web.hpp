@@ -110,108 +110,184 @@ namespace awh {
 			/**
 			 * Request Структура запроса
 			 */
-			typedef struct Request : public provider_t {
-				// Метод запроса
-				method_t method;
-				// Адрес URL-запроса
-				uri_t::url_t url;
-				/**
-				 * Request Конструктор
-				 */
-				Request() noexcept : provider_t(), method(method_t::NONE) {}
-				/**
-				 * Request Конструктор
-				 * @param method метод запроса
-				 */
-				Request(const method_t method) noexcept : provider_t(), method(method) {}
-				/**
-				 * Request Конструктор
-				 * @param version версия протокола
-				 */
-				Request(const double version) noexcept : provider_t(version), method(method_t::NONE) {}
-				/**
-				 * Request Конструктор
-				 * @param url адрес URL-запроса
-				 */
-				Request(const uri_t::url_t & url) noexcept : provider_t(), method(method_t::NONE), url(url) {}
-				/**
-				 * Request Конструктор
-				 * @param version версия протокола
-				 * @param method  метод запроса
-				 */
-				Request(const double version, const method_t method) noexcept : provider_t(version), method(method) {}
-				/**
-				 * Request Конструктор
-				 * @param method метод запроса
-				 * @param url    адрес URL-запроса
-				 */
-				Request(const method_t method, const uri_t::url_t & url) noexcept : provider_t(), method(method), url(url) {}
-				/**
-				 * Request Конструктор
-				 * @param version версия протокола
-				 * @param url     адрес URL-запроса
-				 */
-				Request(const double version, const uri_t::url_t & url) noexcept : provider_t(version), method(method_t::NONE), url(url) {}
-				/**
-				 * Request Конструктор
-				 * @param version версия протокола
-				 * @param method  метод запроса
-				 * @param url     адрес URL-запроса
-				 */
-				Request(const double version, const method_t method, const uri_t::url_t & url) noexcept : provider_t(version), method(method), url(url) {}
+			typedef class AWHSHARED_EXPORT Request : public provider_t {
+				public:
+					// Метод запроса клиента
+					method_t method;
+					// Адрес URL-запроса
+					uri_t::url_t url;
+				public:
+					/**
+					 * Оператор [=] перемещения параметров запроса клиента
+					 * @param request объект параметров запроса клиента
+					 * @return        текущие параметры запроса клиента
+					 */
+					Request & operator = (Request && request) noexcept;
+					/**
+					 * Оператор [=] присванивания параметров запроса клиента
+					 * @param request объект параметров запроса клиента
+					 * @return        текущие параметры запроса клиента
+					 */
+					Request & operator = (const Request & request) noexcept;
+				public:
+					/**
+					 * Оператор сравнения
+					 * @param request объект параметров запроса клиента
+					 * @return        результат сравнения
+					 */
+					bool operator == (const Request & request) noexcept;
+				public:
+					/**
+					 * Request Конструктор перемещения
+					 * @param request объект параметров запроса клиента
+					 */
+					Request(Request && request) noexcept;
+					/**
+					 * Request Конструктор копирования
+					 * @param request объект параметров запроса клиента
+					 */
+					Request(const Request & request) noexcept;
+				public:
+					/**
+					 * Request Конструктор
+					 */
+					Request() noexcept;
+					/**
+					 * Request Конструктор
+					 * @param method метод запроса клиента
+					 */
+					Request(const method_t method) noexcept;
+					/**
+					 * Request Конструктор
+					 * @param version версия протокола
+					 */
+					Request(const double version) noexcept;
+					/**
+					 * Request Конструктор
+					 * @param url адрес URL-запроса
+					 */
+					Request(const uri_t::url_t & url) noexcept;
+					/**
+					 * Request Конструктор
+					 * @param version версия протокола
+					 * @param method  метод запроса клиента
+					 */
+					Request(const double version, const method_t method) noexcept;
+					/**
+					 * Request Конструктор
+					 * @param method метод запроса клиента
+					 * @param url    адрес URL-запроса
+					 */
+					Request(const method_t method, const uri_t::url_t & url) noexcept;
+					/**
+					 * Request Конструктор
+					 * @param version версия протокола
+					 * @param url     адрес URL-запроса
+					 */
+					Request(const double version, const uri_t::url_t & url) noexcept;
+					/**
+					 * Request Конструктор
+					 * @param version версия протокола
+					 * @param method  метод запроса клиента
+					 * @param url     адрес URL-запроса
+					 */
+					Request(const double version, const method_t method, const uri_t::url_t & url) noexcept;
+				public:
+					/**
+					 * Request Деструктор
+					 */
+					~Request() noexcept {}
 			} req_t;
 			/**
 			 * Response Структура ответа сервера
 			 */
-			typedef struct Response : public provider_t {
-				// Код ответа сервера
-				uint32_t code;
-				// Сообщение сервера
-				string message;
-				/**
-				 * Response Конструктор
-				 */
-				Response() noexcept : provider_t(), code(0), message{""} {}
-				/**
-				 * Response Конструктор
-				 * @param code код ответа сервера
-				 */
-				Response(const uint32_t code) noexcept : provider_t(), code(code), message{""} {}
-				/**
-				 * Response Конструктор
-				 * @param version версия протокола
-				 */
-				Response(const double version) noexcept : provider_t(version), code(0), message{""} {}
-				/**
-				 * Response Конструктор
-				 * @param message сообщение сервера
-				 */
-				Response(const string & message) noexcept : provider_t(), code(0), message(message) {}
-				/**
-				 * Response Конструктор
-				 * @param version версия протокола
-				 * @param code    код ответа сервера
-				 */
-				Response(const double version, const uint32_t code) noexcept : provider_t(version), code(code), message{""} {}
-				/**
-				 * Response Конструктор
-				 * @param code    код ответа сервера
-				 * @param message сообщение сервера
-				 */
-				Response(const uint32_t code, const string & message) noexcept : provider_t(), code(code), message(message) {}
-				/**
-				 * Response Конструктор
-				 * @param version версия протокола
-				 * @param message сообщение сервера
-				 */
-				Response(const double version, const string & message) noexcept : provider_t(version), code(0), message(message) {}
-				/**
-				 * Response Конструктор
-				 * @param version версия протокола
-				 * @param code    код ответа сервера
-				 * @param message сообщение сервера
-				 */
-				Response(const double version, const uint32_t code, const string & message) noexcept : provider_t(version), code(code), message(message) {}
+			typedef class AWHSHARED_EXPORT Response : public provider_t {
+				public:
+					// Код ответа сервера
+					uint32_t code;
+					// Сообщение сервера
+					string message;
+				public:
+					/**
+					 * Оператор [=] перемещения параметров ответа сервера
+					 * @param response объект параметров ответа сервера
+					 * @return         текущие параметры ответа сервера
+					 */
+					Response & operator = (Response && response) noexcept;
+					/**
+					 * Оператор [=] присванивания параметров ответа сервера
+					 * @param response объект параметров ответа сервера
+					 * @return         текущие параметры ответа сервера
+					 */
+					Response & operator = (const Response & response) noexcept;
+				public:
+					/**
+					 * Оператор сравнения
+					 * @param response объект параметров ответа сервера
+					 * @return         результат сравнения
+					 */
+					bool operator == (const Response & response) noexcept;
+				public:
+					/**
+					 * Response Конструктор перемещения
+					 * @param response объект параметров ответа сервера
+					 */
+					Response(Response && response) noexcept;
+					/**
+					 * Response Конструктор копирования
+					 * @param response объект параметров ответа сервера
+					 */
+					Response(const Response & response) noexcept;
+				public:
+					/**
+					 * Response Конструктор
+					 */
+					Response() noexcept;
+					/**
+					 * Response Конструктор
+					 * @param code код ответа сервера
+					 */
+					Response(const uint32_t code) noexcept;
+					/**
+					 * Response Конструктор
+					 * @param version версия протокола
+					 */
+					Response(const double version) noexcept;
+					/**
+					 * Response Конструктор
+					 * @param message сообщение сервера
+					 */
+					Response(const string & message) noexcept;
+					/**
+					 * Response Конструктор
+					 * @param version версия протокола
+					 * @param code    код ответа сервера
+					 */
+					Response(const double version, const uint32_t code) noexcept;
+					/**
+					 * Response Конструктор
+					 * @param code    код ответа сервера
+					 * @param message сообщение сервера
+					 */
+					Response(const uint32_t code, const string & message) noexcept;
+					/**
+					 * Response Конструктор
+					 * @param version версия протокола
+					 * @param message сообщение сервера
+					 */
+					Response(const double version, const string & message) noexcept;
+					/**
+					 * Response Конструктор
+					 * @param version версия протокола
+					 * @param code    код ответа сервера
+					 * @param message сообщение сервера
+					 */
+					Response(const double version, const uint32_t code, const string & message) noexcept;
+				public:
+					/**
+					 * Response Деструктор
+					 */
+					~Response() noexcept {}
 			} res_t;
 		private:
 			/**

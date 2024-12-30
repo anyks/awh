@@ -156,7 +156,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						return;
 					}
 					// Добавляем полученные данные в буфер
-					options->buffer.emplace(buffer, size);
+					options->buffer.push(buffer, size);
 					// Если функция обратного вызова активности потока установлена
 					if(!options->mode && (options->mode = this->_callbacks.is("stream")))
 						// Выполняем функцию обратного вызова
@@ -164,7 +164,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 					// Выполняем обработку полученных данных
 					while(!options->close){
 						// Выполняем парсинг полученных данных
-						const size_t bytes = options->http.parse(static_cast <buffer_t::data_t> (options->buffer), static_cast <size_t> (options->buffer));
+						const size_t bytes = options->http.parse(reinterpret_cast <const char *> (options->buffer.get()), options->buffer.size());
 						// Если все данные получены
 						if((bytes > 0) && options->http.is(http_t::state_t::END)){
 							// Получаем флаг постоянного подключения
@@ -423,7 +423,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						// Если парсер обработал какое-то количество байт
 						if((bytes > 0) && !options->buffer.empty()){
 							// Если размер буфера больше количества удаляемых байт
-							if(static_cast <size_t> (options->buffer) >= bytes)
+							if(options->buffer.size() >= bytes)
 								// Удаляем количество обработанных байт
 								options->buffer.erase(bytes);
 							// Если байт в буфере меньше, просто очищаем буфер
@@ -435,8 +435,6 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						// Если данных для обработки недостаточно, выходим
 						} else break;
 					}
-					// Фиксируем изменение в буфере
-					options->buffer.commit();
 				}
 			}
 		}
@@ -496,7 +494,7 @@ void awh::server::Http1::callbacksEvents(const fn_t::event_t event, const uint64
 				// Если функции обратного вызова установлены
 				if(!callbacks.empty())
 					// Выполняем установку функций обратного вызова для Websocket-сервера
-					this->_ws1.callbacks(std::move(callbacks));
+					this->_ws1.callbacks(callbacks);
 			}
 		} break;
 	}
@@ -1370,7 +1368,7 @@ void awh::server::Http1::callbacks(const fn_t & callbacks) noexcept {
 		// Если функции обратного вызова установлены
 		if(!callbacks.empty())
 			// Выполняем установку функций обратного вызова для Websocket-сервера
-			this->_ws1.callbacks(std::move(callbacks));
+			this->_ws1.callbacks(callbacks);
 	}
 }
 /**

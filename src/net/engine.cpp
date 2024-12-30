@@ -2519,11 +2519,9 @@ int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	 * @param ctx  передаваемый контекст
 	 * @return     результат переключения протокола
 	 */
-	int32_t awh::Engine::nextProto(SSL * ssl, const uint8_t ** data, uint32_t * len, void * ctx) noexcept {
+	int32_t awh::Engine::nextProto([[maybe_unused]] SSL * ssl, const uint8_t ** data, uint32_t * len, void * ctx) noexcept {
 		// Если объекты переданы верно
 		if((ssl != nullptr) && (ctx != nullptr)){
-			// Блокируем неиспользуемую переменную
-			(void) ssl;
 			// Выполняем установку буфера данных
 			(* data) = reinterpret_cast <ctx_t *> (ctx)->protocols.data();
 			// Выполняем установку размер буфера данных протокола
@@ -2544,11 +2542,9 @@ int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	 * @param ctx     передаваемый контекст
 	 * @return        результат выбора протокола
 	 */
-	int32_t awh::Engine::selectNextProtoClient(SSL * ssl, uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
+	int32_t awh::Engine::selectNextProtoClient([[maybe_unused]] SSL * ssl, uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
 		// Если объекты переданы верно
 		if((ssl != nullptr) && (ctx != nullptr)){
-			// Блокируем неиспользуемую переменную
-			(void) ssl;
 			// Получаем объект контекста модуля
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
 			// Если протокол переключить получилось на HTTP/2
@@ -2582,11 +2578,9 @@ int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	 * @param ctx     передаваемый контекст
 	 * @return        результат выбора протокола
 	 */
-	int32_t awh::Engine::selectNextProtoServer(SSL * ssl, const uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
+	int32_t awh::Engine::selectNextProtoServer([[maybe_unused]] SSL * ssl, const uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
 		// Если объекты переданы верно
 		if((ssl != nullptr) && (ctx != nullptr)){
-			// Блокируем неиспользуемую переменную
-			(void) ssl;
 			// Получаем объект контекста модуля
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
 			// Если протокол переключить получилось на HTTP/2

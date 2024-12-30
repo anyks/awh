@@ -16,6 +16,162 @@
 #include <client/web/web.hpp>
 
 /**
+ * Оператор [=] перемещения параметров запроса
+ * @param request объект параметров запроса
+ * @return        объект текущего запроса
+ */
+awh::client::Web::Request & awh::client::Web::Request::operator = (request_t && request) noexcept {
+	// Выполняем установку идентификатора запроса
+	this->id = request.id;
+	// Выполняем установку агента воркера выполняющего запрос
+	this->agent = request.agent;
+	// Выполняем установку метода запроса
+	this->method = request.method;
+	// Выполняем перемещение URL-адреса
+	this->url = std::move(request.url);
+	// Выполняем перемещение тела запроса
+	this->entity = std::move(request.entity);
+	// Выполняем перемещение заголовков запроса
+	this->headers = std::move(request.headers);
+	// Выполняем перемещение списка компрессоров
+	this->compressors = std::move(request.compressors);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присванивания параметров запроса
+ * @param request объект параметров запроса
+ * @return        объект текущего запроса
+ */
+awh::client::Web::Request & awh::client::Web::Request::operator = (const request_t & request) noexcept {
+	// Выполняем установку идентификатора запроса
+	this->id = request.id;
+	// Выполняем установку агента воркера выполняющего запрос
+	this->agent = request.agent;
+	// Выполняем установку метода запроса
+	this->method = request.method;
+	// Выполняем копирование URL-адреса
+	this->url = request.url;
+	// Выполняем копирование тела запроса
+	this->entity = request.entity;
+	// Выполняем копирование заголовков запроса
+	this->headers = request.headers;
+	// Выполняем копирование списка компрессоров
+	this->compressors = request.compressors;
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор сравнения
+ * @param request объект параметров запроса
+ * @return        результат сравнения
+ */
+bool awh::client::Web::Request::operator == (const request_t & request) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Выполняем сравнение основных параметров
+	result = (
+		(this->id == request.id) &&
+		(this->agent == request.agent) &&
+		(this->method == request.method) &&
+		(this->url == request.url)
+	);
+	// Если параметры совпадают
+	if(result){
+		// Выполняем справнение тела запроса
+		if((result = (this->entity.size() == request.entity.size())) && !this->entity.empty()){
+			// Выполняем проверку соответствия содержимого
+			result = (::memcmp(this->entity.data(), request.entity.data(), this->entity.size()) == 0);
+			// Если проверка не пройдена
+			if(!result)
+				// Выходим из функции
+				return result;
+		}
+		// Если проверка тела запроса пройдена
+		if(result){
+			// Если количество компрессоров совпадает
+			if((result = (this->compressors.size() == request.compressors.size()))){
+				// Выполняем перебор всех компрессоров
+				for(size_t i = 0; i < this->compressors.size(); i++){
+					// Выполняем сравнение компрессоров
+					result = (this->compressors.at(i) == request.compressors.at(i));
+					// Если компрессоры не совпадают
+					if(!result)
+						// Выходим из функции
+						return result;
+				}
+			}
+			// Если проверка тела запроса пройдена
+			if(result){
+				// Если список заголовков совпадает
+				if((result = (this->headers.size() == request.headers.size()))){
+					// Выполняем перебор всего списка заголовков
+					for(auto & header : this->headers){
+						// Выполняем поиск заголовка
+						auto i = request.headers.find(header.first);
+						// Если заголовок найден
+						if((result = (i != request.headers.end()))){
+							// Выполняем сравнение содержимого заголовков
+							result = (header.second.compare(i->second) == 0);
+							// Если компрессоры не совпадают
+							if(!result)
+								// Выходим из функции
+								return result;
+						// Выходим из функции
+						} else return result;
+					}
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Request Конструктор перемещения
+ * @param request объект параметров запроса
+ */
+awh::client::Web::Request::Request(request_t && request) noexcept {
+	// Выполняем установку идентификатора запроса
+	this->id = request.id;
+	// Выполняем установку агента воркера выполняющего запрос
+	this->agent = request.agent;
+	// Выполняем установку метода запроса
+	this->method = request.method;
+	// Выполняем перемещение URL-адреса
+	this->url = std::move(request.url);
+	// Выполняем перемещение тела запроса
+	this->entity = std::move(request.entity);
+	// Выполняем перемещение заголовков запроса
+	this->headers = std::move(request.headers);
+	// Выполняем перемещение списка компрессоров
+	this->compressors = std::move(request.compressors);
+}
+/**
+ * Request Конструктор копирования
+ * @param request объект параметров запроса
+ */
+awh::client::Web::Request::Request(const request_t & request) noexcept {
+	// Выполняем установку идентификатора запроса
+	this->id = request.id;
+	// Выполняем установку агента воркера выполняющего запрос
+	this->agent = request.agent;
+	// Выполняем установку метода запроса
+	this->method = request.method;
+	// Выполняем копирование URL-адреса
+	this->url = request.url;
+	// Выполняем копирование тела запроса
+	this->entity = request.entity;
+	// Выполняем копирование заголовков запроса
+	this->headers = request.headers;
+	// Выполняем копирование списка компрессоров
+	this->compressors = request.compressors;
+}
+/**
+ * Request Конструктор
+ */
+awh::client::Web::Request::Request() noexcept : id(0), agent(agent_t::HTTP), method(awh::web_t::method_t::NONE) {}
+/**
  * openEvent Метод обратного вызова при запуске работы
  * @param sid идентификатор схемы сети
  */
@@ -116,9 +272,9 @@ void awh::client::Web::proxyConnectEvent(const uint64_t bid, const uint16_t sid)
 						// Выполняем очистку параметров HTTP-запроса
 						this->_scheme.proxy.http.clear();
 						// Создаём объек запроса
-						awh::web_t::req_t query(awh::web_t::method_t::CONNECT, this->_scheme.url);
+						awh::web_t::req_t request(awh::web_t::method_t::CONNECT, this->_scheme.url);
 						// Получаем бинарные данные WEB запроса
-						const auto & buffer = this->_scheme.proxy.http.proxy(std::move(query));
+						const auto & buffer = this->_scheme.proxy.http.proxy(std::move(request));
 						// Если бинарные данные запроса получены
 						if(!buffer.empty()){
 							/**
@@ -168,7 +324,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::PROXY_CONNECT, event_t::PROXY_READ}, event_t::PROXY_READ)){
 			// Добавляем полученные данные в буфер
-			this->_buffer.emplace(buffer, size);
+			this->_buffer.push(buffer, size);
 			// Определяем тип прокси-сервера
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
@@ -176,7 +332,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 					// Если данные не получены
 					if(!this->_scheme.proxy.socks5.is(socks5_t::state_t::END)){
 						// Выполняем парсинг входящих данных
-						this->_scheme.proxy.socks5.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+						this->_scheme.proxy.socks5.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
 						// Получаем данные запроса
 						const auto & buffer = this->_scheme.proxy.socks5.get();
 						// Если данные получены
@@ -238,7 +394,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 					// Выполняем обработку полученных данных
 					while(this->_reading){
 						// Выполняем парсинг полученных данных
-						const size_t bytes = this->_scheme.proxy.http.parse(static_cast <buffer_t::data_t> (this->_buffer), static_cast <size_t> (this->_buffer));
+						const size_t bytes = this->_scheme.proxy.http.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
 						// Если все данные получены
 						if((bytes > 0) && this->_scheme.proxy.http.is(http_t::state_t::END)){
 							// Выполняем очистку буфера данных
@@ -348,7 +504,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 						// Если парсер обработал какое-то количество байт
 						if((bytes > 0) && !this->_buffer.empty()){
 							// Если размер буфера больше количества удаляемых байт
-							if(static_cast <size_t> (this->_buffer) >= bytes)
+							if(this->_buffer.size() >= bytes)
 								// Удаляем количество обработанных байт
 								this->_buffer.erase(bytes);
 						}
@@ -357,8 +513,6 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							// Выходим из цикла
 							break;
 					}
-					// Фиксируем изменение в буфере
-					this->_buffer.commit();
 				} break;
 				// Иначе завершаем работу
 				default: const_cast <client::core_t *> (this->_core)->close(bid);
@@ -373,10 +527,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
  * @param sid идентификатор схемы сети
  * @return    результат активации зашифрованного канала SSL
  */
-bool awh::client::Web::enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid) noexcept {
-	// Блокируем переменные которые не используем
-	(void) bid;
-	(void) sid;
+bool awh::client::Web::enableSSLEvent(const uri_t::url_t & url, [[maybe_unused]] const uint64_t bid, [[maybe_unused]] const uint16_t sid) noexcept {
 	// Выполняем проверку, выполняется подключение к серверу в защищённом рижеме или нет
 	return (!this->_nossl && (!url.empty() && (this->_fmk->compare(url.schema, "https") || this->_fmk->compare(url.schema, "wss"))));
 }
@@ -386,9 +537,7 @@ bool awh::client::Web::enableSSLEvent(const uri_t::url_t & url, const uint64_t b
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::client::Web::chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
-	// Блокируем переменные которые не используем
-	(void) bid;
+void awh::client::Web::chunking([[maybe_unused]] const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()){
 		// Выполняем добавление полученного чанка в тело ответа
@@ -406,9 +555,7 @@ void awh::client::Web::chunking(const uint64_t bid, const vector <char> & chunk,
  * @param error   тип полученной ошибки
  * @param message сообщение полученной ошибки
  */
-void awh::client::Web::errors(const uint64_t bid, const log_t::flag_t flag, const awh::http::error_t error, const string & message) noexcept {
-	// Блокируем переменные которые не используем
-	(void) bid;
+void awh::client::Web::errors([[maybe_unused]] const uint64_t bid, const log_t::flag_t flag, const awh::http::error_t error, const string & message) noexcept {
 	// Если функция обратного вызова на на вывод ошибок установлена
 	if(this->_callbacks.is("error"))
 		// Выполняем функцию обратного вызова
@@ -830,8 +977,10 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log),
- _nossl(false), _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
- _sendPing(0), _attempt(0), _attempts(15), _pingInterval(PING_INTERVAL), _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
+ _nossl(false), _reading(false), _stopped(false), _pinging(true),
+ _complete(true), _redirects(false), _sendPing(0), _attempt(0),
+ _attempts(15), _pingInterval(PING_INTERVAL), _buffer(log),
+ _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
@@ -847,8 +996,10 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log),
- _nossl(false), _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
- _sendPing(0), _attempt(0), _attempts(15), _pingInterval(PING_INTERVAL), _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
+ _nossl(false), _reading(false), _stopped(false), _pinging(true),
+ _complete(true), _redirects(false), _sendPing(0), _attempt(0),
+ _attempts(15), _pingInterval(PING_INTERVAL), _buffer(log),
+ _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова

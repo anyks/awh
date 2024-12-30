@@ -41,8 +41,6 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 				options->http.chunk(this->_chunkSize);
 				// Устанавливаем флаг шифрования
 				options->http.encryption(this->_encryption.mode);
-				// Устанавливаем режим работы буфера
-				options->buffer.payload = buffer_t::mode_t::COPY;
 				// Устанавливаем флаг перехвата контекста компрессии
 				options->server.takeover = this->_server.takeover;
 				// Устанавливаем флаг перехвата контекста декомпрессии
@@ -258,7 +256,7 @@ void awh::server::Websocket2::callbacksEvents(const fn_t::event_t event, const u
 				// Если функции обратного вызова установлены
 				if(!callbacks.empty())
 					// Выполняем установку функций обратного вызова для Websocket-сервера
-					this->_ws1.callbacks(std::move(callbacks));
+					this->_ws1.callbacks(callbacks);
 			}
 		} break;
 	}
@@ -370,7 +368,7 @@ int32_t awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t b
 				// Обновляем время отправленного пинга
 				options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Добавляем полученные данные в буфер
-				options->buffer.payload.emplace(reinterpret_cast <const char *> (buffer), size);
+				options->buffer.payload.push(buffer, size);
 			}
 			// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 			if(this->_callbacks.is("chunks"))
@@ -446,7 +444,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 								// Выполняем обработку полученных данных
 								while(!options->close && options->allow.receive && !options->buffer.payload.empty()){
 									// Выполняем чтение фрейма Websocket
-									const auto & payload = options->frame.methods.get(head, static_cast <buffer_t::data_t> (options->buffer.payload), static_cast <size_t> (options->buffer.payload));
+									const auto & payload = options->frame.methods.get(head, reinterpret_cast <const char *> (options->buffer.payload.get()), options->buffer.payload.size());
 									// Если буфер данных получен
 									if(!payload.empty()){
 										// Определяем тип ответа
@@ -547,7 +545,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 										// Если парсер обработал какое-то количество байт
 										if((head.frame > 0) && !options->buffer.payload.empty()){
 											// Если размер буфера больше количества удаляемых байт
-											if((receive = (static_cast <size_t> (options->buffer.payload) >= head.frame)))
+											if((receive = (options->buffer.payload.size() >= head.frame)))
 												// Удаляем количество обработанных байт
 												options->buffer.payload.erase(head.frame);
 										}
@@ -563,8 +561,6 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 										// Выходим из условия
 										break;
 								}
-								// Фиксируем изменение в буфере
-								options->buffer.payload.commit();
 								// Если мы получили флаг завершения потока
 								if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 									// Если установлена функция отлова завершения запроса
@@ -1357,34 +1353,28 @@ bool awh::server::Websocket2::sendMessage(const uint64_t bid, const char * messa
 						buffer = options->hash.encode <vector <char>> (buffer.data(), buffer.size(), options->cipher);
 					// Если требуется фрагментация сообщения
 					if(buffer.size() > options->frame.size){
-						// Бинарный буфер чанка данных
-						vector <char> chunk(options->frame.size);
-						// Смещение в бинарном буфере
-						size_t start = 0, stop = options->frame.size;
+						// Смещение в бинарном буфере и актуальный размер блока
+						size_t offset = 0, actual = 0;
 						// Выполняем разбивку полезной нагрузки на сегменты
-						while(stop < buffer.size()){
-							// Увеличиваем длину чанка
-							stop += options->frame.size;
-							// Если длина чанка слишком большая, компенсируем
-							stop = (stop > buffer.size() ? buffer.size() : stop);
+						while(offset < buffer.size()){
+							// Поулчаем количество оставшихся байт в буфере
+							actual = (buffer.size() - offset);
+							// Выполняем получение актуального размера отправляемых данных
+							actual = ((actual > options->frame.size) ? options->frame.size : actual);
 							// Устанавливаем флаг финального сообщения
-							head.fin = (stop == buffer.size());
-							// Формируем чанк бинарных данных
-							chunk.assign(buffer.data() + start, buffer.data() + stop);
+							head.fin = ((offset + actual) == buffer.size());
 							// Создаём буфер для отправки
-							const auto & payload = options->frame.methods.set(head, chunk.data(), chunk.size());
+							const auto & payload = options->frame.methods.set(head, buffer.data() + offset, actual);
+							// Увеличиваем смещение в буфере
+							offset += actual;
 							// Если бинарный буфер для отправки данных получен
 							if(!payload.empty())
 								// Выполняем отправку сообщения на клиенту
 								result = web2_t::send(options->sid, bid, payload.data(), payload.size(), http2_t::flag_t::NONE);
-							// Иначе просто выходим
-							else break;
 							// Выполняем сброс RSV1
 							head.rsv[0] = false;
 							// Устанавливаем опкод сообщения
 							head.optcode = ws::frame_t::opcode_t::CONTINUATION;
-							// Увеличиваем смещение в буфере
-							start = stop;
 							// Если запрос не отправлен
 							if(!result)
 								// Выходим из цикла
@@ -1470,7 +1460,7 @@ void awh::server::Websocket2::callbacks(const fn_t & callbacks) noexcept {
 		// Если функции обратного вызова установлены
 		if(!callbacks.empty())
 			// Выполняем установку функций обратного вызова для Websocket-сервера
-			this->_ws1.callbacks(std::move(callbacks));
+			this->_ws1.callbacks(callbacks);
 	}
 }
 /**
@@ -1487,9 +1477,7 @@ uint32_t awh::server::Websocket2::port(const uint64_t bid) const noexcept {
  * @param bid идентификатор брокера
  * @return    агент к которому относится подключённый клиент
  */
-awh::server::web_t::agent_t awh::server::Websocket2::agent(const uint64_t bid) const noexcept {
-	// Выполняем блокировку неиспользуемой переменной
-	(void) bid;
+awh::server::web_t::agent_t awh::server::Websocket2::agent([[maybe_unused]] const uint64_t bid) const noexcept {
 	// Выводим сообщение, что ничего не найдено
 	return agent_t::WEBSOCKET;
 }

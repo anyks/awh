@@ -112,13 +112,7 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
  * @param name  название функции обратного вызова
  * @param dump  дамп данных функции обратного вызова
  */
-void awh::server::Web::callbacksEvents(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept {
-	// Выполняем зануление неиспользуемых переменных
-	(void) idw;
-	(void) name;
-	(void) dump;
-	(void) event;
-}
+void awh::server::Web::callbacksEvents([[maybe_unused]] const fn_t::event_t event, [[maybe_unused]] const uint64_t idw, [[maybe_unused]] const string & name, [[maybe_unused]] const fn_t::dump_t * dump) noexcept {}
 /**
  * clusterEvents Метод вывода статуса кластера
  * @param family флаг семейства кластера
@@ -216,9 +210,7 @@ void awh::server::Web::disconected(const uint16_t tid) noexcept {
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Web::init(const string & socket, const vector <http_t::compressor_t> & compressors) noexcept {
-	// Отключаем неиспользуемую переменную
-	(void) compressors;
+void awh::server::Web::init([[maybe_unused]] const string & socket, [[maybe_unused]] const vector <http_t::compressor_t> & compressors) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -227,12 +219,6 @@ void awh::server::Web::init(const string & socket, const vector <http_t::compres
 		if(this->_core != nullptr)
 			// Выполняем установку unix-сокет
 			const_cast <server::core_t *> (this->_core)->sockname(socket);
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		// Отключаем неиспользуемую переменную
-		(void) socket;
 	#endif
 }
 /**
@@ -241,9 +227,7 @@ void awh::server::Web::init(const string & socket, const vector <http_t::compres
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
  */
-void awh::server::Web::init(const uint32_t port, const string & host, const vector <http_t::compressor_t> & compressors) noexcept {
-	// Отключаем неиспользуемую переменную
-	(void) compressors;
+void awh::server::Web::init(const uint32_t port, const string & host, [[maybe_unused]] const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем порт сервера
 	this->_service.port = port;
 	// Устанавливаем хост сервера

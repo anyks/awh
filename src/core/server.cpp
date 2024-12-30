@@ -141,7 +141,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Деактивируем ожидание записи данных
 								ret.first->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 								// Выполняем создание буфера полезной нагрузки
-								this->createBuffer(ret.first->second->id());
+								this->initBuffer(ret.first->second->id());
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("connect"))
 									// Выполняем функцию обратного вызова
@@ -523,7 +523,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Деактивируем ожидание записи данных
 								ret.first->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 								// Выполняем создание буфера полезной нагрузки
-								this->createBuffer(ret.first->second->id());
+								this->initBuffer(ret.first->second->id());
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("connect"))
 									// Выполняем функцию обратного вызова
@@ -857,7 +857,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							// Деактивируем ожидание записи данных
 							broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 							// Выполняем создание буфера полезной нагрузки
-							this->createBuffer(broker->id());
+							this->initBuffer(broker->id());
 							// Если функция обратного вызова установлена
 							if(this->_callbacks.is("connect"))
 								// Выполняем функцию обратного вызова
@@ -2100,7 +2100,7 @@ bool awh::server::Core::send(const char * buffer, const size_t size, const uint6
 				// Ещем для указанного потока очередь полезной нагрузки
 				auto i = this->_payloads.find(bid);
 				// Если для потока очередь полезной нагрузки получена
-				if((waiting = ((i != this->_payloads.end()) && !i->second.empty() && ((i->second.front().offset - i->second.front().pos) > 0))))
+				if((waiting = ((i != this->_payloads.end()) && !i->second->empty())))
 					// Выполняем отправку сообщения асинхронным методом
 					result = node_t::send(buffer, size, bid);
 				// Если очередь ещё не существует
@@ -2297,7 +2297,7 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				 */
 				do {
 					// Если подключение выполнено и чтение данных разрешено
-					if(broker->_payload.size > 0){
+					if(broker->_buffer.size > 0){
 						// Определяем тип сокета
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
 							// Если тип сокета установлен как DTLS
@@ -2307,7 +2307,7 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 							break;
 						}
 						// Выполняем получение сообщения от клиента
-						const int64_t bytes = broker->_ectx.read(broker->_payload.data.get(), broker->_payload.size);
+						const int64_t bytes = broker->_ectx.read(broker->_buffer.data.get(), broker->_buffer.size);
 						// Если данные получены
 						if(bytes > 0){
 							// Если таймер ожидания получения данных установлен
@@ -2317,7 +2317,7 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 							// Если данных достаточно и функция обратного вызова на получение данных установлена
 							if(this->_callbacks.is("read"))
 								// Выводим функцию обратного вызова
-								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->_payload.data.get(), static_cast <size_t> (bytes), bid, i->first);
+								this->_callbacks.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->_buffer.data.get(), static_cast <size_t> (bytes), bid, i->first);
 							// Если тип сокета установлен как UDP
 							if(this->_settings.sonet == scheme_t::sonet_t::DTLS){
 								// Если подключение ещё не разорванно
@@ -2384,33 +2384,22 @@ void awh::server::Core::write(const uint64_t bid) noexcept {
 		// Ещем для указанного потока очередь полезной нагрузки
 		auto i = this->_payloads.find(bid);
 		// Если для потока очередь полезной нагрузки получена
-		if((i != this->_payloads.end()) && !i->second.empty()){
+		if((i != this->_payloads.end()) && !i->second->empty()){
 			// Создаём бъект активного брокера подключения
 			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-			// Если есть данные для отправки
-			if((i->second.front().offset - i->second.front().pos) > 0){
-				// Выполняем запись в сокет
-				const size_t bytes = this->write(i->second.front().data.get() + i->second.front().pos, i->second.front().offset - i->second.front().pos, bid);
-				// Если данные записаны удачно
-				if((bytes > 0) && this->has(bid)){
-					// Увеличиваем смещение в бинарном буфере
-					i->second.front().pos += bytes;
-					// Если все данные записаны успешно, тогда удаляем результат
-					if(i->second.front().pos == i->second.front().offset)
-						// Выполняем освобождение памяти хранения полезной нагрузки
-						this->available(bid);
-				}
-				// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
-				if(this->_payloads.find(bid) != this->_payloads.end()){
-					// Если сокет подключения активен
-					if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS))
-						// Запускаем ожидание записи данных
-						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
-				}
-			// Если данных для отправки больше нет и сокет подключения активен
-			} else if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS))
-				// Останавливаем детектирования возможности записи в сокет
-				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+			// Выполняем запись в сокет
+			const size_t bytes = this->write(reinterpret_cast <const char *> (i->second->get()), i->second->size(), bid);
+			// Если данные записаны удачно
+			if((bytes > 0) && this->has(bid))
+				// Выполняем освобождение памяти хранения полезной нагрузки
+				this->erase(bid, bytes);
+			// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
+			if(this->_payloads.find(bid) != this->_payloads.end()){
+				// Если сокет подключения активен
+				if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS))
+					// Запускаем ожидание записи данных
+					broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+			}
 		}
 	}
 }
@@ -3039,7 +3028,7 @@ void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const
 			} break;
 		}
 		// Выполняем создание буфера полезной нагрузки
-		this->createBuffer(bid);
+		this->initBuffer(bid);
 	}
 }
 /**

@@ -98,20 +98,55 @@ namespace awh {
 				/**
 				 * Request Структура запроса клиента
 				 */
-				typedef struct Request {
-					uint64_t id;                                      // Идентификатор запроса
-					agent_t agent;                                    // Агент воркера выполнения запроса
-					uri_t::url_t url;                                 // URL-запроса запроса
-					web_t::method_t method;                           // Метод запроса
-					vector <char> entity;                             // Тело запроса
-					vector <http_t::compressor_t> compressors;        // Список поддерживаемых компрессоров
-					std::unordered_multimap <string, string> headers; // Заголовки клиента
-					/**
-					 * Request Конструктор
-					 */
-					Request() noexcept :
-					 id(0), agent(agent_t::HTTP),
-					 method(web_t::method_t::NONE) {}
+				typedef class AWHSHARED_EXPORT Request {
+					public:
+						uint64_t id;                                      // Идентификатор запроса
+						agent_t agent;                                    // Агент воркера выполнения запроса
+						uri_t::url_t url;                                 // URL-запроса запроса
+						web_t::method_t method;                           // Метод запроса
+						vector <char> entity;                             // Тело запроса
+						vector <http_t::compressor_t> compressors;        // Список поддерживаемых компрессоров
+						std::unordered_multimap <string, string> headers; // Заголовки клиента
+					public:
+						/**
+						 * Оператор [=] перемещения параметров запроса
+						 * @param request объект параметров запроса
+						 * @return        объект текущего запроса
+						 */
+						Request & operator = (Request && request) noexcept;
+						/**
+						 * Оператор [=] присванивания параметров запроса
+						 * @param request объект параметров запроса
+						 * @return        объект текущего запроса
+						 */
+						Request & operator = (const Request & request) noexcept;
+					public:
+						/**
+						 * Оператор сравнения
+						 * @param request объект параметров запроса
+						 * @return        результат сравнения
+						 */
+						bool operator == (const Request & request) noexcept;
+					public:
+						/**
+						 * Request Конструктор перемещения
+						 * @param request объект параметров запроса
+						 */
+						Request(Request && request) noexcept;
+						/**
+						 * Request Конструктор копирования
+						 * @param request объект параметров запроса
+						 */
+						Request(const Request & request) noexcept;
+					public:
+						/**
+						 * Request Конструктор
+						 */
+						Request() noexcept;
+						/**
+						 * ~Request Деструктор
+						 */
+						~Request() noexcept {}
 				} request_t;
 			protected:
 				/**
