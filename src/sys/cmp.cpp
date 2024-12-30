@@ -148,7 +148,7 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 						// Добавляем в буфер новую запись
 						this->_queue.push(vector <queue_t::buffer_t> ({
 							{&header, headerSize},
-							{reinterpret_cast <const char *> (buffer) + offset, header.bytes}
+							{reinterpret_cast <const char *> (buffer) + offset, static_cast <size_t> (header.bytes)}
 						}), header.bytes + headerSize);
 					// Если данные помещаются в буфере
 					} else {
@@ -159,7 +159,7 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 						// Добавляем в буфер новую запись
 						this->_queue.push(vector <queue_t::buffer_t> ({
 							{&header, headerSize},
-							{reinterpret_cast <const char *> (buffer) + offset, header.bytes}
+							{reinterpret_cast <const char *> (buffer) + offset, static_cast <size_t> (header.bytes)}
 						}), header.bytes + headerSize);
 					}
 					// Увеличиваем смещение в буфере
@@ -174,7 +174,7 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 				// Добавляем в буфер новую запись
 				this->_queue.push(vector <queue_t::buffer_t> ({
 					{&header, headerSize},
-					{reinterpret_cast <const char *> (buffer), header.bytes}
+					{reinterpret_cast <const char *> (buffer), static_cast <size_t> (header.bytes)}
 				}), header.bytes + headerSize);
 			}
 		/**
