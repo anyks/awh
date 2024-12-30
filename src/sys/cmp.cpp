@@ -196,7 +196,21 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 			#endif
 		}
 	// Выводим сообщение об ошибке
-	} else this->_log->print("CMP Encoder: %s", log_t::flag_t::WARNING, "non-existent data was sent to the encoder");
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the encoder");
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, "Non-existent data was sent to the encoder");
+		#endif
+	}
 }
 /**
  * chunkSize Метод установки максимального размера одного блока
@@ -284,13 +298,13 @@ void awh::cmp::Decoder::clear() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем удаление всех временных данных
-		this->_tmp.clear();
+		this->_temp.clear();
 		// Выполняем очистку очереди данных
 		this->_queue.clear();
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Очищаем выделенную память для временных данных
-		std::map <uint64_t, std::unique_ptr <buffer_t>> ().swap(this->_tmp);
+		std::map <uint64_t, std::unique_ptr <buffer_t>> ().swap(this->_temp);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -409,7 +423,21 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 			#endif
 		}
 	// Выводим сообщение об ошибке
-	} else this->_log->print("CMP Decoder: %s", log_t::flag_t::WARNING, "non-existent data was sent to the decoder");
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
+		#endif
+	}
 }
 /**
  * prepare Метод препарирования полученных данных
@@ -435,9 +463,20 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 				// Выполняем получение режима работы буфера данных
 				::memcpy(&header, reinterpret_cast <const char *> (buffer), sizeof(header));
 				// Если общий размер блока слишком большой
-				if(header.bytes > (this->_chunkSize - length)){
-					// Выводим в лог сообщение
-					this->_log->print("CMP Decoder: %s", log_t::flag_t::CRITICAL, "data buffer has been corrupted");
+				if((header.size == 0) || (header.bytes > (this->_chunkSize - length))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Data buffer has been corrupted");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Data buffer has been corrupted");
+					#endif
 					// Очищаем все данные декодера
 					this->clear();
 				// Продолжаем дальнейшую работу
@@ -449,9 +488,9 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 						// Получаем индекс текущей записи
 						const uint64_t id = header.id;
 						// Выполняем поиск указанной записи во временном объекте
-						auto i = this->_tmp.find(id);
+						auto i = this->_temp.find(id);
 						// Если запись найдена в временном блоке данных
-						if(i != this->_tmp.end()){
+						if(i != this->_temp.end()){
 							// Если размер полезной нагрузки установлен
 							if(header.bytes > 0)
 								// Выполняем копирование данных полезной нагрузки
@@ -461,7 +500,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 								// Выполняем перемещение данных в очередь
 								this->_queue.push(i->second->get(), i->second->size());
 								// Выполняем удаление данных из временного контейнера
-								this->_tmp.erase(i);
+								this->_temp.erase(i);
 							}
 						// Если запись не найдена во временном блоке данных
 						} else {
@@ -472,7 +511,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 							// Если мы получили одну из записей
 							else {
 								// Выполняем добавление записи во временный объект
-								auto ret = this->_tmp.emplace(id, std::unique_ptr <buffer_t> (new buffer_t(this->_log)));
+								auto ret = this->_temp.emplace(id, std::unique_ptr <buffer_t> (new buffer_t(this->_log)));
 								// Выделяем достаточно данных для формирования объекта
 								ret.first->second->reserve(header.size);
 								// Если размер полезной нагрузки установлен
@@ -528,7 +567,21 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 			#endif
 		}
 	// Выводим сообщение об ошибке
-	} else this->_log->print("CMP Decoder: %s", log_t::flag_t::WARNING, "non-existent data was sent to the decoder");
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
+		#endif
+	}
 	// Выводим результат
 	return result;
 }

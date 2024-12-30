@@ -178,7 +178,7 @@ namespace awh {
 				awh::buffer_t _buffer;
 			private:
 				// Набор временных буферов данных
-				std::map <uint64_t, std::unique_ptr <buffer_t>> _tmp;
+				std::map <uint64_t, std::unique_ptr <buffer_t>> _temp;
 			private:
 				// Объект работы с логами
 				const log_t * _log;
