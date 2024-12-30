@@ -98,6 +98,12 @@ namespace awh {
 			size_t size() const noexcept;
 		public:
 			/**
+			 * capacity Метод получения размера выделенной памяти
+			 * @return размер выделенной памяти 
+			 */
+			size_t capacity() const noexcept;
+		public:
+			/**
 			 * Шаблон для метода удаления верхних записей
 			 * @tparam T тип данных для удаления
 			 */

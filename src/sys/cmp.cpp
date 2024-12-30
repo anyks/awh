@@ -126,11 +126,7 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Заголовоки блока данных
-			header_t header;
-			// Выполняем установку общего размера записи
-			header.size = size;
-			// Устанавливаем идентификатор сообщения
-			header.id = this->_count++;
+			header_t header(this->_count++, size);
 			// Получаем размер заголовка
 			const size_t headerSize = sizeof(header);
 			// Если размер данных больше размера чанка
@@ -140,42 +136,42 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 				// Выполняем формирование буфера до тех пор пока все не добавим
 				while((size - offset) > 0){
 					// Если данные не помещаются в буфере
-					if((headerSize + (header.size - offset)) > this->_chunkSize){
+					if((headerSize + (size - offset)) > this->_chunkSize){
 						// Формируем актуальный размер данных буфера
-						header.bytes = (this->_chunkSize - headerSize);
+						header.bytes = static_cast <uint16_t> (this->_chunkSize - headerSize);
 						// Устанавливаем режим отравки буфера данных
 						header.mode = (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE);
 						// Добавляем в буфер новую запись
 						this->_queue.push(vector <queue_t::buffer_t> ({
 							{&header, headerSize},
 							{reinterpret_cast <const char *> (buffer) + offset, static_cast <size_t> (header.bytes)}
-						}), header.bytes + headerSize);
+						}), static_cast <size_t> (header.bytes) + headerSize);
 					// Если данные помещаются в буфере
 					} else {
 						// Устанавливаем режим отравки буфера данных
 						header.mode = mode_t::END;
 						// Формируем актуальный размер данных буфера
-						header.bytes = (header.size - offset);
+						header.bytes = static_cast <uint16_t> (size - offset);
 						// Добавляем в буфер новую запись
 						this->_queue.push(vector <queue_t::buffer_t> ({
 							{&header, headerSize},
 							{reinterpret_cast <const char *> (buffer) + offset, static_cast <size_t> (header.bytes)}
-						}), header.bytes + headerSize);
+						}), static_cast <size_t> (header.bytes) + headerSize);
 					}
 					// Увеличиваем смещение в буфере
-					offset += header.bytes;
+					offset += static_cast <size_t> (header.bytes);
 				}
 			// Если размер данных помещается в буфер
 			} else {
-				// Формируем актуальный размер данных буфера
-				header.bytes = size;
 				// Устанавливаем режим отравки буфера данных
 				header.mode = mode_t::END;
+				// Формируем актуальный размер данных буфера
+				header.bytes = static_cast <uint16_t> (size);
 				// Добавляем в буфер новую запись
 				this->_queue.push(vector <queue_t::buffer_t> ({
 					{&header, headerSize},
 					{reinterpret_cast <const char *> (buffer), static_cast <size_t> (header.bytes)}
-				}), header.bytes + headerSize);
+				}), static_cast <size_t> (header.bytes) + headerSize);
 			}
 		/**
 		 * Если возникает ошибка
@@ -304,7 +300,7 @@ void awh::cmp::Decoder::clear() noexcept {
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Очищаем выделенную память для временных данных
-		std::map <uint64_t, std::unique_ptr <buffer_t>> ().swap(this->_temp);
+		std::map <uint32_t, std::unique_ptr <buffer_t>> ().swap(this->_temp);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -455,15 +451,15 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 		 */
 		try {
 			// Получаем размер заголовка
-			const size_t length = sizeof(header_t);
+			const size_t headerSize = sizeof(header_t);
 			// Если данных достаточно для извлечения заголовка
-			if(size >= length){
+			if(size >= headerSize){
 				// Создаём объект заголовка
 				header_t header{};
 				// Выполняем получение режима работы буфера данных
-				::memcpy(&header, reinterpret_cast <const char *> (buffer), sizeof(header));
+				::memcpy(&header, reinterpret_cast <const char *> (buffer), headerSize);
 				// Если общий размер блока слишком большой
-				if((header.size == 0) || (header.bytes > (this->_chunkSize - length))){
+				if((header.size == 0) || (static_cast <size_t> (header.bytes) > (this->_chunkSize - headerSize))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -482,19 +478,17 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 				// Продолжаем дальнейшую работу
 				} else {
 					// Если данных достаточно для извлечения полезной нагрузки
-					if(size >= (length + header.bytes)){
+					if(size >= (headerSize + static_cast <size_t> (header.bytes))){
 						// Выполняем смещение в буфере данных
-						result += length;
-						// Получаем индекс текущей записи
-						const uint64_t id = header.id;
+						result += headerSize;
 						// Выполняем поиск указанной записи во временном объекте
-						auto i = this->_temp.find(id);
+						auto i = this->_temp.find(static_cast <uint32_t> (header.id));
 						// Если запись найдена в временном блоке данных
 						if(i != this->_temp.end()){
 							// Если размер полезной нагрузки установлен
 							if(header.bytes > 0)
 								// Выполняем копирование данных полезной нагрузки
-								i->second->push(reinterpret_cast <const uint8_t *> (buffer) + result, header.bytes);
+								i->second->push(reinterpret_cast <const uint8_t *> (buffer) + result, static_cast <size_t> (header.bytes));
 							// Если запись мы получили последнюю
 							if(header.mode == mode_t::END){
 								// Выполняем перемещение данных в очередь
@@ -507,23 +501,23 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 							// Если запись мы получили последнюю
 							if(header.mode == mode_t::END)
 								// Выполняем перемещение данных в очередь
-								this->_queue.push(reinterpret_cast <const uint8_t *> (buffer) + result, header.size);
+								this->_queue.push(reinterpret_cast <const uint8_t *> (buffer) + result, static_cast <size_t> (header.size));
 							// Если мы получили одну из записей
 							else {
 								// Выполняем добавление записи во временный объект
-								auto ret = this->_temp.emplace(id, std::unique_ptr <buffer_t> (new buffer_t(this->_log)));
+								auto ret = this->_temp.emplace(static_cast <uint32_t> (header.id), std::unique_ptr <buffer_t> (new buffer_t(this->_log)));
 								// Выделяем достаточно данных для формирования объекта
-								ret.first->second->reserve(header.size);
+								ret.first->second->reserve(static_cast <size_t> (header.size));
 								// Если размер полезной нагрузки установлен
 								if(header.bytes > 0)
 									// Выполняем копирование данных полезной нагрузки
-									ret.first->second->push(reinterpret_cast <const uint8_t *> (buffer) + result, header.bytes);
+									ret.first->second->push(reinterpret_cast <const uint8_t *> (buffer) + result, static_cast <size_t> (header.bytes));
 							}
 						}
 						// Выполняем увеличение смещения
-						result += header.bytes;
+						result += static_cast <size_t> (header.bytes);
 						// Если мы извлекли не все данные из буфера
-						if((size > result) && ((size - result) >= length))
+						if((size > result) && ((size - result) >= headerSize))
 							// Выполняем извлечение слещующей порции данных
 							result += this->prepare(reinterpret_cast <const char *> (buffer) + result, size - result);
 					}

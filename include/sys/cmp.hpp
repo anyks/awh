@@ -55,16 +55,17 @@ namespace awh {
 		 * Header Структура работы с заголовком буфера данных
 		 */
 		typedef struct Header {
-			mode_t mode;  // Режим работы буфера данных
-			uint64_t id;  // Идентификатор сообщения
-			size_t size;  // Общий размер записи
-			size_t bytes; // Размер текущего чанка
+			mode_t mode;    // Режим работы буфера данных
+			uint32_t id;    // Идентификатор сообщения
+			uint64_t size;  // Общий размер записи
+			uint16_t bytes; // Размер текущего чанка
 			/**
 			 * Header Конструктор
+			 * @param id   идентификатор записи
+			 * @param size полный размер записи
 			 */
-			Header() noexcept :
-			 mode(mode_t::NONE),
-			 id(0), size(0), bytes(0) {}
+			Header(const uint32_t id = 0, const uint64_t size = 0) noexcept :
+			 mode(mode_t::NONE), id(id), size(size), bytes(0) {}
 		} __attribute__((packed)) header_t;
 		/**
 		 * Устанавливаем максимальный размер одного буфера данных
@@ -82,7 +83,7 @@ namespace awh {
 				std::mutex _mtx;
 			private:
 				// Количество записей
-				uint64_t _count;
+				uint32_t _count;
 			private:
 				// Размер одного блока данных
 				size_t _chunkSize;
@@ -178,7 +179,7 @@ namespace awh {
 				awh::buffer_t _buffer;
 			private:
 				// Набор временных буферов данных
-				std::map <uint64_t, std::unique_ptr <buffer_t>> _temp;
+				std::map <uint32_t, std::unique_ptr <buffer_t>> _temp;
 			private:
 				// Объект работы с логами
 				const log_t * _log;

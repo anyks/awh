@@ -198,20 +198,22 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 void awh::Node::erase(const uint64_t bid, const size_t size) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.send);
+	// Значение оставшейся памяти в буфере
+	size_t amount = 0;
 	// Ещем для указанного потока очередь полезной нагрузки
 	auto i = this->_payloads.find(bid);
 	// Если для потока очередь полезной нагрузки получена
 	if((i != this->_payloads.end()) && !i->second->empty()){
 		// Выполняем блокировку потока
 		this->_mtx.main.lock();
+		// Увеличиваем общее количество переданных данных
+		this->_memoryAvailableSize += size;
 		// Выполняем поиск размера текущей полезной нагрузки для брокера
 		auto j = this->_available.find(bid);
 		// Если размер полезной нагрузки найден
 		if(j != this->_available.end())
 			// Выполняем уменьшение количества записанных байт
-			j->second -= size;
-		// Увеличиваем общее количество переданных данных
-		this->_memoryAvailableSize += size;
+			amount = (j->second -= size);
 		// Выполняем разблокировку потока
 		this->_mtx.main.unlock();
 		// Если идентификатор брокера подключений существует
@@ -225,18 +227,10 @@ void awh::Node::erase(const uint64_t bid, const size_t size) noexcept {
 		// Выполняем удаление всей очереди
 		} else this->_payloads.erase(i);
 	}
-	// Если опередей полезной нагрузки нет, выполняем функцию обратного вызова
-	if(this->_payloads.find(bid) == this->_payloads.end()){
-		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("available")){
-			// Выполняем поиск размера текущей полезной нагрузки для брокера
-			auto i = this->_available.find(bid);
-			// Если размер полезной нагрузки найден
-			if(i != this->_available.end())
-				// Выполняем функцию обратного вызова сообщая об освобождении памяти
-				this->_callbacks.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < i->second) ? 0 : std::min(this->_brokerAvailableSize - i->second, this->_memoryAvailableSize));
-		}
-	}
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.is("available"))
+		// Выполняем функцию обратного вызова сообщая об освобождении памяти
+		this->_callbacks.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < amount) ? 0 : std::min(this->_brokerAvailableSize - amount, this->_memoryAvailableSize));
 }
 /**
  * broker Метод извлечения брокера подключения
@@ -641,6 +635,8 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 				}
 				// Выполняем блокировку потока
 				this->_mtx.main.lock();
+				// Уменьшаем общее количество переданных данных
+				this->_memoryAvailableSize -= size;
 				// Выполняем поиск размера используемой памяти для хранения полезной нагрузки брокера
 				auto j = this->_available.find(bid);
 				// Если размер полезной нагрузки найден
@@ -649,8 +645,6 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 					j->second += size;
 				// Если память ещё не потрачена для отправки, добавляем размер передаваемых данных
 				else this->_available.emplace(bid, size);
-				// Уменьшаем общее количество переданных данных
-				this->_memoryAvailableSize -= size;
 				// Выполняем разблокировку потока
 				this->_mtx.main.unlock();
 			// Если функция обратного вызова установлена

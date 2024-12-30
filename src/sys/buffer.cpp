@@ -99,6 +99,14 @@ size_t awh::Buffer::size() const noexcept {
 	return 0;
 }
 /**
+ * capacity Метод получения размера выделенной памяти
+ * @return размер выделенной памяти 
+ */
+size_t awh::Buffer::capacity() const noexcept {
+	// Выводим размер выделенной памяти
+	return this->_size;
+}
+/**
  * get Получения данных указанного элемента в очереди
  * @return указатель на элемент очереди
  */
@@ -264,7 +272,7 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 				// Увеличиваем размер хранимых данных
 				this->_size += size;
 				// Выделяем память для добавления данных
-				this->_data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
+				this->_data = reinterpret_cast <uint8_t *> (::malloc(this->_size * sizeof(uint8_t)));
 				// Выполняем копирование переданных данных в выделенную память
 				::memcpy(this->_data, buffer, size);
 			// Если данные уже выделены
