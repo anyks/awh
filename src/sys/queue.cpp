@@ -38,25 +38,61 @@ void awh::Queue::realloc() noexcept {
 					{
 						// Выделяем новую порцию данных
 						uint64_t * data = reinterpret_cast <uint64_t *> (::malloc(this->_size * sizeof(uint64_t)));
-						// Заполняем нулями буфер размеро данных
-						// ::memset(data, 0, this->_size * sizeof(uint64_t));
-						// Копируем в новую порцию данных список указателей
-						::memcpy(data, this->_data + this->_begin, (this->_size - this->_begin) * sizeof(uint64_t));
-						// Выполняем удаление старого буфера данных
-						::free(this->_data);
-						// Присваиваем старому буферу данных новый указатель
-						this->_data = data;
+						// Если память не выделенна
+						if(data == nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+							#endif
+							// Выходим из приложения
+							::exit(EXIT_FAILURE);
+						// Если память выделенна удачно
+						} else {
+							// Копируем в новую порцию данных список указателей
+							::memcpy(data, this->_data + this->_begin, (this->_size - this->_begin) * sizeof(uint64_t));
+							// Выполняем удаление старого буфера данных
+							::free(this->_data);
+							// Присваиваем старому буферу данных новый указатель
+							this->_data = data;
+						}
 					}{
 						// Выделяем новую порцию данных для списка размеров
 						size_t * data = reinterpret_cast <size_t *> (::malloc(this->_size * sizeof(size_t)));
-						// Заполняем нулями буфер размеро данных
-						// ::memset(data, 0, this->_size * sizeof(size_t));
-						// Копируем в новую порцию данных список указателей
-						::memcpy(data, this->_sizes + this->_begin, (this->_size - this->_begin) * sizeof(size_t));
-						// Выполняем удаление старого буфера данных
-						::free(this->_sizes);
-						// Присваиваем старому буферу данных новый указатель
-						this->_sizes = data;
+						// Если память не выделенна
+						if(data == nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
+							/**
+							* Если режим отладки не включён
+							*/
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+							#endif
+							// Выходим из приложения
+							::exit(EXIT_FAILURE);
+						// Если память выделенна удачно
+						} else {
+							// Копируем в новую порцию данных список указателей
+							::memcpy(data, this->_sizes + this->_begin, (this->_size - this->_begin) * sizeof(size_t));
+							// Выполняем удаление старого буфера данных
+							::free(this->_sizes);
+							// Присваиваем старому буферу данных новый указатель
+							this->_sizes = data;
+						}
 					}
 					// Смещаем конец записей
 					this->_end = (this->_size - this->_begin);
@@ -69,62 +105,47 @@ void awh::Queue::realloc() noexcept {
 				const lock_guard <std::mutex> lock(this->_mtx);
 				// Устанавличаем новый размер записей
 				this->_size = (this->_end + this->_batch);
-				{
-					/*
-					// Выделяем новую порцию данных
-					uint64_t * data = reinterpret_cast <uint64_t *> (::malloc(this->_size * sizeof(uint64_t)));
-					// Заполняем нулями буфер размеро данных
-					// ::memset(data, 0, this->_size * sizeof(uint64_t));
-					// Копируем в новую порцию данных список указателей
-					::memcpy(data, this->_data, this->_end * sizeof(uint64_t));
-					// Выполняем удаление старого буфера данных
-					::free(this->_data);
-					// Присваиваем старому буферу данных новый указатель
-					this->_data = data;
+				// Выделяем новую порцию данных	
+				this->_sizes = reinterpret_cast <size_t *> (::realloc(this->_sizes, this->_size * sizeof(size_t)));
+				// Выделяем новую порцию данных	
+				this->_data = reinterpret_cast <uint64_t *> (::realloc(this->_data, this->_size * sizeof(uint64_t)));
+				// Если память не выделенна
+				if((this->_sizes == nullptr) || (this->_data == nullptr)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
+					/**
+					* Если режим отладки не включён
 					*/
-					// Выделяем новую порцию данных	
-					this->_data = reinterpret_cast <uint64_t *> (::realloc(this->_data, this->_size * sizeof(uint64_t)));
-					// Заполняем нулями буфер размеро данных
-					// ::memset(this->_data + this->_end, 0, this->_batch);
-				}{
-					/*
-					// Выделяем новую порцию данных
-					size_t * data = reinterpret_cast <size_t *> (::malloc(this->_size * sizeof(size_t)));
-					// Заполняем нулями буфер размеро данных
-					// ::memset(data, 0, this->_size * sizeof(size_t));
-					// Копируем в новую порцию данных список указателей
-					::memcpy(data, this->_sizes, this->_end * sizeof(size_t));
-					// Выполняем удаление старого буфера данных
-					::free(this->_sizes);
-					// Присваиваем старому буферу данных новый указатель
-					this->_sizes = data;
-					*/
-					// Выделяем новую порцию данных	
-					this->_sizes = reinterpret_cast <size_t *> (::realloc(this->_sizes, this->_size * sizeof(size_t)));
-					// Заполняем нулями буфер размеро данных
-					// ::memset(this->_sizes + this->_end, 0, this->_batch);
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+					#endif
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
 				}
 			}
 		}
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::bad_alloc &) {
+	} catch(const std::exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
 	}
 }
 /**
@@ -162,30 +183,25 @@ void awh::Queue::clear() noexcept {
 			this->_sizes = reinterpret_cast <size_t *> (::malloc(this->_size * sizeof(size_t)));
 			// Выполняем выделение памяти для буферов данных
 			this->_data = reinterpret_cast <uint64_t *> (::malloc(this->_size * sizeof(uint64_t)));
-			// Заполняем нулями буфер размеро данных
-			// ::memset(this->_sizes, 0, this->_batch * sizeof(size_t));
-			// Заполняем нулями буфер памяти данных
-			// ::memset(this->_data, 0, this->_batch * sizeof(uint64_t));
+			// Если память не выделенна
+			if((this->_sizes == nullptr) || (this->_data == nullptr)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			}
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const std::bad_alloc &) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
-		#endif
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -423,37 +439,38 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выделяем память для добавления данных
 			uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
-			// Выполняем копирование переданных данных в выделенную память
-			::memcpy(data, buffer, size);
-			// Получаем адрес указателя выделенных данных
-			const uint64_t ptr = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (data));
-			// Выполням установку данных в очередь
-			::memcpy(this->_data + this->_end, &ptr, sizeof(ptr));
-			// Выполняем установку добавление размера буфера данных в очередь
-			::memcpy(this->_sizes + this->_end, &size, sizeof(size));
-			// Выполняем смещение в буфере
-			this->_end++;
-			// Увеличиваем размер добавленных данных
-			this->_bytes += size;
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const std::bad_alloc &) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+			// Если память не выделенна
+			if(data == nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			// Если память выделенна удачно
+			} else {
+				// Выполняем копирование переданных данных в выделенную память
+				::memcpy(data, buffer, size);
+				// Получаем адрес указателя выделенных данных
+				const uint64_t ptr = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (data));
+				// Выполням установку данных в очередь
+				::memcpy(this->_data + this->_end, &ptr, sizeof(ptr));
+				// Выполняем установку добавление размера буфера данных в очередь
+				::memcpy(this->_sizes + this->_end, &size, sizeof(size));
+				// Выполняем смещение в буфере
+				this->_end++;
+				// Увеличиваем размер добавленных данных
+				this->_bytes += size;
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -492,20 +509,60 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выделяем память для добавления данных
 			uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
-			// Смещение в бинарном буфере
-			size_t offset = 0, bytes = 0;
-			// Выполняем перебор всего списка добавляемых буферов
-			for(auto & buffer : buffers){
-				// Увеличиваем количество переданных байт
-				bytes += buffer.second;
-				// Если буфер установлен правильно
-				if((buffer.first != nullptr) && (buffer.second > 0) && (bytes <= size)){
-					// Выполняем копирование переданных данных в выделенную память
-					::memcpy(data + offset, buffer.first, buffer.second);
-					// Выполняем смещение в буфере
-					offset += buffer.second;
-				// Если размеры оказались битыми
-				} else if(bytes > size) {
+			// Если память не выделенна
+			if(data == nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffers.size(), size), log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			// Если память выделенна удачно
+			} else {
+				// Смещение в бинарном буфере
+				size_t offset = 0, bytes = 0;
+				// Выполняем перебор всего списка добавляемых буферов
+				for(auto & buffer : buffers){
+					// Увеличиваем количество переданных байт
+					bytes += buffer.second;
+					// Если буфер установлен правильно
+					if((buffer.first != nullptr) && (buffer.second > 0) && (bytes <= size)){
+						// Выполняем копирование переданных данных в выделенную память
+						::memcpy(data + offset, buffer.first, buffer.second);
+						// Выполняем смещение в буфере
+						offset += buffer.second;
+					// Если размеры оказались битыми
+					} else if(bytes > size) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bytes, size), log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
+						#endif
+						// Выполняем удаление выделенной памяти
+						::free(data);
+						// Выходим из функции
+						return;
+					}
+				}
+				// Если количество байт не совпадает
+				if(bytes != size){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -524,37 +581,17 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 					// Выходим из функции
 					return;
 				}
+				// Получаем адрес указателя выделенных данных
+				const uint64_t ptr = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (data));
+				// Выполням установку данных в очередь
+				::memcpy(this->_data + this->_end, &ptr, sizeof(ptr));
+				// Выполняем установку добавление размера буфера данных в очередь
+				::memcpy(this->_sizes + this->_end, &size, sizeof(size));
+				// Выполняем смещение в буфере
+				this->_end++;
+				// Увеличиваем размер добавленных данных
+				this->_bytes += size;
 			}
-			// Если количество байт не совпадает
-			if(bytes != size){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bytes, size), log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
-				#endif
-				// Выполняем удаление выделенной памяти
-				::free(data);
-				// Выходим из функции
-				return;
-			}
-			// Получаем адрес указателя выделенных данных
-			const uint64_t ptr = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (data));
-			// Выполням установку данных в очередь
-			::memcpy(this->_data + this->_end, &ptr, sizeof(ptr));
-			// Выполняем установку добавление размера буфера данных в очередь
-			::memcpy(this->_sizes + this->_end, &size, sizeof(size));
-			// Выполняем смещение в буфере
-			this->_end++;
-			// Увеличиваем размер добавленных данных
-			this->_bytes += size;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -592,29 +629,41 @@ awh::Queue::Queue(const log_t * log) noexcept :
 		this->_sizes = reinterpret_cast <size_t *> (::malloc(this->_size * sizeof(size_t)));
 		// Выполняем выделение памяти для буферов данных
 		this->_data = reinterpret_cast <uint64_t *> (::malloc(this->_size * sizeof(uint64_t)));
-		// Заполняем нулями буфер размеро данных
-		// ::memset(this->_sizes, 0, this->_size * sizeof(size_t));
-		// Заполняем нулями буфер памяти данных
-		// ::memset(this->_data, 0, this->_size * sizeof(uint64_t));
+		// Если память не выделенна
+		if((this->_sizes == nullptr) || (this->_data == nullptr)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::bad_alloc &) {
+	} catch(const std::exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(log), log_t::flag_t::CRITICAL, "Memory allocation error");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
 	}
 }
 /**
