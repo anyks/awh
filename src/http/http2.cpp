@@ -319,7 +319,7 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 						// Выполняем заполнение списка полученных ресурсов
 						origins.push_back(string(reinterpret_cast <const char *> (ov->ov[i].origin), ov->ov[i].origin_len));
 					// Выполняем функцию обратного вызова
-					self->_callbacks.call <void (const vector <string> &)> ("origin", std::move(origins));
+					self->_callbacks.call <void (const vector <string> &)> ("origin", origins);
 				}
 			} break;
 			// Если мы получили фрейм заголовков
@@ -398,7 +398,7 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		return self->_callbacks.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", sid, direct_t::RECV, type, std::move(flags));
+		return self->_callbacks.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", sid, direct_t::RECV, type, flags);
 	}
 	// Выводим результат
 	return 0;
@@ -504,7 +504,7 @@ int32_t awh::Http2::frameSend([[maybe_unused]] nghttp2_session * session, const 
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		return self->_callbacks.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", frame->hd.stream_id, direct_t::SEND, type, std::move(flags));
+		return self->_callbacks.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", frame->hd.stream_id, direct_t::SEND, type, flags);
 	}
 	// Выводим результат
 	return 0;

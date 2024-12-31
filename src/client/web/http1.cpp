@@ -851,7 +851,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				else this->_http.header("Proxy-Connection", "close");
 			}
 			// Получаем бинарные данные HTTP-запроса
-			const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(query));
+			const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
 				/**
@@ -1101,7 +1101,7 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 				else this->_http.header("Proxy-Connection", "close");
 			}
 			// Получаем бинарные данные HTTP-запроса
-			const auto & headers = this->_http.process(http_t::process_t::REQUEST, std::move(request));
+			const auto & headers = this->_http.process(http_t::process_t::REQUEST, request);
 			// Если заголовки запроса получены
 			if(!headers.empty()){
 				/**

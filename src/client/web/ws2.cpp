@@ -69,7 +69,7 @@ void awh::client::Websocket2::send(const uint64_t bid) noexcept {
 	// Запоминаем предыдущее значение идентификатора потока
 	const int32_t sid = this->_sid;
 	// Выполняем запрос на получение заголовков
-	const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(request));
+	const auto & headers = this->_http.process2(http_t::process_t::REQUEST, request);
 	// Выполняем запрос на удалённый сервер	
 	this->_sid = web2_t::send(-1, headers, http2_t::flag_t::NONE);
 	// Если запрос не получилось отправить

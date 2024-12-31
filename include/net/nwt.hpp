@@ -53,7 +53,7 @@ namespace awh {
 			};
 		public:
 			/**
-			 * URL Структура ответа
+			 * URL Класс URL-адреса
 			 */
 			typedef class AWHSHARED_EXPORT URL {
 				public:

@@ -769,7 +769,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 	// Если результат получен
 	if(!result.empty())
 		// Выполняем установку полученного результата
-		entity = std::move(result);
+		entity.assign(result.begin(), result.end());
 }
 /**
  * REQUEST Метод выполнения запроса HTTP

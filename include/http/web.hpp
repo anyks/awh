@@ -108,7 +108,7 @@ namespace awh {
 				Provider(const double version) noexcept : version(version) {}
 			} provider_t;
 			/**
-			 * Request Структура запроса
+			 * Request Класс HTTP-запроса клиента
 			 */
 			typedef class AWHSHARED_EXPORT Request : public provider_t {
 				public:
@@ -199,7 +199,7 @@ namespace awh {
 					~Request() noexcept {}
 			} req_t;
 			/**
-			 * Response Структура ответа сервера
+			 * Response Класс HTTP-ответа сервера
 			 */
 			typedef class AWHSHARED_EXPORT Response : public provider_t {
 				public:
@@ -328,9 +328,9 @@ namespace awh {
 			uint64_t _id;
 		private:
 			// Объект запроса
-			req_t _req;
+			req_t _request;
 			// Объект ответа
-			res_t _res;
+			res_t _response;
 		private:
 			// Сепаратор для детекции в буфере
 			char _separator;
@@ -427,10 +427,15 @@ namespace awh {
 			 */
 			const req_t & request() const noexcept;
 			/**
-			 * request Метод добавления объекта запроса на сервер
-			 * @param req объект запроса на сервер
+			 * request Метод установки объекта запроса на сервер
+			 * @param request объект запроса на сервер
 			 */
-			void request(const req_t & req) noexcept;
+			void request(req_t && request) noexcept;
+			/**
+			 * request Метод установки объекта запроса на сервер
+			 * @param request объект запроса на сервер
+			 */
+			void request(const req_t & request) noexcept;
 		public:
 			/**
 			 * response Метод получения объекта ответа сервера
@@ -438,10 +443,15 @@ namespace awh {
 			 */
 			const res_t & response() const noexcept;
 			/**
-			 * response Метод добавления объекта ответа сервера
-			 * @param res объект ответа сервера
+			 * response Метод установки объекта ответа сервера
+			 * @param response объект ответа сервера
 			 */
-			void response(const res_t & res) noexcept;
+			void response(res_t && response) noexcept;
+			/**
+			 * response Метод установки объекта ответа сервера
+			 * @param response объект ответа сервера
+			 */
+			void response(const res_t & response) noexcept;
 		public:
 			/**
 			 * isEnd Метод проверки завершения обработки

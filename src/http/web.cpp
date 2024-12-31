@@ -302,14 +302,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callbacks.is("entityClient"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_res.code, this->_res.message, this->_body);
+									this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_response.code, this->_response.message, this->_body);
 							} break;
 							// Если мы работаем с сервером
 							case static_cast <uint8_t> (hid_t::SERVER): {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callbacks.is("entityServer"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_req.method, this->_req.url, this->_body);
+									this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_request.method, this->_request.url, this->_body);
 							} break;
 						}
 						// Тело в запросе не передано
@@ -370,9 +370,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									// Если трейлер не соответствует
 									else {
 										// Устанавливаем код внутренней ошибки сервера
-										// this->_res.code = 500;
+										// this->_response.code = 500;
 										// Стираем сообщение ответа сервера
-										this->_res.message = this->_fmk->format("Trailer \"%s\" does not exist", key.c_str());
+										this->_response.message = this->_fmk->format("Trailer \"%s\" does not exist", key.c_str());
 										// Выполняем очистку списка трейлеров
 										this->_trailers.clear();
 										// Выводим сообщение об ошибке, что трейлер не существует
@@ -380,7 +380,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										// Если функция обратного вызова на на вывод ошибок установлена
 										if(this->_callbacks.is("error"))
 											// Выполняем функцию обратного вызова
-											this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_res.message.c_str());
+											this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_response.message.c_str());
 										// Выполняем переход к ошибке
 										goto Stop;
 									}
@@ -565,14 +565,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callbacks.is("entityClient"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_res.code, this->_res.message, this->_body);
+							this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_response.code, this->_response.message, this->_body);
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (hid_t::SERVER): {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callbacks.is("entityServer"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_req.method, this->_req.url, this->_body);
+							this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_request.method, this->_request.url, this->_body);
 					} break;
 				}
 				// Тело в запросе не передано
@@ -641,14 +641,14 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 								if(this->_callbacks.is("headersResponse"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_res.code, this->_res.message, this->_headers);
+									this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_response.code, this->_response.message, this->_headers);
 							} break;
 							// Если мы работаем с сервером
 							case static_cast <uint8_t> (hid_t::SERVER): {
 								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 								if(this->_callbacks.is("headersRequest"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_req.method, this->_req.url, this->_headers);
+									this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_request.method, this->_request.url, this->_headers);
 							} break;
 						}
 						// Получаем размер тела
@@ -743,15 +743,15 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											// Устанавливаем стейт ожидания получения заголовков
 											this->_state = state_t::HEADERS;
 											// Получаем версию протокол запроса
-											this->_res.version = ::stod(string(buffer + 5, this->_pos[0] - 5));
+											this->_response.version = ::stod(string(buffer + 5, this->_pos[0] - 5));
 											// Получаем сообщение ответа
-											this->_res.message.assign(buffer + (this->_pos[1] + 1), size - (this->_pos[1] + 1));
+											this->_response.message.assign(buffer + (this->_pos[1] + 1), size - (this->_pos[1] + 1));
 											// Получаем код ответа
-											this->_res.code = static_cast <uint32_t> (::stoi(string(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1))));
+											this->_response.code = static_cast <uint32_t> (::stoi(string(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1))));
 											// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
 											if(this->_callbacks.is("response"))
 												// Выполняем функцию обратного вызова
-												this->_callbacks.call <void (const uint64_t, const uint32_t, const string &)> ("response", this->_id, this->_res.code, this->_res.message);
+												this->_callbacks.call <void (const uint64_t, const uint32_t, const string &)> ("response", this->_id, this->_response.code, this->_response.message);
 										// Если данные пришли неправильные
 										} else {
 											// Выполняем очистку всех ранее полученных данных
@@ -809,49 +809,49 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											// Получаем параметры URI-запроса
 											const string uri(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1));
 											// Получаем версию протокол запроса
-											this->_req.version = ::stod(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
+											this->_request.version = ::stod(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
 											// Выполняем установку URI-параметров запроса
-											this->_req.url = this->_uri.parse(uri);
+											this->_request.url = this->_uri.parse(uri);
 											// Если метод определён как GET
 											if(this->_fmk->compare(method, "get"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::GET;
+												this->_request.method = method_t::GET;
 											// Если метод определён как PUT
 											else if(this->_fmk->compare(method, "put"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::PUT;
+												this->_request.method = method_t::PUT;
 											// Если метод определён как POST
 											else if(this->_fmk->compare(method, "post"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::POST;
+												this->_request.method = method_t::POST;
 											// Если метод определён как HEAD
 											else if(this->_fmk->compare(method, "head"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::HEAD;
+												this->_request.method = method_t::HEAD;
 											// Если метод определён как DELETE
 											else if(this->_fmk->compare(method, "delete"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::DEL;
+												this->_request.method = method_t::DEL;
 											// Если метод определён как PATCH
 											else if(this->_fmk->compare(method, "patch"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::PATCH;
+												this->_request.method = method_t::PATCH;
 											// Если метод определён как TRACE
 											else if(this->_fmk->compare(method, "trace"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::TRACE;
+												this->_request.method = method_t::TRACE;
 											// Если метод определён как OPTIONS
 											else if(this->_fmk->compare(method, "options"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::OPTIONS;
+												this->_request.method = method_t::OPTIONS;
 											// Если метод определён как CONNECT
 											else if(this->_fmk->compare(method, "connect"))
 												// Выполняем установку метода запроса
-												this->_req.method = method_t::CONNECT;
+												this->_request.method = method_t::CONNECT;
 											// Если функция обратного вызова на вывод запроса клиента на выполненный запрос к серверу установлена
 											if(this->_callbacks.is("request"))
 												// Выполняем функцию обратного вызова
-												this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &)> ("request", this->_id, this->_req.method, this->_req.url);
+												this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &)> ("request", this->_id, this->_request.method, this->_request.url);
 										// Если данные пришли неправильные
 										} else {
 											// Выполняем очистку всех ранее полученных данных
@@ -901,49 +901,49 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Создаём объект работы с IP-адресами
 										net_t net(this->_log);
 										// Выполняем установку порта по умолчанию
-										this->_req.url.port = 80;
+										this->_request.url.port = 80;
 										// Выполняем установку схемы запроса
-										this->_req.url.schema = "http";
+										this->_request.url.schema = "http";
 										// Выполняем установку хоста
-										this->_req.url.host = this->_fmk->transform(val, fmk_t::transform_t::TRIM);
+										this->_request.url.host = this->_fmk->transform(val, fmk_t::transform_t::TRIM);
 										// Выполняем поиск разделителя
-										const size_t pos = this->_req.url.host.rfind(':');
+										const size_t pos = this->_request.url.host.rfind(':');
 										// Если разделитель найден
 										if(pos != string::npos){
 											// Получаем порт сервера
-											const string & port = this->_req.url.host.substr(pos + 1);
+											const string & port = this->_request.url.host.substr(pos + 1);
 											// Если данные порта являются числом
 											if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
 												// Выполняем установку порта сервера
-												this->_req.url.port = static_cast <uint32_t> (::stoi(port));
+												this->_request.url.port = static_cast <uint32_t> (::stoi(port));
 												// Выполняем получение хоста сервера
-												this->_req.url.host = this->_req.url.host.substr(0, pos);
+												this->_request.url.host = this->_request.url.host.substr(0, pos);
 												// Если порт установлен как 443
-												if(this->_req.url.port == 443)
+												if(this->_request.url.port == 443)
 													// Выполняем установку защищённую схему запроса
-													this->_req.url.schema = "https";
+													this->_request.url.schema = "https";
 											}
 										}
 										// Определяем тип домена
-										switch(static_cast <uint8_t> (net.host(this->_req.url.host))){
+										switch(static_cast <uint8_t> (net.host(this->_request.url.host))){
 											// Если передан IP-адрес сети IPv4
 											case static_cast <uint8_t> (net_t::type_t::IPV4): {
 												// Выполняем установку семейства IP-адресов
-												this->_req.url.family = AF_INET;
+												this->_request.url.family = AF_INET;
 												// Выполняем установку IPv4 адреса
-												this->_req.url.ip = this->_req.url.host;
+												this->_request.url.ip = this->_request.url.host;
 											} break;
 											// Если передан IP-адрес сети IPv6
 											case static_cast <uint8_t> (net_t::type_t::IPV6): {
 												// Выполняем установку семейства IP-адресов
-												this->_req.url.family = AF_INET6;
+												this->_request.url.family = AF_INET6;
 												// Выполняем установку IPv6 адреса
-												this->_req.url.ip = net = this->_req.url.host;
+												this->_request.url.ip = net = this->_request.url.host;
 											} break;
 											// Если передана доменная зона
 											case static_cast <uint8_t> (net_t::type_t::FQDN):
 												// Выполняем установку IPv6 адреса
-												this->_req.url.domain = this->_fmk->transform(this->_req.url.host, fmk_t::transform_t::LOWER);
+												this->_request.url.domain = this->_fmk->transform(this->_request.url.host, fmk_t::transform_t::LOWER);
 											break;
 										}
 									// Если название заголовка соответствует переключению протокола
@@ -965,7 +965,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
 									if(this->_callbacks.is("header"))
 										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, std::move(key), std::move(val));
+										this->_callbacks.call <void (const uint64_t, const string &, const string &)> ("header", this->_id, key, val);
 								}
 							/**
 							 * Если возникает ошибка
@@ -1092,17 +1092,17 @@ vector <char> awh::Web::dump() const noexcept {
 		// Устанавливаем сепаратор для детекции в буфере
 		result.insert(result.end(), reinterpret_cast <const char *> (&this->_separator), reinterpret_cast <const char *> (&this->_separator) + sizeof(this->_separator));
 		// Устанавливаем код ответа на HTTP ответа
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_res.code), reinterpret_cast <const char *> (&this->_res.code) + sizeof(this->_res.code));
+		result.insert(result.end(), reinterpret_cast <const char *> (&this->_response.code), reinterpret_cast <const char *> (&this->_response.code) + sizeof(this->_response.code));
 		// Устанавливаем версию протокола HTTP ответа
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_res.version), reinterpret_cast <const char *> (&this->_res.version) + sizeof(this->_res.version));
+		result.insert(result.end(), reinterpret_cast <const char *> (&this->_response.version), reinterpret_cast <const char *> (&this->_response.version) + sizeof(this->_response.version));
 		// Устанавливаем метод HTTP-запроса
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_req.method), reinterpret_cast <const char *> (&this->_req.method) + sizeof(this->_req.method));
+		result.insert(result.end(), reinterpret_cast <const char *> (&this->_request.method), reinterpret_cast <const char *> (&this->_request.method) + sizeof(this->_request.method));
 		// Устанавливаем версию протокола HTTP-запроса
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_req.version), reinterpret_cast <const char *> (&this->_req.version) + sizeof(this->_req.version));
+		result.insert(result.end(), reinterpret_cast <const char *> (&this->_request.version), reinterpret_cast <const char *> (&this->_request.version) + sizeof(this->_request.version));
 		// Если URL-адрес запроса установлен
-		if(!this->_req.url.empty()){
+		if(!this->_request.url.empty()){
 			// Получаем адрес URL-запроса
-			const string & url = this->_uri.url(this->_req.url);
+			const string & url = this->_uri.url(this->_request.url);
 			// Получаем размер записи параметров HTTP-запроса
 			length = url.size();
 			// Устанавливаем размер записи параметров HTTP-запроса
@@ -1117,13 +1117,13 @@ vector <char> awh::Web::dump() const noexcept {
 			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 		}
 		// Если текст ответа установлен
-		if(!this->_res.message.empty()){
+		if(!this->_response.message.empty()){
 			// Получаем размер сообщения HTTP ответа
-			length = this->_res.message.size();
+			length = this->_response.message.size();
 			// Устанавливаем размер сообщения HTTP ответа
 			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 			// Устанавливаем данные сообщения HTTP ответа
-			result.insert(result.end(), this->_res.message.begin(), this->_res.message.end());
+			result.insert(result.end(), this->_response.message.begin(), this->_response.message.end());
 		// Если текст ответа не установлен
 		} else {
 			// Получаем размер записи параметров HTTP-запроса
@@ -1194,21 +1194,21 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += sizeof(this->_separator);
 		// Выполняем получение кода ответа на HTTP-запрос
-		::memcpy(reinterpret_cast <void *> (&this->_res.code), data.data() + offset, sizeof(this->_res.code));
+		::memcpy(reinterpret_cast <void *> (&this->_response.code), data.data() + offset, sizeof(this->_response.code));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_res.code);
+		offset += sizeof(this->_response.code);
 		// Выполняем получение версии протокола HTTP ответа
-		::memcpy(reinterpret_cast <void *> (&this->_res.version), data.data() + offset, sizeof(this->_res.version));
+		::memcpy(reinterpret_cast <void *> (&this->_response.version), data.data() + offset, sizeof(this->_response.version));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_res.version);
+		offset += sizeof(this->_response.version);
 		// Выполняем получение метода HTTP-запроса
-		::memcpy(reinterpret_cast <void *> (&this->_req.method), data.data() + offset, sizeof(this->_req.method));
+		::memcpy(reinterpret_cast <void *> (&this->_request.method), data.data() + offset, sizeof(this->_request.method));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_req.method);
+		offset += sizeof(this->_request.method);
 		// Выполняем получение версии протокола HTTP-запроса
-		::memcpy(reinterpret_cast <void *> (&this->_req.version), data.data() + offset, sizeof(this->_req.version));
+		::memcpy(reinterpret_cast <void *> (&this->_request.version), data.data() + offset, sizeof(this->_request.version));
 		// Выполняем смещение в буфере
-		offset += sizeof(this->_req.version);
+		offset += sizeof(this->_request.version);
 		// Выполняем получение размера записи параметров HTTP-запроса
 		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
 		// Выполняем смещение в буфере
@@ -1220,7 +1220,7 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 			// Выполняем получение параметров HTTP-запроса
 			::memcpy(reinterpret_cast <void *> (url.data()), data.data() + offset, length);
 			// Устанавливаем URL-адрес запроса
-			this->_req.url = this->_uri.parse(std::move(url));
+			this->_request.url = this->_uri.parse(url);
 			// Выполняем смещение в буфере
 			offset += length;
 		}
@@ -1231,9 +1231,9 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 		// Если сообщение ответа установлено
 		if(length > 0){
 			// Выделяем память для сообщения HTTP ответа
-			this->_res.message.resize(length, 0);
+			this->_response.message.resize(length, 0);
 			// Выполняем получение сообщения HTTP ответа
-			::memcpy(reinterpret_cast <void *> (this->_res.message.data()), data.data() + offset, length);
+			::memcpy(reinterpret_cast <void *> (this->_response.message.data()), data.data() + offset, length);
 			// Выполняем смещение в буфере
 			offset += length;
 		}
@@ -1333,9 +1333,9 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
  */
 void awh::Web::clear() noexcept {
 	// Выполняем сброс параметров запроса
-	this->_req = req_t();
+	this->_request = req_t();
 	// Выполняем сброс параметров ответа
-	this->_res = res_t();
+	this->_response = res_t();
 	// Выполняем очистку тела HTTP-запроса
 	this->_body.clear();
 	// Выполняем сброс параметров чанка
@@ -1370,15 +1370,23 @@ void awh::Web::reset() noexcept {
  */
 const awh::Web::req_t & awh::Web::request() const noexcept {
 	// Выводим объект запроса на сервер
-	return this->_req;
+	return this->_request;
 }
 /**
- * request Метод добавления объекта запроса на сервер
- * @param req объект запроса на сервер
+ * request Метод установки объекта запроса на сервер
+ * @param request объект запроса на сервер
  */
-void awh::Web::request(const req_t & req) noexcept {
+void awh::Web::request(req_t && request) noexcept {
 	// Устанавливаем объект запроса на сервер
-	this->_req = req;
+	this->_request = std::move(request);
+}
+/**
+ * request Метод установки объекта запроса на сервер
+ * @param request объект запроса на сервер
+ */
+void awh::Web::request(const req_t & request) noexcept {
+	// Устанавливаем объект запроса на сервер
+	this->_request = request;
 }
 /**
  * response Метод получения объекта ответа сервера
@@ -1386,15 +1394,23 @@ void awh::Web::request(const req_t & req) noexcept {
  */
 const awh::Web::res_t & awh::Web::response() const noexcept {
 	// Выводим объект ответа сервера
-	return this->_res;
+	return this->_response;
 }
 /**
- * response Метод добавления объекта ответа сервера
- * @param res объект ответа сервера
+ * response Метод установки объекта ответа сервера
+ * @param response объект ответа сервера
  */
-void awh::Web::response(const res_t & res) noexcept {
+void awh::Web::response(res_t && response) noexcept {
 	// Устанавливаем объект ответа сервера
-	this->_res = res;
+	this->_response = std::move(response);
+}
+/**
+ * response Метод установки объекта ответа сервера
+ * @param response объект ответа сервера
+ */
+void awh::Web::response(const res_t & response) noexcept {
+	// Устанавливаем объект ответа сервера
+	this->_response = response;
 }
 /**
  * isEnd Метод проверки завершения обработки

@@ -2605,7 +2605,7 @@ void awh::DNS::replace(const int32_t family, const vector <string> & servers) no
 				break;
 			}
 			// Устанавливаем новый список серверов
-			this->servers(family, std::move(servers));
+			this->servers(family, servers);
 		}
 	}
 }

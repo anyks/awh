@@ -101,7 +101,7 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Payload Структура полезной нагрузки
+			 * Payload Класс полезной нагрузки
 			 */
 			typedef class AWHSHARED_EXPORT Payload {
 				public:

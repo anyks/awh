@@ -56,29 +56,67 @@ namespace awh {
 			};
 		public:
 			/**
-			 * SSL Структура SSL-параметров
+			 * SSL Класс SSL-параметров
 			 */
-			typedef struct SSL {
-				// Флаг выполнения валидации доменного имени
-				bool verify;
-				// Сертификат центра сертификации (CA-файл)
-				string ca;
-				// Сертификат отозванных сертификатов (CRL-файл)
-				string crl;
-				// Приватный ключ сертификата
-				string key;
-				// Основной сертификат или цепочка сертификатов
-				string cert;
-				// Каталог с сертификатами центра сертификации (CA-файлами)
-				string capath;
-				// Список алгоритмов шифрования для установки
-				vector <string> ciphers;
-				/**
-				 * SSL Конструктор
-				 */
-				SSL() noexcept :
-				 verify(true), ca{""}, crl{""},
-				 key{""}, cert{""}, capath{""} {}
+			typedef class AWHSHARED_EXPORT SSL {
+				public:
+					// Флаг выполнения валидации доменного имени
+					bool verify;
+				public:
+					// Ключ SSL-сертификата
+					string key;
+					// SSL-сертификат
+					string cert;
+				public:
+					// Сертификат центра сертификации (CA-файл)
+					string ca;
+					// Сертификат отозванных сертификатов (CRL-файл)
+					string crl;
+					// Каталог с сертификатами центра сертификации (CA-файлами)
+					string capath;
+				public:
+					// Список алгоритмов шифрования
+					vector <string> ciphers;
+				public:
+					/**
+					 * Оператор [=] перемещения SSL-параметров
+					 * @param ssl объект SSL-параметров
+					 * @return    объект текущий параметров
+					 */
+					SSL & operator = (SSL && ssl) noexcept;
+					/**
+					 * Оператор [=] присванивания SSL-параметров
+					 * @param ssl объект SSL-параметров
+					 * @return    объект текущий параметров
+					 */
+					SSL & operator = (const SSL & ssl) noexcept;
+				public:
+					/**
+					 * Оператор сравнения
+					 * @param ssl объект SSL-параметров
+					 * @return    результат сравнения
+					 */
+					bool operator == (const SSL & ssl) noexcept;
+				public:
+					/**
+					 * SSL Конструктор перемещения
+					 * @param ssl объект SSL-параметров
+					 */
+					SSL(SSL && ssl) noexcept;
+					/**
+					 * SSL Конструктор копирования
+					 * @param ssl объект SSL-параметров
+					 */
+					SSL(const SSL & ssl) noexcept;
+				public:
+					/**
+					 * SSL Конструктор
+					 */
+					SSL() noexcept;
+					/**
+					 * ~SSL Деструктор
+					 */
+					~SSL() noexcept {}
 			} ssl_t;
 		protected:
 			/**

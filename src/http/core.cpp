@@ -2244,7 +2244,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				// Если дамп Web-данных получен, устанавливаем его
 				if(!buffer.empty())
 					// Выполняем установку буфера модуля Web
-					this->_web.dump(std::move(buffer));
+					this->_web.dump(buffer);
 			}
 		/**
 		 * Если возникает ошибка

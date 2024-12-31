@@ -55,7 +55,7 @@ awh::Http::status_t awh::client::Http::status() noexcept {
 				// Выполняем парсинг полученного URL-адреса
 				request.url = this->_uri.parse(location);
 				// Выполняем установку параметров запроса
-				this->_web.request(std::move(request));
+				this->_web.request(request);
 				// Просим повторить авторизацию ещё раз
 				result = status_t::RETRY;
 			}

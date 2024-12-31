@@ -445,7 +445,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						// Выполняем установку потока в список потоков
 						i->second->streams.emplace(request.id, i->second->sid);
 						// Выполняем запрос на сервер
-						i->second->awh.send(std::move(request));
+						i->second->awh.send(request);
 					} break;
 					// Если запрашивается клиентом метод CONNECT
 					case static_cast <uint8_t> (awh::web_t::method_t::CONNECT): {
@@ -472,7 +472,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 								// Выполняем установку потока в список потоков
 								i->second->streams.emplace(request.id, i->second->sid);
 								// Выполняем запрос на сервер
-								i->second->awh.send(std::move(request));
+								i->second->awh.send(request);
 							// Если клиент активирован как HTTP
 							} else {
 								// Если тип сокета установлен как TCP/IP
@@ -899,7 +899,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							// Если метод CONNECT разрешён, выполняем запрет инициализации SSL-контекста
 							} else flags.emplace(client::web_t::flag_t::NO_INIT_SSL);
 							// Устанавливаем флаги настроек модуля
-							i->second->awh.mode(std::move(flags));
+							i->second->awh.mode(flags);
 							// Выполняем инициализацию подключения
 							i->second->awh.init(this->_uri.origin(i->second->request.params.url), {
 								awh::http_t::compressor_t::ZSTD,
@@ -930,7 +930,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							// Выполняем установку потока в список потоков
 							i->second->streams.emplace(request.id, i->second->sid);
 							// Выполняем запрос на сервер
-							i->second->awh.send(std::move(request));
+							i->second->awh.send(request);
 						}
 					} break;
 					// Если тип сокета установлен как TCP/IP TLS
@@ -986,7 +986,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
 									i->second->awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", std::bind(&server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5));
 									// Устанавливаем флаги настроек модуля
-									i->second->awh.mode(std::move(flags));
+									i->second->awh.mode(flags);
 									// Выполняем инициализацию подключения
 									i->second->awh.init(this->_uri.origin(i->second->request.params.url), {
 										awh::http_t::compressor_t::ZSTD,
@@ -1017,7 +1017,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Выполняем установку потока в список потоков
 									i->second->streams.emplace(request.id, i->second->sid);
 									// Выполняем запрос на сервер
-									i->second->awh.send(std::move(request));
+									i->second->awh.send(request);
 								}
 							} break;
 							// Если запрашивается клиентом метод CONNECT
@@ -1042,7 +1042,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Выполняем установку потока в список потоков
 									i->second->streams.emplace(request.id, i->second->sid);
 									// Выполняем запрос на сервер
-									i->second->awh.send(std::move(request));
+									i->second->awh.send(request);
 								// Если активирован режим работы HTTP-клиента и подключение не выполненно
 								} else if(i->second->method == awh::web_t::method_t::NONE) {
 									// Помечаем, что сервер занят
@@ -1081,7 +1081,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										// Выполняем установку флага разрешающего метода CONNECT для прокси-клиента
 										flags.emplace(client::web_t::flag_t::CONNECT_METHOD_ENABLE);
 									// Устанавливаем флаги настроек модуля
-									i->second->awh.mode(std::move(flags));
+									i->second->awh.mode(flags);
 									// Если порт сервера не стандартный, устанавливаем схему протокола
 									if((i->second->request.params.url.port != 80) && (i->second->request.params.url.port != 443))
 										// Выполняем установку защищённого протокола
@@ -1461,7 +1461,7 @@ void awh::server::Proxy::mode(const std::set <flag_t> & flags) noexcept {
 		// Выполняем установку флага сервера
 		server.emplace(server::web_t::flag_t::CONNECT_METHOD_ENABLE);
 	// Устанавливаем флаги настроек модуля
-	this->_server.mode(std::move(server));
+	this->_server.mode(server);
 }
 /**
  * addOrigin Метод добавления разрешённого источника

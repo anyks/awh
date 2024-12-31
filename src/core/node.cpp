@@ -16,6 +16,129 @@
 #include <core/node.hpp>
 
 /**
+ * Оператор [=] перемещения SSL-параметров
+ * @param ssl объект SSL-параметров
+ * @return    объект текущий параметров
+ */
+awh::Node::SSL & awh::Node::SSL::operator = (ssl_t && ssl) noexcept {
+	// Выполняем копирование флага валидации доменного имени
+	this->verify = ssl.verify;
+	// Выполняем перемещение ключа SSL-сертификата
+	this->key = std::move(ssl.key);
+	// Выполняем перемещение SSL-сертификата
+	this->cert = std::move(ssl.cert);
+	// Выполняем перемещение сертификата центра сертификации (CA-файла)
+	this->ca = std::move(ssl.ca);
+	// Выполняем перемещение сертификата отозванных сертификатов (CRL-файла)
+	this->crl = std::move(ssl.crl);
+	// Выполняем перемещение каталога с сертификатами центра сертификации (CA-файлами)
+	this->capath = std::move(ssl.capath);
+	// Выполняем перемещение списка алгоритмов шифрования
+	this->ciphers = std::move(ssl.ciphers);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присванивания SSL-параметров
+ * @param ssl объект SSL-параметров
+ * @return    объект текущий параметров
+ */
+awh::Node::SSL & awh::Node::SSL::operator = (const ssl_t & ssl) noexcept {
+	// Выполняем копирование флага валидации доменного имени
+	this->verify = ssl.verify;
+	// Выполняем копирование ключа SSL-сертификата
+	this->key = ssl.key;
+	// Выполняем копирование SSL-сертификата
+	this->cert = ssl.cert;
+	// Выполняем копирование сертификата центра сертификации (CA-файла)
+	this->ca = ssl.ca;
+	// Выполняем копирование сертификата отозванных сертификатов (CRL-файла)
+	this->crl = ssl.crl;
+	// Выполняем копирование каталога с сертификатами центра сертификации (CA-файлами)
+	this->capath = ssl.capath;
+	// Выполняем копирование списка алгоритмов шифрования
+	this->ciphers = ssl.ciphers;
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор сравнения
+ * @param ssl объект SSL-параметров
+ * @return    результат сравнения
+ */
+bool awh::Node::SSL::operator == (const ssl_t & ssl) noexcept {
+	// Выполняем сравнения двух объектов SSL-параметров
+	bool result = (
+		(this->verify == ssl.verify) &&
+		(this->key.compare(ssl.key) == 0) &&
+		(this->cert.compare(ssl.cert) == 0) &&
+		(this->ca.compare(ssl.ca) == 0) &&
+		(this->crl.compare(ssl.crl) == 0) &&
+		(this->capath.compare(ssl.capath) == 0)
+	);
+	// Если все параметры совпадают
+	if(result && (result = (this->ciphers.size() == ssl.ciphers.size()))){
+		// Если список шифрования не пустой
+		if(!this->ciphers.empty()){
+			// Выполняем перебор всего списка шифрования
+			for(size_t i = 0; i < this->ciphers.size(); i++){
+				// Выполняем сравнение каждой записи
+				result = (this->ciphers.at(i).compare(ssl.ciphers.at(i)) == 0);
+				// Если шифрвы не совпадают
+				if(!result)
+					// Выходим из функции
+					return result;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * SSL Конструктор перемещения
+ * @param ssl объект SSL-параметров
+ */
+awh::Node::SSL::SSL(ssl_t && ssl) noexcept {
+	// Выполняем копирование флага валидации доменного имени
+	this->verify = ssl.verify;
+	// Выполняем перемещение ключа SSL-сертификата
+	this->key = std::move(ssl.key);
+	// Выполняем перемещение SSL-сертификата
+	this->cert = std::move(ssl.cert);
+	// Выполняем перемещение сертификата центра сертификации (CA-файла)
+	this->ca = std::move(ssl.ca);
+	// Выполняем перемещение сертификата отозванных сертификатов (CRL-файла)
+	this->crl = std::move(ssl.crl);
+	// Выполняем перемещение каталога с сертификатами центра сертификации (CA-файлами)
+	this->capath = std::move(ssl.capath);
+	// Выполняем перемещение списка алгоритмов шифрования
+	this->ciphers = std::move(ssl.ciphers);
+}
+/**
+ * SSL Конструктор копирования
+ * @param ssl объект SSL-параметров
+ */
+awh::Node::SSL::SSL(const ssl_t & ssl) noexcept {
+	// Выполняем копирование флага валидации доменного имени
+	this->verify = ssl.verify;
+	// Выполняем копирование ключа SSL-сертификата
+	this->key = ssl.key;
+	// Выполняем копирование SSL-сертификата
+	this->cert = ssl.cert;
+	// Выполняем копирование сертификата центра сертификации (CA-файла)
+	this->ca = ssl.ca;
+	// Выполняем копирование сертификата отозванных сертификатов (CRL-файла)
+	this->crl = ssl.crl;
+	// Выполняем копирование каталога с сертификатами центра сертификации (CA-файлами)
+	this->capath = ssl.capath;
+	// Выполняем копирование списка алгоритмов шифрования
+	this->ciphers = ssl.ciphers;
+}
+/**
+ * SSL Конструктор
+ */
+awh::Node::SSL::SSL() noexcept : verify(true), key{""}, cert{""}, ca{""}, crl{""}, capath{""} {}
+/**
  * remove Метод удаления всех схем сети
  */
 void awh::Node::remove() noexcept {

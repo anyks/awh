@@ -257,7 +257,7 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 									cout << string(buffer.begin(), buffer.end()) << endl << endl;
 								#endif
 								// Выполняем запрос на получение заголовков
-								const auto & headers = this->_scheme.proxy.http.proxy2(std::move(request));
+								const auto & headers = this->_scheme.proxy.http.proxy2(request);
 								// Выполняем заголовки запроса на сервер
 								this->_proxy.sid = this->_http2.sendHeaders(-1, headers, http2_t::flag_t::NONE);
 								// Если запрос не получилось отправить

@@ -293,7 +293,7 @@ class WebClient {
 				// Устанавливаем тип компрессии данных
 				req.compressors = {http_t::compressor_t::DEFLATE};
 				// Выполняем первый запрос на сервер
-				awh->send(std::move(req));
+				awh->send(req);
 			}
 		}
 		/**

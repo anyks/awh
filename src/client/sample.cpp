@@ -184,7 +184,7 @@ void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t s
 					// Создаём объек запроса
 					awh::web_t::req_t request(awh::web_t::method_t::CONNECT, this->_scheme.url);
 					// Получаем бинарные данные WEB запроса
-					const auto & buffer = this->_scheme.proxy.http.proxy(std::move(request));
+					const auto & buffer = this->_scheme.proxy.http.proxy(request);
 					// Если бинарные данные запроса получены
 					if(!buffer.empty()){
 						/**

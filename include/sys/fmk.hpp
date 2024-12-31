@@ -335,7 +335,7 @@ namespace awh {
 							Check(const B & value, const Framework * fmk) noexcept : _value(value), _fmk(fmk) {}
 					} callback(val, this);
 					// Выполняем поиск искомого значения в контейнере std::map
-					return std::find_if_not(map.cbegin(), map.cend(), std::move(callback));
+					return std::find_if_not(map.cbegin(), map.cend(), callback);
 				// Если нам необходимо выполнить поиск по статическому типу данных
 				} else {
 					/**

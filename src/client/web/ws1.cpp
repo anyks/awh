@@ -79,7 +79,7 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 			else this->_http.header("Proxy-Connection", "close");
 		}
 		// Получаем бинарные данные REST запроса		
-		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, std::move(request));
+		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, request);
 		// Если бинарные данные запроса получены
 		if(!buffer.empty()){
 			/**

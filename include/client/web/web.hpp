@@ -96,7 +96,7 @@ namespace awh {
 				};
 			public:
 				/**
-				 * Request Структура запроса клиента
+				 * Request Класс HTTP-запроса клиента
 				 */
 				typedef class AWHSHARED_EXPORT Request {
 					public:

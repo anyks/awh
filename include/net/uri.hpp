@@ -87,7 +87,7 @@ namespace awh {
 				 port(0), host{""}, user{""}, pass{""} {}
 			} params_t;
 			/**
-			 * URL Структура URL адреса
+			 * URL Класс URL-адреса
 			 */
 			typedef class AWHSHARED_EXPORT URL {
 				public:

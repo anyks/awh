@@ -1392,7 +1392,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								cout << string(buffer.begin(), buffer.end()) << endl << endl;
 							#endif
 							// Выполняем запрос на получение заголовков
-							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, std::move(query));
+							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, query);
 							// Флаг отправляемого фрейма
 							awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 							// Если тело запроса не существует
