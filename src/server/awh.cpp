@@ -150,6 +150,20 @@ int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
+ * @param buffer  данные полезной нагрузки (тело сообщения)
+ * @param size    размер данных полезной нагрузки (размер тела сообщения)
+ * @param headers HTTP заголовки сообщения
+ */
+void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept {
+	// Выполняем отправку сообщения клиенту
+	this->_http.send(sid, bid, code, mess, buffer, size, headers);
+}
+/**
+ * send Метод отправки сообщения брокеру
+ * @param sid     идентификатор потока HTTP
+ * @param bid     идентификатор брокера
+ * @param code    код сообщения для брокера
+ * @param mess    отправляемое сообщение об ошибке
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */

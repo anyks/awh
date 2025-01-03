@@ -1402,16 +1402,29 @@ const vector <char> & awh::Http::body() const noexcept {
 	return this->_web.body();
 }
 /**
- * body Метод установки данных тела
- * @param body буфер тела для установки
+ * body Метод добавления данных тела
+ * @param body буфер тела для добавления
  */
 void awh::Http::body(const vector <char> & body) noexcept {
 	// Выполняем дешифрование полезной нагрузки
 	this->decrypt();
 	// Выполняем декомпрессию полезной нагрузки
 	this->decompress();
-	// Устанавливаем данные телал сообщения
+	// Добавляем данные телал сообщения
 	this->_web.body(body);
+}
+/**
+ * body Метод добавления данных тела
+ * @param buffer буфер тела для добавления
+ * @param size   размер буфера теля для добавления
+ */
+void awh::Http::body(const char * buffer, const size_t size) noexcept {
+	// Выполняем дешифрование полезной нагрузки
+	this->decrypt();
+	// Выполняем декомпрессию полезной нагрузки
+	this->decompress();
+	// Добавляем данные телал сообщения
+	this->_web.body(buffer, size);
 }
 /**
  * upgrade Метод получение названия протокола для переключения

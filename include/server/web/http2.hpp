@@ -262,6 +262,7 @@ namespace awh {
 				 * @return        результат отправки данных указанному клиенту
 				 */
 				bool send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept;
+			public:
 				/**
 				 * send Метод отправки тела сообщения клиенту
 				 * @param sid    идентификатор потока HTTP
@@ -283,6 +284,18 @@ namespace awh {
 				 * @return        идентификатор нового запроса
 				 */
 				int32_t send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
+			public:
+				/**
+				 * send Метод отправки сообщения брокеру
+				 * @param sid     идентификатор потока HTTP
+				 * @param bid     идентификатор брокера
+				 * @param code    код сообщения для брокера
+				 * @param mess    отправляемое сообщение об ошибке
+				 * @param buffer  данные полезной нагрузки (тело сообщения)
+				 * @param size    размер данных полезной нагрузки (размер тела сообщения)
+				 * @param headers HTTP заголовки сообщения
+				 */
+				void send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения брокеру
 				 * @param sid     идентификатор потока HTTP

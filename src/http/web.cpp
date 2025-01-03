@@ -1477,14 +1477,25 @@ const vector <char> & awh::Web::body() const noexcept {
 	return this->_body;
 }
 /**
- * body Метод установки данных тела
- * @param body буфер тела для установки
+ * body Метод добавления данных тела
+ * @param body буфер тела для добавления
  */
 void awh::Web::body(const vector <char> & body) noexcept {
 	// Если тело данных передано
 	if(!body.empty())
 		// Выполняем установку данных тела
 		this->_body.insert(this->_body.end(), body.begin(), body.end());
+}
+/**
+ * body Метод добавления данных тела
+ * @param buffer буфер тела для добавления
+ * @param size   размер буфера теля для добавления
+ */
+void awh::Web::body(const char * buffer, const size_t size) noexcept {
+	// Если тело данных передано
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем установку данных тела
+		this->_body.insert(this->_body.end(), buffer, buffer + size);
 }
 /**
  * upgrade Метод получение названия протокола для переключения

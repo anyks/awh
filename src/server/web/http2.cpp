@@ -2036,10 +2036,11 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const ui
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
- * @param entity  данные полезной нагрузки (тело сообщения)
+ * @param buffer  данные полезной нагрузки (тело сообщения)
+ * @param size    размер данных полезной нагрузки (размер тела сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
@@ -2059,7 +2060,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP):
 								// Выполняем передачу запроса на сервер HTTP/1.1
-								this->_http1.send(bid, code, mess, entity, headers);
+								this->_http1.send(bid, code, mess, buffer, size, headers);
 							break;
 						}
 					}
@@ -2084,10 +2085,10 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 									stream->http.clear(http_t::suite_t::BODY);
 									// Выполняем очистку заголовков
 									stream->http.clear(http_t::suite_t::HEADER);
-									// Устанавливаем полезную нагрузку
-									stream->http.body(entity);
 									// Устанавливаем заголовки ответа
 									stream->http.headers(headers);
+									// Устанавливаем полезную нагрузку
+									stream->http.body(buffer, size);
 									// Если сообщение ответа не установлено
 									if(mess.empty())
 										// Выполняем установку сообщения по умолчанию
@@ -2185,6 +2186,26 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 				} break;
 			}
 		}
+	}
+}
+/**
+ * send Метод отправки сообщения брокеру
+ * @param sid     идентификатор потока HTTP
+ * @param bid     идентификатор брокера
+ * @param code    код сообщения для брокера
+ * @param mess    отправляемое сообщение об ошибке
+ * @param entity  данные полезной нагрузки (тело сообщения)
+ * @param headers HTTP заголовки сообщения
+ */
+void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Если тело сообщения передано
+		if(!entity.empty())
+			// Выполняем отправку ответа с телом сообщения
+			this->send(sid, bid, code, mess, entity.data(), entity.size(), headers);
+		// Выполняем отправку ответа без тела сообщения
+		else this->send(sid, bid, code, mess, nullptr, 0, headers);
 	}
 }
 /**

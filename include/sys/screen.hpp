@@ -357,6 +357,46 @@ namespace awh {
 			 * send Метод отправки сообщения в экран
 			 * @param data данные отправляемого сообщения
 			 */
+			void send(T && data) noexcept {
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					this->_mtx.lock();
+					// Выполняем добавление данных в очередь
+					this->_payload.push(std::forward <T> (data));
+					// Выполняем разблокировку потока
+					this->_mtx.unlock();
+					// Если функция обратного вызова установлена
+					if(this->_state != nullptr)
+						// Выполняем функцию обратного вызова
+						this->_state(state_t::INCREMENT, this->_payload.size());
+					// Отправляем сообщение, что данные записаны
+					this->_cv.notify_one();
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const std::exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
+				}
+			}
+			/**
+			 * send Метод отправки сообщения в экран
+			 * @param data данные отправляемого сообщения
+			 */
 			void send(const T & data) noexcept {
 				/**
 				 * Выполняем отлов ошибок
@@ -483,6 +523,17 @@ namespace awh {
 				return this->size();
 			}
 		public:
+			/**
+			 * Оператор [=] отправки данных в экран
+			 * @param data данные отправляемого сообщения
+			 * @return     текущий объект
+			 */
+			Screen & operator = (T && data) noexcept {
+				// Выполняем отправку данных в экран
+				this->send(std::forward <T> (data));
+				// Выводим значение текущего объекта
+				return (* this);
+			}
 			/**
 			 * Оператор [=] отправки данных в экран
 			 * @param data данные отправляемого сообщения

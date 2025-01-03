@@ -503,7 +503,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 						this->_screen.start();
 					}
 					// Выполняем отправку сообщения дочернему потоку
-					this->_screen = payload;
+					this->_screen = std::move(payload);
 				// Выполняем вывод полученного лога
 				} else this->receiving(payload);
 			}
@@ -557,7 +557,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 					this->_screen.start();
 				}
 				// Выполняем отправку сообщения дочернему потоку
-				this->_screen = payload;
+				this->_screen = std::move(payload);
 			// Выполняем вывод полученного лога
 			} else this->receiving(payload);
 		}

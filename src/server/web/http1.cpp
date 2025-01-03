@@ -1033,6 +1033,21 @@ bool awh::server::Http1::sendMessage(const uint64_t bid, const char * message, c
 	return false;
 }
 /**
+ * send Метод отправки данных в бинарном виде клиенту
+ * @param bid    идентификатор брокера
+ * @param buffer буфер бинарных данных передаваемых клиенту
+ * @param size   размер сообщения в байтах
+ * @return       результат отправки сообщения
+ */
+bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
+		// Выполняем отправку заголовков ответа клиенту
+		return const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
+	// Сообщаем что ничего не найдено
+	return false;
+}
+/**
  * send Метод отправки тела сообщения клиенту
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
@@ -1171,29 +1186,15 @@ int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const 
 	return result;
 }
 /**
- * send Метод отправки данных в бинарном виде клиенту
- * @param bid    идентификатор брокера
- * @param buffer буфер бинарных данных передаваемых клиенту
- * @param size   размер сообщения в байтах
- * @return       результат отправки сообщения
- */
-bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
-	// Если данные переданы верные
-	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
-		// Выполняем отправку заголовков ответа клиенту
-		return const_cast <server::core_t *> (this->_core)->send(buffer, size, bid);
-	// Сообщаем что ничего не найдено
-	return false;
-}
-/**
  * send Метод отправки сообщения брокеру
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
  * @param mess    отправляемое сообщение об ошибке
- * @param entity  данные полезной нагрузки (тело сообщения)
+ * @param buffer  данные полезной нагрузки (тело сообщения)
+ * @param size    размер данных полезной нагрузки (размер тела сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Выполняем поиск агента которому соответствует клиент
@@ -1216,10 +1217,10 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 				options->http.clear(http_t::suite_t::BODY);
 				// Выполняем очистку заголовков
 				options->http.clear(http_t::suite_t::HEADER);
-				// Устанавливаем полезную нагрузку
-				options->http.body(entity);
 				// Устанавливаем заголовки ответа
 				options->http.headers(headers);
+				// Устанавливаем полезную нагрузку
+				options->http.body(buffer, size);
 				// Если подключение установленно не постоянное
 				if(!alive){
 					// Определяем идентичность сервера
@@ -1319,6 +1320,25 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 				}
 			}
 		}
+	}
+}
+/**
+ * send Метод отправки сообщения брокеру
+ * @param bid     идентификатор брокера
+ * @param code    код сообщения для брокера
+ * @param mess    отправляемое сообщение об ошибке
+ * @param entity  данные полезной нагрузки (тело сообщения)
+ * @param headers HTTP заголовки сообщения
+ */
+void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Если тело сообщения передано
+		if(!entity.empty())
+			// Выполняем отправку ответа с телом сообщения
+			this->send(bid, code, mess, entity.data(), entity.size(), headers);
+		// Выполняем отправку ответа без тела сообщения
+		else this->send(bid, code, mess, nullptr, 0, headers);
 	}
 }
 /**

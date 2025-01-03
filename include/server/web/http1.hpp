@@ -183,6 +183,15 @@ namespace awh {
 				bool sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
+				 * send Метод отправки данных в бинарном виде клиенту
+				 * @param bid    идентификатор брокера
+				 * @param buffer буфер бинарных данных передаваемых клиенту
+				 * @param size   размер сообщения в байтах
+				 * @return       результат отправки сообщения
+				 */
+				bool send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
+			public:
+				/**
 				 * send Метод отправки тела сообщения клиенту
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых клиенту
@@ -203,13 +212,15 @@ namespace awh {
 				int32_t send(const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
-				 * send Метод отправки данных в бинарном виде клиенту
-				 * @param bid    идентификатор брокера
-				 * @param buffer буфер бинарных данных передаваемых клиенту
-				 * @param size   размер сообщения в байтах
-				 * @return       результат отправки сообщения
+				 * send Метод отправки сообщения брокеру
+				 * @param bid     идентификатор брокера
+				 * @param code    код сообщения для брокера
+				 * @param mess    отправляемое сообщение об ошибке
+				 * @param buffer  данные полезной нагрузки (тело сообщения)
+				 * @param size    размер данных полезной нагрузки (размер тела сообщения)
+				 * @param headers HTTP заголовки сообщения
 				 */
-				bool send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
+				void send(const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения брокеру
 				 * @param bid     идентификатор брокера

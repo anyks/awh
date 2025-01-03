@@ -486,10 +486,16 @@ namespace awh {
 			 */
 			const vector <char> & body() const noexcept;
 			/**
-			 * body Метод установки данных тела
-			 * @param body буфер тела для установки
+			 * body Метод добавления данных тела
+			 * @param body буфер тела для добавления
 			 */
 			void body(const vector <char> & body) noexcept;
+			/**
+			 * body Метод добавления данных тела
+			 * @param buffer буфер тела для добавления
+			 * @param size   размер буфера теля для добавления
+			 */
+			void body(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * upgrade Метод получение названия протокола для переключения
