@@ -293,7 +293,7 @@ namespace awh {
 					 */
 					#ifdef __linux__
 						// Выполняем преобразование числа в строку
-						const string param = ::to_string(value);
+						const string param = std::to_string(value);
 						// Выполняем установку буфера бинарных данных
 						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));
 					/**
@@ -337,7 +337,7 @@ namespace awh {
 								// Выполняем добавление пробела
 								param.append(1, ' ');
 							// Добавляем полученное значение в список
-							param.append(::to_string(item));
+							param.append(std::to_string(item));
 						}
 						// Выполняем установку буфера бинарных данных
 						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));

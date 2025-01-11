@@ -462,7 +462,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 											// Если ответом является PONG
 											case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
 												// Если идентификатор брокера совпадает
-												if(::memcmp(::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
+												if(::memcmp(std::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
 													// Обновляем контрольную точку
 													options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 											} break;
@@ -1155,7 +1155,7 @@ void awh::server::Websocket2::pinging(const uint16_t tid) noexcept {
 							// Если время с предыдущего пинга прошло больше половины времени пинга
 							} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((stamp - item.second->sendPing) > (this->_pingInterval / 2)))
 								// Отправляем запрос брокеру
-								this->ping(item.first, ::to_string(item.first));
+								this->ping(item.first, std::to_string(item.first));
 						// Если рукопожатие не выполнено и пинг не прошёл
 						} else if(!web2_t::ping(item.first))
 							// Выполняем закрытие подключения

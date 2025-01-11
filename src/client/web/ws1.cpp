@@ -492,7 +492,7 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 			// Если время с предыдущего пинга прошло больше половины времени пинга
 			} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((stamp - this->_sendPing) > (this->_pingInterval / 2)))
 				// Отправляем запрос брокеру
-				this->ping(::to_string(this->_bid));
+				this->ping(std::to_string(this->_bid));
 		}
 	}
 }
@@ -770,7 +770,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Если ответом является PONG
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
 						// Если идентификатор брокера совпадает
-						if(::memcmp(::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
+						if(::memcmp(std::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
 							// Обновляем контрольную точку
 							this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					} break;
