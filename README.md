@@ -33,7 +33,7 @@
 ### To clone the project
 
 ```bash
-$ git clone --recursive https://github.com/anyks/awh.git
+$ git clone --recursive https://gitflic.ru/project/anyks/awh.git
 ```
 
 ### Activate SCTP only (FreeBSD / Linux)
