@@ -76,10 +76,10 @@ namespace awh {
 			// Состояние здоровья
 			health_t _health;
 		private:
-			// Объект дочернего потока
-			thread _thr;
 			// Мютекс ожидания данных
 			mutex _locker;
+			// Объект дочернего потока
+			std::thread _thr;
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
 			// Условная переменная, ожидания поступления данных
@@ -366,7 +366,7 @@ namespace awh {
 					// Выполняем блокировку потока
 					this->_mtx.lock();
 					// Выполняем добавление данных в очередь
-					this->_payload.push(forward <T> (data));
+					this->_payload.push(std::forward <T> (data));
 					// Выполняем разблокировку потока
 					this->_mtx.unlock();
 					// Если функция обратного вызова установлена
@@ -479,9 +479,9 @@ namespace awh {
 						// Снимаем флаг остановки работы модуля
 						this->_stop = !this->_stop;
 						// Создаём объект хэширования
-						hash <thread::id> hasher;
+						hash <std::thread::id> hasher;
 						// Создаём дочерний поток для формирования лога
-						this->_thr = thread(&Screen::receiving, this);
+						this->_thr = std::thread(&Screen::receiving, this);
 						// Выполняем получение идентификатора потока
 						this->_id = hasher(this->_thr.get_id());
 						// Отсоединяемся от потока
@@ -531,7 +531,7 @@ namespace awh {
 			 */
 			Screen & operator = (T && data) noexcept {
 				// Выполняем отправку данных в экран
-				this->send(forward <T> (data));
+				this->send(std::forward <T> (data));
 				// Выводим значение текущего объекта
 				return (* this);
 			}
