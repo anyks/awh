@@ -101,7 +101,7 @@ static function <void (const int32_t)> callbackFn = nullptr;
 				}
 			}
 			// Выполняем функцию обратного вызова
-			thread(callbackFn, signal).detach();
+			std::thread(callbackFn, signal).detach();
 		}
 	}
 /**
@@ -116,7 +116,7 @@ static function <void (const int32_t)> callbackFn = nullptr;
 		// Если функция обратного вызова установлена, выводим её
 		if(callbackFn != nullptr)
 			// Выполняем функцию обратного вызова
-			thread(callbackFn, signal).detach();
+			std::thread(callbackFn, signal).detach();
 	}
 #endif
 
