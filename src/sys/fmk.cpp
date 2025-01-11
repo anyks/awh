@@ -2166,14 +2166,14 @@ int64_t awh::Framework::atoi(const string & value, const uint8_t radix) const no
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем перевод в верхний регистр
+			string number = value;
 			// Позиция в строке алфавита
 			size_t pos = string::npos;
 			// Запоминаем являлось ли число отрицательным
 			const bool sign = (value.front() == '-');
 			// Устанавливаем числовые обозначения
 			const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-			// Выполняем перевод в верхний регистр
-			string number = std::forward <const string> (value);
 			// Выполняем перевод число в верхний регистр
 			this->transform(number, transform_t::UPPER);
 			// Начальное и конечное количество перебираемых элементов

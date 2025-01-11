@@ -1625,7 +1625,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 				// Выполняем установку метода запроса CONNECT
 				request.method = web_t::method_t::CONNECT;
 			// Выполняем сохранение параметров запроса
-			this->_web.request(move(request));
+			this->_web.request(::move(request));
 		// Если ключ запроса соответствует пути запроса
 		} else if(this->_fmk->compare(key, ":path")) {
 			// Получаем объект параметров запроса
@@ -1633,7 +1633,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			// Выполняем установку пути запроса
 			this->_uri.create(request.url, this->_uri.parse(val));
 			// Выполняем сохранение параметров запроса
-			this->_web.request(move(request));
+			this->_web.request(::move(request));
 		// Если ключ заголовка соответствует протоколу подключения
 		} else if(this->_fmk->compare(key, ":protocol")) {
 			// Определяем тип HTTP-модуля
@@ -1672,7 +1672,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 				}
 			}
 			// Выполняем сохранение параметров запроса
-			this->_web.request(move(request));
+			this->_web.request(::move(request));
 		// Если ключ соответствует доменному имени
 		} else if(this->_fmk->compare(key, ":authority")) {
 			// Создаём объект работы с IP-адресами
@@ -1742,7 +1742,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 				break;
 			}
 			// Выполняем сохранение параметров запроса
-			this->_web.request(move(request));
+			this->_web.request(::move(request));
 		// Если ключ соответствует статусу ответа
 		} else if(this->_fmk->compare(key, ":status")) {
 			/**
@@ -1758,7 +1758,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 				// Выполняем формирование текста ответа
 				response.message = this->message(response.code);
 				// Выполняем сохранение параметров ответа
-				this->_web.response(move(response));
+				this->_web.response(::move(response));
 			/**
 			 * Если возникает ошибка
 			 */
@@ -1772,7 +1772,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 				// Выполняем формирование текста ответа
 				response.message = this->message(response.code);
 				// Выполняем сохранение параметров ответа
-				this->_web.response(move(response));
+				this->_web.response(::move(response));
 			}
 		// Если ключ соответствует обычным заголовкам
 		} else this->header(key, val);
@@ -2243,7 +2243,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 						// Если заголовок чёрного списка получен
 						if(!header.empty())
 							// Выполняем добавление заголовка чёрного списка
-							this->_black.emplace(move(header));
+							this->_black.emplace(::move(header));
 					}
 				}
 			}
@@ -2660,7 +2660,7 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 						// Выполняем парсинг полученного URL-адреса
 						request.url = this->_uri.parse(location);
 						// Выполняем установку параметров запроса
-						http._web.request(move(request));
+						http._web.request(::move(request));
 					}
 				} break;
 			}

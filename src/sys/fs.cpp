@@ -1103,7 +1103,7 @@ pair <string, string> awh::FS::components(const string & addr, const bool actual
 						// Устанавливаем расширение файла
 						result.second = name.substr(pos + 1);
 					// Устанавливаем только имя файла
-					} else result.first = std::forward <const string> (name);
+					} else result.first = name;
 				}
 			}
 		}

@@ -97,7 +97,7 @@ namespace awh {
 						// Если данные в очереди существуют
 						if(!this->_tasks.empty()){
 							// Получаем текущее задание
-							task = move(this->_tasks.front());
+							task = this->_tasks.front();
 							// Удаляем текущее задание
 							this->_tasks.pop();
 						// Иначе выполняем пропуск
@@ -236,7 +236,7 @@ namespace awh {
 				// Устанавливаем тип возвращаемого значения
 				using return_type = typename result_of <Func(Args...)>::type;
 				// Добавляем задачу в очередь для последующего исполнения
-				auto task = make_shared <packaged_task <return_type()>> (bind(forward <Func> (func), forward <Args> (args)...));
+				auto task = make_shared <packaged_task <return_type()>> (bind(std::forward <Func> (func), std::forward <Args> (args)...));
 				// Создаем шаблон асинхронных операций
 				future <return_type> res = task->get_future();
 				{

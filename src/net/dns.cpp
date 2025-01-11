@@ -1554,7 +1554,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 				// Выполняем генерирование случайного числа
 				uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
 				// Выполняем получение результата
-				result = std::forward <string> (ips.at(dist6(generator)));
+				result = ::move(ips.at(::move(dist6(generator))));
 			/**
 			 * Если возникает ошибка
 			 */
@@ -2955,7 +2955,7 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 						// Выполняем генерирование случайного числа
 						uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
 						// Выполняем получение результата
-						result = std::forward <string> (ips.at(dist6(generator)));
+						result = ::move(ips.at(::move(dist6(generator))));
 					/**
 					 * Если возникает ошибка
 					 */
