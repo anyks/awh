@@ -16,6 +16,11 @@
 #include <core/timer.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * launching Метод вызова при активации базы событий
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
@@ -95,7 +100,7 @@ void awh::Timer::event([[maybe_unused]] const uint16_t tid, const SOCKET fd, con
  */
 void awh::Timer::clear() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
 		// Выполняем перебор всех активных брокеров
@@ -117,7 +122,7 @@ void awh::Timer::clear() noexcept {
  */
 void awh::Timer::clear(const uint16_t tid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если функция обратного вызова существует
 	if(this->_callbacks.is(static_cast <uint64_t> (tid)))
 		// Выполняем удаление функции обратного вызова
@@ -149,7 +154,7 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 			// Получаем идентификатор таймера
 			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, std::unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем время задержки таймера
@@ -167,13 +172,13 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(delay), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -205,7 +210,7 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 			// Получаем идентификатор таймера
 			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, std::unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
+			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем флаг персистентной работы
@@ -225,13 +230,13 @@ uint16_t awh::Timer::interval(const time_t delay) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(delay), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/

@@ -29,14 +29,15 @@
 #include <scheme/core.hpp>
 #include <sys/signals.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * Core Класс ядра биндинга TCP/IP
 	 */
@@ -60,11 +61,11 @@ namespace awh {
 			 */
 			typedef struct Mutex {
 				// Для работы с параметрами модуля
-				std::recursive_mutex main;
+				recursive_mutex main;
 				// Для работы с биндингом сетевых ядер
-				std::recursive_mutex bind;
+				recursive_mutex bind;
 				// Для контроля запуска модуля
-				std::recursive_mutex status;
+				recursive_mutex status;
 			} mtx_t;
 		private:
 			/**
@@ -83,7 +84,7 @@ namespace awh {
 					bool _virt;
 				private:
 					// Мютекс для блокировки потока
-					std::recursive_mutex _mtx;
+					recursive_mutex _mtx;
 				private:
 					// Функция обратного вызова при запуске модуля
 					function <void (const bool, const bool)> _launching;

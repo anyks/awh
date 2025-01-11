@@ -16,6 +16,11 @@
 #include <http/web.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Оператор [=] перемещения параметров запроса клиента
  * @param request объект параметров запроса клиента
  * @return        текущие параметры запроса клиента
@@ -26,7 +31,7 @@ awh::Web::Request & awh::Web::Request::operator = (req_t && request) noexcept {
 	// Выполняем установку версии протокола
 	this->version = request.version;
 	// Выполняем перемещение данных ссылки
-	this->url = std::move(request.url);
+	this->url = ::move(request.url);
 	// Выводим текущий объект
 	return (* this);
 }
@@ -68,7 +73,7 @@ awh::Web::Request::Request(req_t && request) noexcept {
 	// Выполняем установку версии протокола
 	this->version = request.version;
 	// Выполняем перемещение данных ссылки
-	this->url = std::move(request.url);
+	this->url = ::move(request.url);
 }
 /**
  * Request Конструктор копирования
@@ -137,7 +142,7 @@ awh::Web::Response & awh::Web::Response::operator = (res_t && response) noexcept
 	// Выполняем установку версии протокола
 	this->version = response.version;
 	// Выполняем перемещение сообщение сервера
-	this->message = std::move(response.message);
+	this->message = ::move(response.message);
 	// Выводим текущий объект
 	return (* this);
 }
@@ -179,7 +184,7 @@ awh::Web::Response::Response(res_t && response) noexcept {
 	// Выполняем установку версии протокола
 	this->version = response.version;
 	// Выполняем перемещение сообщение сервера
-	this->message = std::move(response.message);
+	this->message = ::move(response.message);
 }
 /**
  * Response Конструктор копирования
@@ -641,14 +646,14 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 								if(this->_callbacks.is("headersResponse"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_response.code, this->_response.message, this->_headers);
+									this->_callbacks.call <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", this->_id, this->_response.code, this->_response.message, this->_headers);
 							} break;
 							// Если мы работаем с сервером
 							case static_cast <uint8_t> (hid_t::SERVER): {
 								// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 								if(this->_callbacks.is("headersRequest"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_request.method, this->_request.url, this->_headers);
+									this->_callbacks.call <void (const uint64_t, const method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_request.method, this->_request.url, this->_headers);
 							} break;
 						}
 						// Получаем размер тела
@@ -693,13 +698,13 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception & error) {
+					} catch(const exception & error) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -766,13 +771,13 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									/**
 									 * Если возникает ошибка
 									 */
-									} catch(const std::exception & error) {
+									} catch(const exception & error) {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										* Если режим отладки не включён
 										*/
@@ -866,13 +871,13 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									/**
 									 * Если возникает ошибка
 									 */
-									} catch(const std::exception & error) {
+									} catch(const exception & error) {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										* Если режим отладки не включён
 										*/
@@ -970,13 +975,13 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							/**
 							 * Если возникает ошибка
 							 */
-							} catch(const std::exception & error) {
+							} catch(const exception & error) {
 								/**
 								 * Если включён режим отладки
 								 */
 								#if defined(DEBUG_MODE)
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 								/**
 								* Если режим отладки не включён
 								*/
@@ -1287,7 +1292,7 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 						// Если и ключ и значение заголовка получены
 						if(!key.empty() && !value.empty())
 							// Добавляем заголовок в список заголовков
-							this->_headers.emplace(std::move(key), std::move(value));
+							this->_headers.emplace(::move(key), ::move(value));
 					}
 				}
 			}
@@ -1347,9 +1352,9 @@ void awh::Web::clear() noexcept {
 	// Выполняем удаление памяти тела
 	vector <char> ().swap(this->_body);
 	// Выполняем удаление памяти списка трейлеров
-	std::unordered_set <string> ().swap(this->_trailers);
+	unordered_set <string> ().swap(this->_trailers);
 	// Выполняем удаление памяти полученных HTTP заголовков
-	std::unordered_multimap <string, string> ().swap(this->_headers);
+	unordered_multimap <string, string> ().swap(this->_headers);
 }
 /**
  * reset Метод сброса стейтов парсера
@@ -1378,7 +1383,7 @@ const awh::Web::req_t & awh::Web::request() const noexcept {
  */
 void awh::Web::request(req_t && request) noexcept {
 	// Устанавливаем объект запроса на сервер
-	this->_request = std::move(request);
+	this->_request = ::move(request);
 }
 /**
  * request Метод установки объекта запроса на сервер
@@ -1402,7 +1407,7 @@ const awh::Web::res_t & awh::Web::response() const noexcept {
  */
 void awh::Web::response(res_t && response) noexcept {
 	// Устанавливаем объект ответа сервера
-	this->_response = std::move(response);
+	this->_response = ::move(response);
 }
 /**
  * response Метод установки объекта ответа сервера
@@ -1518,7 +1523,7 @@ void awh::Web::upgrade(const string & upgrade) noexcept {
  * @param key ключ заголовка
  * @return    список протоколов
  */
-std::set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept {
+set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept {
 	// Если ключ передан
 	if(!key.empty()){
 		// Выполняем поиск заголовка
@@ -1529,7 +1534,7 @@ std::set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept 
 			return i->second;
 	}
 	// Выводим результат
-	return std::set <awh::Web::proto_t> ();
+	return set <awh::Web::proto_t> ();
 }
 /**
  * delHeader Метод удаления заголовка
@@ -1583,7 +1588,7 @@ void awh::Web::header(const string & key, const string & val) noexcept {
  * headers Метод получения списка заголовков
  * @return список существующих заголовков
  */
-const std::unordered_multimap <string, string> & awh::Web::headers() const noexcept {
+const unordered_multimap <string, string> & awh::Web::headers() const noexcept {
 	// Выводим список доступных заголовков
 	return this->_headers;
 }
@@ -1591,7 +1596,7 @@ const std::unordered_multimap <string, string> & awh::Web::headers() const noexc
  * headers Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::Web::headers(const std::unordered_multimap <string, string> & headers) noexcept {
+void awh::Web::headers(const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку заголовков
 	this->_headers = headers;
 }

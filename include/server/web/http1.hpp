@@ -22,13 +22,14 @@
 #include <server/web/web.hpp>
 #include <server/web/ws1.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */
@@ -62,7 +63,7 @@ namespace awh {
 				scheme::web_t _scheme;
 			private:
 				// Список активных агентов
-				std::map <uint64_t, agent_t> _agents;
+				map <uint64_t, agent_t> _agents;
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
@@ -209,7 +210,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения брокеру
@@ -220,7 +221,7 @@ namespace awh {
 				 * @param size    размер данных полезной нагрузки (размер тела сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept;
+				void send(const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const unordered_multimap <string, string> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения брокеру
 				 * @param bid     идентификатор брокера
@@ -229,7 +230,7 @@ namespace awh {
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				void send(const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -297,13 +298,13 @@ namespace awh {
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const std::set <string> & subprotocols) noexcept;
+				void subprotocols(const set <string> & subprotocols) noexcept;
 				/**
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const std::set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const set <string> & subprotocols(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * extensions Метод установки списка расширений
@@ -351,7 +352,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения

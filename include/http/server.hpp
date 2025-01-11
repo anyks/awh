@@ -21,13 +21,14 @@
 #include <http/core.hpp>
 #include <auth/server.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */

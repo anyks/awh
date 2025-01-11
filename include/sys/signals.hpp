@@ -40,14 +40,15 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * Signals Класс работы с сигналами
 	 */

@@ -132,7 +132,6 @@ $ cmake --build .
 ```c++
 #include <client/awh.hpp>
 
-using namespace std;
 using namespace awh;
 
 class WebClient {
@@ -280,7 +279,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/awh.hpp>
 
-using namespace std;
 using namespace awh;
 
 int32_t main(int32_t argc, char * argv[]){
@@ -348,7 +346,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/awh.hpp>
 
-using namespace std;
 using namespace awh;
 
 class WebServer {
@@ -542,7 +539,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/ws.hpp>
 
-using namespace std;
 using namespace awh;
 using namespace awh::client;
 
@@ -665,7 +661,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/ws.hpp>
 
-using namespace std;
 using namespace awh;
 using namespace awh::server;
 
@@ -800,7 +795,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/awh.hpp>
 
-using namespace std;
 using namespace awh;
 
 class WebServer {
@@ -1008,7 +1002,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/proxy.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Proxy {
@@ -1100,7 +1093,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/socks5.hpp>
 
-using namespace std;
 using namespace awh;
 using namespace server;
 
@@ -1170,7 +1162,6 @@ int32_t main(int32_t argc, char * argv[]){
 #include <chrono>
 #include <core/timer.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Executor {
@@ -1248,7 +1239,6 @@ int32_t main(int32_t argc, char * argv[]){
 #include <net/dns.hpp>
 #include <core/core.hpp>
 
-using namespace std;
 using namespace awh;
 
 int32_t main(int32_t argc, char * argv[]){
@@ -1288,7 +1278,6 @@ int32_t main(int32_t argc, char * argv[]){
 #include <net/ntp.hpp>
 #include <core/core.hpp>
 
-using namespace std;
 using namespace awh;
 
 int32_t main(int32_t argc, char * argv[]){
@@ -1315,7 +1304,6 @@ int32_t main(int32_t argc, char * argv[]){
 #include <net/ping.hpp>
 #include <core/core.hpp>
 
-using namespace std;
 using namespace awh;
 
 int32_t main(int32_t argc, char * argv[]){
@@ -1339,7 +1327,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Client {
@@ -1400,7 +1387,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Server {
@@ -1464,7 +1450,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Client {
@@ -1531,7 +1516,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Server {
@@ -1601,7 +1585,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Client {
@@ -1662,7 +1645,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Server {
@@ -1725,7 +1707,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Client {
@@ -1792,7 +1773,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Server {
@@ -1862,7 +1842,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Client {
@@ -1929,7 +1908,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Server {
@@ -1998,7 +1976,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Client {
@@ -2060,7 +2037,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Server {
@@ -2125,7 +2101,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <client/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Client {
@@ -2187,7 +2162,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <server/sample.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Server {
@@ -2251,7 +2225,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <core/cluster.hpp>
 
-using namespace std;
 using namespace awh;
 
 class Executor {
@@ -2330,7 +2303,6 @@ int32_t main(int32_t argc, char * argv[]){
 ```c++
 #include <net/net.hpp>
 
-using namespace std;
 using namespace awh;
 
 int32_t main(int32_t argc, char * argv[]){
@@ -2529,7 +2501,6 @@ int32_t main(int32_t argc, char * argv[]){
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
-using namespace std;
 using namespace awh;
 
 int32_t main(int32_t argc, char * argv[]){

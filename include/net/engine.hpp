@@ -85,13 +85,14 @@
 #include <openssl/rand.h>
 #include <openssl/x509v3.h>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Engine Класс для работы с двигателем передачи данных
 	 */
@@ -215,7 +216,7 @@ namespace awh {
 					socket_t _socket;
 				private:
 					// Выполняем инициализацию генератора
-					std::random_device _randev;
+					random_device _randev;
 				public:
 					// Список сетевых интерфейсов
 					vector <string> network;
@@ -394,7 +395,7 @@ namespace awh {
 					vector <uint8_t> protocols;
 				private:
 					// Параметры валидации домена
-					std::unique_ptr <verify_t> _verify;
+					unique_ptr <verify_t> _verify;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;

@@ -27,13 +27,14 @@
 #include <sys/pipe.hpp>
 #include <sys/screen.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Timeout Класс для работы с таймером в экране
 	 */
@@ -70,15 +71,15 @@ namespace awh {
 			#endif
 		private:
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			recursive_mutex _mtx;
 		private:
 			// Объект экрана для работы в дочернем потоке
 			screen_t <data_t> _screen;
 		private:
 			// Список существующих файловых дескрипторов
-			std::map <SOCKET, uint32_t> _fds;
+			map <SOCKET, uint32_t> _fds;
 			// Список активных таймеров
-			std::multimap <time_t, SOCKET> _timers;
+			multimap <time_t, SOCKET> _timers;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

@@ -16,6 +16,11 @@
 #include <sys/buffer.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * clear Метод очистки всех данных очереди
  */
 void awh::Buffer::clear() noexcept {
@@ -24,7 +29,7 @@ void awh::Buffer::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Память уже выделена для хранения данных
 		if(this->_data != nullptr){
 			// Выполняем удаление блока данных
@@ -43,7 +48,7 @@ void awh::Buffer::clear() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -111,20 +116,20 @@ void awh::Buffer::erase(const size_t size) noexcept {
 		// Если мы не дошли до конца
 		if(!this->empty()){
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard <mutex> lock(this->_mtx);
 			// Выполняем смещение начала чтения в буфере
 			this->_begin += size;
 		}
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -140,7 +145,7 @@ void awh::Buffer::erase(const size_t size) noexcept {
  */
 void awh::Buffer::batch(const size_t batch) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::mutex> lock(this->_mtx);
+	const lock_guard <mutex> lock(this->_mtx);
 	// Если размер батча увеличен
 	if(batch > 0)
 		// Выполняем установку нового значения батча
@@ -158,7 +163,7 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Если данные ещё не выделены
 		if(this->_data == nullptr){
 			// Выделяем память для добавления данных
@@ -170,7 +175,7 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				* Если режим отладки не включён
 				*/
@@ -192,7 +197,7 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				* Если режим отладки не включён
 				*/
@@ -213,13 +218,13 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -246,7 +251,7 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 				// Выполняем очистку буфера данных
 				this->clear();
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard <mutex> lock(this->_mtx);
 			// Если память ещё не выделена
 			if(this->_data == nullptr){
 				// Увеличиваем размер хранимых данных
@@ -260,7 +265,7 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 					/**
 					* Если режим отладки не включён
 					*/
@@ -289,7 +294,7 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 							/**
 							* Если режим отладки не включён
 							*/
@@ -333,7 +338,7 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -352,13 +357,13 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -426,13 +431,13 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -466,13 +471,13 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -554,13 +559,13 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -591,13 +596,13 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer.get(), buffer.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/

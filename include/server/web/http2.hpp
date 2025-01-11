@@ -23,13 +23,14 @@
 #include <server/web/ws2.hpp>
 #include <server/web/http1.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */
@@ -59,16 +60,16 @@ namespace awh {
 				scheme::ws_t::partner_t _server;
 			private:
 				// Поддерживаемые сабпротоколы
-				std::set <string> _subprotocols;
+				set <string> _subprotocols;
 			private:
 				// Список активных агентов
-				std::map <uint64_t, agent_t> _agents;
+				map <uint64_t, agent_t> _agents;
 			private:
 				// Список поддверживаемых расширений
 				vector <vector <string>> _extensions;
 			private:
 				// Полученные HTTP заголовки
-				std::unordered_multimap <string, string> _headers;
+				unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
@@ -151,7 +152,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::set <awh::http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
@@ -261,7 +262,7 @@ namespace awh {
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept;
+				bool send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
 			public:
 				/**
 				 * send Метод отправки тела сообщения клиенту
@@ -283,7 +284,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения брокеру
@@ -295,7 +296,7 @@ namespace awh {
 				 * @param size    размер данных полезной нагрузки (размер тела сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept;
+				void send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const unordered_multimap <string, string> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения брокеру
 				 * @param sid     идентификатор потока HTTP
@@ -305,7 +306,7 @@ namespace awh {
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const int32_t sid, const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				void send(const int32_t sid, const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
@@ -341,7 +342,7 @@ namespace awh {
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				bool send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept;
+				bool send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
 				/**
 				 * send2 Метод HTTP/2 отправки сообщения клиенту
 				 * @param sid    идентификатор потока
@@ -360,7 +361,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * push2 Метод HTTP/2 отправки push-уведомлений
@@ -370,7 +371,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t push2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -438,13 +439,13 @@ namespace awh {
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const std::set <string> & subprotocols) noexcept;
+				void subprotocols(const set <string> & subprotocols) noexcept;
 				/**
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const std::set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const set <string> & subprotocols(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * extensions Метод установки списка расширений
@@ -492,7 +493,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения

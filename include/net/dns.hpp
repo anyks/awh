@@ -76,14 +76,15 @@
 #include <net/net.hpp>
 #include <net/socket.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * DNS Класс DNS ресолвера
 	 */
@@ -405,21 +406,21 @@ namespace awh {
 			buffer_t _buffer;
 		private:
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			recursive_mutex _mtx;
 		private:
 			// Выполняем инициализацию генератора
-			std::random_device _randev;
+			random_device _randev;
 		private:
 			// Статус работы DNS-резолвера
-			std::stack <status_t> _status;
+			stack <status_t> _status;
 		private:
 			// Список используемых адресов
-			std::unordered_set <string> _using;
+			unordered_set <string> _using;
 		private:
 			// Создаём воркер для IPv4
-			std::unique_ptr <worker_t> _workerIPv4;
+			unique_ptr <worker_t> _workerIPv4;
 			// Создаём воркер для IPv6
-			std::unique_ptr <worker_t> _workerIPv6;
+			unique_ptr <worker_t> _workerIPv6;
 		private:
 			// Адреса серверов имён DNS для IPv4
 			vector <server_t <1>> _serversIPv4;
@@ -427,9 +428,9 @@ namespace awh {
 			vector <server_t <4>> _serversIPv6;
 		private:
 			// Список кэша полученных IPv4-адресов
-			std::unordered_multimap <string, cache_t <1>> _cacheIPv4;
+			unordered_multimap <string, cache_t <1>> _cacheIPv4;
 			// Список кэша полученных IPv6-адресов
-			std::unordered_multimap <string, cache_t <4>> _cacheIPv6;
+			unordered_multimap <string, cache_t <4>> _cacheIPv6;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

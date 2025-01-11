@@ -16,6 +16,11 @@
 #include <scheme/client.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * clear Метод очистки
  */
 void awh::client::Scheme::clear() noexcept {

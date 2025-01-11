@@ -28,13 +28,14 @@
 #include <sys/lib.hpp>
 #include <sys/reg.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * NWT Структура списка параметров URL
 	 */
@@ -124,11 +125,11 @@ namespace awh {
 			regexp_t::exp_t _email;
 		private:
 			// Список пользовательских доменных зон интернета
-			std::set <string> _user;
+			set <string> _user;
 			// Список основных доменных зон интернета
-			std::set <string> _general;
+			set <string> _general;
 			// Список интернациональных доменных зон интернета
-			std::set <string> _national;
+			set <string> _national;
 		public:
 			/**
 			 * zone Метод установки пользовательской зоны
@@ -139,12 +140,12 @@ namespace awh {
 			/**
 			 * zones Метод извлечения списка пользовательских зон интернета
 			 */
-			const std::set <string> & zones() const noexcept;
+			const set <string> & zones() const noexcept;
 			/**
 			 * zones Метод установки списка пользовательских зон
 			 * @param zones список доменных зон интернета
 			 */
-			void zones(const std::set <string> & zones) noexcept;
+			void zones(const set <string> & zones) noexcept;
 		public:
 			/**
 			 * parse Метод парсинга URI-строки

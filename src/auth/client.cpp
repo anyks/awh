@@ -16,6 +16,11 @@
 #include <auth/client.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * data Метод извлечения данных авторизации
  * @return данные модуля авторизации
  */
@@ -202,7 +207,7 @@ string awh::client::Auth::auth(const string & method) noexcept {
 						// Если ключ клиента не создан, создаём его
 						if(this->_digest.cnonce.empty()){
 							// Устанавливаем ключ клиента
-							this->_digest.cnonce = this->_hash.hashing <string> (std::to_string(::time(nullptr)), awh::hash_t::type_t::MD5);
+							this->_digest.cnonce = this->_hash.hashing <string> (to_string(::time(nullptr)), awh::hash_t::type_t::MD5);
 							// Обрезаем лишние символы
 							this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
 						}
@@ -257,13 +262,13 @@ string awh::client::Auth::auth(const string & method) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(method), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(method), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/

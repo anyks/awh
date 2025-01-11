@@ -16,6 +16,11 @@
 #include <socks5/client.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * cmd Метод получения бинарного буфера запроса
  */
 void awh::client::Socks5::cmd() const noexcept {

@@ -28,13 +28,14 @@
 #include <http/server.hpp>
 #include <scheme/server.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */
@@ -83,7 +84,7 @@ namespace awh {
 					} options_t;
 				private:
 					// Список параметров активных клиентов
-					std::map <uint64_t, std::unique_ptr <options_t>> _options;
+					map <uint64_t, unique_ptr <options_t>> _options;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
@@ -116,7 +117,7 @@ namespace awh {
 					 * get Метод извлечения списка параметров активных клиентов
 					 * @return список параметров активных клиентов
 					 */
-					const std::map <uint64_t, std::unique_ptr <options_t>> & get() const noexcept;
+					const map <uint64_t, unique_ptr <options_t>> & get() const noexcept;
 				public:
 					/**
 					 * Sample Конструктор

@@ -32,6 +32,11 @@
 #include <sys/signals.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Если операционной системой не является Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -48,7 +53,7 @@
 /**
  * Функция обратного вызова при получении сигнала
  */
-static std::function <void (const int32_t)> callbackFn = nullptr;
+static function <void (const int32_t)> callbackFn = nullptr;
 
 /**
  * Если операционной системой не является Windows
@@ -96,7 +101,7 @@ static std::function <void (const int32_t)> callbackFn = nullptr;
 				}
 			}
 			// Выполняем функцию обратного вызова
-			std::thread(callbackFn, signal).detach();
+			thread(callbackFn, signal).detach();
 		}
 	}
 /**
@@ -111,7 +116,7 @@ static std::function <void (const int32_t)> callbackFn = nullptr;
 		// Если функция обратного вызова установлена, выводим её
 		if(callbackFn != nullptr)
 			// Выполняем функцию обратного вызова
-			std::thread(callbackFn, signal).detach();
+			thread(callbackFn, signal).detach();
 	}
 #endif
 
@@ -257,7 +262,7 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 	// Выполняем установку функцию обратного вызова
 	this->_callback = callback;
 	// Выполняем установки функции обратного вызова
-	callbackFn = std::bind(&sig_t::callback, this, _1);
+	callbackFn = bind(&sig_t::callback, this, _1);
 }
 /**
  * Signals Конструктор

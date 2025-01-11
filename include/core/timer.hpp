@@ -20,13 +20,14 @@
  */
 #include <core/core.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Timer Класс таймера ядра биндинга
 	 */
@@ -60,10 +61,10 @@ namespace awh {
 			fn_t _callbacks;
 		private:
 			// Мютекс для блокировки основного потока
-			std::recursive_mutex _mtx;
+			recursive_mutex _mtx;
 		private:
 			// Список активных брокеров
-			std::map <uint16_t, std::unique_ptr <broker_t>> _brokers;
+			map <uint16_t, unique_ptr <broker_t>> _brokers;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -110,7 +111,7 @@ namespace awh {
 				// Если функция обратного вызова передана
 				if((tid > 0) && (fn != nullptr)){
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <recursive_mutex> lock(this->_mtx);
 					// Выполняем установку функции обратного вызова
 					this->_callbacks.set <A> (static_cast <uint64_t> (tid), fn);
 				}

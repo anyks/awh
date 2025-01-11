@@ -16,6 +16,11 @@
 #include <server/web/web.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * statusEvents Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  */
@@ -49,23 +54,23 @@ void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid) no
 			// Создаём локальный контейнер функций обратного вызова
 			fn_t callbacks(this->_log);
 			// Выполняем установку функции обратного вызова начала открытии потока
-			callbacks.set <int32_t (const int32_t)> ("begin", std::bind(&web2_t::beginSignal, this, _1, bid));
+			callbacks.set <int32_t (const int32_t)> ("begin", bind(&web2_t::beginSignal, this, _1, bid));
 			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
-			callbacks.set <void (const uint8_t *, const size_t)> ("send", std::bind(&web2_t::sendSignal, this, bid, _1, _2));
+			callbacks.set <void (const uint8_t *, const size_t)> ("send", bind(&web2_t::sendSignal, this, bid, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			callbacks.set <int32_t (const int32_t, const http2_t::error_t)> ("close", std::bind(&web2_t::closedSignal, this, _1, bid, _2));
+			callbacks.set <int32_t (const int32_t, const http2_t::error_t)> ("close", bind(&web2_t::closedSignal, this, _1, bid, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			callbacks.set <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", std::bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
+			callbacks.set <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", bind(&web2_t::chunkSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
-			callbacks.set <int32_t (const int32_t, const string &, const string &)> ("header", std::bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
+			callbacks.set <int32_t (const int32_t, const string &, const string &)> ("header", bind(&web2_t::headerSignal, this, _1, bid, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма
-			callbacks.set <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const std::set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
+			callbacks.set <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", bind(&web2_t::frameSignal, this, _1, bid, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Устанавливаем функцию обработки вызова на событие получения ошибок
-				callbacks.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(this->_callbacks.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3));
+				callbacks.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", bind(this->_callbacks.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3));
 			// Выполняем создание нового объекта сессии HTTP/2
-			auto ret = this->_sessions.emplace(bid, std::unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
+			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
 			// Выполняем установку функции обратного вызова
 			ret.first->second->callbacks(callbacks);
 			// Если инициализация модуля NgHttp2 не выполнена
@@ -107,7 +112,7 @@ void awh::server::Web2::close(const uint64_t bid) noexcept {
 		// Если активная сессия найдена
 		if(i != this->_sessions.end())
 			// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-			i->second->callback <void (void)> (1, std::bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
+			i->second->callback <void (void)> (1, bind(static_cast <void (server::core_t::*)(const uint64_t)> (&server::core_t::close), const_cast <server::core_t *> (this->_core), bid));
 		// Завершаем работу
 		else const_cast <server::core_t *> (this->_core)->close(bid);
 	}
@@ -218,7 +223,7 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept {
+bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -277,7 +282,7 @@ bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const char *
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -306,7 +311,7 @@ int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vec
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::push(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::server::Web2::push(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -357,7 +362,7 @@ void awh::server::Web2::addAltSvc(const string & origin, const string & field) n
  * setAltSvc Метод установки списка альтернативных сервисов
  * @param origins список альтернативных сервисов
  */
-void awh::server::Web2::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
+void awh::server::Web2::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
 	// Выполняем установку списка альтернативных сервисов
 	this->_altsvc = origins;
 }
@@ -365,7 +370,7 @@ void awh::server::Web2::setAltSvc(const std::unordered_multimap <string, string>
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Web2::settings(const std::map <http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Web2::settings(const map <http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Если список настроек протокола HTTP/2 передан
 	if(!settings.empty())
 		// Выполняем установку списка настроек

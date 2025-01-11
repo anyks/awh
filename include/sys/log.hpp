@@ -55,14 +55,15 @@
 #include <sys/fmk.hpp>
 #include <sys/screen.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * Log Класс работы с логами
 	 */
@@ -172,13 +173,13 @@ namespace awh {
 			string _filename;
 		private:
 			// Список доступных флагов
-			std::set <mode_t> _mode;
+			set <mode_t> _mode;
 		private:
 			// Список проинициализированных процессов
-			mutable std::set <pid_t> _initialized;
+			mutable set <pid_t> _initialized;
 		private:
 			// Мютекс для блокировки потока
-			mutable std::recursive_mutex _mtx;
+			mutable recursive_mutex _mtx;
 		private:
 			// Объект работы с дочерними потоками
 			mutable screen_t <payload_t> _screen;
@@ -201,7 +202,7 @@ namespace awh {
 			 */
 			size_t count(TupType) const noexcept {
 				// Выводим количество переданных аргументов
-				return std::tuple_size_v <TupType>;
+				return tuple_size_v <TupType>;
 			}
 		private:
 			/**
@@ -214,13 +215,13 @@ namespace awh {
 			 * @param args аргументы для формирования строки
 			 * @return     сформированная строка аргументов
 			 */
-			string formation(const TupType & args, std::index_sequence <I...>) const noexcept {
+			string formation(const TupType & args, index_sequence <I...>) const noexcept {
 				// Создаём объект строкового потока
-				std::stringstream stream;
+				stringstream stream;
 				// Выполняем добавление открывающую скобку
 				stream << "(";
 				// Выполняем запись всех аргументов
-				(..., (stream << (I == 0 ? "" : ", ") << std::get <I> (args)));
+				(..., (stream << (I == 0 ? "" : ", ") << get <I> (args)));
 				// Выполняем добавление закрывающую скобку
 				stream << ")";
 				// Выводим полученный результат
@@ -236,9 +237,9 @@ namespace awh {
 			 * @param args аргументы для серриализации
 			 * @return     сформированная строка аргументов
 			 */
-			string serialization(const std::tuple <TupType...> & args) const noexcept {
+			string serialization(const tuple <TupType...> & args) const noexcept {
 				// Выполняем серриализацию полученных аргументов
-				return this->formation(args, std::make_index_sequence <sizeof...(TupType)> ());
+				return this->formation(args, make_index_sequence <sizeof...(TupType)> ());
 			}
 		private:
 			/**
@@ -264,7 +265,7 @@ namespace awh {
 			 * @param filename адрес где находится файл
 			 * @return         параметры компонента (адрес, название файла без расширения)
 			 */
-			std::pair <string, string> components(const string & filename) const noexcept;
+			pair <string, string> components(const string & filename) const noexcept;
 		public:
 			/**
 			 * Шаблон входных аргументов функции
@@ -280,7 +281,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   аргументы формирования лога
 			 */
-			void debug(const string & format, const string & method, const std::tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
+			void debug(const string & format, const string & method, const tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
 				// Если формат строки вывода передан
 				if(!format.empty()){
 					// Если метод названия функции передан
@@ -321,7 +322,7 @@ namespace awh {
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
-			void debug(const string & format, const string & method, const std::tuple <T...> & params, flag_t flag, const vector <string> & args) const noexcept {
+			void debug(const string & format, const string & method, const tuple <T...> & params, flag_t flag, const vector <string> & args) const noexcept {
 				// Если формат строки вывода передан
 				if(!format.empty()){
 					// Если метод названия функции передан

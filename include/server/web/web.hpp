@@ -33,14 +33,15 @@
 #include <http/server.hpp>
 #include <core/server.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * server клиентское пространство имён
 	 */
@@ -168,7 +169,7 @@ namespace awh {
 				time_t _pingInterval;
 			protected:
 				// Список мусорных брокеров
-				std::map <uint64_t, time_t> _disconected;
+				map <uint64_t, time_t> _disconected;
 			protected:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -408,7 +409,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const std::set <flag_t> & flags) noexcept = 0;
+				virtual void mode(const set <flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений
@@ -517,13 +518,13 @@ namespace awh {
 				vector <string> _origins;
 			protected:
 				// Список отправляемых альтернативных сервисов HTTP/2
-				std::unordered_multimap <string, string> _altsvc;
+				unordered_multimap <string, string> _altsvc;
 			protected:
 				// Список параметров настроек протокола HTTP/2
-				std::map <http2_t::settings_t, uint32_t> _settings;
+				map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				// Список активных сессий HTTP/2
-				std::map <uint64_t, std::shared_ptr <http2_t>> _sessions;
+				map <uint64_t, shared_ptr <http2_t>> _sessions;
 			protected:
 				/**
 				 * statusEvents Метод обратного вызова при активации ядра сервера
@@ -587,7 +588,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int32_t frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept = 0;
+				virtual int32_t frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * close Метод выполнения закрытия подключения
@@ -636,7 +637,7 @@ namespace awh {
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept;
+				bool send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения клиенту
 				 * @param sid    идентификатор потока
@@ -656,7 +657,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * push Метод отправки пуш-уведомлений
@@ -666,7 +667,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t push(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t push(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * addOrigin Метод добавления разрешённого источника
@@ -689,13 +690,13 @@ namespace awh {
 				 * setAltSvc Метод установки списка альтернативных сервисов
 				 * @param origins список альтернативных сервисов
 				 */
-				void setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept;
+				void setAltSvc(const unordered_multimap <string, string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * Web2 Конструктор

@@ -13,7 +13,6 @@
 #include <client/ws.hpp>
 
 // Подключаем пространство имён
-using namespace std;
 using namespace awh;
 using namespace awh::client;
 

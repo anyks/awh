@@ -33,13 +33,14 @@
  */
 #include <sys/global.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Шаблон формата данных передаваемого между потоками
 	 * @tparam T данные передаваемые между потоками
@@ -76,16 +77,16 @@ namespace awh {
 			health_t _health;
 		private:
 			// Объект дочернего потока
-			std::thread _thr;
+			thread _thr;
 			// Мютекс ожидания данных
-			std::mutex _locker;
+			mutex _locker;
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			recursive_mutex _mtx;
 			// Условная переменная, ожидания поступления данных
-			std::condition_variable _cv;
+			condition_variable _cv;
 		private:
 			// Очередь полезной нагрузки
-			std::queue <T> _payload;
+			queue <T> _payload;
 			// Таймаут ожидания блокировки базы событий
 			chrono::nanoseconds _delay;
 		private:
@@ -133,7 +134,7 @@ namespace awh {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -161,9 +162,9 @@ namespace awh {
 					 */
 					try {
 						// Выполняем блокировку уникальным мютексом
-						unique_lock <std::mutex> lock(this->_locker);
+						unique_lock <mutex> lock(this->_locker);
 						// Выполняем ожидание на поступление новых заданий
-						this->_cv.wait_for(lock, this->_delay, std::bind(&Screen::check, this));
+						this->_cv.wait_for(lock, this->_delay, bind(&Screen::check, this));
 						// Выполняем запуск обработки поступившей задачи
 						this->process();
 						// Если произведена остановка
@@ -173,7 +174,7 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception &) {
+					} catch(const exception &) {
 						// Выполняем запуск обработки поступившей задачи
 						this->process();
 						// Если произведена остановка
@@ -233,13 +234,13 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_trigger = callback;
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -265,13 +266,13 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_callback = callback;
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -297,13 +298,13 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_state = callback;
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -330,13 +331,13 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <recursive_mutex> lock(this->_mtx);
 					// Выполняем установку задержки времени
 					this->_delay = chrono::nanoseconds(delay);
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -365,7 +366,7 @@ namespace awh {
 					// Выполняем блокировку потока
 					this->_mtx.lock();
 					// Выполняем добавление данных в очередь
-					this->_payload.push(std::forward <T> (data));
+					this->_payload.push(forward <T> (data));
 					// Выполняем разблокировку потока
 					this->_mtx.unlock();
 					// Если функция обратного вызова установлена
@@ -377,7 +378,7 @@ namespace awh {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -417,7 +418,7 @@ namespace awh {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -456,7 +457,7 @@ namespace awh {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception &) {
+				} catch(const exception &) {
 					/**
 					 * Пропускаем полученную ошибку.
 					 * 
@@ -478,9 +479,9 @@ namespace awh {
 						// Снимаем флаг остановки работы модуля
 						this->_stop = !this->_stop;
 						// Создаём объект хэширования
-						std::hash <std::thread::id> hasher;
+						hash <thread::id> hasher;
 						// Создаём дочерний поток для формирования лога
-						this->_thr = std::thread(&Screen::receiving, this);
+						this->_thr = thread(&Screen::receiving, this);
 						// Выполняем получение идентификатора потока
 						this->_id = hasher(this->_thr.get_id());
 						// Отсоединяемся от потока
@@ -489,7 +490,7 @@ namespace awh {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -530,7 +531,7 @@ namespace awh {
 			 */
 			Screen & operator = (T && data) noexcept {
 				// Выполняем отправку данных в экран
-				this->send(std::forward <T> (data));
+				this->send(forward <T> (data));
 				// Выводим значение текущего объекта
 				return (* this);
 			}

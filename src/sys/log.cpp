@@ -16,6 +16,11 @@
 #include <sys/log.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Оператор [=] перемещения параметров полезной нагрузки
  * @param payload объект полезной нагрузки для перемещения
  * @return        текущий объект полезной нагрузки
@@ -24,7 +29,7 @@ awh::Log::Payload & awh::Log::Payload::operator = (payload_t && payload) noexcep
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем перемещение текста
-	this->text = std::move(payload.text);
+	this->text = ::move(payload.text);
 	// Выводим текущий объект
 	return (* this);
 }
@@ -61,7 +66,7 @@ awh::Log::Payload::Payload(payload_t && payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем перемещение текста
-	this->text = std::move(payload.text);
+	this->text = ::move(payload.text);
 }
 /**
  * Payload Конструктор копирования
@@ -109,13 +114,13 @@ void awh::Log::rotate() const noexcept {
 			// Если размер файла лога, превышает максимально-установленный
 			if(size >= this->_maxSize){
 				// Создаём объект потока
-				std::stringstream date;
+				stringstream date;
 				// Определяем количество секунд
-				const time_t seconds = std::time(nullptr);
+				const time_t seconds = time(nullptr);
 				// Получаем структуру локального времени
-				std::tm * tm = std::localtime(&seconds);
+				tm * tm = localtime(&seconds);
 				// Выполняем извлечение даты
-				date << std::put_time(tm, "_%m-%d-%Y_%H-%M-%S");
+				date << put_time(tm, "_%m-%d-%Y_%H-%M-%S");
 				/**
 				 * Выполняем работу для Windows
 				 */
@@ -235,19 +240,19 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Флаг конца строки
 	bool isEnd = false;
 	// Создаём объект потока
-	std::stringstream date;
+	stringstream date;
 	// Определяем количество секунд
-	const time_t seconds = std::time(nullptr);
+	const time_t seconds = time(nullptr);
 	// Получаем структуру локального времени
-	std::tm * tm = std::localtime(&seconds);
+	tm * tm = localtime(&seconds);
 	// Выполняем извлечение даты
-	date << std::put_time(tm, this->_format.c_str());
+	date << put_time(tm, this->_format.c_str());
 	// Если размер буфера меньше 3-х байт
 	if(payload.text.length() < 3)
 		// Проверяем является ли это переводом строки
 		isEnd = ((payload.text.compare(AWH_STRING_BREAK) == 0) || (payload.text.compare(AWH_STRING_BREAK) == 0));
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если функция подписки на логи установлена, выводим результат
 	if((this->_mode.find(mode_t::DEFERRED) != this->_mode.end()) && (this->_fn != nullptr))
 		// Выводим сообщение лога всем подписавшимся
@@ -374,9 +379,9 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
  * @param filename адрес где находится файл
  * @return         параметры компонента (адрес, название файла без расширения)
  */
-std::pair <string, string> awh::Log::components(const string & filename) const noexcept {
+pair <string, string> awh::Log::components(const string & filename) const noexcept {
 	// Результат работы функции
-	std::pair <string, string> result;
+	pair <string, string> result;
 	// Если адрес передан
 	if(!filename.empty()){
 		// Позиция разделителя каталога
@@ -496,14 +501,14 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 					// Если дочерний поток не создан
 					if(!static_cast <bool> (this->_screen)){
 						// Выполняем установку функцию обратного вызова
-						this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+						this->_screen = static_cast <function <void (const payload_t &)>> (bind(&log_t::receiving, this, _1));
 						// Выполняем инициализацию текущего процесса
 						this->_initialized.emplace(pid);
 						// Запускаем работу скрина
 						this->_screen.start();
 					}
 					// Выполняем отправку сообщения дочернему потоку
-					this->_screen = std::move(payload);
+					this->_screen = ::move(payload);
 				// Выполняем вывод полученного лога
 				} else this->receiving(payload);
 			}
@@ -550,14 +555,14 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 				// Если дочерний поток не создан
 				if(!static_cast <bool> (this->_screen)){
 					// Выполняем установку функцию обратного вызова
-					this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+					this->_screen = static_cast <function <void (const payload_t &)>> (bind(&log_t::receiving, this, _1));
 					// Выполняем инициализацию текущего процесса
 					this->_initialized.emplace(pid);
 					// Запускаем работу скрина
 					this->_screen.start();
 				}
 				// Выполняем отправку сообщения дочернему потоку
-				this->_screen = std::move(payload);
+				this->_screen = ::move(payload);
 			// Выполняем вывод полученного лога
 			} else this->receiving(payload);
 		}
@@ -567,7 +572,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
  * mode Метод добавления режимов вывода логов
  * @param mode список режимов вывода логов
  */
-void awh::Log::mode(const std::set <mode_t> & mode) noexcept {
+void awh::Log::mode(const set <mode_t> & mode) noexcept {
 	// Выполняем установку списка режимов вывода логов
 	this->_mode = mode;
 }

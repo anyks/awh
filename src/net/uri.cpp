@@ -16,6 +16,11 @@
 #include <net/uri.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * clear Метод очистки
  */
 void awh::URI::URL::clear() noexcept {
@@ -60,7 +65,7 @@ void awh::URI::URL::clear() noexcept {
 	// Выполняем освобождение памяти пути URL-запроса
 	vector <string> ().swap(this->path);
 	// Выполняем освобождение памяти параметров URL-запроса
-	vector <std::pair <string, string>> ().swap(this->params);
+	vector <pair <string, string>> ().swap(this->params);
 }
 /**
  * empty Метод проверки на существование данных
@@ -92,55 +97,55 @@ awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
 		// Если IP-адрес передан
 		if(!url.ip.empty())
 			// Выполняем копирование IP-адреса
-			this->ip = std::move(url.ip);
+			this->ip = ::move(url.ip);
 		// Выполняем удаление IP-адреса
 		else this->ip.clear();
 		// Если хост сервера передан
 		if(!url.host.empty())
 			// Выполняем копирование хоста сервера
-			this->host = std::move(url.host);
+			this->host = ::move(url.host);
 		// Выполняем удаление хоста сервера
 		else this->host.clear();
 		// Если доменное имя сервера передано
 		if(!url.domain.empty())
 			// Выполняем копирование доменного имени сервера
-			this->domain = std::move(url.domain);
+			this->domain = ::move(url.domain);
 		// Выполняем удаление доменного имени сервера
 		else this->domain.clear();
 		// Если протокол передачи данных передан
 		if(!url.schema.empty())
 			// Выполняем копирование протокола передачи данных
-			this->schema = std::move(url.schema);
+			this->schema = ::move(url.schema);
 		// Выполняем удаление протокола передачи данных
 		else this->schema.clear();
 		// Если якорь URL-запроса передан
 		if(!url.anchor.empty())
 			// Выполняем копирование якоря URL-запроса
-			this->anchor = std::move(url.anchor);
+			this->anchor = ::move(url.anchor);
 		// Выполняем удаление якоря URL-запроса
 		else this->anchor.clear();
 		// Если пользователь передан
 		if(!url.user.empty())
 			// Выполняем копирование пользователя
-			this->user = std::move(url.user);
+			this->user = ::move(url.user);
 		// Выполняем удаление пользователя
 		else this->user.clear();
 		// Если пароль передан
 		if(!url.pass.empty())
 			// Выполняем копирование пароля
-			this->pass = std::move(url.pass);
+			this->pass = ::move(url.pass);
 		// Выполняем удаление пароля
 		else this->pass.clear();
 		// Если путь передан
 		if(!url.path.empty())
 			// Выполняем копирование пути
-			this->path = std::move(url.path);
+			this->path = ::move(url.path);
 		// Выполняем удаление пути
 		else this->path.clear();
 		// Если параметры переданы
 		if(!url.params.empty())
 			// Выполняем копирование параметров
-			this->params = std::move(url.params);
+			this->params = ::move(url.params);
 		// Выполняем удаление параметров
 		else this->params.clear();
 		// Выполняем копирование функции обратного вызова
@@ -148,7 +153,7 @@ awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::length_error & error) {
+	} catch(const length_error & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -165,7 +170,7 @@ awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -256,7 +261,7 @@ awh::URI::URL & awh::URI::URL::operator = (const url_t & url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::length_error & error) {
+	} catch(const length_error & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -273,7 +278,7 @@ awh::URI::URL & awh::URI::URL::operator = (const url_t & url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -360,55 +365,55 @@ awh::URI::URL::URL(url_t && url) noexcept {
 		// Если IP-адрес передан
 		if(!url.ip.empty())
 			// Выполняем копирование IP-адреса
-			this->ip = std::move(url.ip);
+			this->ip = ::move(url.ip);
 		// Выполняем удаление IP-адреса
 		else this->ip.clear();
 		// Если хост сервера передан
 		if(!url.host.empty())
 			// Выполняем копирование хоста сервера
-			this->host = std::move(url.host);
+			this->host = ::move(url.host);
 		// Выполняем удаление хоста сервера
 		else this->host.clear();
 		// Если доменное имя сервера передано
 		if(!url.domain.empty())
 			// Выполняем копирование доменного имени сервера
-			this->domain = std::move(url.domain);
+			this->domain = ::move(url.domain);
 		// Выполняем удаление доменного имени сервера
 		else this->domain.clear();
 		// Если протокол передачи данных передан
 		if(!url.schema.empty())
 			// Выполняем копирование протокола передачи данных
-			this->schema = std::move(url.schema);
+			this->schema = ::move(url.schema);
 		// Выполняем удаление протокола передачи данных
 		else this->schema.clear();
 		// Если якорь URL-запроса передан
 		if(!url.anchor.empty())
 			// Выполняем копирование якоря URL-запроса
-			this->anchor = std::move(url.anchor);
+			this->anchor = ::move(url.anchor);
 		// Выполняем удаление якоря URL-запроса
 		else this->anchor.clear();
 		// Если пользователь передан
 		if(!url.user.empty())
 			// Выполняем копирование пользователя
-			this->user = std::move(url.user);
+			this->user = ::move(url.user);
 		// Выполняем удаление пользователя
 		else this->user.clear();
 		// Если пароль передан
 		if(!url.pass.empty())
 			// Выполняем копирование пароля
-			this->pass = std::move(url.pass);
+			this->pass = ::move(url.pass);
 		// Выполняем удаление пароля
 		else this->pass.clear();
 		// Если путь передан
 		if(!url.path.empty())
 			// Выполняем копирование пути
-			this->path = std::move(url.path);
+			this->path = ::move(url.path);
 		// Выполняем удаление пути
 		else this->path.clear();
 		// Если параметры переданы
 		if(!url.params.empty())
 			// Выполняем копирование параметров
-			this->params = std::move(url.params);
+			this->params = ::move(url.params);
 		// Выполняем удаление параметров
 		else this->params.clear();
 		// Выполняем копирование функции обратного вызова
@@ -416,7 +421,7 @@ awh::URI::URL::URL(url_t && url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::length_error & error) {
+	} catch(const length_error & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -433,7 +438,7 @@ awh::URI::URL::URL(url_t && url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -521,7 +526,7 @@ awh::URI::URL::URL(const url_t & url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::length_error & error) {
+	} catch(const length_error & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -538,7 +543,7 @@ awh::URI::URL::URL(const url_t & url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -584,7 +589,7 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 				// Если схема протокола получена
 				if(i != uri.end())
 					// Выполняем извлечение схемы протокола
-					result.schema = std::move(i->second);
+					result.schema = ::move(i->second);
 				// Выполняем поиск пути запроса
 				i = uri.find(flag_t::PATH);
 				// Если путь запроса получен
@@ -598,7 +603,7 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 						// Выполняем извлечение пути запроса
 						result.path = this->splitPath(i->second);
 						// Устанавливаем доменное имя
-						result.host = std::move(i->second);
+						result.host = ::move(i->second);
 					// Выполняем извлечение пути запроса
 					} else result.path = this->splitPath(i->second);
 				}
@@ -627,7 +632,7 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception &) {
+					} catch(const exception &) {
 						// Выполняем извлечение порта запроса
 						result.port = 0;
 					}
@@ -637,19 +642,19 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 				// Если пользователь запроса получен
 				if(i != uri.end())
 					// Выполняем извлечение пользователя запроса
-					result.user = std::move(i->second);
+					result.user = ::move(i->second);
 				// Выполняем поиск пароля пользователя запроса
 				i = uri.find(flag_t::PASS);
 				// Если пароль пользователя запроса получен
 				if(i != uri.end())
 					// Выполняем извлечение пароля пользователя запроса
-					result.pass = std::move(i->second);
+					result.pass = ::move(i->second);
 				// Выполняем поиск хоста запроса
 				i = uri.find(flag_t::HOST);
 				// Если хост запроса получен
 				if(i != uri.end()){
 					// Выполняем извлечение хоста запроса
-					result.host = std::move(i->second);
+					result.host = ::move(i->second);
 					// Определяем тип домена
 					switch(static_cast <uint8_t> (this->_net.host(result.host))){
 						// Если домен является адресом в файловой системе
@@ -691,13 +696,13 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(url), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -738,13 +743,13 @@ string awh::URI::etag(const string & text) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -772,15 +777,15 @@ string awh::URI::encode(const string & text) const noexcept {
 		 */
 		try {
 			// Создаём поток
-			std::ostringstream stream;
+			ostringstream stream;
 			// Заполняем поток нулями
 			stream.fill('0');
 			// Переключаемся на 16-ю систему счисления
-			stream << std::hex;
+			stream << hex;
 			// Перебираем все символы
 			for(char letter : text){
 				// Не трогаем буквенно-цифровые и другие допустимые символы.
-				if(std::isalnum(letter) || (letter == '-') || (letter == '_') || (letter == '.') || (letter == '~') || (letter == '@') ||
+				if(isalnum(letter) || (letter == '-') || (letter == '_') || (letter == '.') || (letter == '~') || (letter == '@') ||
 				 ((letter >= '0') && (letter <= '9')) || ((letter >= 'A') && (letter <= 'Z')) || ((letter >= 'a') && (letter <= 'z'))){
 					// Записываем в поток символ, как он есть
 					stream << letter;
@@ -791,24 +796,24 @@ string awh::URI::encode(const string & text) const noexcept {
 				 * Любые другие символы закодированы в процентах
 				 */
 				// Переводим символы в верхний регистр
-				stream << std::uppercase;
+				stream << uppercase;
 				// Записываем в поток, код символа
-				stream << '%' << std::setw(2) << static_cast <int16_t> (static_cast <uint8_t> (letter));
+				stream << '%' << setw(2) << static_cast <int16_t> (static_cast <uint8_t> (letter));
 				// Убираем верхний регистр
-				stream << std::nouppercase;
+				stream << nouppercase;
 			}
 			// Получаем результат
 			result = stream.str();
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -862,7 +867,7 @@ string awh::URI::decode(const string & text) const noexcept {
 					// Выполняем копирование в бинарный буфер полученных байт
 					::memcpy(buffer, offset + 1, 2);
 					// Извлекаем из 16-х символов наш код числа
-					std::sscanf(buffer, "%hx", &hex);
+					sscanf(buffer, "%hx", &hex);
 					// Запоминаем полученный символ
 					result.append(1, static_cast <char> (hex));
 					// Смещаем итератор
@@ -872,13 +877,13 @@ string awh::URI::decode(const string & text) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -961,13 +966,13 @@ string awh::URI::url(const url_t & url) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(url), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1007,13 +1012,13 @@ string awh::URI::query(const url_t & url) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(url), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1081,13 +1086,13 @@ string awh::URI::origin(const url_t & url) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(url), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1159,13 +1164,13 @@ void awh::URI::create(url_t & dest, const url_t & src) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dest, src), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(dest, src), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1234,13 +1239,13 @@ void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dest, src), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(dest, src), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1275,7 +1280,7 @@ void awh::URI::append(url_t & url, const string & params) const noexcept {
 					// Если схема протокола принадлежит unix-сокету
 					if(this->_fmk->compare(url.schema, "unix"))
 						// Устанавливаем доменное имя
-						url.host = std::move(i->second);
+						url.host = ::move(i->second);
 				}
 				// Выполняем поиск параметров запроса
 				i = uri.find(flag_t::PARAMS);
@@ -1288,18 +1293,18 @@ void awh::URI::append(url_t & url, const string & params) const noexcept {
 				// Если якорь запроса получен
 				if(i != uri.end())
 					// Выполняем извлечение якоря запроса
-					url.anchor = std::move(i->second);
+					url.anchor = ::move(i->second);
 			}
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(url, params), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(url, params), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1329,9 +1334,9 @@ awh::URI::URL awh::URI::concat(const url_t & dest, const url_t & src) const noex
  * @param uri строка URI для сплита
  * @return    список полученных частей URI
  */
-std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcept {
+map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcept {
 	// Результат работы функции
-	std::map <flag_t, string> result;
+	map <flag_t, string> result;
 	// Если URI передан
 	if(!uri.empty()){
 		/**
@@ -1574,13 +1579,13 @@ std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const no
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uri), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uri), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1598,9 +1603,9 @@ std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const no
  * @param uri строка URI для сплита
  * @return    параметры полученные при сплите
  */
-vector <std::pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
+vector <pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
 	// Результат работы функции
-	vector <std::pair <string, string>> result;
+	vector <pair <string, string>> result;
 	// Если URI передано
 	if(!uri.empty()){
 		/**
@@ -1620,7 +1625,7 @@ vector <std::pair <string, string>> awh::URI::splitParams(const string & uri) co
 					// Выполняем поиск разделителя ключа и значения
 					if((pos = uri.find('=', begin)) != string::npos){
 						// Добавляем полученный результат
-						result.push_back(std::make_pair(this->decode(uri.substr(begin, pos - begin)), ""));
+						result.push_back(make_pair(this->decode(uri.substr(begin, pos - begin)), ""));
 						// Запоминаем позицию поиска следующего элемента
 						begin = (pos + 1);
 						// Устанавливаем флаг поиска амперсанда
@@ -1650,13 +1655,13 @@ vector <std::pair <string, string>> awh::URI::splitParams(const string & uri) co
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uri), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uri), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1705,7 +1710,7 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 						// Выполняем копирование в бинарный буфер полученных байт
 						::memcpy(buffer, offset + 1, 2);
 						// Извлекаем из 16-х символов наш код числа
-						std::sscanf(buffer, "%hx", &hex);
+						sscanf(buffer, "%hx", &hex);
 						// Запоминаем полученный символ
 						name.append(1, static_cast <char> (hex));
 						// Смещаем итератор
@@ -1741,13 +1746,13 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, delim), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, delim), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1765,7 +1770,7 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
  * @param uri параметры URI для сборки
  * @return    строка полученная при сборке параметров URI
  */
-string awh::URI::joinParams(const vector <std::pair <string, string>> & uri) const noexcept {
+string awh::URI::joinParams(const vector <pair <string, string>> & uri) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если параметры URI переданы
@@ -1792,7 +1797,7 @@ string awh::URI::joinParams(const vector <std::pair <string, string>> & uri) con
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1839,7 +1844,7 @@ string awh::URI::joinPath(const vector <string> & path, const char delim) const 
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1897,7 +1902,7 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception &) {
+					} catch(const exception &) {
 						// Выполняем установку порта
 						result.port = 0;
 					}
@@ -1956,13 +1961,13 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uri, schema), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uri, schema), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2031,7 +2036,7 @@ ostream & awh::operator << (ostream & os, const uri_t::url_t & url) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */

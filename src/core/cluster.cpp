@@ -16,6 +16,11 @@
 #include <core/cluster.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * active Метод вывода статуса работы сетевого ядра
  * @param status флаг запуска сетевого ядра
  */
@@ -34,7 +39,7 @@ void awh::cluster::Core::active(const status_t status) noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("statusCluster"))
 				// Выводим результат в отдельном потоке
-				std::thread(this->_callbacks.get <void (const status_t)> ("statusCluster"), status_t::STOP).detach();
+				thread(this->_callbacks.get <void (const status_t)> ("statusCluster"), status_t::STOP).detach();
 		} break;
 	}
 }
@@ -76,7 +81,7 @@ void awh::cluster::Core::cluster(const uint16_t wid, const pid_t pid, const clus
 			// Если функция обратного вызова установлена
 			if(this->_callbacks.is("statusCluster"))
 				// Выводим результат в отдельном потоке
-				std::thread(this->_callbacks.get <void (const status_t)> ("statusCluster"), status_t::START).detach();
+				thread(this->_callbacks.get <void (const status_t)> ("statusCluster"), status_t::START).detach();
 			// Выполняем функцию обратного вызова
 			this->_callbacks.call <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", cluster_t::family_t::MASTER, pid, event);
 		// Если производится запуск воркера, выполняем функцию обратного вызова
@@ -113,7 +118,7 @@ bool awh::cluster::Core::master() const noexcept {
  * pids Метод получения списка дочерних процессов
  * @return список дочерних процессов
  */
-std::set <pid_t> awh::cluster::Core::pids() const noexcept {
+set <pid_t> awh::cluster::Core::pids() const noexcept {
 	// Выполняем извлечение списка доступных идентификаторов процессов
 	return this->_cluster.pids(0);
 }
@@ -254,7 +259,7 @@ void awh::cluster::Core::close() noexcept {
  */
 void awh::cluster::Core::callbacks(const fn_t & callbacks) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функций обратного вызова
 	awh::core_t::callbacks(callbacks);
 	// Выполняем установку функции обратного вызова при завершении работы процесса

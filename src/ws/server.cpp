@@ -16,6 +16,11 @@
 #include <ws/server.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * commit Метод применения полученных результатов
  */
 void awh::server::WS::commit() noexcept {
@@ -130,13 +135,13 @@ void awh::server::WS::commit() noexcept {
 									// Если слово собранно
 									if(!extension.empty() && !this->extractExtension(extension))
 										// Выполняем добавление слова в список записей
-										extensions.push_back(std::move(extension));
+										extensions.push_back(move(extension));
 									// Выполняем очистку слова записи
 									extension.clear();
 									// Если список записей собран
 									if(!extensions.empty()){
 										// Выполняем добавление списка записей в список расширений
-										this->_extensions.push_back(std::move(extensions));
+										this->_extensions.push_back(move(extensions));
 										// Выполняем очистку списка расширений
 										extensions.clear();
 									}
@@ -146,7 +151,7 @@ void awh::server::WS::commit() noexcept {
 									// Если слово собранно
 									if(!extension.empty() && !this->extractExtension(extension))
 										// Выполняем добавление слова в список записей
-										extensions.push_back(std::move(extension));
+										extensions.push_back(move(extension));
 									// Выполняем очистку слова записи
 									extension.clear();
 								} break;
@@ -161,7 +166,7 @@ void awh::server::WS::commit() noexcept {
 						// Если слово собранно
 						if(!extension.empty() && !this->extractExtension(extension))
 							// Выполняем добавление слова в список записей
-							extensions.push_back(std::move(extension));
+							extensions.push_back(move(extension));
 						// Выполняем очистку слова записи
 						extension.clear();
 					// Если заголовок получен зашифрованных данных
@@ -184,7 +189,7 @@ void awh::server::WS::commit() noexcept {
 							/**
 							 * Если возникает ошибка
 							 */
-							} catch(const std::exception &) {
+							} catch(const exception &) {
 								// Если шифрование произведено 128 битным ключём
 								this->_cipher = hash_t::cipher_t::AES128;
 							}
@@ -194,12 +199,12 @@ void awh::server::WS::commit() noexcept {
 				// Если список записей собран
 				if(!extensions.empty())
 					// Выполняем добавление списка записей в список расширений
-					this->_extensions.push_back(std::move(extensions));
+					this->_extensions.push_back(move(extensions));
 			}
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -262,7 +267,7 @@ awh::Http::status_t awh::server::WS::status() noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -320,7 +325,7 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Сообщяем, что проверка не прошла
 							return false;
 						}
@@ -335,7 +340,7 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -345,7 +350,7 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/

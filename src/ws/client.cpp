@@ -16,6 +16,11 @@
 #include <ws/client.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * commit Метод применения полученных результатов
  */
 void awh::client::WS::commit() noexcept {
@@ -108,7 +113,7 @@ void awh::client::WS::commit() noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -140,13 +145,13 @@ void awh::client::WS::commit() noexcept {
 										// Если слово собранно
 										if(!extension.empty() && !this->extractExtension(extension))
 											// Выполняем добавление слова в список записей
-											extensions.push_back(std::move(extension));
+											extensions.push_back(move(extension));
 										// Выполняем очистку слова записи
 										extension.clear();
 										// Если список записей собран
 										if(!extensions.empty()){
 											// Выполняем добавление списка записей в список расширений
-											this->_extensions.push_back(std::move(extensions));
+											this->_extensions.push_back(move(extensions));
 											// Выполняем очистку списка расширений
 											extensions.clear();
 										}
@@ -156,7 +161,7 @@ void awh::client::WS::commit() noexcept {
 										// Если слово собранно
 										if(!extension.empty() && !this->extractExtension(extension))
 											// Выполняем добавление слова в список записей
-											extensions.push_back(std::move(extension));
+											extensions.push_back(move(extension));
 										// Выполняем очистку слова записи
 										extension.clear();
 									} break;
@@ -171,13 +176,13 @@ void awh::client::WS::commit() noexcept {
 							// Если слово собранно
 							if(!extension.empty() && !this->extractExtension(extension))
 								// Выполняем добавление слова в список записей
-								extensions.push_back(std::move(extension));
+								extensions.push_back(move(extension));
 							// Выполняем очистку слова записи
 							extension.clear();
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -218,7 +223,7 @@ void awh::client::WS::commit() noexcept {
 							/**
 							 * Если возникает ошибка
 							 */
-							} catch(const std::exception &) {
+							} catch(const exception &) {
 								// Если шифрование произведено 128 битным ключём
 								this->_cipher = hash_t::cipher_t::AES128;
 							}
@@ -228,12 +233,12 @@ void awh::client::WS::commit() noexcept {
 				// Если список записей собран
 				if(!extensions.empty())
 					// Выполняем добавление списка записей в список расширений
-					this->_extensions.push_back(std::move(extensions));
+					this->_extensions.push_back(move(extensions));
 			}
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -310,7 +315,7 @@ awh::Http::status_t awh::client::WS::status() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова

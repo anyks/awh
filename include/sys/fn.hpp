@@ -33,9 +33,6 @@
 #include <sys/log.hpp>
 #include <cityhash/city.h>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
@@ -44,6 +41,10 @@ namespace awh {
 	 * FN Прототип класса работы с функциями
 	 */
 	class FN;
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * FN Класс работы с функциями
 	 */
@@ -92,20 +93,20 @@ namespace awh {
 			 */
 			struct BasicFunction : Function {
 				// Функция обратного вызова
-				std::function <A> fn;
+				function <A> fn;
 				/**
 				 * BasicFunction Конструктор
 				 * @param fn функция обратного вызова для установки
 				 */
-				BasicFunction(std::function <A> fn) noexcept : fn(fn) {}
+				BasicFunction(function <A> fn) noexcept : fn(fn) {}
 			};
 		public:
 			// Создаём тип данных возвращаемых значений функций обратного вызова
-			typedef std::map <uint64_t, type_t> types_t;
+			typedef map <uint64_t, type_t> types_t;
 			// Создаём тип данных функций обратного вызова
-			typedef std::map <uint64_t, std::shared_ptr <Function>> fns_t;
+			typedef map <uint64_t, shared_ptr <Function>> fns_t;
 			// Структура дампа данных конкретной функции
-			typedef std::pair <std::shared_ptr <Function>, type_t> dump_t;
+			typedef pair <shared_ptr <Function>, type_t> dump_t;
 		private:
 			// Поддерживаемые типы данных
 			types_t _types;
@@ -164,15 +165,15 @@ namespace awh {
 			 * dump Метод получения дампа функций обратного вызова
 			 * @return выводим созданный блок дампа контейнера
 			 */
-			const std::pair <const fns_t *, const types_t *> dump() const noexcept {
+			const pair <const fns_t *, const types_t *> dump() const noexcept {
 				// Выводим дамп функций обратного вызова
-				return std::make_pair(&this->_functions, &this->_types);
+				return make_pair(&this->_functions, &this->_types);
 			}
 			/**
 			 * dump Метод установки дампа функций обратного вызова
 			 * @param data данные функций обратного вызова
 			 */
-			void dump(const std::pair <const fns_t *, const types_t *> & data) noexcept {
+			void dump(const pair <const fns_t *, const types_t *> & data) noexcept {
 				// Если данные функций обратного вызова переданы
 				if(((data.first != nullptr) && !data.first->empty()) && ((data.second != nullptr) && !data.second->empty())){
 					// Выполняем очистку текущего списка функций обратного вызова
@@ -195,7 +196,7 @@ namespace awh {
 			 */
 			dump_t dump(const uint64_t idw) const noexcept {
 				// Результат работы функции
-				dump_t result = std::make_pair(nullptr, type_t::NONE);
+				dump_t result = make_pair(nullptr, type_t::NONE);
 				// Если название функции обратного вызова передано
 				if(idw > 0){
 					{
@@ -228,7 +229,7 @@ namespace awh {
 					// Выводим получение дампа функции обратного вызова
 					return this->dump(this->idw(name));
 				// Выводим результат работы функции
-				return std::make_pair(nullptr, type_t::NONE);
+				return make_pair(nullptr, type_t::NONE);
 			}
 		public:
 			/**
@@ -553,7 +554,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::SET, idw, "", &result);
 							}
@@ -603,7 +604,7 @@ namespace awh {
 								// Если функция обратного вызова установлена
 								if(this->_callback != nullptr){
 									// Результат работы функции
-									const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+									const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 									// Выполняем функцию обратного вызова
 									this->_callback(event_t::SET, idw, name, &result);
 								}
@@ -651,7 +652,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw2), this->_types.at(idw2));
+								const dump_t result = make_pair(this->_functions.at(idw2), this->_types.at(idw2));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::SET, idw2, "", &result);
 							}
@@ -704,7 +705,7 @@ namespace awh {
 								// Если функция обратного вызова установлена
 								if(this->_callback != nullptr){
 									// Результат работы функции
-									const dump_t result = std::make_pair(this->_functions.at(idw2), this->_types.at(idw2));
+									const dump_t result = make_pair(this->_functions.at(idw2), this->_types.at(idw2));
 									// Выполняем функцию обратного вызова
 									this->_callback(event_t::SET, idw2, name2, &result);
 								}
@@ -724,7 +725,7 @@ namespace awh {
 			 * @param idw идентификатор функции обратного вызова
 			 * @param fn  функция обратного вызова
 			 */
-			void set(const uint64_t idw, std::function <A> fn) noexcept {
+			void set(const uint64_t idw, function <A> fn) noexcept {
 				// Если данные переданы
 				if((idw > 0) && (fn != nullptr)){
 					/**
@@ -746,13 +747,13 @@ namespace awh {
 							// Если функция такая уже существует
 							if(it != this->_functions.end())
 								// Устанавливаем новую функцию обратного вызова
-								it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
+								it->second = shared_ptr <Function> (new BasicFunction <A> (fn));
 							// Если функция ещё не существует, создаём новую функцию
-							else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
+							else this->_functions.emplace(idw, shared_ptr <Function> (new BasicFunction <A> (fn)));
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::SET, idw, "", &result);
 							}
@@ -760,13 +761,13 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::bad_alloc &) {
+					} catch(const bad_alloc &) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -777,13 +778,13 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception & error) {
+					} catch(const exception & error) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -804,7 +805,7 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @param fn   функция обратного вызова
 			 */
-			void set(const string & name, std::function <A> fn) noexcept {
+			void set(const string & name, function <A> fn) noexcept {
 				// Если данные переданы
 				if(!name.empty() && (fn != nullptr)){
 					/**
@@ -830,13 +831,13 @@ namespace awh {
 								// Если функция такая уже существует
 								if(it != this->_functions.end())
 									// Устанавливаем новую функцию обратного вызова
-									it->second = std::shared_ptr <Function> (new BasicFunction <A> (fn));
+									it->second = shared_ptr <Function> (new BasicFunction <A> (fn));
 								// Если функция ещё не существует, создаём новую функцию
-								else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (fn)));
+								else this->_functions.emplace(idw, shared_ptr <Function> (new BasicFunction <A> (fn)));
 								// Если функция обратного вызова установлена
 								if(this->_callback != nullptr){
 									// Результат работы функции
-									const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+									const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 									// Выполняем функцию обратного вызова
 									this->_callback(event_t::SET, idw, name, &result);
 								}
@@ -845,13 +846,13 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::bad_alloc &) {
+					} catch(const bad_alloc &) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -862,13 +863,13 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception & error) {
+					} catch(const exception & error) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -891,7 +892,7 @@ namespace awh {
 			 * @param fn   функция обратного вызова
 			 * @param args список актуальных аргументов
 			 */
-			void set(const uint64_t idw, std::function <A> fn, Args... args) noexcept {
+			void set(const uint64_t idw, function <A> fn, Args... args) noexcept {
 				// Если данные переданы
 				if((idw > 0) && (fn != nullptr)){
 					/**
@@ -913,13 +914,13 @@ namespace awh {
 							// Если функция такая уже существует
 							if(it != this->_functions.end())
 								// Устанавливаем новую функцию обратного вызова
-								it->second = std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
+								it->second = shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
 							// Если функция ещё не существует, создаём новую функцию
-							else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
+							else this->_functions.emplace(idw, shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::SET, idw, "", &result);
 							}
@@ -927,13 +928,13 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::bad_alloc &) {
+					} catch(const bad_alloc &) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -944,13 +945,13 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception & error) {
+					} catch(const exception & error) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -973,7 +974,7 @@ namespace awh {
 			 * @param fn   функция обратного вызова
 			 * @param args список актуальных аргументов
 			 */
-			void set(const string & name, std::function <A> fn, Args... args) noexcept {
+			void set(const string & name, function <A> fn, Args... args) noexcept {
 				// Если данные переданы
 				if(!name.empty() && (fn != nullptr)){
 					/**
@@ -999,13 +1000,13 @@ namespace awh {
 								// Если функция такая уже существует
 								if(it != this->_functions.end())
 									// Устанавливаем новую функцию обратного вызова
-									it->second = std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
+									it->second = shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
 								// Если функция ещё не существует, создаём новую функцию
-								else this->_functions.emplace(idw, std::shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
+								else this->_functions.emplace(idw, shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
 								// Если функция обратного вызова установлена
 								if(this->_callback != nullptr){
 									// Результат работы функции
-									const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+									const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 									// Выполняем функцию обратного вызова
 									this->_callback(event_t::SET, idw, name, &result);
 								}
@@ -1014,13 +1015,13 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::bad_alloc &) {
+					} catch(const bad_alloc &) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1031,13 +1032,13 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception & error) {
+					} catch(const exception & error) {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1059,9 +1060,9 @@ namespace awh {
 			 * @param idw идентификатор функции обратного вызова
 			 * @return    функция обратного вызова если существует
 			 */
-			auto get(const uint64_t idw) const noexcept -> std::function <A> {
+			auto get(const uint64_t idw) const noexcept -> function <A> {
 				// Результат работы функции
-				std::function <A> result = nullptr;
+				function <A> result = nullptr;
 				// Если название функции передано
 				if(idw > 0){
 					// Выполняем поиск функции обратного вызова
@@ -1087,9 +1088,9 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     функция обратного вызова если существует
 			 */
-			auto get(const string & name) const noexcept -> std::function <A> {
+			auto get(const string & name) const noexcept -> function <A> {
 				// Результат работы функции
-				std::function <A> result = nullptr;
+				function <A> result = nullptr;
 				// Если название функции передано
 				if(!name.empty()){
 					// Получаем идентификатор обратного вызова
@@ -1134,22 +1135,22 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::RUN, idw, "", &result);
 							}
 							// Выполняем функцию обратного вызова
-							return (typename function <A>::result_type) std::apply(fn, std::make_tuple());
+							return (typename function <A>::result_type) apply(fn, make_tuple());
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1160,13 +1161,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1205,22 +1206,22 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::RUN, idw, name, &result);
 							}
 							// Выполняем функцию обратного вызова
-							return (typename function <A>::result_type) std::apply(fn, std::make_tuple());
+							return (typename function <A>::result_type) apply(fn, make_tuple());
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1231,13 +1232,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1276,22 +1277,22 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::RUN, idw, "", &result);
 							}
 							// Выполняем функцию обратного вызова
-							return (typename function <A>::result_type) std::apply(fn, std::make_tuple(args...));
+							return (typename function <A>::result_type) apply(fn, make_tuple(args...));
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1302,13 +1303,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1349,22 +1350,22 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::RUN, idw, name, &result);
 							}
 							// Выполняем функцию обратного вызова
-							return (typename function <A>::result_type) std::apply(fn, std::make_tuple(args...));
+							return (typename function <A>::result_type) apply(fn, make_tuple(args...));
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1375,13 +1376,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1417,7 +1418,7 @@ namespace awh {
 									// Если функция обратного вызова установлена
 									if(this->_callback != nullptr){
 										// Результат работы функции
-										const dump_t result = std::make_pair(this->_functions.at(item.first), this->_types.at(item.first));
+										const dump_t result = make_pair(this->_functions.at(item.first), this->_types.at(item.first));
 										// Выполняем функцию обратного вызова
 										this->_callback(event_t::RUN, item.first, "", &result);
 									}
@@ -1429,7 +1430,7 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1446,7 +1447,7 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1492,7 +1493,7 @@ namespace awh {
 									// Если функция обратного вызова установлена
 									if(this->_callback != nullptr){
 										// Результат работы функции
-										const dump_t result = std::make_pair(this->_functions.at(item.first), this->_types.at(item.first));
+										const dump_t result = make_pair(this->_functions.at(item.first), this->_types.at(item.first));
 										// Выполняем функцию обратного вызова
 										this->_callback(event_t::RUN, item.first, "", &result);
 									}
@@ -1504,7 +1505,7 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1521,7 +1522,7 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -1559,7 +1560,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::RUN, idw, "", &result);
 							}
@@ -1568,13 +1569,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1585,13 +1586,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1623,7 +1624,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr){
 								// Результат работы функции
-								const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+								const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 								// Выполняем функцию обратного вызова
 								this->_callback(event_t::RUN, idw, name, &result);
 							}
@@ -1632,13 +1633,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1649,13 +1650,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1696,7 +1697,7 @@ namespace awh {
 									// Если функция обратного вызова установлена
 									if(this->_callback != nullptr){
 										// Результат работы функции
-										const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+										const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 										// Выполняем функцию обратного вызова
 										this->_callback(event_t::RUN, idw, "", &result);
 									}
@@ -1709,13 +1710,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1726,13 +1727,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1777,7 +1778,7 @@ namespace awh {
 									// Если функция обратного вызова установлена
 									if(this->_callback != nullptr){
 										// Результат работы функции
-										const dump_t result = std::make_pair(this->_functions.at(idw), this->_types.at(idw));
+										const dump_t result = make_pair(this->_functions.at(idw), this->_types.at(idw));
 										// Выполняем функцию обратного вызова
 										this->_callback(event_t::RUN, idw, name, &result);
 									}
@@ -1790,13 +1791,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::bad_function_call & error) {
+						} catch(const bad_function_call & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/
@@ -1807,13 +1808,13 @@ namespace awh {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception & error) {
+						} catch(const exception & error) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 							/**
 							* Если режим отладки не включён
 							*/

@@ -16,6 +16,11 @@
 #include <ws/core.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * init Метод инициализации
  * @param flag флаг направления передачи данных
  */
@@ -68,7 +73,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 						// Переходим по всему списку поддерживаемых сабпротоколов
 						for(auto & subprotocol : this->_supportedProtocols)
 							// Добавляем полученный заголовок
-							const_cast <std::unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
+							const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 					}
 				}
 				// Выполняем применение расширений
@@ -86,7 +91,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Добавляем заголовок поддерживаемых языков
 				this->header("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
 				// Добавляем заголовок версии WebSocket
-				this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
+				this->header("Sec-WebSocket-Version", to_string(WS_VERSION));
 				// Если компрессор уже выбран
 				if(http_t::_compressors.selected != compressor_t::NONE){
 					// Определяем метод сжатия который поддерживает клиент
@@ -221,7 +226,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 						// Переходим по всему списку выбранных сабпротоколов
 						for(auto & subprotocol : this->_selectedProtocols)
 							// Добавляем полученный заголовок
-							const_cast <std::unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
+							const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 					}
 				}
 			} break;
@@ -229,7 +234,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -239,7 +244,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -384,7 +389,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -394,7 +399,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -420,9 +425,9 @@ const string awh::WCore::key() const noexcept {
 		// Резервируем память
 		nonce.reserve(16);
 		// Адаптер для работы с случайным распределением
-		std::random_device randev;
+		random_device randev;
 		// Формируем равномерное распределение целых чисел в выходном инклюзивно-эксклюзивном диапазоне
-		std::uniform_int_distribution <uint16_t> dist(0, 255);
+		uniform_int_distribution <uint16_t> dist(0, 255);
 		// Формируем бинарный ключ из случайных значений
 		for(uint8_t i = 0; i < 16; i++)
 			// Выполняем формирование ключа
@@ -432,7 +437,7 @@ const string awh::WCore::key() const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -488,7 +493,7 @@ const string awh::WCore::sha1() const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -543,7 +548,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception &) {
+				} catch(const exception &) {
 					// Если шифрование произведено 128 битным ключём
 					this->_cipher = hash_t::cipher_t::AES128;
 				}
@@ -716,7 +721,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Устанавливаем размер скользящего окна
 							this->_client.wbit = 15;
 						}
@@ -741,7 +746,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Устанавливаем размер скользящего окна
 							this->_client.wbit = 15;
 						}
@@ -785,7 +790,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Устанавливаем размер скользящего окна
 							this->_server.wbit = 15;
 						}
@@ -810,7 +815,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Устанавливаем размер скользящего окна
 							this->_server.wbit = 15;
 						}
@@ -843,7 +848,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -853,7 +858,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(extension), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(extension), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -966,7 +971,7 @@ vector <char> awh::WCore::dump() const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -1113,7 +1118,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 						// Если сабпротокол получен, добавляем его в список
 						if(!subprotocol.empty())
 							// Выполняем установку списка выбранных сабпротоколов
-							this->_selectedProtocols.emplace(std::move(subprotocol));
+							this->_selectedProtocols.emplace(::move(subprotocol));
 					}
 				}
 			}
@@ -1142,7 +1147,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 						// Если сабпротокол получен, добавляем его в список
 						if(!subprotocol.empty())
 							// Выполняем установку списка поддерживаемых сабпротоколов
-							this->_supportedProtocols.emplace(std::move(subprotocol));
+							this->_supportedProtocols.emplace(::move(subprotocol));
 					}
 				}
 			}
@@ -1164,7 +1169,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -1174,7 +1179,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(data.data(), data.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data.data(), data.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1208,7 +1213,7 @@ void awh::WCore::clean() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -1297,7 +1302,7 @@ void awh::WCore::compressors(const vector <compressor_t> & compressors) noexcept
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -1426,7 +1431,7 @@ bool awh::WCore::handshake(const process_t flag) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Выполняем функцию обратного вызова
@@ -1436,7 +1441,7 @@ bool awh::WCore::handshake(const process_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1479,7 +1484,7 @@ bool awh::WCore::check(const flag_t flag) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -1489,7 +1494,7 @@ bool awh::WCore::check(const flag_t flag) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1537,7 +1542,7 @@ vector <char> awh::WCore::reject(const web_t::res_t & res) const noexcept {
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-vector <std::pair <string, string>> awh::WCore::reject2(const web_t::res_t & res) const noexcept {
+vector <pair <string, string>> awh::WCore::reject2(const web_t::res_t & res) const noexcept {
 	// Выполняем очистку выбранного сабпротокола
 	const_cast <ws_core_t *> (this)->_selectedProtocols.clear();
 	// Выполняем генерацию сообщения ответа
@@ -1651,7 +1656,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -1661,7 +1666,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1679,7 +1684,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
  * @param provider параметры провайдера обмена сообщениями
  * @return         буфер данных в бинарном виде
  */
-vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
+vector <pair <string, string>> awh::WCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1713,7 +1718,7 @@ vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, c
 						// Выполняем функцию обратного вызова
 						this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Address or request method for WebSocket-client is incorrect");
 					// Выходим из функции
-					return vector <std::pair <string, string>> ();
+					return vector <pair <string, string>> ();
 				}
 			} break;
 			// Если нужно сформировать данные ответа
@@ -1741,7 +1746,7 @@ vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, c
 						// Выполняем функцию обратного вызова
 						this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "WebSocket-server response code set incorrectly");
 					// Выходим из функции
-					return vector <std::pair <string, string>> ();
+					return vector <pair <string, string>> ();
 				}
 			} break;
 		}
@@ -1750,7 +1755,7 @@ vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, c
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
 		if(this->_callbacks.is("error"))
 			// Выполняем функцию обратного вызова
@@ -1760,7 +1765,7 @@ vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, c
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1786,7 +1791,7 @@ void awh::WCore::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const std::set <string> & awh::WCore::subprotocols() const noexcept {
+const set <string> & awh::WCore::subprotocols() const noexcept {
 	// Выводим список выбранных сабпротоколов
 	return this->_selectedProtocols;
 }
@@ -1794,7 +1799,7 @@ const std::set <string> & awh::WCore::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::WCore::subprotocols(const std::set <string> & subprotocols) noexcept {
+void awh::WCore::subprotocols(const set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
 	if(!subprotocols.empty())
 		// Выполняем установку списка поддерживаемых сабпротоколов

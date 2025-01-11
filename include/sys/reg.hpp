@@ -33,9 +33,6 @@
  */
 #include <sys/global.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
@@ -44,6 +41,10 @@ namespace awh {
 	 * RegExp Прототип класса работы с регулярными выражениями
 	 */
 	class RegExp;
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * RegExp Класс объекта регулярных выражения
 	 */
@@ -100,13 +101,13 @@ namespace awh {
 			};
 		public:
 			// Создаём новый тип данных регулярного выражения
-			typedef std::shared_ptr <Expression> exp_t;
+			typedef shared_ptr <Expression> exp_t;
 		private:
 			// Текст ошибки
 			string _error;
 		private:
 			// Список инициализированных регулярных выражений
-			std::map <std::pair <int32_t, string>, regex_t *> _expressions;
+			map <pair <int32_t, string>, regex_t *> _expressions;
 		public:
 			/**
 			 * error Метод извлечения текста ошибки регулярного выражения
@@ -150,14 +151,14 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <std::pair <size_t, size_t>> match(const char * text, const exp_t & exp) const noexcept;
+			vector <pair <size_t, size_t>> match(const char * text, const exp_t & exp) const noexcept;
 			/**
 			 * match Метод выполнения регулярного выражения
 			 * @param text текст для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <std::pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
+			vector <pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * build Метод сборки регулярного выражения

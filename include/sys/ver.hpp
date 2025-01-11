@@ -28,13 +28,14 @@
  */
 #include <sys/global.hpp>
 
-// Объявляем пространство имен
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Version Класс работы с версиями
 	 */
@@ -76,7 +77,7 @@ namespace awh {
 			 * Оператор вывода версии в качестве строки
 			 * @return версия в качестве строки
 			 */
-			operator std::string() const noexcept;
+			operator string() const noexcept;
 		public:
 			/**
 			 * Оператор [<] сравнения версии

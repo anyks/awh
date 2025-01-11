@@ -16,6 +16,11 @@
 #include <client/ws.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * proto Метод извлечения поддерживаемого протокола подключения
  * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
  */
@@ -132,7 +137,7 @@ void awh::client::Websocket::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const std::set <string> & awh::client::Websocket::subprotocols() const noexcept {
+const set <string> & awh::client::Websocket::subprotocols() const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
 	return this->_ws.subprotocols();
 }
@@ -140,7 +145,7 @@ const std::set <string> & awh::client::Websocket::subprotocols() const noexcept 
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Websocket::subprotocols(const std::set <string> & subprotocols) noexcept {
+void awh::client::Websocket::subprotocols(const set <string> & subprotocols) noexcept {
 	// Выполняем установку поддерживаемых сабпротоколов
 	this->_ws.subprotocols(subprotocols);
 }
@@ -207,7 +212,7 @@ void awh::client::Websocket::hosts(const string & filename) noexcept {
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::Websocket::mode(const std::set <web_t::flag_t> & flags) noexcept {
+void awh::client::Websocket::mode(const set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_ws.mode(flags);
 }
@@ -251,7 +256,7 @@ void awh::client::Websocket::multiThreads(const uint16_t count, const bool mode)
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::client::Websocket::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
+void awh::client::Websocket::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку заголовков необходимых при передаче на сервер во время рукопожатия
 	this->_ws.setHeaders(headers);
 }

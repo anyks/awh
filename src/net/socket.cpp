@@ -16,6 +16,11 @@
 #include <net/socket.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * noSigILL Метод блокировки сигнала SIGILL
  * @return результат работы функции
  */

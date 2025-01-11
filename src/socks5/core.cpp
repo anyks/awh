@@ -16,6 +16,11 @@
 #include <socks5/core.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * ipToHex Метод конвертации IP адреса в бинарный буфер
  * @param ip     индернет адрес в виде строки
  * @param family тип протокола интернета AF_INET или AF_INET6

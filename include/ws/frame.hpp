@@ -39,13 +39,14 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * ws пространство имён
 	 */
@@ -63,7 +64,7 @@ namespace awh {
 				/**
 				 * Коды сообщений
 				 */
-				std::map <uint16_t, std::pair <string, string>> _codes;
+				map <uint16_t, pair <string, string>> _codes;
 			private:
 				/**
 				 * find Метод поиска типа сообщения
@@ -115,7 +116,7 @@ namespace awh {
 		typedef class AWHSHARED_EXPORT Frame {
 			private:
 				// Устанавливаем максимальную версию фрейма
-				static constexpr uint32_t MAX_FRAME_SIZE = std::numeric_limits <uint32_t>::max();
+				static constexpr uint32_t MAX_FRAME_SIZE = numeric_limits <uint32_t>::max();
 			public:
 				/**
 				 * Состояние фрейма

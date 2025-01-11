@@ -24,13 +24,14 @@
 #include <client/web/ws1.hpp>
 #include <client/web/web.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * client клиентское пространство имён
 	 */
@@ -150,7 +151,7 @@ namespace awh {
 				// Данные фрагметрированного сообщения
 				vector <char> _fragmes;
 				// Полученные HTTP заголовки
-				std::unordered_multimap <string, string> _headers;
+				unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * send Метод отправки запроса на удалённый сервер
@@ -203,7 +204,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * closedSignal Метод завершения работы потока
@@ -364,12 +365,12 @@ namespace awh {
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @return список выбранных сабпротоколов
 				 */
-				const std::set <string> & subprotocols() const noexcept;
+				const set <string> & subprotocols() const noexcept;
 				/**
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const std::set <string> & subprotocols) noexcept;
+				void subprotocols(const set <string> & subprotocols) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений
@@ -401,7 +402,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере
@@ -413,7 +414,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * userAgent Метод установки User-Agent для HTTP-запроса

@@ -18,6 +18,11 @@
 #include <sys/pipe.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * port Метод получения активного порта
  * @return номер порта сервера
  */
@@ -37,9 +42,9 @@ void awh::PIPE::type(const type_t type) noexcept {
  * create Метод создания файловых дескрипторов
  * @return файловые дескрипторы для обмена данными
  */
-std::array <SOCKET, 2> awh::PIPE::create() noexcept {
+array <SOCKET, 2> awh::PIPE::create() noexcept {
 	// Результат работы функции
-	std::array <SOCKET, 2> result = {
+	array <SOCKET, 2> result = {
 		INVALID_SOCKET,
 		INVALID_SOCKET
 	};
@@ -108,9 +113,9 @@ std::array <SOCKET, 2> awh::PIPE::create() noexcept {
 			 */
 			do {
 				// Подключаем устройство генератора
-				std::mt19937 generator(this->_randev());
+				mt19937 generator(this->_randev());
 				// Выполняем генерирование случайного числа
-				std::uniform_int_distribution <std::mt19937::result_type> dist6(0xC000, 0xFFFF);
+				uniform_int_distribution <mt19937::result_type> dist6(0xC000, 0xFFFF);
 				// Выполняем получение порта
 				this->_port = dist6(generator);
 			// Если такой порт уже был ранее сгенерирован, пробуем ещё раз

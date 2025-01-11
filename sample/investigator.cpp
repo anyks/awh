@@ -15,7 +15,6 @@
 #include <sys/log.hpp>
 
 // Подключаем пространство имён
-using namespace std;
 using namespace awh;
 
 /**

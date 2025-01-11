@@ -30,14 +30,15 @@
  */
 #include <sys/cluster.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * cluster пространство имён
 	 */
@@ -112,7 +113,7 @@ namespace awh {
 				 * pids Метод получения списка дочерних процессов
 				 * @return список дочерних процессов
 				 */
-				std::set <pid_t> pids() const noexcept;
+				set <pid_t> pids() const noexcept;
 			public:
 				/**
 				 * emplace Метод размещения нового воркера

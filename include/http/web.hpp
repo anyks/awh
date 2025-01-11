@@ -35,13 +35,14 @@
 #include <net/net.hpp>
 #include <http/errors.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Web Класс для работы с парсером HTTP
 	 */
@@ -359,11 +360,11 @@ namespace awh {
 			vector <char> _body;
 		private:
 			// Загруженные трейлеры
-			std::unordered_set <string> _trailers;
+			unordered_set <string> _trailers;
 			// Полученные HTTP заголовки
-			std::unordered_multimap <string, string> _headers;
+			unordered_multimap <string, string> _headers;
 			// Список стандартных заголовков
-			std::unordered_map <string, std::set <proto_t>> _standardHeaders;
+			unordered_map <string, set <proto_t>> _standardHeaders;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -513,7 +514,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    список протоколов
 			 */
-			std::set <proto_t> proto(const string & key) const noexcept;
+			set <proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
 			 * delHeader Метод удаления заголовка
@@ -537,12 +538,12 @@ namespace awh {
 			 * headers Метод получения списка заголовков
 			 * @return список существующих заголовков
 			 */
-			const std::unordered_multimap <string, string> & headers() const noexcept;
+			const unordered_multimap <string, string> & headers() const noexcept;
 			/**
 			 * headers Метод установки списка заголовков
 			 * @param headers список заголовков для установки
 			 */
-			void headers(const std::unordered_multimap <string, string> & headers) noexcept;
+			void headers(const unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
 			 * id Метод получения идентификатора объекта

@@ -32,20 +32,21 @@
  */
 #include <sys/global.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Класс пула потоков
 	 */
 	typedef class ThreadPool {
 		private:
 			// Тип очереди задач
-			typedef std::queue <function <void()>> task_t;
+			typedef queue <function <void()>> task_t;
 		private:
 			// Флаг завершения работы пула потоков
 			bool _stop;
@@ -59,12 +60,12 @@ namespace awh {
 			task_t _tasks;
 		private:
 			// Мьютекс для разграничения доступа к очереди задач
-			mutable std::mutex _locker;
+			mutable mutex _locker;
 			// Условная переменная, контролирующая исполнение задачи
-			std::condition_variable _cv;
+			condition_variable _cv;
 		private:
 			// Рабочие потоки для обработки задач
-			vector <std::thread> _workers;
+			vector <thread> _workers;
 		private:
 			/**
 			 * check Метод проверки завершения заморозки потока
@@ -86,9 +87,9 @@ namespace awh {
 					// Ожидаем своей задачи в очереди потоков
 					{
 						// Выполняем блокировку уникальным мютексом
-						unique_lock <std::mutex> lock(this->_locker);
+						unique_lock <mutex> lock(this->_locker);
 						// Если это не остановка приложения и список задач пустой, ожидаем добавления нового задания
-						this->_cv.wait_for(lock, 100ms, std::bind(&ThreadPool::check, this));
+						this->_cv.wait_for(lock, 100ms, bind(&ThreadPool::check, this));
 						// Если это остановка приложения и список задач пустой, выходим
 						if(this->_stop && this->_tasks.empty())
 							// Выходим из функции
@@ -96,7 +97,7 @@ namespace awh {
 						// Если данные в очереди существуют
 						if(!this->_tasks.empty()){
 							// Получаем текущее задание
-							task = std::move(this->_tasks.front());
+							task = move(this->_tasks.front());
 							// Удаляем текущее задание
 							this->_tasks.pop();
 						// Иначе выполняем пропуск
@@ -139,7 +140,7 @@ namespace awh {
 				// Очищаем список потоков
 				this->_workers.clear();
 				// Очищаем список задач
-				std::swap(this->_tasks, empty);
+				swap(this->_tasks, empty);
 			}
 			/**
 			 * stop Метод завершения выполнения задач
@@ -149,7 +150,7 @@ namespace awh {
 					// Останавливаем работу потоков
 					this->_stop = true;
 					// Создаем уникальный мютекс
-					unique_lock <std::mutex> lock(this->_locker);
+					unique_lock <mutex> lock(this->_locker);
 				}
 				// Сообщаем всем что мы завершаем работу
 				this->_cv.notify_all();
@@ -164,7 +165,7 @@ namespace awh {
 				// Очищаем список потоков
 				this->_workers.clear();
 				// Очищаем список задач
-				std::swap(this->_tasks, empty);
+				swap(this->_tasks, empty);
 			}
 			/**
 			 * clean Метод очистки списка потоков
@@ -187,7 +188,7 @@ namespace awh {
 					// Добавляем в список воркеров, новую задачу
 					for(uint16_t i = 0; i < this->_threads; ++i)
 						// Добавляем новую задачу
-						this->_workers.emplace_back(std::bind(&ThreadPool::work, this));
+						this->_workers.emplace_back(bind(&ThreadPool::work, this));
 				}
 			}
 		public:
@@ -197,7 +198,7 @@ namespace awh {
 			 */
 			const size_t getTaskQueueSize() const noexcept {
 				// Выполняем блокировку уникальным мютексом
-				unique_lock <std::mutex> lock(this->_locker);
+				unique_lock <mutex> lock(this->_locker);
 				// Выводим количество заданий
 				return this->_tasks.size();
 			}
@@ -212,7 +213,7 @@ namespace awh {
 					// Устанавливаем количество потоков
 					this->_threads = count;	
 				// Если количество потоков не установлено
-				else this->_threads = static_cast <uint16_t> (std::thread::hardware_concurrency());
+				else this->_threads = static_cast <uint16_t> (thread::hardware_concurrency());
 			}
 			/**
 			 * ~ThreadPool Деструктор
@@ -235,12 +236,12 @@ namespace awh {
 				// Устанавливаем тип возвращаемого значения
 				using return_type = typename result_of <Func(Args...)>::type;
 				// Добавляем задачу в очередь для последующего исполнения
-				auto task = make_shared <packaged_task <return_type()>> (std::bind(std::forward <Func> (func), std::forward <Args> (args)...));
+				auto task = make_shared <packaged_task <return_type()>> (bind(forward <Func> (func), forward <Args> (args)...));
 				// Создаем шаблон асинхронных операций
 				future <return_type> res = task->get_future();
 				{
 					// Выполняем блокировку уникальным мютексом
-					unique_lock <std::mutex> lock(this->_locker);
+					unique_lock <mutex> lock(this->_locker);
 					// Если это не остановка работы
 					if(!this->_stop)
 						// Выполняем добавление задания в список заданий

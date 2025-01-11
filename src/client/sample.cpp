@@ -16,6 +16,11 @@
 #include <client/sample.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * openEvent Метод обратного вызова при запуске работы
  * @param sid идентификатор схемы сети
  */
@@ -515,7 +520,7 @@ void awh::client::Sample::callbacks(const fn_t & callbacks) noexcept {
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::Sample::mode(const std::set <flag_t> & flags) noexcept {
+void awh::client::Sample::mode(const set <flag_t> & flags) noexcept {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Устанавливаем флаг анбиндинга ядра сетевого модуля
@@ -710,24 +715,24 @@ awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, cons
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-		this->_scheme.proxy.http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&sample_t::chunking, this, _1, _2, _3));
+		this->_scheme.proxy.http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", bind(&sample_t::chunking, this, _1, _2, _3));
 		// Добавляем схему сети в сетевое ядро
 		const_cast <client::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Устанавливаем событие на запуск системы
-		const_cast <client::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openEvent, this, _1));
+		const_cast <client::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", bind(&sample_t::openEvent, this, _1));
 		// Выполняем установку функций обратного вызова для клиента
-		const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::statusEvent, this, _1));
+		const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", bind(&sample_t::statusEvent, this, _1));
 		// Устанавливаем событие подключения
-		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", bind(&sample_t::connectEvent, this, _1, _2));
 		// Устанавливаем событие отключения
-		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", bind(&sample_t::disconnectEvent, this, _1, _2));
 		// Устанавливаем событие на подключение к прокси-серверу
-		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connectProxy", std::bind(&sample_t::proxyConnectEvent, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connectProxy", bind(&sample_t::proxyConnectEvent, this, _1, _2));
 		// Устанавливаем событие на активацию шифрованного SSL канала
-		const_cast <client::core_t *> (this->_core)->callback <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", std::bind(&sample_t::enableSSLEvent, this, _1, _2, _3));
+		const_cast <client::core_t *> (this->_core)->callback <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", bind(&sample_t::enableSSLEvent, this, _1, _2, _3));
 		// Устанавливаем функцию чтения данных
-		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", bind(&sample_t::readEvent, this, _1, _2, _3, _4));
 		// Устанавливаем событие на чтение данных с прокси-сервера
-		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", std::bind(&sample_t::proxyReadEvent, this, _1, _2, _3, _4));
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", bind(&sample_t::proxyReadEvent, this, _1, _2, _3, _4));
 	}
 }

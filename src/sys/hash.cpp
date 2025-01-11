@@ -16,6 +16,11 @@
 #include <sys/hash.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Устанавливаем уровень сжатия
  */
 static constexpr uint16_t DEFAULT_MEM_LEVEL = 4;
@@ -178,7 +183,7 @@ static void hashing(const string & text, const awh::hash_t::type_t type, T & res
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -289,7 +294,7 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -426,7 +431,7 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -537,7 +542,7 @@ static void lzma(const char * buffer, const size_t size, const awh::hash_t::even
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -664,7 +669,7 @@ static void bzip2(const char * buffer, const size_t size, const awh::hash_t::eve
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -767,7 +772,7 @@ static void brotli(const char * buffer, const size_t size, const awh::hash_t::ev
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -859,7 +864,7 @@ static void lz4(const char * buffer, const size_t size, const uint32_t level, co
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -918,7 +923,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					// Получаем длину итогового буфера данных
 					const size_t length = ::ZSTD_CStreamOutSize();
 					// Выполняем инициализацию итогового буфера данных
-					const auto data = std::make_unique <char []> (length);
+					const auto data = make_unique <char []> (length);
 					// Выполняем создание буфера исходящих данных
 					ZSTD_outBuffer output = {data.get(), length, 0};
 					// Выполняем обработку всех входящих данных
@@ -1025,7 +1030,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					// Получаем длину итогового буфера данных
 					const size_t length = ::ZSTD_DStreamOutSize();
 					// Выполняем инициализацию итогового буфера данных
-					const auto data = std::make_unique <char []> (length);
+					const auto data = make_unique <char []> (length);
 					// Выполняем создание буфера исходящих данных
 					ZSTD_outBuffer output = {data.get(), length, 0};
 					// Выполняем обработку всех входящих данных
@@ -1087,7 +1092,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -1211,7 +1216,7 @@ static void gzip(const char * buffer, const size_t size, const uint32_t level, c
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -1362,7 +1367,7 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception &) {
+		} catch(const exception &) {
 			// Выполняем очистку блока с результатом
 			result.clear();
 		}
@@ -1459,7 +1464,7 @@ void awh::Hash::rmTail(vector <char> & buffer) const noexcept {
 	// Если сообщение является финальным
 	if(buffer.size() > sizeof(this->_btype)){
 		// Выполняем поиск хвостового списка байт для удаления
-		auto i = std::search(buffer.begin(), buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
+		auto i = search(buffer.begin(), buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
 		// Удаляем хвостовой список байт из буфера данных
 		buffer.erase(i, buffer.end());
 	}

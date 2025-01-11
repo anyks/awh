@@ -16,6 +16,11 @@
 #include <net/nwt.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Оператор перемещения
  * @param url параметры падреса
  * @return    параметры URL-запроса
@@ -26,23 +31,23 @@ awh::NWT::URL & awh::NWT::URL::operator = (url_t && url) noexcept {
 	// Выполняем копирование порта URL-адреса
 	this->port = url.port;
 	// Выполняем перемещение полного URI-параметров
-	this->uri = std::move(url.uri);
+	this->uri = ::move(url.uri);
 	// Выполняем перемещение хоста URL-адреса
-	this->host = std::move(url.host);
+	this->host = ::move(url.host);
 	// Выполняем перемещение пути URL-адреса
-	this->path = std::move(url.path);
+	this->path = ::move(url.path);
 	// Выполняем перемещение ника пользователя (для электронной почты)
-	this->user = std::move(url.user);
+	this->user = ::move(url.user);
 	// Выполняем перемещение пароля пользователя
-	this->pass = std::move(url.pass);
+	this->pass = ::move(url.pass);
 	// Выполняем перемещение якоря URL-адреса
-	this->anchor = std::move(url.anchor);
+	this->anchor = ::move(url.anchor);
 	// Выполняем перемещение домена верхнего уровня
-	this->domain = std::move(url.domain);
+	this->domain = ::move(url.domain);
 	// Выполняем перемещение параметров URL-адреса
-	this->params = std::move(url.params);
+	this->params = ::move(url.params);
 	// Выполняем перемещение протокола URL-адреса
-	this->schema = std::move(url.schema);
+	this->schema = ::move(url.schema);
 	// Выводим текущий объект
 	return (* this);
 }
@@ -108,23 +113,23 @@ awh::NWT::URL::URL(url_t && url) noexcept {
 	// Выполняем копирование порта URL-адреса
 	this->port = url.port;
 	// Выполняем перемещение полного URI-параметров
-	this->uri = std::move(url.uri);
+	this->uri = ::move(url.uri);
 	// Выполняем перемещение хоста URL-адреса
-	this->host = std::move(url.host);
+	this->host = ::move(url.host);
 	// Выполняем перемещение пути URL-адреса
-	this->path = std::move(url.path);
+	this->path = ::move(url.path);
 	// Выполняем перемещение ника пользователя (для электронной почты)
-	this->user = std::move(url.user);
+	this->user = ::move(url.user);
 	// Выполняем перемещение пароля пользователя
-	this->pass = std::move(url.pass);
+	this->pass = ::move(url.pass);
 	// Выполняем перемещение якоря URL-адреса
-	this->anchor = std::move(url.anchor);
+	this->anchor = ::move(url.anchor);
 	// Выполняем перемещение домена верхнего уровня
-	this->domain = std::move(url.domain);
+	this->domain = ::move(url.domain);
 	// Выполняем перемещение параметров URL-адреса
-	this->params = std::move(url.params);
+	this->params = ::move(url.params);
 	// Выполняем перемещение протокола URL-адреса
-	this->schema = std::move(url.schema);
+	this->schema = ::move(url.schema);
 }
 /**
  * URL Конструктор копирования
@@ -174,7 +179,7 @@ void awh::NWT::zone(const string & zone) noexcept {
 /**
  * zones Метод извлечения списка пользовательских зон интернета
  */
-const std::set <string> & awh::NWT::zones() const noexcept {
+const set <string> & awh::NWT::zones() const noexcept {
 	// Выводим список пользовательских зон интернета
 	return this->_user;
 }
@@ -182,7 +187,7 @@ const std::set <string> & awh::NWT::zones() const noexcept {
  * zones Метод установки списка пользовательских зон
  * @param zones список доменных зон интернета
  */
-void awh::NWT::zones(const std::set <string> & zones) noexcept {
+void awh::NWT::zones(const set <string> & zones) noexcept {
 	// Если список зон не пустой
 	if(!zones.empty())
 		// Выводим список пользовательских зон
@@ -275,7 +280,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Запоминаем порт запроса
 							result.port = 0;
 						}
@@ -342,7 +347,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 		   !url.path.empty() || !url.pass.empty() ||
 		   !url.anchor.empty() || !url.params.empty() || !url.schema.empty()))
 			// Устанавливаем полученный результат
-			result = std::move(url);
+			result = ::move(url);
 		// Если URL адрес мы не получили
 		else {
 			// Выполняем извлечение E-Mail адреса
@@ -350,7 +355,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 			// Если мы получили E-Mail адрес
 			if(email.type == types_t::EMAIL)
 				// Устанавливаем полученный результат
-				result = std::move(email);
+				result = ::move(email);
 			// Если E-Mail адрес мы не получили
 			else {
 				// Выполняем извлечение IP адреса
@@ -358,7 +363,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 				// Если мы получили IP адрес
 				if((ip.type == types_t::IPV4) || (ip.type == types_t::IPV6) || (ip.type == types_t::MAC) || (ip.type == types_t::NETWORK))
 					// Устанавливаем полученный результат
-					result = std::move(ip);
+					result = ::move(ip);
 			}
 		}	
 	}

@@ -28,13 +28,14 @@
  */
 #include <sys/global.hpp>
 
-// Устанавливаем пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Timer Класс таймера
 	 */
@@ -44,14 +45,14 @@ namespace awh {
 			 * Worker Класс воркера
 			 */
 			typedef struct Worker {
+				// Мютекс для блокировки потока
+				mutex mtx;
 				// Флаг остановки работы таймера
 				bool stop;
-				// Мютекс для блокировки потока
-				std::mutex mtx;
 				// Задержка времени таймера
 				uint32_t delay;
 				// Условная переменная, ожидания получения сигналов
-				std::condition_variable cv;
+				condition_variable cv;
 				// Функция обратного вызова
 				function <void (void)> callback;
 				/**
@@ -61,10 +62,10 @@ namespace awh {
 			} wrk_t;
 		private:
 			// Мютекс для блокировки потока
-			mutable std::mutex _mtx;
+			mutable mutex _mtx;
 		private:
 			// Список активных воркеров таймера
-			std::map <uint32_t, std::unique_ptr <wrk_t>> _timers;
+			map <uint32_t, unique_ptr <wrk_t>> _timers;
 		private:
 			/**
 			 * checkInputData Метод проверки на существование данных
@@ -75,7 +76,7 @@ namespace awh {
 				// Результат работы функции
 				bool result = true;
 				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx);
+				const lock_guard <mutex> lock(this->_mtx);
 				// Выполняем поиск идентификатор таймера
 				auto i = this->_timers.find(tid);
 				// Если идентификатор таймера в списке существует
@@ -98,7 +99,7 @@ namespace awh {
 				// Выполняем блокировку потока
 				this->_mtx.lock();
 				// Выполняем добавление идентификатора таймера в список
-				auto ret = this->_timers.emplace(tid, std::unique_ptr <wrk_t> (new wrk_t));
+				auto ret = this->_timers.emplace(tid, unique_ptr <wrk_t> (new wrk_t));
 				// Выполняем разблокировку потока
 				this->_mtx.unlock();
 				// Выполняем установку задержки времени
@@ -106,7 +107,7 @@ namespace awh {
 				// Выполняем установку функции обратного вызова
 				ret.first->second->callback = callback;
 				// Выполняем создание нового активного потока
-				std::thread([=]{
+				thread([=]{
 					/**
 					 * Выполняем отлов ошибок
 					 */
@@ -116,9 +117,9 @@ namespace awh {
 						// Если таймер найден
 						if(i != this->_timers.end()){
 							// Выполняем блокировку уникальным мютексом
-							unique_lock <std::mutex> lock(i->second->mtx);
+							unique_lock <mutex> lock(i->second->mtx);
 							// Выполняем ожидание на поступление новых заданий
-							i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), std::bind(&Timer::checkInputData, this, tid));
+							i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), bind(&Timer::checkInputData, this, tid));
 						}{
 							// Выполняем поиск нашего таймера
 							auto i = this->_timers.find(tid);
@@ -128,7 +129,7 @@ namespace awh {
 								i->second->callback();
 								{
 									// Выполняем блокировку потока
-									const lock_guard <std::mutex> lock(this->_mtx);
+									const lock_guard <mutex> lock(this->_mtx);
 									// Выполняем поиск нашего таймера
 									auto i = this->_timers.find(tid);
 									// Если идентификатор таймера в списке существует и остановка не подтверждена
@@ -139,7 +140,7 @@ namespace awh {
 							// Если была выполнена остановка
 							} else if(i != this->_timers.end()) {
 								// Выполняем блокировку потока
-								const lock_guard <std::mutex> lock(this->_mtx);
+								const lock_guard <mutex> lock(this->_mtx);
 								// Выполняем удаление идентификатора таймера
 								this->_timers.erase(i);
 							}
@@ -147,9 +148,9 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception &) {
+					} catch(const exception &) {
 						// Выполняем блокировку потока
-						const lock_guard <std::mutex> lock(this->_mtx);
+						const lock_guard <mutex> lock(this->_mtx);
 						// Выполняем поиск идентификатор таймера
 						auto i = this->_timers.find(tid);
 						// Если идентификатор таймера в списке существует
@@ -173,7 +174,7 @@ namespace awh {
 				// Выполняем блокировку потока
 				this->_mtx.lock();
 				// Выполняем добавление идентификатора таймера в список
-				auto ret = this->_timers.emplace(tid, std::unique_ptr <wrk_t> (new wrk_t));
+				auto ret = this->_timers.emplace(tid, unique_ptr <wrk_t> (new wrk_t));
 				// Выполняем разблокировку потока
 				this->_mtx.unlock();
 				// Выполняем установку задержки времени
@@ -181,7 +182,7 @@ namespace awh {
 				// Выполняем установку функции обратного вызова
 				ret.first->second->callback = callback;
 				// Выполняем создание нового активного потока
-				std::thread([=]{
+				thread([=]{
 					/**
 					 * Выполняем отлов ошибок
 					 */
@@ -193,9 +194,9 @@ namespace awh {
 							// Если таймер найден
 							if(i != this->_timers.end()){
 								// Выполняем блокировку уникальным мютексом
-								unique_lock <std::mutex> lock(i->second->mtx);
+								unique_lock <mutex> lock(i->second->mtx);
 								// Выполняем ожидание на поступление новых заданий
-								i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), std::bind(&Timer::checkInputData, this, tid));
+								i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), bind(&Timer::checkInputData, this, tid));
 							}{
 								// Выполняем поиск идентификатор таймера
 								auto i = this->_timers.find(tid);
@@ -206,7 +207,7 @@ namespace awh {
 								// Если была выполнена остановка
 								else if(i != this->_timers.end()) {
 									// Выполняем блокировку потока
-									const lock_guard <std::mutex> lock(this->_mtx);
+									const lock_guard <mutex> lock(this->_mtx);
 									// Выполняем удаление идентификатора таймера
 									this->_timers.erase(i);
 									// Выходим из цикла
@@ -217,9 +218,9 @@ namespace awh {
 					/**
 					 * Если возникает ошибка
 					 */
-					} catch(const std::exception &) {
+					} catch(const exception &) {
 						// Выполняем блокировку потока
-						const lock_guard <std::mutex> lock(this->_mtx);
+						const lock_guard <mutex> lock(this->_mtx);
 						// Выполняем поиск идентификатор таймера
 						auto i = this->_timers.find(tid);
 						// Если идентификатор таймера в списке существует
@@ -237,7 +238,7 @@ namespace awh {
 			 */
 			void stop(const uint32_t tid) noexcept {
 				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx);
+				const lock_guard <mutex> lock(this->_mtx);
 				// Выполняем поиск идентификатор таймера
 				auto i = this->_timers.find(tid);
 				// Если идентификатор таймера в списке существует

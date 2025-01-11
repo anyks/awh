@@ -16,6 +16,11 @@
 #include <server/sample.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * openEvent Метод обратного вызова при запуске работы
  * @param sid идентификатор схемы сети
  */
@@ -44,11 +49,11 @@ void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexce
 				// Устанавливаем интервал времени на выполнения пинга клиента
 				uint16_t tid = this->_timer.interval(this->_pingInterval);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.set <void (const uint16_t)> (tid, std::bind(&sample_t::pinging, this, tid));
+				this->_timer.set <void (const uint16_t)> (tid, bind(&sample_t::pinging, this, tid));
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.set <void (const uint16_t)> (tid, std::bind(&sample_t::erase, this, tid));
+				this->_timer.set <void (const uint16_t)> (tid, bind(&sample_t::erase, this, tid));
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
@@ -406,7 +411,7 @@ void awh::server::Sample::total(const uint16_t total) noexcept {
  * mode Метод установки флага модуля
  * @param flag флаг модуля для установки
  */
-void awh::server::Sample::mode(const std::set <flag_t> & flags) noexcept {
+void awh::server::Sample::mode(const set <flag_t> & flags) noexcept {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Активируем выполнение пинга
@@ -448,18 +453,18 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 		// Добавляем схему сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Устанавливаем функцию активации ядра сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::statusEvent, this, _1));
+		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", bind(&sample_t::statusEvent, this, _1));
 		// Устанавливаем событие на запуск системы
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openEvent, this, _1));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", bind(&sample_t::openEvent, this, _1));
 		// Устанавливаем событие подключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", bind(&sample_t::connectEvent, this, _1, _2));
 		// Устанавливаем событие отключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", bind(&sample_t::disconnectEvent, this, _1, _2));
 		// Устанавливаем функцию чтения данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", bind(&sample_t::readEvent, this, _1, _2, _3, _4));
 		// Устанавливаем функцию записи данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&sample_t::writeEvent, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&sample_t::writeEvent, this, _1, _2, _3, _4));
 		// Добавляем событие аццепта брокера
-		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&sample_t::acceptEvent, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", bind(&sample_t::acceptEvent, this, _1, _2, _3, _4));
 	}
 }

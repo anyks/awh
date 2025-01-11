@@ -31,13 +31,14 @@
 #include <sys/queue.hpp>
 #include <sys/buffer.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * cmp пространство имён Cluster Message Protocol (CMP)
 	 */
@@ -76,11 +77,11 @@ namespace awh {
 		 */
 		typedef class AWHSHARED_EXPORT Encoder {
 			private:
+				// Мютекс для блокировки потока
+				mutex _mtx;
+			private:
 				// Набор собранных данных
 				queue_t _queue;
-			private:
-				// Мютекс для блокировки потока
-				std::mutex _mtx;
 			private:
 				// Количество записей
 				uint32_t _count;
@@ -166,11 +167,11 @@ namespace awh {
 		 */
 		typedef class AWHSHARED_EXPORT Decoder {
 			private:
+				// Мютекс для блокировки потока
+				mutex _mtx;
+			private:
 				// Набор собранных данных
 				queue_t _queue;
-			private:
-				// Мютекс для блокировки потока
-				std::mutex _mtx;
 			private:
 				// Размер одного блока данных
 				size_t _chunkSize;
@@ -179,7 +180,7 @@ namespace awh {
 				awh::buffer_t _buffer;
 			private:
 				// Набор временных буферов данных
-				std::map <uint32_t, std::unique_ptr <buffer_t>> _temp;
+				map <uint32_t, unique_ptr <buffer_t>> _temp;
 			private:
 				// Объект работы с логами
 				const log_t * _log;

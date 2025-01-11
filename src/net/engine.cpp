@@ -15,6 +15,11 @@
 // Подключаем заголовочный файл
 #include <net/engine.hpp>
 
+/**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
 // Буфер секретного слова печенок
 uint8_t awh::Engine::_cookies[16];
 // Флаг инициализации куков
@@ -301,9 +306,9 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 			// Если количество элементов больше 1
 			if(this->network.size() > 1){
 				// Подключаем устройство генератора
-				std::mt19937 random(const_cast <addr_t *> (this)->_randev());
+				mt19937 random(const_cast <addr_t *> (this)->_randev());
 				// Выполняем генерирование случайного числа
-				std::uniform_int_distribution <std::mt19937::result_type> dist6(0, this->network.size() - 1);
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->network.size() - 1);
 				// Получаем ip адрес
 				result = this->network.at(dist6(random));
 			// Выводим только первый элемент
@@ -311,13 +316,13 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -381,7 +386,7 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client), log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client), log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -591,7 +596,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -702,7 +707,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 								 */
 								#if defined(DEBUG_MODE)
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unixsocket, static_cast <uint16_t> (type), clientName), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type), clientName), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 								/**
 								* Если режим отладки не включён
 								*/
@@ -726,7 +731,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
@@ -880,7 +885,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -957,7 +962,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -978,7 +983,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -4223,7 +4228,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			// Если нужно произвести проверку
 			if(this->_verify){
 				// Создаём объект проверки домена
-				target._verify = std::unique_ptr <verify_t> (new verify_t(host, this));
+				target._verify = unique_ptr <verify_t> (new verify_t(host, this));
 				// Выполняем проверку сертификата
 				::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 				// Выполняем проверку всех дочерних сертификатов

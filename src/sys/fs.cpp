@@ -15,6 +15,11 @@
 #include <sys/fs.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * message Метод получения текста описания ошибки
  * @param code код ошибки для получения сообщения
  * @return     текст сообщения описания кода ошибки
@@ -229,13 +234,13 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -246,13 +251,13 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -447,13 +452,13 @@ int32_t awh::FS::delPath(const string & path) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -464,13 +469,13 @@ int32_t awh::FS::delPath(const string & path) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -693,13 +698,13 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::ios_base::failure & error) {
+	} catch(const ios_base::failure & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -710,13 +715,13 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -820,13 +825,13 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -837,13 +842,13 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -886,13 +891,13 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -903,13 +908,13 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -936,7 +941,7 @@ void awh::FS::makePath(const string & path) const noexcept {
 			// Получаем сепаратор
 			const char sep = FS_SEPARATOR[0];
 			// Создаём буфер входящих данных
-			std::unique_ptr <char []> buffer(new char [path.size() + 1]);
+			unique_ptr <char []> buffer(new char [path.size() + 1]);
 			// Копируем переданный адрес в буфер
 			::snprintf(buffer.get(), path.size() + 1, "%s", path.c_str());
 			// Если последний символ является сепаратором тогда удаляем его
@@ -982,13 +987,13 @@ void awh::FS::makePath(const string & path) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1001,13 +1006,13 @@ void awh::FS::makePath(const string & path) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1018,13 +1023,13 @@ void awh::FS::makePath(const string & path) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1066,9 +1071,9 @@ bool awh::FS::makeDir(const string & path, [[maybe_unused]] const string & user,
  * @param actual флаг проверки актуальных файлов
  * @param before флаг определения первой точки расширения слева
  */
-std::pair <string, string> awh::FS::components(const string & addr, const bool actual, const bool before) const noexcept {
+pair <string, string> awh::FS::components(const string & addr, const bool actual, const bool before) const noexcept {
 	// Результат работы функции
-	std::pair <string, string> result;
+	pair <string, string> result;
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1105,13 +1110,13 @@ std::pair <string, string> awh::FS::components(const string & addr, const bool a
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::ios_base::failure & error) {
+	} catch(const ios_base::failure & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1122,13 +1127,13 @@ std::pair <string, string> awh::FS::components(const string & addr, const bool a
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1308,7 +1313,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 						// Если прочитать файла не вышло
 						else {
 							// Открываем файл на чтение
-							std::ifstream file(path, ios::in | ios::binary);
+							ifstream file(path, ios::in | ios::binary);
 							// Если файл открыт
 							if(file.is_open()){
 								// Перемещаем указатель в конец файла
@@ -1435,13 +1440,13 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1452,13 +1457,13 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1595,13 +1600,13 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1612,13 +1617,13 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1706,13 +1711,13 @@ vector <char> awh::FS::read(const string & filename) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1723,13 +1728,13 @@ vector <char> awh::FS::read(const string & filename) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1773,7 +1778,7 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 			 */
 			#else
 				// Файловый поток для записи
-				std::ofstream file(filename, ios::binary);
+				ofstream file(filename, ios::binary);
 				// Если файл открыт на запись
 				if(file.is_open()){
 					// Выполняем запись данных в файл
@@ -1785,13 +1790,13 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1802,13 +1807,13 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1850,7 +1855,7 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 			 */
 			#else
 				// Файловый поток для добавления
-				std::ofstream file(filename, (ios::binary | ios::app));
+				ofstream file(filename, (ios::binary | ios::app));
 				// Если файл открыт на добавление
 				if(file.is_open()){
 					// Выполняем добавление данных в файл
@@ -1862,13 +1867,13 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1879,13 +1884,13 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2001,13 +2006,13 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::ios_base::failure & error) {
+	} catch(const ios_base::failure & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -2018,13 +2023,13 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -2125,7 +2130,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 					// Получаем размер файла
 					size = static_cast <uintmax_t> (info.st_size);
 				// Открываем файл на чтение
-				std::ifstream file(filename, ios::in | ios::binary);
+				ifstream file(filename, ios::in | ios::binary);
 				// Если файл открыт
 				if(file.is_open()){
 					// Если арзмер файла не получен
@@ -2150,13 +2155,13 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2167,13 +2172,13 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2202,13 +2207,13 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Открываем файл на чтение
-				std::ifstream file(this->_fmk->convert(filename).c_str(), ios::in | ios::binary);
+				ifstream file(this->_fmk->convert(filename).c_str(), ios::in | ios::binary);
 				// Если файл открыт
 				if(file.is_open()){
 					// Результат полученный из потока
 					string result = "";
 					// Выполняем чтение данных из потока
-					while(std::getline(file, result))
+					while(getline(file, result))
 						// Выводим полученный результат
 						callback(result);
 					// Закрываем файл
@@ -2219,13 +2224,13 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 			 */
 			#else
 				// Открываем файл на чтение
-				std::ifstream file(filename, ios::in | ios::binary);
+				ifstream file(filename, ios::in | ios::binary);
 				// Если файл открыт
 				if(file.is_open()){
 					// Результат полученный из потока
 					string result = "";
 					// Выполняем чтение данных из потока
-					while(std::getline(file, result))
+					while(getline(file, result))
 						// Выводим полученный результат
 						callback(result);
 					// Закрываем файл
@@ -2235,13 +2240,13 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::ios_base::failure & error) {
+		} catch(const ios_base::failure & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2252,13 +2257,13 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2411,13 +2416,13 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const std::ios_base::failure & error) {
+			} catch(const ios_base::failure & error) {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -2428,13 +2433,13 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const std::exception & error) {
+			} catch(const exception & error) {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/

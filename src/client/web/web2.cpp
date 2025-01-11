@@ -16,6 +16,11 @@
 #include <client/web/web.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * sendSignal Метод обратного вызова при отправки данных HTTP/2
  * @param buffer буфер бинарных данных
  * @param size  размер буфера данных для отправки
@@ -34,7 +39,7 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept {
+int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if((this->_core != nullptr) && (this->_proxy.sid == sid)){
 		// Выполняем определение типа фрейма
@@ -76,7 +81,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 					if(this->_callbacks.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
+						this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
 					// Если установлена функция отлова завершения запроса
 					if(this->_callbacks.is("end"))
 						// Выполняем функцию обратного вызова
@@ -109,7 +114,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 					if(this->_callbacks.is("headers"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
+						this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 					// Если мы получили флаг завершения потока
 					if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 						// Выполняем коммит полученного результата
@@ -371,21 +376,21 @@ void awh::client::Web2::implementation(const uint64_t bid) noexcept {
 			// Устанавливаем функцию обработки вызова на событие получения ошибок
 			callbacks.set("error", this->_callbacks);
 			// Выполняем установку функции обратного вызова начала открытии потока
-			callbacks.set <int32_t (const int32_t)> ("begin", std::bind(&web2_t::beginSignal, this, _1));
+			callbacks.set <int32_t (const int32_t)> ("begin", bind(&web2_t::beginSignal, this, _1));
 			// Выполняем установку функции обратного вызова получения списка разрешённых ресурсов для подключения
-			callbacks.set <void (const vector <string> &)> ("origin", std::bind(&web2_t::originCallback, this, _1));
+			callbacks.set <void (const vector <string> &)> ("origin", bind(&web2_t::originCallback, this, _1));
 			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
-			callbacks.set <void (const uint8_t *, const size_t)> ("send", std::bind(&web2_t::sendSignal, this, _1, _2));
+			callbacks.set <void (const uint8_t *, const size_t)> ("send", bind(&web2_t::sendSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова получения альтернативного сервиса от сервера
-			callbacks.set <void (const string &, const string &)> ("altsvc", std::bind(&web2_t::altsvcCallback, this, _1, _2));
+			callbacks.set <void (const string &, const string &)> ("altsvc", bind(&web2_t::altsvcCallback, this, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			callbacks.set <int32_t (const int32_t, const http2_t::error_t)> ("close", std::bind(&web2_t::closedSignal, this, _1, _2));
+			callbacks.set <int32_t (const int32_t, const http2_t::error_t)> ("close", bind(&web2_t::closedSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			callbacks.set <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
+			callbacks.set <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", bind(&web2_t::chunkSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
-			callbacks.set <int32_t (const int32_t, const string &, const string &)> ("header", std::bind(&web2_t::headerSignal, this, _1, _2, _3));
+			callbacks.set <int32_t (const int32_t, const string &, const string &)> ("header", bind(&web2_t::headerSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма
-			callbacks.set <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
+			callbacks.set <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
 			// Выполняем установку функции обратного вызова
 			this->_http2.callbacks(callbacks);
 			// Выполняем инициализацию модуля NgHttp2
@@ -478,7 +483,7 @@ bool awh::client::Web2::ping() noexcept {
  */
 void awh::client::Web2::close(const uint64_t bid) noexcept {
 	// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-	this->_http2.callback <void (void)> (1, std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid));
+	this->_http2.callback <void (void)> (1, bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid));
 }
 /**
  * send Метод отправки сообщения на сервер
@@ -516,7 +521,7 @@ bool awh::client::Web2::send(const int32_t sid, const char * buffer, const size_
  * @param flag    флаг передаваемого потока по сети
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::Web2::send(const int32_t sid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::client::Web2::send(const int32_t sid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
@@ -543,7 +548,7 @@ int32_t awh::client::Web2::send(const int32_t sid, const vector <std::pair <stri
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::client::Web2::settings(const std::map <http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::client::Web2::settings(const map <http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Если список настроек протокола HTTP/2 передан
 	if(!settings.empty())
 		// Выполняем установку списка настроек
@@ -600,7 +605,7 @@ void awh::client::Web2::chunk(const size_t size) noexcept {
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::Web2::mode(const std::set <flag_t> & flags) noexcept {
+void awh::client::Web2::mode(const set <flag_t> & flags) noexcept {
 	// Активируем выполнение пинга
 	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
 	// Если установлен флаг запрещающий переключение контекста SSL

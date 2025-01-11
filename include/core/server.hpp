@@ -23,13 +23,14 @@
 #include <sys/cluster.hpp>
 #include <scheme/server.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */
@@ -65,11 +66,11 @@ namespace awh {
 				 * Mutex Объект основных мютексов
 				 */
 				typedef struct Mutex {
-					std::recursive_mutex main;    // Для установки системных параметров
-					std::recursive_mutex close;   // Для закрытия подключения
-					std::recursive_mutex accept;  // Для одобрения подключения
-					std::recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
-					std::recursive_mutex timeout; // Для создания нового таймаута
+					recursive_mutex main;    // Для установки системных параметров
+					recursive_mutex close;   // Для закрытия подключения
+					recursive_mutex accept;  // Для одобрения подключения
+					recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
+					recursive_mutex timeout; // Для создания нового таймаута
 				} mtx_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -88,19 +89,19 @@ namespace awh {
 				// Флаг активации/деактивации кластера
 				awh::scheme_t::mode_t _clusterMode;
 			private:
-				// Список активных дочерних процессов
-				std::multimap <uint16_t, pid_t> _workers;
-			private:
 				// Таймер для работы DTLS
-				std::unique_ptr <timer_t> _timer;
+				unique_ptr <timer_t> _timer;
+			private:
+				// Список активных дочерних процессов
+				multimap <uint16_t, pid_t> _workers;
 			private:
 				// Список таймаутов на получение данных
-				std::map <uint64_t, uint16_t> _receive;
+				map <uint64_t, uint16_t> _receive;
 				// Список активных таймаутов
-				std::map <uint16_t, uint16_t> _timeouts;
+				map <uint16_t, uint16_t> _timeouts;
 			private:
 				// Список подключённых брокеров
-				std::map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;
+				map <uint16_t, unique_ptr <awh::scheme_t::broker_t>> _brokers;
 			private:
 				/**
 				 * accept Метод вызова при подключении к серверу
@@ -257,7 +258,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @return    список доступных воркеров
 				 */
-				std::set <pid_t> workers(const uint16_t sid) const noexcept;
+				set <pid_t> workers(const uint16_t sid) const noexcept;
 			public:
 				/**
 				 * send Метод асинхронной отправки буфера данных в сокет

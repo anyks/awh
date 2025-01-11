@@ -13,7 +13,6 @@
 #include <server/socks5.hpp>
 
 // Подключаем пространство имён
-using namespace std;
 using namespace awh;
 using namespace server;
 

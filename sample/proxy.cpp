@@ -13,7 +13,6 @@
 #include <server/proxy.hpp>
 
 // Подключаем пространство имён
-using namespace std;
 using namespace awh;
 
 /**

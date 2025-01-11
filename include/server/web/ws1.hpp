@@ -24,13 +24,14 @@
 #include <sys/threadpool.hpp>
 #include <server/web/web.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */
@@ -83,13 +84,13 @@ namespace awh {
 				scheme::ws_t::partner_t _server;
 			private:
 				// Поддерживаемые сабпротоколы
-				std::set <string> _subprotocols;
+				set <string> _subprotocols;
 			private:
 				// Список поддверживаемых расширений
 				vector <vector <string>> _extensions;
 			private:
 				// Полученные HTTP заголовки
-				std::unordered_multimap <string, string> _headers;
+				unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
@@ -274,13 +275,13 @@ namespace awh {
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const std::set <string> & subprotocols) noexcept;
+				void subprotocols(const set <string> & subprotocols) noexcept;
 				/**
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const std::set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const set <string> & subprotocols(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * extensions Метод установки списка расширений
@@ -328,7 +329,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения
@@ -351,7 +352,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений

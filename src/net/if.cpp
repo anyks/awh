@@ -16,6 +16,11 @@
 #include <net/if.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * getIPAddresses Метод извлечения IP-адресов
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
@@ -522,7 +527,7 @@ void awh::IfNet::clear() noexcept {
  * Метод вывода списка MAC-адресов
  * @return список MAC-адресов
  */
-const std::unordered_map <string, string> & awh::IfNet::hws() const noexcept {
+const unordered_map <string, string> & awh::IfNet::hws() const noexcept {
 	// Выводим список сетевых интерфейсов
 	return this->_ifs;
 }

@@ -39,20 +39,21 @@
 #include <sys/log.hpp>
 #include <net/uri.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Socks5 Класс работы с socks5 прокси-сервером
 	 */
 	typedef class AWHSHARED_EXPORT Socks5 {
 		private:
 			// Список ответов сервера
-			std::map <uint8_t, string> _responses;
+			map <uint8_t, string> _responses;
 		public:
 			/**
 			 * Коды ответа socks5 сервера

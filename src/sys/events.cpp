@@ -18,6 +18,11 @@
 #include <sys/events.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Если операционной системой является Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
@@ -102,7 +107,7 @@
 								// Выполняем смещение в цикле
 								++i;
 							// Продолжаем перебор дальше
-							} else i = std::next(this->_timers.begin(), index);
+							} else i = next(this->_timers.begin(), index);
 						}
 					// Выводим сообщение об ошибке
 					} else this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, i->second->ident);
@@ -118,9 +123,9 @@
  */
 uint64_t awh::Base::id() const noexcept {
 	// Создаём объект хэширования
-	std::hash <std::thread::id> hasher;
+	hash <thread::id> hasher;
 	// Устанавливаем идентификатор потока
-	return hasher(std::this_thread::get_id());
+	return hasher(this_thread::get_id());
 }
 /**
  * stream Метод проверки запущен ли модуль в дочернем потоке
@@ -261,7 +266,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
  */
 void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t type) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем поиск указанного верхнеуровневого потока
 	auto i = this->_upstreams.find(sid);
 	// Если верхнеуровневый поток обнаружен
@@ -303,7 +308,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx);
 		/**
 		 * Методы только для OS Windows
 		 */
@@ -459,13 +464,13 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -491,7 +496,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx);
 		/**
 		 * Методы только для OS Windows
 		 */
@@ -661,13 +666,13 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -696,7 +701,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard <recursive_mutex> lock(this->_mtx);
 			/**
 			 * Методы только для OS Windows
 			 */
@@ -1103,13 +1108,13 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1141,7 +1146,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard <recursive_mutex> lock(this->_mtx);
 			// Если количество добавленных файловых дескрипторов для отслеживания не достигло предела
 			if(this->_items.size() < static_cast <size_t> (this->_maxCount)){
 				// Выполняем блокировку чтения базы событий
@@ -1165,7 +1170,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+							auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 							// Устанавливаем тип пайпа
 							pipe->type(pipe_t::type_t::NETWORK);
 							// Выполняем создание сокетов
@@ -1236,7 +1241,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+							auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 							// Устанавливаем тип пайпа
 							pipe->type(pipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
@@ -1301,7 +1306,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 								 */
 								#if defined(DEBUG_MODE)
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 								/**
 								* Если режим отладки не включён
 								*/
@@ -1331,7 +1336,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+							auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 							// Устанавливаем тип пайпа
 							pipe->type(pipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
@@ -1403,13 +1408,13 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const t
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1440,7 +1445,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard <recursive_mutex> lock(this->_mtx);
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_items.find(fd);
 			// Если файловый дескриптор есть в базе событий
@@ -1548,7 +1553,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1570,7 +1575,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1598,7 +1603,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1619,7 +1624,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1646,7 +1651,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1667,7 +1672,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1694,7 +1699,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1715,7 +1720,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1816,13 +1821,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1852,7 +1857,7 @@ void awh::Base::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем блокировку чтения базы событий
 		this->_locker = true;
 		/**
@@ -1974,7 +1979,7 @@ void awh::Base::clear() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Выполняем разблокировку чтения базы событий
 		this->_locker = false;
 		/**
@@ -2007,7 +2012,7 @@ void awh::Base::kick() noexcept {
 			// Выполняем активацию блокировки
 			this->_locker = this->_started;
 			// Запоминаем список активных событий
-			std::map <SOCKET, item_t> items = this->_items;
+			map <SOCKET, item_t> items = this->_items;
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Выполняем очистку всех параметров
@@ -2042,7 +2047,7 @@ void awh::Base::kick() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2089,7 +2094,7 @@ void awh::Base::stop() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2179,7 +2184,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Выполняем блокировку потока
-								const lock_guard <std::recursive_mutex> lock(this->_mtx);
+								const lock_guard <recursive_mutex> lock(this->_mtx);
 								// Получаем количество файловых дескрипторов для проверки
 								count = this->_fds.size();
 								// Идентификатор события
@@ -2296,7 +2301,7 @@ void awh::Base::start() noexcept {
 												 */
 												#if defined(DEBUG_MODE)
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 												/**
 												* Если режим отладки не включён
 												*/
@@ -2316,7 +2321,7 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(j->second.callback != nullptr){
 														// Получаем функцию обратного вызова
-														auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
+														auto callback = bind(j->second.callback, fd, event_type_t::CLOSE);
 														// Выполняем поиск события на отключение присутствует в базе событий
 														auto k = j->second.mode.find(event_type_t::CLOSE);
 														// Если событие найдено и оно активированно
@@ -2344,9 +2349,9 @@ void awh::Base::start() noexcept {
 								// Если время установленно
 								if(this->_baseDelay > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(std::chrono::milliseconds(this->_baseDelay));
+									this_thread::sleep_for(chrono::milliseconds(this->_baseDelay));
 								// Устанавливаем задержку времени по умолчанию
-								else std::this_thread::sleep_for(10ms);
+								else this_thread::sleep_for(10ms);
 								// Продолжаем опрос дальше
 								continue;
 							// Если опрос базы событий не заблокирован
@@ -2356,7 +2361,7 @@ void awh::Base::start() noexcept {
 						}
 					}
 					// Замораживаем поток на период времени частоты обновления базы событий
-					std::this_thread::sleep_for(100ms);
+					this_thread::sleep_for(100ms);
 				/**
 				 * Если это Linux
 				 */
@@ -2389,7 +2394,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Выполняем блокировку потока
-								const lock_guard <std::recursive_mutex> lock(this->_mtx);
+								const lock_guard <recursive_mutex> lock(this->_mtx);
 								// Идентификатор события
 								uint64_t id = 0;
 								// Файловый дескриптор события
@@ -2494,7 +2499,7 @@ void awh::Base::start() noexcept {
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -2512,7 +2517,7 @@ void awh::Base::start() noexcept {
 														// Если функция обратного вызова установлена
 														if(i->second.callback != nullptr){
 															// Получаем функцию обратного вызова
-															auto callback = std::bind(i->second.callback, i->second.fd, event_type_t::CLOSE);
+															auto callback = bind(i->second.callback, i->second.fd, event_type_t::CLOSE);
 															// Выполняем поиск события на отключение присутствует в базе событий
 															auto j = i->second.mode.find(event_type_t::CLOSE);
 															// Если событие найдено и оно активированно
@@ -2544,9 +2549,9 @@ void awh::Base::start() noexcept {
 								// Если время установленно
 								if(this->_baseDelay > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(std::chrono::milliseconds(this->_baseDelay));
+									this_thread::sleep_for(chrono::milliseconds(this->_baseDelay));
 								// Устанавливаем задержку времени по умолчанию
-								else std::this_thread::sleep_for(10ms);
+								else this_thread::sleep_for(10ms);
 								// Продолжаем опрос дальше
 								continue;
 							// Если опрос базы событий не заблокирован
@@ -2556,7 +2561,7 @@ void awh::Base::start() noexcept {
 						}
 					}
 					// Замораживаем поток на период времени частоты обновления базы событий
-					std::this_thread::sleep_for(100ms);
+					this_thread::sleep_for(100ms);
 				/**
 				 * Если это FreeBSD или MacOS X
 				 */
@@ -2589,7 +2594,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Выполняем блокировку потока
-								const lock_guard <std::recursive_mutex> lock(this->_mtx);
+								const lock_guard <recursive_mutex> lock(this->_mtx);
 								// Идентификатор события
 								uint64_t id = 0;
 								// Код ошибки полученный от ядра
@@ -2700,7 +2705,7 @@ void awh::Base::start() noexcept {
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message(code).c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message(code).c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -2718,7 +2723,7 @@ void awh::Base::start() noexcept {
 														// Если функция обратного вызова установлена
 														if(j->second.callback != nullptr){
 															// Получаем функцию обратного вызова
-															auto callback = std::bind(j->second.callback, j->second.fd, event_type_t::CLOSE);
+															auto callback = bind(j->second.callback, j->second.fd, event_type_t::CLOSE);
 															// Выполняем поиск события на отключение присутствует в базе событий
 															auto k = j->second.mode.find(event_type_t::CLOSE);
 															// Если событие найдено и оно активированно
@@ -2750,9 +2755,9 @@ void awh::Base::start() noexcept {
 								// Если время установленно
 								if(this->_baseDelay > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(std::chrono::milliseconds(this->_baseDelay));
+									this_thread::sleep_for(chrono::milliseconds(this->_baseDelay));
 								// Устанавливаем задержку времени по умолчанию
-								else std::this_thread::sleep_for(10ms);
+								else this_thread::sleep_for(10ms);
 								// Продолжаем опрос дальше
 								continue;
 							// Если опрос базы событий не заблокирован
@@ -2762,7 +2767,7 @@ void awh::Base::start() noexcept {
 						}
 					}
 					// Замораживаем поток на период времени частоты обновления базы событий
-					std::this_thread::sleep_for(100ms);
+					this_thread::sleep_for(100ms);
 				#endif
 			}
 			// Останавливаем работу таймеров скрина
@@ -2772,7 +2777,7 @@ void awh::Base::start() noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Если не происходит отключение работы базы событий
 			if(this->_started){
 				/**
@@ -2815,7 +2820,7 @@ void awh::Base::rebase() noexcept {
 				// Выполняем разблокировку потока
 				this->_mtx.unlock();
 				// Запоминаем список активных событий
-				std::map <SOCKET, item_t> items = this->_items;
+				map <SOCKET, item_t> items = this->_items;
 				// Выполняем остановку работы базы событий
 				this->stop();
 				// Если список активных событий не пустой
@@ -2842,7 +2847,7 @@ void awh::Base::rebase() noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2865,7 +2870,7 @@ void awh::Base::rebase() noexcept {
  */
 void awh::Base::freeze(const bool mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем активацию блокировки
 	this->_locker = mode;
 }
@@ -2875,7 +2880,7 @@ void awh::Base::freeze(const bool mode) noexcept {
  */
 void awh::Base::easily(const bool mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку флага активации простого режима чтения базы событий
 	this->_easily = mode;
 	// Если активирован простой режим работы чтения базы событий
@@ -2889,7 +2894,7 @@ void awh::Base::easily(const bool mode) noexcept {
  */
 void awh::Base::frequency(const uint32_t msec) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если количество секунд передано верно
 	if(msec > 0)
 		// Выполняем установку времени ожидания
@@ -2903,7 +2908,7 @@ void awh::Base::frequency(const uint32_t msec) noexcept {
  */
 void awh::Base::eraseUpstream(const uint64_t sid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем поиск указанного верхнеуровневого потока
 	auto i = this->_upstreams.find(sid);
 	// Если верхнеуровневый поток обнаружен
@@ -2936,7 +2941,7 @@ void awh::Base::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept 
 	// Если запуск производится в основном потоке
 	else {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем поиск указанного верхнеуровневого потока
 		auto i = this->_upstreams.find(sid);
 		// Если верхнеуровневый поток обнаружен
@@ -2972,13 +2977,13 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 	// Если запуск производится в основном потоке
 	else {
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx);
 		/**
 		 * Методы только для OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Создаём объект пайпа
-			auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+			auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 			// Устанавливаем тип пайпа
 			pipe->type(pipe_t::type_t::NETWORK);
 			// Выполняем создание сокетов
@@ -3004,7 +3009,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 		 */
 		#else
 			// Создаём объект пайпа
-			auto pipe = std::shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
+			auto pipe = shared_ptr <pipe_t> (new pipe_t(this->_fmk, this->_log));
 			// Устанавливаем тип пайпа
 			pipe->type(pipe_t::type_t::NATIVE);
 			// Выполняем создание сокетов
@@ -3029,7 +3034,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 			ret.first->second.callback = callback;
 		#endif
 		// Выполняем добавление события в базу событий
-		if(!this->add(result, ret.first->second.read, std::bind(&base_t::upstream, this, result, _1, _2)))
+		if(!this->add(result, ret.first->second.read, bind(&base_t::upstream, this, result, _1, _2)))
 			// Выводим сообщение что событие не вышло активировать
 			this->_log->print("Failed activate upstream event for SOCKET=%d", log_t::flag_t::WARNING, ret.first->second.read);
 		// Если событие в базу событий успешно добавленно, активируем событие чтения на сокет верхнеуровневого потока
@@ -3079,7 +3084,7 @@ awh::Event::type_t awh::Event::type() const noexcept {
  */
 void awh::Event::set(base_t * base) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Устанавливаем базу данных событий
 	this->_base = base;
 }
@@ -3122,7 +3127,7 @@ void awh::Event::set(const SOCKET fd) noexcept {
  */
 void awh::Event::set(base_t::callback_t callback) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Устанавливаем функцию обратного вызова
 	this->_callback = callback;
 }
@@ -3132,7 +3137,7 @@ void awh::Event::set(base_t::callback_t callback) noexcept {
  */
 void awh::Event::del(const base_t::event_type_t type) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если работа события запущена
 	if((this->_base != nullptr) && this->_mode){
 		// Если событие является стандартным
@@ -3150,7 +3155,7 @@ void awh::Event::del(const base_t::event_type_t type) noexcept {
  */
 void awh::Event::timeout(const time_t delay, const bool series) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Определяем тип установленного события
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием
@@ -3175,7 +3180,7 @@ void awh::Event::timeout(const time_t delay, const bool series) noexcept {
  */
 bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если работа базы событий активированна
 	if((this->_base != nullptr) && ((this->_fd != INVALID_SOCKET) || (this->_delay > 0)))
 		// Выполняем установку режима работы модуля
@@ -3188,7 +3193,7 @@ bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_
  */
 void awh::Event::stop() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если работа события запущена
 	if((this->_base != nullptr) && this->_mode){
 		// Если событие является стандартным
@@ -3206,7 +3211,7 @@ void awh::Event::stop() noexcept {
  */
 void awh::Event::start() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если работа события ещё не запущена
 	if(!this->_mode && (this->_base != nullptr)){
 		// Если событие является стандартным
@@ -3265,7 +3270,7 @@ awh::Event & awh::Event::operator = (const SOCKET fd) noexcept {
  */
 awh::Event & awh::Event::operator = (const time_t delay) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Определяем тип установленного события
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием

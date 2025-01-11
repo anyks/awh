@@ -42,13 +42,14 @@
  */
 #include <sys/log.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Buffer Класс создания очереди
 	 */
@@ -56,6 +57,9 @@ namespace awh {
 		private:
 			// Количество аллоцированных элементов 100Mb
 			static constexpr uint32_t BATCH = 0x6400000;
+		private:
+			// Мютекс для блокировки потока
+			mutex _mtx;
 		private:
 			// Последний элемент в очереди
 			size_t _end;
@@ -70,9 +74,6 @@ namespace awh {
 		private:
 			// Размер всех добавленных данных
 			size_t _bytes;
-		private:
-			// Мютекс для блокировки потока
-			std::mutex _mtx;
 		private:
 			// Адреса добавленных данных
 			uint8_t * _data;

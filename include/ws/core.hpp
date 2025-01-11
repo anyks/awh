@@ -30,13 +30,14 @@
 #include <sys/hash.hpp>
 #include <http/core.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * WCore Класс для работы с WebSocket
 	 */
@@ -86,9 +87,9 @@ namespace awh {
 			compressors_t _compressors;
 		protected:
 			// Список выбранных сабпротоколов
-			std::set <string> _selectedProtocols;
+			set <string> _selectedProtocols;
 			// Список поддерживаемых сабпротоколов
-			std::set <string> _supportedProtocols;
+			set <string> _supportedProtocols;
 		protected:
 			// Список поддверживаемых расширений
 			vector <vector <string>> _extensions;
@@ -228,7 +229,7 @@ namespace awh {
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			vector <std::pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
+			vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
 			 * process Метод создания выполняемого процесса в бинарном виде
@@ -243,7 +244,7 @@ namespace awh {
 			 * @param provider параметры провайдера обмена сообщениями
 			 * @return         буфер данных в бинарном виде
 			 */
-			vector <std::pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
+			vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
 		public:
 			/**
 			 * subprotocol Метод установки поддерживаемого сабпротокола
@@ -254,12 +255,12 @@ namespace awh {
 			 * subprotocol Метод получения списка выбранных сабпротоколов
 			 * @return список выбранных сабпротоколов
 			 */
-			const std::set <string> & subprotocols() const noexcept;
+			const set <string> & subprotocols() const noexcept;
 			/**
 			 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 			 * @param subprotocols сабпротоколы для установки
 			 */
-			void subprotocols(const std::set <string> & subprotocols) noexcept;
+			void subprotocols(const set <string> & subprotocols) noexcept;
 		public:
 			/**
 			 * takeover Метод получения флага переиспользования контекста компрессии

@@ -16,6 +16,11 @@
 #include <net/ntp.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * host Метод извлечения хоста компьютера
  * @return хост компьютера с которого производится запрос
  */
@@ -31,9 +36,9 @@ string awh::NTP::Worker::host() const noexcept {
 			// Если количество элементов больше 1
 			if(this->_network.size() > 1){
 				// Подключаем устройство генератора
-				std::mt19937 generator(const_cast <ntp_t *> (this->_self)->_randev());
+				mt19937 generator(const_cast <ntp_t *> (this->_self)->_randev());
 				// Выполняем генерирование случайного числа
-				std::uniform_int_distribution <std::mt19937::result_type> dist6(0, this->_network.size() - 1);
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_network.size() - 1);
 				// Получаем ip адрес
 				result = this->_network.at(dist6(generator));
 			// Выводим только первый элемент
@@ -41,7 +46,7 @@ string awh::NTP::Worker::host() const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -315,7 +320,7 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 					// Если работа резолвера ещё не остановлена
 					if(this->_mode)
 						// Замораживаем поток на период времени в 10ms
-						std::this_thread::sleep_for(10ms);
+						this_thread::sleep_for(10ms);
 					// Выполняем попытку получить IP-адрес с другого сервера
 					return result;
 				// Если данные получены удачно
@@ -402,7 +407,7 @@ bool awh::NTP::clear() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы NTP-клиента соответствует
@@ -425,7 +430,7 @@ bool awh::NTP::clear() noexcept {
  */
 void awh::NTP::cancel(const int32_t family) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Определяем тип протокола подключения
 	switch(family){
 		// Если тип протокола подключения IPv4
@@ -446,13 +451,13 @@ void awh::NTP::cancel(const int32_t family) noexcept {
  */
 void awh::NTP::shuffle(const int32_t family) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Выбираем стаднарт рандомайзера
-		std::mt19937 generator(this->_randev());
+		mt19937 generator(this->_randev());
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
@@ -469,13 +474,13 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -491,7 +496,7 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
  */
 void awh::NTP::timeout(const uint8_t sec) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку таймаута ожидания выполнения запроса
 	this->_timeout = sec;
 }
@@ -501,7 +506,7 @@ void awh::NTP::timeout(const uint8_t sec) noexcept {
  */
 void awh::NTP::ns(const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если DNS-сервера получены
 	if(!servers.empty())
 		// Выполняем установку списка DNS-серверов
@@ -514,7 +519,7 @@ void awh::NTP::ns(const vector <string> & servers) noexcept {
  */
 string awh::NTP::server(const int32_t family) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Результат работы функции
 	string result = "";
 	/**
@@ -522,7 +527,7 @@ string awh::NTP::server(const int32_t family) noexcept {
 	 */
 	try {
 		// Подключаем устройство генератора
-		std::mt19937 generator(this->_randev());
+		mt19937 generator(this->_randev());
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
@@ -536,9 +541,9 @@ string awh::NTP::server(const int32_t family) noexcept {
 				// Получаем первое значение итератора
 				auto i = this->_serversIPv4.begin();
 				// Выполняем генерирование случайного числа
-				std::uniform_int_distribution <std::mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
 				// Выполняем выбор нужного сервера в списке, в произвольном виде
-				std::advance(i, dist6(generator));
+				advance(i, dist6(generator));
 				// Выполняем получение данных IP-адреса
 				result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
 			} break;
@@ -553,9 +558,9 @@ string awh::NTP::server(const int32_t family) noexcept {
 				// Получаем первое значение итератора
 				auto i = this->_serversIPv6.begin();
 				// Выполняем генерирование случайного числа
-				std::uniform_int_distribution <std::mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
+				uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
 				// Выполняем выбор нужного сервера в списке, в произвольном виде
-				std::advance(i, dist6(generator));
+				advance(i, dist6(generator));
 				// Выполняем получение данных IP-адреса
 				result = ::inet_ntop(family, &i->ip, buffer, sizeof(buffer));
 			} break;
@@ -563,13 +568,13 @@ string awh::NTP::server(const int32_t family) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -587,7 +592,7 @@ string awh::NTP::server(const int32_t family) noexcept {
  */
 void awh::NTP::server(const string & server) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если адрес сервера передан
 	if(!server.empty()){
 		// Определяем тип передаваемого IP-адреса
@@ -612,7 +617,7 @@ void awh::NTP::server(const string & server) noexcept {
  */
 void awh::NTP::server(const int32_t family, const string & server) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы NTP-клиента соответствует
@@ -650,7 +655,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Извлекаем порт сервера имён
 							port = 0;
 						}
@@ -676,7 +681,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							/**
 							 * Если возникает ошибка
 							 */
-							} catch(const std::exception &) {
+							} catch(const exception &) {
 								// Извлекаем порт сервера имён
 								port = 0;
 							}
@@ -706,7 +711,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Извлекаем порт сервера имён
 							port = 0;
 						}
@@ -719,7 +724,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 						// Выполняем запрос IP-адреса с удалённого сервера
 						host = this->_dns.resolve(family, host);
 					// Выполняем установку IP-адреса
-					else host = std::move(ip);
+					else host = ::move(ip);
 				} break;
 				// Значит скорее всего, садрес является доменным именем
 				default: {
@@ -738,7 +743,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 						/**
 						 * Если возникает ошибка
 						 */
-						} catch(const std::exception &) {
+						} catch(const exception &) {
 							// Извлекаем порт сервера имён
 							port = 0;
 						}
@@ -759,7 +764,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 						// Запоминаем полученный сервер
 						::inet_pton(family, host.c_str(), &server.ip);
 						// Если добавляемый хост сервера ещё не существует в списке серверов
-						if(std::find_if(this->_serversIPv4.begin(), this->_serversIPv4.end(), [&server](const server_t <1> & item) noexcept -> bool {
+						if(find_if(this->_serversIPv4.begin(), this->_serversIPv4.end(), [&server](const server_t <1> & item) noexcept -> bool {
 							// Выполняем сравнение двух IP-адресов
 							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
 						}) == this->_serversIPv4.end()){
@@ -785,7 +790,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 						// Запоминаем полученный сервер
 						::inet_pton(family, host.c_str(), &server.ip);
 						// Если добавляемый хост сервера ещё не существует в списке серверов
-						if(std::find_if(this->_serversIPv6.begin(), this->_serversIPv6.end(), [&server](const server_t <4> & item) noexcept -> bool {
+						if(find_if(this->_serversIPv6.begin(), this->_serversIPv6.end(), [&server](const server_t <4> & item) noexcept -> bool {
 							// Выполняем сравнение двух IP-адресов
 							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
 						}) == this->_serversIPv6.end()){
@@ -814,7 +819,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
  */
 void awh::NTP::servers(const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Создаём объект холдирования
@@ -862,7 +867,7 @@ void awh::NTP::servers(const vector <string> & servers) noexcept {
  */
 void awh::NTP::servers(const int32_t family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
 	if(!servers.empty()){	
 		// Создаём объект холдирования
@@ -882,7 +887,7 @@ void awh::NTP::servers(const int32_t family, const vector <string> & servers) no
  */
 void awh::NTP::replace(const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы NTP-клиента соответствует
@@ -933,7 +938,7 @@ void awh::NTP::replace(const vector <string> & servers) noexcept {
  */
 void awh::NTP::replace(const int32_t family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы NTP-клиента соответствует
@@ -983,7 +988,7 @@ void awh::NTP::replace(const int32_t family, const vector <string> & servers) no
  */
 void awh::NTP::network(const vector <string> & network) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы установки параметров сети соответствует
@@ -1046,7 +1051,7 @@ void awh::NTP::network(const vector <string> & network) noexcept {
  */
 void awh::NTP::network(const int32_t family, const vector <string> & network) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы установки параметров сети соответствует
@@ -1080,7 +1085,7 @@ void awh::NTP::network(const int32_t family, const vector <string> & network) no
  */
 time_t awh::NTP::request() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем получение UnixTimeStamp для IPv6
 	const time_t result = this->request(AF_INET6);
 	// Если результат не получен, выполняем запрос для IPv4
@@ -1097,7 +1102,7 @@ time_t awh::NTP::request() noexcept {
  */
 time_t awh::NTP::request(const int32_t family) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx);
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы NTP-клиента соответствует
@@ -1136,9 +1141,9 @@ awh::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept :
  _net(log), _dns(fmk, log), _ttl(0), _timeout(5),
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
-	this->_workerIPv4 = std::unique_ptr <worker_t> (new worker_t(AF_INET, this));
+	this->_workerIPv4 = unique_ptr <worker_t> (new worker_t(AF_INET, this));
 	// Выполняем создание воркера для IPv6
-	this->_workerIPv6 = std::unique_ptr <worker_t> (new worker_t(AF_INET6, this));
+	this->_workerIPv6 = unique_ptr <worker_t> (new worker_t(AF_INET6, this));
 }
 /**
  * ~NTP Деструктор

@@ -16,9 +16,14 @@
 #include <sys/reg.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Список уже сгенерированных регулярных выражений
  */
-static std::map <std::pair <int32_t, string>, awh::RegExp::exp_t> expressions;
+static map <pair <int32_t, string>, awh::RegExp::exp_t> expressions;
 
 /**
  * error Метод извлечения текста ошибки регулярного выражения
@@ -91,7 +96,7 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
 		 */
 		try {
 			// Создаём объект матчинга
-			std::unique_ptr <regmatch_t []> match(new regmatch_t [exp->_reg.re_nsub + 1]);
+			unique_ptr <regmatch_t []> match(new regmatch_t [exp->_reg.re_nsub + 1]);
 			// Выполняем разбор регулярного выражения
 			const int32_t error = pcre2_regexec(&exp->_reg, text, exp->_reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
 			// Если возникла ошибка
@@ -121,7 +126,7 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -162,9 +167,9 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t & exp) const noexcept {
+vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t & exp) const noexcept {
 	// Результат работы функции
-	vector <std::pair <size_t, size_t>> result;
+	vector <pair <size_t, size_t>> result;
 	// Если данные переданы верные
 	if((text != nullptr) && exp->_mode){
 		/**
@@ -172,7 +177,7 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 		 */
 		try {
 			// Создаём объект матчинга
-			std::unique_ptr <regmatch_t []> match(new regmatch_t [exp->_reg.re_nsub + 1]);
+			unique_ptr <regmatch_t []> match(new regmatch_t [exp->_reg.re_nsub + 1]);
 			// Выполняем разбор регулярного выражения
 			const int32_t error = pcre2_regexec(&exp->_reg, text, exp->_reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
 			// Если возникла ошибка
@@ -196,15 +201,15 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 					// Если результат получен
 					if(match[i].rm_eo > 0)
 						// Добавляем полученный результат в список результатов
-						result.at(i) = std::make_pair(static_cast <size_t> (match[i].rm_so), static_cast <size_t> (match[i].rm_eo - match[i].rm_so));
+						result.at(i) = make_pair(static_cast <size_t> (match[i].rm_so), static_cast <size_t> (match[i].rm_eo - match[i].rm_so));
 					// Добавляем пустое значение
-					else result.at(i) = std::make_pair(static_cast <size_t> (0), static_cast <size_t> (0));
+					else result.at(i) = make_pair(static_cast <size_t> (0), static_cast <size_t> (0));
 				}
 			}
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -231,13 +236,13 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
  * @param exp  объект регулярного выражения
  * @return     результат обработки регулярного выражения
  */
-vector <std::pair <size_t, size_t>> awh::RegExp::match(const string & text, const exp_t & exp) const noexcept {
+vector <pair <size_t, size_t>> awh::RegExp::match(const string & text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
 	if(!text.empty() && exp->_mode)
 		// Выполняем выполнение регулярного выражения
 		return this->match(text.c_str(), exp);
 	// Выводим результат
-	return vector <std::pair <size_t, size_t>> ();
+	return vector <pair <size_t, size_t>> ();
 }
 /**
  * build Метод сборки регулярного выражения
@@ -301,7 +306,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 				}
 			}
 			// Создаём ключ регулярного выражения
-			const auto & key = std::make_pair(option, pattern);
+			const auto & key = make_pair(option, pattern);
 			// Выполняем поиск уже ранее созданного регулярного выражения
 			auto i = expressions.find(key);
 			// Если регулярное выражение уже созданно
@@ -341,7 +346,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */

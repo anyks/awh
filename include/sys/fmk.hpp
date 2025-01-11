@@ -61,13 +61,14 @@
 	#endif
 #endif
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Framework Класс фреймворка
 	 */
@@ -132,19 +133,19 @@ namespace awh {
 			typedef class AWHSHARED_EXPORT Symbols {
 				private:
 					// Контейнер римских чисел
-					std::map <char, uint16_t> _romes;
+					map <char, uint16_t> _romes;
 					// Контейнер арабских чисел
-					std::map <char, uint8_t> _arabics;
+					map <char, uint8_t> _arabics;
 				private:
 					// Контейнер римских чисел для UTF-8
-					std::map <wchar_t, uint16_t> _wideRomes;
+					map <wchar_t, uint16_t> _wideRomes;
 					// Контейнер арабских чисел для UTF-8
-					std::map <wchar_t, uint8_t> _wideArabics;
+					map <wchar_t, uint8_t> _wideArabics;
 				private:
 					// Контейнер латинских символов
-					std::map <char, wchar_t> _letters;
+					map <char, wchar_t> _letters;
 					// Контейнер латинских символов для UTF-8
-					std::map <wchar_t, char> _wideLetters;
+					map <wchar_t, char> _wideLetters;
 				public:
 					/**
 					 * isRome Метод проверки соответствия римской цифре
@@ -261,20 +262,20 @@ namespace awh {
 			const symbols_t _symbols;
 		public:
 			/**
-			 * findInMap Шаблон метода поиска в контейнере std::map указанного значения
+			 * findInMap Шаблон метода поиска в контейнере map указанного значения
 			 * @tparam A тип контейнера
 			 * @tparam B тип искомого значения
 			 */
 			template <typename A, typename B>
 			/**
-			 * findInMap Метод поиска в контейнере std::map указанного значения
+			 * findInMap Метод поиска в контейнере map указанного значения
 			 * @param val значение которое необходимо найти
 			 * @param map контейнер в котором нужно произвести поиск
 			 * @return    итератор найденного элемента в контейнере
 			 */
 			typename A::const_iterator findInMap(const B & val, const A & map) const noexcept {
 				// Если нам необходимо выполнить поиск по значению строке
-				if(std::is_same <B, std::string>::value || std::is_same <B, std::wstring>::value){
+				if(is_same <B, string>::value || is_same <B, wstring>::value){
 					/**
 					 * Структура для проверки данных
 					 */
@@ -334,8 +335,8 @@ namespace awh {
 							 */
 							Check(const B & value, const Framework * fmk) noexcept : _value(value), _fmk(fmk) {}
 					} callback(val, this);
-					// Выполняем поиск искомого значения в контейнере std::map
-					return std::find_if_not(map.cbegin(), map.cend(), callback);
+					// Выполняем поиск искомого значения в контейнере map
+					return find_if_not(map.cbegin(), map.cend(), callback);
 				// Если нам необходимо выполнить поиск по статическому типу данных
 				} else {
 					/**
@@ -362,8 +363,8 @@ namespace awh {
 							 */
 							Check(const B & value) noexcept : _value(value) {}
 					};
-					// Выполняем поиск искомого значения в контейнере std::map
-					return std::find_if_not(map.cbegin(), map.cend(), Check(val));
+					// Выполняем поиск искомого значения в контейнере map
+					return find_if_not(map.cbegin(), map.cend(), Check(val));
 				}
 			}
 		public:
@@ -680,12 +681,12 @@ namespace awh {
 			 * domainZones Метод установки списка пользовательских зон
 			 * @param zones список доменных зон интернета
 			 */
-			void domainZones(const std::set <string> & zones) noexcept;
+			void domainZones(const set <string> & zones) noexcept;
 			/**
 			 * domainZones Метод извлечения списка пользовательских зон интернета
 			 * @return список доменных зон
 			 */
-			const std::set <string> & domainZones() const noexcept;
+			const set <string> & domainZones() const noexcept;
 		public:
 			/**
 			 * setLocale Метод установки системной локали
@@ -698,7 +699,7 @@ namespace awh {
 			 * @param text текст для извлечения url адресов
 			 * @return     список координат с url адресами
 			 */
-			std::map <size_t, size_t> urls(const string & text) const noexcept;
+			map <size_t, size_t> urls(const string & text) const noexcept;
 		public:
 			/**
 			 * time2abbr Метод перевода времени в аббревиатуру

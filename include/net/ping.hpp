@@ -68,13 +68,14 @@
 #include <net/dns.hpp>
 #include <net/socket.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Ping Класс пинга
 	 */
@@ -163,13 +164,13 @@ namespace awh {
 			socket_t _socket;
 		private:
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			recursive_mutex _mtx;
 		private:
 			// Выполняем инициализацию генератора
-			std::random_device _randev;
+			random_device _randev;
 		private:
 			// Статус работы PING-клиента
-			std::stack <status_t> _status;
+			stack <status_t> _status;
 		private:
 			// Сдвиг по времени для выполнения пинга
 			time_t _shifting;

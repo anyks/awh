@@ -23,13 +23,14 @@
 #include <sys/threadpool.hpp>
 #include <client/web/web.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * client клиентское пространство имён
 	 */
@@ -157,7 +158,7 @@ namespace awh {
 				// Данные фрагметрированного сообщения
 				vector <char> _fragmes;
 				// Полученные HTTP заголовки
-				std::unordered_multimap <string, string> _headers;
+				unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
@@ -216,7 +217,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param headers заголовки ответа сервера
 				 */
-				void headers(const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept;
+				void headers(const uint64_t bid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -346,12 +347,12 @@ namespace awh {
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @return список выбранных сабпротоколов
 				 */
-				const std::set <string> & subprotocols() const noexcept;
+				const set <string> & subprotocols() const noexcept;
 				/**
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const std::set <string> & subprotocols) noexcept;
+				void subprotocols(const set <string> & subprotocols) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений
@@ -378,7 +379,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * core Метод установки сетевого ядра
 				 * @param core объект сетевого ядра
@@ -395,7 +396,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * userAgent Метод установки User-Agent для HTTP-запроса

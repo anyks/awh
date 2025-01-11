@@ -28,13 +28,14 @@
 #include <sys/log.hpp>
 #include <sys/hash.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Authorization Класс работы с авторизацией
 	 */

@@ -16,6 +16,11 @@
 #include <scheme/ws.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * clear Метод очистки
  */
 void awh::server::scheme::WebSocket::clear() noexcept {
@@ -26,7 +31,7 @@ void awh::server::scheme::WebSocket::clear() noexcept {
 	// Очищаем доступный список доступных компрессоров
 	this->compressors.clear();
 	// Освобождаем выделенную память
-	std::map <uint64_t, std::unique_ptr <options_t>> ().swap(this->_options);
+	map <uint64_t, unique_ptr <options_t>> ().swap(this->_options);
 }
 /**
  * set Метод создания параметров активного клиента
@@ -36,7 +41,7 @@ void awh::server::scheme::WebSocket::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (this->_options.count(bid) < 1)){
 		// Создаём объект параметров активного клиента
-		auto ret = this->_options.emplace(bid, std::unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
+		auto ret = this->_options.emplace(bid, unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
 		// Устанавливаем список доступных компрессоров
 		ret.first->second->http.compressors(this->compressors);
 		// Устанавливаем контрольную точку
@@ -82,7 +87,7 @@ const awh::server::scheme::WebSocket::options_t * awh::server::scheme::WebSocket
  * get Метод извлечения списка параметров активных клиентов
  * @return список параметров активных клиентов
  */
-const std::map <uint64_t, std::unique_ptr <awh::server::scheme::WebSocket::options_t>> & awh::server::scheme::WebSocket::get() const noexcept {
+const map <uint64_t, unique_ptr <awh::server::scheme::WebSocket::options_t>> & awh::server::scheme::WebSocket::get() const noexcept {
 	// Выводим результат
 	return this->_options;
 }

@@ -38,13 +38,14 @@
 #include <sys/reg.hpp>
 #include <sys/log.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Net Класс для работы с сетями
 	 */
@@ -100,10 +101,10 @@ namespace awh {
 			 * LocalNet Структура локального адреса
 			 */
 			typedef struct LocalNet {
-				bool reserved;               // Адрес является зарезервированным
-				uint8_t prefix;              // Префикс сети
-				std::unique_ptr <Net> end;   // Конечный диапазон адреса
-				std::unique_ptr <Net> begin; // Начальный IP-адрес
+				bool reserved;          // Адрес является зарезервированным
+				uint8_t prefix;         // Префикс сети
+				unique_ptr <Net> end;   // Конечный диапазон адреса
+				unique_ptr <Net> begin; // Начальный IP-адрес
 				/**
 				 * LocalNet Конструктор
 				 * @param log объект для работы с логами
@@ -126,7 +127,7 @@ namespace awh {
 			vector <uint8_t> _buffer;
 		private:
 			// Список локальных адресов
-			std::multimap <type_t, localNet_t> _localsNet;
+			multimap <type_t, localNet_t> _localsNet;
 		private:
 			// Объект для работы с логами
 			const log_t * _log;
@@ -370,7 +371,7 @@ namespace awh {
 			 * Оператор вывода IP-адреса в качестве строки
 			 * @return IP-адрес в качестве строки
 			 */
-			operator std::string() const noexcept;
+			operator string() const noexcept;
 		public:
 			/**
 			 * Оператор [<] сравнения IP-адреса

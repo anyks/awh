@@ -18,6 +18,11 @@
 #include <sys/cmp.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * empty Метод проверки на пустоту контейнера
  * @return результат проверки
  */
@@ -42,13 +47,13 @@ void awh::cmp::Encoder::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Выполняем очистку очереди данных
 		this->_queue.clear();
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -87,7 +92,7 @@ void awh::cmp::Encoder::pop() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Если список записей не пустой
 		if(!this->_queue.empty())
 			// Выполняем удаление первой записи
@@ -95,7 +100,7 @@ void awh::cmp::Encoder::pop() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -124,7 +129,7 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard <mutex> lock(this->_mtx);
 			// Заголовоки блока данных
 			header_t header(this->_count++, size);
 			// Получаем размер заголовка
@@ -176,13 +181,13 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -198,7 +203,7 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the encoder");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the encoder");
 		/**
 		* Если режим отладки не включён
 		*/
@@ -218,19 +223,19 @@ void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Выполняем установку размера чанка
 		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -292,7 +297,7 @@ void awh::cmp::Decoder::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Выполняем удаление всех временных данных
 		this->_temp.clear();
 		// Выполняем очистку очереди данных
@@ -300,11 +305,11 @@ void awh::cmp::Decoder::clear() noexcept {
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Очищаем выделенную память для временных данных
-		std::map <uint32_t, std::unique_ptr <buffer_t>> ().swap(this->_temp);
+		map <uint32_t, unique_ptr <buffer_t>> ().swap(this->_temp);
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -343,7 +348,7 @@ void awh::cmp::Decoder::pop() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Если список записей не пустой
 		if(!this->_queue.empty())
 			// Выполняем удаление первой записи
@@ -351,7 +356,7 @@ void awh::cmp::Decoder::pop() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -380,7 +385,7 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard <mutex> lock(this->_mtx);
 			// Если данные в бинарном буфере существуют
 			if(!this->_buffer.empty()){
 				// Добавляем полученные данные в бинарный буфер
@@ -403,13 +408,13 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -425,7 +430,7 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
 		/**
 		* Если режим отладки не включён
 		*/
@@ -465,7 +470,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Data buffer has been corrupted");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Data buffer has been corrupted");
 					/**
 					* Если режим отладки не включён
 					*/
@@ -505,7 +510,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 							// Если мы получили одну из записей
 							else {
 								// Выполняем добавление записи во временный объект
-								auto ret = this->_temp.emplace(static_cast <uint32_t> (header.id), std::unique_ptr <buffer_t> (new buffer_t(this->_log)));
+								auto ret = this->_temp.emplace(static_cast <uint32_t> (header.id), unique_ptr <buffer_t> (new buffer_t(this->_log)));
 								// Выделяем достаточно данных для формирования объекта
 								ret.first->second->reserve(static_cast <size_t> (header.size));
 								// Если размер полезной нагрузки установлен
@@ -526,13 +531,13 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -545,13 +550,13 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -567,7 +572,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
 		/**
 		* Если режим отладки не включён
 		*/
@@ -589,19 +594,19 @@ void awh::cmp::Decoder::chunkSize(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Выполняем установку размера чанка
 		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/

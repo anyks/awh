@@ -34,14 +34,15 @@
 #include <auth/client.hpp>
 #include <auth/server.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * Http Класс для работы с REST
 	 */
@@ -145,9 +146,9 @@ namespace awh {
 			 * Compressor Структура параметров компрессора
 			 */
 			typedef struct Compressor {
-				compressor_t current;                    // Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
-				compressor_t selected;                   // Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
-				std::map <float, compressor_t> supports; // Список поддерживаемых компрессоров
+				compressor_t current;               // Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
+				compressor_t selected;              // Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
+				map <float, compressor_t> supports; // Список поддерживаемых компрессоров
 				/**
 				 * Compressor Конструктор
 				 */
@@ -220,13 +221,13 @@ namespace awh {
 			mutable string _userAgent;
 		private:
 			// Список HTTP-ответов
-			std::map <uint16_t, string> _responses;
+			map <uint16_t, string> _responses;
 		protected:
 			// Чёрный список заголовков
-			mutable std::unordered_set <string> _black;
+			mutable unordered_set <string> _black;
 		protected:
 			// Список отправляемых трейлеров
-			std::unordered_map <string, string> _trailers;
+			unordered_map <string, string> _trailers;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -303,7 +304,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    список протоколов
 			 */
-			std::set <web_t::proto_t> proto(const string & key) const noexcept;
+			set <web_t::proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
 			 * payload Метод чтения чанка полезной нагрузки
@@ -379,12 +380,12 @@ namespace awh {
 			 * headers Метод получения списка заголовков
 			 * @return список существующих заголовков
 			 */
-			const std::unordered_multimap <string, string> & headers() const noexcept;
+			const unordered_multimap <string, string> & headers() const noexcept;
 			/**
 			 * headers Метод установки списка заголовков
 			 * @param headers список заголовков для установки
 			 */
-			void headers(const std::unordered_multimap <string, string> & headers) noexcept;
+			void headers(const unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
 			 * header2 Метод добавления заголовка в формате HTTP/2
@@ -396,7 +397,7 @@ namespace awh {
 			 * headers2 Метод установки списка заголовков в формате HTTP/2
 			 * @param headers список заголовков для установки
 			 */
-			void headers2(const vector <std::pair <string, string>> & headers) noexcept;
+			void headers2(const vector <pair <string, string>> & headers) noexcept;
 		public:
 			/**
 			 * auth Метод проверки статуса авторизации
@@ -521,7 +522,7 @@ namespace awh {
 			 * trailers2 Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
 			 * @return буфер данных ответа в бинарном виде
 			 */
-			vector <std::pair <string, string>> trailers2() const noexcept;
+			vector <pair <string, string>> trailers2() const noexcept;
 		public:
 			/**
 			 * proxy Метод создания запроса для авторизации на прокси-сервере
@@ -534,7 +535,7 @@ namespace awh {
 			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			virtual vector <std::pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
+			virtual vector <pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
 		public:
 			/**
 			 * reject Метод создания отрицательного ответа
@@ -547,7 +548,7 @@ namespace awh {
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			virtual vector <std::pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
+			virtual vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
 			 * process Метод создания выполняемого процесса в бинарном виде
@@ -562,7 +563,7 @@ namespace awh {
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     буфер данных в бинарном виде
 			 */
-			virtual vector <std::pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
+			virtual vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
 			/**
 			 * callbacks Метод установки функций обратного вызова

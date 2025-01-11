@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2024
  */
 
-#ifndef AWH_GLOBAL_H
-#define AWH_GLOBAL_H
+#ifndef __AWH_GLOBAL__
+#define __AWH_GLOBAL__
 
 #if defined(_MSC_VER) || defined(WIN64) || defined(_WIN64) || defined(__WIN64__) || defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 	#define DECL_EXPORT __declspec(dllexport)
@@ -31,4 +31,4 @@
 	#define AWHSHARED_EXPORT
 #endif
 
-#endif // AWH_GLOBAL_H
+#endif // __AWH_GLOBAL__

@@ -22,13 +22,14 @@
 #include <client/web/ws2.hpp>
 #include <client/web/http1.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * client клиентское пространство имён
 	 */
@@ -95,12 +96,12 @@ namespace awh {
 				int16_t _threads;
 			private:
 				// Список активных маршрутов запросов
-				std::unordered_map <string, string> _route;
+				unordered_map <string, string> _route;
 			private:
 				// Список активных воркеров
-				std::map <int32_t, std::unique_ptr <worker_t>> _workers;
+				map <int32_t, unique_ptr <worker_t>> _workers;
 				// Список активых запросов
-				std::map <int32_t, std::unique_ptr <request_t>> _requests;
+				map <int32_t, unique_ptr <request_t>> _requests;
 			private:
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
@@ -147,7 +148,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::set <awh::http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * closedSignal Метод завершения работы потока
@@ -306,7 +307,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * send2 Метод HTTP/2 отправки сообщения на сервер
@@ -324,7 +325,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send2(const int32_t sid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента
@@ -357,12 +358,12 @@ namespace awh {
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @return список выбранных сабпротоколов
 				 */
-				const std::set <string> & subprotocols() const noexcept;
+				const set <string> & subprotocols() const noexcept;
 				/**
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const std::set <string> & subprotocols) noexcept;
+				void subprotocols(const set <string> & subprotocols) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений
@@ -389,7 +390,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * core Метод установки сетевого ядра
 				 * @param core объект сетевого ядра

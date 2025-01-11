@@ -13,7 +13,6 @@
 #include <core/cluster.hpp>
 
 // Подключаем пространство имён
-using namespace std;
 using namespace awh;
 
 /**

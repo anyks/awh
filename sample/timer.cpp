@@ -14,7 +14,6 @@
 #include <core/timer.hpp>
 
 // Подключаем пространство имён
-using namespace std;
 using namespace awh;
 
 /**

@@ -32,9 +32,6 @@
 #include <sys/events.hpp>
 #include <net/engine.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
@@ -63,6 +60,10 @@ namespace awh {
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Scheme Структура схемы сети
 	 */
@@ -127,8 +128,8 @@ namespace awh {
 			 * Buffer Структура буфера полезной нагрузки
 			 */
 			typedef struct Buffer {
-				size_t size;                    // Размер буфера
-				std::unique_ptr <char []> data; // Данные буфера
+				size_t size;               // Размер буфера
+				unique_ptr <char []> data; // Данные буфера
 				/**
 				 * Buffer Конструктор
 				 */
@@ -178,7 +179,7 @@ namespace awh {
 					engine_t::addr_t _addr;
 				private:
 					// Мютекс для блокировки потока
-					std::recursive_mutex _mtx;
+					recursive_mutex _mtx;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
@@ -253,7 +254,7 @@ namespace awh {
 						// Если функция обратного вызова передана
 						if((idw > 0) && (fn != nullptr)){
 							// Выполняем блокировку потока
-							const lock_guard <std::recursive_mutex> lock(this->_mtx);
+							const lock_guard <recursive_mutex> lock(this->_mtx);
 							// Выполняем установку функции обратного вызова
 							this->_callbacks.set <A> (idw, fn);
 						}
@@ -272,7 +273,7 @@ namespace awh {
 						// Если функция обратного вызова передана
 						if(!name.empty() && (fn != nullptr)){
 							// Выполняем блокировку потока
-							const lock_guard <std::recursive_mutex> lock(this->_mtx);
+							const lock_guard <recursive_mutex> lock(this->_mtx);
 							// Выполняем установку функции обратного вызова
 							this->_callbacks.set <A> (name, fn);
 						}
@@ -352,7 +353,7 @@ namespace awh {
 			engine_t::alive_t keepAlive;
 		protected:
 			// Список подключённых брокеров
-			std::map <uint64_t, std::unique_ptr <broker_t>> _brokers;
+			map <uint64_t, unique_ptr <broker_t>> _brokers;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;

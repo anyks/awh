@@ -43,13 +43,14 @@
  */
 #include <sys/log.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Queue Класс создания очереди
 	 */
@@ -67,10 +68,13 @@ namespace awh {
 			/**
 			 * Создаём тип данных инарного буфера
 			 */
-			typedef std::pair <const void *, size_t> buffer_t;
+			typedef pair <const void *, size_t> buffer_t;
 		private:
 			// Количество аллоцированных элементов
 			static constexpr uint16_t BATCH = 0x3E8;
+		private:
+			// Мютекс для блокировки потока
+			mutex _mtx;
 		private:
 			// Последний элемент в очереди
 			size_t _end;
@@ -85,9 +89,6 @@ namespace awh {
 		private:
 			// Размер всех добавленных данных
 			size_t _bytes;
-		private:
-			// Мютекс для блокировки потока
-			std::mutex _mtx;
 		private:
 			// Размеры добавленных данных
 			size_t * _sizes;

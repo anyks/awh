@@ -15,6 +15,11 @@
 #include <sys/ver.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * num Метод извлечения версии в виде числа
  * @return версия в виде числа
  */
@@ -49,12 +54,12 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 				// Добавляем разделитель
 				result.append(1, '.');
 			// Добавляем октет в версию
-			result.append(std::to_string(reinterpret_cast <const uint8_t *> (&this->_version)[i]));
+			result.append(to_string(reinterpret_cast <const uint8_t *> (&this->_version)[i]));
 		}
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -113,7 +118,7 @@ void awh::Version::set(const string & ver) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -142,7 +147,7 @@ awh::Version::operator uint32_t() const noexcept {
  * Оператор вывода версии в качестве строки
  * @return версия в качестве строки
  */
-awh::Version::operator std::string() const noexcept {
+awh::Version::operator string() const noexcept {
 	// Выводим данные версии в виде строки
 	return this->str();
 }

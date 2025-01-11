@@ -16,6 +16,11 @@
 #include <auth/core.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * digest Метод получения параметров Digest авторизации
  * @return параметры Digest авторизации
  */
@@ -130,13 +135,13 @@ string awh::Authorization::response(const string & method, const string & user, 
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(method, user, pass, static_cast <uint16_t> (digest.hash)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(method, user, pass, static_cast <uint16_t> (digest.hash)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/

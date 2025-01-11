@@ -16,6 +16,11 @@
 #include <sys/queue.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * realloc Метод увеличения памяти под записи
  */
 void awh::Queue::realloc() noexcept {
@@ -34,7 +39,7 @@ void awh::Queue::realloc() noexcept {
 				// Если очередь не пустая
 				else {
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard <mutex> lock(this->_mtx);
 					{
 						// Выделяем новую порцию данных
 						uint64_t * data = reinterpret_cast <uint64_t *> (::malloc(this->_size * sizeof(uint64_t)));
@@ -102,7 +107,7 @@ void awh::Queue::realloc() noexcept {
 			// Если нужно выделить новую порцию данных
 			} else {
 				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx);
+				const lock_guard <mutex> lock(this->_mtx);
 				// Устанавличаем новый размер записей
 				this->_size = (this->_end + this->_batch);
 				// Выделяем новую порцию данных	
@@ -132,7 +137,7 @@ void awh::Queue::realloc() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -159,7 +164,7 @@ void awh::Queue::clear() noexcept {
 		// Если данные есть в списке
 		if(this->_end > 0){
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard <mutex> lock(this->_mtx);
 			// Выполняем удаление всех добавленных данных в очередь
 			for(size_t i = this->_begin; i < this->_end; i++){
 				// Выполняем получение указателя на данные
@@ -205,7 +210,7 @@ void awh::Queue::clear() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -244,7 +249,7 @@ size_t awh::Queue::count() const noexcept {
 void awh::Queue::reserve(const size_t count) noexcept {
 	{
 		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
+		const lock_guard <mutex> lock(this->_mtx);
 		// Если размер батча увеличен
 		if(count > 0)
 			// Выполняем установку нового значения батча
@@ -271,7 +276,7 @@ void awh::Queue::pop(const pos_t pos) noexcept {
 				// Если нам есть чего удалять
 				if(this->_end > 0){
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard <mutex> lock(this->_mtx);
 					// Выполняем уменьшение общего размера данных
 					this->_bytes -= this->_sizes[this->_end - 1];
 					// Выполняем получение указателя на данные
@@ -287,7 +292,7 @@ void awh::Queue::pop(const pos_t pos) noexcept {
 				// Если нам есть еще куда смещать
 				if(this->_begin < this->_end){
 					// Выполняем блокировку потока
-					const lock_guard <std::mutex> lock(this->_mtx);
+					const lock_guard <mutex> lock(this->_mtx);
 					// Выполняем уменьшение общего размера данных
 					this->_bytes -= this->_sizes[this->_begin];
 					// Выполняем получение указателя на данные
@@ -302,13 +307,13 @@ void awh::Queue::pop(const pos_t pos) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (pos)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (pos)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -352,13 +357,13 @@ size_t awh::Queue::size(const pos_t pos) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (pos)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (pos)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -402,13 +407,13 @@ const void * awh::Queue::get(const pos_t pos) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (pos)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (pos)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -436,7 +441,7 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 			// Выполняем увеличения записей под данные
 			this->realloc();
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard <mutex> lock(this->_mtx);
 			// Выделяем память для добавления данных
 			uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
 			// Если память не выделенна
@@ -446,7 +451,7 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				* Если режим отладки не включён
 				*/
@@ -474,13 +479,13 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -506,7 +511,7 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 			// Выполняем увеличения записей под данные
 			this->realloc();
 			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			const lock_guard <mutex> lock(this->_mtx);
 			// Выделяем память для добавления данных
 			uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
 			// Если память не выделенна
@@ -516,7 +521,7 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffers.size(), size), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffers.size(), size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				* Если режим отладки не включён
 				*/
@@ -547,7 +552,7 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bytes, size), log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(bytes, size), log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -568,7 +573,7 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bytes, size), log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(bytes, size), log_t::flag_t::CRITICAL, "Sizes of the transferred data blocks do not match");
 					/**
 					* Если режим отладки не включён
 					*/
@@ -595,13 +600,13 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -650,7 +655,7 @@ awh::Queue::Queue(const log_t * log) noexcept :
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -691,7 +696,7 @@ awh::Queue::~Queue() noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */

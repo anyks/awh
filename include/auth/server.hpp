@@ -21,13 +21,14 @@
 #include <sys/fn.hpp>
 #include <auth/core.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */
@@ -114,7 +115,7 @@ namespace awh {
 				 * Оператор вывода строки авторизации
 				 * @return строка авторизации
 				 */
-				operator std::string() noexcept;
+				operator string() noexcept;
 			public:
 				/**
 				 * Auth Конструктор

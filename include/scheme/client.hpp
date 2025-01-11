@@ -22,13 +22,14 @@
 #include <http/client.hpp>
 #include <socks5/client.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * client клиентское пространство имён
 	 */

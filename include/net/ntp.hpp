@@ -76,10 +76,6 @@
 #include <net/dns.hpp>
 #include <net/socket.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
@@ -88,6 +84,11 @@ namespace awh {
 	 * Прототип класса NTP-клиента
 	 */
 	class NTP;
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * NTP Класс NTP-клиента
 	 */
@@ -283,21 +284,21 @@ namespace awh {
 			uint8_t _timeout;
 		private:
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			recursive_mutex _mtx;
 		private:
 			// Выполняем инициализацию генератора
-			std::random_device _randev;
+			random_device _randev;
 		private:
 			// Статус работы NTP-клиента
-			std::stack <status_t> _status;
+			stack <status_t> _status;
 		private:
 			// Список используемых адресов
-			std::unordered_set <string> _using;
+			unordered_set <string> _using;
 		private:
 			// Создаём воркер для IPv4
-			std::unique_ptr <worker_t> _workerIPv4;
+			unique_ptr <worker_t> _workerIPv4;
 			// Создаём воркер для IPv6
-			std::unique_ptr <worker_t> _workerIPv6;
+			unique_ptr <worker_t> _workerIPv6;
 		private:
 			// Адреса серверов имён NTP для IPv4
 			vector <server_t <1>> _serversIPv4;

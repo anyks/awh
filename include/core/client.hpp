@@ -22,13 +22,14 @@
 #include <core/timer.hpp>
 #include <scheme/client.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * client клиентское пространство имён
 	 */
@@ -53,12 +54,12 @@ namespace awh {
 				 * Mutex Структура основных мютексов
 				 */
 				typedef struct Mutex {
-					std::recursive_mutex close;   // Для закрытия подключения
-					std::recursive_mutex reset;   // Для сброса параметров таймаута
-					std::recursive_mutex proxy;   // Для работы с прокси-сервером
-					std::recursive_mutex connect; // Для выполнения подключения
-					std::recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
-					std::recursive_mutex timeout; // Для создания нового таймаута
+					recursive_mutex close;   // Для закрытия подключения
+					recursive_mutex reset;   // Для сброса параметров таймаута
+					recursive_mutex proxy;   // Для работы с прокси-сервером
+					recursive_mutex connect; // Для выполнения подключения
+					recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
+					recursive_mutex timeout; // Для создания нового таймаута
 				} mtx_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -68,9 +69,9 @@ namespace awh {
 				timer_t _timer;
 			private:
 				// Список таймаутов на получение данных
-				std::map <uint64_t, uint16_t> _receive;
+				map <uint64_t, uint16_t> _receive;
 				// Список активных таймаутов
-				std::map <uint16_t, uint16_t> _timeouts;
+				map <uint16_t, uint16_t> _timeouts;
 			private:
 				/**
 				 * connect Метод создания подключения к удаленному серверу

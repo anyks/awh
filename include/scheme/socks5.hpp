@@ -29,13 +29,14 @@
 #include <scheme/server.hpp>
 #include <socks5/server.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */
@@ -53,8 +54,8 @@ namespace awh {
 					 * Locker Структура локера
 					 */
 					typedef struct Locker {
-						bool mode;                // Флаг блокировки
-						std::recursive_mutex mtx; // Мютекс для блокировки потока
+						bool mode;           // Флаг блокировки
+						recursive_mutex mtx; // Мютекс для блокировки потока
 						/**
 						 * Locker Конструктор
 						 */
@@ -99,7 +100,7 @@ namespace awh {
 					} options_t;
 				private:
 					// Список параметров активных клиентов
-					std::map <uint64_t, std::unique_ptr <options_t>> _options;
+					map <uint64_t, unique_ptr <options_t>> _options;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;

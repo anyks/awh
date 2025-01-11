@@ -48,9 +48,6 @@
  */
 #include <sys/timeout.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
@@ -59,6 +56,10 @@ namespace awh {
 	 * Event Прототип класса события AWHEvent
 	 */
 	class Event;
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Base Класс базы событий
 	 */
@@ -93,13 +94,13 @@ namespace awh {
 			/**
 			 * Создаём тип функции обратного вызова
 			 */
-			typedef std::function <void (const SOCKET, const event_type_t)> callback_t;
+			typedef function <void (const SOCKET, const event_type_t)> callback_t;
 		private:
 			typedef struct Upstream {
 				// Файловые дескрипторы для чтения и записи
 				SOCKET read, write;
 				// Объект работы с пайпом
-				std::shared_ptr <pipe_t> pipe;
+				shared_ptr <pipe_t> pipe;
 				// Функция обратного вызова
 				function <void (const uint64_t)> callback;
 				/**
@@ -127,9 +128,9 @@ namespace awh {
 				// Функция обратного вызова
 				callback_t callback;
 				// Объект работы с пайпом
-				std::shared_ptr <pipe_t> pipe;
+				shared_ptr <pipe_t> pipe;
 				// Список соответствия типов событий режиму работы
-				std::map <event_type_t, event_mode_t> mode;
+				map <event_type_t, event_mode_t> mode;
 				/**
 				 * Item Конструктор
 				 */
@@ -165,7 +166,7 @@ namespace awh {
 				// Флаг инициализации WinSocksAPI
 				bool _winSockInit;
 				// Список активных файловых дескрипторов
-				std::vector <WSAPOLLFD> _fds;
+				vector <WSAPOLLFD> _fds;
 			/**
 			 * Если это Linux
 			 */
@@ -173,9 +174,9 @@ namespace awh {
 				// Идентификатор активного EPoll
 				int32_t _efd;
 				// Список активных изменений событий
-				std::vector <struct epoll_event> _change;
+				vector <struct epoll_event> _change;
 				// Список активных событий
-				std::vector <struct epoll_event> _events;
+				vector <struct epoll_event> _events;
 			/**
 			 * Если это FreeBSD или MacOS X
 			 */
@@ -183,9 +184,9 @@ namespace awh {
 				// Идентификатор активного kqueue
 				int32_t _kq;
 				// Список активных изменений событий
-				std::vector <struct kevent> _change;
+				vector <struct kevent> _change;
 				// Список активных событий
-				std::vector <struct kevent> _events;
+				vector <struct kevent> _events;
 			#endif
 		private:
 			// Объект работы с сокетами
@@ -195,12 +196,12 @@ namespace awh {
 			timeout_t _timeout;
 		private:
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			recursive_mutex _mtx;
 		private:
 			// Список отслеживаемых участников
-			std::map <SOCKET, item_t> _items;
+			map <SOCKET, item_t> _items;
 			// Спиоск активных верхнеуровневых потоков
-			std::map <uint64_t, upstream_t> _upstreams;
+			map <uint64_t, upstream_t> _upstreams;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -384,7 +385,7 @@ namespace awh {
 			time_t _delay;
 		private:
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			recursive_mutex _mtx;
 		private:
 			// Функция обратного вызова
 			base_t::callback_t _callback;

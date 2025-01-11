@@ -31,13 +31,14 @@
  */
 #include <net/socket.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * PIPE Класс передачи данных между процессами
 	 */
@@ -77,7 +78,7 @@ namespace awh {
 			socket_t _socket;
 		private:
 			// Выполняем инициализацию генератора
-			std::random_device _randev;
+			random_device _randev;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -100,7 +101,7 @@ namespace awh {
 			 * create Метод создания файловых дескрипторов
 			 * @return файловые дескрипторы для обмена данными
 			 */
-			std::array <SOCKET, 2> create() noexcept;
+			array <SOCKET, 2> create() noexcept;
 		public:
 			/**
 			 * read Метод чтения из файлового дескриптора в буфер данных

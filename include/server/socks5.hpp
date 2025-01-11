@@ -24,13 +24,14 @@
 #include <core/server.hpp>
 #include <scheme/socks5.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * server серверное пространство имён
 	 */
@@ -114,9 +115,9 @@ namespace awh {
 				size_t _brokerAvailableSize;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				std::map <uint64_t, std::unique_ptr <queue_t>> _payloads;
+				map <uint64_t, unique_ptr <queue_t>> _payloads;
 				// Список активных клиентов
-				std::map <uint64_t, std::unique_ptr <client::core_t>> _clients;
+				map <uint64_t, unique_ptr <client::core_t>> _clients;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;

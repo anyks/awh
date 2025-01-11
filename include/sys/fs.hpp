@@ -79,13 +79,14 @@
 	#include <strsafe.h>
 #endif
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * FS Класс модуля работы с файловой системой
 	 */
@@ -201,7 +202,7 @@ namespace awh {
 			 * @param actual флаг проверки актуальных файлов
 			 * @param before флаг определения первой точки расширения слева
 			 */
-			std::pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
+			pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
 		public:
 			/**
 			 * chmod Метод получения прав доступа к файлу или каталогу

@@ -116,24 +116,25 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * IfNet Класс работы с сетевыми интерфейсами
 	 */
 	typedef class AWHSHARED_EXPORT IfNet {
 		private:
 			// Список сетевых интерфейсов
-			std::unordered_map <string, string> _ifs;
+			unordered_map <string, string> _ifs;
 			// Список интернет-адресов
-			std::unordered_map <string, string> _ips;
+			unordered_map <string, string> _ips;
 			// Список интернет-адресов
-			std::unordered_map <string, string> _ips6;
+			unordered_map <string, string> _ips6;
 		private:
 			// Максимальная длина сетевого интерфейса
 			static constexpr uint16_t MAX_ADDRS = 32;
@@ -175,7 +176,7 @@ namespace awh {
 			 * Метод вывода списка MAC-адресов
 			 * @return список MAC-адресов
 			 */
-			const std::unordered_map <string, string> & hws() const noexcept;
+			const unordered_map <string, string> & hws() const noexcept;
 		public:
 			/**
 			 * name Метод запроса названия сетевого интерфейса

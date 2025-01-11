@@ -85,13 +85,14 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Socket Класс работы с сетевыми сокетами
 	 */

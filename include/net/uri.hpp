@@ -46,13 +46,14 @@
 #include <sys/log.hpp>
 #include <sys/hash.hpp>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * URI Класс dns ресолвера
 	 */
@@ -110,7 +111,7 @@ namespace awh {
 					// Путь URL-запроса
 					vector <string> path;
 					// Параметры URL-запроса
-					vector <std::pair <string, string>> params;
+					vector <pair <string, string>> params;
 				public:
 					// Функция выполняемая при генерации URL адреса
 					function <string (const URL *, const URI *)> callback;
@@ -266,13 +267,13 @@ namespace awh {
 			 * @param uri строка URI для сплита
 			 * @return    список полученных частей URI
 			 */
-			std::map <flag_t, string> split(const string & uri) const noexcept;
+			map <flag_t, string> split(const string & uri) const noexcept;
 			/**
 			 * splitParams Метод выполнения сплита параметров URI
 			 * @param uri строка URI для сплита
 			 * @return    параметры полученные при сплите
 			 */
-			vector <std::pair <string, string>> splitParams(const string & uri) const noexcept;
+			vector <pair <string, string>> splitParams(const string & uri) const noexcept;
 			/**
 			 * splitPath Метод выполнения сплита пути
 			 * @param path  путь для выполнения сплита
@@ -286,7 +287,7 @@ namespace awh {
 			 * @param uri параметры URI для сборки
 			 * @return    строка полученная при сборке параметров URI
 			 */
-			string joinParams(const vector <std::pair <string, string>> & uri) const noexcept;
+			string joinParams(const vector <pair <string, string>> & uri) const noexcept;
 			/**
 			 * joinPath Метод сборки пути запроса
 			 * @param path  список параметров пути запроса

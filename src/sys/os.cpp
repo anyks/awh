@@ -62,6 +62,11 @@
 #include <sys/os.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * boost Метод применение сетевой оптимизации операционной системы
  * @return результат работы
  */
@@ -491,7 +496,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			// Если результат получен
 			if(!result.empty()){
 				// Очередь собранных данных
-				std::queue <std::pair <string, bool>> data;
+				queue <pair <string, bool>> data;
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
@@ -499,9 +504,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если запись является числом
 						if(data.back().second){
 							// Выполняем создание блока данных
-							std::pair <string, bool> record = std::make_pair("", true);
+							pair <string, bool> record = make_pair("", true);
 							// Выполняем добавление записи в очередь
-							data.push(std::move(record));
+							data.push(::move(record));
 						// Если запись является строкой, добавляем полученный символ в запись
 						} else data.back().first.append(1, ' ');
 					// Если символ является числом
@@ -512,9 +517,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
-							std::pair <string, bool> record = std::make_pair(string(1, item), true);
+							pair <string, bool> record = make_pair(string(1, item), true);
 							// Выполняем добавление записи в очередь
-							data.push(std::move(record));
+							data.push(::move(record));
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
 						} else data.back().first.append(1, item);
 					// Если символ является простым символом		  
@@ -522,9 +527,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
-							std::pair <string, bool> record = std::make_pair(string(1, item), false);
+							pair <string, bool> record = make_pair(string(1, item), false);
 							// Выполняем добавление записи в очередь
-							data.push(std::move(record));
+							data.push(::move(record));
 						// Если данные в очереди уже есть
 						} else {
 							// Помечаем что запись не является числом
@@ -557,7 +562,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							/**
 							 * Если возникает ошибка
 							 */
-							} catch(const std::exception &) {
+							} catch(const exception &) {
 								// Выполняем получение числа
 								const uint64_t value1 = 0;
 								// Пытаемся уменьшить число

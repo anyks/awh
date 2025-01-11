@@ -35,13 +35,14 @@
 #include <core/core.hpp>
 #include <scheme/core.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Node Класс рабочей ноды сетевого ядра
 	 */
@@ -124,9 +125,9 @@ namespace awh {
 			 */
 			typedef struct Mutex {
 				// Для работы с параметрами модуля
-				std::recursive_mutex main;
+				recursive_mutex main;
 				// Для отправки сообщений
-				std::recursive_mutex send;
+				recursive_mutex send;
 			} mtx_t;
 			/**
 			 * Settings Структура текущих параметров сети
@@ -183,15 +184,15 @@ namespace awh {
 			size_t _brokerAvailableSize;
 		protected:
 			// Список занятых процессов брокера
-			std::set <uint64_t> _busy;
+			set <uint64_t> _busy;
 			// Список свободной памяти хранения полезной нагрузки
-			std::map <uint64_t, size_t> _available;
+			map <uint64_t, size_t> _available;
 			// Список активных схем сети
-			std::map <uint16_t, const scheme_t *> _schemes;
-			// Список брокеров подключения
-			std::map <uint64_t, const scheme_t::broker_t *> _brokers;
+			map <uint16_t, const scheme_t *> _schemes;
 			// Буферы отправляемой полезной нагрузки
-			std::map <uint64_t, std::unique_ptr <buffer_t>> _payloads;
+			map <uint64_t, unique_ptr <buffer_t>> _payloads;
+			// Список брокеров подключения
+			map <uint64_t, const scheme_t::broker_t *> _brokers;
 		protected:
 			// Объект DNS-резолвера
 			const dns_t * _dns;

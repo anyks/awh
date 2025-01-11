@@ -46,18 +46,18 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/cmp.hpp>
-#include <net/socket.hpp>
 #include <sys/events.hpp>
-
+#include <net/socket.hpp>
 #include <core/core.hpp>
-
-// Подписываемся на стандартное пространство имён
-using namespace std;
 
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
 	/**
 	 * Cluster Класс работы с кластером
 	 */
@@ -108,7 +108,7 @@ namespace awh {
 					uint8_t _buffer[4096];
 				private:
 					// Список объектов работы с протоколом кластера
-					std::map <pid_t, std::unique_ptr <cmp::decoder_t>> _cmp;
+					map <pid_t, unique_ptr <cmp::decoder_t>> _cmp;
 				private:
 					// Объект для работы с логами
 					const log_t * _log;
@@ -205,13 +205,13 @@ namespace awh {
 			#endif
 		private:
 			// Список активных дочерних процессов
-			std::map <pid_t, uint16_t> _pids;
+			map <pid_t, uint16_t> _pids;
 			// Список активных воркеров
-			std::map <uint16_t, std::unique_ptr <worker_t>> _workers;
+			map <uint16_t, unique_ptr <worker_t>> _workers;
 			// Список объектов работы с протоколом кластера
-			std::map <uint16_t, std::unique_ptr <cmp::encoder_t>> _cmp;
+			map <uint16_t, unique_ptr <cmp::encoder_t>> _cmp;
 			// Список дочерних брокеров
-			std::map <uint16_t, std::vector <std::unique_ptr <broker_t>>> _brokers;
+			map <uint16_t, vector <unique_ptr <broker_t>>> _brokers;
 		private:
 			// Объект сетевого ядра
 			core_t * _core;
@@ -278,7 +278,7 @@ namespace awh {
 			 * @param wid идентификатор воркера
 			 * @return    список дочерних процессов
 			 */
-			std::set <pid_t> pids(const uint16_t wid) const noexcept;
+			set <pid_t> pids(const uint16_t wid) const noexcept;
 		public:
 			/**
 			 * send Метод отправки сообщения родительскому процессу

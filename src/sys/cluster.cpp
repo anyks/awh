@@ -16,6 +16,11 @@
 #include <sys/cluster.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Если операционной системой не является Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -395,13 +400,13 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, fd), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, fd), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -437,7 +442,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 				// Если список брокеров ещё пустой
 				if(j != this->_brokers.end()){
 					// Создаём объект брокера
-					std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+					unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 					// Выполняем подписку на основной канал передачи данных
 					if(::pipe(broker->mfds) != 0){
 						// Выводим в лог сообщение
@@ -457,7 +462,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						::exit(EXIT_FAILURE);
 					}
 					// Выполняем добавление брокера в список брокеров
-					j->second.push_back(std::move(broker));
+					j->second.push_back(::move(broker));
 				}
 				// Устанавливаем идентификатор процесса
 				pid_t pid = -1;
@@ -502,7 +507,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// Устанавливаем сокет для чтения
 								broker->ev = broker->cfds[0];
 								// Устанавливаем событие на чтение данных от основного процесса
-								broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
+								broker->ev = bind(&worker_t::message, i->second.get(), _1, _2);
 								// Запускаем чтение данных с основного процесса
 								broker->ev.start();
 								// Выполняем активацию работы события чтения данных с сокета
@@ -510,9 +515,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// выполняем активацию работы события закрытия подключения
 								broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 								// Создаём новый объект протокола передачи данных
-								this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
+								this->_cmp.emplace(wid, unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 								// Создаём новый объект протокола получения данных
-								i->second->_cmp.emplace(this->_pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+								i->second->_cmp.emplace(this->_pid, unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("process"))
 									// Выполняем функцию обратного вызова
@@ -551,7 +556,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						// Устанавливаем сокет для чтения
 						broker->ev = broker->mfds[0];
 						// Устанавливаем событие на чтение данных от дочернего процесса
-						broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
+						broker->ev = bind(&worker_t::message, i->second.get(), _1, _2);
 						// Выполняем запуск работы чтения данных с дочерних процессов
 						broker->ev.start();
 						// Выполняем активацию работы чтения данных с дочерних процессов
@@ -559,7 +564,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						// выполняем активацию работы события закрытия подключения
 						broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						// Создаём новый объект протокола получения данных
-						i->second->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+						i->second->_cmp.emplace(pid, unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("rebase") && (opid > 0))
 							// Выполняем функцию обратного вызова
@@ -570,13 +575,13 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, pid), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, pid), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -618,14 +623,14 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 						// Если список брокеров еще не инициализирован
 						if(j == this->_brokers.end()){
 							// Выполняем инициализацию списка брокеров
-							this->_brokers.emplace(i->first, std::vector <std::unique_ptr <broker_t>> ());
+							this->_brokers.emplace(i->first, vector <unique_ptr <broker_t>> ());
 							// Выполняем поиск брокера
 							j = this->_brokers.find(i->first);
 						}
 						// Выполняем создание указанное количество брокеров
 						for(size_t index = 0; index < i->second->_count; index++){
 							// Создаём объект брокера
-							std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+							unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 							// Выполняем подписку на основной канал передачи данных
 							if(::pipe(broker->mfds) != 0){
 								// Выводим в лог сообщение
@@ -645,13 +650,13 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 								::exit(EXIT_FAILURE);
 							}
 							// Выполняем добавление брокера в список брокеров
-							j->second.push_back(std::move(broker));
+							j->second.push_back(::move(broker));
 						}
 					}
 					// Если процесс завершил свою работу
 					if(j->second.at(index)->end){
 						// Создаём объект брокера
-						std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+						unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 						// Выполняем подписку на основной канал передачи данных
 						if(::pipe(broker->mfds) != 0){
 							// Выводим в лог сообщение
@@ -679,7 +684,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							::exit(EXIT_FAILURE);
 						}
 						// Устанавливаем нового брокера
-						j->second.at(index) = std::move(broker);
+						j->second.at(index) = ::move(broker);
 					}
 					// Устанавливаем идентификатор процесса
 					pid_t pid = -1;
@@ -736,7 +741,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Устанавливаем сокет для чтения
 									broker->ev = broker->cfds[0];
 									// Устанавливаем событие на чтение данных от основного процесса
-									broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
+									broker->ev = bind(&worker_t::message, i->second.get(), _1, _2);
 									// Запускаем чтение данных с основного процесса
 									broker->ev.start();
 									// Выполняем активацию работы события чтения данных с сокета
@@ -744,9 +749,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// выполняем активацию работы события закрытия подключения
 									broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 									// Создаём новый объект протокола передачи данных
-									this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
+									this->_cmp.emplace(wid, unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 									// Создаём новый объект протокола получения данных
-									i->second->_cmp.emplace(this->_pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+									i->second->_cmp.emplace(this->_pid, unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
 									// Если функция обратного вызова установлена
 									if(this->_callbacks.is("process"))
 										// Выполняем функцию обратного вызова
@@ -785,13 +790,13 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							// Устанавливаем сокет для чтения
 							broker->ev = broker->mfds[0];
 							// Устанавливаем событие на чтение данных от дочернего процесса
-							broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
+							broker->ev = bind(&worker_t::message, i->second.get(), _1, _2);
 							// Выполняем запуск работы чтения данных с дочерних процессов
 							broker->ev.start();
 							// Выполняем создание новых процессов
 							this->create(i->first, index + 1);
 							// Создаём новый объект протокола получения данных
-							i->second->_cmp.emplace(pid, std::unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+							i->second->_cmp.emplace(pid, unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
 						}
 					}
 				// Если все процессы удачно созданы
@@ -808,7 +813,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						}
 						// Создаём новый объект протокола передачи данных
-						this->_cmp.emplace(wid, std::unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
+						this->_cmp.emplace(wid, unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("process"))
 							// Выполняем функцию обратного вызова
@@ -819,13 +824,13 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::bad_alloc &) {
+		} catch(const bad_alloc &) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, index), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, index), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -866,9 +871,9 @@ bool awh::Cluster::working(const uint16_t wid) const noexcept {
  * @param wid идентификатор воркера
  * @return    список дочерних процессов
  */
-std::set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
+set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Результат работы функции
-	std::set <pid_t> result;
+	set <pid_t> result;
 	// Выполняем поиск брокеров
 	auto i = this->_brokers.find(wid);
 	// Если брокер найден
@@ -1073,14 +1078,14 @@ void awh::Cluster::clear() noexcept {
 		// Выполняем очистку списка брокеров
 		this->_brokers.clear();
 		// Выполняем освобождение выделенной памяти брокеров подключения
-		std::map <uint16_t, std::vector <std::unique_ptr <broker_t>>> ().swap(this->_brokers);
+		map <uint16_t, vector <unique_ptr <broker_t>>> ().swap(this->_brokers);
 	}
 	// Выполняем очистку протокола передачи данных
 	this->_cmp.clear();
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
 	// Выполняем освобождение выделенной памяти
-	std::map <uint16_t, std::unique_ptr <worker_t>> ().swap(this->_workers);
+	map <uint16_t, unique_ptr <worker_t>> ().swap(this->_workers);
 }
 /**
  * close Метод закрытия всех подключений
@@ -1350,7 +1355,7 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 					::close(broker->mfds[0]);
 					::close(broker->cfds[1]);
 					// Выполняем удаление указанного брокера
-					i->second.erase(std::next(i->second.begin(), j->second));
+					i->second.erase(next(i->second.begin(), j->second));
 					// Выполняем удаление процесса из списка
 					this->_pids.erase(j);
 					// Выполняем убийство процесса
@@ -1402,7 +1407,7 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 		// Если количество процессов не передано
 		if(count == 0)
 			// Устанавливаем максимальное количество ядер доступных в системе
-			i->second->_count = (std::thread::hardware_concurrency() / 2);
+			i->second->_count = (thread::hardware_concurrency() / 2);
 		// Устанавливаем максимальное количество процессов
 		else i->second->_count = count;
 		// Если количество процессов не установлено
@@ -1426,19 +1431,19 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 		// Если воркер не найден
 		if(i == this->_workers.end())
 			// Добавляем воркер в список воркеров
-			this->_workers.emplace(wid, std::unique_ptr <worker_t> (new worker_t(wid, this, this->_log)));
+			this->_workers.emplace(wid, unique_ptr <worker_t> (new worker_t(wid, this, this->_log)));
 		// Выполняем установку максимально-возможного количества процессов
 		this->count(wid, count);
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::bad_alloc &) {
+	} catch(const bad_alloc &) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, count), log_t::flag_t::CRITICAL, "Memory allocation error");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, count), log_t::flag_t::CRITICAL, "Memory allocation error");
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1522,7 +1527,7 @@ awh::Cluster::~Cluster() noexcept {
 	// Если активные брокеры присутствуют в кластере
 	if(!this->_brokers.empty()){
 		// Список активных брокеров
-		std::vector <uint16_t> brokers;
+		vector <uint16_t> brokers;
 		// Выполняем перебор всех активных брокеров
 		for(auto & item : this->_brokers)
 			// Выполняем добавление идентификатора брокера в список

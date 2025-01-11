@@ -16,6 +16,11 @@
 #include <net/net.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * initLocalNet Метод инициализации списка локальных адресов
  */
 void awh::Net::initLocalNet() noexcept {
@@ -35,7 +40,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -44,7 +49,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("::1");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -55,7 +60,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("2001::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -64,7 +69,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("2001:db8::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -75,7 +80,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("64:ff9b::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -86,7 +91,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("2002::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -97,7 +102,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес конца диапазона
 				localNet.end->parse("febf::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -108,7 +113,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес конца диапазона
 				localNet.end->parse("feff::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -117,7 +122,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("fc00::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -128,7 +133,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("ff00::");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -139,7 +144,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("0.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -150,7 +155,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("0.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -161,7 +166,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("100.64.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -172,7 +177,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("169.254.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -183,7 +188,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("224.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -194,7 +199,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("224.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -205,7 +210,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("224.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -216,7 +221,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("239.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -227,7 +232,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("240.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -238,7 +243,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("255.255.255.255");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -247,7 +252,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("10.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -256,7 +261,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("127.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -265,7 +270,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("172.16.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -274,7 +279,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("192.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -283,7 +288,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("192.0.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -292,7 +297,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("192.0.0.170");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -301,7 +306,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("192.0.0.171");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -310,7 +315,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("192.0.2.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -319,7 +324,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("192.88.99.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -328,7 +333,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("192.88.99.1");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -337,7 +342,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("192.168.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -346,7 +351,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("198.51.100.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -355,7 +360,7 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("198.18.0.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
 				localNet_t localNet(this->_log);
@@ -364,13 +369,13 @@ void awh::Net::initLocalNet() noexcept {
 				// Устанавливаем IP-адрес
 				localNet.begin->parse("203.0.113.0");
 				// Добавляем адрес в список локальных адресов
-				this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
+				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}
 		}
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -401,7 +406,7 @@ int64_t awh::Net::atoi(const string & value) const noexcept {
 		 */
 		try {
 			// Создаём поток для конвертации
-			std::stringstream stream;
+			stringstream stream;
 			// Записываем число в поток
 			stream << hex << value;
 			// Получаем результат
@@ -409,13 +414,13 @@ int64_t awh::Net::atoi(const string & value) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -467,13 +472,13 @@ string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(value, radix), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value, radix), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -506,13 +511,13 @@ string & awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(num, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(num, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -558,13 +563,13 @@ vector <string> & awh::Net::split(const string & str, const string & delim, vect
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -604,13 +609,13 @@ vector <string> & awh::Net::split(const string & str, const string & delim, vect
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str, delim), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str, delim), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -684,13 +689,13 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -721,7 +726,7 @@ uint64_t awh::Net::mac() const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -760,13 +765,13 @@ void awh::Net::mac(const uint64_t addr) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -795,7 +800,7 @@ uint32_t awh::Net::v4() const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -834,13 +839,13 @@ void awh::Net::v4(const uint32_t addr) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -869,7 +874,7 @@ array <uint64_t, 2> awh::Net::v6() const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -908,13 +913,13 @@ void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr.front(), addr.back()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr.front(), addr.back()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -974,7 +979,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 									// Получаем нужное нам значение октета
 									::memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
 									// Переводим октет в бинарный вид
-									std::bitset <8> bits(oct);
+									bitset <8> bits(oct);
 									// Зануляем все лишние элементы
 									for(uint8_t i = (8 - (prefix % 8)); i < 8; i++)
 										// Зануляем все лишние биты
@@ -998,7 +1003,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 									// Получаем нужное нам значение октета
 									::memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
 									// Переводим октет в бинарный вид
-									std::bitset <8> bits(oct);
+									bitset <8> bits(oct);
 									// Зануляем все лишние элементы
 									for(uint8_t i = 0; i < (8 - (prefix % 8)); i++)
 										// Зануляем все лишние биты
@@ -1033,7 +1038,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 									// Получаем нужное нам значение хексета
 									::memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
 									// Переводим хексет в бинарный вид
-									std::bitset <16> bits(hex);
+									bitset <16> bits(hex);
 									// Зануляем все лишние элементы
 									for(uint8_t i = (16 - (prefix % 16)); i < 16; i++)
 										// Зануляем все лишние биты
@@ -1057,7 +1062,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 									// Получаем нужное нам значение хексета
 									::memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
 									// Переводим хексет в бинарный вид
-									std::bitset <16> bits(hex);
+									bitset <16> bits(hex);
 									// Зануляем все лишние элементы
 									for(uint8_t i = 0; i < (16 - (prefix % 16)); i++)
 										// Зануляем все лишние биты
@@ -1077,13 +1082,13 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(prefix, "addr"), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(prefix, "addr"), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1113,7 +1118,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 			// Выполняем парсинг маски
 			if(net.parse(mask) && (this->_type == net.type())){
 				// Бинарный контейнер
-				std::bitset <8> bits;
+				bitset <8> bits;
 				// Определяем тип IP-адреса
 				switch(static_cast <uint8_t> (this->_type)){
 					// Если IP-адрес определён как IPv4
@@ -1145,13 +1150,13 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(mask), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(mask), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1212,13 +1217,13 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(prefix), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(prefix), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1303,13 +1308,13 @@ bool awh::Net::mapping(const string & network) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(network), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(network), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1344,7 +1349,7 @@ bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1437,7 +1442,7 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) c
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1527,13 +1532,13 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(begin, end, prefix), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(begin, end, prefix), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1622,13 +1627,13 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(network, prefix, "addr"), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(network, prefix, "addr"), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1733,7 +1738,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1774,7 +1779,7 @@ string awh::Net::arpa() const noexcept {
 						// Добавляем разделитель
 						result.append(1, '.');
 					// Добавляем октет в версию
-					result.append(std::to_string(this->_buffer[i]));
+					result.append(to_string(this->_buffer[i]));
 				}
 				// Добавляем запись ARPA
 				result.append(".in-addr.arpa");
@@ -1808,7 +1813,7 @@ string awh::Net::arpa() const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1866,13 +1871,13 @@ bool awh::Net::arpa(const string & addr) noexcept {
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const std::exception & error) {
+			} catch(const exception & error) {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -1937,13 +1942,13 @@ bool awh::Net::arpa(const string & addr) noexcept {
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const std::exception & error) {
+			} catch(const exception & error) {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -2128,13 +2133,13 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2192,7 +2197,7 @@ string awh::Net::get(const format_t format) const noexcept {
 							// Добавляем октет в версию
 							result.append(
 								(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-								this->zerro(std::to_string(this->_buffer[i])) : std::to_string(this->_buffer[i])
+								this->zerro(to_string(this->_buffer[i])) : to_string(this->_buffer[i])
 							);
 						}
 					// Если формат адреса принадлежит к IPv6
@@ -2300,7 +2305,7 @@ string awh::Net::get(const format_t format) const noexcept {
 							// Добавляем октет в версию
 							result.append(
 								(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-								this->zerro(std::to_string(this->_buffer[count + i])) : std::to_string(this->_buffer[count + i])
+								this->zerro(to_string(this->_buffer[count + i])) : to_string(this->_buffer[count + i])
 							);
 						}
 					}
@@ -2309,13 +2314,13 @@ string awh::Net::get(const format_t format) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2332,7 +2337,7 @@ string awh::Net::get(const format_t format) const noexcept {
  * Оператор вывода IP-адреса в качестве строки
  * @return IP-адрес в качестве строки
  */
-awh::Net::operator std::string() const noexcept {
+awh::Net::operator string() const noexcept {
 	// Выводим данные IP-адреса в виде строки
 	return this->get();
 }
@@ -2370,7 +2375,7 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2423,7 +2428,7 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2476,7 +2481,7 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2529,7 +2534,7 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2580,7 +2585,7 @@ bool awh::Net::operator != (const net_t & addr) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2632,7 +2637,7 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2677,7 +2682,7 @@ awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */

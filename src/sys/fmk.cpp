@@ -16,6 +16,11 @@
 #include <sys/fmk.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * Выполняем работу не для OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -44,7 +49,7 @@
 					// Если инициализировать конвертер не вышло
 					if(convert == (iconv_t)(-1))
 						// Выполняем генерацию ошибки
-						throw std::logic_error("Unable to create convertion descriptor");
+						throw logic_error("Unable to create convertion descriptor");
 					// Получаем размер входящей строки
 					size_t size = data.size();
 					// Выполняем получение указатель на входящую строку
@@ -71,14 +76,14 @@
 						result.append(" to ");
 						result.append(to);
 						// Выполняем генерацию ошибки
-						throw std::logic_error(result);
+						throw logic_error(result);
 					}
 					// Выполняем коррекцию полученной длины строки
 					result.resize(result.size() - length);
 				/**
 				 * Если возникает ошибка
 				 */
-				} catch(const std::exception & error) {
+				} catch(const exception & error) {
 					/**
 					 * Если включён режим отладки
 					 */
@@ -136,7 +141,7 @@ enable_if_t <(is_floating_point <T>::value), size_t> decimalPlaces(T number) noe
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Выполняем сброс количества знаков после запятой
 		count = 0;
 		/**
@@ -191,7 +196,7 @@ T & split(const string & str, const string & delim, T & container) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -247,7 +252,7 @@ T & split(const string & str, const string & delim, T & container) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -300,7 +305,7 @@ T & split(const wstring & str, const wstring & delim, T & container) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -356,7 +361,7 @@ T & split(const wstring & str, const wstring & delim, T & container) noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -605,7 +610,7 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT):
 					// Выполняем проверку символа
-					result = (std::isprint(letter) != 0);
+					result = (isprint(letter) != 0);
 				break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER):
@@ -641,7 +646,7 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -680,7 +685,7 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT):
 					// Выполняем проверку символа
-					result = (std::iswprint(letter) != 0);
+					result = (iswprint(letter) != 0);
 				break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER):
@@ -716,7 +721,7 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -766,7 +771,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					// Выполняем перебор всех символов строки
 					for(char letter : text){
 						// Выполняем проверку символа
-						result = (std::isprint(letter) != 0);
+						result = (isprint(letter) != 0);
 						// Если символ не печатаемый
 						if(!result)
 							// Выходим из цикла
@@ -1029,7 +1034,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1079,7 +1084,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					// Выполняем перебор всех символов строки
 					for(wchar_t letter : text){
 						// Выполняем проверку символа
-						result = (std::iswprint(letter) != 0);
+						result = (iswprint(letter) != 0);
 						// Если символ не печатаемый
 						if(!result)
 							// Выходим из цикла
@@ -1342,7 +1347,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1369,7 +1374,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
  */
 bool awh::Framework::compare(const string & first, const string & second) const noexcept {
 	// Выполняем перебор обоих строк
-	return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
+	return ((first.size() == second.size()) ? equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
 		// Выполняем сравнение каждого символа
 		return (::tolower(a) == ::tolower(b));
     }) : false);
@@ -1382,7 +1387,7 @@ bool awh::Framework::compare(const string & first, const string & second) const 
  */
 bool awh::Framework::compare(const wstring & first, const wstring & second) const noexcept {
 	// Выполняем перебор обоих строк
-	return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
+	return ((first.size() == second.size()) ? equal(first.begin(), first.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
 		// Выполняем сравнение каждого символа
 		return (::towlower(a) == ::towlower(b));
     }) : false);
@@ -1477,7 +1482,7 @@ time_t awh::Framework::timestamp(const stamp_t stamp) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1623,7 +1628,7 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1756,7 +1761,7 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1843,7 +1848,7 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1984,7 +1989,7 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::range_error & error) {
+	} catch(const range_error & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2001,7 +2006,7 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2051,7 +2056,7 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::range_error & error) {
+	} catch(const range_error & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2068,7 +2073,7 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2125,7 +2130,7 @@ string awh::Framework::itoa(const int64_t value, const uint8_t radix) const noex
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Сбрасываем полученный результат
 			result.clear();
 			/**
@@ -2189,7 +2194,7 @@ int64_t awh::Framework::atoi(const string & value, const uint8_t radix) const no
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Сбрасываем полученный результат
 			result = 0;
 			/**
@@ -2226,7 +2231,7 @@ string awh::Framework::noexp(const double number, const double step) const noexc
 		 */
 		try {
 			// Создаём поток для конвертации числа
-			std::stringstream stream;
+			stringstream stream;
 			// Записываем число в поток
 			stream << fixed << ::setprecision(::abs(::log10(step))) << number;
 			// Получаем из потока строку
@@ -2247,7 +2252,7 @@ string awh::Framework::noexp(const double number, const double step) const noexc
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			// Сбрасываем полученный результат
 			result.clear();
 			/**
@@ -2282,7 +2287,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 	 */
 	try {
 		// Создаём поток для конвертации числа
-		std::stringstream stream;
+		stringstream stream;
 		// Получаем количество знаков после запятой
 		const size_t count = decimalPlaces <double> (number);
 		// Записываем число в поток
@@ -2329,7 +2334,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		// Сбрасываем полученный результат
 		result.clear();
 		/**
@@ -2365,7 +2370,7 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2401,7 +2406,7 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2540,7 +2545,7 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2680,7 +2685,7 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2732,7 +2737,7 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2772,7 +2777,7 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2812,7 +2817,7 @@ wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2849,7 +2854,7 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2894,7 +2899,7 @@ size_t awh::Framework::countLetter(const wstring & word, const wchar_t letter) c
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2977,7 +2982,7 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3036,7 +3041,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const std::exception & error) {
+			} catch(const exception & error) {
 				/**
 				 * Если включён режим отладки
 				 */
@@ -3071,7 +3076,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3121,7 +3126,7 @@ bool awh::Framework::exists(const string & word, const string & text) const noex
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3171,7 +3176,7 @@ bool awh::Framework::exists(const wstring & word, const wstring & text) const no
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3218,7 +3223,7 @@ string & awh::Framework::replace(string & text, const string & word, const strin
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3265,7 +3270,7 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3320,7 +3325,7 @@ void awh::Framework::domainZone(const string & zone) noexcept {
  * domainZones Метод установки списка пользовательских зон
  * @param zones список доменных зон интернета
  */
-void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
+void awh::Framework::domainZones(const set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
 	if(!zones.empty())
 		// Устанавливаем список пользовательских зон
@@ -3330,7 +3335,7 @@ void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
  * domainZones Метод извлечения списка пользовательских зон интернета
  * @return список доменных зон
  */
-const std::set <string> & awh::Framework::domainZones() const noexcept {
+const set <string> & awh::Framework::domainZones() const noexcept {
 	// Выводим список доменных зон интернета
 	return this->_nwt.zones();
 }
@@ -3346,13 +3351,13 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 		 */
 		try {
 			// Создаём новую локаль
-			// std::locale loc(locale.c_str());
+			// ::locale loc(locale.c_str());
 			// Устанавливапм локализацию приложения
 			::setlocale(LC_CTYPE, locale.c_str());
 			::setlocale(LC_COLLATE, locale.c_str());
 			// Устанавливаем локаль системы
-			// this->_locale = std::locale::global(loc);
-			this->_locale = std::locale(locale.c_str());
+			// this->_locale = ::locale::global(loc);
+			this->_locale = ::locale(locale.c_str());
 			/**
 			 * Устанавливаем типы данных для Windows
 			 */
@@ -3378,7 +3383,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3400,9 +3405,9 @@ void awh::Framework::setLocale(const string & locale) noexcept {
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
  */
-std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
+map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
 	// Результат работы функции
-	std::map <size_t, size_t> result;
+	map <size_t, size_t> result;
 	// Если текст передан
 	if(!text.empty()){
 		/**
@@ -3440,7 +3445,7 @@ std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexce
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3506,7 +3511,7 @@ string awh::Framework::time2abbr(const time_t date) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3542,35 +3547,35 @@ string awh::Framework::strpTime(const string & date, const string & format1, con
 		 */
 		try {
 			/*
-			* Разве стандартная библиотека C++ не хороша? std::get_time определен таким образом,
+			* Разве стандартная библиотека C++ не хороша? get_time определен таким образом,
 			* что его параметры формата были точно такие же, как у strptime.
 			* Конечно, мы должны сначала создать строковый поток и наполнить его текущей локалью C,
 			* и мы также должны убедиться, что мы возвращаем правильные вещи, если это не удаётся или если это удаётся,
 			* но это все ещё намного проще. Чем любая из версий в любой из стандартных библиотек C.
 			*/
 			// Создаем структуру времени
-			std::tm tm = {};
+			tm tm = {};
 			// Создаём строковый поток
-			std::istringstream input(date.c_str());
+			istringstream input(date.c_str());
 			// Устанавливаем текущую локаль
 			input.imbue(this->_locale);
 			// Зануляем структуру
-			::memset(&tm, 0, sizeof(std::tm));
+			::memset(&tm, 0, sizeof(tm));
 			// Извлекаем время локали
-			input >> std::get_time(&tm, format1.c_str());
+			input >> get_time(&tm, format1.c_str());
 			// Если время получено
 			if(!input.fail() && !format2.empty()){
 				// Создаём объект потока
-				std::stringstream transTime;
+				stringstream transTime;
 				// Выполняем извлечение даты
-				transTime << std::put_time(&tm, format2.c_str());
+				transTime << put_time(&tm, format2.c_str());
 				// Выводим полученное значение даты
 				result = transTime.str();
 			}
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3601,17 +3606,17 @@ string awh::Framework::time2str(const time_t date, const string & format) const 
 	 */
 	try {
 		// Создаём объект потока
-		std::stringstream transTime;
+		stringstream transTime;
 		// Создаем структуру времени
-		std::tm * tm = std::localtime(&date);
+		tm * tm = localtime(&date);
 		// Выполняем извлечение даты
-		transTime << std::put_time(tm, format.c_str());
+		transTime << put_time(tm, format.c_str());
 		// Выводим полученное значение даты
 		return transTime.str();
 	/**
 	 * Если возникает ошибка
 	 */
-	} catch(const std::exception & error) {
+	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -3645,19 +3650,19 @@ time_t awh::Framework::str2time(const string & date, const string & format) cons
 		 */
 		try {
 			// Создаем структуру времени
-			std::tm tm = {};
+			tm tm = {};
 			// Создаём строковый поток
-			std::istringstream input(date.c_str());
+			istringstream input(date.c_str());
 			// Устанавливаем текущую локаль
 			input.imbue(this->_locale);
 			// Извлекаем время локали
-			input >> std::get_time(&tm, format.c_str());
+			input >> get_time(&tm, format.c_str());
 			// Выводим результат
-			result = std::mktime(&tm);
+			result = mktime(&tm);
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3776,7 +3781,7 @@ string awh::Framework::bytes(const double value) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3846,7 +3851,7 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3916,7 +3921,7 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -3998,7 +4003,7 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */

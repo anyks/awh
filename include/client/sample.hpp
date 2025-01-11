@@ -29,14 +29,15 @@
 #include <sys/buffer.hpp>
 #include <core/client.hpp>
 
-// Подписываемся на стандартное пространство имён
-using namespace std;
-using namespace std::placeholders;
-
 /**
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	using namespace placeholders;
 	/**
 	 * client клиентское пространство имён
 	 */
@@ -114,7 +115,7 @@ namespace awh {
 				buffer_t _buffer;
 			private:
 				// Список рабочих событий
-				std::stack <event_t> _events;
+				stack <event_t> _events;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -254,7 +255,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const std::set <flag_t> & flags) noexcept;
+				void mode(const set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * cork Метод отключения/включения алгоритма TCP/CORK

@@ -16,6 +16,11 @@
 #include <ws/frame.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * find Метод поиска типа сообщения
  */
 void awh::ws::Message::find() noexcept {
@@ -176,13 +181,13 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -243,15 +248,15 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Если нужно выполнить маскировку сообщения
 			if(mask){
 				// Получаем генератор случайных чисел
-				std::random_device randev;
+				random_device randev;
 				// Бинарные данные маски
 				vector <u_char> mask(4);
 				// Подключаем генератор к двигателю
-				std::mt19937 engine {randev()};
+				mt19937 engine {randev()};
 				// Устанавливаем диапазон генератора случайных чисел
-				std::uniform_int_distribution <u_char> dist {0, 255};
+				uniform_int_distribution <u_char> dist {0, 255};
 				// Выполняем заполнение маски случайными числами
-				std::generate(mask.begin(), mask.end(), [&dist, &engine]() noexcept -> u_char {
+				generate(mask.begin(), mask.end(), [&dist, &engine]() noexcept -> u_char {
 					// Выполняем генерирование случайного числа
 					return dist(engine);
 				});
@@ -269,13 +274,13 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, mask), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, mask), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -338,7 +343,7 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -389,7 +394,7 @@ awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noex
 			/**
 			 * Если возникает ошибка
 			 */
-			} catch(const std::exception & error) {
+			} catch(const exception & error) {
 				// Устанавливаем текст ошибки
 				result = this->_fmk->format("%s", error.what());
 				/**
@@ -555,13 +560,13 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 		/**
 		 * Если возникает ошибка
 		 */
-		} catch(const std::exception & error) {
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/

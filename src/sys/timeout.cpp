@@ -18,6 +18,11 @@
 #include <sys/timeout.hpp>
 
 /**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
  * trigger Метод обработки событий триггера
  */
 void awh::Timeout::trigger() noexcept {
@@ -140,7 +145,7 @@ void awh::Timeout::del(const SOCKET fd) noexcept {
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем перебор всего списка таймеров
 		for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
 			// Если таймер найден
@@ -194,9 +199,9 @@ awh::Timeout::Timeout(const fmk_t * fmk, const log_t * log) noexcept :
 		this->_pipe.type(pipe_t::type_t::NATIVE);
 	#endif
 	// Выполняем добавление функции обратного вызова триггера
-	this->_screen = static_cast <function <void (void)>> (std::bind(&timeout_t::trigger, this));
+	this->_screen = static_cast <function <void (void)>> (bind(&timeout_t::trigger, this));
 	// Выполняем добавление функции обратного вызова процесса обработки
-	this->_screen = static_cast <function <void (const data_t)>> (std::bind(&timeout_t::process, this, _1));
+	this->_screen = static_cast <function <void (const data_t)>> (bind(&timeout_t::process, this, _1));
 }
 /**
  * ~Timeout Деструктор
