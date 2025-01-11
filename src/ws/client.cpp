@@ -145,13 +145,13 @@ void awh::client::WS::commit() noexcept {
 										// Если слово собранно
 										if(!extension.empty() && !this->extractExtension(extension))
 											// Выполняем добавление слова в список записей
-											extensions.push_back(move(extension));
+											extensions.push_back(::move(extension));
 										// Выполняем очистку слова записи
 										extension.clear();
 										// Если список записей собран
 										if(!extensions.empty()){
 											// Выполняем добавление списка записей в список расширений
-											this->_extensions.push_back(move(extensions));
+											this->_extensions.push_back(::move(extensions));
 											// Выполняем очистку списка расширений
 											extensions.clear();
 										}
@@ -161,7 +161,7 @@ void awh::client::WS::commit() noexcept {
 										// Если слово собранно
 										if(!extension.empty() && !this->extractExtension(extension))
 											// Выполняем добавление слова в список записей
-											extensions.push_back(move(extension));
+											extensions.push_back(::move(extension));
 										// Выполняем очистку слова записи
 										extension.clear();
 									} break;
@@ -176,7 +176,7 @@ void awh::client::WS::commit() noexcept {
 							// Если слово собранно
 							if(!extension.empty() && !this->extractExtension(extension))
 								// Выполняем добавление слова в список записей
-								extensions.push_back(move(extension));
+								extensions.push_back(::move(extension));
 							// Выполняем очистку слова записи
 							extension.clear();
 						/**
@@ -233,7 +233,7 @@ void awh::client::WS::commit() noexcept {
 				// Если список записей собран
 				if(!extensions.empty())
 					// Выполняем добавление списка записей в список расширений
-					this->_extensions.push_back(move(extensions));
+					this->_extensions.push_back(::move(extensions));
 			}
 		/**
 		 * Если возникает ошибка
