@@ -3,6 +3,10 @@
 # Получаем корневую дирректорию
 readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 
+# Выполняем пересборку сабмодуля lz4
+$ROOT/submodule.sh remove lz4
+$ROOT/submodule.sh add lz4 https://gitflic.ru/project/third_party/lz4.git
+
 # Выполняем пересборку сабмодуля bz2
 $ROOT/submodule.sh remove bz2
 $ROOT/submodule.sh add bz2 https://gitflic.ru/project/third_party/bzip2.git
