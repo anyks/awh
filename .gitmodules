@@ -1,30 +1,27 @@
-[submodule "submodules/openssl"]
-	path = submodules/openssl
-	url = https://gitflic.ru/project/third_party/openssl.git
-[submodule "submodules/zlib"]
-	path = submodules/zlib
-	url = https://gitflic.ru/project/third_party/zlib.git
-[submodule "submodules/brotli"]
-	path = submodules/brotli
-	url = https://gitflic.ru/project/third_party/brotli.git
-[submodule "submodules/nghttp2"]
-	path = submodules/nghttp2
-	url = https://gitflic.ru/project/third_party/nghttp2.git
-[submodule "submodules/pcre2"]
-	path = submodules/pcre2
-	url = https://gitflic.ru/project/third_party/pcre2.git
 [submodule "submodules/bz2"]
 	path = submodules/bz2
 	url = https://gitflic.ru/project/third_party/bzip2.git
-[submodule "submodules/lz4"]
-	path = submodules/lz4
-	url = https://gitflic.ru/project/third_party/lz4.git
 [submodule "submodules/lzma"]
 	path = submodules/lzma
 	url = https://gitflic.ru/project/third_party/lzma.git
 [submodule "submodules/zstd"]
 	path = submodules/zstd
 	url = https://gitflic.ru/project/third_party/zstd.git
+[submodule "submodules/zlib"]
+	path = submodules/zlib
+	url = https://gitflic.ru/project/third_party/zlib.git
+[submodule "submodules/brotli"]
+	path = submodules/brotli
+	url = https://gitflic.ru/project/third_party/brotli.git
+[submodule "submodules/pcre2"]
+	path = submodules/pcre2
+	url = https://gitflic.ru/project/third_party/pcre2.git
+[submodule "submodules/openssl"]
+	path = submodules/openssl
+	url = https://gitflic.ru/project/third_party/openssl.git
+[submodule "submodules/nghttp2"]
+	path = submodules/nghttp2
+	url = https://gitflic.ru/project/third_party/nghttp2.git
 [submodule "submodules/gperftools"]
 	path = submodules/gperftools
 	url = https://gitflic.ru/project/third_party/gperftools.git
