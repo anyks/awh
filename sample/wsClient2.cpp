@@ -431,17 +431,16 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.proxy("http://127.0.0.1:2222");
 	// awh.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
 	// awh.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
-	
-	
+
 	// awh.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// awh.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
-	
+
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// awh.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 
 	// Активируем работу прокси-сервера
 	// awh.proxy(client::scheme_t::work_t::ALLOW);
-	
+
 	// Устанавливаем сабпротоколы
 	// awh.subprotocols({"test2", "test8", "test9"});
 	// Устанавливаем тип компрессии
@@ -470,7 +469,7 @@ int32_t main(int32_t argc, char * argv[]){
 	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
 	// Устанавливаем метод получения заголовков
 	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
-	// Выполняем инициализацию подключения	
+	// Выполняем инициализацию подключения
 	awh.init("wss://stream.binance.com:9443");
 	// awh.init("wss://anyks.net:2222");
 	// Выполняем запуск работы

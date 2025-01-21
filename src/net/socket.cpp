@@ -326,7 +326,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 	 */
 	#else
 		// Флаги файлового дескриптора
-		int32_t flags = 0;		
+		int32_t flags = 0;
 		// Получаем флаги файлового дескриптора
 		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
 			/**

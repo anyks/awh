@@ -83,7 +83,7 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 			// Устанавливаем закрытие подключения к прокси-серверу
 			else this->_http.header("Proxy-Connection", "close");
 		}
-		// Получаем бинарные данные REST запроса		
+		// Получаем бинарные данные REST запроса
 		const auto & buffer = this->_http.process(http_t::process_t::REQUEST, request);
 		// Если бинарные данные запроса получены
 		if(!buffer.empty()){
@@ -223,7 +223,6 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 									// Иначе устанавливаем перенос строки
 									else cout << endl;
 								}
-								
 							}
 						#endif
 						// Выполняем препарирование полученных данных

@@ -918,7 +918,7 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const vector <char>
 		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
-			// Выполняем блокировку потока	
+			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(options->mtx);
 			// Декомпрессионные данные
 			vector <char> result(buffer.begin(), buffer.end());
@@ -1341,7 +1341,7 @@ bool awh::server::Websocket2::sendMessage(const uint64_t bid, const char * messa
 								options->hash.compress(message, size, hash_t::method_t::DEFLATE, buffer);
 								// Удаляем хвост в полученных данных
 								options->hash.rmTail(buffer);
-							} break;	
+							} break;
 						}
 						// Если сжатие данных не выполнено
 						if(buffer.empty()){

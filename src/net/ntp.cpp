@@ -869,7 +869,7 @@ void awh::NTP::servers(const int32_t family, const vector <string> & servers) no
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
-	if(!servers.empty()){	
+	if(!servers.empty()){
 		// Создаём объект холдирования
 		hold_t <status_t> hold(this->_status);
 		// Если статус работы NTP-резолвера соответствует

@@ -397,7 +397,7 @@ awh::server::Auth::operator string() noexcept {
 					// Создаём строку запроса авторизации
 					result = this->_fmk->format("Basic realm=\"%s\", charset=\"UTF-8\"", "Please login for access");
 				break;
-			}	
+			}
 		/**
 		 * Если возникает ошибка
 		 */

@@ -354,7 +354,6 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 										result.resize((4 * ((length + 2) / 3)) + 1, 0);
 										// Выполняем чтение полученного результата
 										length = ::BIO_read(bio, result.data(), result.size());
-										
 									}
 								} break;
 								// Если производится декодирование данных

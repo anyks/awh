@@ -2563,7 +2563,6 @@ int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 				// Выполняем переключение протокола на HTTP/1.1
 				context->_proto = proto_t::HTTP1_1;
 			}
-			
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;

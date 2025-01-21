@@ -1888,7 +1888,7 @@ void awh::DNS::delInBlackList(const int32_t family, const string & domain, const
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
-	if(!domain.empty() && !ip.empty()){	
+	if(!domain.empty() && !ip.empty()){
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
@@ -1943,7 +1943,7 @@ void awh::DNS::setToBlackList(const string & domain, const string & ip) noexcept
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
-	if(!domain.empty() && !ip.empty()){	
+	if(!domain.empty() && !ip.empty()){
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(ip))){
 			// Если IP-адрес является IPv4 адресом
@@ -2501,7 +2501,7 @@ void awh::DNS::servers(const int32_t family, const vector <string> & servers) no
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
-	if(!servers.empty()){	
+	if(!servers.empty()){
 		// Создаём объект холдирования
 		hold_t <status_t> hold(this->_status);
 		// Если статус работы DNS-резолвера соответствует

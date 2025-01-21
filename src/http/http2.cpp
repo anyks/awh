@@ -1795,7 +1795,7 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 			// Выходим из функции
 			return -1;
 		}
-		// Выполняем отправку заголовков удалённому узлу		
+		// Выполняем отправку заголовков удалённому узлу
 		result = nghttp2_submit_headers(this->_session, flags, id, nullptr, nva.data(), nva.size(), nullptr);
 		// Если запрос не получилось отправить
 		if(nghttp2_is_fatal(result)){

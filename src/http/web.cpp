@@ -1160,7 +1160,7 @@ vector <char> awh::Web::dump() const noexcept {
 			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
 			// Устанавливаем данные значения HTTP заголовка
 			result.insert(result.end(), header.second.begin(), header.second.end());
-		}	
+		}
 	}
 	// Выводим результат
 	return result;

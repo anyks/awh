@@ -674,7 +674,7 @@ void awh::server::Websocket1::extraction(const uint64_t bid, const vector <char>
 		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если параметры активного клиента получены
 		if(options != nullptr){
-			// Выполняем блокировку потока	
+			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(options->mtx);
 			// Декомпрессионные данные
 			vector <char> result(buffer.begin(), buffer.end());

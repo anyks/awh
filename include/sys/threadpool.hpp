@@ -108,7 +108,7 @@ namespace awh {
 					// Если мы ожидаем завершения работы всех задач
 					if(this->_wait)
 						// Выполняем остановку работы цикла задач
-						this->_stop = this->_tasks.empty();	
+						this->_stop = this->_tasks.empty();
 				}
 			}
 		public:
@@ -211,7 +211,7 @@ namespace awh {
 				// Ели количество потоков передано
 				if(count > 0)
 					// Устанавливаем количество потоков
-					this->_threads = count;	
+					this->_threads = count;
 				// Если количество потоков не установлено
 				else this->_threads = static_cast <uint16_t> (thread::hardware_concurrency());
 			}

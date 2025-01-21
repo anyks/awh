@@ -110,9 +110,9 @@ void awh::Queue::realloc() noexcept {
 				const lock_guard <mutex> lock(this->_mtx);
 				// Устанавличаем новый размер записей
 				this->_size = (this->_end + this->_batch);
-				// Выделяем новую порцию данных	
+				// Выделяем новую порцию данных
 				this->_sizes = reinterpret_cast <size_t *> (::realloc(this->_sizes, this->_size * sizeof(size_t)));
-				// Выделяем новую порцию данных	
+				// Выделяем новую порцию данных
 				this->_data = reinterpret_cast <uint64_t *> (::realloc(this->_data, this->_size * sizeof(uint64_t)));
 				// Если память не выделенна
 				if((this->_sizes == nullptr) || (this->_data == nullptr)){

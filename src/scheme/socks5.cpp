@@ -45,7 +45,7 @@ void awh::server::scheme::Socks5::set(const uint64_t bid) noexcept {
  * rm Метод удаления параметров активного клиента
  * @param bid идентификатор брокера
  */
-void awh::server::scheme::Socks5::rm(const uint64_t bid) noexcept {	
+void awh::server::scheme::Socks5::rm(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && !this->_options.empty()){
 		// Выполняем поиск брокера

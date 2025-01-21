@@ -1752,7 +1752,7 @@ void awh::server::Proxy::waitTimeDetect(const broker_t broker, const time_t read
 			// Выполняем установку количества секунд для детекции по записи
 			this->_settings.wtd.write = write;
 			// Выполняем установку количества секунд для подключения к серверу
-			this->_settings.wtd.connect = connect;	
+			this->_settings.wtd.connect = connect;
 		} break;
 		// Если брокером является сервер
 		case static_cast <uint8_t> (broker_t::SERVER):

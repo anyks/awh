@@ -251,10 +251,10 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.proxy("http://test1:password@127.0.0.1:2222");
 	// ws.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
 	// ws.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
-	
+
 	// ws.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// ws.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
-	
+
 	// ws.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// ws.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
 
@@ -264,7 +264,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	// Активируем работу прокси-сервера
 	// ws.proxy(client::scheme_t::work_t::ALLOW);
-	
+
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
 	// Устанавливаем тип авторизации прокси-сервера

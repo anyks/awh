@@ -329,7 +329,7 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 				else {
 					// Увеличиваем размер хранимых данных
 					this->_size += size;
-					// Выделяем новую порцию данных	
+					// Выделяем новую порцию данных
 					this->_data = reinterpret_cast <uint8_t *> (::realloc(this->_data, this->_size * sizeof(uint8_t)));
 					// Если память не выделенна
 					if(this->_data == nullptr){

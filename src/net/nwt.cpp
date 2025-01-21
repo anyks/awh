@@ -365,7 +365,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 					// Устанавливаем полученный результат
 					result = ::move(ip);
 			}
-		}	
+		}
 	}
 	// Выводим результат
 	return result;
