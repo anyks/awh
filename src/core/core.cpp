@@ -431,11 +431,9 @@ void awh::Core::launching([[maybe_unused]] const bool mode, const bool status) n
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.status);
 	// Если требуется изменить статус
-	if(status)
+	if(status){
 		// Устанавливаем статус сетевого ядра
 		this->_status = status_t::START;
-	// Если требуется изменить статус
-	if(status){
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("status"))
 			// Выполняем запуск функции в основном потоке
@@ -455,11 +453,9 @@ void awh::Core::closedown([[maybe_unused]] const bool mode, const bool status) n
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.status);
 	// Если требуется изменить статус
-	if(status)
+	if(status){
 		// Устанавливаем статус сетевого ядра
 		this->_status = status_t::STOP;
-	// Если требуется изменить статус
-	if(status){
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("status"))
 			// Выполняем запуск функции в основном потоке
