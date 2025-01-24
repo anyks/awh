@@ -148,8 +148,10 @@ apply_patch(){
 	fi
 }
 
+# Выполняем синхронизацию сабмодулей
+git submodule sync
 # Инициализируем подпроекты
-git submodule update --init --recursive --remote
+git submodule update --init --recursive
 
 # Сборка OpenSSL
 src="$ROOT/submodules/openssl"
