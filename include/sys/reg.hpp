@@ -38,10 +38,6 @@
  */
 namespace awh {
 	/**
-	 * RegExp Прототип класса работы с регулярными выражениями
-	 */
-	class RegExp;
-	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
 	using namespace std;
@@ -68,46 +64,44 @@ namespace awh {
 			/**
 			 * Expression Класс регулярного выражения
 			 */
-			class Expression {
-				private:
-					/**
-					 * RegExp Устанавливаем дружбу с классом регулярных выражений
-					 */
-					friend class RegExp;
+			class AWHSHARED_EXPORT Expression {
 				private:
 					// Флаг инициализации
 					bool _mode;
-				private:
+				public:
 					// Объект контекста регулярного выражения
-					regex_t _reg;
+					regex_t reg;
 				public:
 					/**
 					 * Оператор проверки на инициализацию регулярного выражения
 					 * @return результат проверки
 					 */
-					operator bool() const noexcept {
-						// Выводим результ проверки инициализации
-						return this->_mode;
-					}
+					operator bool() const noexcept;
+				public:
+					/**
+					 * operator Оператор установки флага инициализации
+					 * @param mode флаг инициализации для установки
+					 * @return     текущий объект регулярного выражения
+					 */
+					Expression & operator = (const bool mode) noexcept;
 				public:
 					/**
 					 * Expression Конструктор
 					 */
-					Expression() noexcept : _mode(false) {}
+					Expression() noexcept;
 					/**
 					 * ~Expression Деструктор
 					 */
-					~Expression() noexcept {}
+					~Expression() noexcept;
 			};
 		public:
 			// Создаём новый тип данных регулярного выражения
-			typedef shared_ptr <Expression> exp_t;
+			using exp_t = shared_ptr <Expression>;
+			// Создаём новый тип данных для статического хранения регулярных выражений
+			using exp_weak_t = weak_ptr <Expression>;
 		private:
 			// Текст ошибки
 			string _error;
-		private:
-			// Список инициализированных регулярных выражений
-			map <pair <int32_t, string>, regex_t *> _expressions;
 		public:
 			/**
 			 * error Метод извлечения текста ошибки регулярного выражения
@@ -175,7 +169,7 @@ namespace awh {
 			/**
 			 * ~RegExp Деструктор
 			 */
-			~RegExp() noexcept;
+			~RegExp() noexcept {}
 	} regexp_t;
 };
 

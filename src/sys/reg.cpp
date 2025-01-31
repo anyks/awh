@@ -23,8 +23,40 @@ using namespace std;
 /**
  * Список уже сгенерированных регулярных выражений
  */
-static map <pair <int32_t, string>, awh::RegExp::exp_t> expressions;
+static map <pair <int32_t, string>, awh::RegExp::exp_weak_t> expressions;
 
+/**
+ * Оператор проверки на инициализацию регулярного выражения
+ * @return результат проверки
+ */
+awh::RegExp::Expression::operator bool() const noexcept {
+	// Выводим результ проверки инициализации
+	return this->_mode;
+}
+/**
+ * operator Оператор установки флага инициализации
+ * @param mode флаг инициализации для установки
+ * @return     текущий объект регулярного выражения
+ */
+awh::RegExp::Expression & awh::RegExp::Expression::operator = (const bool mode) noexcept {
+	// Выполняем установку флага инициализации
+	this->_mode = mode;
+	// Выводим текущее значение объекта
+	return (* this);
+}
+/**
+ * Expression Конструктор
+ */
+awh::RegExp::Expression::Expression() noexcept : _mode(false) {}
+/**
+ * ~Expression Деструктор
+ */
+awh::RegExp::Expression::~Expression() noexcept {
+	// Если уже модуль проинициализированны
+	if(this->_mode)
+		// Удаляем контекст регулярного выражения
+		::pcre2_regfree(&this->reg);
+}
 /**
  * error Метод извлечения текста ошибки регулярного выражения
  * @return текст ошибки регулярного выражения
@@ -43,11 +75,11 @@ bool awh::RegExp::test(const char * text, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы верные
-	if((text != nullptr) && exp->_mode){
+	if((text != nullptr) && static_cast <bool> (exp)){
 		// Создаём объект матчинга
 		regmatch_t match[1];
 		// Выполняем разбор регулярного выражения
-		const int32_t error = pcre2_regexec(&exp->_reg, text, 1, match, REG_NOTEMPTY);
+		const int32_t error = ::pcre2_regexec(&exp->reg, text, 1, match, REG_NOTEMPTY);
 		// Если возникла ошибка
 		if(!(result = (error == 0))){
 			// Создаём буфер данных для извлечения данных ошибки
@@ -55,7 +87,7 @@ bool awh::RegExp::test(const char * text, const exp_t & exp) const noexcept {
 			// Выполняем заполнение нулями буфер данных
 			::memset(buffer, '\0', sizeof(buffer));
 			// Выполняем извлечение текста ошибки
-			const size_t size = pcre2_regerror(error, &exp->_reg, buffer, sizeof(buffer) - 1);
+			const size_t size = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer) - 1);
 			// Если текст ошибки получен
 			if(size > 0)
 				// Выполняем установку кода ошибки
@@ -74,7 +106,7 @@ bool awh::RegExp::test(const char * text, const exp_t & exp) const noexcept {
  */
 bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
-	if(!text.empty() && exp->_mode)
+	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем проверку регулярного выражения
 		return this->test(text.c_str(), exp);
 	// Выводим результат
@@ -90,15 +122,15 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
 	// Результат работы функции
 	vector <string> result;
 	// Если данные переданы верные
-	if((text != nullptr) && exp->_mode){
+	if((text != nullptr) && static_cast <bool> (exp)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Создаём объект матчинга
-			unique_ptr <regmatch_t []> match(new regmatch_t [exp->_reg.re_nsub + 1]);
+			unique_ptr <regmatch_t []> match(new regmatch_t [exp->reg.re_nsub + 1]);
 			// Выполняем разбор регулярного выражения
-			const int32_t error = pcre2_regexec(&exp->_reg, text, exp->_reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
+			const int32_t error = ::pcre2_regexec(&exp->reg, text, exp->reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
 			// Если возникла ошибка
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
@@ -106,7 +138,7 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
-				const size_t size = pcre2_regerror(error, &exp->_reg, buffer, sizeof(buffer) - 1);
+				const size_t size = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer) - 1);
 				// Если текст ошибки получен
 				if(size > 0)
 					// Выполняем установку кода ошибки
@@ -114,9 +146,9 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
 			// Если ошибок не получено
 			} else {
 				// Выполняем создание результата
-				result.resize(exp->_reg.re_nsub + 1);
+				result.resize(exp->reg.re_nsub + 1);
 				// Выполняем перебор всех полученных вариантов
-				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->_reg.re_nsub + 1); i++){
+				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->reg.re_nsub + 1); i++){
 					// Если результат получен
 					if(match[i].rm_eo > 0)
 						// Добавляем полученный результат в список результатов
@@ -155,7 +187,7 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
  */
 vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
-	if(!text.empty() && exp->_mode)
+	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем запуск регулярного выражения
 		return this->exec(text.c_str(), exp);
 	// Выводим результат
@@ -171,15 +203,15 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t
 	// Результат работы функции
 	vector <pair <size_t, size_t>> result;
 	// Если данные переданы верные
-	if((text != nullptr) && exp->_mode){
+	if((text != nullptr) && static_cast <bool> (exp)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Создаём объект матчинга
-			unique_ptr <regmatch_t []> match(new regmatch_t [exp->_reg.re_nsub + 1]);
+			unique_ptr <regmatch_t []> match(new regmatch_t [exp->reg.re_nsub + 1]);
 			// Выполняем разбор регулярного выражения
-			const int32_t error = pcre2_regexec(&exp->_reg, text, exp->_reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
+			const int32_t error = ::pcre2_regexec(&exp->reg, text, exp->reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
 			// Если возникла ошибка
 			if(error > 0){
 				// Создаём буфер данных для извлечения данных ошибки
@@ -187,7 +219,7 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
-				const size_t size = pcre2_regerror(error, &exp->_reg, buffer, sizeof(buffer) - 1);
+				const size_t size = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer) - 1);
 				// Если текст ошибки получен
 				if(size > 0)
 					// Выполняем установку кода ошибки
@@ -195,9 +227,9 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t
 			// Если ошибок не получено
 			} else {
 				// Выполняем создание результата
-				result.resize(exp->_reg.re_nsub + 1);
+				result.resize(exp->reg.re_nsub + 1);
 				// Выполняем перебор всех полученных вариантов
-				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->_reg.re_nsub + 1); i++){
+				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->reg.re_nsub + 1); i++){
 					// Если результат получен
 					if(match[i].rm_eo > 0)
 						// Добавляем полученный результат в список результатов
@@ -238,7 +270,7 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t
  */
 vector <pair <size_t, size_t>> awh::RegExp::match(const string & text, const exp_t & exp) const noexcept {
 	// Если данные переданы верные
-	if(!text.empty() && exp->_mode)
+	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем выполнение регулярного выражения
 		return this->match(text.c_str(), exp);
 	// Выводим результат
@@ -310,38 +342,38 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 			// Выполняем поиск уже ранее созданного регулярного выражения
 			auto i = expressions.find(key);
 			// Если регулярное выражение уже созданно
-			if(i != expressions.end())
+			if(i != expressions.end()){
 				// Выполняем получение скомпилированного регулярного выражения
-				result = i->second;
+				result = i->second.lock();
+				// Если регулярное выражение уже устарело и удалено
+				if(result == nullptr)
+					// Удаляем запись
+					expressions.erase(key);
+			}
 			// Выполняем генерацию нового регулярного выражения
-			else {
+			if(result == nullptr){
 				// Выполняем создание нового блока результата
 				result = awh::RegExp::exp_t(new Expression);
 				// Выполняем компиляцию регулярного выражения
-				const int32_t error = pcre2_regcomp(&result->_reg, pattern.c_str(), option);
+				const int32_t error = ::pcre2_regcomp(&result->reg, pattern.c_str(), option);
 				// Если возникла ошибка компиляции
-				if(!(result->_mode = (error == 0))){
+				if(!((* result.get()) = static_cast <bool> (error == 0))){
 					// Создаём буфер данных для извлечения данных ошибки
 					char buffer[256];
 					// Выполняем заполнение нулями буфер данных
 					::memset(buffer, '\0', sizeof(buffer));
 					// Выполняем извлечение текста ошибки
-					const size_t size = pcre2_regerror(error, &result->_reg, buffer, sizeof(buffer) - 1);
+					const size_t size = ::pcre2_regerror(error, &result->reg, buffer, sizeof(buffer) - 1);
 					// Если текст ошибки получен
 					if(size > 0)
 						// Выполняем установку кода ошибки
 						const_cast <regexp_t *> (this)->_error.assign(buffer, size);
 					// Выполняем удаление скомпилированного регулярного выражения
-					pcre2_regfree(&result->_reg);
+					::pcre2_regfree(&result->reg);
 					// Выполняем сброс блока результата
 					result.reset();
-				// Если регулярное выражение удачно созданно
-				} else {
-					// Добавляем регулярное выражение в список
-					expressions.emplace(key, result);
-					// Выполняем добавление сгенерированного регулярного выражения в список
-					const_cast <regexp_t *> (this)->_expressions.emplace(key, &result->_reg);
-				}
+				// Если регулярное выражение удачно созданно, добавляем регулярное выражение в список
+				} else expressions.emplace(key, result);
 			}
 		/**
 		 * Если возникает ошибка
@@ -366,20 +398,4 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * ~RegExp Деструктор
- */
-awh::RegExp::~RegExp() noexcept {
-	// Выполняем перебор всего списка регулярных выражений
-	for(auto & item : this->_expressions){
-		// Выполняем удаление скомпилированного регулярного выражения
-		pcre2_regfree(item.second);
-		// Выполняем поиск уже созданного ранее регулярного выражения
-		auto i = expressions.find(item.first);
-		// Если регулярное выражение уже созданно
-		if(i != expressions.end())
-			// Выполняем удаление регулярного выражения из общего списка
-			expressions.erase(i);
-	}
 }
