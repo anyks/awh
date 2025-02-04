@@ -637,12 +637,61 @@ void awh::Net::clear() noexcept {
 	this->_type = type_t::NONE;
 }
 /**
+ * broadcastIPv6ToIPv4 Метод проверки соответствия адреса зеркалу IPv6 => IPv4
+ * @return результат проверки
+ */
+bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если бинарный буфер данных существует
+	if(!this->_buffer.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Создаём временный буфер данных для сравнения
+			vector <uint16_t> buffer(6, 0);
+			// Устанавливаем хексет маски
+			buffer[5] = 0xFFFF;
+			// Если буфер данных принадлежит к вещанию IPv6 => IPv4
+			result = (::memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * type Метод извлечения типа IP-адреса
  * @return тип IP-адреса
  */
 awh::Net::type_t awh::Net::type() const noexcept {
 	// Выполняем тип IP-адреса
 	return this->_type;
+}
+/**
+ * type Метод установки типа IP-адреса
+ * @param type тип IP-адреса для установки
+ */
+void awh::Net::type(const type_t type) noexcept {
+	// Выполняем установку типа IP-адреса
+	this->_type = type;
 }
 /**
  * host Метод определения типа хоста
@@ -936,14 +985,24 @@ void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
  * @param addr тип получаемого адреса
  */
 void awh::Net::impose(const string & mask, const addr_t addr) noexcept {
+	// Выполняем наложение маски сети
+	this->impose(mask, addr, this->_type);
+}
+/**
+ * impose Метод наложения маски сети
+ * @param mask маска сети для наложения
+ * @param addr тип получаемого адреса
+ * @param type тип адреса аппаратного или интернет подключения
+ */
+void awh::Net::impose(const string & mask, const addr_t addr, const type_t type) noexcept {
 	// Если бинарный буфер данных существует и маска передана
 	if(!this->_buffer.empty() && !mask.empty()){
 		// Получаем префикс сети
-		const uint8_t prefix = this->mask2Prefix(mask);
+		const uint8_t prefix = this->mask2Prefix(mask, type);
 		// Если префикс сети получен, выполняем применение префикса
 		if(prefix > 0)
 			// Выполняем наложение маски сети
-			this->impose(prefix, addr);
+			this->impose(prefix, addr, type);
 	}
 }
 /**
@@ -952,6 +1011,16 @@ void awh::Net::impose(const string & mask, const addr_t addr) noexcept {
  * @param addr тип получаемого адреса
  */
 void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
+	// Выполняем наложение префикса адреса
+	this->impose(prefix, addr, this->_type);
+}
+/**
+ * impose Метод наложения префикса
+ * @param prefix префикс для наложения
+ * @param addr   тип получаемого адреса
+ * @param type   тип адреса аппаратного или интернет подключения
+ */
+void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type) noexcept {
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty() && (prefix > 0)){
 		/**
@@ -959,7 +1028,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 		 */
 		try {
 			// Определяем тип IP-адреса
-			switch(static_cast <uint8_t> (this->_type)){
+			switch(static_cast <uint8_t> (type)){
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4): {
 					// Если префикс укладывается в диапазон адреса
@@ -1105,6 +1174,16 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
  * @return     полученный префикс адреса
  */
 uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
+	// Выполняем преобразование маски сети в префикс адреса
+	return this->mask2Prefix(mask, this->_type);
+}
+/**
+ * mask2Prefix Метод перевода маски сети в префикс адреса
+ * @param mask маска сети для перевода
+ * @param type тип адреса аппаратного или интернет подключения
+ * @return     полученный префикс адреса
+ */
+uint8_t awh::Net::mask2Prefix(const string & mask, const type_t type) const noexcept {
 	// Результат работы функции
 	uint8_t result = 0;
 	// Если маска сети передана
@@ -1116,11 +1195,11 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 			// Создаём объкт для работы с адресами
 			net_t net(this->_exp, this->_log);
 			// Выполняем парсинг маски
-			if(net.parse(mask) && (this->_type == net.type())){
+			if(net.parse(mask) && (type == net.type())){
 				// Бинарный контейнер
 				bitset <8> bits;
 				// Определяем тип IP-адреса
-				switch(static_cast <uint8_t> (this->_type)){
+				switch(static_cast <uint8_t> (type)){
 					// Если IP-адрес определён как IPv4
 					case static_cast <uint8_t> (type_t::IPV4): {
 						// Получаем значение маски в виде адреса
@@ -1175,6 +1254,16 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
  * @return       полученная маска сети
  */
 string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
+	// Выполняем перевод префикса адреса в маску сети
+	return this->prefix2Mask(prefix, this->_type);
+}
+/**
+ * prefix2Mask Метод преобразования префикса адреса в маску сети
+ * @param prefix префикс адреса для преобразования
+ * @param type   тип адреса аппаратного или интернет подключения
+ * @return       полученная маска сети
+ */
+string awh::Net::prefix2Mask(const uint8_t prefix, const type_t type) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если маска сети передана
@@ -1186,11 +1275,11 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 			// Создаём объкт для работы с адресами
 			net_t net(this->_exp, this->_log);
 			// Определяем тип IP-адреса
-			switch(static_cast <uint8_t> (this->_type)){
+			switch(static_cast <uint8_t> (type)){
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4): {
 					// Если префикс укладывается в диапазон адреса
-					if(prefix < 32){
+					if(prefix <= 32){
 						// Выполняем парсинг маски
 						if(net.parse("255.255.255.255")){
 							// Выполняем установку префикса
@@ -1203,7 +1292,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 				// Если IP-адрес определён как IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
 					// Если префикс укладывается в диапазон адреса
-					if(prefix < 128){
+					if(prefix <= 128){
 						// Выполняем парсинг маски
 						if(net.parse("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")){
 							// Выполняем установку префикса
@@ -1237,11 +1326,252 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 	return result;
 }
 /**
+ * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @param begin начало диапазона адресов
+ * @param end   конец диапазона адресов
+ * @param mask  маска сети для перевода
+ * @return      результат првоерки
+ */
+bool awh::Net::range(const Net & begin, const Net & end, const string & mask) const noexcept {
+	// Выполняем проверку вхождения IP-адреса в диапазон адресов
+	return this->range(begin, end, mask, this->_type);
+}
+/**
+ * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @param begin начало диапазона адресов
+ * @param end   конец диапазона адресов
+ * @param mask  маска сети для перевода
+ * @param type  тип адреса аппаратного или интернет подключения
+ * @return      результат првоерки
+ */
+bool awh::Net::range(const Net & begin, const Net & end, const string & mask, const type_t type) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если бинарный буфер данных существует и маска передана
+	if(!this->_buffer.empty() && !mask.empty()){
+		// Получаем префикс сети
+		const uint8_t prefix = this->mask2Prefix(mask, type);
+		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
+		if(prefix > 0)
+			// Выполняем получение результата
+			result = this->range(begin, end, prefix, type);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @param begin  начало диапазона адресов
+ * @param end    конец диапазона адресов
+ * @param prefix префикс адреса для преобразования
+ * @return       результат првоерки
+ */
+bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) const noexcept {
+	// Выполняем проверку вхождения iP-адреса в диапазон адресов
+	return this->range(begin, end, prefix, this->_type);
+}
+/**
+ * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @param begin  начало диапазона адресов
+ * @param end    конец диапазона адресов
+ * @param prefix префикс адреса для преобразования
+ * @param type   тип адреса аппаратного или интернет подключения
+ * @return       результат првоерки
+ */
+bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix, const type_t type) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если типы адресов совпадают
+	if((type == begin.type()) && (type == end.type())){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Создаём объекты сетевых модулей
+			net_t net1(this->_exp, this->_log),
+			      net2(this->_exp, this->_log),
+			      net3(this->_exp, this->_log);
+			// Определяем тип IP-адреса
+			switch(static_cast <uint8_t> (type)){
+				// Если IP-адрес определён как IPv4
+				case static_cast <uint8_t> (type_t::IPV4): {
+					// Устанавливаем новое значение адреса для первого элемента
+					net1 = this->v4();
+					// Устанавливаем новое значение адреса для второго элемента
+					net2 = begin.v4();
+					// Устанавливаем новое значение адреса для третьего элемента
+					net3 = end.v4();
+				} break;
+				// Если IP-адрес определён как IPv6
+				case static_cast <uint8_t> (type_t::IPV6): {
+					// Устанавливаем новое значение адреса для первого элемента
+					net1 = this->v6();
+					// Устанавливаем новое значение адреса для второго элемента
+					net2 = begin.v6();
+					// Устанавливаем новое значение адреса для третьего элемента
+					net3 = end.v6();
+				} break;
+			}
+			// Извлекаем хост для первого элемента
+			net1.impose(prefix, addr_t::HOST);
+			// Извлекаем хост для второго элемента
+			net2.impose(prefix, addr_t::HOST);
+			// Извлекаем хост для третьего элемента
+			net3.impose(prefix, addr_t::HOST);
+			// Выполняем определение результата вхождения адреса в диапазон
+			result = ((net1 >= net2) && (net1 <= net3));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @param begin начало диапазона адресов
+ * @param end   конец диапазона адресов
+ * @param mask  маска сети для перевода
+ * @return      результат првоерки
+ */
+bool awh::Net::range(const string & begin, const string & end, const string & mask) const noexcept {
+	// Выполняем проверку вхождения IP-адреса в диапазон адресов
+	return this->range(begin, end, mask, this->_type);
+}
+/**
+ * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @param begin начало диапазона адресов
+ * @param end   конец диапазона адресов
+ * @param mask  маска сети для перевода
+ * @param type  тип адреса аппаратного или интернет подключения
+ * @return      результат првоерки
+ */
+bool awh::Net::range(const string & begin, const string & end, const string & mask, const type_t type) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если бинарный буфер данных существует и маска передана
+	if(!this->_buffer.empty() && !mask.empty()){
+		// Получаем префикс сети
+		const uint8_t prefix = this->mask2Prefix(mask, type);
+		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
+		if(prefix > 0)
+			// Выполняем получение результата
+			result = this->range(begin, end, prefix, type);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @param begin  начало диапазона адресов
+ * @param end    конец диапазона адресов
+ * @param prefix префикс адреса для преобразования
+ * @return       результат првоерки
+ */
+bool awh::Net::range(const string & begin, const string & end, const uint8_t prefix) const noexcept {
+	// Выполняем проверку вхождения IP-адреса в диапазон адресов
+	return this->range(begin, end, prefix, this->_type);
+}
+/**
+ * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @param begin  начало диапазона адресов
+ * @param end    конец диапазона адресов
+ * @param prefix префикс адреса для преобразования
+ * @param type   тип адреса аппаратного или интернет подключения
+ * @return       результат првоерки
+ */
+bool awh::Net::range(const string & begin, const string & end, const uint8_t prefix, const type_t type) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если бинарный буфер данных существует
+	if(!this->_buffer.empty() && !begin.empty() && !end.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Создаём объекты сетевых модулей
+			net_t net1(this->_exp, this->_log),
+			      net2(this->_exp, this->_log),
+			      net3(this->_exp, this->_log);
+			// Устанавливаем новое значение адреса для начала и конца диапазона адресов
+			net2 = begin; net3 = end;
+			// Определяем тип IP-адреса
+			switch(static_cast <uint8_t> (type)){
+				// Если IP-адрес определён как IPv4
+				case static_cast <uint8_t> (type_t::IPV4):
+					// Устанавливаем новое значение адреса для первого элемента
+					net1 = this->v4();
+				break;
+				// Если IP-адрес определён как IPv6
+				case static_cast <uint8_t> (type_t::IPV6):
+					// Устанавливаем новое значение адреса для первого элемента
+					net1 = this->v6();
+				break;
+			}
+			// Если типы адресов совпадают
+			if((net1.type() == net2.type()) && (net1.type() == net3.type())){
+				// Извлекаем хост для первого элемента
+				net1.impose(prefix, addr_t::HOST);
+				// Извлекаем хост для второго элемента
+				net2.impose(prefix, addr_t::HOST);
+				// Извлекаем хост для третьего элемента
+				net3.impose(prefix, addr_t::HOST);
+				// Выполняем определение результата вхождения адреса в диапазон
+				result = ((net1 >= net2) && (net1 <= net3));
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(begin, end, prefix), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * mapping Метод проверки соотвествия IP-адреса указанной сети
  * @param network сеть для проверки соответствия
  * @return        результат проверки
  */
 bool awh::Net::mapping(const string & network) const noexcept {
+	// Выполняем проверку соответствия IP-адреса указанной сети
+	return this->mapping(network, this->_type);
+}
+/**
+ * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @param network сеть для проверки соответствия
+ * @param type    тип адреса аппаратного или интернет подключения
+ * @return        результат проверки
+ */
+bool awh::Net::mapping(const string & network, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
@@ -1255,9 +1585,9 @@ bool awh::Net::mapping(const string & network) const noexcept {
 			// Если парсинг адреса сети выполнен
 			if((result = net.parse(network))){
 				// Если сеть и IP-адрес принадлежат одной версии сети
-				if((result = (this->_type == net.type()))){
+				if((result = (type == net.type()))){
 					// Определяем тип IP-адреса
-					switch(static_cast <uint8_t> (this->_type)){
+					switch(static_cast <uint8_t> (type)){
 						// Если IP-адрес определён как IPv4
 						case static_cast <uint8_t> (type_t::IPV4): {
 							// Буфер данных текущего адреса
@@ -1328,230 +1658,6 @@ bool awh::Net::mapping(const string & network) const noexcept {
 	return result;
 }
 /**
- * broadcastIPv6ToIPv4 Метод проверки соответствия адреса зеркалу IPv6 => IPv4
- * @return результат проверки
- */
-bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если бинарный буфер данных существует
-	if(!this->_buffer.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаём временный буфер данных для сравнения
-			vector <uint16_t> buffer(6, 0);
-			// Устанавливаем хексет маски
-			buffer[5] = 0xFFFF;
-			// Если буфер данных принадлежит к вещанию IPv6 => IPv4
-			result = (::memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
- * @param begin начало диапазона адресов
- * @param end   конец диапазона адресов
- * @param mask  маска сети для перевода
- * @return      результат првоерки
- */
-bool awh::Net::range(const Net & begin, const Net & end, const string & mask) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если бинарный буфер данных существует и маска передана
-	if(!this->_buffer.empty() && !mask.empty()){
-		// Получаем префикс сети
-		const uint8_t prefix = this->mask2Prefix(mask);
-		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
-		if(prefix > 0)
-			// Выполняем получение результата
-			result = this->range(begin, end, prefix);
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
- * @param begin  начало диапазона адресов
- * @param end    конец диапазона адресов
- * @param prefix префикс адреса для преобразования
- * @return       результат првоерки
- */
-bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если типы адресов совпадают
-	if((this->type() == begin.type()) && (this->type() == end.type())){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаём объекты сетевых модулей
-			net_t net1(this->_exp, this->_log),
-			      net2(this->_exp, this->_log),
-			      net3(this->_exp, this->_log);
-			// Определяем тип IP-адреса
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если IP-адрес определён как IPv4
-				case static_cast <uint8_t> (type_t::IPV4): {
-					// Устанавливаем новое значение адреса для первого элемента
-					net1 = this->v4();
-					// Устанавливаем новое значение адреса для второго элемента
-					net2 = begin.v4();
-					// Устанавливаем новое значение адреса для третьего элемента
-					net3 = end.v4();
-				} break;
-				// Если IP-адрес определён как IPv6
-				case static_cast <uint8_t> (type_t::IPV6): {
-					// Устанавливаем новое значение адреса для первого элемента
-					net1 = this->v6();
-					// Устанавливаем новое значение адреса для второго элемента
-					net2 = begin.v6();
-					// Устанавливаем новое значение адреса для третьего элемента
-					net3 = end.v6();
-				} break;
-			}
-			// Извлекаем хост для первого элемента
-			net1.impose(prefix, addr_t::HOST);
-			// Извлекаем хост для второго элемента
-			net2.impose(prefix, addr_t::HOST);
-			// Извлекаем хост для третьего элемента
-			net3.impose(prefix, addr_t::HOST);
-			// Выполняем определение результата вхождения адреса в диапазон
-			result = ((net1 >= net2) && (net1 <= net3));
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
- * @param begin начало диапазона адресов
- * @param end   конец диапазона адресов
- * @param mask  маска сети для перевода
- * @return      результат првоерки
- */
-bool awh::Net::range(const string & begin, const string & end, const string & mask) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если бинарный буфер данных существует и маска передана
-	if(!this->_buffer.empty() && !mask.empty()){
-		// Получаем префикс сети
-		const uint8_t prefix = this->mask2Prefix(mask);
-		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
-		if(prefix > 0)
-			// Выполняем получение результата
-			result = this->range(begin, end, prefix);
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
- * @param begin  начало диапазона адресов
- * @param end    конец диапазона адресов
- * @param prefix префикс адреса для преобразования
- * @return       результат првоерки
- */
-bool awh::Net::range(const string & begin, const string & end, const uint8_t prefix) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если бинарный буфер данных существует
-	if(!this->_buffer.empty() && !begin.empty() && !end.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаём объекты сетевых модулей
-			net_t net1(this->_exp, this->_log),
-			      net2(this->_exp, this->_log),
-			      net3(this->_exp, this->_log);
-			// Устанавливаем новое значение адреса для начала и конца диапазона адресов
-			net2 = begin; net3 = end;
-			// Определяем тип IP-адреса
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если IP-адрес определён как IPv4
-				case static_cast <uint8_t> (type_t::IPV4):
-					// Устанавливаем новое значение адреса для первого элемента
-					net1 = this->v4();
-				break;
-				// Если IP-адрес определён как IPv6
-				case static_cast <uint8_t> (type_t::IPV6):
-					// Устанавливаем новое значение адреса для первого элемента
-					net1 = this->v6();
-				break;
-			}
-			// Если типы адресов совпадают
-			if((net1.type() == net2.type()) && (net1.type() == net3.type())){
-				// Извлекаем хост для первого элемента
-				net1.impose(prefix, addr_t::HOST);
-				// Извлекаем хост для второго элемента
-				net2.impose(prefix, addr_t::HOST);
-				// Извлекаем хост для третьего элемента
-				net3.impose(prefix, addr_t::HOST);
-				// Выполняем определение результата вхождения адреса в диапазон
-				result = ((net1 >= net2) && (net1 <= net3));
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(begin, end, prefix), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * mapping Метод проверки соотвествия IP-адреса указанной сети
  * @param network сеть для проверки соответствия
  * @param mask    маска сети для наложения
@@ -1559,16 +1665,28 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
  * @return        результат проверки
  */
 bool awh::Net::mapping(const string & network, const string & mask, const addr_t addr) const noexcept {
+	// Выполняем проверку соответствия IP-адреса указанной сети
+	return this->mapping(network, mask, addr, this->_type);
+}
+/**
+ * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @param network сеть для проверки соответствия
+ * @param mask    маска сети для наложения
+ * @param addr    тип получаемого адреса
+ * @param type    тип адреса аппаратного или интернет подключения
+ * @return        результат проверки
+ */
+bool awh::Net::mapping(const string & network, const string & mask, const addr_t addr, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
 	if((result = (!network.empty() && !mask.empty()))){
 		// Получаем префикс сети
-		const uint8_t prefix = this->mask2Prefix(mask);
+		const uint8_t prefix = this->mask2Prefix(mask, type);
 		// Если префикс сети получен, выполняем проверку адреса соответствию сети
 		if(prefix > 0)
 			// Выполняем получение результата
-			result = this->mapping(network, prefix, addr);
+			result = this->mapping(network, prefix, addr, type);
 	}
 	// Выводим результат
 	return result;
@@ -1581,6 +1699,18 @@ bool awh::Net::mapping(const string & network, const string & mask, const addr_t
  * @return        результат проверки
  */
 bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept {
+	// Выполняем проверку соответствия IP-адреса указанной сети
+	return this->mapping(network, prefix, addr, this->_type);
+}
+/**
+ * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @param network сеть для проверки соответствия
+ * @param prefix  префикс для наложения
+ * @param addr    тип получаемого адреса
+ * @param type    тип адреса аппаратного или интернет подключения
+ * @return        результат проверки
+ */
+bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_t addr, const type_t type) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес сети передан
@@ -1594,9 +1724,9 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 			// Если парсинг адреса сети выполнен
 			if((result = net.parse(network))){
 				// Если сеть и IP-адрес принадлежат одной версии сети
-				if((result = (this->_type == net.type()))){
+				if((result = (type == net.type()))){
 					// Определяем тип IP-адреса
-					switch(static_cast <uint8_t> (this->_type)){
+					switch(static_cast <uint8_t> (type)){
 						// Если IP-адрес определён как IPv4
 						case static_cast <uint8_t> (type_t::IPV4): {
 							// Копируем текущий IP-адрес
@@ -2708,6 +2838,17 @@ awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
 awh::Net & awh::Net::operator = (const string & ip) noexcept {
 	// Выполняем установку IP-адреса
 	this->parse(ip);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] установки типа IP-адреса
+ * @param type тип IP-адреса для установки
+ * @return     текущий объект
+ */
+awh::Net & awh::Net::operator = (const type_t type) noexcept {
+	// Устанавливаем тип IP-адреса
+	this->type(type);
 	// Выводим текущий объект
 	return (* this);
 }
