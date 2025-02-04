@@ -366,6 +366,11 @@ namespace awh {
 			void print(const string & format, flag_t flag, const vector <string> & args) const noexcept;
 		public:
 			/**
+			 * mode Метод получения установленных режимов вывода логов
+			 * @return список режимов вывода логов
+			 */
+			const set <mode_t> & mode() const noexcept;
+			/**
 			 * mode Метод добавления режимов вывода логов
 			 * @param mode список режимов вывода логов
 			 */

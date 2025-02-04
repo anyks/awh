@@ -569,6 +569,14 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 	}
 }
 /**
+ * mode Метод получения установленных режимов вывода логов
+ * @return список режимов вывода логов
+ */
+const set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
+	// Выводим список режимов вывода логов
+	return this->_mode;
+}
+/**
  * mode Метод добавления режимов вывода логов
  * @param mode список режимов вывода логов
  */
