@@ -2446,11 +2446,6 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << boolalpha;
 	cout << " Check whether the address 192.168.3.192 is in range [192.168.3.100 - 192.168.3.200] || " << net.range("192.168.3.100", "192.168.3.200", 24) << endl;
 
-	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
-	const auto & dump = net.data <vector <uint16_t>> ();
-	for(auto & item : dump)
-		cout << " IPv6 address chunk data || " << item << endl;
-
 	net = "46.39.230.51";
 	cout << boolalpha;
 	cout << " Checking whether IP-address is global 46.39.230.51 || " << (net.mode() == net_t::mode_t::WAN) << endl;

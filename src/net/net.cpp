@@ -650,7 +650,7 @@ bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
 		 */
 		try {
 			// Создаём временный буфер данных для сравнения
-			vector <uint16_t> buffer(6, 0);
+			vector <uint16_t> buffer(6);
 			// Устанавливаем хексет маски
 			buffer[5] = 0xFFFF;
 			// Если буфер данных принадлежит к вещанию IPv6 => IPv4
@@ -759,9 +759,10 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 }
 /**
  * mac Метод извлечения аппаратного адреса в чистом виде
- * @return аппаратный адрес в чистом виде
+ * @param endian флаг формирования адреса в установленном порядке следовании байт
+ * @return       аппаратный адрес в чистом виде
  */
-uint64_t awh::Net::mac() const noexcept {
+uint64_t awh::Net::mac(const endian_t endian) const noexcept {
 	// Результат работы функции
 	uint64_t result = 0;
 	// Если в буфере данных достаточно
@@ -770,8 +771,26 @@ uint64_t awh::Net::mac() const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем перевод бинарного буфера MAC-адреса в число
-			::memcpy(&result, this->_buffer.data(), this->_buffer.size());
+			// Определяем какой порядок следования байт установлен
+			switch(static_cast <uint8_t> (endian)){
+				// Если установлен порядок следования байт от старшего к младшему
+				case static_cast <uint8_t> (endian_t::BIG): {
+					// Получаем буфер данных IP-адреса
+					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
+					// Выполняем перебор всех октетов адреса
+					while(i--){
+						// Выполняем установку байт в обратном порядке
+						::memcpy(reinterpret_cast <uint8_t *> (&result) + j, this->_buffer.data() + i, 1);
+						// Выполняем смещение в буфере
+						j++;
+					}
+				} break;
+				// Если установлен порядок следования байт от младшего к старшему
+				case static_cast <uint8_t> (endian_t::LITTLE):
+					// Выполняем перевод бинарного буфера MAC-адреса в число
+					::memcpy(&result, this->_buffer.data(), this->_buffer.size());
+				break;
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -796,9 +815,10 @@ uint64_t awh::Net::mac() const noexcept {
 }
 /**
  * mac Метод установки аппаратного адреса в чистом виде
- * @param addr аппаратный адрес в чистом виде
+ * @param addr   аппаратный адрес в чистом виде
+ * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
-void awh::Net::mac(const uint64_t addr) noexcept {
+void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
 	// Если MAC адрес передан
 	if(addr > 0){
 		/**
@@ -809,8 +829,28 @@ void awh::Net::mac(const uint64_t addr) noexcept {
 			this->_buffer.resize(6);
 			// Устанавливаем тип MAC адреса
 			this->_type = type_t::MAC;
-			// Выполняем копирование данных адреса MAC
-			::memcpy(this->_buffer.data(), &addr, this->_buffer.size());
+			// Определяем какой порядок следования байт установлен
+			switch(static_cast <uint8_t> (endian)){
+				// Если установлен порядок следования байт от старшего к младшему
+				case static_cast <uint8_t> (endian_t::BIG): {
+					// Получаем буфер данных IP-адреса
+					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
+					// Получаем буфер данных переданного IP-адреса
+					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (&addr);
+					// Выполняем перебор всех октетов адреса
+					while(i--){
+						// Выполняем установку байт в обратном порядке
+						::memcpy(this->_buffer.data() + j, buffer + i, 1);
+						// Выполняем смещение в буфере
+						j++;
+					}
+				} break;
+				// Если установлен порядок следования байт от младшего к старшему
+				case static_cast <uint8_t> (endian_t::LITTLE):
+					// Выполняем копирование данных адреса MAC
+					::memcpy(this->_buffer.data(), &addr, this->_buffer.size());
+				break;
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -833,9 +873,10 @@ void awh::Net::mac(const uint64_t addr) noexcept {
 }
 /**
  * v4 Извлечения адреса IPv4 в чистом виде
- * @return адрес IPv4 в чистом виде
+ * @param endian флаг формирования адреса в установленном порядке следовании байт
+ * @return       адрес IPv4 в чистом виде
  */
-uint32_t awh::Net::v4() const noexcept {
+uint32_t awh::Net::v4(const endian_t endian) const noexcept {
 	// Результат работы функции
 	uint32_t result = 0;
 	// Если в буфере данных достаточно
@@ -844,8 +885,26 @@ uint32_t awh::Net::v4() const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем копирование данных адреса IPv4
-			::memcpy(&result, this->_buffer.data(), this->_buffer.size());
+			// Определяем какой порядок следования байт установлен
+			switch(static_cast <uint8_t> (endian)){
+				// Если установлен порядок следования байт от старшего к младшему
+				case static_cast <uint8_t> (endian_t::BIG): {
+					// Получаем буфер данных IP-адреса
+					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
+					// Выполняем перебор всех октетов адреса
+					while(i--){
+						// Выполняем установку байт в обратном порядке
+						::memcpy(reinterpret_cast <uint8_t *> (&result) + j, this->_buffer.data() + i, 1);
+						// Выполняем смещение в буфере
+						j++;
+					}
+				} break;
+				// Если установлен порядок следования байт от младшего к старшему
+				case static_cast <uint8_t> (endian_t::LITTLE):
+					// Выполняем копирование данных адреса IPv4
+					::memcpy(&result, this->_buffer.data(), this->_buffer.size());
+				break;
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -870,9 +929,10 @@ uint32_t awh::Net::v4() const noexcept {
 }
 /**
  * v4 Метод установки адреса IPv4 в чистом виде
- * @param addr адрес IPv4 в чистом виде
+ * @param addr   адрес IPv4 в чистом виде
+ * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
-void awh::Net::v4(const uint32_t addr) noexcept {
+void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 	// Если IPv4 адрес передан
 	if(addr > 0){
 		/**
@@ -883,8 +943,28 @@ void awh::Net::v4(const uint32_t addr) noexcept {
 			this->_buffer.resize(4);
 			// Устанавливаем тип IP-адреса
 			this->_type = type_t::IPV4;
-			// Выполняем копирование данных адреса IPv4
-			::memcpy(this->_buffer.data(), &addr, sizeof(addr));
+			// Определяем какой порядок следования байт установлен
+			switch(static_cast <uint8_t> (endian)){
+				// Если установлен порядок следования байт от старшего к младшему
+				case static_cast <uint8_t> (endian_t::BIG): {
+					// Получаем буфер данных IP-адреса
+					uint8_t i = static_cast <uint8_t> (sizeof(addr)), j = 0;
+					// Получаем буфер данных переданного IP-адреса
+					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (&addr);
+					// Выполняем перебор всех октетов адреса
+					while(i--){
+						// Выполняем установку байт в обратном порядке
+						::memcpy(this->_buffer.data() + j, buffer + i, 1);
+						// Выполняем смещение в буфере
+						j++;
+					}
+				} break;
+				// Если установлен порядок следования байт от младшего к старшему
+				case static_cast <uint8_t> (endian_t::LITTLE):
+					// Выполняем копирование данных адреса IPv4
+					::memcpy(this->_buffer.data(), &addr, sizeof(addr));
+				break;
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -907,9 +987,10 @@ void awh::Net::v4(const uint32_t addr) noexcept {
 }
 /**
  * v6 Извлечения адреса IPv6 в чистом виде
- * @return адрес IPv6 в чистом виде
+ * @param endian флаг формирования адреса в установленном порядке следовании байт
+ * @return       адрес IPv6 в чистом виде
  */
-array <uint64_t, 2> awh::Net::v6() const noexcept {
+array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
 	// Результат работы функции
 	array <uint64_t, 2> result;
 	// Если в буфере данных достаточно
@@ -918,8 +999,28 @@ array <uint64_t, 2> awh::Net::v6() const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем копирование данных адреса IPv4
-			::memcpy(result.data(), this->_buffer.data(), this->_buffer.size());
+			// Определяем какой порядок следования байт установлен
+			switch(static_cast <uint8_t> (endian)){
+				// Если установлен порядок следования байт от старшего к младшему
+				case static_cast <uint8_t> (endian_t::BIG): {
+					// Получаем буфер данных IP-адреса
+					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
+					// Получаем буфер данных переданного IP-адреса
+					uint8_t * buffer = reinterpret_cast <uint8_t *> (result.data());
+					// Выполняем перебор всех октетов адреса
+					while(i--){
+						// Выполняем установку байт в обратном порядке
+						::memcpy(buffer + j, this->_buffer.data() + i, 1);
+						// Выполняем смещение в буфере
+						j++;
+					}
+				} break;
+				// Если установлен порядок следования байт от младшего к старшему
+				case static_cast <uint8_t> (endian_t::LITTLE):
+					// Выполняем копирование данных адреса IPv6
+					::memcpy(result.data(), this->_buffer.data(), this->_buffer.size());
+				break;
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -944,9 +1045,10 @@ array <uint64_t, 2> awh::Net::v6() const noexcept {
 }
 /**
  * v6 Метод установки адреса IPv6 в чистом виде
- * @param addr адрес IPv6 в чистом виде
+ * @param addr   адрес IPv6 в чистом виде
+ * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
-void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
+void awh::Net::v6(const array <uint64_t, 2> & addr, const endian_t endian) noexcept {
 	// Если IPv6 адрес передан
 	if(!addr.empty()){
 		/**
@@ -957,8 +1059,28 @@ void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
 			this->_buffer.resize(16);
 			// Устанавливаем тип IP-адреса
 			this->_type = type_t::IPV6;
-			// Выполняем копирование данных адреса IPv6
-			::memcpy(this->_buffer.data(), addr.data(), sizeof(addr));
+			// Определяем какой порядок следования байт установлен
+			switch(static_cast <uint8_t> (endian)){
+				// Если установлен порядок следования байт от старшего к младшему
+				case static_cast <uint8_t> (endian_t::BIG): {
+					// Получаем буфер данных IP-адреса
+					uint8_t i = static_cast <uint8_t> (sizeof(addr)), j = 0;
+					// Получаем буфер данных переданного IP-адреса
+					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (addr.data());
+					// Выполняем перебор всех октетов адреса
+					while(i--){
+						// Выполняем установку байт в обратном порядке
+						::memcpy(this->_buffer.data() + j, buffer + i, 1);
+						// Выполняем смещение в буфере
+						j++;
+					}
+				} break;
+				// Если установлен порядок следования байт от младшего к старшему
+				case static_cast <uint8_t> (endian_t::LITTLE):
+					// Выполняем копирование данных адреса IPv6
+					::memcpy(this->_buffer.data(), addr.data(), sizeof(addr));
+				break;
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1980,7 +2102,7 @@ bool awh::Net::arpa(const string & addr) noexcept {
 				// Выполняем очистку буфера данных
 				this->_buffer.clear();
 				// Выполняем инициализацию буфера
-				this->_buffer.resize(4, 0);
+				this->_buffer.resize(4);
 				// Устанавливаем тип адреса
 				this->_type = type_t::IPV4;
 				// Позиция разделителя
@@ -2147,7 +2269,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Выполняем очистку буфера данных
 					this->_buffer.clear();
 					// Выполняем инициализацию буфера
-					this->_buffer.resize(4, 0);
+					this->_buffer.resize(4);
 					// Позиция разделителя
 					size_t start = 0, stop = 0, index = 0;
 					// Выполняем поиск разделителя
@@ -2175,7 +2297,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					// Если данные IP-адреса получены
 					if((result = !data.empty())){
 						// Создаём результирующий буфер данных
-						vector <uint16_t> buffer(8, 0);
+						vector <uint16_t> buffer(8);
 						// Если в начале IP-адреса пропущены нули
 						if(data.front().empty()){
 							// Получаем длину хексета
@@ -2183,7 +2305,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 							// Если последний элемент массива больше 4-х символов
 							if((result = ((length >= 7) && (length <= 15)))){
 								// Выполняем усечение лишних данных буфера
-								buffer.resize(6, 0);
+								buffer.resize(6);
 								// Устанавливаем индекс последнего элемента
 								size_t start = 0, stop = 0, index = 6;
 								// Выполняем перебор всех хексеков
@@ -2303,7 +2425,7 @@ string awh::Net::get(const format_t format) const noexcept {
 					// Если размера данных достаточно
 					if(this->_buffer.size() >= 6){
 						// Перераспределяем объект результата
-						result.resize(17, 0);
+						result.resize(17);
 						// Выполняем получение MAC адреса
 						::sprintf(
 							result.data(),
@@ -2377,7 +2499,7 @@ string awh::Net::get(const format_t format) const noexcept {
 					// Количество разделителей и количество хексетов в буфере
 					uint8_t separators = 0, count = static_cast <uint8_t> (this->_buffer.size());
 					// Создаём временный буфер данных для сравнения
-					vector <uint16_t> buffer(6, 0);
+					vector <uint16_t> buffer(6);
 					// Устанавливаем хексет маски
 					buffer[5] = 0xFFFF;
 					// Флаг зеркального вещания IPv6 => IPv4

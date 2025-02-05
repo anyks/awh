@@ -69,6 +69,14 @@ namespace awh {
 				NETWORK = 0x02  // Адрес сети
 			};
 			/**
+			 * Порядок следования байт
+			 */
+			enum class endian_t : uint8_t {
+				NONE   = 0x00, // Порядок следования байт не установлен
+				BIG    = 0x01, // Порядок байт от старшего к младшему
+				LITTLE = 0x02  // Порядок байт от младшего к старшему
+			};
+			/**
 			 * Форматирование IP-адреса
 			 */
 			enum class format_t : uint8_t {
@@ -199,58 +207,42 @@ namespace awh {
 		public:
 			/**
 			 * mac Метод извлечения аппаратного адреса в чистом виде
-			 * @return аппаратный адрес в чистом виде
+			 * @param endian флаг формирования адреса в установленном порядке следовании байт
+			 * @return       аппаратный адрес в чистом виде
 			 */
-			uint64_t mac() const noexcept;
+			uint64_t mac(const endian_t endian = endian_t::LITTLE) const noexcept;
 			/**
 			 * mac Метод установки аппаратного адреса в чистом виде
-			 * @param addr аппаратный адрес в чистом виде
+			 * @param addr   аппаратный адрес в чистом виде
+			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
-			void mac(const uint64_t addr) noexcept;
+			void mac(const uint64_t addr, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
 			 * v4 Метод извлечения адреса IPv4 в чистом виде
-			 * @return адрес IPv4 в чистом виде
+			 * @param endian флаг формирования адреса в установленном порядке следовании байт
+			 * @return       адрес IPv4 в чистом виде
 			 */
-			uint32_t v4() const noexcept;
+			uint32_t v4(const endian_t endian = endian_t::LITTLE) const noexcept;
 			/**
 			 * v4 Метод установки адреса IPv4 в чистом виде
-			 * @param addr адрес IPv4 в чистом виде
+			 * @param addr   адрес IPv4 в чистом виде
+			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
-			void v4(const uint32_t addr) noexcept;
+			void v4(const uint32_t addr, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
 			 * v6 Метод извлечения адреса IPv6 в чистом виде
-			 * @return адрес IPv6 в чистом виде
+			 * @param endian флаг формирования адреса в установленном порядке следовании байт
+			 * @return       адрес IPv6 в чистом виде
 			 */
-			array <uint64_t, 2> v6() const noexcept;
+			array <uint64_t, 2> v6(const endian_t endian = endian_t::LITTLE) const noexcept;
 			/**
 			 * v6 Метод установки адреса IPv6 в чистом виде
-			 * @param addr адрес IPv6 в чистом виде
+			 * @param addr   адрес IPv6 в чистом виде
+			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
-			void v6(const array <uint64_t, 2> & addr) noexcept;
-		public:
-			/**
-			 * @tparam Шаблон извлечения дампа данных
-			 */
-			template <typename T>
-			/**
-			 * dump Метод получения дампа данных
-			 * @return сформированный дамп данных
-			 */
-			T data() noexcept {
-				// Результат работы функции
-				T result;
-				// Если бинарный буфер данных существует и мы работаем с контейнером
-				if(!this->_buffer.empty() && is_class <T>::value){
-					// Выполняем выделение памяти
-					result.resize(this->_buffer.size() / sizeof(result[0]), 0);
-					// Выполняем копирование IP-адреса
-					memcpy(result.data(), this->_buffer.data(), this->_buffer.size());
-				}
-				// Выводим результат
-				return result;
-			}
+			void v6(const array <uint64_t, 2> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
 			 * impose Метод наложения маски сети
