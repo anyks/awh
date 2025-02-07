@@ -2092,41 +2092,195 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	return result;
 }
 /**
- * itoa Метод конвертации чисел в указанную систему счисления
- * @param value число для конвертации
- * @param radix система счисления
- * @return      полученная строка в указанной системе счисления
+ * greater Метод проверки больше первое число второго или нет (бинарным методом)
+ * @param value1 значение первого числа в бинарном виде
+ * @param value2 значение второго числа в бинарном виде
+ * @param size   размер бинарного буфера числа
+ * @return       результат проверки
  */
-string awh::Framework::itoa(const int64_t value, const uint8_t radix) const noexcept {
+bool awh::Framework::greater(const void * value1, const void * value2, const size_t size) const noexcept {
 	// Результат работы функции
-	string result = "";
-	// Если данные переданы
-	if((radix > 0) && (radix < 37)){
+	bool result = false;
+	// Если данные переданы правильно
+	if((value1 != nullptr) && (value2 != nullptr) && (size > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Убираем отрицательное значение
-			int64_t num = ::abs(value);
-			// Запоминаем являлось ли число отрицательным
-			const bool sign = (value < 0);
+			// Значений чисел для сравнения
+			bitset <8> num1(0), num2(0);
+			// Индекс перебора всех бит числа
+			uint8_t count = 0, index = static_cast <uint8_t> (size);
+			// Выполняем перебор всех байт буфера
+			while(index--){
+				// Получаем значение числа в виде первого байта
+				num1 = reinterpret_cast <const uint8_t *> (value1)[index];
+				// Получаем значение числа в виде второго байта
+				num2 = reinterpret_cast <const uint8_t *> (value2)[index];
+				// Получаем первоначальное значение индексов
+				count = static_cast <uint8_t> (num1.size());
+				// Выполняем перебор всей строки
+				while(count--){
+					// Если первый байт больше второго
+					if((result = (num1.test(count) && !num2.test(count))) || (!num1.test(count) && num2.test(count)))
+						// Выходим из функции
+						return result;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * itoa Метод конвертации чисел в указанную систему счисления
+ * @param value бинарный буфер числа для конвертации
+ * @param size  размер бинарного буфера
+ * @param radix система счисления
+ * @return      полученная строка в указанной системе счисления
+ */
+string awh::Framework::itoa(const void * value, const size_t size, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если данные переданы
+	if((value != nullptr) && (size > 0) && (radix > 1) && (radix < 37)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Устанавливаем числовые обозначения
 			const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-			// Особый случай: нулю соответствует не пустая строка, а "0"
-			if(num == 0)
-				// Выполняем добавление  нулевого символа
-				result.insert(result.begin(), digits[0]);
-			// Раскладываем число на цифры (младшими разрядами вперёд)
-			while(num != 0){
-				// Добавляем идентификатор числа
-				result.insert(result.begin(), digits[num % radix]);
-				// Выполняем финальное деление
-				num /= radix;
+			// Если запись в бинарном виде
+			if(radix == 2){
+				// Результат с которым будем работать
+				bitset <8> byte(0);
+				// Выполняем перебор всего буфера данных
+				for(uint8_t i = 0; i < static_cast <uint8_t> (size); i++){
+					// Получаем байт
+					byte = reinterpret_cast <const uint8_t *> (value)[i];
+					// Переходим по всем байтам полученного бита
+					for(size_t j = 0; j < byte.size(); j++){
+						// Если бит установлен
+						if(byte.test(j))
+							// Выполняем добавление первого символа символа
+							result.insert(result.begin(), digits[1]);
+						// Иначе добавлям нулевой символ
+						else result.insert(result.begin(), digits[0]);
+					}
+				}
+			// Если это другая система счисления
+			} else {
+				// Определяем размер данных для конвертации
+				switch(size){
+					// Если это один байт
+					case 1: {
+						// Число с которым будем работать
+						uint8_t num = 0;
+						// Выполняем копирование полученных данных
+						::memcpy(&num, value, size);
+						// Особый случай: нулю соответствует не пустая строка, а "0"
+						if(num == 0)
+							// Выполняем добавление нулевого символа
+							result.insert(result.begin(), digits[0]);
+						// Раскладываем число на цифры (младшими разрядами вперёд)
+						while(num != 0){
+							// Добавляем идентификатор числа
+							result.insert(result.begin(), digits[num % radix]);
+							// Выполняем финальное деление
+							num /= radix;
+						}
+					} break;
+					// Если это два байта
+					case 2: {
+						// Число с которым будем работать
+						uint16_t num = 0;
+						// Выполняем копирование полученных данных
+						::memcpy(&num, value, size);
+						// Особый случай: нулю соответствует не пустая строка, а "0"
+						if(num == 0)
+							// Выполняем добавление нулевого символа
+							result.insert(result.begin(), digits[0]);
+						// Раскладываем число на цифры (младшими разрядами вперёд)
+						while(num != 0){
+							// Добавляем идентификатор числа
+							result.insert(result.begin(), digits[num % static_cast <uint16_t> (radix)]);
+							// Выполняем финальное деление
+							num /= static_cast <uint16_t> (radix);
+						}
+					} break;
+					// Если это четыре байта
+					case 4: {
+						// Число с которым будем работать
+						uint32_t num = 0;
+						// Выполняем копирование полученных данных
+						::memcpy(&num, value, size);
+						// Особый случай: нулю соответствует не пустая строка, а "0"
+						if(num == 0)
+							// Выполняем добавление нулевого символа
+							result.insert(result.begin(), digits[0]);
+						// Раскладываем число на цифры (младшими разрядами вперёд)
+						while(num != 0){
+							// Добавляем идентификатор числа
+							result.insert(result.begin(), digits[num % static_cast <uint32_t> (radix)]);
+							// Выполняем финальное деление
+							num /= static_cast <uint32_t> (radix);
+						}
+					} break;
+					// Если это восемь байт
+					case 8: {
+						// Число с которым будем работать
+						uint64_t num = 0;
+						// Выполняем копирование полученных данных
+						::memcpy(&num, value, size);
+						// Особый случай: нулю соответствует не пустая строка, а "0"
+						if(num == 0)
+							// Выполняем добавление нулевого символа
+							result.insert(result.begin(), digits[0]);
+						// Раскладываем число на цифры (младшими разрядами вперёд)
+						while(num != 0){
+							// Добавляем идентификатор числа
+							result.insert(result.begin(), digits[num % static_cast <uint64_t> (radix)]);
+							// Выполняем финальное деление
+							num /= static_cast <uint64_t> (radix);
+						}
+					} break;
+					// Для всех остальных размеров
+					default: {
+						// Сбрасываем полученный результат
+						result.clear();
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Binary data buffer cannot be cast to a number");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "%s\n", "Binary data buffer cannot be cast to a number");
+						#endif
+					}
+				}
 			}
-			// Дописываем после старшего разряда знак
-			if(sign)
-				// Добавляем минус
-				result.insert(result.begin(), '-');
 		/**
 		 * Если возникает ошибка
 		 */
@@ -2153,15 +2307,14 @@ string awh::Framework::itoa(const int64_t value, const uint8_t radix) const noex
 }
 /**
  * atoi Метод конвертации строковых чисел в десятичную систему счисления
- * @param value число для конвертации
- * @param radix система счисления
- * @return      полученное значение в указанной системе счисления
+ * @param value  число в бинарном виде для конвертации в 10-ю систему
+ * @param radix  размер бинарного буфера
+ * @param buffer бинарный буфер куда следует положить результат
+ * @param size   размер бинарного буфера куда следует положить результат
  */
-int64_t awh::Framework::atoi(const string & value, const uint8_t radix) const noexcept {
-	// Результат работы функции
-	int64_t result = 0;
+void awh::Framework::atoi(const string & value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
-	if(!value.empty() && (radix > 0) && (radix < 37)){
+	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2170,33 +2323,145 @@ int64_t awh::Framework::atoi(const string & value, const uint8_t radix) const no
 			string number = value;
 			// Позиция в строке алфавита
 			size_t pos = string::npos;
-			// Запоминаем являлось ли число отрицательным
-			const bool sign = (value.front() == '-');
 			// Устанавливаем числовые обозначения
 			const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			// Если запись в 16-м виде
+			if(radix == 16){
+				// Если первые два значения числа являются префиксом
+				if(number.compare(0, 2, "0x") == 0)
+					// Удаляем первые два символа
+					number.erase(0, 2);
+			}
 			// Выполняем перевод число в верхний регистр
 			this->transform(number, transform_t::UPPER);
 			// Начальное и конечное количество перебираемых элементов
-			const uint8_t start = (sign ? 1 : 0), stop = (sign ? static_cast <uint8_t> (number.length()) - 1 : static_cast <uint8_t> (number.length()));
-			// Выполняем перебор всех чисел
-			for(uint8_t i = start; i < (sign ? stop + 1 : stop); i++){
-				// Если символ найден
-				if((pos = digits.find(number.at(i))) != string::npos)
-					// Выполняем перевод в 10-ю систему счисления
-					result += (pos * ::pow(radix, stop - (sign ? i - 1 : i) - 1));
-				// Иначе выходим из цикла
-				else return 0;
+			const uint8_t start = 0, stop = static_cast <uint8_t> (number.length());
+			// Определяем размер данных для конвертации
+			switch(size){
+				// Если это один байт
+				case 1: {
+					// Результат с которым будем работать
+					uint8_t result = 0;
+					// Выполняем перебор всех чисел
+					for(uint8_t i = start; i < stop; i++){
+						// Если символ найден
+						if((pos = digits.find(number.at(i))) != string::npos)
+							// Выполняем перевод в 10-ю систему счисления
+							result += (pos * ::pow(radix, stop - i - 1));
+						// Иначе выходим из цикла
+						else return;
+					}
+					// Копируем полученный результат
+					::memcpy(buffer, &result, size);
+				} break;
+				// Если это два байта
+				case 2: {
+					// Результат с которым будем работать
+					uint16_t result = 0;
+					// Выполняем перебор всех чисел
+					for(uint8_t i = start; i < stop; i++){
+						// Если символ найден
+						if((pos = digits.find(number.at(i))) != string::npos)
+							// Выполняем перевод в 10-ю систему счисления
+							result += (pos * ::pow(radix, stop - i - 1));
+						// Иначе выходим из цикла
+						else return;
+					}
+					// Копируем полученный результат
+					::memcpy(buffer, &result, size);
+				} break;
+				// Если это четыре байта
+				case 4: {
+					// Результат с которым будем работать
+					uint32_t result = 0;
+					// Выполняем перебор всех чисел
+					for(uint8_t i = start; i < stop; i++){
+						// Если символ найден
+						if((pos = digits.find(number.at(i))) != string::npos)
+							// Выполняем перевод в 10-ю систему счисления
+							result += (pos * ::pow(radix, stop - i - 1));
+						// Иначе выходим из цикла
+						else return;
+					}
+					// Копируем полученный результат
+					::memcpy(buffer, &result, size);
+				} break;
+				// Если это восемь байт
+				case 8: {
+					// Результат с которым будем работать
+					uint64_t result = 0;
+					// Выполняем перебор всех чисел
+					for(uint8_t i = start; i < stop; i++){
+						// Если символ найден
+						if((pos = digits.find(number.at(i))) != string::npos)
+							// Выполняем перевод в 10-ю систему счисления
+							result += (pos * ::pow(radix, stop - i - 1));
+						// Иначе выходим из цикла
+						else return;
+					}
+					// Копируем полученный результат
+					::memcpy(buffer, &result, size);
+				} break;
+				// Для всех остальных размеров
+				default: {
+					// Если запись в бинарном виде
+					if(radix == 2){
+						// Значение байта для установки
+						uint8_t byte = 0;
+						// Результат с которым будем работать
+						bitset <8> result(0);
+						// Получаем первоначальное значение индексов
+						size_t i = value.size(), j = 0, offset = 0;
+						// Выполняем перебор всей строки
+						while(i--){
+							// Если бит положительный
+							if(value.at(i) == '1')
+								// Устанавливаем бит результата
+								result.set(j);
+							// Если бит отрицательный, снимаем его
+							else result.reset(j);
+							// Увеличиваем смещение бит
+							j++;
+							// Если мы заполнили байт целиком
+							if((j % 8) == 0){
+								// Сбрасываем значение счётчика
+								j = 0;
+								// Выполняем получение числа
+								byte = static_cast <uint8_t> (result.to_ulong());
+								// Выполняем добавление байта в буфер
+								::memcpy(reinterpret_cast <uint8_t *> (buffer) + (offset / 8), &byte, sizeof(byte));
+								// Увеличиваем смещение в буфере
+								offset += 8;
+								// Сбрасываем результат
+								result.reset();
+							}
+						}
+					// Выводим сообщение об ошибке
+					} else {
+						// Сбрасываем полученный результат
+						::memset(buffer, 0, size);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Only binary number can be converted to binary buffer");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "%s\n", "Only binary number can be converted to binary buffer");
+						#endif
+					}
+				}
 			}
-			// Если число было отрицательным, корректируем это
-			if(sign)
-				// Переводим число в отрицательную форму
-				result *= -1;
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
 			// Сбрасываем полученный результат
-			result = 0;
+			::memset(buffer, 0, size);
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2212,8 +2477,6 @@ int64_t awh::Framework::atoi(const string & value, const uint8_t radix) const no
 			#endif
 		}
 	}
-	// Выводим результат
-	return result;
 }
 /**
  * noexp Метод перевода числа в безэкспоненциальную форму

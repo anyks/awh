@@ -212,7 +212,7 @@ string awh::client::Auth::auth(const string & method) noexcept {
 							this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
 						}
 						// Выполняем инкрементацию счётчика
-						this->_digest.nc = this->_fmk->itoa((this->_fmk->atoi(this->_digest.nc, 16) + 1), 16);
+						this->_digest.nc = this->_fmk->itoa((this->_fmk->atoi <size_t> (this->_digest.nc, 16) + 1), 16);
 						// Добавляем нули в начало счётчика
 						for(uint16_t i = 0; i < (8 - this->_digest.nc.size()); i++)
 							// Добавляем ноль в начало счётчика

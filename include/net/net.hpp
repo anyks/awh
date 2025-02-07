@@ -168,6 +168,15 @@ namespace awh {
 			string & zerro(string && num, const uint8_t size = 3) const noexcept;
 		private:
 			/**
+			 * greater Метод проверки больше первое число второго или нет (бинарным методом)
+			 * @param value1 значение первого числа в бинарном виде
+			 * @param value2 значение второго числа в бинарном виде
+			 * @param size   размер бинарного буфера числа
+			 * @return       результат проверки
+			 */
+			bool greater(const void * value1, const void * value2, const size_t size) const noexcept;
+		private:
+			/**
 			 * split Метод разделения строк на составляющие
 			 * @param str    строка для поиска
 			 * @param delim  разделитель
@@ -528,6 +537,12 @@ namespace awh {
 			 * @return     текущий объект
 			 */
 			Net & operator = (const uint32_t addr) noexcept;
+			/**
+			 * Оператор [=] присвоения MAC-адреса
+			 * @param addr адрес для присвоения
+			 * @return     текущий объект
+			 */
+			Net & operator = (const uint64_t addr) noexcept;
 			/**
 			 * Оператор [=] присвоения IP-адреса
 			 * @param addr адрес для присвоения

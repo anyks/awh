@@ -402,7 +402,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Меняем стейт чанка
 								this->_chunk.state = process_t::END_SIZE;
 								// Получаем размер чанка
-								this->_chunk.size = this->_fmk->atoi(string(
+								this->_chunk.size = this->_fmk->atoi <size_t> (string(
 									this->_chunk.data.begin(),
 									this->_chunk.data.end()
 								), 16);

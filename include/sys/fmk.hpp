@@ -23,6 +23,7 @@
 #include <list>
 #include <ctime>
 #include <cmath>
+#include <bitset>
 #include <chrono>
 #include <locale>
 #include <string>
@@ -517,19 +518,97 @@ namespace awh {
 			wstring convert(const string & str) const noexcept;
 		public:
 			/**
+			 * Шаблон функции проверки больше первое число второго или нет (бинарным методом)
+			 * @tparam T тип данных с которым работает функция
+			 */
+			template <typename T>
+			/**
+			 * greater Метод проверки больше первое число второго или нет (бинарным методом)
+			 * @param num1 значение первого числа в бинарном виде
+			 * @param num2 значение второго числа в бинарном виде
+			 * @return     результат проверки
+			 */
+			bool greater(const T num1, const T num2) const noexcept {
+				// Если данные являются основными
+				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
+					// Выполняем проверку
+					return this->greater(&num1, &num2, sizeof(num1));
+				// Выводим значение по умолчанию
+				return false;
+			}
+			/**
+			 * greater Метод проверки больше первое число второго или нет (бинарным методом)
+			 * @param value1 значение первого числа в бинарном виде
+			 * @param value2 значение второго числа в бинарном виде
+			 * @param size   размер бинарного буфера числа
+			 * @return       результат проверки
+			 */
+			bool greater(const void * value1, const void * value2, const size_t size) const noexcept;
+		public:
+			/**
+			 * Шаблон функции конвертации чисел в указанную систему счисления
+			 * @tparam T тип данных с которым работает функция
+			 */
+			template <typename T>
+			/**
 			 * itoa Метод конвертации чисел в указанную систему счисления
 			 * @param value число для конвертации
 			 * @param radix система счисления
 			 * @return      полученная строка в указанной системе счисления
 			 */
-			string itoa(const int64_t value, const uint8_t radix) const noexcept;
+			string itoa(const T value, const uint8_t radix) const noexcept {
+				// Если данные являются основными
+				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
+					// Выполняем конвертацию чисел в указанную систему счисления
+					return this->itoa(&value, sizeof(value), radix);
+				// Выводим пустое значение
+				return "";
+			}
+			/**
+			 * itoa Метод конвертации чисел в указанную систему счисления
+			 * @param value бинарный буфер числа для конвертации
+			 * @param size  размер бинарного буфера
+			 * @param radix система счисления
+			 * @return      полученная строка в указанной системе счисления
+			 */
+			string itoa(const void * value, const size_t size, const uint8_t radix) const noexcept;
+		public:
+			/**
+			 * Шаблон функции конвертации строковых чисел в десятичную систему счисления
+			 * @tparam T тип данных с которым работает функция
+			 */
+			template <typename T>
 			/**
 			 * atoi Метод конвертации строковых чисел в десятичную систему счисления
-			 * @param value число для конвертации
-			 * @param radix система счисления
-			 * @return      полученное значение в указанной системе счисления
+			 * @param value число в бинарном виде для конвертации в 10-ю систему
+			 * @param radix размер бинарного буфера
+			 * @return      полученное значение в десятичной системе счисления
 			 */
-			int64_t atoi(const string & value, const uint8_t radix) const noexcept;
+			T atoi(const string & value, const uint8_t radix) const noexcept {
+				// Результат работы функции
+				T result;
+				// Если данные являются основными
+				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+					// Буфер результата по умолчанию
+					uint8_t buffer[sizeof(T)];
+					// Заполняем нулями буфер данных
+					::memset(buffer, 0, sizeof(T));
+					// Выполняем установку результата по умолчанию
+					::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+				}
+				// Выполняем извлечение данных
+				this->atoi(value, radix, &result, sizeof(result));
+				// Выводим результат
+				return result;
+			}
+			/**
+			 * atoi Метод конвертации строковых чисел в десятичную систему счисления
+			 * @param value  число в бинарном виде для конвертации в 10-ю систему
+			 * @param radix  размер бинарного буфера
+			 * @param buffer бинарный буфер куда следует положить результат
+			 * @param size   размер бинарного буфера куда следует положить результат
+			 */
+			void atoi(const string & value, const uint8_t radix, void * buffer, const size_t size) const noexcept;
 		public:
 			/**
 			 * noexp Метод перевода числа в безэкспоненциальную форму

@@ -531,6 +531,64 @@ string & awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 	return num;
 }
 /**
+ * greater Метод проверки больше первое число второго или нет (бинарным методом)
+ * @param value1 значение первого числа в бинарном виде
+ * @param value2 значение второго числа в бинарном виде
+ * @param size   размер бинарного буфера числа
+ * @return       результат проверки
+ */
+bool awh::Net::greater(const void * value1, const void * value2, const size_t size) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если данные переданы правильно
+	if((value1 != nullptr) && (value2 != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Значений чисел для сравнения
+			bitset <8> num1(0), num2(0);
+			// Индекс перебора всех бит числа
+			uint8_t count = 0, index = static_cast <uint8_t> (size);
+			// Выполняем перебор всех байт буфера
+			while(index--){
+				// Получаем значение числа в виде первого байта
+				num1 = reinterpret_cast <const uint8_t *> (value1)[index];
+				// Получаем значение числа в виде второго байта
+				num2 = reinterpret_cast <const uint8_t *> (value2)[index];
+				// Получаем первоначальное значение индексов
+				count = static_cast <uint8_t> (num1.size());
+				// Выполняем перебор всей строки
+				while(count--){
+					// Если первый байт больше второго
+					if((result = (num1.test(count) && !num2.test(count))) || (!num1.test(count) && num2.test(count)))
+						// Выходим из функции
+						return result;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value1, value2, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * split Метод разделения строк на составляющие
  * @param str    строка для поиска
  * @param delim  разделитель
@@ -2609,19 +2667,24 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 		try {
 			// Определяем тип IP-адреса
 			switch(static_cast <uint8_t> (this->_type)){
+				// Если MAC-адрес определён
+				case static_cast <uint8_t> (type_t::MAC):
+					// Выполняем сравнение адресов
+					result = (this->mac(endian_t::BIG) < addr.mac(endian_t::BIG));
+				break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
 					// Выполняем сравнение адресов
-					result = (this->v4() < addr.v4());
+					result = (this->v4(endian_t::BIG) < addr.v4(endian_t::BIG));
 				break;
 				// Если IP-адрес определён как IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
 					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6();
+					const auto & first = this->v6(endian_t::BIG);
 					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6();
-					// Выполняем сравнение адресов
-					result = ((first[0] < second[0]) && (first[1] < second[1]));
+					const auto & second = addr.v6(endian_t::BIG);
+					// Выполняем бинарное сравнение
+					result = this->greater(reinterpret_cast <const uint8_t *> (second.data()), reinterpret_cast <const uint8_t *> (first.data()), sizeof(first));
 				} break;
 			}
 		/**
@@ -2662,19 +2725,24 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 		try {
 			// Определяем тип IP-адреса
 			switch(static_cast <uint8_t> (this->_type)){
+				// Если MAC-адрес определён
+				case static_cast <uint8_t> (type_t::MAC):
+					// Выполняем сравнение адресов
+					result = (this->mac(endian_t::BIG) > addr.mac(endian_t::BIG));
+				break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
 					// Выполняем сравнение адресов
-					result = (this->v4() > addr.v4());
+					result = (this->v4(endian_t::BIG) > addr.v4(endian_t::BIG));
 				break;
 				// Если IP-адрес определён как IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
 					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6();
+					const auto & first = this->v6(endian_t::BIG);
 					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6();
-					// Выполняем сравнение адресов
-					result = ((first[0] > second[0]) && (first[1] > second[1]));
+					const auto & second = addr.v6(endian_t::BIG);
+					// Выполняем бинарное сравнение
+					result = this->greater(reinterpret_cast <const uint8_t *> (first.data()), reinterpret_cast <const uint8_t *> (second.data()), sizeof(first));
 				} break;
 			}
 		/**
@@ -2715,19 +2783,28 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 		try {
 			// Определяем тип IP-адреса
 			switch(static_cast <uint8_t> (this->_type)){
+				// Если MAC-адрес определён
+				case static_cast <uint8_t> (type_t::MAC):
+					// Выполняем сравнение адресов
+					result = (this->mac(endian_t::BIG) <= addr.mac(endian_t::BIG));
+				break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
 					// Выполняем сравнение адресов
-					result = (this->v4() <= addr.v4());
+					result = (this->v4(endian_t::BIG) <= addr.v4(endian_t::BIG));
 				break;
 				// Если IP-адрес определён как IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
 					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6();
+					const auto & first = this->v6(endian_t::BIG);
 					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6();
+					const auto & second = addr.v6(endian_t::BIG);
 					// Выполняем сравнение адресов
-					result = ((first[0] <= second[0]) && (first[1] <= second[1]));
+					result = ((first[0] == second[0]) && (first[1] == second[1]));
+					// Если адреса не совпадают
+					if(!result)
+						// Выполняем бинарное сравнение
+						result = this->greater(reinterpret_cast <const uint8_t *> (second.data()), reinterpret_cast <const uint8_t *> (first.data()), sizeof(first));
 				} break;
 			}
 		/**
@@ -2768,19 +2845,28 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 		try {
 			// Определяем тип IP-адреса
 			switch(static_cast <uint8_t> (this->_type)){
+				// Если MAC-адрес определён
+				case static_cast <uint8_t> (type_t::MAC):
+					// Выполняем сравнение адресов
+					result = (this->mac(endian_t::BIG) >= addr.mac(endian_t::BIG));
+				break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
 					// Выполняем сравнение адресов
-					result = (this->v4() >= addr.v4());
+					result = (this->v4(endian_t::BIG) >= addr.v4(endian_t::BIG));
 				break;
 				// Если IP-адрес определён как IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
 					// Получаем данные текущего адреса IPv6
-					const auto & first = this->v6();
+					const auto & first = this->v6(endian_t::BIG);
 					// Получаем данные сравниваемого адреса IPv6
-					const auto & second = addr.v6();
+					const auto & second = addr.v6(endian_t::BIG);
 					// Выполняем сравнение адресов
-					result = ((first[0] >= second[0]) && (first[1] >= second[1]));
+					result = ((first[0] == second[0]) && (first[1] == second[1]));
+					// Если адреса не совпадают
+					if(!result)
+						// Выполняем бинарное сравнение
+						result = this->greater(reinterpret_cast <const uint8_t *> (first.data()), reinterpret_cast <const uint8_t *> (second.data()), sizeof(first));
 				} break;
 			}
 		/**
@@ -2819,6 +2905,11 @@ bool awh::Net::operator != (const net_t & addr) const noexcept {
 	try {
 		// Определяем тип IP-адреса
 		switch(static_cast <uint8_t> (this->_type)){
+			// Если MAC-адрес определён
+			case static_cast <uint8_t> (type_t::MAC):
+				// Выполняем сравнение адресов
+				result = (this->mac() != addr.mac());
+			break;
 			// Если IP-адрес определён как IPv4
 			case static_cast <uint8_t> (type_t::IPV4):
 				// Выполняем сравнение адресов
@@ -2871,6 +2962,11 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
 		try {
 			// Определяем тип IP-адреса
 			switch(static_cast <uint8_t> (this->_type)){
+				// Если MAC-адрес определён
+				case static_cast <uint8_t> (type_t::MAC):
+					// Выполняем сравнение адресов
+					result = (this->mac() == addr.mac());
+				break;
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
 					// Выполняем сравнение адресов
@@ -2920,14 +3016,19 @@ awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
 	try {
 		// Определяем тип IP-адреса
 		switch(static_cast <uint8_t> (addr.type())){
+			// Если MAC-адрес определён
+			case static_cast <uint8_t> (type_t::MAC):
+				// Устанавливаем MAC-адресе
+				this->v4(addr.mac());
+			break;
 			// Если IP-адрес определён как IPv4
 			case static_cast <uint8_t> (type_t::IPV4):
-				// Устанавливаем IPv4 адрсе
+				// Устанавливаем IPv4 адресе
 				this->v4(addr.v4());
 			break;
 			// Если IP-адрес определён как IPv6
 			case static_cast <uint8_t> (type_t::IPV6):
-				// Устанавливаем IPv6 адрсе
+				// Устанавливаем IPv6 адресе
 				this->v6(addr.v6());
 			break;
 		}
@@ -2982,6 +3083,17 @@ awh::Net & awh::Net::operator = (const type_t type) noexcept {
 awh::Net & awh::Net::operator = (const uint32_t addr) noexcept {
 	// Устанавливаем IPv4
 	this->v4(addr);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присвоения MAC-адреса
+ * @param addr адрес для присвоения
+ * @return     текущий объект
+ */
+awh::Net & awh::Net::operator = (const uint64_t addr) noexcept {
+	// Устанавливаем MAC-адрес
+	this->mac(addr);
 	// Выводим текущий объект
 	return (* this);
 }

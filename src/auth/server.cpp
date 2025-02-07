@@ -81,7 +81,7 @@ bool awh::server::Auth::check(const string & method) noexcept {
 			// Если данные пользователя переданы
 			if(!method.empty() && !this->_user.empty() && !this->_locale.nc.empty() && !this->_locale.uri.empty() && !this->_locale.cnonce.empty() && !this->_locale.resp.empty()){
 				// Если на сервере счётчик меньше
-				if((this->_fmk->atoi(this->_digest.nc, 16) <= this->_fmk->atoi(this->_locale.nc, 16)) && this->_callbacks.is("extract")){
+				if((this->_fmk->atoi <size_t> (this->_digest.nc, 16) <= this->_fmk->atoi <size_t> (this->_locale.nc, 16)) && this->_callbacks.is("extract")){
 					// Получаем пароль пользователя
 					const string & pass = this->_callbacks.call <string (const string &)> ("extract", this->_user);
 					// Если пароль пользователя получен
