@@ -103,6 +103,9 @@ namespace awh {
 			// Текст ошибки
 			string _error;
 		public:
+			// Кэш собранных регулярных выражений
+			mutable map <pair <int32_t, string>, exp_weak_t> _cache;
+		public:
 			/**
 			 * error Метод извлечения текста ошибки регулярного выражения
 			 * @return текст ошибки регулярного выражения
@@ -115,22 +118,16 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат проверки регулярного выражения
 			 */
-			bool test(const char * text, const exp_t & exp) const noexcept;
+			bool test(const string & text, const exp_t & exp) const noexcept;
 			/**
 			 * test Метод проверки регулярного выражения
 			 * @param text текст для обработки
+			 * @param size размер текста для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат проверки регулярного выражения
 			 */
-			bool test(const string & text, const exp_t & exp) const noexcept;
+			bool test(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
-			/**
-			 * exec Метод запуска регулярного выражения
-			 * @param text текст для обработки
-			 * @param exp  объект регулярного выражения
-			 * @return     результат обработки регулярного выражения
-			 */
-			vector <string> exec(const char * text, const exp_t & exp) const noexcept;
 			/**
 			 * exec Метод запуска регулярного выражения
 			 * @param text текст для обработки
@@ -138,6 +135,14 @@ namespace awh {
 			 * @return     результат обработки регулярного выражения
 			 */
 			vector <string> exec(const string & text, const exp_t & exp) const noexcept;
+			/**
+			 * exec Метод запуска регулярного выражения
+			 * @param text текст для обработки
+			 * @param size размер текста для обработки
+			 * @param exp  объект регулярного выражения
+			 * @return     результат обработки регулярного выражения
+			 */
+			vector <string> exec(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * match Метод выполнения регулярного выражения
@@ -145,14 +150,15 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <pair <size_t, size_t>> match(const char * text, const exp_t & exp) const noexcept;
+			vector <pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
 			/**
 			 * match Метод выполнения регулярного выражения
 			 * @param text текст для обработки
+			 * @param size размер текста для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
+			vector <pair <size_t, size_t>> match(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * build Метод сборки регулярного выражения

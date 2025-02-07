@@ -115,11 +115,12 @@ namespace awh {
 				unique_ptr <Net> begin; // Начальный IP-адрес
 				/**
 				 * LocalNet Конструктор
+				 * @param exp регулярное выражение для установки
 				 * @param log объект для работы с логами
 				 */
-				LocalNet(const log_t * log) noexcept :
+				LocalNet(const regexp_t::exp_t & exp, const log_t * log) noexcept :
 				 reserved(false), prefix(0),
-				 end(new Net(log)), begin(new Net(log)) {}
+				 end(new Net(exp, log)), begin(new Net(exp, log)) {}
 			} localNet_t;
 		private:
 			// Тип обрабатываемого адреса

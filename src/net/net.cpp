@@ -32,7 +32,7 @@ void awh::Net::initLocalNet() noexcept {
 		if(this->_localsNet.empty()){
 			{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 128;
 				// Устанавливаем зарезервированный флаг
@@ -43,7 +43,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 128;
 				// Устанавливаем IP-адрес
@@ -52,7 +52,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем зарезервированный флаг
@@ -63,7 +63,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем IP-адрес
@@ -72,7 +72,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 96;
 				// Устанавливаем зарезервированный флаг
@@ -83,7 +83,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 16;
 				// Устанавливаем зарезервированный флаг
@@ -94,7 +94,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 10;
 				// Устанавливаем IP-адрес начала диапазона
@@ -105,7 +105,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 10;
 				// Устанавливаем IP-адрес начала диапазона
@@ -116,7 +116,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 7;
 				// Устанавливаем IP-адрес
@@ -125,7 +125,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем зарезервированный флаг
@@ -136,7 +136,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV6, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем зарезервированный флаг
@@ -147,7 +147,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем зарезервированный флаг
@@ -158,7 +158,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 10;
 				// Устанавливаем зарезервированный флаг
@@ -169,7 +169,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 16;
 				// Устанавливаем зарезервированный флаг
@@ -180,7 +180,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 4;
 				// Устанавливаем зарезервированный флаг
@@ -191,7 +191,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем зарезервированный флаг
@@ -202,7 +202,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем зарезервированный флаг
@@ -213,7 +213,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем зарезервированный флаг
@@ -224,7 +224,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 4;
 				// Устанавливаем зарезервированный флаг
@@ -235,7 +235,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем зарезервированный флаг
@@ -246,7 +246,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем IP-адрес
@@ -255,7 +255,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 8;
 				// Устанавливаем IP-адрес
@@ -264,7 +264,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 12;
 				// Устанавливаем IP-адрес
@@ -273,7 +273,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -282,7 +282,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 29;
 				// Устанавливаем IP-адрес
@@ -291,7 +291,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем IP-адрес
@@ -300,7 +300,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем IP-адрес
@@ -309,7 +309,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -318,7 +318,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -327,7 +327,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 32;
 				// Устанавливаем IP-адрес
@@ -336,7 +336,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 16;
 				// Устанавливаем IP-адрес
@@ -345,7 +345,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
@@ -354,7 +354,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 15;
 				// Устанавливаем IP-адрес
@@ -363,7 +363,7 @@ void awh::Net::initLocalNet() noexcept {
 				this->_localsNet.emplace(type_t::IPV4, ::move(localNet));
 			}{
 				// Создаём объект локального адреса
-				localNet_t localNet(this->_log);
+				localNet_t localNet(this->_exp, this->_log);
 				// Устанавливаем префикс сети
 				localNet.prefix = 24;
 				// Устанавливаем IP-адрес
