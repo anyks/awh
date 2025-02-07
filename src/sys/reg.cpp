@@ -76,24 +76,46 @@ bool awh::RegExp::test(const char * text, const exp_t & exp) const noexcept {
 	bool result = false;
 	// Если данные переданы верные
 	if((text != nullptr) && static_cast <bool> (exp)){
-		// Создаём объект матчинга
-		regmatch_t match[1];
-		// Выполняем разбор регулярного выражения
-		const int32_t error = ::pcre2_regexec(&exp->reg, text, 1, match, REG_NOTEMPTY);
-		// Если возникла ошибка
-		if(!(result = (error == 0))){
-			// Создаём буфер данных для извлечения данных ошибки
-			char buffer[256];
-			// Выполняем заполнение нулями буфер данных
-			::memset(buffer, '\0', sizeof(buffer));
-			// Выполняем извлечение текста ошибки
-			const size_t size = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer) - 1);
-			// Если текст ошибки получен
-			if(size > 0)
-				// Выполняем установку кода ошибки
-				const_cast <regexp_t *> (this)->_error.assign(buffer, size);
-		// Если ошибок не получено
-		} else result = (match[0].rm_eo > 0);
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Создаём объект матчинга
+			regmatch_t match[1];
+			// Выполняем разбор регулярного выражения
+			const int32_t error = ::pcre2_regexec(&exp->reg, text, 1, match, REG_NOTEMPTY);
+			// Если возникла ошибка
+			if(!(result = (error == 0))){
+				// Создаём буфер данных для извлечения данных ошибки
+				char buffer[256];
+				// Выполняем заполнение нулями буфер данных
+				::memset(buffer, '\0', sizeof(buffer));
+				// Выполняем извлечение текста ошибки
+				const size_t size = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer) - 1);
+				// Если текст ошибки получен
+				if(size > 0)
+					// Выполняем установку кода ошибки
+					const_cast <regexp_t *> (this)->_error.assign(buffer, size);
+			// Если ошибок не получено
+			} else result = (match[0].rm_eo > 0);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
 	}
 	// Выводим результат
 	return result;
@@ -174,6 +196,23 @@ vector <string> awh::RegExp::exec(const char * text, const exp_t & exp) const no
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -257,6 +296,23 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const exp_t
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -394,6 +450,23 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
 		}
 	}
 	// Выводим результат

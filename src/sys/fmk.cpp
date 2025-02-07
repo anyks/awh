@@ -2092,6 +2092,60 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	return result;
 }
 /**
+ * size Метод определения точного размера, сколько занимают данные (в байтах) в буфере
+ * @param value значение бинарного буфера для проверки
+ * @param size  общий размер бинарного буфера
+ * @return      фактический размер буфера занимаемый данными
+ */
+size_t awh::Framework::size(const void * value, const size_t size) const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	// Если значение бинарного буфера передано верное
+	if((value != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Значение байта с которым будем работать
+			uint8_t byte = 0;
+			// Получаем общее количество байт буфера
+			size_t index = size;
+			// Выполняем перебор всех байт буфера
+			while(index--){
+				// Выполняем получениетекущего байта
+				byte = reinterpret_cast <const uint8_t *> (value)[index];
+				// Если байты нулевые
+				if(byte == 0)
+					// Увеличиваем значение результата
+					result++;
+				// Если байты не нулевые, выходим из цикла
+				else break;
+			}
+			// Формируем окончательный результат
+			result = (size - result);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * greater Метод проверки больше первое число второго или нет (бинарным методом)
  * @param value1 значение первого числа в бинарном виде
  * @param value2 значение второго числа в бинарном виде

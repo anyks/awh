@@ -518,6 +518,32 @@ namespace awh {
 			wstring convert(const string & str) const noexcept;
 		public:
 			/**
+			 * Шаблон функции определения точного размера, сколько занимает число байт
+			 * @tparam T тип данных с которым работает функция
+			 */
+			template <typename T>
+			/**
+			 * size Метод определения точного размера, сколько занимает число байт
+			 * @param num число для проверки
+			 * @return    фактический размер занимаемым числом байт
+			 */
+			size_t size(const T num) const noexcept {
+				// Если данные являются основными
+				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
+					// Выполняем подсчёт занимаемых числом данных
+					return this->size(&num, sizeof(num));
+				// Выводим значение по умолчанию
+				return 0;
+			}
+			/**
+			 * size Метод определения точного размера, сколько занимают данные (в байтах) в буфере
+			 * @param value значение бинарного буфера для проверки
+			 * @param size  общий размер бинарного буфера
+			 * @return      фактический размер буфера занимаемый данными
+			 */
+			size_t size(const void * value, const size_t size) const noexcept;
+		public:
+			/**
 			 * Шаблон функции проверки больше первое число второго или нет (бинарным методом)
 			 * @tparam T тип данных с которым работает функция
 			 */
