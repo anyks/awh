@@ -12,8 +12,6 @@
  */
 #include <net/net.hpp>
 
-#include <arpa/inet.h>
-
 // Подключаем пространство имён
 using namespace awh;
 
