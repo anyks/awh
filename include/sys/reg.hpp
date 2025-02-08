@@ -19,6 +19,7 @@
  * Стандартные модули
  */
 #include <map>
+#include <mutex>
 #include <memory>
 #include <string>
 #include <vector>
@@ -45,6 +46,14 @@ namespace awh {
 	 * RegExp Класс объекта регулярных выражения
 	 */
 	typedef class AWHSHARED_EXPORT RegExp {
+		private:
+			/**
+			 * Mutex структура рабочих мютексов
+			 */
+			typedef struct Mutex {
+				mutex match; // Мютекс контроля матчинга
+				mutex cache; // Мютекс контроля записи в кэш
+			} mtx_t;
 		public:
 			/**
 			 * option_t Опции работы с регулярными выражениями
@@ -102,6 +111,9 @@ namespace awh {
 		private:
 			// Текст ошибки
 			string _error;
+		private:
+			// Мютексы для блокировки потоков
+			mutable mtx_t _mtx;
 		public:
 			// Кэш собранных регулярных выражений
 			mutable map <pair <int32_t, string>, exp_weak_t> _cache;

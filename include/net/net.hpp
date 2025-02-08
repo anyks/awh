@@ -21,6 +21,7 @@
 #include <map>
 #include <array>
 #include <cmath>
+#include <mutex>
 #include <memory>
 #include <bitset>
 #include <string>
@@ -106,6 +107,13 @@ namespace awh {
 			};
 		private:
 			/**
+			 * Mutex структура рабочих мютексов
+			 */
+			typedef struct Mutex {
+				mutex main;  // Мютекс контроля основной работы
+				mutex match; // Мютекс контроля матчинга хоста
+			} mtx_t;
+			/**
 			 * LocalNet Структура локального адреса
 			 */
 			typedef struct LocalNet {
@@ -128,6 +136,9 @@ namespace awh {
 		private:
 			// Объект регулярного выражения
 			regexp_t _regexp;
+		private:
+			// Мютексы для блокировки потоков
+			mutable mtx_t _mtx;
 		private:
 			// Регулярное выражение для проверки адреса
 			regexp_t::exp_t _exp;

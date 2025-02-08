@@ -28,6 +28,8 @@ void awh::Net::initLocalNet() noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx.main);
 		// Если список локальных адресов пустой
 		if(this->_localsNet.empty()){
 			{
@@ -748,6 +750,8 @@ awh::Net::type_t awh::Net::type() const noexcept {
  * @param type тип IP-адреса для установки
  */
 void awh::Net::type(const type_t type) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx.main);
 	// Выполняем установку типа IP-адреса
 	this->_type = type;
 }
@@ -765,6 +769,8 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx.match);
 			// Выполняем проверку хоста
 			const auto & match = this->_regexp.exec(host, this->_exp);
 			// Если результат получен
@@ -883,6 +889,8 @@ void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx.main);
 			// Выполняем выделение памяти для MAC адреса
 			this->_buffer.resize(6);
 			// Устанавливаем тип MAC адреса
@@ -997,6 +1005,8 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx.main);
 			// Выполняем выделение памяти для IPv4 адреса
 			this->_buffer.resize(4);
 			// Устанавливаем тип IP-адреса
@@ -1113,6 +1123,8 @@ void awh::Net::v6(const array <uint64_t, 2> & addr, const endian_t endian) noexc
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx.main);
 			// Выполняем выделение памяти для IPv6 адреса
 			this->_buffer.resize(16);
 			// Устанавливаем тип IP-адреса
@@ -1207,6 +1219,8 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx.main);
 			// Определяем тип IP-адреса
 			switch(static_cast <uint8_t> (type)){
 				// Если IP-адрес определён как IPv4
@@ -1214,7 +1228,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 					// Если префикс укладывается в диапазон адреса
 					if(prefix <= 32){
 						// Определяем номер октета
-						const uint8_t num = ceil(prefix / 8);
+						const uint8_t num = ::ceil(prefix / 8);
 						// Определяем тип получаемого адреса
 						switch(static_cast <uint8_t> (addr)){
 							// Если мы хотим получить адрес хоста
@@ -1273,7 +1287,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 					// Если префикс укладывается в диапазон адреса
 					if(prefix <= 128){
 						// Определяем номер хексета
-						const uint8_t num = ceil(prefix / 16);
+						const uint8_t num = ::ceil(prefix / 16);
 						// Определяем тип получаемого адреса
 						switch(static_cast <uint8_t> (addr)){
 							// Если мы хотим получить адрес хоста
@@ -2151,6 +2165,8 @@ bool awh::Net::arpa(const string & addr) noexcept {
 	bool result = false;
 	// Если запись передана
 	if(!addr.empty() && (addr.length() > 13)){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx.main);
 		// Если адрес является адресом IPv4
 		if((result = (addr.substr(addr.length() - 13).compare(".in-addr.arpa") == 0))){
 			/**
@@ -2296,6 +2312,8 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx.main);
 			// Устанавливаем тип адреса
 			this->_type = type;
 			// Определяем тип переданного адреса

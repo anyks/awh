@@ -87,6 +87,8 @@ bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
 bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	bool result = false;
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -157,6 +159,8 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
 vector <string> awh::RegExp::exec(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	vector <string> result;
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -256,6 +260,8 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const string & text, const exp
 vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Результат работы функции
 	vector <pair <size_t, size_t>> result;
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -341,7 +347,7 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const size_
  */
 awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <option_t> & options) const noexcept {
 	// Результат работы функции
-	awh::RegExp::exp_t result = nullptr;
+	exp_t result = nullptr;
 	// Если регулярное выражение передано
 	if(!pattern.empty()){
 		/**
@@ -403,14 +409,17 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 				// Выполняем получение скомпилированного регулярного выражения
 				result = i->second.lock();
 				// Если регулярное выражение уже устарело и удалено
-				if(result == nullptr)
+				if(result == nullptr){
+					// Выполняем блокировку потока
+					const lock_guard <mutex> lock(this->_mtx.cache);
 					// Удаляем запись
 					this->_cache.erase(key);
+				}
 			}
 			// Выполняем генерацию нового регулярного выражения
 			if(result == nullptr){
 				// Выполняем создание нового блока результата
-				result = awh::RegExp::exp_t(new Expression);
+				result = exp_t(new Expression);
 				// Выполняем компиляцию регулярного выражения
 				const int32_t error = ::pcre2_regcomp(&result->reg, pattern.c_str(), option);
 				// Если возникла ошибка компиляции
@@ -429,8 +438,13 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 					::pcre2_regfree(&result->reg);
 					// Выполняем сброс блока результата
 					result.reset();
-				// Если регулярное выражение удачно созданно, добавляем регулярное выражение в список
-				} else this->_cache.emplace(key, result);
+				// Если регулярное выражение удачно созданно
+				} else {
+					// Выполняем блокировку потока
+					const lock_guard <mutex> lock(this->_mtx.cache);
+					// Добавляем регулярное выражение в список
+					this->_cache.emplace(key, result);
+				}
 			}
 		/**
 		 * Если возникает ошибка
