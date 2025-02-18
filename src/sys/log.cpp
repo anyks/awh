@@ -260,9 +260,23 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Если вывод сообщения в консоль разрешён
 	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end()){
 		// Если тип сообщение не является пустым
-		if(payload.flag != flag_t::NONE)
-			// Выводим обозначение начала вывода лога
-			cout << "*************** START ***************" << endl << endl;
+		if(payload.flag != flag_t::NONE){
+			// Определяем флаг формирования разделителя
+			switch(static_cast <uint8_t> (this->_sep)){
+				// Если разделитель нужно отобразить с учётом размера текста
+				case static_cast <uint8_t> (separator_t::SMART): {
+					// Если размер текста соответствует размеру лога
+					if(payload.text.length() >= this->_sepSize)
+						// Выводим обозначение начала вывода лога
+						cout << "*************** START ***************" << endl << endl;
+				} break;
+				// Если разделитель нужно отобразить всегда
+				case static_cast <uint8_t> (separator_t::ALWAYS):
+					// Выводим обозначение начала вывода лога
+					cout << "*************** START ***************" << endl << endl;
+				break;
+			}
+		}
 		// Определяем тип сообщения
 		switch(static_cast <uint8_t> (payload.flag)){
 			// Выводим сообщение так-как оно есть
@@ -287,9 +301,23 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 			break;
 		}
 		// Если тип сообщение не является пустым
-		if(payload.flag != flag_t::NONE)
-			// Выводим обозначение конца вывода лога
-			cout << "---------------- END ----------------" << endl << endl;
+		if(payload.flag != flag_t::NONE){
+			// Определяем флаг формирования разделителя
+			switch(static_cast <uint8_t> (this->_sep)){
+				// Если разделитель нужно отобразить с учётом размера текста
+				case static_cast <uint8_t> (separator_t::SMART): {
+					// Если размер текста соответствует размеру лога
+					if(payload.text.length() >= this->_sepSize)
+						// Выводим обозначение конца вывода лога
+						cout << "---------------- END ----------------" << endl << endl;
+				} break;
+				// Если разделитель нужно отобразить всегда
+				case static_cast <uint8_t> (separator_t::ALWAYS):
+					// Выводим обозначение конца вывода лога
+					cout << "---------------- END ----------------" << endl << endl;
+				break;
+			}
+		}
 	}
 	// Если файл для вывода лога указан
 	if((this->_mode.find(mode_t::FILE) != this->_mode.end()) && !this->_filename.empty()){
@@ -625,12 +653,28 @@ void awh::Log::maxSize(const float size) noexcept {
 	this->_maxSize = size;
 }
 /**
+ * sepSize Метод установки размера текста для формирования разделителя
+ * @param size размер текста для формирования разделителя
+ */
+void awh::Log::sepSize(const size_t size) noexcept {
+	// Устанавливаем размер текста для формирования разделителя
+	this->_sepSize = size;
+}
+/**
  * level Метод установки уровня логирования
  * @param level уровень логирования для установки
  */
 void awh::Log::level(const level_t level) noexcept {
 	// Выполняем установку уровень логирования
 	this->_level = level;
+}
+/**
+ * separator Метод установки разделителя сообщений логирования
+ * @param sep разделитель для установки
+ */
+void awh::Log::separator(const separator_t sep) noexcept {
+	// Устанавливаем разделитель сообщений логирования
+	this->_sep = sep;
 }
 /**
  * filename Метод установки файла для сохранения логов
@@ -654,8 +698,8 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  * @param filename адрес файла для сохранения логов
  */
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
- _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE),
- _level(level_t::ALL), _name{AWH_SHORT_NAME}, _format{DATE_FORMAT},
+ _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400),
+ _level(level_t::ALL), _sep(separator_t::ALWAYS), _name{AWH_SHORT_NAME}, _format{DATE_FORMAT},
  _filename{filename}, _screen(Screen <payload_t>::health_t::DEAD), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = ::getpid();

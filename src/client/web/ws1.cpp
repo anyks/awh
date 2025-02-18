@@ -263,7 +263,7 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 					// Обнуляем время последнего ответа на пинг
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
-					this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					this->_sendPing = this->_point;
 					// Выполняем препарирование полученных данных
 					switch(static_cast <uint8_t> (this->prepare(this->_sid, bid))){
 						// Если необходимо выполнить остановку обработки

@@ -70,7 +70,7 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Log {
 		public:
 			/**
-			 * flag_t Флаги логирования
+			 * Флаги логирования
 			 */
 			enum class flag_t : uint8_t {
 				NONE     = 0x00, // Флаг не установлен
@@ -79,7 +79,7 @@ namespace awh {
 				CRITICAL = 0x03  // Критическое сообщение
 			};
 			/**
-			 * mode_t Флаги работы логов
+			 * Флаги работы логов
 			 */
 			enum class mode_t : uint8_t {
 				NONE     = 0x00, // Вывод логов запрещён
@@ -88,7 +88,15 @@ namespace awh {
 				DEFERRED = 0x03  // Разрешено выводить логи в функцию обратного вызова
 			};
 			/**
-			 * level_t Уровни логирования
+			 * Флаги разделителя формирования логов
+			 */
+			enum class separator_t : uint8_t {
+				NONE   = 0x00, // Разделитель отключён
+				SMART  = 0x01, // Умный разделитель по длине сообщения
+				ALWAYS = 0x02  // Отображать разделитель всегда
+			};
+			/**
+			 * Уровни логирования
 			 */
 			enum class level_t : uint8_t {
 				NONE             = 0x00, // Логирование отключено
@@ -162,8 +170,14 @@ namespace awh {
 			// Максимальный размер файла лога
 			size_t _maxSize;
 		private:
+			// Размер сообщения для формирования разделителя
+			size_t _sepSize;
+		private:
 			// Уровень логирования
 			level_t _level;
+		private:
+			// Флаг формирования разделителя
+			separator_t _sep;
 		private:
 			// Название сервиса для вывода лога
 			string _name;
@@ -403,10 +417,20 @@ namespace awh {
 			 */
 			void maxSize(const float size) noexcept;
 			/**
+			 * sepSize Метод установки размера текста для формирования разделителя
+			 * @param size размер текста для формирования разделителя
+			 */
+			void sepSize(const size_t size) noexcept;
+			/**
 			 * level Метод установки уровня логирования
 			 * @param level уровень логирования для установки
 			 */
 			void level(const level_t level) noexcept;
+			/**
+			 * separator Метод установки разделителя сообщений логирования
+			 * @param sep разделитель для установки
+			 */
+			void separator(const separator_t sep) noexcept;
 			/**
 			 * filename Метод установки файла для сохранения логов
 			 * @param filename адрес файла для сохранения логов

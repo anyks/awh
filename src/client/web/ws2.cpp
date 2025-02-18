@@ -316,7 +316,7 @@ int32_t awh::client::Websocket2::chunkSignal(const int32_t sid, const uint8_t * 
 					// Обнуляем время последнего ответа на пинг
 					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
-					this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					this->_sendPing = this->_point;
 					// Добавляем полученные данные в буфер
 					this->_buffer.push(buffer, size);
 				}

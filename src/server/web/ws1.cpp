@@ -174,7 +174,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 					// Обнуляем время последнего ответа на пинг
 					options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
-					options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					options->sendPing = options->point;
 					// Если рукопожатие не выполнено
 					if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 						// Выполняем парсинг полученных данных
