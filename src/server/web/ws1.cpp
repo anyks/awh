@@ -463,20 +463,40 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 							// Выполняем чтение фрейма Websocket
 							const auto & payload = options->frame.methods.get(head, reinterpret_cast <const char *> (options->buffer.payload.get()), options->buffer.payload.size());
 							// Если буфер данных получен
-							if(!payload.empty()){
+							if(!payload.empty() || (head.optcode == ws::frame_t::opcode_t::PING) || (head.optcode == ws::frame_t::opcode_t::PONG) || (head.optcode == ws::frame_t::opcode_t::CLOSE)){
 								// Определяем тип ответа
 								switch(static_cast <uint8_t> (head.optcode)){
 									// Если ответом является PING
-									case static_cast <uint8_t> (ws::frame_t::opcode_t::PING):
-										// Отправляем ответ брокеру
-										this->pong(bid, string(payload.begin(), payload.end()));
-									break;
+									case static_cast <uint8_t> (ws::frame_t::opcode_t::PING): {
+										// Если сообщение пинга пришло
+										if(!payload.empty())
+											// Отправляем ответ серверу
+											this->pong(bid, payload.data(), payload.size());
+										// Отправляем ответ серверу
+										else this->pong(bid);
+									} break;
 									// Если ответом является PONG
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::PONG): {
-										// Если идентификатор брокера совпадает
-										if(::memcmp(std::to_string(bid).c_str(), payload.data(), payload.size()) == 0)
-											// Обновляем контрольную точку
-											options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+										// Если сообщение понга пришло
+										if(!payload.empty()){
+											// Если полезная нагрузка получена в виде числа
+											if(payload.size() == sizeof(bid)){
+												// Значение понга для проверки
+												uint64_t result = 0;
+												// Извлекаем значение ответа
+												::memcpy(&result, payload.data(), payload.size());
+												// Если идентификатор брокера совпадает
+												if(bid == result){
+													// Обновляем контрольную точку
+													options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+													// Выходим из условия
+													break;
+												}
+												// Выводим сообщение об ошибке
+												this->_log->print("Response to the PONG message is not valid", log_t::flag_t::WARNING);
+											}
+										// Если сообщение понга не пришло
+										} else this->_log->print("Response to the PONG message is empty", log_t::flag_t::WARNING);
 									} break;
 									// Если ответом является TEXT
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::TEXT):
@@ -540,10 +560,13 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 									} break;
 									// Если ответом является CLOSE
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::CLOSE): {
-										// Создаём сообщение
-										options->mess = options->frame.methods.message(payload);
-										// Выводим сообщение об ошибке
-										this->error(bid, options->mess);
+										// Если сообщение получено
+										if(!payload.empty()){
+											// Создаём сообщение
+											options->mess = options->frame.methods.message(payload);
+											// Выводим сообщение об ошибке
+											this->error(bid, options->mess);
+										}
 										// Завершаем работу
 										const_cast <server::core_t *> (this->_core)->close(bid);
 										// Если функция обратного вызова активности потока установлена
@@ -569,7 +592,9 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								goto Stop;
 							}
 							// Если данные мы все получили, выходим
-							if(!receive || payload.empty() || options->buffer.payload.empty())
+							if(!receive || (payload.empty() &&
+							  (head.optcode != ws::frame_t::opcode_t::PING) &&
+							  (head.optcode != ws::frame_t::opcode_t::PONG)) || options->buffer.payload.empty())
 								// Выходим из условия
 								break;
 						}
@@ -751,43 +776,45 @@ void awh::server::Websocket1::extraction(const uint64_t bid, const vector <char>
 }
 /**
  * pong Метод ответа на проверку о доступности сервера
- * @param bid идентификатор брокера
- * @param     message сообщение для отправки
+ * @param bid    идентификатор брокера
+ * @param buffer бинарный буфер отправляемого сообщения
+ * @param size   размер бинарного буфера отправляемого сообщения
  */
-void awh::server::Websocket1::pong(const uint64_t bid, const string & message) noexcept {
+void awh::server::Websocket1::pong(const uint64_t bid, const void * buffer, const size_t size) noexcept {
 	// Если необходимые данные переданы
 	if((bid > 0) && this->_core->working()){
 		// Получаем параметры активного клиента
 		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
 		if((options != nullptr) && options->allow.send){
-			// Создаём буфер для отправки
-			const auto & buffer = options->frame.methods.pong(message);
-			// Если буфер данных получен
-			if(!buffer.empty())
+			// Создаём фрейм для отправки
+			const auto & frame = options->frame.methods.pong(buffer, size);
+			// Если фрейм для отправки получен
+			if(!frame.empty())
 				// Выполняем отправку сообщения брокеру
-				const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
+				const_cast <server::core_t *> (this->_core)->send(frame.data(), frame.size(), bid);
 		}
 	}
 }
 /**
  * ping Метод проверки доступности сервера
- * @param bid идентификатор брокера
- * @param     message сообщение для отправки
+ * @param bid    идентификатор брокера
+ * @param buffer бинарный буфер отправляемого сообщения
+ * @param size   размер бинарного буфера отправляемого сообщения
  */
-void awh::server::Websocket1::ping(const uint64_t bid, const string & message) noexcept {
+void awh::server::Websocket1::ping(const uint64_t bid, const void * buffer, const size_t size) noexcept {
 	// Если необходимые данные переданы
 	if((bid > 0) && this->_core->working()){
 		// Получаем параметры активного клиента
 		scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 		// Если отправка сообщений разблокированна
 		if((options != nullptr) && options->allow.send){
-			// Создаём буфер для отправки
-			const auto & buffer = options->frame.methods.ping(message);
-			// Если буфер данных получен
-			if(!buffer.empty()){
+			// Создаём фрейм для отправки
+			const auto & frame = options->frame.methods.ping(buffer, size);
+			// Если фрейм для отправки получен
+			if(!frame.empty()){
 				// Выполняем отправку сообщения брокеру
-				if(const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid))
+				if(const_cast <server::core_t *> (this->_core)->send(frame.data(), frame.size(), bid))
 					// Обновляем время отправленного пинга
 					options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 			}
@@ -885,7 +912,7 @@ void awh::server::Websocket1::pinging(const uint16_t tid) noexcept {
 					// Если время с предыдущего пинга прошло больше половины времени пинга
 					} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((stamp - item.second->sendPing) > (this->_pingInterval / 2)))
 						// Отправляем запрос брокеру
-						this->ping(item.first, std::to_string(item.first));
+						this->ping(item.first, &item.first, sizeof(item.first));
 				}
 			}
 		}

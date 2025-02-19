@@ -181,16 +181,18 @@ namespace awh {
 			private:
 				/**
 				 * ping Метод проверки доступности сервера
-				 * @param bid идентификатор брокера
-				 * @param     message сообщение для отправки
+				 * @param bid    идентификатор брокера
+				 * @param buffer бинарный буфер отправляемого сообщения
+				 * @param size   размер бинарного буфера отправляемого сообщения
 				 */
-				void ping(const uint64_t bid, const string & message) noexcept;
+				void ping(const uint64_t bid, const void * buffer = nullptr, const size_t size = 0) noexcept;
 				/**
 				 * pong Метод ответа на проверку о доступности сервера
-				 * @param bid идентификатор брокера
-				 * @param     message сообщение для отправки
+				 * @param bid    идентификатор брокера
+				 * @param buffer бинарный буфер отправляемого сообщения
+				 * @param size   размер бинарного буфера отправляемого сообщения
 				 */
-				void pong(const uint64_t bid, const string & message) noexcept;
+				void pong(const uint64_t bid, const void * buffer = nullptr, const size_t size = 0) noexcept;
 			private:
 				/**
 				 * erase Метод удаления отключившихся брокеров

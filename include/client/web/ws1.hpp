@@ -249,14 +249,16 @@ namespace awh {
 			private:
 				/**
 				 * ping Метод проверки доступности сервера
-				 * @param message сообщение для отправки
+				 * @param buffer бинарный буфер отправляемого сообщения
+				 * @param size   размер бинарного буфера отправляемого сообщения
 				 */
-				void ping(const string & message = "") noexcept;
+				void ping(const void * buffer = nullptr, const size_t size = 0) noexcept;
 				/**
 				 * pong Метод ответа на проверку о доступности сервера
-				 * @param message сообщение для отправки
+				 * @param buffer бинарный буфер отправляемого сообщения
+				 * @param size   размер бинарного буфера отправляемого сообщения
 				 */
-				void pong(const string & message = "") noexcept;
+				void pong(const void * buffer = nullptr, const size_t size = 0) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных

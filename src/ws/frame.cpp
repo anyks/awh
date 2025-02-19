@@ -368,15 +368,25 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
  * @return       сообщение в текстовом виде
  */
 awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noexcept {
+	// Выполняем формирование сообщения
+	return this->message(buffer.data(), buffer.size());
+}
+/**
+ * message Метод извлечения сообщения из фрейма
+ * @param buffer бинарные данные сообщения
+ * @param size   размер буфера данных сообщения
+ * @return       сообщение в текстовом виде
+ */
+awh::ws::mess_t awh::ws::Frame::message(const char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	mess_t result;
 	// Если данные переданы
-	if(buffer.size() >= sizeof(result.code)){
+	if((buffer != nullptr) && (size >= sizeof(result.code))){
 		/**
 		 * Подробнее: https://github.com/Luka967/websocket-close-codes
 		 */
 		// Считываем код ошибки
-		::memcpy(&result.code, buffer.data(), sizeof(result.code));
+		::memcpy(&result.code, buffer, sizeof(result.code));
 		// Преобразуем сетевой порядок расположения байтов
 		result = ntohs(result.code);
 		// Если коды ошибок соответствуют
@@ -386,9 +396,9 @@ awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noex
 			 */
 			try {
 				// Если текст сообщения существует
-				if(buffer.size() > sizeof(result.code))
+				if(size > sizeof(result.code))
 					// Извлекаем текст сообщения
-					result.text.assign(buffer.begin() + sizeof(result.code), buffer.end());
+					result.text.assign(buffer + sizeof(result.code), size);
 				// Иначе запоминаем, что текст не установлен
 				else result.text.clear();
 			/**
@@ -456,6 +466,23 @@ vector <char> awh::ws::Frame::ping(const string & mess, const bool mask) const n
 	return result;
 }
 /**
+ * ping Метод создания фрейма пинга
+ * @param buffer бинарный буфер данных для создания фрейма
+ * @param size   размер буфера данных для создания фрейма
+ * @param mask   флаг выполнения маскировки сообщения
+ * @return       бинарные данные фрейма
+ */
+vector <char> awh::ws::Frame::ping(const void * buffer, const size_t size, const bool mask) const noexcept {
+	// Создаём тело запроса и устанавливаем первый байт PING с пустой полезной нагрузкой
+	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PING)), 0x0};
+	// Если сообщение передано
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем формирование фрейма
+		this->frame(result, reinterpret_cast <const char *> (buffer), size, mask);
+	// Выводим результат
+	return result;
+}
+/**
  * pong Метод создания фрейма понга
  * @param mess данные сообщения
  * @param mask флаг выполнения маскировки сообщения
@@ -468,6 +495,23 @@ vector <char> awh::ws::Frame::pong(const string & mess, const bool mask) const n
 	if(!mess.empty())
 		// Выполняем формирование фрейма
 		this->frame(result, mess.data(), mess.size(), mask);
+	// Выводим результат
+	return result;
+}
+/**
+ * pong Метод создания фрейма понга
+ * @param buffer бинарный буфер данных для создания фрейма
+ * @param size   размер буфера данных для создания фрейма
+ * @param mask   флаг выполнения маскировки сообщения
+ * @return       бинарные данные фрейма
+ */
+vector <char> awh::ws::Frame::pong(const void * buffer, const size_t size, const bool mask) const noexcept {
+	// Создаём тело запроса и устанавливаем первый байт PONG с пустой полезной нагрузкой
+	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PONG)), 0x0};
+	// Если сообщение передано
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем формирование фрейма
+		this->frame(result, reinterpret_cast <const char *> (buffer), size, mask);
 	// Выводим результат
 	return result;
 }
@@ -516,19 +560,23 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 							// Увеличиваем размер смещения
 							head.frame += 4;
 						}
-						// Получаем оставшиеся данные полезной нагрузки
-						result.assign(buffer + head.frame, buffer + (head.payload + head.frame));
-						// Если маска требуется, размаскируем данные
-						if(head.mask){
-							// Выполняем перебор всех байт передаваемых данных
-							for(size_t i = 0; i < result.size(); i++)
-								// Выполняем шифрование данных
-								result.at(i) ^= mask[i % 4];
+						// Если полезная нагрузка получена
+						if(head.payload > 0){
+							// Получаем оставшиеся данные полезной нагрузки
+							result.assign(buffer + head.frame, buffer + (head.payload + head.frame));
+							// Если маска требуется, размаскируем данные
+							if(head.mask){
+								// Выполняем перебор всех байт передаваемых данных
+								for(size_t i = 0; i < result.size(); i++)
+									// Выполняем шифрование данных
+									result.at(i) ^= mask[i % 4];
+							}
 						}
 						// Увеличиваем размер смещения
 						head.frame += head.payload;
 						// Если размер не установлен
-						if(head.payload == 0)
+						if((head.payload == 0) && ((head.optcode != opcode_t::PING) &&
+						  (head.optcode != opcode_t::PONG) && (head.optcode != opcode_t::CLOSE)))
 							// Устанавливаем статус битого фрейма
 							head.state = state_t::BAD;
 						// Проверяем состояние флагов RSV2 и RSV3
@@ -536,11 +584,13 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 							// Устанавливаем статус битого фрейма
 							head.state = state_t::BAD;
 						// Если флаг компресси включён а данные пришли не сжатые
-						else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) || ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
+						else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) ||
+						       ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
 							// Устанавливаем статус битого фрейма
 							head.state = state_t::BAD;
 						// Если опкоды требуют финального фрейма
-						else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))
+						else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) &&
+						       (static_cast <uint8_t> (head.optcode) < 0x0b))
 							// Устанавливаем статус битого фрейма
 							head.state = state_t::BAD;
 						// Если фрейм испорчен

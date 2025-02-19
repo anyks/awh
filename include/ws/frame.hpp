@@ -197,6 +197,13 @@ namespace awh {
 				 */
 				mess_t message(const vector <char> & buffer) const noexcept;
 				/**
+				 * message Метод извлечения сообщения из фрейма
+				 * @param buffer бинарные данные сообщения
+				 * @param size   размер буфера данных сообщения
+				 * @return       сообщение в текстовом виде
+				 */
+				mess_t message(const char * buffer, const size_t size) const noexcept;
+				/**
 				 * message Метод извлечения сообщения из заголовка фрейма
 				 * @param head       заголовки фрейма
 				 * @param compressed флаг сжатых ожидаемых данных
@@ -210,14 +217,31 @@ namespace awh {
 				 * @param mask флаг выполнения маскировки сообщения
 				 * @return     бинарные данные фрейма
 				 */
-				vector <char> ping(const string & mess = "", const bool mask = false) const noexcept;
+				vector <char> ping(const string & mess, const bool mask = false) const noexcept;
+				/**
+				 * ping Метод создания фрейма пинга
+				 * @param buffer бинарный буфер данных для создания фрейма
+				 * @param size   размер буфера данных для создания фрейма
+				 * @param mask   флаг выполнения маскировки сообщения
+				 * @return       бинарные данные фрейма
+				 */
+				vector <char> ping(const void * buffer, const size_t size, const bool mask = false) const noexcept;
+			public:
 				/**
 				 * pong Метод создания фрейма понга
 				 * @param mess данные сообщения
 				 * @param mask флаг выполнения маскировки сообщения
 				 * @return     бинарные данные фрейма
 				 */
-				vector <char> pong(const string & mess = "", const bool mask = false) const noexcept;
+				vector <char> pong(const string & mess, const bool mask = false) const noexcept;
+				/**
+				 * pong Метод создания фрейма понга
+				 * @param buffer бинарный буфер данных для создания фрейма
+				 * @param size   размер буфера данных для создания фрейма
+				 * @param mask   флаг выполнения маскировки сообщения
+				 * @return       бинарные данные фрейма
+				 */
+				vector <char> pong(const void * buffer, const size_t size, const bool mask = false) const noexcept;
 			public:
 				/**
 				 * get Метод извлечения данных фрейма
