@@ -845,17 +845,18 @@ namespace awh {
 			string icon(const bool end = false) const noexcept;
 		public:
 			/**
-			 * bytes Метод конвертации байт в строку
-			 * @param value количество байт
-			 * @return      полученная строка
-			 */
-			string bytes(const double value) const noexcept;
-			/**
 			 * bytes Метод получения размера в байтах из строки
 			 * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
 			 * @return    размер в байтах
 			 */
 			double bytes(const string & str) const noexcept;
+			/**
+			 * bytes Метод конвертации байт в строку
+			 * @param value   количество байт
+			 * @param onlyNum выводить только числа
+			 * @return        полученная строка
+			 */
+			string bytes(const double value, const bool onlyNum = false) const noexcept;
 		public:
 			/**
 			 * seconds Метод получения размера в секундах из строки

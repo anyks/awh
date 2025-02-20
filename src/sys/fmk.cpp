@@ -4048,83 +4048,8 @@ string awh::Framework::icon(const bool end) const noexcept {
 	return (!end ? iconBegin[::rand() % iconBegin.size()] : iconEnd[::rand() % iconEnd.size()]);
 }
 /**
- * bytes Метод конвертации байт в строку
- * @param value количество байт (b, Kb, Mb, Gb, Tb)
- * @return      полученная строка
- */
-string awh::Framework::bytes(const double value) const noexcept {
-	// Результат работы функции
-	string result = "0 bytes";
-	// Если количество байт передано
-	if(value > 0.){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Шаблон киллобайта
-			const double kb = 1024.;
-			// Шаблон мегабайта
-			const double mb = 1048576.;
-			// Шаблон гигабайта
-			const double gb = 1073741824.;
-			// Шаблон терабайта
-			const double tb = 1099511627776.;
-			// Если переданное значение соответствует терабайту
-			if(value >= tb){
-				// Выполняем копирование терабайта
-				result = this->noexp(value / tb);
-				// Добавляем наименование единицы измерения
-				result.append(" Tb");
-			// Если переданное значение соответствует гигабайту
-			} else if((value >= gb) && (value < tb)) {
-				// Выполняем копирование гигабайта
-				result = this->noexp(value / gb);
-				// Добавляем наименование единицы измерения
-				result.append(" Gb");
-			// Если переданное значение соответствует мегабайту
-			} else if((value >= mb) && (value < gb)) {
-				// Выполняем копирование мегабайта
-				result = this->noexp(value / mb);
-				// Добавляем наименование единицы измерения
-				result.append(" Mb");
-			// Если переданное значение соответствует киллобайту
-			} else if((value >= kb) && (value < mb)) {
-				// Выполняем копирование килобайта
-				result = this->noexp(value / kb);
-				// Добавляем наименование единицы измерения
-				result.append(" Kb");
-			// Если переданное значение соответствует байту
-			} else {
-				// Выполняем копирование байтов
-				result = this->noexp(value);
-				// Добавляем наименование единицы измерения
-				result.append(" bytes");
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * bytes Метод получения размера в байтах из строки
- * @param str строка обозначения размерности
+ * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
  * @return    размер в байтах
  */
 double awh::Framework::bytes(const string & str) const noexcept {
@@ -4166,6 +4091,82 @@ double awh::Framework::bytes(const string & str) const noexcept {
 			if(result > -1.)
 				// Устанавливаем размер полученных данных
 				result *= dimension;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * bytes Метод конвертации байт в строку
+ * @param value   количество байт
+ * @param onlyNum выводить только числа
+ * @return        полученная строка
+ */
+string awh::Framework::bytes(const double value, const bool onlyNum) const noexcept {
+	// Результат работы функции
+	string result = "0 bytes";
+	// Если количество байт передано
+	if(value > 0.){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Шаблон киллобайта
+			const double kb = 1024.;
+			// Шаблон мегабайта
+			const double mb = 1048576.;
+			// Шаблон гигабайта
+			const double gb = 1073741824.;
+			// Шаблон терабайта
+			const double tb = 1099511627776.;
+			// Если переданное значение соответствует терабайту
+			if(value >= tb){
+				// Выполняем копирование терабайта
+				result = this->noexp(value / tb, onlyNum);
+				// Добавляем наименование единицы измерения
+				result.append(" Tb");
+			// Если переданное значение соответствует гигабайту
+			} else if((value >= gb) && (value < tb)) {
+				// Выполняем копирование гигабайта
+				result = this->noexp(value / gb, onlyNum);
+				// Добавляем наименование единицы измерения
+				result.append(" Gb");
+			// Если переданное значение соответствует мегабайту
+			} else if((value >= mb) && (value < gb)) {
+				// Выполняем копирование мегабайта
+				result = this->noexp(value / mb, onlyNum);
+				// Добавляем наименование единицы измерения
+				result.append(" Mb");
+			// Если переданное значение соответствует киллобайту
+			} else if((value >= kb) && (value < mb)) {
+				// Выполняем копирование килобайта
+				result = this->noexp(value / kb, onlyNum);
+				// Добавляем наименование единицы измерения
+				result.append(" Kb");
+			// Если переданное значение соответствует байту
+			} else {
+				// Выполняем копирование байтов
+				result = this->noexp(value, onlyNum);
+				// Добавляем наименование единицы измерения
+				result.append(" bytes");
+			}
 		/**
 		 * Если возникает ошибка
 		 */
