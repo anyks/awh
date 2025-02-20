@@ -4143,23 +4143,23 @@ double awh::Framework::bytes(const string & str) const noexcept {
 			// Получаем значение размерности
 			result = ::stod(match[1]);
 			// Если это размерность в киллобитах
-			if(match[2].compare("Kb") == 0)
+			if(this->compare("Kb", match[2]))
 				// Выполняем установку множителя
 				dimension = 1024.;
 			// Если это размерность в мегабитах
-			else if(match[2].compare("Mb") == 0)
+			else if(this->compare("Mb", match[2]))
 				// Выполняем установку множителя
 				dimension = 1048576.;
 			// Если это размерность в гигабитах
-			else if(match[2].compare("Gb") == 0)
+			else if(this->compare("Gb", match[2]))
 				// Выполняем установку множителя
 				dimension = 1073741824.;
 			// Если это размерность в терабайтах
-			else if(match[2].compare("Tb") == 0)
+			else if(this->compare("Tb", match[2]))
 				// Выполняем установку множителя
 				dimension = 1099511627776.;
 			// Если это байты
-			else if((match[2].compare("b") == 0) || (match[2].compare("bytes") == 0))
+			else if(this->compare("b", match[2]) || this->compare("bytes", match[2]))
 				// Выполняем установку множителя
 				dimension = 1.;
 			// Если размерность установлена тогда расчитываем количество байт
@@ -4398,19 +4398,19 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 			// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 			const bool bytes = !::fmod(speed / 8.f, 2.f);
 			// Если это биты
-			if(match[2].compare("bps") == 0)
+			if(this->compare("bps", match[2]))
 				// Выполняем установку множителя
 				dimension = 1.f;
 			// Если это размерность в киллобитах
-			else if(match[2].compare("kbps") == 0)
+			else if(this->compare("kbps", match[2]))
 				// Выполняем установку множителя
 				dimension = (bytes ? 1000.f : 1024.f);
 			// Если это размерность в мегабитах
-			else if(match[2].compare("Mbps") == 0)
+			else if(this->compare("Mbps", match[2]))
 				// Выполняем установку множителя
 				dimension = (bytes ? 1000000.f : 1024000.f);
 			// Если это размерность в гигабитах
-			else if(match[2].compare("Gbps") == 0)
+			else if(this->compare("Gbps", match[2]))
 				// Выполняем установку множителя
 				dimension = (bytes ? 1000000000.f : 1024000000.f);
 			// Выполняем получение размера в байтах
