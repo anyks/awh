@@ -4089,7 +4089,7 @@ string awh::Framework::bytes(const double value) const noexcept {
 				result.append(" Mb");
 			// Если переданное значение соответствует киллобайту
 			} else if((value >= kb) && (value < mb)) {
-				// Выполняем копирование киллобайта
+				// Выполняем копирование килобайта
 				result = this->noexp(static_cast <double> (value) / kb, static_cast <uint8_t> (3));
 				// Добавляем наименование единицы измерения
 				result.append(" Kb");
@@ -4142,15 +4142,15 @@ double awh::Framework::bytes(const string & str) const noexcept {
 			double dimension = 1.;
 			// Получаем значение размерности
 			result = ::stod(match[1]);
-			// Если это размерность в киллобитах
+			// Если это размерность в килобайтах
 			if(this->compare("Kb", match[2]))
 				// Выполняем установку множителя
 				dimension = 1024.;
-			// Если это размерность в мегабитах
+			// Если это размерность в мегабайтах
 			else if(this->compare("Mb", match[2]))
 				// Выполняем установку множителя
 				dimension = 1048576.;
-			// Если это размерность в гигабитах
+			// Если это размерность в гигабайтах
 			else if(this->compare("Gb", match[2]))
 				// Выполняем установку множителя
 				dimension = 1073741824.;
