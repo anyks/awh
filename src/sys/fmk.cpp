@@ -2570,18 +2570,21 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 			else stream << fixed << ::setprecision(0) << number;
 			// Получаем из потока строку
 			stream >> result;
-			// Переходим по всему числу
-			for(auto i = result.begin(); i != result.end();){
-				// Если это первый символ
-				if(i == result.begin() && ((* i) == '-'))
-					// Увеличиваем значение итератора
-					++i;
-				// Проверяем является ли символ числом
-				else if(this->_symbols.isArabic(* i) || ((* i) == '.'))
-					// Увеличиваем значение итератора
-					++i;
-				// Иначе удаляем символ
-				else i = result.erase(i);
+			// Если результат получен
+			if(!result.empty()){
+				// Переходим по всему числу
+				for(auto i = result.begin(); i != result.end();){
+					// Если это первый символ
+					if(i == result.begin() && ((* i) == '-'))
+						// Увеличиваем значение итератора
+						++i;
+					// Проверяем является ли символ числом
+					else if(this->_symbols.isArabic(* i) || ((* i) == '.'))
+						// Увеличиваем значение итератора
+						++i;
+					// Иначе удаляем символ
+					else i = result.erase(i);
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -2604,6 +2607,10 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 			#endif
 		}
 	}
+	// Если результат не получен
+	if(result.empty())
+		// Сбрасываем полученный результат
+		result = "0";
 	// Выводим результат
 	return result;
 }
@@ -2616,82 +2623,89 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 string awh::Framework::noexp(const double number, const bool onlyNum) const noexcept {
 	// Результат работы функции
 	string result = "";
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаём поток для конвертации числа
-		stringstream stream;
-		// Получаем количество знаков после запятой
-		const uint8_t count = decimalPlaces(number);
-		// Записываем число в поток
-		stream << fixed << ::setprecision(count) << number;
-		// Получаем из потока строку
-		stream >> result;
-		// Если результат получен
-		if(!result.empty()){
-			// Если последний символ является нулём
-			while(result.back() == '0')
-				// Удаляем последний символ
-				result.pop_back();
-		}
-		// Если количество цифр после запятой больше нуля
-		if((count > 0) && (result.size() > 2)){
-			// Устанавливаем значение последнего символа
-			char last = '$';
-			// Выполняем перебор всех символов
-			for(auto i = (result.end() - 2); i != (result.begin() - 1);){
-				// Если символ не является последним
-				if(i != (result.end() - 2)){
-					// Если символы совпадают
-					if((* i) == last)
-						// Выполняем удаление лишних символов
-						result.erase(i);
-					// Если символы не совпадат, выходим
-					else break;
-				}
-				// Запоминаем текущее значение символа
-				last = (* i);
-				// Уменьшаем значение итератора
-				i--;
-			}
-		}
-		// Если нужно выводить только числа
-		if(onlyNum){
-			// Переходим по всему числу
-			for(auto i = result.begin(); i != result.end();){
-				// Если это первый символ
-				if(i == result.begin() && ((* i) == '-'))
-					// Выполняем увеличение значения итератора
-					++i;
-				// Проверяем является ли символ числом
-				else if(this->_symbols.isArabic(* i) || ((* i) == '.'))
-					// Выполняем увеличение значения итератора
-					++i;
-				// Иначе удаляем символ
-				else i = result.erase(i);
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Сбрасываем полученный результат
-		result.clear();
+	// Если размер шага и число переданы
+	if(number > 0.){
 		/**
-		 * Если включён режим отладки
+		 * Выполняем отлов ошибок
 		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		try {
+			// Создаём поток для конвертации числа
+			stringstream stream;
+			// Получаем количество знаков после запятой
+			const uint8_t count = decimalPlaces(number);
+			// Записываем число в поток
+			stream << fixed << ::setprecision(count) << number;
+			// Получаем из потока строку
+			stream >> result;
+			// Если результат получен
+			if(!result.empty()){
+				// Если последний символ является нулём
+				while(result.back() == '0')
+					// Удаляем последний символ
+					result.pop_back();
+			}
+			// Если количество цифр после запятой больше нуля
+			if((count > 0) && (result.size() > 2)){
+				// Устанавливаем значение последнего символа
+				char last = '$';
+				// Выполняем перебор всех символов
+				for(auto i = (result.end() - 2); i != (result.begin() - 1);){
+					// Если символ не является последним
+					if(i != (result.end() - 2)){
+						// Если символы совпадают
+						if((* i) == last)
+							// Выполняем удаление лишних символов
+							result.erase(i);
+						// Если символы не совпадат, выходим
+						else break;
+					}
+					// Запоминаем текущее значение символа
+					last = (* i);
+					// Уменьшаем значение итератора
+					i--;
+				}
+			}
+			// Если нужно выводить только числа
+			if(onlyNum && !result.empty()){
+				// Переходим по всему числу
+				for(auto i = result.begin(); i != result.end();){
+					// Если это первый символ
+					if(i == result.begin() && ((* i) == '-'))
+						// Выполняем увеличение значения итератора
+						++i;
+					// Проверяем является ли символ числом
+					else if(this->_symbols.isArabic(* i) || ((* i) == '.'))
+						// Выполняем увеличение значения итератора
+						++i;
+					// Иначе удаляем символ
+					else i = result.erase(i);
+				}
+			}
 		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
-		#endif
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Сбрасываем полученный результат
+			result.clear();
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
 	}
+	// Если результат не получен
+	if(result.empty())
+		// Сбрасываем полученный результат
+		result = "0";
 	// Выводим результат
 	return result;
 }
