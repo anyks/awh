@@ -51,6 +51,17 @@ static uint8_t decimalPlaces(double number) noexcept {
 				// Считаем количество чисел
 				result++;
 			}
+			// Если собранное число больше нуля
+			while(intpart > 0){
+				// Если последний символ нулевой
+				if((static_cast <uint64_t> (intpart) % 10L) == 0){
+					// Уменьшаем размер числа
+					result--;
+					// Уменьшаем размер числа
+					intpart /= 10.;
+				// Выходим из цикла
+				} else break;
+			}
 		}
 	/**
 	 * Если возникает ошибка
@@ -2617,6 +2628,13 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 		stream << fixed << ::setprecision(count) << number;
 		// Получаем из потока строку
 		stream >> result;
+		// Если результат получен
+		if(!result.empty()){
+			// Если последний символ является нулём
+			while(result.back() == '0')
+				// Удаляем последний символ
+				result.pop_back();
+		}
 		// Если количество цифр после запятой больше нуля
 		if((count > 0) && (result.size() > 2)){
 			// Устанавливаем значение последнего символа
