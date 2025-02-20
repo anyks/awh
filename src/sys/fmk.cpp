@@ -4072,25 +4072,25 @@ string awh::Framework::bytes(const double value) const noexcept {
 			// Если переданное значение соответствует терабайту
 			if(value >= tb){
 				// Выполняем копирование терабайта
-				result = this->noexp(static_cast <double> (value) / tb, static_cast <uint8_t> (3));
+				result = this->noexp(value / tb, static_cast <uint8_t> (3));
 				// Добавляем наименование единицы измерения
 				result.append(" Tb");
 			// Если переданное значение соответствует гигабайту
 			} else if((value >= gb) && (value < tb)) {
 				// Выполняем копирование гигабайта
-				result = this->noexp(static_cast <double> (value) / gb, static_cast <uint8_t> (3));
+				result = this->noexp(value / gb, static_cast <uint8_t> (3));
 				// Добавляем наименование единицы измерения
 				result.append(" Gb");
 			// Если переданное значение соответствует мегабайту
 			} else if((value >= mb) && (value < gb)) {
 				// Выполняем копирование мегабайта
-				result = this->noexp(static_cast <double> (value) / mb, static_cast <uint8_t> (3));
+				result = this->noexp(value / mb, static_cast <uint8_t> (3));
 				// Добавляем наименование единицы измерения
 				result.append(" Mb");
 			// Если переданное значение соответствует киллобайту
 			} else if((value >= kb) && (value < mb)) {
 				// Выполняем копирование килобайта
-				result = this->noexp(static_cast <double> (value) / kb, static_cast <uint8_t> (3));
+				result = this->noexp(value / kb, static_cast <uint8_t> (3));
 				// Добавляем наименование единицы измерения
 				result.append(" Kb");
 			// Если переданное значение соответствует байту
@@ -4329,7 +4329,7 @@ string awh::Framework::seconds(const time_t seconds) const noexcept {
 			// Если переданное значение соответствует секундам
 			} else {
 				// Выполняем преобразование в количество секунд
-				result = this->noexp(seconds, static_cast <uint8_t> (1));
+				result = std::to_string(seconds);
 				// Добавляем наименование единицы измерения
 				result.append(1, 's');
 			}
