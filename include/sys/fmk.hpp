@@ -642,7 +642,7 @@ namespace awh {
 			 * @param step   размер шага после запятой
 			 * @return       число в безэкспоненциальной форме
 			 */
-			string noexp(const double number, const double step) const noexcept;
+			string noexp(const double number, const uint8_t step) const noexcept;
 			/**
 			 * noexp Метод перевода числа в безэкспоненциальную форму
 			 * @param number  число для перевода
@@ -852,17 +852,24 @@ namespace awh {
 			string bytes(const double value) const noexcept;
 			/**
 			 * bytes Метод получения размера в байтах из строки
-			 * @param str строка обозначения размерности (KB, MB, GB, TB)
+			 * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
 			 * @return    размер в байтах
 			 */
-			size_t bytes(const string & str) const noexcept;
+			double bytes(const string & str) const noexcept;
 		public:
 			/**
 			 * seconds Метод получения размера в секундах из строки
-			 * @param str строка обозначения размерности (s, m, h, d, M, y)
+			 * @param str строка обозначения размерности (s, m, h, d, w, M, y)
 			 * @return    размер в секундах
 			 */
 			time_t seconds(const string & str) const noexcept;
+			/**
+			 * seconds Метод получения текстового значения времени 
+			 * @param seconds количество секунд для конвертации
+			 * @return        обозначение времени с указанием размерности
+			 */
+			string seconds(const time_t seconds) const noexcept;
+		public:
 			/**
 			 * sizeBuffer Метод получения размера буфера в байтах
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)

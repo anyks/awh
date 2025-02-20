@@ -21,6 +21,62 @@
 using namespace std;
 
 /**
+ * decimalPlaces Функция определения количества знаков после запятой
+ * @param number число в котором нужно определить количество знаков
+ * @return       количество знаков после запятой
+ */
+static uint8_t decimalPlaces(double number) noexcept {
+	// Результат работы функции
+	uint8_t result = 0;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Результирующее число
+		double intpart = 0;
+		// Если у числа нет дробной части
+		if(::modf(number, &intpart) > 0){
+			// Получаем остаток от деления
+			uint64_t remainder = 0, item = 0;
+			// Если у числа есть дробная часть
+			while((::modf(number, &intpart) > 0) && (result < numeric_limits <double>::max_digits10)){
+				// Если остаток от деления совпадает
+				if((item = (static_cast <uint64_t> (intpart) % 10L)) == remainder)
+					// Выходим из цикла
+					break;
+				// Запоминаем остаток от деления
+				remainder = item;
+				// Увеличиваем число на один порядок
+				number *= 10.;
+				// Считаем количество чисел
+				result++;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Выполняем сброс количества знаков после запятой
+		result = 0;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+
+/**
  * Выполняем работу не для OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -110,69 +166,13 @@ using namespace std;
  */
 template <typename T>
 /**
- * decimalPlaces Функция определения количества знаков после запятой
- * @param number число в котором нужно определить количество знаков
- * @return       количество знаков после запятой
- */
-enable_if_t <(is_floating_point <T>::value), size_t> decimalPlaces(T number) noexcept {
-	// Количество знаков после запятой
-	size_t count = 0;
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Устанавливаем делитель
-		T factor = 10;
-		// Убираем знак числа
-		number = ::abs(number);
-		// Выполняем округление в меньшую сторону
-		auto c = (number - ::floor(number));
-		// Выполняем умножение на 10 до тех пор, пока не переберём все числа
-		while((c > 0) && (count < numeric_limits <T>::max_digits10)){
-			// Получаем число
-			c = (number * factor);
-			// Выполняем округление в меньшую сторону
-			c = (c - ::floor(c));
-			// Увеличиваем множитель
-			factor *= 10;
-			// Считаем количество чисел
-			count++;
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Выполняем сброс количества знаков после запятой
-		count = 0;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
-		#endif
-	}
-	// Выводим результат
-	return count;
-}
-/**
- * Устанавливаем шаблон функции
- */
-template <typename T>
-/**
  * split Метод разделения строк на составляющие
  * @param str       строка для поиска
  * @param delim     разделитель
  * @param container контенер содержащий данные
  * @return          контенер содержащий данные
  */
-T & split(const string & str, const string & delim, T & container) noexcept {
+static T & split(const string & str, const string & delim, T & container) noexcept {
 	/**
 	 * trimFn Метод удаления пробелов вначале и конце текста
 	 * @param text текст для удаления пробелов
@@ -281,7 +281,7 @@ template <typename T>
  * @param container контенер содержащий данные
  * @return          контенер содержащий данные
  */
-T & split(const wstring & str, const wstring & delim, T & container) noexcept {
+static T & split(const wstring & str, const wstring & delim, T & container) noexcept {
 	/**
 	 * trimFn Метод удаления пробелов вначале и конце текста
 	 * @param text текст для удаления пробелов
@@ -2538,19 +2538,25 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
  * @param step   размер шага после запятой
  * @return       число в безэкспоненциальной форме
  */
-string awh::Framework::noexp(const double number, const double step) const noexcept {
+string awh::Framework::noexp(const double number, const uint8_t step) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если размер шага и число переданы
-	if((number > 0.0) && (step > 0.0)){
+	if((number > 0.) && (step > 0.)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Временное значение переменной
+			double intpart = 0;
 			// Создаём поток для конвертации числа
 			stringstream stream;
-			// Записываем число в поток
-			stream << fixed << ::setprecision(::abs(::log10(step))) << number;
+			// Выполняем проверку есть ли дробная часть у числа
+			if(::modf(number, &intpart) > 0)
+				// Записываем число в поток
+				stream << fixed << ::setprecision(step) << number;
+			// Записываем число как оно есть
+			else stream << fixed << ::setprecision(0) << number;
 			// Получаем из потока строку
 			stream >> result;
 			// Переходим по всему числу
@@ -2606,7 +2612,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 		// Создаём поток для конвертации числа
 		stringstream stream;
 		// Получаем количество знаков после запятой
-		const size_t count = decimalPlaces <double> (number);
+		const uint8_t count = decimalPlaces(number);
 		// Записываем число в поток
 		stream << fixed << ::setprecision(count) << number;
 		// Получаем из потока строку
@@ -4043,58 +4049,57 @@ string awh::Framework::icon(const bool end) const noexcept {
 }
 /**
  * bytes Метод конвертации байт в строку
- * @param value количество байт (KB, MB, GB, TB)
+ * @param value количество байт (b, Kb, Mb, Gb, Tb)
  * @return      полученная строка
  */
 string awh::Framework::bytes(const double value) const noexcept {
 	// Результат работы функции
-	string result = "0.0 Bytes";
+	string result = "0 bytes";
 	// Если количество байт передано
-	if(value > 0){
+	if(value > 0.){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем очистку результата
-			result.clear();
-			// Выделяем память результата
-			result.resize(512, 0);
-			// Размер буфера данных
-			size_t length = 0;
 			// Шаблон киллобайта
-			const float kb = 1024.f;
+			const double kb = 1024.;
 			// Шаблон мегабайта
-			const float mb = 1048576.f;
+			const double mb = 1048576.;
 			// Шаблон гигабайта
-			const float gb = 1073741824.f;
+			const double gb = 1073741824.;
 			// Шаблон терабайта
-			const float tb = 1099511627776.f;
+			const double tb = 1099511627776.;
 			// Если переданное значение соответствует терабайту
-			if(value >= tb)
+			if(value >= tb){
 				// Выполняем копирование терабайта
-				length = ::sprintf(result.data(), "%.2lf TB", static_cast <double> (value) / tb);
+				result = this->noexp(static_cast <double> (value) / tb, static_cast <uint8_t> (3));
+				// Добавляем наименование единицы измерения
+				result.append(" Tb");
 			// Если переданное значение соответствует гигабайту
-			else if((value >= gb) && (value < tb))
+			} else if((value >= gb) && (value < tb)) {
 				// Выполняем копирование гигабайта
-				length = ::sprintf(result.data(), "%.2lf GB", static_cast <double> (value) / gb);
+				result = this->noexp(static_cast <double> (value) / gb, static_cast <uint8_t> (3));
+				// Добавляем наименование единицы измерения
+				result.append(" Gb");
 			// Если переданное значение соответствует мегабайту
-			else if((value >= mb) && (value < gb))
+			} else if((value >= mb) && (value < gb)) {
 				// Выполняем копирование мегабайта
-				length = ::sprintf(result.data(), "%.2lf MB", static_cast <double> (value) / mb);
+				result = this->noexp(static_cast <double> (value) / mb, static_cast <uint8_t> (3));
+				// Добавляем наименование единицы измерения
+				result.append(" Mb");
 			// Если переданное значение соответствует киллобайту
-			else if((value >= kb) && (value < mb))
+			} else if((value >= kb) && (value < mb)) {
 				// Выполняем копирование киллобайта
-				length = ::sprintf(result.data(), "%.2lf KB", static_cast <double> (value) / kb);
+				result = this->noexp(static_cast <double> (value) / kb, static_cast <uint8_t> (3));
+				// Добавляем наименование единицы измерения
+				result.append(" Kb");
 			// Если переданное значение соответствует байту
-			else if(value < kb)
+			} else {
 				// Выполняем копирование байтов
-				length = ::sprintf(result.data(), "%.2lf Bytes", value);
-			// Для всех остальных случаев тоже используем байты
-			else length = ::sprintf(result.data(), "%.2lf Bytes", value);
-			// Если результат получен
-			if(length > 0)
-				// Выполняем исправление длины строки результата
-				result.assign(result.begin(), result.begin() + length);
+				result = this->noexp(value, static_cast <uint8_t> (3));
+				// Добавляем наименование единицы измерения
+				result.append(" bytes");
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4122,9 +4127,9 @@ string awh::Framework::bytes(const double value) const noexcept {
  * @param str строка обозначения размерности
  * @return    размер в байтах
  */
-size_t awh::Framework::bytes(const string & str) const noexcept {
+double awh::Framework::bytes(const string & str) const noexcept {
 	// Размер количество байт
-	size_t size = 0;
+	double result = 0.;
 	// Выполняем проверку входящей строки
 	const auto & match = this->_regexp.exec(str, this->_bytes);
 	// Если данные найдены
@@ -4134,37 +4139,33 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 		 */
 		try {
 			// Размерность скорости
-			float dimension = 1.f;
+			double dimension = 1.;
 			// Получаем значение размерности
-			float value = ::stof(match[1]);
-			// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
-			bool isbite = !::fmod(value / 8.f, 2.f);
-			// Если это байты
-			if(match[2].compare("B") == 0)
-				// Выполняем установку множителя
-				dimension = 1.f;
+			result = ::stod(match[1]);
 			// Если это размерность в киллобитах
-			else if(match[2].compare("KB") == 0)
+			if(match[2].compare("Kb") == 0)
 				// Выполняем установку множителя
-				dimension = (isbite ? 1000.f : 1024.f);
+				dimension = 1024.;
 			// Если это размерность в мегабитах
-			else if(match[2].compare("MB") == 0)
+			else if(match[2].compare("Mb") == 0)
 				// Выполняем установку множителя
-				dimension = (isbite ? 1000000.f : 1048576.f);
+				dimension = 1048576.;
 			// Если это размерность в гигабитах
-			else if(match[2].compare("GB") == 0)
+			else if(match[2].compare("Gb") == 0)
 				// Выполняем установку множителя
-				dimension = (isbite ? 1000000000.f : 1073741824.f);
+				dimension = 1073741824.;
 			// Если это размерность в терабайтах
-			else if(match[2].compare("TB") == 0)
+			else if(match[2].compare("Tb") == 0)
 				// Выполняем установку множителя
-				dimension = (isbite ? 1000000000000.f : 1099511627776.f);
-			// Размер буфера по умолчанию
-			size = static_cast <size_t> (value);
+				dimension = 1099511627776.;
+			// Если это байты
+			else if((match[2].compare("b") == 0) || (match[2].compare("bytes") == 0))
+				// Выполняем установку множителя
+				dimension = 1.;
 			// Если размерность установлена тогда расчитываем количество байт
-			if(value > -1.f)
+			if(result > -1.)
 				// Устанавливаем размер полученных данных
-				size = (value * dimension);
+				result *= dimension;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4185,16 +4186,16 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 		}
 	}
 	// Выводим результат
-	return size;
+	return result;
 }
 /**
  * seconds Метод получения размера в секундах из строки
- * @param str строка обозначения размерности (s, m, h, d, M, y)
+ * @param str строка обозначения размерности (s, m, h, d, w, M, y)
  * @return    размер в секундах
  */
 time_t awh::Framework::seconds(const string & str) const noexcept {
 	// Количество секунд
-	time_t seconds = 0;
+	time_t result = 0;
 	// Выполняем проверку входящей строки
 	const auto & match = this->_regexp.exec(str, this->_seconds);
 	// Если данные найдены
@@ -4208,7 +4209,9 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 			// Получаем значение размерности
 			float value = ::stof(match[1]);
 			// Если это секунды
-			if(match[2].front() == 's') dimension = 1.f;
+			if(match[2].front() == 's')
+				// Выполняем установку множителя
+				dimension = 1.f;
 			// Если это размерность в минутах
 			else if(match[2].front() == 'm')
 				// Выполняем установку множителя
@@ -4221,20 +4224,24 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 			else if(match[2].front() == 'd')
 				// Выполняем установку множителя
 				dimension = 86400.f;
+			// Если это размерность в неделях
+			else if(match[2].front() == 'w')
+				// Выполняем установку множителя
+				dimension = 604800.f;
 			// Если это размерность в месяцах
 			else if(match[2].front() == 'M')
 				// Выполняем установку множителя
-				dimension = 2592000.f;
+				dimension = 2628000.f;
 			// Если это размерность в годах
 			else if(match[2].front() == 'y')
 				// Выполняем установку множителя
 				dimension = 31536000.f;
-			// Размер буфера по умолчанию
-			seconds = static_cast <time_t> (value);
 			// Если время установлено тогда расчитываем количество секунд
 			if(value > -1.f)
 				// Выполняем получение количества секунд
-				seconds = (value * dimension);
+				result = static_cast <time_t> (value * dimension);
+			// Размер буфера по умолчанию
+			else result = static_cast <time_t> (value);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4255,7 +4262,98 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 		}
 	}
 	// Выводим результат
-	return seconds;
+	return result;
+}
+/**
+ * seconds Метод получения текстового значения времени 
+ * @param seconds количество секунд для конвертации
+ * @return        обозначение времени с указанием размерности
+ */
+string awh::Framework::seconds(const time_t seconds) const noexcept {
+	// Результат работы функции
+	string result = "0s";
+	// Если количество секунд передано
+	if(seconds > 0){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Шаблон минуты
+			const double minute = 60.;
+			// Шаблон часа
+			const double hour = 3600.;
+			// Шаблон дня
+			const double day = 86400.;
+			// Шаблон недели
+			const double week = 604800.;
+			// Шаблон месяца
+			const double month = 2628000.;
+			// Шаблон года
+			const double year = 31536000.;
+			// Если переданное значение соответствует году
+			if(seconds >= year){
+				// Выполняем преобразование в количество лет
+				result = this->noexp(static_cast <double> (seconds) / year, static_cast <uint8_t> (1));
+				// Добавляем наименование единицы измерения
+				result.append(1, 'y');
+			// Если переданное значение соответствует месяцу
+			} else if((seconds >= month) && (seconds < year)) {
+				// Выполняем преобразование в количество месяцев
+				result = this->noexp(static_cast <double> (seconds) / month, static_cast <uint8_t> (1));
+				// Добавляем наименование единицы измерения
+				result.append(1, 'M');
+			// Если переданное значение соответствует недели
+			} else if((seconds >= week) && (seconds < month)) {
+				// Выполняем преобразование в количество недель
+				result = this->noexp(static_cast <double> (seconds) / week, static_cast <uint8_t> (1));
+				// Добавляем наименование единицы измерения
+				result.append(1, 'w');
+			// Если переданное значение соответствует дням
+			} else if((seconds >= day) && (seconds < week)) {
+				// Выполняем преобразование в количество дней
+				result = this->noexp(static_cast <double> (seconds) / day, static_cast <uint8_t> (1));
+				// Добавляем наименование единицы измерения
+				result.append(1, 'd');
+			// Если переданное значение соответствует часам
+			} else if((seconds >= hour) && (seconds < day)) {
+				// Выполняем преобразование в количество часов
+				result = this->noexp(static_cast <double> (seconds) / hour, static_cast <uint8_t> (1));
+				// Добавляем наименование единицы измерения
+				result.append(1, 'h');
+			// Если переданное значение соответствует минут
+			} else if((seconds >= minute) && (seconds < hour)) {
+				// Выполняем преобразование в количество минут
+				result = this->noexp(static_cast <double> (seconds) / minute, static_cast <uint8_t> (1));
+				// Добавляем наименование единицы измерения
+				result.append(1, 'm');
+			// Если переданное значение соответствует секундам
+			} else {
+				// Выполняем преобразование в количество секунд
+				result = this->noexp(seconds, static_cast <uint8_t> (1));
+				// Добавляем наименование единицы измерения
+				result.append(1, 's');
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * sizeBuffer Метод получения размера буфера в байтах
@@ -4316,7 +4414,7 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 				// Выполняем установку множителя
 				dimension = (bytes ? 1000000000.f : 1024000000.f);
 			// Выполняем получение размера в байтах
-			result = ((speed / 8) * (dimension * .04));
+			result = static_cast <size_t> ((speed / 8.f) * (dimension * .04f));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4345,12 +4443,12 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 awh::Framework::Framework() noexcept : _locale(AWH_LOCALE), _nwt("абвгдеёжзийклмнопрстуфхцчшщъыьэюя") {
 	// Устанавливаем локализацию системы
 	this->setLocale();
-	// Устанавливаем регулярное выражение для парсинга байт
-	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга времени
-	this->_seconds = this->_regexp.build("([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", {regexp_t::option_t::UTF8});
+	this->_seconds = this->_regexp.build("([\\d\\.\\,]+)\\s*(s|m|h|d|w|M|y)$", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга буферов данных
-	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {regexp_t::option_t::UTF8});
+	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)$", {regexp_t::option_t::UTF8});
+	// Устанавливаем регулярное выражение для парсинга байт
+	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(bytes|b|Kb|Mb|Gb|Tb)$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 }
 /**
  * Framework Конструктор
@@ -4359,10 +4457,10 @@ awh::Framework::Framework() noexcept : _locale(AWH_LOCALE), _nwt("абвгдеё
 awh::Framework::Framework(const string & locale) noexcept : _nwt("абвгдеёжзийклмнопрстуфхцчшщъыьэюя") {
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
-	// Устанавливаем регулярное выражение для парсинга байт
-	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга секунд
-	this->_seconds = this->_regexp.build("([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", {regexp_t::option_t::UTF8});
+	this->_seconds = this->_regexp.build("([\\d\\.\\,]+)\\s*(s|m|h|d|w|M|y)$", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга буферов данных
-	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {regexp_t::option_t::UTF8});
+	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)$", {regexp_t::option_t::UTF8});
+	// Устанавливаем регулярное выражение для парсинга байт
+	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(bytes|b|Kb|Mb|Gb|Tb)$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 }
