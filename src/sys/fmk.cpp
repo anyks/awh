@@ -4072,31 +4072,31 @@ string awh::Framework::bytes(const double value) const noexcept {
 			// Если переданное значение соответствует терабайту
 			if(value >= tb){
 				// Выполняем копирование терабайта
-				result = this->noexp(value / tb, static_cast <uint8_t> (3));
+				result = this->noexp(value / tb);
 				// Добавляем наименование единицы измерения
 				result.append(" Tb");
 			// Если переданное значение соответствует гигабайту
 			} else if((value >= gb) && (value < tb)) {
 				// Выполняем копирование гигабайта
-				result = this->noexp(value / gb, static_cast <uint8_t> (3));
+				result = this->noexp(value / gb);
 				// Добавляем наименование единицы измерения
 				result.append(" Gb");
 			// Если переданное значение соответствует мегабайту
 			} else if((value >= mb) && (value < gb)) {
 				// Выполняем копирование мегабайта
-				result = this->noexp(value / mb, static_cast <uint8_t> (3));
+				result = this->noexp(value / mb);
 				// Добавляем наименование единицы измерения
 				result.append(" Mb");
 			// Если переданное значение соответствует киллобайту
 			} else if((value >= kb) && (value < mb)) {
 				// Выполняем копирование килобайта
-				result = this->noexp(value / kb, static_cast <uint8_t> (3));
+				result = this->noexp(value / kb);
 				// Добавляем наименование единицы измерения
 				result.append(" Kb");
 			// Если переданное значение соответствует байту
 			} else {
 				// Выполняем копирование байтов
-				result = this->noexp(value, static_cast <uint8_t> (3));
+				result = this->noexp(value);
 				// Добавляем наименование единицы измерения
 				result.append(" bytes");
 			}
