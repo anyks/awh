@@ -37,11 +37,11 @@ static uint8_t decimalPlaces(double number) noexcept {
 		// Если у числа нет дробной части
 		if(::modf(number, &intpart) > 0){
 			// Получаем остаток от деления
-			uint64_t remainder = 0, item = 0;
+			int64_t remainder = -1, item = 0;
 			// Если у числа есть дробная часть
-			while((::modf(number, &intpart) > 0) && (result < numeric_limits <double>::max_digits10)){
+			while((::modf(number, &intpart) > 0) && (result < numeric_limits <uint8_t>::max())){
 				// Если остаток от деления совпадает
-				if((item = (static_cast <uint64_t> (intpart) % 10L)) == remainder)
+				if((item = (static_cast <int64_t> (intpart) % 10L)) == remainder)
 					// Выходим из цикла
 					break;
 				// Запоминаем остаток от деления
@@ -54,7 +54,7 @@ static uint8_t decimalPlaces(double number) noexcept {
 			// Если собранное число больше нуля
 			while(intpart > 0){
 				// Если последний символ нулевой
-				if((static_cast <uint64_t> (intpart) % 10L) == 0){
+				if((result > 0) && ((static_cast <uint64_t> (intpart) % 10L) == 0)){
 					// Уменьшаем размер числа
 					result--;
 					// Уменьшаем размер числа
@@ -2638,7 +2638,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 			// Получаем из потока строку
 			stream >> result;
 			// Если результат получен
-			if(!result.empty()){
+			if((count > 0) && !result.empty()){
 				// Если последний символ является нулём
 				while(result.back() == '0')
 					// Удаляем последний символ

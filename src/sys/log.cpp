@@ -268,12 +268,12 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 					// Если размер текста соответствует размеру лога
 					if(payload.text.length() >= this->_sepSize)
 						// Выводим обозначение начала вывода лога
-						cout << "*************** START ***************" << endl << endl;
+						cout << "*************** START ***************" << endl << endl << flush;
 				} break;
 				// Если разделитель нужно отобразить всегда
 				case static_cast <uint8_t> (separator_t::ALWAYS):
 					// Выводим обозначение начала вывода лога
-					cout << "*************** START ***************" << endl << endl;
+					cout << "*************** START ***************" << endl << endl << flush;
 				break;
 			}
 		}
@@ -282,22 +282,22 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 			// Выводим сообщение так-как оно есть
 			case static_cast <uint8_t> (flag_t::NONE):
 				// Формируем текстовый вид лога
-				cout << this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+				cout << this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
 			break;
 			// Выводим информационное сообщение
 			case static_cast <uint8_t> (flag_t::INFO):
 				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
 			break;
 			// Выводим сообщение об ошибке
 			case static_cast <uint8_t> (flag_t::CRITICAL):
 				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
 			break;
 			// Выводим сообщение предупреждения
 			case static_cast <uint8_t> (flag_t::WARNING):
 				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
 			break;
 		}
 		// Если тип сообщение не является пустым
@@ -309,12 +309,12 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 					// Если размер текста соответствует размеру лога
 					if(payload.text.length() >= this->_sepSize)
 						// Выводим обозначение конца вывода лога
-						cout << "---------------- END ----------------" << endl << endl;
+						cout << "---------------- END ----------------" << endl << endl << flush;
 				} break;
 				// Если разделитель нужно отобразить всегда
 				case static_cast <uint8_t> (separator_t::ALWAYS):
 					// Выводим обозначение конца вывода лога
-					cout << "---------------- END ----------------" << endl << endl;
+					cout << "---------------- END ----------------" << endl << endl << flush;
 				break;
 			}
 		}
