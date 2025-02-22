@@ -41,7 +41,7 @@ static uint8_t decimalPlaces(double number) noexcept {
 			// Если у числа есть дробная часть
 			while((::modf(number, &intpart) > 0) && (result < numeric_limits <uint8_t>::max())){
 				// Если остаток от деления совпадает
-				if((item = (static_cast <int64_t> (intpart) % 10L)) == remainder)
+				if(((item = (static_cast <int64_t> (intpart) % 10L)) == remainder) && (remainder != 0))
 					// Выходим из цикла
 					break;
 				// Запоминаем остаток от деления
@@ -2640,7 +2640,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 			// Если результат получен
 			if((count > 0) && !result.empty()){
 				// Если последний символ является нулём
-				while(result.back() == '0')
+				while((result.back() == '0') || (result.back() == '.'))
 					// Удаляем последний символ
 					result.pop_back();
 			}
