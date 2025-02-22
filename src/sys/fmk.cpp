@@ -39,13 +39,15 @@ static uint8_t decimalPlaces(double number) noexcept {
 			// Получаем остаток от деления
 			int64_t remainder = -1, item = 0;
 			// Если у числа есть дробная часть
-			while((::modf(number, &intpart) > 0) && (result < numeric_limits <uint8_t>::max())){
+			while((::modf(number, &intpart) > 0) && (result < 16)){
 				// Если остаток от деления совпадает
 				if(((item = (static_cast <int64_t> (intpart) % 10L)) == remainder) && (remainder != 0))
 					// Выходим из цикла
 					break;
-				// Запоминаем остаток от деления
-				remainder = item;
+				// Если результат уже собран
+				if(result > 0)
+					// Запоминаем остаток от деления
+					remainder = item;
 				// Увеличиваем число на один порядок
 				number *= 10.;
 				// Считаем количество чисел
@@ -2639,8 +2641,10 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 			stream >> result;
 			// Если результат получен
 			if((count > 0) && !result.empty()){
+				// Флаг завершения перебора
+				bool end = false;
 				// Если последний символ является нулём
-				while((result.back() == '0') || (result.back() == '.'))
+				while(!end && (result.back() == '0') || (end = (result.back() == '.')))
 					// Удаляем последний символ
 					result.pop_back();
 			}
