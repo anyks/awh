@@ -2175,7 +2175,7 @@ bool awh::Framework::greater(const void * value1, const void * value2, const siz
 			// Значений чисел для сравнения
 			bitset <8> num1(0), num2(0);
 			// Индекс перебора всех бит числа
-			uint8_t count = 0, index = static_cast <uint8_t> (size);
+			size_t count = 0, index = size;
 			// Выполняем перебор всех байт буфера
 			while(index--){
 				// Получаем значение числа в виде первого байта
@@ -2183,7 +2183,7 @@ bool awh::Framework::greater(const void * value1, const void * value2, const siz
 				// Получаем значение числа в виде второго байта
 				num2 = reinterpret_cast <const uint8_t *> (value2)[index];
 				// Получаем первоначальное значение индексов
-				count = static_cast <uint8_t> (num1.size());
+				count = num1.size();
 				// Выполняем перебор всей строки
 				while(count--){
 					// Если первый байт больше второго
@@ -2237,7 +2237,7 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 				// Результат с которым будем работать
 				bitset <8> byte(0);
 				// Выполняем перебор всего буфера данных
-				for(uint8_t i = 0; i < static_cast <uint8_t> (size); i++){
+				for(size_t i = 0; i < size; i++){
 					// Получаем байт
 					byte = reinterpret_cast <const uint8_t *> (value)[i];
 					// Переходим по всем байтам полученного бита
@@ -2399,8 +2399,8 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 			}
 			// Выполняем перевод число в верхний регистр
 			this->transform(number, transform_t::UPPER);
-			// Начальное и конечное количество перебираемых элементов
-			const uint8_t start = 0, stop = static_cast <uint8_t> (number.length());
+			// Количество перебираемых элементов
+			const uint8_t count = static_cast <uint8_t> (number.length());
 			// Определяем размер данных для конвертации
 			switch(size){
 				// Если это один байт
@@ -2408,11 +2408,11 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 					// Результат с которым будем работать
 					uint8_t result = 0;
 					// Выполняем перебор всех чисел
-					for(uint8_t i = start; i < stop; i++){
+					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
 						if((pos = digits.find(number.at(i))) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += (pos * ::pow(radix, stop - i - 1));
+							result += (pos * ::pow(radix, count - i - 1));
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -2424,11 +2424,11 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 					// Результат с которым будем работать
 					uint16_t result = 0;
 					// Выполняем перебор всех чисел
-					for(uint8_t i = start; i < stop; i++){
+					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
 						if((pos = digits.find(number.at(i))) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += (pos * ::pow(radix, stop - i - 1));
+							result += (pos * ::pow(radix, count - i - 1));
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -2440,11 +2440,11 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 					// Результат с которым будем работать
 					uint32_t result = 0;
 					// Выполняем перебор всех чисел
-					for(uint8_t i = start; i < stop; i++){
+					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
 						if((pos = digits.find(number.at(i))) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += (pos * ::pow(radix, stop - i - 1));
+							result += (pos * ::pow(radix, count - i - 1));
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -2456,11 +2456,11 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 					// Результат с которым будем работать
 					uint64_t result = 0;
 					// Выполняем перебор всех чисел
-					for(uint8_t i = start; i < stop; i++){
+					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
 						if((pos = digits.find(number.at(i))) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += (pos * ::pow(radix, stop - i - 1));
+							result += (pos * ::pow(radix, count - i - 1));
 						// Иначе выходим из цикла
 						else return;
 					}
