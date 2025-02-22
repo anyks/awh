@@ -39,7 +39,7 @@ static uint8_t decimalPlaces(double number) noexcept {
 			// Получаем остаток от деления
 			int64_t remainder = -1, item = 0;
 			// Если у числа есть дробная часть
-			while((::modf(number, &intpart) > 0) && (result < 16)){
+			while((::modf(number, &intpart) > 0) && (result < 15)){
 				// Если остаток от деления совпадает
 				if(((item = (static_cast <int64_t> (intpart) % 10L)) == remainder) && (remainder != 0))
 					// Выходим из цикла
