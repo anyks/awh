@@ -2644,7 +2644,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 				// Флаг завершения перебора
 				bool end = false;
 				// Если последний символ является нулём
-				while(!end && (result.back() == '0') || (end = (result.back() == '.')))
+				while(!end && (result.back() == '0') || (end = ((result.back() == '.') || (result.back() == ','))))
 					// Удаляем последний символ
 					result.pop_back();
 			}
