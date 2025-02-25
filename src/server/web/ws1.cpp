@@ -68,6 +68,8 @@ void awh::server::Websocket1::connectEvents(const uint64_t bid, const uint16_t s
 			if(this->_frameSize > 0)
 				// Выполняем установку размера фрейма
 				options->frame.size = this->_frameSize;
+			// Иначе устанавливаем размер сегментов по умолчанию
+			else options->frame.size = AWH_CHUNK_SIZE;
 			// Если функция обратного вызова для обработки чанков установлена
 			if(!this->_callbacks.is("chunking"))
 				// Устанавливаем функцию обработки вызова для получения чанков
@@ -540,22 +542,31 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 									} break;
 									// Если ответом является CONTINUATION
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
-										// Заполняем фрагментированное сообщение
-										options->buffer.fragmes.insert(options->buffer.fragmes.end(), payload.begin(), payload.end());
-										// Если сообщение является последним
-										if(head.fin){
-											// Если тредпул активирован
-											if(this->_thr.is())
-												// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-												this->_thr.push(bind(&ws1_t::extraction, this, bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
-											// Если тредпул не активирован, выполняем извлечение полученных сообщений
-											else this->extraction(bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
-											// Очищаем список фрагментированных сообщений
-											options->buffer.fragmes.clear();
-											// Если размер выделенной памяти выше максимального размера буфера
-											if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
-												// Выполняем очистку временного буфера данных
-												vector <char> ().swap(options->buffer.fragmes);
+										// Если фрагменты сообщения уже собраны
+										if(!options->buffer.fragmes.empty()){
+											// Заполняем фрагментированное сообщение
+											options->buffer.fragmes.insert(options->buffer.fragmes.end(), payload.begin(), payload.end());
+											// Если сообщение является последним
+											if(head.fin){
+												// Если тредпул активирован
+												if(this->_thr.is())
+													// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+													this->_thr.push(bind(&ws1_t::extraction, this, bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+												// Если тредпул не активирован, выполняем извлечение полученных сообщений
+												else this->extraction(bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
+												// Очищаем список фрагментированных сообщений
+												options->buffer.fragmes.clear();
+												// Если размер выделенной памяти выше максимального размера буфера
+												if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+													// Выполняем очистку временного буфера данных
+													vector <char> ().swap(options->buffer.fragmes);
+											}
+										// Если фрагментированные сообщения не существуют
+										} else {
+											// Создаём сообщение
+											options->mess = ws::mess_t(1002, "Fragmented Message Transfer Protocol Failure");
+											// Выполняем отключение брокера
+											goto Stop;
 										}
 									} break;
 									// Если ответом является CLOSE
@@ -1369,7 +1380,7 @@ void awh::server::Websocket1::segmentSize(const size_t size) noexcept {
 		// Устанавливаем размер одного сегмента фрейма
 		this->_frameSize = size;
 	// Иначе устанавливаем размер сегментов по умолчанию
-	else this->_frameSize = 0xFA000;
+	else this->_frameSize = AWH_CHUNK_SIZE;
 }
 /**
  * compressors Метод установки списка поддерживаемых компрессоров
@@ -1556,7 +1567,7 @@ void awh::server::Websocket1::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::server::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _waitPong(_pingInterval * 2), _frameSize(0xFA000), _scheme(fmk, log) {}
+ web_t(fmk, log), _waitPong(_pingInterval * 2), _frameSize(AWH_CHUNK_SIZE), _scheme(fmk, log) {}
 /**
  * Websocket1 Конструктор
  * @param core объект сетевого ядра
@@ -1564,7 +1575,7 @@ awh::server::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::server::Websocket1::Websocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _waitPong(_pingInterval * 2), _frameSize(0xFA000), _scheme(fmk, log) {
+ web_t(core, fmk, log), _waitPong(_pingInterval * 2), _frameSize(AWH_CHUNK_SIZE), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы

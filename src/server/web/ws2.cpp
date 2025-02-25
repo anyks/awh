@@ -78,6 +78,8 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 				if(this->_frameSize > 0)
 					// Выполняем установку размера фрейма
 					options->frame.size = this->_frameSize;
+				// Устанавливаем размер сегментов фрейма
+				else options->frame.size = static_cast <size_t> (http2_t::MAX_FRAME_SIZE_MIN);
 				// Если сервер требует авторизацию
 				if(this->_service.type != auth_t::type_t::NONE){
 					// Определяем тип авторизации
@@ -528,22 +530,31 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 											} break;
 											// Если ответом является CONTINUATION
 											case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
-												// Заполняем фрагментированное сообщение
-												options->buffer.fragmes.insert(options->buffer.fragmes.end(), payload.begin(), payload.end());
-												// Если сообщение является последним
-												if(head.fin){
-													// Если тредпул активирован
-													if(this->_thr.is())
-														// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-														this->_thr.push(bind(&ws2_t::extraction, this, bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
-													// Если тредпул не активирован, выполняем извлечение полученных сообщений
-													else this->extraction(bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
-													// Очищаем список фрагментированных сообщений
-													options->buffer.fragmes.clear();
-													// Если размер выделенной памяти выше максимального размера буфера
-													if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
-														// Выполняем очистку временного буфера данных
-														vector <char> ().swap(options->buffer.fragmes);
+												// Если фрагменты сообщения уже собраны
+												if(!options->buffer.fragmes.empty()){
+													// Заполняем фрагментированное сообщение
+													options->buffer.fragmes.insert(options->buffer.fragmes.end(), payload.begin(), payload.end());
+													// Если сообщение является последним
+													if(head.fin){
+														// Если тредпул активирован
+														if(this->_thr.is())
+															// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+															this->_thr.push(bind(&ws2_t::extraction, this, bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+														// Если тредпул не активирован, выполняем извлечение полученных сообщений
+														else this->extraction(bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
+														// Очищаем список фрагментированных сообщений
+														options->buffer.fragmes.clear();
+														// Если размер выделенной памяти выше максимального размера буфера
+														if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+															// Выполняем очистку временного буфера данных
+															vector <char> ().swap(options->buffer.fragmes);
+													}
+												// Если фрагментированные сообщения не существуют
+												} else {
+													// Создаём сообщение
+													options->mess = ws::mess_t(1002, "Fragmented Message Transfer Protocol Failure");
+													// Выполняем отключение брокера
+													goto Stop;
 												}
 											} break;
 											// Если ответом является CLOSE
@@ -2020,7 +2031,7 @@ void awh::server::Websocket2::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::server::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept :
-web2_t(fmk, log), _waitPong(_pingInterval * 2), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
+web2_t(fmk, log), _waitPong(_pingInterval * 2), _threads(0), _frameSize(AWH_CHUNK_SIZE), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Если размер фрейма не установлен
@@ -2035,7 +2046,7 @@ web2_t(fmk, log), _waitPong(_pingInterval * 2), _threads(0), _frameSize(0), _ws1
  * @param log  объект для работы с логами
  */
 awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _waitPong(_pingInterval * 2), _threads(0), _frameSize(0), _ws1(fmk, log), _scheme(fmk, log) {
+ web2_t(core, fmk, log), _waitPong(_pingInterval * 2), _threads(0), _frameSize(AWH_CHUNK_SIZE), _ws1(fmk, log), _scheme(fmk, log) {
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 	// Если размер фрейма не установлен

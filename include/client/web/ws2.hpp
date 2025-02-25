@@ -85,7 +85,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Frame(const fmk_t * fmk, const log_t * log) noexcept :
-					 size(0), methods(fmk, log),
+					 size(AWH_CHUNK_SIZE), methods(fmk, log),
 					 opcode(ws::frame_t::opcode_t::TEXT) {}
 				} frame_t;
 			private:

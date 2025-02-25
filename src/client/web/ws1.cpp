@@ -849,22 +849,37 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					} break;
 					// Если ответом является CONTINUATION
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
-						// Заполняем фрагментированное сообщение
-						this->_fragmes.insert(this->_fragmes.end(), payload.begin(), payload.end());
-						// Если сообщение является последним
-						if(head.fin){
-							// Если тредпул активирован
-							if(this->_thr.is())
-								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-								this->_thr.push(bind(&ws1_t::extraction, this, this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
-							// Если тредпул не активирован, выполняем извлечение полученных сообщений
-							else this->extraction(this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
-							// Очищаем список фрагментированных сообщений
-							this->_fragmes.clear();
-							// Если размер выделенной памяти выше максимального размера буфера
-							if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
-								// Выполняем очистку временного буфера данных
-								vector <char> ().swap(this->_fragmes);
+						// Если фрагменты сообщения уже собраны
+						if(!this->_fragmes.empty()){
+							// Заполняем фрагментированное сообщение
+							this->_fragmes.insert(this->_fragmes.end(), payload.begin(), payload.end());
+							// Если сообщение является последним
+							if(head.fin){
+								// Если тредпул активирован
+								if(this->_thr.is())
+									// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+									this->_thr.push(bind(&ws1_t::extraction, this, this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+								// Если тредпул не активирован, выполняем извлечение полученных сообщений
+								else this->extraction(this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+								// Очищаем список фрагментированных сообщений
+								this->_fragmes.clear();
+								// Если размер выделенной памяти выше максимального размера буфера
+								if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+									// Выполняем очистку временного буфера данных
+									vector <char> ().swap(this->_fragmes);
+							}
+						// Если фрагментированные сообщения не существуют
+						} else {
+							// Создаём сообщение
+							this->_mess = ws::mess_t(1002, "Fragmented Message Transfer Protocol Failure");
+							// Выводим сообщение
+							this->error(this->_mess);
+							// Если функция обратного вызова активности потока установлена
+							if(this->_callbacks.is("stream"))
+								// Устанавливаем полученную функцию обратного вызова
+								this->_resultCallback.set <void (const int32_t, const uint64_t, const mode_t)> ("stream", this->_callbacks.get <void (const int32_t, const uint64_t, const mode_t)> ("stream"), sid, this->_rid, mode_t::CLOSE);
+							// Выполняем реконнект
+							return status_t::NEXT;
 						}
 					} break;
 					// Если ответом является CLOSE
@@ -1394,8 +1409,12 @@ void awh::client::Websocket1::chunk(const size_t size) noexcept {
  * @param size минимальный размер сегмента
  */
 void awh::client::Websocket1::segmentSize(const size_t size) noexcept {
-	// Если размер передан, устанавливаем
-	if(size > 0) this->_frame.size = size;
+	// Если размер сегмента фрейма передан
+	if(size > 0)
+		// Устанавливаем размер одного сегмента фрейма
+		this->_frame.size = size;
+	// Иначе устанавливаем размер сегментов по умолчанию
+	else this->_frame.size = AWH_CHUNK_SIZE;
 }
 /**
  * mode Метод установки флагов настроек модуля
