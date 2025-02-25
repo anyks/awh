@@ -3913,17 +3913,17 @@ string awh::Framework::strpTime(const string & date, const string & format1, con
 			* но это все ещё намного проще. Чем любая из версий в любой из стандартных библиотек C.
 			*/
 			// Создаем структуру времени
-			tm tm = {};
+			std::tm tm = {};
 			// Создаём строковый поток
-			istringstream input(date.c_str());
+			istringstream ss(date.c_str());
 			// Устанавливаем текущую локаль
-			input.imbue(this->_locale);
+			ss.imbue(this->_locale);
 			// Зануляем структуру
 			::memset(&tm, 0, sizeof(tm));
 			// Извлекаем время локали
-			input >> get_time(&tm, format1.c_str());
+			ss >> get_time(&tm, format1.c_str());
 			// Если время получено
-			if(!input.fail() && !format2.empty()){
+			if(!ss.fail() && !format2.empty()){
 				// Создаём объект потока
 				stringstream transTime;
 				// Выполняем извлечение даты
@@ -3967,7 +3967,7 @@ string awh::Framework::time2str(const time_t date, const string & format) const 
 		// Создаём объект потока
 		stringstream transTime;
 		// Создаем структуру времени
-		tm * tm = localtime(&date);
+		std::tm * tm = localtime(&date);
 		// Выполняем извлечение даты
 		transTime << put_time(tm, format.c_str());
 		// Выводим полученное значение даты
@@ -4009,14 +4009,22 @@ time_t awh::Framework::str2time(const string & date, const string & format) cons
 		 */
 		try {
 			// Создаем структуру времени
-			tm tm = {};
+			std::tm tm = {};
+			// Получаем значение текущего времени
+			const time_t time = std::time(nullptr);
+			/**
+			 * Устанавливаем локальное значение даты,
+			 * для компенсации ошибки формирования года,
+			 * чтобы устанавливать текущее значение года по умолчанию.
+			 */
+			localtime_r(&time, &tm);
 			// Создаём строковый поток
-			istringstream input(date.c_str());
+			istringstream ss(date.c_str());
 			// Устанавливаем текущую локаль
-			input.imbue(this->_locale);
+			ss.imbue(this->_locale);
 			// Извлекаем время локали
-			input >> get_time(&tm, format.c_str());
-			// Выводим результат
+			ss >> get_time(&tm, format.c_str());
+			// Если ошибки не возникает
 			result = mktime(&tm);
 		/**
 		 * Если возникает ошибка
