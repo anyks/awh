@@ -3974,14 +3974,18 @@ string awh::Framework::time2str(const time_t date, const string & format) const 
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Создаём объект потока
-		stringstream transTime;
 		// Создаем структуру времени
-		std::tm * tm = localtime(&date);
+		std::tm tm = {};
+		// Создаём объект потока
+		stringstream ss;
+		// Формируем локальное время
+		localtime_r(&date, &tm);
 		// Выполняем извлечение даты
-		transTime << put_time(tm, format.c_str());
+		ss << put_time(&tm, format.c_str());
+		// Устанавливаем текущую локаль
+		ss.imbue(this->_locale);
 		// Выводим полученное значение даты
-		return transTime.str();
+		return ss.str();
 	/**
 	 * Если возникает ошибка
 	 */
