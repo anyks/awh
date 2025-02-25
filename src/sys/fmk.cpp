@@ -21,6 +21,16 @@
 using namespace std;
 
 /**
+ * Для операционной системы Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * Заменяем функцию localtime_r на localtime_s
+	 */
+	#define localtime_r(T, Tm) (localtime_s(Tm, T) ? nullptr : Tm)
+#endif
+
+/**
  * decimalPlaces Функция определения количества знаков после запятой
  * @param number число в котором нужно определить количество знаков
  * @return       количество знаков после запятой
