@@ -113,14 +113,8 @@ void awh::Log::rotate() const noexcept {
 	#endif
 			// Если размер файла лога, превышает максимально-установленный
 			if(size >= this->_maxSize){
-				// Создаём объект потока
-				stringstream date;
-				// Определяем количество секунд
-				const time_t seconds = time(nullptr);
-				// Получаем структуру локального времени
-				tm * tm = localtime(&seconds);
 				// Выполняем извлечение даты
-				date << put_time(tm, "_%m-%d-%Y_%H-%M-%S");
+				const string & date = this->_fmk->time2str(::time(nullptr), "_%m-%d-%Y_%H-%M-%S");
 				/**
 				 * Выполняем работу для Windows
 				 */
@@ -134,7 +128,7 @@ void awh::Log::rotate() const noexcept {
 						// Получаем компоненты адреса
 						const auto & cmp = this->components(this->_filename);
 						// Открываем файл на сжатие
-						gzFile gz = ::gzopen_w(this->_fmk->convert(this->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.str().c_str())).c_str(), "wb9h");
+						gzFile gz = ::gzopen_w(this->_fmk->convert(this->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.c_str())).c_str(), "wb9h");
 						// Если файл открыт удачно
 						if(gz != nullptr){
 							// Выполняем сжатие файла
@@ -168,7 +162,7 @@ void awh::Log::rotate() const noexcept {
 							// Получаем компоненты адреса
 							const auto & cmp = this->components(this->_filename);
 							// Открываем файл на сжатие
-							gzFile gz = ::gzopen(this->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.str().c_str()).c_str(), "wb9h");
+							gzFile gz = ::gzopen(this->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.c_str()).c_str(), "wb9h");
 							// Если файл открыт удачно
 							if(gz != nullptr){
 								// Выполняем сжатие файла
@@ -239,14 +233,8 @@ string & awh::Log::cleaner(string & text) const noexcept {
 void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Флаг конца строки
 	bool isEnd = false;
-	// Создаём объект потока
-	stringstream date;
-	// Определяем количество секунд
-	const time_t seconds = time(nullptr);
-	// Получаем структуру локального времени
-	tm * tm = localtime(&seconds);
 	// Выполняем извлечение даты
-	date << put_time(tm, this->_format.c_str());
+	const string & date = this->_fmk->time2str(::time(nullptr), this->_format);
 	// Если размер буфера меньше 3-х байт
 	if(payload.text.length() < 3)
 		// Проверяем является ли это переводом строки
@@ -287,17 +275,17 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 			// Выводим информационное сообщение
 			case static_cast <uint8_t> (flag_t::INFO):
 				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
+				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
 			break;
 			// Выводим сообщение об ошибке
 			case static_cast <uint8_t> (flag_t::CRITICAL):
 				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
+				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
 			break;
 			// Выводим сообщение предупреждения
 			case static_cast <uint8_t> (flag_t::WARNING):
 				// Формируем текстовый вид лога
-				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
+				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : "")) << flush;
 			break;
 		}
 		// Если тип сообщение не является пустым
@@ -343,17 +331,17 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 					// Выводим информационное сообщение
 					case static_cast <uint8_t> (flag_t::INFO):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Info %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+						logData = this->_fmk->format("Info %s %s : %s%s", date..c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение об ошибке
 					case static_cast <uint8_t> (flag_t::CRITICAL):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Error %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+						logData = this->_fmk->format("Error %s %s : %s%s", date..c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение предупреждения
 					case static_cast <uint8_t> (flag_t::WARNING):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Warning %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+						logData = this->_fmk->format("Warning %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 				}
 				// Выполняем запись в файл
@@ -381,17 +369,17 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 					// Выводим информационное сообщение
 					case static_cast <uint8_t> (flag_t::INFO):
 						// Формируем текстовый вид лога
-						file << this->_fmk->format("Info %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+						file << this->_fmk->format("Info %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение об ошибке
 					case static_cast <uint8_t> (flag_t::CRITICAL):
 						// Формируем текстовый вид лога
-						file << this->_fmk->format("Error %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+						file << this->_fmk->format("Error %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение предупреждения
 					case static_cast <uint8_t> (flag_t::WARNING):
 						// Формируем текстовый вид лога
-						file << this->_fmk->format("Warning %s %s : %s%s", date.str().c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+						file << this->_fmk->format("Warning %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 				}
 				// Закрываем файл

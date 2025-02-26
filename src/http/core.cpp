@@ -21,6 +21,16 @@
 using namespace std;
 
 /**
+ * Для операционной системы Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * Заменяем функцию gmtime_r на gmtime_s
+	 */
+	#define gmtime_r(T, Tm) (gmtime_s(Tm, T) ? nullptr : Tm)
+#endif
+
+/**
  * chunking Метод вывода полученных чанков полезной нагрузки
  * @param id     идентификатор объекта
  * @param buffer буфер данных чанка полезной нагрузки
@@ -2517,16 +2527,18 @@ const string awh::Http::date(const time_t stamp) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Создаем структуру времени
+		std::tm tm = {};
 		// Создаём объект потока
-		stringstream transTime;
+		stringstream ss;
 		// Получаем текущее время
-		time_t date = (stamp > 0 ? stamp : time(nullptr));
-		// Извлекаем текущее время
-		tm * tm = gmtime(&date);
+		time_t date = (stamp > 0 ? stamp : ::time(nullptr));
+		// Формируем локальное время
+		gmtime_r(&date, &tm);
 		// Выполняем извлечение даты
-		transTime << put_time(tm, "%a, %d %b %Y %H:%M:%S GMT");
+		ss << put_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
 		// Выводим полученное значение даты
-		return transTime.str();
+		return ss.str();
 	/**
 	 * Если возникает ошибка
 	 */

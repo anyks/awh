@@ -310,7 +310,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(to_string(::time(nullptr)), awh::hash_t::type_t::MD5, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::MD5, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -323,7 +323,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(to_string(::time(nullptr)), awh::hash_t::type_t::SHA1, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA1, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -336,7 +336,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(to_string(::time(nullptr)), awh::hash_t::type_t::SHA224, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA224, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -349,7 +349,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(to_string(::time(nullptr)), awh::hash_t::type_t::SHA256, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA256, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -362,7 +362,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(to_string(::time(nullptr)), awh::hash_t::type_t::SHA384, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA384, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -375,7 +375,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(to_string(::time(nullptr)), awh::hash_t::type_t::SHA512, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA512, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
