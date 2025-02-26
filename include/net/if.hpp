@@ -183,7 +183,7 @@ namespace awh {
 			 * @param eth идентификатор сетевого интерфейса
 			 * @return    название сетевого интерфейса
 			 */
-			const string name(const string & eth) const noexcept;
+			string name(const string & eth) const noexcept;
 		public:
 			/**
 			 * mac Метод получения MAC-адреса по IP-адресу клиента
@@ -191,20 +191,27 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       аппаратный адрес сетевого интерфейса клиента
 			 */
-			const string mac(const string & ip, const int32_t family = AF_INET) const noexcept;
+			string mac(const string & ip, const int32_t family = AF_INET) const noexcept;
 			/**
 			 * mac Метод определения мак адреса клиента
 			 * @param sin    объект подключения
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       данные мак адреса
 			 */
-			const string mac(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
+			string mac(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
 		public:
 			/**
 			 * ip Метод получения основного IP-адреса на сервере
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			const string ip(const int32_t family = AF_INET) const noexcept;
+			string ip(const int32_t family = AF_INET) const noexcept;
+			/**
+			 * ip Метод получения IP-адреса из подключения
+			 * @param sin    объект подключения
+			 * @param family тип интернет протокола
+			 * @return       данные ip адреса
+			 */
+			string ip(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
 			/**
 			 * ip Метод вывода IP-адреса соответствующего сетевому интерфейсу
 			 * @param eth    идентификатор сетевого интерфейса
@@ -212,13 +219,6 @@ namespace awh {
 			 * @return       IP-адрес соответствующий сетевому интерфейсу
 			 */
 			const string & ip(const string & eth, const int32_t family = AF_INET) const noexcept;
-			/**
-			 * ip Метод получения IP-адреса из подключения
-			 * @param sin    объект подключения
-			 * @param family тип интернет протокола
-			 * @return       данные ip адреса
-			 */
-			const string ip(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
 		public:
 			/**
 			 * IfNet Конструктор

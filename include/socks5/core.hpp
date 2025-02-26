@@ -219,7 +219,7 @@ namespace awh {
 			 * @param size   размер буфера данных
 			 * @return       текст содержащийся в буфере данных
 			 */
-			const string text(const char * buffer, const size_t size) const noexcept;
+			string text(const char * buffer, const size_t size) const noexcept;
 		protected:
 			/**
 			 * octet Метод установки октета

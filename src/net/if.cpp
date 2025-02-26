@@ -536,7 +536,7 @@ const unordered_map <string, string> & awh::IfNet::hws() const noexcept {
  * @param eth идентификатор сетевого интерфейса
  * @return    название сетевого интерфейса
  */
-const string awh::IfNet::name(const string & eth) const noexcept {
+string awh::IfNet::name(const string & eth) const noexcept {
 	// Результат работы функции
 	string result = eth;
 	// Если сетевой интерфейс получен
@@ -605,7 +605,7 @@ const string awh::IfNet::name(const string & eth) const noexcept {
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       аппаратный адрес сетевого интерфейса клиента
  */
-const string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
+string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если IP-адрес передан
@@ -1206,7 +1206,7 @@ const string awh::IfNet::mac(const string & ip, const int32_t family) const noex
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       данные мак адреса
  */
-const string awh::IfNet::mac(struct sockaddr * sin, const int32_t family) const noexcept {
+string awh::IfNet::mac(struct sockaddr * sin, const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
@@ -1251,7 +1251,7 @@ const string awh::IfNet::mac(struct sockaddr * sin, const int32_t family) const 
  * ip Метод получения основного IP-адреса на сервере
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
-const string awh::IfNet::ip(const int32_t family) const noexcept {
+string awh::IfNet::ip(const int32_t family) const noexcept {
 	// Результат рарботы функции
 	string result = "";
 	// Создаем сокет
@@ -1342,48 +1342,12 @@ const string awh::IfNet::ip(const int32_t family) const noexcept {
 	return result;
 }
 /**
- * ip Метод вывода IP-адреса соответствующего сетевому интерфейсу
- * @param eth    идентификатор сетевого интерфейса
- * @param family тип протокола интернета AF_INET или AF_INET6
- * @return       IP-адрес соответствующий сетевому интерфейсу
- */
-const string & awh::IfNet::ip(const string & eth, const int32_t family) const noexcept {
-	// Результат работы функции
-	static const string result = "";
-	// Если сетевой интерфейс получен
-	if(!eth.empty()){
-		// Определяем тип интернет адреса
-		switch(family){
-			// Если мы обрабатываем IPv4
-			case AF_INET: {
-				// Выполняем поиск сетевого интерфейса
-				auto i = this->_ips.find(eth);
-				// Если сетевой интерфейс получен, выводим IP-адрес
-				if(i != this->_ips.end())
-					// Выводим полученный результат
-					return i->second;
-			} break;
-			// Если мы обрабатываем IPv6
-			case AF_INET6: {
-				// Выполняем поиск сетевого интерфейса
-				auto i = this->_ips6.find(eth);
-				// Если сетевой интерфейс получен, выводим IP-адрес
-				if(i != this->_ips6.end())
-					// Выводим полученный результат
-					return i->second;
-			} break;
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * ip Метод получения IP-адреса из подключения
  * @param sin    объект подключения
  * @param family тип интернет протокола
  * @return       данные ip адреса
  */
-const string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcept {
+string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
@@ -1416,6 +1380,42 @@ const string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const n
 				// Выводим результат
 				result = buffer;
 			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * ip Метод вывода IP-адреса соответствующего сетевому интерфейсу
+ * @param eth    идентификатор сетевого интерфейса
+ * @param family тип протокола интернета AF_INET или AF_INET6
+ * @return       IP-адрес соответствующий сетевому интерфейсу
+ */
+const string & awh::IfNet::ip(const string & eth, const int32_t family) const noexcept {
+	// Результат работы функции
+	static const string result = "";
+	// Если сетевой интерфейс получен
+	if(!eth.empty()){
+		// Определяем тип интернет адреса
+		switch(family){
+			// Если мы обрабатываем IPv4
+			case AF_INET: {
+				// Выполняем поиск сетевого интерфейса
+				auto i = this->_ips.find(eth);
+				// Если сетевой интерфейс получен, выводим IP-адрес
+				if(i != this->_ips.end())
+					// Выводим полученный результат
+					return i->second;
+			} break;
+			// Если мы обрабатываем IPv6
+			case AF_INET6: {
+				// Выполняем поиск сетевого интерфейса
+				auto i = this->_ips6.find(eth);
+				// Если сетевой интерфейс получен, выводим IP-адрес
+				if(i != this->_ips6.end())
+					// Выводим полученный результат
+					return i->second;
+			} break;
 		}
 	}
 	// Выводим результат

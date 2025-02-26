@@ -408,11 +408,11 @@ int64_t awh::Net::atoi(const string & value) const noexcept {
 		 */
 		try {
 			// Создаём поток для конвертации
-			stringstream stream;
+			stringstream ss;
 			// Записываем число в поток
-			stream << hex << value;
+			ss << hex << value;
 			// Получаем результат
-			stream >> result;
+			ss >> result;
 		/**
 		 * Если возникает ошибка
 		 */

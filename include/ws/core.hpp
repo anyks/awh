@@ -110,12 +110,12 @@ namespace awh {
 			 * key Метод генерации ключа
 			 * @return сгенерированный ключ
 			 */
-			const string key() const noexcept;
+			string key() const noexcept;
 			/**
 			 * sha1 Метод генерации хэша SHA1 ключа
 			 * @return сгенерированный хэш ключа клиента
 			 */
-			const string sha1() const noexcept;
+			string sha1() const noexcept;
 		protected:
 			/**
 			 * extractExtension Метод извлечения системного расширения из заголовка

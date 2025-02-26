@@ -21,16 +21,6 @@
 using namespace std;
 
 /**
- * Для операционной системы Windows
- */
-#if defined(_WIN32) || defined(_WIN64)
-	/**
-	 * Заменяем функцию gmtime_r на gmtime_s
-	 */
-	#define gmtime_r(T, Tm) (gmtime_s(Tm, T) ? nullptr : Tm)
-#endif
-
-/**
  * chunking Метод вывода полученных чанков полезной нагрузки
  * @param id     идентификатор объекта
  * @param buffer буфер данных чанка полезной нагрузки
@@ -1536,7 +1526,7 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
  * @param key ключ заголовка
  * @return    значение заголовка
  */
-const string awh::Http::header(const string & key) const noexcept {
+string awh::Http::header(const string & key) const noexcept {
 	// Выводим запрашиваемый заголовок
 	return this->_web.header(key);
 }
@@ -2522,47 +2512,9 @@ void awh::Http::response(const web_t::res_t & res) noexcept {
  * @param stamp штамп времени в числовом виде
  * @return      штамп времени в текстовом виде
  */
-const string awh::Http::date(const time_t stamp) const noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаем структуру времени
-		std::tm tm = {};
-		// Создаём объект потока
-		stringstream ss;
-		// Получаем текущее время
-		time_t date = (stamp > 0 ? stamp : ::time(nullptr));
-		// Формируем локальное время
-		gmtime_r(&date, &tm);
-		// Выполняем извлечение даты
-		ss << put_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
-		// Выводим полученное значение даты
-		return ss.str();
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Если функция обратного вызова на на вывод ошибок установлена
-		if(this->_callbacks.is("error"))
-			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(stamp), log_t::flag_t::WARNING, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
-		#endif
-		// Выводим пустое значение
-		return "";
-	}
+string awh::Http::date(const time_t stamp) const noexcept {
+	// Выводим результат
+	return this->_fmk->time2str((stamp > 0 ? stamp : ::time(nullptr)), "%a, %d %b %Y %H:%M:%S GMT", fmk_t::date_t::GMT);
 }
 /**
  * message Метод получения HTTP сообщения

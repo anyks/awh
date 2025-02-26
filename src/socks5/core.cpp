@@ -136,7 +136,7 @@ uint16_t awh::Socks5::text(const string & text) const noexcept {
  * @param size   размер буфера данных
  * @return       текст содержащийся в буфере данных
  */
-const string awh::Socks5::text(const char * buffer, const size_t size) const noexcept {
+string awh::Socks5::text(const char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если буфер данных передан

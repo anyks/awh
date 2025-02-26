@@ -25,6 +25,10 @@ using namespace std;
  */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
+	 * Заменяем функцию gmtime_r на gmtime_s
+	 */
+	#define gmtime_r(T, Tm) (gmtime_s(Tm, T) ? nullptr : Tm)
+	/**
 	 * Заменяем функцию localtime_r на localtime_s
 	 */
 	#define localtime_r(T, Tm) (localtime_s(Tm, T) ? nullptr : Tm)
@@ -2570,18 +2574,18 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Создаём поток для конвертации числа
+			stringstream ss;
 			// Временное значение переменной
 			double intpart = 0;
-			// Создаём поток для конвертации числа
-			stringstream stream;
 			// Выполняем проверку есть ли дробная часть у числа
 			if(::modf(number, &intpart) > 0)
 				// Записываем число в поток
-				stream << fixed << ::setprecision(step) << number;
+				ss << fixed << ::setprecision(step) << number;
 			// Записываем число как оно есть
-			else stream << fixed << ::setprecision(0) << number;
+			else ss << fixed << ::setprecision(0) << number;
 			// Получаем из потока строку
-			stream >> result;
+			ss >> result;
 			// Если результат получен
 			if(!result.empty()){
 				// Переходим по всему числу
@@ -2642,13 +2646,13 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 		 */
 		try {
 			// Создаём поток для конвертации числа
-			stringstream stream;
+			stringstream ss;
 			// Получаем количество знаков после запятой
 			const uint8_t count = decimalPlaces(number);
 			// Записываем число в поток
-			stream << fixed << ::setprecision(count) << number;
+			ss << fixed << ::setprecision(count) << number;
 			// Получаем из потока строку
-			stream >> result;
+			ss >> result;
 			// Если результат получен
 			if((count > 0) && !result.empty()){
 				// Флаг завершения перебора
@@ -3834,235 +3838,6 @@ map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
 	return result;
 }
 /**
- * time2abbr Метод перевода времени в аббревиатуру
- * @param date дата в UnixTimestamp
- * @return     строка содержащая аббревиатуру даты
- */
-string awh::Framework::time2abbr(const time_t date) const noexcept {
-	// Результат работы функции
-	string result = "0 msec.";
-	// Если число передано
-	if(date > 0){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если число больше года
-			if(date >= 29030400000)
-				// Выполняем формирование результата
-				result = this->format("%.1f year.", (date / static_cast <double> (29030400000.)));
-			// Если число больше месяца
-			else if(date >= 2419200000)
-				// Выполняем формирование результата
-				result = this->format("%.1f month.", (date / static_cast <double> (2419200000.)));
-			// Если число больше недели
-			else if(date >= 604800000)
-				// Выполняем формирование результата
-				result = this->format("%.1f week.", (date / static_cast <double> (604800000.)));
-			// Если число больше дня
-			else if(date >= 86400000)
-				// Выполняем формирование результата
-				result = this->format("%.1f day.", (date / static_cast <double> (86400000.)));
-			// Если число больше часа
-			else if(date >= 3600000)
-				// Выполняем формирование результата
-				result = this->format("%.1f hour.", (date / static_cast <double> (3600000.)));
-			// Если число больше минуты
-			else if(date >= 60000)
-				// Выполняем формирование результата
-				result = this->format("%.1f min.", (date / static_cast <double> (60000.)));
-			// Если число ольше секунды
-			else if(date >= 1000)
-				// Выполняем формирование результата
-				result = this->format("%.1f sec.", (date / static_cast <double> (1000.)));
-			// Иначе выводим как есть
-			else result = this->format("%u msec.", date);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * strpTime Метод получения Unix TimeStamp из строки
- * @param date    строка даты
- * @param format1 форматы даты из которой нужно получить дату
- * @param format2 форматы даты в который нужно перевести дату
- * @return        результат работы
- */
-string awh::Framework::strpTime(const string & date, const string & format1, const string & format2) const noexcept {
-	// Результат работы функции
-	string result = "";
-	// Если данные переданы
-	if(!date.empty() && !format1.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			/*
-			* Разве стандартная библиотека C++ не хороша? get_time определен таким образом,
-			* что его параметры формата были точно такие же, как у strptime.
-			* Конечно, мы должны сначала создать строковый поток и наполнить его текущей локалью C,
-			* и мы также должны убедиться, что мы возвращаем правильные вещи, если это не удаётся или если это удаётся,
-			* но это все ещё намного проще. Чем любая из версий в любой из стандартных библиотек C.
-			*/
-			// Создаем структуру времени
-			std::tm tm = {};
-			// Создаём строковый поток
-			istringstream ss(date.c_str());
-			// Устанавливаем текущую локаль
-			ss.imbue(this->_locale);
-			// Зануляем структуру
-			::memset(&tm, 0, sizeof(tm));
-			// Извлекаем время локали
-			ss >> get_time(&tm, format1.c_str());
-			// Если время получено
-			if(!ss.fail() && !format2.empty()){
-				// Создаём объект потока
-				stringstream transTime;
-				// Выполняем извлечение даты
-				transTime << put_time(&tm, format2.c_str());
-				// Выводим полученное значение даты
-				result = transTime.str();
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * time2str Метод преобразования UnixTimestamp в строку
- * @param date   дата в UnixTimestamp
- * @param format формат даты
- * @return       строка содержащая дату
- */
-string awh::Framework::time2str(const time_t date, const string & format) const noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаем структуру времени
-		std::tm tm = {};
-		// Создаём объект потока
-		stringstream ss;
-		// Формируем локальное время
-		localtime_r(&date, &tm);
-		// Выполняем извлечение даты
-		ss << put_time(&tm, format.c_str());
-		// Устанавливаем текущую локаль
-		ss.imbue(this->_locale);
-		// Выводим полученное значение даты
-		return ss.str();
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
-		#endif
-		// Выводим пустую строку
-		return "";
-	}
-}
-/**
- * str2time Метод перевода строки в UnixTimestamp
- * @param date   строка даты
- * @param format формат даты
- * @return       дата в UnixTimestamp
- */
-time_t awh::Framework::str2time(const string & date, const string & format) const noexcept {
-	// Результат работы функции
-	time_t result = 0;
-	// Если данные переданы
-	if(!date.empty() && !format.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаем структуру времени
-			std::tm tm = {};
-			// Получаем значение текущего времени
-			const time_t time = std::time(nullptr);
-			/**
-			 * Устанавливаем локальное значение даты,
-			 * для компенсации ошибки формирования года,
-			 * чтобы устанавливать текущее значение года по умолчанию.
-			 */
-			localtime_r(&time, &tm);
-			// Создаём строковый поток
-			istringstream ss(date.c_str());
-			// Устанавливаем текущую локаль
-			ss.imbue(this->_locale);
-			// Извлекаем время локали
-			ss >> get_time(&tm, format.c_str());
-			// Если ошибки не возникает
-			result = mktime(&tm);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * icon Метод получения иконки
  * @param end флаг завершения работы
  * @return    иконка напутствия работы
@@ -4474,6 +4249,278 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 				dimension = (bytes ? 1000000000.f : 1024000000.f);
 			// Выполняем получение размера в байтах
 			result = static_cast <size_t> ((speed / 8.f) * (dimension * .04f));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * time2abbr Метод перевода времени в аббревиатуру
+ * @param date дата в UnixTimestamp
+ * @return     строка содержащая аббревиатуру даты
+ */
+string awh::Framework::time2abbr(const time_t date) const noexcept {
+	// Результат работы функции
+	string result = "0 msec.";
+	// Если число передано
+	if(date > 0){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если число больше года
+			if(date >= 29030400000)
+				// Выполняем формирование результата
+				result = this->format("%.1f year", (date / static_cast <double> (29030400000.)));
+			// Если число больше месяца
+			else if(date >= 2419200000)
+				// Выполняем формирование результата
+				result = this->format("%.1f month", (date / static_cast <double> (2419200000.)));
+			// Если число больше недели
+			else if(date >= 604800000)
+				// Выполняем формирование результата
+				result = this->format("%.1f week", (date / static_cast <double> (604800000.)));
+			// Если число больше дня
+			else if(date >= 86400000)
+				// Выполняем формирование результата
+				result = this->format("%.1f day", (date / static_cast <double> (86400000.)));
+			// Если число больше часа
+			else if(date >= 3600000)
+				// Выполняем формирование результата
+				result = this->format("%.1f hour", (date / static_cast <double> (3600000.)));
+			// Если число больше минуты
+			else if(date >= 60000)
+				// Выполняем формирование результата
+				result = this->format("%.1f min", (date / static_cast <double> (60000.)));
+			// Если число ольше секунды
+			else if(date >= 1000)
+				// Выполняем формирование результата
+				result = this->format("%.1f sec", (date / static_cast <double> (1000.)));
+			// Иначе выводим как есть
+			else result = this->format("%u msec", date);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * strpTime Метод получения Unix TimeStamp из строки
+ * @param date    строка даты
+ * @param format1 форматы даты из которой нужно получить дату
+ * @param format2 форматы даты в который нужно перевести дату
+ * @return        результат работы
+ */
+string awh::Framework::strpTime(const string & date, const string & format1, const string & format2) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если данные переданы
+	if(!date.empty() && !format1.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			/*
+			* Разве стандартная библиотека C++ не хороша? get_time определен таким образом,
+			* что его параметры формата были точно такие же, как у strptime.
+			* Конечно, мы должны сначала создать строковый поток и наполнить его текущей локалью C,
+			* и мы также должны убедиться, что мы возвращаем правильные вещи, если это не удаётся или если это удаётся,
+			* но это все ещё намного проще. Чем любая из версий в любой из стандартных библиотек C.
+			*/
+			// Создаем структуру времени
+			std::tm tm = {};
+			// Создаём строковый поток
+			istringstream ss(date);
+			// Устанавливаем текущую локаль
+			ss.imbue(this->_locale);
+			// Зануляем структуру
+			::memset(&tm, 0, sizeof(tm));
+			// Извлекаем время локали
+			ss >> get_time(&tm, format1.c_str());
+			// Если время получено
+			if(!ss.fail() && !format2.empty()){
+				// Создаём объект потока
+				stringstream ss;
+				// Выполняем извлечение даты
+				ss << put_time(&tm, format2.c_str());
+				// Выводим полученное значение даты
+				result = ss.str();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * time2str Метод преобразования UnixTimestamp в строку
+ * @param date   дата в UnixTimestamp
+ * @param format формат даты
+ * @param type   тип генерируемой даты
+ * @return       строка содержащая дату
+ */
+string awh::Framework::time2str(const time_t date, const string & format, const date_t type) const noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Создаем структуру времени
+		std::tm tm = {};
+		// Создаём объект потока
+		stringstream ss;
+		// Определяем тип генерируемой даты
+		switch(static_cast <uint8_t> (type)){
+			// Если требуется сгенерировать дату в формате GMT
+			case static_cast <uint8_t> (date_t::GMT):
+				// Формируем локальное время
+				gmtime_r(&date, &tm);
+			break;
+			// Если требуется сгенерировать дату в формате локальных настроек
+			case static_cast <uint8_t> (date_t::LOCAL):
+				// Формируем локальное время
+				localtime_r(&date, &tm);
+			break;
+		}
+		// Выполняем извлечение даты
+		ss << put_time(&tm, format.c_str());
+		// Устанавливаем текущую локаль
+		ss.imbue(this->_locale);
+		// Выводим полученное значение даты
+		return ss.str();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+		// Выводим пустую строку
+		return "";
+	}
+}
+/**
+ * str2time Метод перевода строки в UnixTimestamp
+ * @param date   строка даты
+ * @param format формат даты
+ * @param type   тип генерируемой даты
+ * @return       дата в UnixTimestamp
+ */
+time_t awh::Framework::str2time(const string & date, const string & format, const date_t type) const noexcept {
+	// Результат работы функции
+	time_t result = 0;
+	// Если данные переданы
+	if(!date.empty() && !format.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Создаем структуру времени
+			std::tm tm = {};
+			// Создаём строковый поток
+			istringstream ss(date);
+			// Устанавливаем текущую локаль
+			ss.imbue(this->_locale);
+			// Извлекаем время локали
+			ss >> get_time(&tm, format.c_str());
+			// Если результат получен отрицательный
+			if(tm.tm_year == 0){
+				// Получаем значение текущего времени
+				const time_t time = std::time(nullptr);
+				// Определяем тип генерируемой даты
+				switch(static_cast <uint8_t> (type)){
+					// Если требуется сгенерировать дату в формате GMT
+					case static_cast <uint8_t> (date_t::GMT):
+						// Формируем локальное время
+						gmtime_r(&time, &tm);
+					break;
+					// Если требуется сгенерировать дату в формате локальных настроек
+					case static_cast <uint8_t> (date_t::LOCAL):
+						// Заполняем структуру времени
+						localtime_r(&time, &tm);
+					break;
+				}
+				// Получаем текущее значение дня
+				const int32_t day = tm.tm_mday;
+				// Получаем текущее значение часа
+				const int32_t hour = tm.tm_hour;
+				// Получаем текущее значение месяца
+				const int32_t month = tm.tm_mon;
+				// Очищаем поток
+				ss.clear();
+				// Создаём строковый поток
+				ss.str(date);
+				// Устанавливаем текущую локаль
+				ss.imbue(this->_locale);
+				// Извлекаем время локали
+				ss >> get_time(&tm, format.c_str());
+				// Если указанный месяц выше текущего
+				if((tm.tm_mon > month) || ((tm.tm_mon == month) &&
+				  ((tm.tm_mday > day) && (((tm.tm_mday - day) > 1) ||
+				  !((tm.tm_hour == 0) && (hour == 23))))))
+					// Уменьшаем значение текущего года
+					tm.tm_year -= 1;
+			}
+			// Если ошибки не возникает
+			result = mktime(&tm);
 		/**
 		 * Если возникает ошибка
 		 */

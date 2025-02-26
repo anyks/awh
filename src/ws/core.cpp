@@ -413,7 +413,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
  * key Метод генерации ключа
  * @return сгенерированный ключ
  */
-const string awh::WCore::key() const noexcept {
+string awh::WCore::key() const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -465,7 +465,7 @@ const string awh::WCore::key() const noexcept {
  * sha1 Метод генерации хэша SHA1 ключа
  * @return сгенерированный хэш ключа клиента
  */
-const string awh::WCore::sha1() const noexcept {
+string awh::WCore::sha1() const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если ключ клиента передан

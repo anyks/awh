@@ -76,7 +76,14 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Framework {
 		public:
 			/**
-			 * codepage_t Типы кодировок адресов файлов и каталогов
+			 * Тип генерируемой даты
+			 */
+			enum class date_t : uint8_t {
+				GMT   = 0x00, // Дата в формате Greenwich Mean Time
+				LOCAL = 0x01  // Дата в формате локальных настроек
+			};
+			/**
+			 * Типы кодировок адресов файлов и каталогов
 			 */
 			enum class codepage_t : uint8_t {
 				NONE        = 0x00, // Кодировка не установлена
@@ -85,7 +92,7 @@ namespace awh {
 				CP1251_UTF8 = 0x03  // Кодировка CP1251
 			};
 			/**
-			 * stamp_t Тип штампа времени
+			 * Тип штампа времени
 			 */
 			enum class stamp_t : uint8_t {
 				NONE         = 0x00, // Не установлено
@@ -807,37 +814,6 @@ namespace awh {
 			map <size_t, size_t> urls(const string & text) const noexcept;
 		public:
 			/**
-			 * time2abbr Метод перевода времени в аббревиатуру
-			 * @param date дата в UnixTimestamp
-			 * @return     строка содержащая аббревиатуру даты
-			 */
-			string time2abbr(const time_t date) const noexcept;
-		public:
-			/**
-			 * strpTime Метод получения Unix TimeStamp из строки
-			 * @param date    строка даты
-			 * @param format1 форматы даты из которой нужно получить дату
-			 * @param format2 форматы даты в который нужно перевести дату
-			 * @return        результат работы
-			 */
-			string strpTime(const string & date, const string & format1, const string & format2) const noexcept;
-		public:
-			/**
-			 * time2str Метод преобразования UnixTimestamp в строку
-			 * @param date   дата в UnixTimestamp
-			 * @param format формат даты
-			 * @return       строка содержащая дату
-			 */
-			string time2str(const time_t date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
-			/**
-			 * str2time Метод перевода строки в UnixTimestamp
-			 * @param date   строка даты
-			 * @param format формат даты
-			 * @return       дата в UnixTimestamp
-			 */
-			time_t str2time(const string & date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
-		public:
-			/**
 			 * icon Метод получения иконки
 			 * @param end флаг завершения работы
 			 * @return    иконка напутствия работы
@@ -877,6 +853,39 @@ namespace awh {
 			 * @return    размер буфера в байтах
 			 */
 			size_t sizeBuffer(const string & str) const noexcept;
+		public:
+			/**
+			 * time2abbr Метод перевода времени в аббревиатуру
+			 * @param date дата в UnixTimestamp
+			 * @return     строка содержащая аббревиатуру даты
+			 */
+			string time2abbr(const time_t date) const noexcept;
+		public:
+			/**
+			 * strpTime Метод получения Unix TimeStamp из строки
+			 * @param date    строка даты
+			 * @param format1 форматы даты из которой нужно получить дату
+			 * @param format2 форматы даты в который нужно перевести дату
+			 * @return        результат работы
+			 */
+			string strpTime(const string & date, const string & format1, const string & format2) const noexcept;
+		public:
+			/**
+			 * time2str Метод преобразования UnixTimestamp в строку
+			 * @param date   дата в UnixTimestamp
+			 * @param format формат даты
+			 * @param type   тип генерируемой даты
+			 * @return       строка содержащая дату
+			 */
+			string time2str(const time_t date, const string & format = "%a, %d %b %Y %H:%M:%S %Z", const date_t type = date_t::LOCAL) const noexcept;
+			/**
+			 * str2time Метод перевода строки в UnixTimestamp
+			 * @param date   строка даты
+			 * @param format формат даты
+			 * @param type   тип генерируемой даты
+			 * @return       дата в UnixTimestamp
+			 */
+			time_t str2time(const string & date, const string & format = "%a, %d %b %Y %H:%M:%S %Z", const date_t type = date_t::LOCAL) const noexcept;
 		public:
 			/**
 			 * Framework Конструктор

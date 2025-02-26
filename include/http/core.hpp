@@ -368,7 +368,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    значение заголовка
 			 */
-			const string header(const string & key) const noexcept;
+			string header(const string & key) const noexcept;
 			/**
 			 * header Метод добавления заголовка
 			 * @param key ключ заголовка
@@ -498,7 +498,7 @@ namespace awh {
 			 * @param stamp штамп времени в числовом виде
 			 * @return      штамп времени в текстовом виде
 			 */
-			const string date(const time_t stamp = 0) const noexcept;
+			string date(const time_t stamp = 0) const noexcept;
 			/**
 			 * message Метод получения HTTP сообщения
 			 * @param code код сообщения для получение

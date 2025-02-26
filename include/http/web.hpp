@@ -526,7 +526,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    значение заголовка
 			 */
-			const string header(const string & key) const noexcept;
+			string header(const string & key) const noexcept;
 			/**
 			 * header Метод добавления заголовка
 			 * @param key ключ заголовка

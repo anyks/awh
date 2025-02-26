@@ -1559,7 +1559,7 @@ void awh::Web::delHeader(const string & key) noexcept {
  * @param key ключ заголовка
  * @return    значение заголовка
  */
-const string awh::Web::header(const string & key) const noexcept {
+string awh::Web::header(const string & key) const noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
 		// Выполняем перебор всех заголовков

@@ -777,18 +777,18 @@ string awh::URI::encode(const string & text) const noexcept {
 		 */
 		try {
 			// Создаём поток
-			ostringstream stream;
+			ostringstream ss;
 			// Заполняем поток нулями
-			stream.fill('0');
+			ss.fill('0');
 			// Переключаемся на 16-ю систему счисления
-			stream << hex;
+			ss << hex;
 			// Перебираем все символы
 			for(char letter : text){
 				// Не трогаем буквенно-цифровые и другие допустимые символы.
 				if(isalnum(letter) || (letter == '-') || (letter == '_') || (letter == '.') || (letter == '~') || (letter == '@') ||
 				 ((letter >= '0') && (letter <= '9')) || ((letter >= 'A') && (letter <= 'Z')) || ((letter >= 'a') && (letter <= 'z'))){
 					// Записываем в поток символ, как он есть
-					stream << letter;
+					ss << letter;
 					// Пропускаем итерацию
 					continue;
 				}
@@ -796,14 +796,14 @@ string awh::URI::encode(const string & text) const noexcept {
 				 * Любые другие символы закодированы в процентах
 				 */
 				// Переводим символы в верхний регистр
-				stream << uppercase;
+				ss << uppercase;
 				// Записываем в поток, код символа
-				stream << '%' << setw(2) << static_cast <int16_t> (static_cast <uint8_t> (letter));
+				ss << '%' << setw(2) << static_cast <int16_t> (static_cast <uint8_t> (letter));
 				// Убираем верхний регистр
-				stream << nouppercase;
+				ss << nouppercase;
 			}
 			// Получаем результат
-			result = stream.str();
+			result = ss.str();
 		/**
 		 * Если возникает ошибка
 		 */
