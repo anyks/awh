@@ -331,12 +331,12 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 					// Выводим информационное сообщение
 					case static_cast <uint8_t> (flag_t::INFO):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Info %s %s : %s%s", date..c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+						logData = this->_fmk->format("Info %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение об ошибке
 					case static_cast <uint8_t> (flag_t::CRITICAL):
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Error %s %s : %s%s", date..c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
+						logData = this->_fmk->format("Error %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
 					// Выводим сообщение предупреждения
 					case static_cast <uint8_t> (flag_t::WARNING):
