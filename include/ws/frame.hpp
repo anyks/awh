@@ -130,14 +130,14 @@ namespace awh {
 				 * Опкоды запроса
 				 */
 				enum class opcode_t : uint8_t {
-					TEXT          = 0x1, // Текстовый фрейм
-					PING          = 0x9, // Проверка подключения от сервера
-					PONG          = 0xA, // Ответ серверу на проверку подключения
-					CLOSE         = 0x8, // Выполнить закрытие соединения этим фреймом
-					BINARY        = 0x2, // Двоичный фрейм
-					DATAUNUSED    = 0x3, // Для будущих фреймов с данными
-					CONTINUATION  = 0x0, // Работа продолжается в текущем режиме
-					CONTROLUNUSED = 0xB  // Зарезервированы для будущих управляющих фреймов
+					TEXT          = 0x01, // Текстовый фрейм
+					PING          = 0x09, // Проверка подключения от сервера
+					PONG          = 0x0A, // Ответ серверу на проверку подключения
+					CLOSE         = 0x08, // Выполнить закрытие соединения этим фреймом
+					BINARY        = 0x02, // Двоичный фрейм
+					DATAUNUSED    = 0x03, // Для будущих фреймов с данными
+					CONTINUATION  = 0x00, // Работа продолжается в текущем режиме
+					CONTROLUNUSED = 0x0B  // Зарезервированы для будущих управляющих фреймов
 				};
 			public:
 				/**
@@ -159,30 +159,14 @@ namespace awh {
 					 */
 					Header(const bool fin = true, const bool mask = true) noexcept :
 					 fin(fin), mask(mask), rsv{false, false, false},
-					 size(0), state(state_t::NONE), frame(0),
-					 payload(0), optcode(opcode_t::TEXT) {}
+					 size(0x00), state(state_t::NONE), frame(0x00),
+					 payload(0x00), optcode(opcode_t::TEXT) {}
 				} __attribute__((packed)) head_t;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
 				// Объект работы с логами
 				const log_t * _log;
-			private:
-				/**
-				 * head Метод извлечения заголовка фрейма
-				 * @param head   объект для извлечения заголовка
-				 * @param buffer буфер с данными заголовка
-				 * @param size   размер передаваемого буфера
-				 */
-				void head(head_t & head, const char * buffer, const size_t size) const noexcept;
-				/**
-				 * frame Функция создания бинарного фрейма
-				 * @param payload бинарный буфер фрейма
-				 * @param buffer  бинарные данные полезной нагрузки
-				 * @param size    размер передаваемого буфера
-				 * @param mask    флаг выполнения маскировки сообщения
-				 */
-				void frame(vector <char> & payload, const char * buffer, const size_t size, const bool mask) const noexcept;
 			public:
 				/**
 				 * message Метод создание фрейма сообщения
@@ -193,16 +177,10 @@ namespace awh {
 				/**
 				 * message Метод извлечения сообщения из фрейма
 				 * @param buffer бинарные данные сообщения
-				 * @return       сообщение в текстовом виде
-				 */
-				mess_t message(const vector <char> & buffer) const noexcept;
-				/**
-				 * message Метод извлечения сообщения из фрейма
-				 * @param buffer бинарные данные сообщения
 				 * @param size   размер буфера данных сообщения
 				 * @return       сообщение в текстовом виде
 				 */
-				mess_t message(const char * buffer, const size_t size) const noexcept;
+				mess_t message(const void * buffer, const size_t size) const noexcept;
 				/**
 				 * message Метод извлечения сообщения из заголовка фрейма
 				 * @param head       заголовки фрейма
@@ -250,7 +228,7 @@ namespace awh {
 				 * @param size   размер передаваемого буфера
 				 * @return       бинарные данные полезной нагрузки
 				 */
-				vector <char> get(head_t & head, const char * buffer, const size_t size) const noexcept;
+				vector <char> get(head_t & head, const void * buffer, const size_t size) const noexcept;
 				/**
 				 * set Метод создания данных фрейма
 				 * @param head   заголовки фрейма
@@ -258,7 +236,7 @@ namespace awh {
 				 * @param size   размер передаваемого буфера
 				 * @return       бинарные данные фрейма
 				 */
-				vector <char> set(const head_t & head, const char * buffer, const size_t size) const noexcept;
+				vector <char> set(const head_t & head, const void * buffer, const size_t size) const noexcept;
 			public:
 				/**
 				 * Frame Конструктор

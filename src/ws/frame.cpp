@@ -21,6 +21,16 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён AWH
+ */
+using namespace awh;
+
+/**
+ * Подписываемся на пространство имён WS
+ */
+using namespace ws;
+
+/**
  * find Метод поиска типа сообщения
  */
 void awh::ws::Message::find() noexcept {
@@ -131,50 +141,51 @@ awh::ws::Message::Message(const uint16_t code, const string & text) noexcept : c
 	this->find();
 }
 /**
- * head Метод извлечения заголовка фрейма
+ * head Функция извлечения заголовка фрейма
  * @param head   объект для извлечения заголовка
  * @param buffer буфер с данными заголовка
  * @param size   размер передаваемого буфера
+ * @param log    объект для работы с логами
  */
-void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size) const noexcept {
+static void head(frame_t::head_t & head, const void * buffer, const size_t size, const log_t * log) noexcept {
 	// Если данные переданы
-	if((buffer != nullptr) && (size >= 2)){
+	if((buffer != nullptr) && (log != nullptr) && (size >= 2)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Определяем является ли сообщение последним
-			head.fin = (buffer[0] & 0x80);
+			head.fin = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x080);
 			// Получаем наличие маски
-			head.mask = (buffer[1] & 0x80);
+			head.mask = (reinterpret_cast <const uint8_t *> (buffer)[1] & 0x080);
 			// Определяем байты расширенного протокола
-			head.rsv[0] = (buffer[0] & 0x40);
-			head.rsv[1] = (buffer[0] & 0x20);
-			head.rsv[2] = (buffer[0] & 0x10);
-			// Получаем опкод
-			head.optcode = opcode_t(buffer[0] & 0x0F);
+			head.rsv[0] = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x040);
+			head.rsv[1] = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x020);
+			head.rsv[2] = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x010);
 			// Получаем малый размер полезной нагрузки
-			head.payload = static_cast <uint64_t> (buffer[1] & 0x7F);
+			head.payload = static_cast <uint64_t> (reinterpret_cast <const uint8_t *> (buffer)[1] & 0x07F);
+			// Получаем опкод
+			head.optcode = static_cast <frame_t::opcode_t> (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x00F);
 			// Если размер пересылаемых данных, имеет малый размер
-			if(head.payload < 0x7E)
+			if(head.payload < 0x07E)
 				// Получаем размер блока заголовков
 				head.size = 2;
 			// Если размер пересылаемых данных, имеет более высокий размер
-			else if((head.payload == 0x7E) && (size >= 4)) {
+			else if((head.payload == 0x07E) && (size >= 4)) {
 				// Получаем размер блока заголовков
 				head.size = 4;
 				// Размер полезной нагрузки
 				uint16_t size = 0;
 				// Получаем размер данных
-				::memcpy(&size, buffer + 2, sizeof(size));
+				::memcpy(&size, reinterpret_cast <const uint8_t *> (buffer) + 2, sizeof(size));
 				// Преобразуем сетевой порядок расположения байтов
 				head.payload = static_cast <uint64_t> (ntohs(size));
 			// Если размер пересылаемых данных, имеет очень большой размер
-			} else if((head.payload == 0x7F) && (size >= 10)) {
+			} else if((head.payload == 0x07F) && (size >= 10)) {
 				// Получаем размер блока заголовков
 				head.size = 10;
 				// Получаем размер данных
-				::memcpy(&head.payload, buffer + 2, sizeof(head.payload));
+				::memcpy(&head.payload, reinterpret_cast <const uint8_t *> (buffer) + 2, sizeof(head.payload));
 				// Преобразуем сетевой порядок расположения байтов
 				head.payload = static_cast <uint64_t> (ntohl(head.payload));
 			}
@@ -187,27 +198,33 @@ void awh::ws::Frame::head(head_t & head, const char * buffer, const size_t size)
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 }
+/**
+ * frame Шаблон функции создания бинарного фрейма
+ * @tparam T тип контейнера
+ */
+template <typename T>
 /**
  * frame Функция создания бинарного фрейма
  * @param payload бинарный буфер фрейма
  * @param buffer  бинарные данные полезной нагрузки
  * @param size    размер передаваемого буфера
  * @param mask    флаг выполнения маскировки сообщения
+ * @param log     объект для работы с логами
  */
-void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const size_t size, const bool mask) const noexcept {
+static void frame(T & payload, const void * buffer, const size_t size, const bool mask, const log_t * log) noexcept {
 	// Если данные переданы
-	if(!payload.empty() && (buffer != nullptr) && (size > 0)){
+	if(!payload.empty() && (buffer != nullptr) && (log != nullptr) && (size > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -215,19 +232,19 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			// Размер смещения в буфере и размер передаваемых данных
 			uint8_t offset = 0;
 			// Если размер строки меньше 126 байт, значит строка умещается во второй байт
-			if(size < 0x7E){
+			if(size < 0x07E){
 				// Устанавливаем смещение в буфере
 				offset = 2;
 				// Устанавливаем размер строки
-				payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | (0x7F & size));
+				payload.back() = (static_cast <uint8_t> (mask ? 0x080 : 0x00) | (0x07F & size));
 			// Если строка не помещается во второй байт
 			} else if(size < 0x10000) {
 				// Устанавливаем смещение в буфере
 				offset = 4;
 				// Заполняем второй байт максимальным значением
-				payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | (0x7F & 0x7E));
+				payload.back() = (static_cast <uint8_t> (mask ? 0x080 : 0x00) | (0x07F & 0x07E));
 				// Увеличиваем память ещё на два байта
-				payload.resize(offset, 0x0);
+				payload.resize(offset, 0x00);
 				// Выполняем перерасчёт размера передаваемых данных
 				const uint16_t bytes = static_cast <uint64_t> (htons(static_cast <uint16_t> (size)));
 				// Устанавливаем размер строки в следующие 2 байта
@@ -237,9 +254,9 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 				// Устанавливаем смещение в буфере
 				offset = 10;
 				// Заполняем второй байт максимальным значением
-				payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | 0x7F);
+				payload.back() = (static_cast <uint8_t> (mask ? 0x080 : 0x00) | 0x07F);
 				// Увеличиваем память ещё на восемь байт
-				payload.resize(offset, 0x0);
+				payload.resize(offset, 0x00);
 				// Выполняем перерасчёт размера передаваемых данных
 				const uint64_t bytes = static_cast <uint64_t> (htonl(size));
 				// Устанавливаем размер строки в следующие 8 байт
@@ -250,27 +267,27 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 				// Получаем генератор случайных чисел
 				random_device randev;
 				// Бинарные данные маски
-				vector <u_char> mask(4);
+				vector <uint8_t> mask(4);
 				// Подключаем генератор к двигателю
 				mt19937 engine {randev()};
 				// Устанавливаем диапазон генератора случайных чисел
-				uniform_int_distribution <u_char> dist {0, 255};
+				uniform_int_distribution <uint8_t> dist {0, 255};
 				// Выполняем заполнение маски случайными числами
-				generate(mask.begin(), mask.end(), [&dist, &engine]() noexcept -> u_char {
+				generate(mask.begin(), mask.end(), [&dist, &engine]() noexcept -> uint8_t {
 					// Выполняем генерирование случайного числа
 					return dist(engine);
 				});
 				// Выполняем перебор всех байт передаваемых данных
 				for(size_t i = 0; i < size; i++)
 					// Выполняем шифрование данных
-					const_cast <char *> (buffer)[i] ^= mask[i % 4];
+					const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer))[i] ^= mask[i % 4];
 				// Увеличиваем память ещё на четыре байта
-				payload.resize(offset + 4, 0x0);
+				payload.resize(offset + 4, 0x00);
 				// Устанавливаем сгенерированную маску
 				::memcpy(payload.data() + offset, mask.data(), mask.size());
 			}
 			// Выполняем копирования оставшихся данных в буфер
-			payload.insert(payload.end(), buffer, buffer + size);
+			payload.insert(payload.end(), reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -280,13 +297,13 @@ void awh::ws::Frame::frame(vector <char> & payload, const char * buffer, const s
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, mask), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, mask), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -306,27 +323,27 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 		 */
 		try {
 			// Увеличиваем память на 4 байта
-			result.resize(4, 0x0);
+			result.resize(4, 0x00);
 			// Устанавливаем первый байт
-			result.front() = (static_cast <char> (0x80) | (0x0F & static_cast <u_char> (opcode_t::CLOSE)));
+			result.front() = (static_cast <char> (0x080) | (0x00F & static_cast <char> (opcode_t::CLOSE)));
 			// Размер смещения в буфере
 			uint16_t offset = 0;
 			// Размер передаваемых данных
 			uint64_t size = static_cast <uint64_t> (mess.text.size());
 			// Если размер строки меньше 126 байт, значит строка умещается во второй байт
-			if(size < 0x7E){
+			if(size < 0x07E){
 				// Устанавливаем смещение в буфере
 				offset = 2;
 				// Устанавливаем размер строки
-				result.at(1) = (static_cast <char> (0x7F & (size + 2)));
+				result.at(1) = (static_cast <char> (0x07F & (size + 2)));
 			// Если строка не помещается во второй байт
 			} else if(size < 0x10000) {
 				// Устанавливаем смещение в буфере
 				offset = 4;
 				// Увеличиваем память ещё на два байта
-				result.resize(offset + 2, 0x0);
+				result.resize(offset + 2, 0x00);
 				// Заполняем второй байт максимальным значением
-				result.at(1) = (static_cast <char> (0x7F & 0x7E));
+				result.at(1) = (static_cast <char> (0x07F & 0x07E));
 				// Выполняем перерасчёт размера передаваемых данных
 				const uint16_t bytes = static_cast <uint64_t> (htons(static_cast <uint16_t> (size + 2)));
 				// Устанавливаем размер строки в следующие 2 байта
@@ -365,19 +382,10 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 /**
  * message Метод извлечения сообщения из фрейма
  * @param buffer бинарные данные сообщения
- * @return       сообщение в текстовом виде
- */
-awh::ws::mess_t awh::ws::Frame::message(const vector <char> & buffer) const noexcept {
-	// Выполняем формирование сообщения
-	return this->message(buffer.data(), buffer.size());
-}
-/**
- * message Метод извлечения сообщения из фрейма
- * @param buffer бинарные данные сообщения
  * @param size   размер буфера данных сообщения
  * @return       сообщение в текстовом виде
  */
-awh::ws::mess_t awh::ws::Frame::message(const char * buffer, const size_t size) const noexcept {
+awh::ws::mess_t awh::ws::Frame::message(const void * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	mess_t result;
 	// Если данные переданы
@@ -398,7 +406,7 @@ awh::ws::mess_t awh::ws::Frame::message(const char * buffer, const size_t size) 
 				// Если текст сообщения существует
 				if(size > sizeof(result.code))
 					// Извлекаем текст сообщения
-					result.text.assign(buffer + sizeof(result.code), size);
+					result.text.assign(reinterpret_cast <const char *> (buffer) + sizeof(result.code), size);
 				// Иначе запоминаем, что текст не установлен
 				else result.text.clear();
 			/**
@@ -439,11 +447,12 @@ awh::ws::mess_t awh::ws::Frame::message(const head_t & head, const bool compress
 		// Создаём сообщение
 		return mess_t(1002, "RSV2 and RSV3 must be clear");
 	// Если флаг компресси включён а данные пришли не сжатые
-	else if(head.rsv[0] && (!compressed || (head.optcode == opcode_t::CONTINUATION) || ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
+	else if(head.rsv[0] && (!compressed || (head.optcode == opcode_t::CONTINUATION) ||
+	       ((static_cast <uint8_t> (head.optcode) > 0x007) && (static_cast <uint8_t> (head.optcode) < 0x00B))))
 		// Создаём сообщение
 		return mess_t(1002, "RSV1 must be clear");
 	// Если опкоды требуют финального фрейма
-	else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))
+	else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x007) && (static_cast <uint8_t> (head.optcode) < 0x00B))
 		// Создаём сообщение
 		return mess_t(1002, "FIN must be set");
 	// Выводим результат
@@ -457,11 +466,11 @@ awh::ws::mess_t awh::ws::Frame::message(const head_t & head, const bool compress
  */
 vector <char> awh::ws::Frame::ping(const string & mess, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PING с пустой полезной нагрузкой
-	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PING)), 0x0};
+	vector <char> result = {static_cast <char> (0x080) | (0x00F & static_cast <char> (opcode_t::PING)), 0x00};
 	// Если сообщение передано
 	if(!mess.empty())
 		// Выполняем формирование фрейма
-		this->frame(result, mess.data(), mess.size(), mask);
+		::frame(result, mess.data(), mess.size(), mask, this->_log);
 	// Выводим результат
 	return result;
 }
@@ -474,11 +483,11 @@ vector <char> awh::ws::Frame::ping(const string & mess, const bool mask) const n
  */
 vector <char> awh::ws::Frame::ping(const void * buffer, const size_t size, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PING с пустой полезной нагрузкой
-	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PING)), 0x0};
+	vector <char> result = {static_cast <char> (0x080) | (0x00F & static_cast <char> (opcode_t::PING)), 0x00};
 	// Если сообщение передано
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем формирование фрейма
-		this->frame(result, reinterpret_cast <const char *> (buffer), size, mask);
+		::frame(result, buffer, size, mask, this->_log);
 	// Выводим результат
 	return result;
 }
@@ -490,11 +499,11 @@ vector <char> awh::ws::Frame::ping(const void * buffer, const size_t size, const
  */
 vector <char> awh::ws::Frame::pong(const string & mess, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PONG с пустой полезной нагрузкой
-	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PONG)), 0x0};
+	vector <char> result = {static_cast <char> (0x080) | (0x00F & static_cast <char> (opcode_t::PONG)), 0x00};
 	// Если сообщение передано
 	if(!mess.empty())
 		// Выполняем формирование фрейма
-		this->frame(result, mess.data(), mess.size(), mask);
+		::frame(result, mess.data(), mess.size(), mask, this->_log);
 	// Выводим результат
 	return result;
 }
@@ -507,11 +516,11 @@ vector <char> awh::ws::Frame::pong(const string & mess, const bool mask) const n
  */
 vector <char> awh::ws::Frame::pong(const void * buffer, const size_t size, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PONG с пустой полезной нагрузкой
-	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PONG)), 0x0};
+	vector <char> result = {static_cast <char> (0x080) | (0x00F & static_cast <char> (opcode_t::PONG)), 0x00};
 	// Если сообщение передано
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем формирование фрейма
-		this->frame(result, reinterpret_cast <const char *> (buffer), size, mask);
+		::frame(result, buffer, size, mask, this->_log);
 	// Выводим результат
 	return result;
 }
@@ -522,7 +531,7 @@ vector <char> awh::ws::Frame::pong(const void * buffer, const size_t size, const
  * @param size   размер передаваемого буфера
  * @return       бинарные данные полезной нагрузки
  */
-vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size_t size) const noexcept {
+vector <char> awh::ws::Frame::get(head_t & head, const void * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные переданы в достаточном объёме
@@ -532,7 +541,7 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 		 */
 		try {
 			// Выполняем чтение заголовков
-			this->head(head, buffer, size);
+			::head(head, buffer, size, this->_log);
 			// Устанавливаем стейт фрейма
 			head.state = state_t::GOOD;
 			// Получаем размер смещения
@@ -552,18 +561,21 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 					// Если ожидаемых байт фрейма достаточно для обработки
 					if(static_cast <size_t> (bytes) <= size){
 						// Бинарные данные маски
-						u_char mask[4];
+						uint8_t mask[4];
 						// Если маска требуется, маскируем данные
 						if(head.mask){
 							// Считываем ключ маски
-							::memcpy(mask, buffer + head.frame, 4);
+							::memcpy(mask, reinterpret_cast <const uint8_t *> (buffer) + head.frame, 4);
 							// Увеличиваем размер смещения
 							head.frame += 4;
 						}
 						// Если полезная нагрузка получена
 						if(head.payload > 0){
 							// Получаем оставшиеся данные полезной нагрузки
-							result.assign(buffer + head.frame, buffer + (head.payload + head.frame));
+							result.assign(
+								reinterpret_cast <const char *> (buffer) + head.frame,
+								reinterpret_cast <const char *> (buffer) + (head.payload + head.frame)
+							);
 							// Если маска требуется, размаскируем данные
 							if(head.mask){
 								// Выполняем перебор всех байт передаваемых данных
@@ -585,12 +597,11 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
 							head.state = state_t::BAD;
 						// Если флаг компресси включён а данные пришли не сжатые
 						else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) ||
-						       ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b))))
+						       ((static_cast <uint8_t> (head.optcode) > 0x007) && (static_cast <uint8_t> (head.optcode) < 0x00B))))
 							// Устанавливаем статус битого фрейма
 							head.state = state_t::BAD;
 						// Если опкоды требуют финального фрейма
-						else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) &&
-						       (static_cast <uint8_t> (head.optcode) < 0x0b))
+						else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x007) && (static_cast <uint8_t> (head.optcode) < 0x00B))
 							// Устанавливаем статус битого фрейма
 							head.state = state_t::BAD;
 						// Если фрейм испорчен
@@ -636,26 +647,26 @@ vector <char> awh::ws::Frame::get(head_t & head, const char * buffer, const size
  * @param size   размер передаваемого буфера
  * @return       бинарные данные фрейма
  */
-vector <char> awh::ws::Frame::set(const head_t & head, const char * buffer, const size_t size) const noexcept {
+vector <char> awh::ws::Frame::set(const head_t & head, const void * buffer, const size_t size) const noexcept {
 	/**
 	 * rsv[0] должен быть установлен в TRUE для первого сообщения в GZip,
 	 * и установлен в FALSE для всех остальных сообщений, в рамках одной сессии
 	 */
 	vector <char> result = {
 		(
-			char(
-				(head.fin ? 0x80 : 0x0) |
-				(head.rsv[0] ? 0x40 : 0x0) |
-				(head.rsv[1] ? 0x20 : 0x0) |
-				(head.rsv[2] ? 0x10 : 0x0) |
-				(0x0F & static_cast <int32_t> (head.optcode))
+			static_cast <char> (
+				(head.fin ? 0x080 : 0x00) |
+				(head.rsv[0] ? 0x040 : 0x00) |
+				(head.rsv[1] ? 0x020 : 0x00) |
+				(head.rsv[2] ? 0x010 : 0x00) |
+				(0x00F & static_cast <int32_t> (head.optcode))
 			)
-		), 0x0
+		), 0x00
 	};
 	// Если данные переданы
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем формирование фрейма
-		this->frame(result, buffer, size, head.mask);
+		::frame(result, buffer, size, head.mask, this->_log);
 	// Выводим результат
 	return result;
 }

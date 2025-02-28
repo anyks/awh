@@ -574,7 +574,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										// Если сообщение получено
 										if(!payload.empty()){
 											// Создаём сообщение
-											options->mess = options->frame.methods.message(payload);
+											options->mess = options->frame.methods.message(payload.data(), payload.size());
 											// Выводим сообщение об ошибке
 											this->error(bid, options->mess);
 										}

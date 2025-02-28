@@ -887,7 +887,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 						// Если сообщение получено
 						if(!payload.empty()){
 							// Извлекаем сообщение
-							this->_mess = this->_frame.methods.message(payload);
+							this->_mess = this->_frame.methods.message(payload.data(), payload.size());
 							// Выводим сообщение
 							this->error(this->_mess);
 						}
