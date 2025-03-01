@@ -184,10 +184,11 @@ namespace awh {
 				/**
 				 * message Метод извлечения сообщения из заголовка фрейма
 				 * @param head       заголовки фрейма
+				 * @param code       код сообщения
 				 * @param compressed флаг сжатых ожидаемых данных
 				 * @return           сообщение в текстовом виде
 				 */
-				mess_t message(const head_t & head, const bool compressed = false) const noexcept;
+				mess_t message(const head_t & head, const uint16_t code = 0, const bool compressed = false) const noexcept;
 			public:
 				/**
 				 * ping Метод создания фрейма пинга

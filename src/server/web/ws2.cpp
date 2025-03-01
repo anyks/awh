@@ -239,6 +239,24 @@ void awh::server::Websocket2::writeEvents(const char * buffer, const size_t size
 			if(options->proto != engine_t::proto_t::HTTP2)
 				// Выполняем переброс вызова записи клиенту Websocket
 				this->_ws1.writeEvents(buffer, size, bid, sid);
+			// Если сообщения отправлены удачно
+			else {
+				// Если необходимо выполнить закрыть подключение
+				if(!options->close && options->stopped){
+					// Устанавливаем флаг закрытия подключения
+					options->close = !options->close;
+					// Выполняем поиск брокера в списке активных сессий
+					auto i = this->_sessions.find(bid);
+					// Если активная сессия найдена
+					if(i != this->_sessions.end()){
+						// Выполняем закрытие подключения
+						i->second->close();
+						// Выполняем закрытие подключения
+						web2_t::close(bid);
+					// Принудительно выполняем отключение лкиента
+					} else const_cast <server::core_t *> (this->_core)->close(bid);
+				}
+			}
 		}
 	}
 }
@@ -402,26 +420,6 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 		case static_cast <uint8_t> (http2_t::direct_t::SEND): {
 			// Если мы получили флаг завершения потока
 			if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
-				// Получаем параметры активного клиента
-				scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
-				// Если параметры активного клиента получены
-				if((this->_core != nullptr) && (options != nullptr)){
-					// Если необходимо выполнить закрыть подключение
-					if(!options->close && options->stopped){
-						// Устанавливаем флаг закрытия подключения
-						options->close = !options->close;
-						// Выполняем поиск брокера в списке активных сессий
-						auto i = this->_sessions.find(bid);
-						// Если активная сессия найдена
-						if(i != this->_sessions.end()){
-							// Выполняем закрытие подключения
-							i->second->close();
-							// Выполняем закрытие подключения
-							web2_t::close(bid);
-						// Принудительно выполняем отключение лкиента
-						} else const_cast <server::core_t *> (this->_core)->close(bid);
-					}
-				}
 				// Если установлена функция отлова завершения запроса
 				if(this->_callbacks.is("end"))
 					// Выполняем функцию обратного вызова
@@ -591,7 +589,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 									// Если мы получили ошибку получения фрейма
 									} else if(head.state == ws::frame_t::state_t::BAD) {
 										// Создаём сообщение
-										options->mess = options->frame.methods.message(head, (options->compressor != http_t::compressor_t::NONE));
+										options->mess = options->frame.methods.message(head, 1005, (options->compressor != http_t::compressor_t::NONE));
 										// Выполняем отключение брокера
 										goto Stop;
 									}
@@ -1255,8 +1253,8 @@ void awh::server::Websocket2::sendError(const uint64_t bid, const ws::mess_t & m
 					const auto & buffer = options->frame.methods.message(mess);
 					// Если данные сообщения получены
 					if((options->stopped = !buffer.empty())){
-						// Выполняем отправку сообщения клиенту
-						web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
+						// Выводим сообщение об ошибке
+						this->error(bid, mess);
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1266,8 +1264,8 @@ void awh::server::Websocket2::sendError(const uint64_t bid, const ws::mess_t & m
 							// Выводим отправляемое сообщение
 							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 						#endif
-						// Выводим сообщение об ошибке
-						this->error(bid, mess);
+						// Выполняем отправку сообщения клиенту
+						web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
 						// Выходим из функции
 						return;
 					}

@@ -438,10 +438,11 @@ awh::ws::mess_t awh::ws::Frame::message(const void * buffer, const size_t size) 
 /**
  * message Метод извлечения сообщения из заголовка фрейма
  * @param head       заголовки фрейма
+ * @param code       код сообщения
  * @param compressed флаг сжатых ожидаемых данных
  * @return           сообщение в текстовом виде
  */
-awh::ws::mess_t awh::ws::Frame::message(const head_t & head, const bool compressed) const noexcept {
+awh::ws::mess_t awh::ws::Frame::message(const head_t & head, const uint16_t code, const bool compressed) const noexcept {
 	// Проверяем состояние флагов RSV2 и RSV3
 	if(head.rsv[1] || head.rsv[2])
 		// Создаём сообщение
@@ -456,7 +457,7 @@ awh::ws::mess_t awh::ws::Frame::message(const head_t & head, const bool compress
 		// Создаём сообщение
 		return mess_t(1002, "FIN must be set");
 	// Выводим результат
-	return (head.state == state_t::BAD ? mess_t(1005) : mess_t(0));
+	return (head.state == state_t::BAD ? mess_t(code == 0 ? 1005 : code) : mess_t(code));
 }
 /**
  * ping Метод создания фрейма пинга

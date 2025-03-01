@@ -598,7 +598,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 							// Если мы получили ошибку получения фрейма
 							} else if(head.state == ws::frame_t::state_t::BAD) {
 								// Создаём сообщение
-								options->mess = options->frame.methods.message(head, (options->compressor != http_t::compressor_t::NONE));
+								options->mess = options->frame.methods.message(head, 1005, (options->compressor != http_t::compressor_t::NONE));
 								// Выполняем отключение брокера
 								goto Stop;
 							}
@@ -979,6 +979,8 @@ void awh::server::Websocket1::sendError(const uint64_t bid, const ws::mess_t & m
 				const auto & buffer = options->frame.methods.message(mess);
 				// Если данные сообщения получены
 				if((options->stopped = !buffer.empty())){
+					// Выводим сообщение об ошибке
+					this->error(bid, mess);
 					// Выполняем отправку сообщения брокеру
 					if(core->send(buffer.data(), buffer.size(), bid)){
 						/**
@@ -990,8 +992,6 @@ void awh::server::Websocket1::sendError(const uint64_t bid, const ws::mess_t & m
 							// Выводим отправляемое сообщение
 							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 						#endif
-						// Выводим сообщение об ошибке
-						this->error(bid, mess);
 						// Выходим из функции
 						return;
 					}

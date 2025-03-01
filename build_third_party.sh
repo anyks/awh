@@ -159,8 +159,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.4.0
-	VER="3.4.0"
+	# Версия OpenSSL v3.4.1
+	VER="3.4.1"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*

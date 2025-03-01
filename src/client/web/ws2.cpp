@@ -429,21 +429,7 @@ int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::d
 							// Если мы получили неустановленный флаг или флаг завершения потока
 							if(flags.empty() || (flags.find(http2_t::flag_t::END_STREAM) != flags.end())){
 								// Выполняем препарирование полученных данных
-								switch(static_cast <uint8_t> (this->prepare(sid, this->_bid))){
-									// Если необходимо выполнить остановку обработки
-									case static_cast <uint8_t> (status_t::STOP):
-										// Выполняем завершение работы
-										goto End;
-									// Если необходимо выполнить переход к следующему этапу обработки
-									case static_cast <uint8_t> (status_t::NEXT): {
-										// Если поток небыл закрыт
-										if(flags.empty())
-											// Выполняем отправку сообщения об ошибке
-											this->sendError(this->_mess);
-									} break;
-								}
-								// Устанавливаем метку завершения работы
-								End:
+								this->prepare(sid, this->_bid);
 								// Если мы получили флаг завершения потока
 								if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 									// Если установлена функция отлова завершения запроса
@@ -910,8 +896,6 @@ void awh::client::Websocket2::pong(const void * buffer, const size_t size) noexc
  * @return    результат препарирования
  */
 awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, const uint64_t bid) noexcept {
-	// Результат работы функции
-	status_t result = status_t::STOP;
 	// Если рукопожатие не выполнено
 	if(!this->_shake){
 		// Получаем параметры запроса
@@ -1232,7 +1216,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 			// Если мы получили ошибку получения фрейма
 			} else if(head.state == ws::frame_t::state_t::BAD) {
 				// Создаём сообщение
-				this->_mess = this->_frame.methods.message(head, (this->_compressor != http_t::compressor_t::NONE));
+				this->_mess = this->_frame.methods.message(head, 1005, (this->_compressor != http_t::compressor_t::NONE));
 				// Выводим сообщение
 				this->error(this->_mess);
 				// Выполняем реконнект
@@ -1382,8 +1366,8 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
 					const auto & buffer = this->_frame.methods.message(mess);
 					// Если данные сообщения получены
 					if((this->_stopped = !buffer.empty())){
-						// Выполняем отправку сообщения на сервер
-						web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
+						// Выводим сообщение об ошибке
+						this->error(mess);
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1393,8 +1377,8 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
 							// Выводим отправляемое сообщение
 							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 						#endif
-						// Выводим сообщение об ошибке
-						this->error(mess);
+						// Выполняем отправку сообщения на сервер
+						web2_t::send(this->_sid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
 						// Выходим из функции
 						return;
 					}
