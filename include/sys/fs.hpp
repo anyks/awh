@@ -40,7 +40,7 @@
 /**
  * Если это clang v10 или выше
  */
-#if defined(__DANUBE_EXPERIMENTAL__)
+#if defined(__AWH_EXPERIMENTAL__)
 	#include <filesystem>
 #endif
 
