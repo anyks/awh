@@ -201,18 +201,18 @@ namespace awh {
 				if(idw > 0){
 					{
 						// Выполняем поиск типа возвращаемого значения
-						auto it = this->_types.find(idw);
+						auto i = this->_types.find(idw);
 						// Если возвращаемое значение получено
-						if(it != this->_types.end())
+						if(i != this->_types.end())
 							// Устанавливаем тип возвращаемого значения
-							result.second = it->second;
+							result.second = i->second;
 					}{
 						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_functions.find(idw);
+						auto i = this->_functions.find(idw);
 						// Если функция существует
-						if(it != this->_functions.end())
+						if(i != this->_functions.end())
 							// Устанавливаем функцию обратного вызова
-							result.first = it->second;
+							result.first = i->second;
 					}
 				}
 				// Выводим результат работы функции
@@ -242,20 +242,20 @@ namespace awh {
 				if((idw > 0) && (data.first != nullptr)){
 					{
 						// Выполняем поиск типа возвращаемого значения
-						auto it = this->_types.find(idw);
+						auto i = this->_types.find(idw);
 						// Если возвращаемое значение получено
-						if(it != this->_types.end())
+						if(i != this->_types.end())
 							// Устанавливаем тип возвращаемого значения
-							it->second = data.second;
+							i->second = data.second;
 						// Устанавливаем новую функцию обратного вызова
 						else this->_types.emplace(idw, data.second);
 					}{
 						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_functions.find(idw);
+						auto i = this->_functions.find(idw);
 						// Если функция существует
-						if(it != this->_functions.end())
+						if(i != this->_functions.end())
 							// Устанавливаем функцию обратного вызова
-							it->second = data.first;
+							i->second = data.first;
 						// Устанавливаем новую функцию обратного вызова
 						else this->_functions.emplace(idw, data.first);
 					}
@@ -334,18 +334,18 @@ namespace awh {
 				if(idw > 0){
 					{
 						// Выполняем поиск типа возвращаемого значения
-						auto it = this->_types.find(idw);
+						auto i = this->_types.find(idw);
 						// Если возвращаемое значение получено
-						if(it != this->_types.end())
+						if(i != this->_types.end())
 							// Удаляем возвращаемое значение функцией
-							this->_types.erase(it);
+							this->_types.erase(i);
 					}{
 						// Выполняем поиск существующей функции обратного вызова
-						auto it = this->_functions.find(idw);
+						auto i = this->_functions.find(idw);
 						// Если функция существует
-						if(it != this->_functions.end())
+						if(i != this->_functions.end())
 							// Удаляем функцию обратного вызова
-							this->_functions.erase(it);
+							this->_functions.erase(i);
 					}
 					// Если функция обратного вызова установлена
 					if(this->_callback != nullptr)
@@ -366,18 +366,18 @@ namespace awh {
 					if(idw > 0){
 						{
 							// Выполняем поиск типа возвращаемого значения
-							auto it = this->_types.find(idw);
+							auto i = this->_types.find(idw);
 							// Если возвращаемое значение получено
-							if(it != this->_types.end())
+							if(i != this->_types.end())
 								// Удаляем возвращаемое значение функцией
-								this->_types.erase(it);
+								this->_types.erase(i);
 						}{
 							// Выполняем поиск существующей функции обратного вызова
-							auto it = this->_functions.find(idw);
+							auto i = this->_functions.find(idw);
 							// Если функция существует
-							if(it != this->_functions.end())
+							if(i != this->_functions.end())
 								// Удаляем функцию обратного вызова
-								this->_functions.erase(it);
+								this->_functions.erase(i);
 						}
 						// Если функция обратного вызова установлена
 						if(this->_callback != nullptr)
@@ -734,20 +734,20 @@ namespace awh {
 					try {
 						{
 							// Выполняем поиск типа данных функции
-							auto it = this->_types.find(idw);
+							auto i = this->_types.find(idw);
 							// Если тип данных получен
-							if(it != this->_types.end())
+							if(i != this->_types.end())
 								// Выполняем установку типа возвращаемого значения
-								it->second = this->type <typename function <A>::result_type> ();
+								i->second = this->type <typename function <A>::result_type> ();
 							// Выполняем добавление полученного типа возвращаемого значения
 							else this->_types.emplace(idw, this->type <typename function <A>::result_type> ());
 						}{
 							// Выполняем поиск существующей функции обратного вызова
-							auto it = this->_functions.find(idw);
+							auto i = this->_functions.find(idw);
 							// Если функция такая уже существует
-							if(it != this->_functions.end())
+							if(i != this->_functions.end())
 								// Устанавливаем новую функцию обратного вызова
-								it->second = shared_ptr <Function> (new BasicFunction <A> (fn));
+								i->second = shared_ptr <Function> (new BasicFunction <A> (fn));
 							// Если функция ещё не существует, создаём новую функцию
 							else this->_functions.emplace(idw, shared_ptr <Function> (new BasicFunction <A> (fn)));
 							// Если функция обратного вызова установлена
@@ -818,20 +818,20 @@ namespace awh {
 						if(idw > 0){
 							{
 								// Выполняем поиск типа данных функции
-								auto it = this->_types.find(idw);
+								auto i = this->_types.find(idw);
 								// Если тип данных получен
-								if(it != this->_types.end())
+								if(i != this->_types.end())
 									// Выполняем установку типа возвращаемого значения
-									it->second = this->type <typename function <A>::result_type> ();
+									i->second = this->type <typename function <A>::result_type> ();
 								// Выполняем добавление полученного типа возвращаемого значения
 								else this->_types.emplace(idw, this->type <typename function <A>::result_type> ());
 							}{
 								// Выполняем поиск существующей функции обратного вызова
-								auto it = this->_functions.find(idw);
+								auto i = this->_functions.find(idw);
 								// Если функция такая уже существует
-								if(it != this->_functions.end())
+								if(i != this->_functions.end())
 									// Устанавливаем новую функцию обратного вызова
-									it->second = shared_ptr <Function> (new BasicFunction <A> (fn));
+									i->second = shared_ptr <Function> (new BasicFunction <A> (fn));
 								// Если функция ещё не существует, создаём новую функцию
 								else this->_functions.emplace(idw, shared_ptr <Function> (new BasicFunction <A> (fn)));
 								// Если функция обратного вызова установлена
@@ -901,20 +901,20 @@ namespace awh {
 					try {
 						{
 							// Выполняем поиск типа данных функции
-							auto it = this->_types.find(idw);
+							auto i = this->_types.find(idw);
 							// Если тип данных получен
-							if(it != this->_types.end())
+							if(i != this->_types.end())
 								// Выполняем установку типа возвращаемого значения
-								it->second = this->type <typename function <A>::result_type> ();
+								i->second = this->type <typename function <A>::result_type> ();
 							// Выполняем добавление полученного типа возвращаемого значения
 							else this->_types.emplace(idw, this->type <typename function <A>::result_type> ());
 						}{
 							// Выполняем поиск существующей функции обратного вызова
-							auto it = this->_functions.find(idw);
+							auto i = this->_functions.find(idw);
 							// Если функция такая уже существует
-							if(it != this->_functions.end())
+							if(i != this->_functions.end())
 								// Устанавливаем новую функцию обратного вызова
-								it->second = shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
+								i->second = shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
 							// Если функция ещё не существует, создаём новую функцию
 							else this->_functions.emplace(idw, shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
 							// Если функция обратного вызова установлена
@@ -987,20 +987,20 @@ namespace awh {
 						if(idw > 0){
 							{
 								// Выполняем поиск типа данных функции
-								auto it = this->_types.find(idw);
+								auto i = this->_types.find(idw);
 								// Если тип данных получен
-								if(it != this->_types.end())
+								if(i != this->_types.end())
 									// Выполняем установку типа возвращаемого значения
-									it->second = this->type <typename function <A>::result_type> ();
+									i->second = this->type <typename function <A>::result_type> ();
 								// Выполняем добавление полученного типа возвращаемого значения
 								else this->_types.emplace(idw, this->type <typename function <A>::result_type> ());
 							}{
 								// Выполняем поиск существующей функции обратного вызова
-								auto it = this->_functions.find(idw);
+								auto i = this->_functions.find(idw);
 								// Если функция такая уже существует
-								if(it != this->_functions.end())
+								if(i != this->_functions.end())
 									// Устанавливаем новую функцию обратного вызова
-									it->second = shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
+									i->second = shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...)));
 								// Если функция ещё не существует, создаём новую функцию
 								else this->_functions.emplace(idw, shared_ptr <Function> (new BasicFunction <A> (std::bind(fn, args...))));
 								// Если функция обратного вызова установлена
@@ -1066,11 +1066,11 @@ namespace awh {
 				// Если название функции передано
 				if(idw > 0){
 					// Выполняем поиск функции обратного вызова
-					auto it = this->_functions.find(idw);
+					auto i = this->_functions.find(idw);
 					// Если функция обратного вызова найдена
-					if(it != this->_functions.end()){
+					if(i != this->_functions.end()){
 						// Получаем функцию обратного вызова
-						const Function & fn = (* it->second);
+						const Function & fn = (* i->second);
 						// Получаем функцию обратного вызова в нужном нам виде
 						result = static_cast <const BasicFunction <A> &> (fn).fn;
 					}
@@ -1098,11 +1098,11 @@ namespace awh {
 					// Если идентификатор получен
 					if(idw > 0){
 						// Выполняем поиск функции обратного вызова
-						auto it = this->_functions.find(idw);
+						auto i = this->_functions.find(idw);
 						// Если функция обратного вызова найдена
-						if(it != this->_functions.end()){
+						if(i != this->_functions.end()){
 							// Получаем функцию обратного вызова
-							const Function & fn = (* it->second);
+							const Function & fn = (* i->second);
 							// Получаем функцию обратного вызова в нужном нам виде
 							result = static_cast <const BasicFunction <A> &> (fn).fn;
 						}
@@ -1410,11 +1410,11 @@ namespace awh {
 						 */
 						try {
 							// Выполняем поиск типа данных функции
-							auto it = this->_types.find(item.first);
+							auto i = this->_types.find(item.first);
 							// Если тип данных получен
-							if(it != this->_types.end()){
+							if(i != this->_types.end()){
 								// Если функция не возвращает значение
-								if(it->second == type_t::TYPE_VOID){
+								if(i->second == type_t::TYPE_VOID){
 									// Если функция обратного вызова установлена
 									if(this->_callback != nullptr){
 										// Результат работы функции
@@ -1485,11 +1485,11 @@ namespace awh {
 						 */
 						try {
 							// Выполняем поиск типа данных функции
-							auto it = this->_types.find(item.first);
+							auto i = this->_types.find(item.first);
 							// Если тип данных получен
-							if(it != this->_types.end()){
+							if(i != this->_types.end()){
 								// Если возвращаемое значение совпадает с хранимым или функция возвращает значение
-								if((it->second == this->type <A> ()) && (it->second != type_t::TYPE_VOID)){
+								if((i->second == this->type <A> ()) && (i->second != type_t::TYPE_VOID)){
 									// Если функция обратного вызова установлена
 									if(this->_callback != nullptr){
 										// Результат работы функции
@@ -1550,9 +1550,9 @@ namespace awh {
 				// Если название функции передано
 				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Выполняем поиск запрашиваемой функции
-					auto it = this->_functions.find(idw);
+					auto i = this->_functions.find(idw);
 					// Если запрашиваемая функция найдена
-					if(it != this->_functions.end()){
+					if(i != this->_functions.end()){
 						/**
 						 * Выполняем отлов ошибок
 						 */
@@ -1565,7 +1565,7 @@ namespace awh {
 								this->_callback(event_t::RUN, idw, "", &result);
 							}
 							// Выполняем функцию обратного вызова
-							static_cast <const BasicFunction <void (void)> &> (* it->second).fn();
+							static_cast <const BasicFunction <void (void)> &> (* i->second).fn();
 						/**
 						 * Если возникает ошибка
 						 */
@@ -1614,9 +1614,9 @@ namespace awh {
 				// Если название функции передано
 				if((idw > 0) && !this->_functions.empty() && (this->_functions.find(idw) != this->_functions.end())){
 					// Выполняем поиск запрашиваемой функции
-					auto it = this->_functions.find(idw);
+					auto i = this->_functions.find(idw);
 					// Если запрашиваемая функция найдена
-					if(it != this->_functions.end()){
+					if(i != this->_functions.end()){
 						/**
 						 * Выполняем отлов ошибок
 						 */
@@ -1629,7 +1629,7 @@ namespace awh {
 								this->_callback(event_t::RUN, idw, name, &result);
 							}
 							// Выполняем функцию обратного вызова
-							static_cast <const BasicFunction <void (void)> &> (* it->second).fn();
+							static_cast <const BasicFunction <void (void)> &> (* i->second).fn();
 						/**
 						 * Если возникает ошибка
 						 */

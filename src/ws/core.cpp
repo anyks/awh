@@ -91,7 +91,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Добавляем заголовок поддерживаемых языков
 				this->header("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
 				// Добавляем заголовок версии WebSocket
-				this->header("Sec-WebSocket-Version", to_string(WS_VERSION));
+				this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
 				// Если компрессор уже выбран
 				if(http_t::_compressors.selected != compressor_t::NONE){
 					// Определяем метод сжатия который поддерживает клиент

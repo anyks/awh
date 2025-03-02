@@ -54,7 +54,7 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 				// Добавляем разделитель
 				result.append(1, '.');
 			// Добавляем октет в версию
-			result.append(to_string(reinterpret_cast <const uint8_t *> (&this->_version)[i]));
+			result.append(std::to_string(reinterpret_cast <const uint8_t *> (&this->_version)[i]));
 		}
 	/**
 	 * Если возникает ошибка

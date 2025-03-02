@@ -56,12 +56,12 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 					// Устанавливаем интервал времени на выполнения пинга клиента
 					const uint16_t tid = this->_timer.interval(this->_pingInterval);
 					// Выполняем добавление функции обратного вызова
-					this->_timer.set <void (const uint16_t)> (tid, bind(&web_t::pinging, this, tid));
+					this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
 				}
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				const uint16_t tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.set <void (const uint16_t)> (tid, bind(&web_t::disconected, this, tid));
+				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
@@ -144,12 +144,12 @@ void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uin
 					// Устанавливаем интервал времени на выполнения пинга клиента
 					const uint16_t tid = this->_timer.interval(this->_pingInterval);
 					// Выполняем добавление функции обратного вызова
-					this->_timer.set <void (const uint16_t)> (tid, bind(&web_t::pinging, this, tid));
+					this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
 				}
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				const uint16_t tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.set <void (const uint16_t)> (tid, bind(&web_t::disconected, this, tid));
+				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
 			}
 		} break;
 		// Если событие остановки сервиса
@@ -328,9 +328,9 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
 	// Если объект сетевого ядра передан
 	if(this->_core != nullptr){
 		// Устанавливаем функцию активации ядра сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", bind(&web_t::statusEvents, this, _1));
+		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&web_t::statusEvents, this, _1));
 		// Устанавливаем функцию обратного вызова на перехват событий кластера
-		const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", bind(&web_t::clusterEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4));
 	}
 }
 /**
@@ -448,7 +448,7 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callbacks.callback(bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
+	this->_callbacks.callback(std::bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
 }
 /**
  * Web Конструктор
@@ -464,9 +464,9 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callbacks.callback(bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
+	this->_callbacks.callback(std::bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию активации ядра сервера
-	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", bind(&web_t::statusEvents, this, _1));
+	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&web_t::statusEvents, this, _1));
 	// Устанавливаем функцию обратного вызова на перехват событий кластера
-	const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", bind(&web_t::clusterEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4));
 }

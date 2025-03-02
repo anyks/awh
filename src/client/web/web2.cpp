@@ -63,9 +63,9 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 							// Если тело ответа существует
 							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY))
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl << endl;
+								std::cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << std::endl << std::endl << std::flush;
 							// Иначе устанавливаем перенос строки
-							else cout << endl;
+							else std::cout << std::endl << std::flush;
 						}
 					#endif
 					// Выполняем препарирование полученных данных
@@ -107,7 +107,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 							// Если параметры ответа получены
 							if(!response.empty())
 								// Выводим параметры ответа
-								cout << string(response.begin(), response.end()) << endl << endl;
+								std::cout << string(response.begin(), response.end()) << std::endl << std::endl << std::flush;
 						}
 					#endif
 					// Получаем параметры запроса
@@ -260,11 +260,11 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 								 */
 								#if defined(DEBUG_MODE)
 									// Выводим заголовок запроса
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
+									std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 									// Получаем бинарные данные HTTP-запроса
 									const auto & buffer = this->_scheme.proxy.http.proxy(request);
 									// Выводим параметры запроса
-									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+									std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 								#endif
 								// Выполняем запрос на получение заголовков
 								const auto & headers = this->_scheme.proxy.http.proxy2(request);
@@ -381,21 +381,21 @@ void awh::client::Web2::implementation(const uint64_t bid) noexcept {
 			// Устанавливаем функцию обработки вызова на событие получения ошибок
 			callbacks.set("error", this->_callbacks);
 			// Выполняем установку функции обратного вызова начала открытии потока
-			callbacks.set <int32_t (const int32_t)> ("begin", bind(&web2_t::beginSignal, this, _1));
+			callbacks.set <int32_t (const int32_t)> ("begin", std::bind(&web2_t::beginSignal, this, _1));
 			// Выполняем установку функции обратного вызова получения списка разрешённых ресурсов для подключения
-			callbacks.set <void (const vector <string> &)> ("origin", bind(&web2_t::originCallback, this, _1));
+			callbacks.set <void (const vector <string> &)> ("origin", std::bind(&web2_t::originCallback, this, _1));
 			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
-			callbacks.set <void (const uint8_t *, const size_t)> ("send", bind(&web2_t::sendSignal, this, _1, _2));
+			callbacks.set <void (const uint8_t *, const size_t)> ("send", std::bind(&web2_t::sendSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова получения альтернативного сервиса от сервера
-			callbacks.set <void (const string &, const string &)> ("altsvc", bind(&web2_t::altsvcCallback, this, _1, _2));
+			callbacks.set <void (const string &, const string &)> ("altsvc", std::bind(&web2_t::altsvcCallback, this, _1, _2));
 			// Выполняем установку функции обратного вызова при закрытии потока
-			callbacks.set <int32_t (const int32_t, const http2_t::error_t)> ("close", bind(&web2_t::closedSignal, this, _1, _2));
+			callbacks.set <int32_t (const int32_t, const http2_t::error_t)> ("close", std::bind(&web2_t::closedSignal, this, _1, _2));
 			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			callbacks.set <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", bind(&web2_t::chunkSignal, this, _1, _2, _3));
+			callbacks.set <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", std::bind(&web2_t::chunkSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова при получении данных заголовка
-			callbacks.set <int32_t (const int32_t, const string &, const string &)> ("header", bind(&web2_t::headerSignal, this, _1, _2, _3));
+			callbacks.set <int32_t (const int32_t, const string &, const string &)> ("header", std::bind(&web2_t::headerSignal, this, _1, _2, _3));
 			// Выполняем установку функции обратного вызова получения фрейма
-			callbacks.set <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
+			callbacks.set <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", std::bind(&web2_t::frameSignal, this, _1, _2, _3, _4));
 			// Выполняем установку функции обратного вызова
 			this->_http2.callbacks(callbacks);
 			// Выполняем инициализацию модуля NgHttp2
@@ -488,7 +488,7 @@ bool awh::client::Web2::ping() noexcept {
  */
 void awh::client::Web2::close(const uint64_t bid) noexcept {
 	// Выполняем установку функции обратного вызова триггера, для закрытия соединения после завершения всех процессов
-	this->_http2.callback <void (void)> (1, bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid));
+	this->_http2.callback <void (void)> (1, std::bind(static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid));
 }
 /**
  * send Метод отправки сообщения на сервер

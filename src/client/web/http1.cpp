@@ -153,15 +153,15 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 											// Если параметры ответа получены
 											if(!response.empty()){
 												// Выводим заголовок ответа
-												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+												std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 												// Выводим параметры ответа
-												cout << string(response.begin(), response.end()) << endl;
+												std::cout << string(response.begin(), response.end()) << std::endl << std::flush;
 												// Если тело ответа существует
 												if(!this->_http.empty(awh::http_t::suite_t::BODY))
 													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<body %zu>", this->_http.body().size()) << endl << endl;
+													std::cout << this->_fmk->format("<body %zu>", this->_http.body().size()) << std::endl << std::endl << std::flush;
 												// Иначе устанавливаем перенос строки
-												else cout << endl;
+												else std::cout << std::endl << std::flush;
 											}
 										}
 									#endif
@@ -869,9 +869,9 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок запроса
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры запроса
-					cout << string(buffer.begin(), buffer.end()) << endl << endl;
+					std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 				#endif
 				// Тело WEB сообщения
 				vector <char> entity;
@@ -886,7 +886,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+						std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 					#endif
 					// Выполняем отправку тела запроса на сервер
 					core->send(entity.data(), entity.size(), this->_bid);
@@ -1054,7 +1054,7 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение о выводе чанка тела
-					cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+					std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 				#endif
 				// Устанавливаем флаг закрытия подключения
 				this->_stopped = (end && this->_http.empty(awh::http_t::suite_t::BODY));
@@ -1119,9 +1119,9 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок запроса
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры запроса
-					cout << string(headers.begin(), headers.end()) << endl << endl;
+					std::cout << string(headers.begin(), headers.end()) << std::endl << std::endl << std::flush;
 				#endif
 				// Устанавливаем флаг закрытия подключения
 				this->_stopped = end;
@@ -1206,7 +1206,7 @@ void awh::client::Http1::callbacks(const fn_t & callbacks) noexcept {
 		// Устанавливаем внешнюю функцию обратного вызова
 		this->_http.callback <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", this->_callbacks.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	else this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", bind(&http1_t::chunking, this, _1, _2, _3));
+	else this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&http1_t::chunking, this, _1, _2, _3));
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -1282,7 +1282,7 @@ void awh::client::Http1::core(const client::core_t * core) noexcept {
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
-		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -1476,17 +1476,17 @@ void awh::client::Http1::encryption(const string & pass, const string & salt, co
 awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _resultCallback(log) {
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
-	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", bind(&http1_t::answer, this, _1, _2, _3));
+	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http1_t::answer, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
-	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", bind(&http1_t::header, this, _1, _2, _3));
+	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&http1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
-	this->_http.callback <void (const uint64_t, const uint32_t, const string &)> ("response", bind(&http1_t::response, this, _1, _2, _3));
+	this->_http.callback <void (const uint64_t, const uint32_t, const string &)> ("response", std::bind(&http1_t::response, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", bind(&http1_t::chunking, this, _1, _2, _3));
+	this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&http1_t::chunking, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
-	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bind(&http1_t::errors, this, _1, _2, _3, _4));
+	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http1_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
-	this->_http.callback <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", bind(&http1_t::headers, this, _1, _2, _3, _4));
+	this->_http.callback <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&http1_t::headers, this, _1, _2, _3, _4));
 }
 /**
  * Http1 Конструктор
@@ -1497,19 +1497,19 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
 awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _resultCallback(log) {
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
-	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", bind(&http1_t::answer, this, _1, _2, _3));
+	this->_ws1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http1_t::answer, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
-	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", bind(&http1_t::header, this, _1, _2, _3));
+	this->_http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(&http1_t::header, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
-	this->_http.callback <void (const uint64_t, const uint32_t, const string &)> ("response", bind(&http1_t::response, this, _1, _2, _3));
+	this->_http.callback <void (const uint64_t, const uint32_t, const string &)> ("response", std::bind(&http1_t::response, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", bind(&http1_t::chunking, this, _1, _2, _3));
+	this->_http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&http1_t::chunking, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
-	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bind(&http1_t::errors, this, _1, _2, _3, _4));
+	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http1_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
-	this->_http.callback <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", bind(&http1_t::headers, this, _1, _2, _3, _4));
+	this->_http.callback <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", std::bind(&http1_t::headers, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
+	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeCallback, this, _1, _2, _3, _4));
 }
 /**
  * ~Http1 Деструктор

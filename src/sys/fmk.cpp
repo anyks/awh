@@ -3445,7 +3445,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 			// Перебираем весь список аргументов
 			for(auto & item : items)
 				// Выполняем замену индекса аргумента на указанный аргумент
-				replaceFn(result, "$" + to_string(index++), item);
+				replaceFn(result, "$" + std::to_string(index++), item);
 		/**
 		 * Если возникает ошибка
 		 */

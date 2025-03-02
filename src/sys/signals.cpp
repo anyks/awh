@@ -267,7 +267,7 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 	// Выполняем установку функцию обратного вызова
 	this->_callback = callback;
 	// Выполняем установки функции обратного вызова
-	callbackFn = bind(&sig_t::callback, this, _1);
+	callbackFn = std::bind(&sig_t::callback, this, _1);
 }
 /**
  * Signals Конструктор

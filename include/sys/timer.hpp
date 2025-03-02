@@ -119,7 +119,7 @@ namespace awh {
 							// Выполняем блокировку уникальным мютексом
 							unique_lock <mutex> lock(i->second->mtx);
 							// Выполняем ожидание на поступление новых заданий
-							i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), bind(&Timer::checkInputData, this, tid));
+							i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), std::bind(&Timer::checkInputData, this, tid));
 						}{
 							// Выполняем поиск нашего таймера
 							auto i = this->_timers.find(tid);
@@ -196,7 +196,7 @@ namespace awh {
 								// Выполняем блокировку уникальным мютексом
 								unique_lock <mutex> lock(i->second->mtx);
 								// Выполняем ожидание на поступление новых заданий
-								i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), bind(&Timer::checkInputData, this, tid));
+								i->second->cv.wait_for(lock, chrono::milliseconds(i->second->delay), std::bind(&Timer::checkInputData, this, tid));
 							}{
 								// Выполняем поиск идентификатор таймера
 								auto i = this->_timers.find(tid);

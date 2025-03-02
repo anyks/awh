@@ -2930,7 +2930,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 					const_cast <http_t *> (this)->body(vector <char> (body.begin(), body.end()));
 				}
 				// Добавляем заголовок тела сообщения
-				this->_web.header("Content-Length", to_string(body.size()));
+				this->_web.header("Content-Length", std::to_string(body.size()));
 			}
 			// Устанавливаем парарметр ответа
 			this->_web.response(res);
@@ -4513,7 +4513,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
 									if(this->_crypted)
 										// Устанавливаем X-AWH-Encryption
-										result.push_back(make_pair("x-awh-encryption", to_string(static_cast <uint16_t> (this->_cipher))));
+										result.push_back(make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 									// Определяем метод компрессии полезной нагрузки
 									switch(static_cast <uint8_t> (this->_compressors.current)){
 										// Если нужно сжать тело методом LZ4
@@ -4559,7 +4559,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
 									if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 										// Устанавливаем X-AWH-Encryption
-										result.push_back(make_pair("x-awh-encryption", to_string(static_cast <uint16_t> (this->_cipher))));
+										result.push_back(make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 									// Устанавливаем Content-Encoding если не передан
 									if(!this->is(suite_t::BLACK, "content-encoding")){
 										// Определяем метод компрессии полезной нагрузки
@@ -4607,7 +4607,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								// Если данные зашифрованы, устанавливаем соответствующие заголовки
 								if((this->_te.chunking = (this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))))
 									// Устанавливаем X-AWH-Encryption
-									result.push_back(make_pair("x-awh-encryption", to_string(static_cast <uint16_t> (this->_cipher))));
+									result.push_back(make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 								// Устанавливаем Content-Encoding если заголовок есть в запросе
 								if(available[10] && !this->is(suite_t::BLACK, "content-encoding")){
 									// Определяем метод компрессии полезной нагрузки
@@ -4679,7 +4679,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 				// Если сообщение получено
 				if(!res.message.empty()){
 					// Данные REST ответа
-					result.push_back(make_pair(":status", to_string(res.code)));
+					result.push_back(make_pair(":status", std::to_string(res.code)));
 					// Определяем тип HTTP-модуля
 					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
@@ -4837,7 +4837,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
 									if(this->_crypted)
 										// Устанавливаем X-AWH-Encryption
-										result.push_back(make_pair("x-awh-encryption", to_string(static_cast <uint16_t> (this->_cipher))));
+										result.push_back(make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 									// Определяем метод компрессии полезной нагрузки
 									switch(static_cast <uint8_t> (this->_compressors.current)){
 										// Если полезная нагрузка сжата методом LZ4
@@ -4887,7 +4887,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									// Если данные зашифрованы, устанавливаем соответствующие заголовки
 									if(this->_encryption && !this->is(suite_t::BLACK, "x-awh-encryption"))
 										// Устанавливаем X-AWH-Encryption
-										result.push_back(make_pair("x-awh-encryption", to_string(static_cast <uint16_t> (this->_cipher))));
+										result.push_back(make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 									// Устанавливаем Content-Encoding если не передан
 									if(!this->is(suite_t::BLACK, "content-encoding")){
 										// Определяем метод компрессии полезной нагрузки
@@ -5180,5 +5180,5 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
 	// Выполняем установку идентификатора объекта
 	this->_web.id(this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS));
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->_web.callback <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", bind(&awh::Http::chunking, this, _1, _2, _3));
+	this->_web.callback <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", std::bind(&awh::Http::chunking, this, _1, _2, _3));
 }

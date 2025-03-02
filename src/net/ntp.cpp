@@ -780,9 +780,9 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
-								cout << host << ":" << port << endl;
+								std::cout << host << ":" << port << std::endl << std::flush;
 							#endif
 						}
 					} break;
@@ -806,9 +806,9 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
-								cout << "[" << host << "]:" << port << endl;
+								std::cout << "[" << host << "]:" << port << std::endl << std::flush;
 							#endif
 						}
 					} break;

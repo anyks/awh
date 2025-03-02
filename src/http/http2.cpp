@@ -67,7 +67,7 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
 		va_end(args2);
 	}
 	// Выводим отладочную информацию
-	cout << " \x1B[36m\x1B[1mDebug:\x1B[0m " << buffer << endl;
+	std::cout << " \x1B[36m\x1B[1mDebug:\x1B[0m " << buffer << std::endl << std::flush;
 }
 /**
  * begin Функция обратного вызова активации получения фрейма заголовков
@@ -92,9 +92,9 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << endl;
+						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Выводим информацию об ошибке
-						cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+						std::cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << std::endl << std::endl << std::flush;
 					#endif
 					// Выполняем функцию обратного вызова
 					return self->_callbacks.call <int32_t (const int32_t)> ("begin", frame->hd.stream_id);
@@ -115,9 +115,9 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим заголовок ответа
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим информацию об ошибке
-								cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+								std::cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << std::endl << std::endl << std::flush;
 							#endif
 							// Выполняем функцию обратного вызова
 							return self->_callbacks.call <int32_t (const int32_t)> ("begin", frame->hd.stream_id);
@@ -132,9 +132,9 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим заголовок ответа
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим информацию об ошибке
-								cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+								std::cout << self->_fmk->format("Stream ID=%d", frame->hd.stream_id) << std::endl << std::endl << std::flush;
 							#endif
 							// Выполняем функцию обратного вызова
 							return self->_callbacks.call <int32_t (const int32_t)> ("begin", frame->hd.stream_id);
@@ -530,11 +530,11 @@ int32_t awh::Http2::close(nghttp2_session * session, const int32_t sid, const ui
 	 */
 	#if defined(DEBUG_MODE)
 		// Выводим заголовок ответа
-		cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE STREAM HTTP2 ^^^^^^^^^\x1B[0m" << endl;
+		std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE STREAM HTTP2 ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 		// Если ошибка не была получена
 		if(error == 0x0)
 			// Выводим информацию о закрытии сессии
-			cout << self->_fmk->format("Stream %d closed", sid) << endl << endl;
+			std::cout << self->_fmk->format("Stream %d closed", sid) << std::endl << std::endl << std::flush;
 	#endif
 	// Определяем код ошибки
 	error_t code = error_t::NONE;

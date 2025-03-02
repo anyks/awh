@@ -204,9 +204,9 @@ awh::Timeout::Timeout(const fmk_t * fmk, const log_t * log) noexcept :
 		this->_pipe.type(pipe_t::type_t::NATIVE);
 	#endif
 	// Выполняем добавление функции обратного вызова триггера
-	this->_screen = static_cast <function <void (void)>> (bind(&timeout_t::trigger, this));
+	this->_screen = static_cast <function <void (void)>> (std::bind(&timeout_t::trigger, this));
 	// Выполняем добавление функции обратного вызова процесса обработки
-	this->_screen = static_cast <function <void (const data_t)>> (bind(&timeout_t::process, this, _1));
+	this->_screen = static_cast <function <void (const data_t)>> (std::bind(&timeout_t::process, this, _1));
 }
 /**
  * ~Timeout Деструктор

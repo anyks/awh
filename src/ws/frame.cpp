@@ -37,15 +37,15 @@ void awh::ws::Message::find() noexcept {
 	// Если код сообщения передан
 	if(this->code > 0){
 		// Выполняем поиск типа сообщений
-		auto it = this->_codes.find(this->code);
+		auto i = this->_codes.find(this->code);
 		// Если тип сообщения найден, устанавливаем
-		if(it != this->_codes.end()){
+		if(i != this->_codes.end()){
 			// Устанавливаем тип сообщения
-			this->type = it->second.first;
+			this->type = i->second.first;
 			// Если текст сообщения получен
 			if(this->text.empty())
 				// Устанавливаем текст сообщения
-				this->text = it->second.second;
+				this->text = i->second.second;
 		}
 	}
 }

@@ -180,7 +180,7 @@ void awh::Scheme::Broker::start() noexcept {
 	// Устанавливаем тип события
 	this->_event = this->_addr.fd;
 	// Устанавливаем функцию обратного вызова
-	this->_event = bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
+	this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
 	// Выполняем запуск работы события
 	this->_event.start();
 }

@@ -312,7 +312,7 @@ int32_t awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) n
 				// Если функция обратного вызова для обработки чанков установлена
 				if(this->_callbacks.is("checkPassword"))
 					// Устанавливаем функцию проверки авторизации
-					stream->http.authCallback(bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+					stream->http.authCallback(std::bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
 			} break;
 			// Если тип авторизации Digest
 			case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
@@ -325,7 +325,7 @@ int32_t awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) n
 				// Если функция обратного вызова для обработки чанков установлена
 				if(this->_callbacks.is("extractPassword"))
 					// Устанавливаем функцию извлечения пароля
-					stream->http.extractPassCallback(bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+					stream->http.extractPassCallback(std::bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
 			} break;
 		}
 	// Если поток не создан, выполняем закрытие подключения
@@ -645,13 +645,13 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 					// Если параметры ответа получены
 					if(!buffer.empty())
 						// Выводим параметры ответа
-						cout << string(buffer.begin(), buffer.end()) << endl << endl;
+						std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 					// Если тело ответа существует
 					if(!stream->http.empty(awh::http_t::suite_t::BODY))
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<body %u>", stream->http.body().size()) << endl << endl;
+						std::cout << this->_fmk->format("<body %u>", stream->http.body().size()) << std::endl << std::endl << std::flush;
 					// Иначе устанавливаем перенос строки
-					else cout << endl;
+					else std::cout << std::endl << std::flush;
 				}
 			#endif
 			// Выполняем проверку авторизации
@@ -682,7 +682,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 								#if defined(DEBUG_MODE)
 									{
 										// Выводим заголовок ответа
-										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Получаем объект работы с HTTP-запросами
 										const http_t & http = reinterpret_cast <http_t &> (stream->http);
 										// Получаем бинарные данные REST-ответа
@@ -690,7 +690,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 										// Если бинарные данные ответа получены
 										if(!buffer.empty())
 											// Выводим параметры ответа
-											cout << string(buffer.begin(), buffer.end()) << endl << endl;
+											std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 									}
 								#endif
 								// Флаг отправляемого фрейма
@@ -714,7 +714,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+											std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 										#endif
 										// Если нужно установить флаг закрытия потока
 										if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
@@ -736,7 +736,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 											// Название выводимого заголовка
 											string name = "";
 											// Выводим заголовок трейлеров
-											cout << "<Trailers>" << endl << endl;
+											std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
 											// Выполняем перебор всего списка отправляемых трейлеров
 											for(auto & trailer : trailers){
 												// Получаем название заголовка
@@ -744,10 +744,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 												// Переводим заголовок в нормальный режим
 												this->_fmk->transform(name, fmk_t::transform_t::SMART);
 												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+												std::cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << std::endl << std::flush;
 											}
 											// Выводим завершение вывода информации
-											cout << endl << endl;
+											std::cout << std::endl << std::endl << std::flush;
 										#endif
 										// Выполняем отправку трейлеров
 										if(!web2_t::send(sid, bid, trailers))
@@ -815,7 +815,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 						#if defined(DEBUG_MODE)
 							{
 								// Выводим заголовок ответа
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Получаем объект работы с HTTP-запросами
 								const http_t & http = reinterpret_cast <http_t &> (stream->http);
 								// Получаем бинарные данные REST-ответа
@@ -823,7 +823,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 								// Если бинарные данные ответа получены
 								if(!buffer.empty())
 									// Выводим параметры ответа
-									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+									std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 							}
 						#endif
 						// Флаг отправляемого фрейма
@@ -847,7 +847,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 								 */
 								#if defined(DEBUG_MODE)
 									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+									std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 								#endif
 								// Если нужно установить флаг закрытия потока
 								if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
@@ -869,7 +869,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 									// Название выводимого заголовка
 									string name = "";
 									// Выводим заголовок трейлеров
-									cout << "<Trailers>" << endl << endl;
+									std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
 									// Выполняем перебор всего списка отправляемых трейлеров
 									for(auto & trailer : trailers){
 										// Получаем название заголовка
@@ -877,10 +877,10 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 										// Переводим заголовок в нормальный режим
 										this->_fmk->transform(name, fmk_t::transform_t::SMART);
 										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+										std::cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << std::endl << std::flush;
 									}
 									// Выводим завершение вывода информации
-									cout << endl << endl;
+									std::cout << std::endl << std::endl << std::flush;
 								#endif
 								// Выполняем отправку трейлеров
 								if(!web2_t::send(sid, bid, trailers))
@@ -964,7 +964,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callbacks.is("checkPassword"))
 							// Устанавливаем функцию проверки авторизации
-							options->http.authCallback(bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+							options->http.authCallback(std::bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
 					} break;
 					// Если тип авторизации Digest
 					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
@@ -977,7 +977,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callbacks.is("extractPassword"))
 							// Устанавливаем функцию извлечения пароля
-							options->http.extractPassCallback(bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+							options->http.extractPassCallback(std::bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
 					} break;
 				}
 			}
@@ -1041,7 +1041,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						#if defined(DEBUG_MODE)
 							{
 								// Выводим заголовок ответа
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Получаем объект работы с HTTP-запросами
 								const http_t & http = reinterpret_cast <http_t &> (options->http);
 								// Получаем бинарные данные REST-ответа
@@ -1049,7 +1049,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 								// Если бинарные данные ответа получены
 								if(!buffer.empty())
 									// Выводим параметры ответа
-									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+									std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 							}
 						#endif
 						// Выполняем замену активного агнета
@@ -1109,7 +1109,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 					#if defined(DEBUG_MODE)
 						{
 							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Получаем объект работы с HTTP-запросами
 							const http_t & http = reinterpret_cast <http_t &> (options->http);
 							// Получаем бинарные данные REST-ответа
@@ -1117,7 +1117,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 							// Если бинарные данные ответа получены
 							if(!buffer.empty())
 								// Выводим параметры ответа
-								cout << string(buffer.begin(), buffer.end()) << endl << endl;
+								std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 						}
 					#endif
 					// Флаг отправляемого фрейма
@@ -1141,7 +1141,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+								std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 							#endif
 							// Если нужно установить флаг закрытия потока
 							if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
@@ -1163,7 +1163,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 								// Название выводимого заголовка
 								string name = "";
 								// Выводим заголовок трейлеров
-								cout << "<Trailers>" << endl << endl;
+								std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
 								// Выполняем перебор всего списка отправляемых трейлеров
 								for(auto & trailer : trailers){
 									// Получаем название заголовка
@@ -1171,10 +1171,10 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 									// Переводим заголовок в нормальный режим
 									this->_fmk->transform(name, fmk_t::transform_t::SMART);
 									// Выводим сообщение о выводе чанка тела
-									cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+									std::cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << std::endl << std::flush;
 								}
 								// Выводим завершение вывода информации
-								cout << endl << endl;
+								std::cout << std::endl << std::endl << std::flush;
 							#endif
 							// Выполняем отправку трейлеров
 							if(!web2_t::send(options->sid, bid, trailers))
@@ -1892,7 +1892,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+											std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 										#endif
 										// Если нужно установить флаг закрытия потока
 										if(end && stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
@@ -1912,7 +1912,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 											// Название выводимого заголовка
 											string name = "";
 											// Выводим заголовок трейлеров
-											cout << "<Trailers>" << endl << endl;
+											std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
 											// Выполняем перебор всего списка отправляемых трейлеров
 											for(auto & trailer : trailers){
 												// Получаем название заголовка
@@ -1920,10 +1920,10 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 												// Переводим заголовок в нормальный режим
 												this->_fmk->transform(name, fmk_t::transform_t::SMART);
 												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+												std::cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << std::endl << std::flush;
 											}
 											// Выводим завершение вывода информации
-											cout << endl << endl;
+											std::cout << std::endl << std::endl << std::flush;
 										#endif
 										// Выполняем отправку трейлеров
 										if((result = !web2_t::send(sid, bid, trailers)))
@@ -2011,13 +2011,13 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const ui
 										#if defined(DEBUG_MODE)
 											{
 												// Выводим заголовок ответа
-												cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+												std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 												// Получаем бинарные данные REST-ответа
 												const auto & buffer = stream->http.process(http_t::process_t::RESPONSE, response);
 												// Если бинарные данные ответа получены
 												if(!buffer.empty())
 													// Выводим параметры ответа
-													cout << string(buffer.begin(), buffer.end()) << endl << endl;
+													std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 											}
 										#endif
 										// Флаг отправляемого фрейма
@@ -2116,13 +2116,13 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 											#if defined(DEBUG_MODE)
 												{
 													// Выводим заголовок ответа
-													cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+													std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 													// Получаем бинарные данные REST-ответа
 													const auto & buffer = stream->http.process(http_t::process_t::RESPONSE, response);
 													// Если бинарные данные ответа получены
 													if(!buffer.empty())
 														// Выводим параметры ответа
-														cout << string(buffer.begin(), buffer.end()) << endl << endl;
+														std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 												}
 											#endif
 											// Флаг отправляемого фрейма
@@ -2146,7 +2146,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 													 */
 													#if defined(DEBUG_MODE)
 														// Выводим сообщение о выводе чанка тела
-														cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+														std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 													#endif
 													// Если нужно установить флаг закрытия потока
 													if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
@@ -2168,7 +2168,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 														// Название выводимого заголовка
 														string name = "";
 														// Выводим заголовок трейлеров
-														cout << "<Trailers>" << endl << endl;
+														std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
 														// Выполняем перебор всего списка отправляемых трейлеров
 														for(auto & trailer : trailers){
 															// Получаем название заголовка
@@ -2176,10 +2176,10 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 															// Переводим заголовок в нормальный режим
 															this->_fmk->transform(name, fmk_t::transform_t::SMART);
 															// Выводим сообщение о выводе чанка тела
-															cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << endl;
+															std::cout << this->_fmk->format("%s: %s", name.c_str(), trailer.second.c_str()) << std::endl << std::flush;
 														}
 														// Выводим завершение вывода информации
-														cout << endl << endl;
+														std::cout << std::endl << std::endl << std::flush;
 													#endif
 													// Выполняем отправку трейлеров
 													if(!web2_t::send(sid, bid, trailers))
@@ -2460,11 +2460,11 @@ int32_t awh::server::Http2::push2(const int32_t sid, const uint64_t bid, const v
 									// Устанавливаем заголовки запроса
 									http.headers2(headers);
 									// Выводим заголовок запроса
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << endl;
+									std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 									// Получаем бинарные данные HTTP-запроса
 									const auto & buffer = http.process(http_t::process_t::REQUEST, http.request());
 									// Выводим параметры запроса
-									cout << string(buffer.begin(), buffer.end()) << endl << endl;
+									std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 								}
 							#endif
 							// Выполняем отправку push-уведомлений
@@ -2980,17 +2980,17 @@ void awh::server::Http2::core(const server::core_t * core) noexcept {
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
 		// Устанавливаем событие на запуск системы
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", bind(&http2_t::openEvents, this, _1));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&http2_t::openEvents, this, _1));
 		// Устанавливаем событие подключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", bind(&http2_t::connectEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&http2_t::connectEvents, this, _1, _2));
 		// Устанавливаем событие отключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", bind(&http2_t::disconnectEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&http2_t::disconnectEvents, this, _1, _2));
 		// Устанавливаем функцию чтения данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", bind(&http2_t::readEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&http2_t::readEvents, this, _1, _2, _3, _4));
 		// Устанавливаем функцию записи данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&http2_t::writeEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http2_t::writeEvents, this, _1, _2, _3, _4));
 		// Добавляем событие аццепта брокера
-		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", bind(&http2_t::acceptEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&http2_t::acceptEvents, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -3279,17 +3279,17 @@ awh::server::Http2::Http2(const server::core_t * core, const fmk_t * fmk, const 
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", bind(&http2_t::openEvents, this, _1));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&http2_t::openEvents, this, _1));
 	// Устанавливаем событие подключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", bind(&http2_t::connectEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&http2_t::connectEvents, this, _1, _2));
 	// Устанавливаем событие отключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", bind(&http2_t::disconnectEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&http2_t::disconnectEvents, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", bind(&http2_t::readEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&http2_t::readEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&http2_t::writeEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http2_t::writeEvents, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", bind(&http2_t::acceptEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&http2_t::acceptEvents, this, _1, _2, _3, _4));
 }
 /**
  * ~Http2 Деструктор

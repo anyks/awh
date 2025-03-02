@@ -52,21 +52,21 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 			// Если функция обратного вызова для обработки чанков установлена
 			if(!this->_callbacks.is("chunking"))
 				// Устанавливаем функцию обработки вызова для получения чанков
-				options->http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", bind(&http1_t::chunking, this, _1, _2, _3));
+				options->http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&http1_t::chunking, this, _1, _2, _3));
 			// Устанавливаем функцию обработки вызова для получения чанков
 			else options->http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", this->_callbacks.get <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking"));
 			// Если функция обратного вызова на полученного заголовка с клиента установлена
 			if(this->_callbacks.is("header"))
 				// Устанавливаем функцию обратного вызова для получения заголовков запроса
-				options->http.callback <void (const uint64_t, const string &, const string &)> ("header", bind(this->_callbacks.get <void (const int32_t, const uint64_t, const string &, const string &)> ("header"), 1, _1, _2, _3));
+				options->http.callback <void (const uint64_t, const string &, const string &)> ("header", std::bind(this->_callbacks.get <void (const int32_t, const uint64_t, const string &, const string &)> ("header"), 1, _1, _2, _3));
 			// Если функция обратного вызова на вывод запроса клиента установлена
 			if(this->_callbacks.is("request"))
 				// Устанавливаем функцию обратного вызова для получения запроса клиента
-				options->http.callback <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", bind(this->_callbacks.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request"), 1, _1, _2, _3));
+				options->http.callback <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(this->_callbacks.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request"), 1, _1, _2, _3));
 			// Если функция обратного вызова на вывод полученных заголовков с клиента установлена
 			if(this->_callbacks.is("headers"))
 				// Устанавливаем функцию обратного вызова для получения всех заголовков запроса
-				options->http.callback <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headersRequest", bind(this->_callbacks.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers"), 1, _1, _2, _3, _4));
+				options->http.callback <void (const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headersRequest", std::bind(this->_callbacks.get <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers"), 1, _1, _2, _3, _4));
 			// Если функция обратного вызова на на вывод ошибок установлена
 			if(this->_callbacks.is("error"))
 				// Устанавливаем функцию обратного вызова для вывода ошибок
@@ -87,7 +87,7 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 					// Если функция обратного вызова для обработки чанков установлена
 					if(this->_callbacks.is("checkPassword"))
 						// Устанавливаем функцию проверки авторизации
-						options->http.authCallback(bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+						options->http.authCallback(std::bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
 				} break;
 				// Если тип авторизации Digest
 				case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
@@ -100,7 +100,7 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 					// Если функция обратного вызова для обработки чанков установлена
 					if(this->_callbacks.is("extractPassword"))
 						// Устанавливаем функцию извлечения пароля
-						options->http.extractPassCallback(bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+						options->http.extractPassCallback(std::bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
 				} break;
 			}
 			// Выполняем добавление агнета
@@ -187,15 +187,15 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 									// Если параметры запроса получены
 									if(!request.empty()){
 										// Выводим заголовок запроса
-										cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры запроса
-										cout << string(request.begin(), request.end()) << endl << endl;
+										std::cout << string(request.begin(), request.end()) << std::endl << std::endl << std::flush;
 										// Если тело запроса существует
 										if(!options->http.empty(awh::http_t::suite_t::BODY))
 											// Выводим сообщение о выводе чанка тела
-											cout << this->_fmk->format("<body %u>", options->http.body().size()) << endl << endl;
+											std::cout << this->_fmk->format("<body %u>", options->http.body().size()) << std::endl << std::endl << std::flush;
 										// Иначе устанавливаем перенос строки
-										else cout << endl;
+										else std::cout << std::endl << std::flush;
 									}
 								}
 							#endif
@@ -239,9 +239,9 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 									 */
 									#if defined(DEBUG_MODE)
 										// Выводим заголовок ответа
-										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры ответа
-										cout << string(response.begin(), response.end()) << endl << endl;
+										std::cout << string(response.begin(), response.end()) << std::endl << std::endl << std::flush;
 									#endif
 									// Отправляем ответ брокеру
 									const_cast <server::core_t *> (this->_core)->send(response.data(), response.size(), bid);
@@ -252,7 +252,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим сообщение о выводе чанка полезной нагрузки
-											cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
+											std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 										#endif
 										// Если тела данных для отправки больше не осталось
 										if(options->http.empty(awh::http_t::suite_t::BODY))
@@ -387,9 +387,9 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 										 */
 										#if defined(DEBUG_MODE)
 											// Выводим заголовок ответа
-											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+											std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 											// Выводим параметры ответа
-											cout << string(response.begin(), response.end()) << endl << endl;
+											std::cout << string(response.begin(), response.end()) << std::endl << std::endl << std::flush;
 										#endif
 										// Отправляем ответ брокеру
 										const_cast <server::core_t *> (this->_core)->send(response.data(), response.size(), bid);
@@ -400,7 +400,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 											 */
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о выводе чанка полезной нагрузки
-												cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
+												std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 											#endif
 											// Если тела данных для отправки больше не осталось
 											if(options->http.empty(awh::http_t::suite_t::BODY))
@@ -573,7 +573,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callbacks.is("checkPassword"))
 							// Устанавливаем функцию проверки авторизации
-							options->http.authCallback(bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+							options->http.authCallback(std::bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
 					} break;
 					// Если тип авторизации Digest
 					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
@@ -586,7 +586,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Если функция обратного вызова для обработки чанков установлена
 						if(this->_callbacks.is("extractPassword"))
 							// Устанавливаем функцию извлечения пароля
-							options->http.extractPassCallback(bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+							options->http.extractPassCallback(std::bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
 					} break;
 				}
 			}
@@ -657,9 +657,9 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим параметры ответа
-							cout << string(buffer.begin(), buffer.end()) << endl << endl;
+							std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 						#endif
 						// Выполняем замену активного агнета
 						this->_agents.at(bid) = agent_t::WEBSOCKET;
@@ -702,9 +702,9 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Выводим параметры ответа
-						cout << string(buffer.begin(), buffer.end()) << endl << endl;
+						std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем метод компрессии данных ответа
 					web->http.compression(compressor);
@@ -721,7 +721,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка полезной нагрузки
-							cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
+							std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 						#endif
 						// Если тела данных для отправки больше не осталось
 						if(web->http.empty(awh::http_t::suite_t::BODY))
@@ -1091,7 +1091,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+						std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем флаг закрытия подключения
 					options->stopped = (end && options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0));
@@ -1105,7 +1105,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок трейлеров
-						cout << "<Trailers>" << endl << endl;
+						std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
 					#endif
 					// Получаем отправляемые трейлеры
 					while(!(entity = options->http.trailer()).empty()){
@@ -1114,7 +1114,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("%s", string(entity.begin(), entity.end()).c_str());
+							std::cout << this->_fmk->format("%s", string(entity.begin(), entity.end()).c_str()) << std::flush;
 						#endif
 						// Устанавливаем флаг закрытия подключения
 						options->stopped = (end && (options->http.trailers() == 0));
@@ -1126,7 +1126,7 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим завершение вывода информации
-						cout << endl << endl;
+						std::cout << std::endl << std::endl << std::flush;
 					#endif
 				}
 			}
@@ -1178,9 +1178,9 @@ int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const 
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок запроса
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Выводим параметры запроса
-						cout << string(headers.begin(), headers.end()) << endl << endl;
+						std::cout << string(headers.begin(), headers.end()) << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем флаг закрытия подключения
 					options->stopped = end;
@@ -1264,9 +1264,9 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры ответа
-					cout << string(response.begin(), response.end()) << endl << endl;
+					std::cout << string(response.begin(), response.end()) << std::endl << std::endl << std::flush;
 				#endif
 				// Если тело данных не установлено для отправки
 				if(options->http.empty(awh::http_t::suite_t::BODY))
@@ -1281,7 +1281,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 						// Если включён режим отладки
 						#if defined(DEBUG_MODE)
 							// Выводим сообщение о выводе чанка полезной нагрузки
-							cout << this->_fmk->format("<chunk %zu>", payload.size()) << endl << endl;
+							std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 						#endif
 						// Если тела данных для отправки больше не осталось
 						if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
@@ -1297,7 +1297,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим заголовок трейлеров
-							cout << "<Trailers>" << endl << endl;
+							std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
 						#endif
 						// Получаем отправляемые трейлеры
 						while(!(payload = options->http.trailer()).empty()){
@@ -1306,7 +1306,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str());
+								std::cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << std::flush;
 							#endif
 							// Если все трейлеры были отправлены
 							if(options->http.trailers() == 0)
@@ -1320,7 +1320,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим завершение вывода информации
-							cout << endl << endl;
+							std::cout << std::endl << std::endl << std::flush;
 						#endif
 					}
 					// Если установлена функция отлова завершения запроса
@@ -1679,17 +1679,17 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
 		// Устанавливаем событие на запуск системы
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", bind(&http1_t::openEvents, this, _1));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&http1_t::openEvents, this, _1));
 		// Устанавливаем событие подключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", bind(&http1_t::connectEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&http1_t::connectEvents, this, _1, _2));
 		// Устанавливаем событие отключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", bind(&http1_t::disconnectEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&http1_t::disconnectEvents, this, _1, _2));
 		// Устанавливаем функцию чтения данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", bind(&http1_t::readEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&http1_t::readEvents, this, _1, _2, _3, _4));
 		// Устанавливаем функцию записи данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&http1_t::writeEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeEvents, this, _1, _2, _3, _4));
 		// Добавляем событие аццепта брокера
-		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", bind(&http1_t::acceptEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&http1_t::acceptEvents, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -1805,15 +1805,15 @@ awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const 
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", bind(&http1_t::openEvents, this, _1));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&http1_t::openEvents, this, _1));
 	// Устанавливаем событие подключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", bind(&http1_t::connectEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&http1_t::connectEvents, this, _1, _2));
 	// Устанавливаем событие отключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", bind(&http1_t::disconnectEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&http1_t::disconnectEvents, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", bind(&http1_t::readEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&http1_t::readEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&http1_t::writeEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http1_t::writeEvents, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", bind(&http1_t::acceptEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&http1_t::acceptEvents, this, _1, _2, _3, _4));
 }

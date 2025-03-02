@@ -805,9 +805,9 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим начальный разделитель
-								cout << "------------------------------------------------------------" << endl << endl;
+								std::cout << "------------------------------------------------------------" << std::endl << std::endl << std::flush;
 								// Выводим заголовок
-								cout << "DNS RESPONSE:" << endl << endl;
+								std::cout << "DNS RESPONSE:" << std::endl << std::endl << std::flush;
 								// Если список запрашиваемых доменных имён получен
 								if(!qnames.empty()){
 									// Выполняем перебор списка каннонических имён
@@ -987,7 +987,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 									}
 								}
 								// Выводим конечный разделитель
-								cout << endl << "------------------------------------------------------------" << endl << endl;
+								std::cout << std::endl << "------------------------------------------------------------" << std::endl << std::endl << std::flush;
 							/**
 							 * Если режим отладки отключён
 							 */
@@ -2412,9 +2412,9 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD DNS SERVER ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD DNS SERVER ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
-								cout << host << ":" << port << endl;
+								std::cout << host << ":" << port << std::endl << std::flush;
 							#endif
 						}
 					} break;
@@ -2438,9 +2438,9 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD DNS SERVER ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD DNS SERVER ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
-								cout << "[" << host << "]:" << port << endl;
+								std::cout << "[" << host << "]:" << port << std::endl << std::flush;
 							#endif
 						}
 					} break;
@@ -3064,24 +3064,24 @@ string awh::DNS::resolve(const int32_t family, const string & host) noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим заголовок запроса
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ DOMAIN RESOLVE ^^^^^^^^^\x1B[0m" << endl;
+							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ DOMAIN RESOLVE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим параметры запроса
-							cout << domain << endl;
+							std::cout << domain << std::endl << std::flush;
 							// Определяем тип протокола подключения
 							switch(family){
 								// Если тип протокола подключения IPv4
 								case static_cast <int32_t> (AF_INET):
 									// Выводим информацию об IP-адресе
-									cout << "IPv4: " << result << endl;
+									std::cout << "IPv4: " << result << std::endl << std::flush;
 								break;
 								// Если тип протокола подключения IPv6
 								case static_cast <int32_t> (AF_INET6):
 									// Выводим информацию об IP-адресе
-									cout << "IPv6: " << result << endl;
+									std::cout << "IPv6: " << result << std::endl << std::flush;
 								break;
 							}
 							// Выводим переход на новую строку
-							cout << endl;
+							std::cout << std::endl << std::flush;
 						#endif
 						// Выводим полученный результат
 						return result;
@@ -3163,24 +3163,24 @@ string awh::DNS::resolve(const int32_t family, const string & host) noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим заголовок запроса
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ DOMAIN RESOLVE ^^^^^^^^^\x1B[0m" << endl;
+							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ DOMAIN RESOLVE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим параметры запроса
-							cout << domain << endl;
+							std::cout << domain << std::endl << std::flush;
 							// Определяем тип протокола подключения
 							switch(family){
 								// Если тип протокола подключения IPv4
 								case static_cast <int32_t> (AF_INET):
 									// Выводим информацию об IP-адресе
-									cout << "IPv4: " << result << endl;
+									std::cout << "IPv4: " << result << std::endl << std::flush;
 								break;
 								// Если тип протокола подключения IPv6
 								case static_cast <int32_t> (AF_INET6):
 									// Выводим информацию об IP-адресе
-									cout << "IPv6: " << result << endl;
+									std::cout << "IPv6: " << result << std::endl << std::flush;
 								break;
 							}
 							// Выводим переход на новую строку
-							cout << endl;
+							std::cout << std::endl << std::flush;
 						#endif
 						// Выводим полученный результат
 						return result;

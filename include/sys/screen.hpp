@@ -164,7 +164,7 @@ namespace awh {
 						// Выполняем блокировку уникальным мютексом
 						unique_lock <mutex> lock(this->_locker);
 						// Выполняем ожидание на поступление новых заданий
-						this->_cv.wait_for(lock, this->_delay, bind(&Screen::check, this));
+						this->_cv.wait_for(lock, this->_delay, std::bind(&Screen::check, this));
 						// Выполняем запуск обработки поступившей задачи
 						this->process();
 						// Если произведена остановка

@@ -89,7 +89,7 @@ namespace awh {
 						// Выполняем блокировку уникальным мютексом
 						unique_lock <mutex> lock(this->_locker);
 						// Если это не остановка приложения и список задач пустой, ожидаем добавления нового задания
-						this->_cv.wait_for(lock, 100ms, bind(&ThreadPool::check, this));
+						this->_cv.wait_for(lock, 100ms, std::bind(&ThreadPool::check, this));
 						// Если это остановка приложения и список задач пустой, выходим
 						if(this->_stop && this->_tasks.empty())
 							// Выходим из функции
@@ -188,7 +188,7 @@ namespace awh {
 					// Добавляем в список воркеров, новую задачу
 					for(uint16_t i = 0; i < this->_threads; ++i)
 						// Добавляем новую задачу
-						this->_workers.emplace_back(bind(&ThreadPool::work, this));
+						this->_workers.emplace_back(std::bind(&ThreadPool::work, this));
 				}
 			}
 		public:
@@ -236,7 +236,7 @@ namespace awh {
 				// Устанавливаем тип возвращаемого значения
 				using return_type = typename result_of <Func(Args...)>::type;
 				// Добавляем задачу в очередь для последующего исполнения
-				auto task = make_shared <packaged_task <return_type()>> (bind(std::forward <Func> (func), std::forward <Args> (args)...));
+				auto task = make_shared <packaged_task <return_type()>> (std::bind(std::forward <Func> (func), std::forward <Args> (args)...));
 				// Создаем шаблон асинхронных операций
 				future <return_type> res = task->get_future();
 				{

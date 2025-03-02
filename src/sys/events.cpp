@@ -2326,7 +2326,7 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(j->second.callback != nullptr){
 														// Получаем функцию обратного вызова
-														auto callback = bind(j->second.callback, fd, event_type_t::CLOSE);
+														auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
 														// Выполняем поиск события на отключение присутствует в базе событий
 														auto k = j->second.mode.find(event_type_t::CLOSE);
 														// Если событие найдено и оно активированно
@@ -2522,7 +2522,7 @@ void awh::Base::start() noexcept {
 														// Если функция обратного вызова установлена
 														if(i->second.callback != nullptr){
 															// Получаем функцию обратного вызова
-															auto callback = bind(i->second.callback, i->second.fd, event_type_t::CLOSE);
+															auto callback = std::bind(i->second.callback, i->second.fd, event_type_t::CLOSE);
 															// Выполняем поиск события на отключение присутствует в базе событий
 															auto j = i->second.mode.find(event_type_t::CLOSE);
 															// Если событие найдено и оно активированно
@@ -2728,7 +2728,7 @@ void awh::Base::start() noexcept {
 														// Если функция обратного вызова установлена
 														if(j->second.callback != nullptr){
 															// Получаем функцию обратного вызова
-															auto callback = bind(j->second.callback, j->second.fd, event_type_t::CLOSE);
+															auto callback = std::bind(j->second.callback, j->second.fd, event_type_t::CLOSE);
 															// Выполняем поиск события на отключение присутствует в базе событий
 															auto k = j->second.mode.find(event_type_t::CLOSE);
 															// Если событие найдено и оно активированно
@@ -3039,7 +3039,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 			ret.first->second.callback = callback;
 		#endif
 		// Выполняем добавление события в базу событий
-		if(!this->add(result, ret.first->second.read, bind(&base_t::upstream, this, result, _1, _2)))
+		if(!this->add(result, ret.first->second.read, std::bind(&base_t::upstream, this, result, _1, _2)))
 			// Выводим сообщение что событие не вышло активировать
 			this->_log->print("Failed activate upstream event for SOCKET=%d", log_t::flag_t::WARNING, ret.first->second.read);
 		// Если событие в базу событий успешно добавленно, активируем событие чтения на сокет верхнеуровневого потока

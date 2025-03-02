@@ -96,7 +96,7 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 							// Если функция обратного вызова для обработки чанков установлена
 							if(this->_callbacks.is("checkPassword"))
 								// Устанавливаем функцию проверки авторизации
-								options->http.authCallback(bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+								options->http.authCallback(std::bind(this->_callbacks.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
 						} break;
 						// Если тип авторизации Digest
 						case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
@@ -109,7 +109,7 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 							// Если функция обратного вызова для обработки чанков установлена
 							if(this->_callbacks.is("extractPassword"))
 								// Устанавливаем функцию извлечения пароля
-								options->http.extractPassCallback(bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+								options->http.extractPassCallback(std::bind(this->_callbacks.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
 						} break;
 					}
 				}
@@ -526,7 +526,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 													// Если тредпул активирован
 													if(this->_thr.is())
 														// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-														this->_thr.push(bind(&ws2_t::extraction, this, bid, payload, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+														this->_thr.push(std::bind(&ws2_t::extraction, this, bid, payload, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
 													// Если тредпул не активирован, выполняем извлечение полученных сообщений
 													else this->extraction(bid, payload, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
 												}
@@ -542,7 +542,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 														// Если тредпул активирован
 														if(this->_thr.is())
 															// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-															this->_thr.push(bind(&ws2_t::extraction, this, bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+															this->_thr.push(std::bind(&ws2_t::extraction, this, bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
 														// Если тредпул не активирован, выполняем извлечение полученных сообщений
 														else this->extraction(bid, options->buffer.fragmes, (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
 														// Очищаем список фрагментированных сообщений
@@ -665,7 +665,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 										// Если параметры ответа получены
 										if(!buffer.empty())
 											// Выводим параметры ответа
-											cout << string(buffer.begin(), buffer.end()) << endl << endl;
+											std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 									}
 								#endif
 								// Выполняем проверку авторизации
@@ -734,13 +734,13 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 														// Выполняем коммит полученного результата
 														http.commit();
 														// Выводим заголовок ответа
-														cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+														std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 														// Получаем данные ответа
 														const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 														// Если бинарные данные ответа получены
 														if(!buffer.empty())
 															// Выводим параметры ответа
-															cout << string(buffer.begin(), buffer.end()) << endl << endl;
+															std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 													}
 												#endif
 												// Выполняем ответ подключившемуся клиенту
@@ -815,13 +815,13 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 											// Выполняем коммит полученного результата
 											http.commit();
 											// Выводим заголовок ответа
-											cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+											std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 											// Получаем данные ответа
 											const auto & buffer = http.process(http_t::process_t::RESPONSE, response);
 											// Если бинарные данные ответа получены
 											if(!buffer.empty())
 												// Выводим параметры ответа
-												cout << string(buffer.begin(), buffer.end()) << endl << endl;
+												std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 										}
 									#endif
 									// Флаг отправляемого фрейма
@@ -855,7 +855,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 											 */
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о выводе чанка тела
-												cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+												std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 											#endif
 											// Если нужно установить флаг закрытия потока
 											if(options->http.empty(awh::http_t::suite_t::BODY))
@@ -1265,9 +1265,9 @@ void awh::server::Websocket2::sendError(const uint64_t bid, const ws::mess_t & m
 						 */
 						#if defined(DEBUG_MODE)
 							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << endl;
+							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим отправляемое сообщение
-							cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
+							std::cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << std::endl << std::endl << std::flush;
 						#endif
 						// Выполняем отправку сообщения клиенту
 						web2_t::send(options->sid, bid, buffer.data(), buffer.size(), http2_t::flag_t::END_STREAM);
@@ -1324,13 +1324,13 @@ bool awh::server::Websocket2::sendMessage(const uint64_t bid, const char * messa
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << endl;
+						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Если отправляемое сообщение является текстом
 						if(text)
 							// Выводим параметры ответа
-							cout << string(message, size) << endl << endl;
+							std::cout << string(message, size) << std::endl << std::endl << std::flush;
 						// Выводим сообщение о выводе чанка полезной нагрузки
-						else cout << this->_fmk->format("<bytes %zu>", size) << endl << endl;
+						else std::cout << this->_fmk->format("<bytes %zu>", size) << std::endl << std::endl << std::flush;
 					#endif
 					// Бинарный буфер для отправки
 					vector <char> buffer;
@@ -1844,17 +1844,17 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
 		// Устанавливаем событие на запуск системы
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", bind(&ws2_t::openEvents, this, _1));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&ws2_t::openEvents, this, _1));
 		// Устанавливаем событие подключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", bind(&ws2_t::connectEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2));
 		// Устанавливаем событие отключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", bind(&ws2_t::disconnectEvents, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2));
 		// Устанавливаем функцию чтения данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
 		// Устанавливаем функцию записи данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
 		// Добавляем событие аццепта брокера
-		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -2059,17 +2059,17 @@ awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * f
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", bind(&ws2_t::openEvents, this, _1));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&ws2_t::openEvents, this, _1));
 	// Устанавливаем событие подключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", bind(&ws2_t::connectEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&ws2_t::connectEvents, this, _1, _2));
 	// Устанавливаем событие отключения
-	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", bind(&ws2_t::disconnectEvents, this, _1, _2));
+	const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&ws2_t::disconnectEvents, this, _1, _2));
 	// Устанавливаем функцию чтения данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&ws2_t::readEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&ws2_t::writeEvents, this, _1, _2, _3, _4));
 	// Добавляем событие аццепта брокера
-	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
+	const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&ws2_t::acceptEvents, this, _1, _2, _3, _4));
 }
 /**
  * ~Websocket2 Деструктор

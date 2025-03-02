@@ -295,7 +295,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 										// Если параметры запроса получены
 										if(!request.empty())
 											// Выводим параметры запроса
-											cout << string(request.begin(), request.end()) << endl;
+											std::cout << string(request.begin(), request.end()) << std::endl << std::flush;
 									}
 								#endif
 								// Если функция обратного вызова на вывода запроса клиента к серверу
@@ -328,9 +328,9 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 												// Если тело ответа существует
 												if(!i->second->http.empty(awh::http_t::suite_t::BODY))
 													// Выводим сообщение о выводе чанка тела
-													cout << this->_fmk->format("<body %zu>", i->second->http.body().size()) << endl << endl;
+													std::cout << this->_fmk->format("<body %zu>", i->second->http.body().size()) << std::endl << std::endl << std::flush;
 												// Иначе устанавливаем перенос строки
-												else cout << endl;
+												else std::cout << std::endl << std::flush;
 											}
 										#endif
 										// Выполняем препарирование полученных данных
@@ -435,7 +435,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 												// Если параметры ответа получены
 												if(!response.empty())
 													// Выводим параметры ответа
-													cout << string(response.begin(), response.end()) << endl;
+													std::cout << string(response.begin(), response.end()) << std::endl << std::flush;
 											}
 										#endif
 										// Получаем параметры запроса
@@ -1395,11 +1395,11 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Получаем бинарные данные HTTP-запроса
 								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 								// Выводим параметры запроса
-								cout << string(buffer.begin(), buffer.end()) << endl << endl;
+								std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 							#endif
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, query);
@@ -1430,7 +1430,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 									 */
 									#if defined(DEBUG_MODE)
 										// Выводим сообщение о выводе чанка тела
-										cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+										std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 									#endif
 									// Если нужно установить флаг закрытия потока
 									if(this->_http.empty(awh::http_t::suite_t::BODY))
@@ -1624,7 +1624,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Если функция обратного вызова на событие получения ошибок установлена
 					if(this->_callbacks.is("error"))
 						// Устанавливаем функцию обработки вызова на событие получения ошибок
-						ret.first->second->http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bind(&http2_t::errors, this, _1, _2, _3, _4));
+						ret.first->second->http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http2_t::errors, this, _1, _2, _3, _4));
 				}
 			}
 			// Если идентификатор устаревшего запроса найден
@@ -1687,7 +1687,7 @@ bool awh::client::Http2::send(const int32_t sid, const char * buffer, const size
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %zu>", entity.size()) << endl << endl;
+						std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 					#endif
 					// Если нужно установить флаг закрытия потока
 					if(end && this->_http.empty(awh::http_t::suite_t::BODY))
@@ -1753,11 +1753,11 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок запроса
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Получаем бинарные данные HTTP-запроса
 						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 						// Выводим параметры запроса
-						cout << string(buffer.begin(), buffer.end()) << endl << endl;
+						std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 					#endif
 					// Выполняем заголовки запроса на сервер
 					result = web2_t::send(sid, headers, (end ? awh::http2_t::flag_t::END_STREAM : awh::http2_t::flag_t::NONE));
@@ -2015,7 +2015,7 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
-		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&http2_t::writeCallback, this, _1, _2, _3, _4));
+		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4));
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -2223,17 +2223,17 @@ void awh::client::Http2::encryption(const string & pass, const string & salt, co
 awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
 	// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
-	this->_http1.callback <void (const int32_t, const uint64_t)> ("result", bind(&http2_t::result, this, _1, _2));
+	this->_http1.callback <void (const int32_t, const uint64_t)> ("result", std::bind(&http2_t::result, this, _1, _2));
 	// Выполняем установку перехвата событий получения статуса овтета сервера для HTTP-клиента
-	this->_http1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", bind(&http2_t::answer, this, _1, _2, _3));
+	this->_http1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http2_t::answer, this, _1, _2, _3));
 	// Выполняем установку функции обратного вызова для Websocket-клиента
-	this->_ws2.callback <void (const int32_t, const uint64_t, const direct_t)> ("end", bind(&http2_t::end, this, _1, _2, _3));
+	this->_ws2.callback <void (const int32_t, const uint64_t, const direct_t)> ("end", std::bind(&http2_t::end, this, _1, _2, _3));
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
-	this->_ws2.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", bind(&http2_t::answer, this, _1, _2, _3));
+	this->_ws2.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http2_t::answer, this, _1, _2, _3));
 	// Выполняем установку функции обратного вызова перехвата события редиректа
-	this->_ws2.callback <void (const int32_t, const int32_t)> ("redirect", bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
+	this->_ws2.callback <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
-	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bind(&http2_t::errors, this, _1, _2, _3, _4));
+	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http2_t::errors, this, _1, _2, _3, _4));
 }
 /**
  * Http2 Конструктор
@@ -2244,19 +2244,19 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
 awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _ws2(fmk, log), _http1(fmk, log), _http(fmk, log), _webSocket(false), _threads(-1) {
 	// Выполняем установку перехвата событий завершения запроса для HTTP-клиента
-	this->_http1.callback <void (const int32_t, const uint64_t)> ("result", bind(&http2_t::result, this, _1, _2));
+	this->_http1.callback <void (const int32_t, const uint64_t)> ("result", std::bind(&http2_t::result, this, _1, _2));
 	// Выполняем установку перехвата событий получения статуса овтета сервера для HTTP-клиента
-	this->_http1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", bind(&http2_t::answer, this, _1, _2, _3));
+	this->_http1.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http2_t::answer, this, _1, _2, _3));
 	// Выполняем установку функции обратного вызова для Websocket-клиента
-	this->_ws2.callback <void (const int32_t, const uint64_t, const direct_t)> ("end", bind(&http2_t::end, this, _1, _2, _3));
+	this->_ws2.callback <void (const int32_t, const uint64_t, const direct_t)> ("end", std::bind(&http2_t::end, this, _1, _2, _3));
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
-	this->_ws2.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", bind(&http2_t::answer, this, _1, _2, _3));
+	this->_ws2.callback <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", std::bind(&http2_t::answer, this, _1, _2, _3));
 	// Выполняем установку функции обратного вызова перехвата события редиректа
-	this->_ws2.callback <void (const int32_t, const int32_t)> ("redirect", bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
+	this->_ws2.callback <void (const int32_t, const int32_t)> ("redirect", std::bind(static_cast <void (http2_t::*)(const int32_t, const int32_t)> (&http2_t::redirect), this, _1, _2));
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
-	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bind(&http2_t::errors, this, _1, _2, _3, _4));
+	this->_http.callback <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(&http2_t::errors, this, _1, _2, _3, _4));
 	// Устанавливаем функцию записи данных
-	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", bind(&http2_t::writeCallback, this, _1, _2, _3, _4));
+	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&http2_t::writeCallback, this, _1, _2, _3, _4));
 }
 /**
  * ~Http2 Деструктор

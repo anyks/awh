@@ -512,7 +512,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// Устанавливаем сокет для чтения
 								broker->ev = broker->cfds[0];
 								// Устанавливаем событие на чтение данных от основного процесса
-								broker->ev = bind(&worker_t::message, i->second.get(), _1, _2);
+								broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
 								// Запускаем чтение данных с основного процесса
 								broker->ev.start();
 								// Выполняем активацию работы события чтения данных с сокета
@@ -561,7 +561,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						// Устанавливаем сокет для чтения
 						broker->ev = broker->mfds[0];
 						// Устанавливаем событие на чтение данных от дочернего процесса
-						broker->ev = bind(&worker_t::message, i->second.get(), _1, _2);
+						broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
 						// Выполняем запуск работы чтения данных с дочерних процессов
 						broker->ev.start();
 						// Выполняем активацию работы чтения данных с дочерних процессов
@@ -746,7 +746,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Устанавливаем сокет для чтения
 									broker->ev = broker->cfds[0];
 									// Устанавливаем событие на чтение данных от основного процесса
-									broker->ev = bind(&worker_t::message, i->second.get(), _1, _2);
+									broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
 									// Запускаем чтение данных с основного процесса
 									broker->ev.start();
 									// Выполняем активацию работы события чтения данных с сокета
@@ -795,7 +795,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							// Устанавливаем сокет для чтения
 							broker->ev = broker->mfds[0];
 							// Устанавливаем событие на чтение данных от дочернего процесса
-							broker->ev = bind(&worker_t::message, i->second.get(), _1, _2);
+							broker->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
 							// Выполняем запуск работы чтения данных с дочерних процессов
 							broker->ev.start();
 							// Выполняем создание новых процессов
