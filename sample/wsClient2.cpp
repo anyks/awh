@@ -1,10 +1,15 @@
 /**
- * author:    Yuriy Lobarev
- * telegram:  @forman
- * phone:     +7(910)983-95-90
- * email:     forman@anyks.com
- * site:      https://anyks.com
- * copyright: © Yuriy Lobarev
+ * @file: wsClient.cpp
+ * @date: 2025-03-02
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2025
  */
 
 /**

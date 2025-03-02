@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2022
+ * @copyright: Copyright © 2025
  */
 
 #ifndef __AWH_SCHEME_WEB2_SERVER__
