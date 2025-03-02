@@ -21,6 +21,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * sendSignal Метод обратного вызова при отправки данных HTTP/2
  * @param buffer буфер бинарных данных
  * @param size  размер буфера данных для отправки

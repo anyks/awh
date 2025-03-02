@@ -21,6 +21,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * connectEvents Метод обратного вызова при подключении к серверу
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети

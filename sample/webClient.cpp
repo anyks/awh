@@ -12,8 +12,15 @@
  */
 #include <client/awh.hpp>
 
-// Подключаем пространство имён
+/**
+ * Подписываемся на пространство имён AWH
+ */
 using namespace awh;
+
+/**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
 
 /**
  * WebClient Класс объекта исполнителя
@@ -35,9 +42,7 @@ class WebClient {
 		 * @param code    код ответа сервера
 		 * @param message сообщение ответа сервера
 		 */
-		void response(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message){
-			// Блокируем неиспользуемые переменные
-			(void) rid;
+		void response(const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message){
 			// Проверяем на наличие ошибок
 			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -80,10 +85,7 @@ class WebClient {
 		 * @param entity  тело ответа сервера
 		 * @param awh     объект web-клиента
 		 */
-		void entity(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
-			// Блокируем неиспользуемые переменные
-			(void) sid;
-			(void) rid;
+		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
 			// Увеличиваем количество выполненных запросов
 			this->_count++;
 			// Выводим полученный результат
@@ -101,10 +103,7 @@ class WebClient {
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
-			// Блокируем неиспользуемые переменные
-			(void) sid;
-			(void) rid;
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог
@@ -120,10 +119,7 @@ class WebClient {
 		 * @param data    данные полученных заголовков сообщения
 		 * @param awh     объект web-клиента
 		 */
-		void complete(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
-			// Блокируем неиспользуемые переменные
-			(void) sid;
-			(void) rid;
+		void complete([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
 			// Увеличиваем количество выполненных запросов
 			this->_count++;
 			// Переходим по всем заголовкам

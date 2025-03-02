@@ -14,7 +14,9 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
-// Подключаем пространство имён
+/**
+ * Подписываемся на пространство имён AWH
+ */
 using namespace awh;
 
 /**

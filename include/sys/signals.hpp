@@ -48,7 +48,6 @@ namespace awh {
 	 * Подписываемся на стандартное пространство имён
 	 */
 	using namespace std;
-	using namespace placeholders;
 	/**
 	 * Signals Класс работы с сигналами
 	 */

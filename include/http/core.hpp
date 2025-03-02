@@ -42,7 +42,6 @@ namespace awh {
 	 * Подписываемся на стандартное пространство имён
 	 */
 	using namespace std;
-	using namespace placeholders;
 	/**
 	 * Http Класс для работы с REST
 	 */

@@ -133,6 +133,7 @@ $ cmake --build .
 #include <client/awh.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class WebClient {
 	private:
@@ -142,9 +143,7 @@ class WebClient {
 		const log_t * _log;
 	public:
 		
-		void message(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message){
-			(void) rid;
-			
+		void message(const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message){
 			if(code >= 300)
 				this->_log->print("Request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), sid);
 		}
@@ -168,11 +167,7 @@ class WebClient {
 			}
 		}
 
-		void entity(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
-
-			(void) sid;
-			(void) rid;
-
+		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
 			this->_count++;
 
 			cout << "RESPONSE: " << string(entity.begin(), entity.end()) << endl;
@@ -181,20 +176,14 @@ class WebClient {
 				awh->stop();
 		}
 
-		void headers(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
-			(void) sid;
-			(void) rid;
-
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
 			for(auto & header : headers)
 				cout << "HEADER: " << header.first << ": " << header.second << endl;
 
 			cout << endl;
 		}
 
-		void complete(const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
-			(void) sid;
-			(void) rid;
-
+		void complete([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
 			this->_count++;
 
 			for(auto & header : headers)
@@ -347,6 +336,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/awh.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class WebServer {
 	private:
@@ -377,9 +367,7 @@ class WebServer {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::web_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::web_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
@@ -433,19 +421,12 @@ class WebServer {
 				awh->send(sid, bid, 404);
 		}
 
-		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
-			(void) sid;
-			(void) bid;
-			(void) url;
-			(void) method;
-
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, [[maybe_unused]] const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
 			for(auto & header : headers)
 				cout << "HEADER: " << header.first << ": " << header.second << endl;
 		}
 
-		void entity(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, server::awh_t * awh){
-			(void) method;
-
+		void entity(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, server::awh_t * awh){
 			cout << "URL: " << url << endl << endl;
 
 			cout << "BODY: " << string(entity.begin(), entity.end()) << endl;
@@ -453,9 +434,7 @@ class WebServer {
 			awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
 		}
 
-		void complete(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers, server::awh_t * awh){
-			(void) method;
-
+		void complete(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers, server::awh_t * awh){
 			for(auto & header : headers)
 				cout << "HEADER: " << header.first << ": " << header.second << endl;
 
@@ -540,7 +519,8 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/ws.hpp>
 
 using namespace awh;
-using namespace awh::client;
+using namespace client;
+using namespace placeholders;
 
 class Executor {
 	private:
@@ -559,10 +539,7 @@ class Executor {
 			}
 		}
 
-		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent, client::websocket_t * ws){
-			(void) sid;
-			(void) rid;
-
+		void handshake([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const client::web_t::agent_t agent, client::websocket_t * ws){
 			if(agent == client::web_t::agent_t::WEBSOCKET){
 				this->_log->print("Handshake", log_t::flag_t::INFO);
 				
@@ -662,7 +639,8 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/ws.hpp>
 
 using namespace awh;
-using namespace awh::server;
+using namespace server;
+using namespace placeholders;
 
 class Executor {
 	private:
@@ -689,9 +667,7 @@ class Executor {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::web_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::web_t::mode_t mode){
 			switch(static_cast <uint8_t> (mode)){
 				case static_cast <uint8_t> (server::web_t::mode_t::CONNECT):
 					this->_log->print("CONNECT", log_t::flag_t::INFO);
@@ -702,9 +678,7 @@ class Executor {
 			}
 		}
 
-		void error(const uint64_t bid, const uint32_t code, const string & mess){
-			(void) bid;
-
+		void error([[maybe_unused]] const uint64_t bid, const uint32_t code, const string & mess){
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 
@@ -723,11 +697,7 @@ class Executor {
 			}
 		}
 
-		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
-			(void) sid;
-			(void) bid;
-			(void) method;
-
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
 			uri_t uri(this->_fmk, this->_log);
 
 			this->_log->print("REQUEST ID=%zu URL=%s", log_t::flag_t::INFO, bid, uri.url(url).c_str());
@@ -796,6 +766,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/awh.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class WebServer {
 	private:
@@ -826,15 +797,11 @@ class WebServer {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::web_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::web_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void error(const uint64_t bid, const uint32_t code, const string & mess){
-			(void) bid;
-
+		void error([[maybe_unused]] const uint64_t bid, const uint32_t code, const string & mess){
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 
@@ -885,19 +852,12 @@ class WebServer {
 				awh->send(sid, bid, 404);
 		}
 
-		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
-			(void) sid;
-			(void) bid;
-			(void) method;
-			(void) url;
-
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, [[maybe_unused]] const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
 			for(auto & header : headers)
 				cout << "HEADER: " << header.first << ": " << header.second << endl;
 		}
 
-		void entity(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, server::awh_t * awh){
-			(void) method;
-
+		void entity(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, server::awh_t * awh){
 			cout << "URL: " << url << endl << endl;
 
 			cout << "BODY: " << string(entity.begin(), entity.end()) << endl;
@@ -905,9 +865,7 @@ class WebServer {
 			awh->send(sid, bid, 200, "OK", entity, {{"Connection", "close"}});
 		}
 
-		void complete(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers, server::awh_t * awh){
-			(void) method;
-
+		void complete(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers, server::awh_t * awh){
 			for(auto & header : headers)
 				cout << "HEADER: " << header.first << ": " << header.second << endl;
 
@@ -1003,6 +961,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/proxy.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Proxy {
 	private:
@@ -1027,9 +986,7 @@ class Proxy {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::proxy_t::broker_t broker, const server::web_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::proxy_t::broker_t broker, const server::web_t::mode_t mode){
 			switch(static_cast <uint8_t> (broker)){
 				case static_cast <uint8_t> (server::proxy_t::broker_t::CLIENT):
 					this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
@@ -1095,6 +1052,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 using namespace awh;
 using namespace server;
+using namespace placeholders;
 
 class Proxy {
 	private:
@@ -1115,9 +1073,7 @@ class Proxy {
 			return true;
 		}
 
-		void active(const uint64_t bid, const proxy_socks5_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const proxy_socks5_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == proxy_socks5_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 	public:
@@ -1163,6 +1119,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <core/timer.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Executor {
 	private:
@@ -1328,6 +1285,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Client {
 	private:
@@ -1388,6 +1346,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Server {
 	private:
@@ -1401,15 +1360,11 @@ class Server {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::sample_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
-			(void) bid;
-
+		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1451,6 +1406,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Client {
 	private:
@@ -1517,6 +1473,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Server {
 	private:
@@ -1530,15 +1487,11 @@ class Server {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::sample_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
-			(void) bid;
-
+		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1586,6 +1539,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Client {
 	private:
@@ -1646,6 +1600,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Server {
 	private:
@@ -1659,15 +1614,11 @@ class Server {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::sample_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
-			(void) bid;
-
+		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1708,6 +1659,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Client {
 	private:
@@ -1774,6 +1726,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Server {
 	private:
@@ -1787,15 +1740,11 @@ class Server {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::sample_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
-			(void) bid;
-
+		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1843,6 +1792,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Client {
 	private:
@@ -1909,6 +1859,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Server {
 	private:
@@ -1922,15 +1873,11 @@ class Server {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::sample_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
-			(void) bid;
-
+		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1977,6 +1924,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Client {
 	private:
@@ -2038,6 +1986,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Server {
 	private:
@@ -2051,15 +2000,11 @@ class Server {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::sample_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
-			(void) bid;
-
+		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -2102,6 +2047,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Client {
 	private:
@@ -2163,6 +2109,7 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/sample.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Server {
 	private:
@@ -2176,15 +2123,11 @@ class Server {
 			return true;
 		}
 
-		void active(const uint64_t bid, const server::sample_t::mode_t mode){
-			(void) bid;
-
+		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
-			(void) bid;
-
+		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -2226,15 +2169,14 @@ int32_t main(int32_t argc, char * argv[]){
 #include <core/cluster.hpp>
 
 using namespace awh;
+using namespace placeholders;
 
 class Executor {
 	private:
 		log_t * _log;
 	public:
 
-		void events(const cluster_t::family_t worker, const pid_t pid, const cluster_t::event_t event, cluster::core_t * core){
-			(void) pid;
-
+		void events(const cluster_t::family_t worker, [[maybe_unused]] const pid_t pid, const cluster_t::event_t event, cluster::core_t * core){
 			if(event == cluster_t::event_t::START){
 				switch(static_cast <uint8_t> (worker)){
 					case static_cast <uint8_t> (cluster_t::family_t::MASTER): {

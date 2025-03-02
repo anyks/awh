@@ -12,9 +12,16 @@
  */
 #include <client/ws.hpp>
 
-// Подключаем пространство имён
+/**
+ * Подписываемся на пространство имён AWH
+ */
 using namespace awh;
 using namespace awh::client;
+
+/**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
 
 /**
  * Executor Класс объекта исполнителя
@@ -96,10 +103,7 @@ class Executor {
 		 * @param agent идентификатор агента клиента
 		 * @param ws    бъект websocket-клиента
 		 */
-		void handshake(const int32_t sid, const uint64_t rid, const client::web_t::agent_t agent, client::websocket_t * ws){
-			// Блокируем неиспользуемые переменные
-			(void) sid;
-			(void) rid;
+		void handshake([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const client::web_t::agent_t agent, client::websocket_t * ws){
 			// Если агент соответствует Websocket
 			if(agent == client::web_t::agent_t::WEBSOCKET){
 				// Выводим информацию в лог

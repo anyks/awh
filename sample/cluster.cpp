@@ -12,8 +12,15 @@
  */
 #include <core/cluster.hpp>
 
-// Подключаем пространство имён
+/**
+ * Подписываемся на пространство имён AWH
+ */
 using namespace awh;
+
+/**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
 
 /**
  * Executor Класс объекта исполнителя

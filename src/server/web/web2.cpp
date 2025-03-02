@@ -21,6 +21,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * statusEvents Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  */

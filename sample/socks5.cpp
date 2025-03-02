@@ -12,9 +12,16 @@
  */
 #include <server/socks5.hpp>
 
-// Подключаем пространство имён
+/**
+ * Подписываемся на пространство имён AWH
+ */
 using namespace awh;
 using namespace server;
+
+/**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
 
 /**
  * Proxy Класс объекта исполнителя

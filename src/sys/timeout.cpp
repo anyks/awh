@@ -23,6 +23,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * trigger Метод обработки событий триггера
  */
 void awh::Timeout::trigger() noexcept {

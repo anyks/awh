@@ -36,6 +36,7 @@
 #include <cstring>
 #include <iomanip>
 #include <cstdlib>
+#include <codecvt>
 #include <iostream>
 #include <algorithm>
 #include <type_traits>

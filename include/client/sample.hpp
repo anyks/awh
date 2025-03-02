@@ -37,7 +37,6 @@ namespace awh {
 	 * Подписываемся на стандартное пространство имён
 	 */
 	using namespace std;
-	using namespace placeholders;
 	/**
 	 * client клиентское пространство имён
 	 */

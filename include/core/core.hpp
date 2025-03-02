@@ -37,7 +37,6 @@ namespace awh {
 	 * Подписываемся на стандартное пространство имён
 	 */
 	using namespace std;
-	using namespace placeholders;
 	/**
 	 * Core Класс ядра биндинга TCP/IP
 	 */

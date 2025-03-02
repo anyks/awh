@@ -63,7 +63,6 @@ namespace awh {
 	 * Подписываемся на стандартное пространство имён
 	 */
 	using namespace std;
-	using namespace placeholders;
 	/**
 	 * Log Класс работы с логами
 	 */
@@ -231,15 +230,15 @@ namespace awh {
 			 */
 			string formation(const TupType & args, index_sequence <I...>) const noexcept {
 				// Создаём объект строкового потока
-				stringstream stream;
+				stringstream ss;
 				// Выполняем добавление открывающую скобку
-				stream << "(";
+				ss << "(";
 				// Выполняем запись всех аргументов
-				(..., (stream << (I == 0 ? "" : ", ") << get <I> (args)));
+				(..., (ss << (I == 0 ? "" : ", ") << get <I> (args)));
 				// Выполняем добавление закрывающую скобку
-				stream << ")";
+				ss << ")";
 				// Выводим полученный результат
-				return stream.str();
+				return ss.str();
 			}
 			/**
 			 * Шаблон входных параметров для серриализатора

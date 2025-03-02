@@ -21,6 +21,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * active Метод вывода статуса работы сетевого ядра
  * @param status флаг запуска сетевого ядра
  */

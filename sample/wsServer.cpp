@@ -12,9 +12,16 @@
  */
 #include <server/ws.hpp>
 
-// Подключаем пространство имён
+/**
+ * Подписываемся на пространство имён AWH
+ */
 using namespace awh;
 using namespace awh::server;
+
+/**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
 
 /**
  * Executor Класс объекта исполнителя

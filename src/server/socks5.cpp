@@ -21,6 +21,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * openEvents Метод обратного вызова при запуске работы
  * @param sid идентификатор схемы сети
  */

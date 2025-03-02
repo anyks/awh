@@ -21,6 +21,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * launching Метод вызова при активации базы событий
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса

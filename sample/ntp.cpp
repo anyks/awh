@@ -13,7 +13,9 @@
 #include <net/ntp.hpp>
 #include <core/core.hpp>
 
-// Подключаем пространство имён
+/**
+ * Подписываемся на пространство имён AWH
+ */
 using namespace awh;
 
 /**

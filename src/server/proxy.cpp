@@ -21,6 +21,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * passwordEvents Метод извлечения пароля (для авторизации методом Digest)
  * @param bid   идентификатор брокера (клиента)
  * @param login логин пользователя

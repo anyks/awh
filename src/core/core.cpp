@@ -21,6 +21,11 @@
 using namespace std;
 
 /**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
+
+/**
  * Объект глобальной базы событий
  */
 static awh::base_t * EventBase = nullptr;
