@@ -45,7 +45,7 @@ class WebServer {
 		 * crash Метод обработки вызова крашей в приложении
 		 * @param sig номер сигнала операционной системы
 		 */
-		void crash(const int sig) noexcept {
+		void crash(const int32_t sig) noexcept {
 			// Если мы получили сигнал завершения работы
 			if(sig == 2)
 				// Выводим сообщение о заверщении работы
@@ -167,7 +167,7 @@ class WebServer {
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
-		void error(const uint64_t bid, const uint32_t code, const string & mess){
+		void error([[maybe_unused]] const uint64_t bid, const uint32_t code, const string & mess){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
@@ -275,7 +275,7 @@ class WebServer {
 		 * @param headers заголовки запроса
 		 * @param awh     объект веб-сервера
 		 */
-		void complete(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers, server::awh_t * awh){
+		void complete(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers, server::awh_t * awh){
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог

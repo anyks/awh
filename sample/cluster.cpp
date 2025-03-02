@@ -37,7 +37,7 @@ class Executor {
 		 * @param event  событие процесса
 		 * @param core   объект сетевого ядра
 		 */
-		void events(const cluster_t::family_t worker, const pid_t pid, const cluster_t::event_t event, cluster::core_t * core){
+		void events(const cluster_t::family_t worker, [[maybe_unused]] const pid_t pid, const cluster_t::event_t event, cluster::core_t * core){
 			// Если производится запуск сервиса
 			if(event == cluster_t::event_t::START){
 				// Определяем тип воркера

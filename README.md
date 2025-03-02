@@ -167,7 +167,7 @@ class WebClient {
 			}
 		}
 
-		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
+		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const vector <char> & entity, client::awh_t * awh){
 			this->_count++;
 
 			cout << "RESPONSE: " << string(entity.begin(), entity.end()) << endl;
@@ -176,14 +176,14 @@ class WebClient {
 				awh->stop();
 		}
 
-		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const unordered_multimap <string, string> & headers){
 			for(auto & header : headers)
 				cout << "HEADER: " << header.first << ": " << header.second << endl;
 
 			cout << endl;
 		}
 
-		void complete([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
+		void complete([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers, client::awh_t * awh){
 			this->_count++;
 
 			for(auto & header : headers)
@@ -519,7 +519,6 @@ int32_t main(int32_t argc, char * argv[]){
 #include <client/ws.hpp>
 
 using namespace awh;
-using namespace client;
 using namespace placeholders;
 
 class Executor {
@@ -578,7 +577,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 
 	client::core_t core(&fmk, &log);
-	websocket_t ws(&core, &fmk, &log);
+	client::websocket_t ws(&core, &fmk, &log);
 
 	Executor executor(&fmk, &log);
 
@@ -639,7 +638,6 @@ int32_t main(int32_t argc, char * argv[]){
 #include <server/ws.hpp>
 
 using namespace awh;
-using namespace server;
 using namespace placeholders;
 
 class Executor {
@@ -714,7 +712,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 
 	server::core_t core(&fmk, &log);
-	websocket_t ws(&core, &fmk, &log);
+	server::websocket_t ws(&core, &fmk, &log);
 
 	Executor executor(&fmk, &log);
 
@@ -968,13 +966,13 @@ class Proxy {
 		log_t * _log;
 	public:
 
-		string password(const uint64_t bid, const string & login){
+		string password([[maybe_unused]] const uint64_t bid, const string & login){
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
 
 			return "password";
 		}
 
-		bool auth(const uint64_t bid, const string & login, const string & password){
+		bool auth([[maybe_unused]] const uint64_t bid, const string & login, const string & password){
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
 
 			return true;
@@ -1144,7 +1142,7 @@ class Executor {
 			}
 		}
 
-		void timeout(const uint16_t id){
+		void timeout([[maybe_unused]] const uint16_t id){
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->_ts).count());
 		}
 
@@ -1364,7 +1362,7 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1491,7 +1489,7 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1618,7 +1616,7 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1744,7 +1742,7 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -1877,7 +1875,7 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -2004,7 +2002,7 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());
@@ -2127,7 +2125,7 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 
-		void message([[maybe_unused]] const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
+		void message(const uint64_t bid, const vector <char> & buffer, server::sample_t * sample){
 			this->_log->print("%s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
 
 			sample->send(bid, buffer.data(), buffer.size());

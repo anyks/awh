@@ -36,7 +36,7 @@ class Proxy {
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const uint64_t bid, const string & login){
+		string password([[maybe_unused]] const uint64_t bid, const string & login){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
 			// Выводим пароль
@@ -49,7 +49,7 @@ class Proxy {
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const uint64_t bid, const string & login, const string & password){
+		bool auth([[maybe_unused]] const uint64_t bid, const string & login, const string & password){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
 			// Разрешаем авторизацию
@@ -75,7 +75,7 @@ class Proxy {
 		 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 		 * @param mode   режим события подключения
 		 */
-		void active(const uint64_t bid, const server::proxy_t::broker_t broker, const server::web_t::mode_t mode){
+		void active([[maybe_unused]] const uint64_t bid, const server::proxy_t::broker_t broker, const server::web_t::mode_t mode){
 			// Определяем тип подключения
 			switch(static_cast <uint8_t> (broker)){
 				// Если событие принадлежит клиенту

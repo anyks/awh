@@ -306,7 +306,7 @@ class WebClient {
 		 * @param entity  тело ответа сервера
 		 * @param awh     объект web-клиента
 		 */
-		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, client::awh_t * awh){
+		void entity([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const vector <char> & entity, client::awh_t * awh){
 			/**
 			 * Выполняем обработку ошибки
 			 */
@@ -336,7 +336,7 @@ class WebClient {
 		 * @param message сообщение ответа сервера
 		 * @param headers заголовки ответа сервера
 		 */
-		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers){
+		void headers([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t rid, [[maybe_unused]] const uint32_t code, [[maybe_unused]] const string & message, const unordered_multimap <string, string> & headers){
 			// Переходим по всем заголовкам
 			for(auto & header : headers)
 				// Выводим информацию в лог

@@ -50,7 +50,7 @@ class Server {
 		 * @param bid  идентификатор брокера
 		 * @param mode режим события подключения
 		 */
-		void active(const uint64_t bid, const server::sample_t::mode_t mode){
+		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}

@@ -16,7 +16,6 @@
  * Подписываемся на пространство имён AWH
  */
 using namespace awh;
-using namespace awh::client;
 
 /**
  * Подписываемся на пространство имён заполнителя
@@ -122,7 +121,7 @@ class Executor {
 		 * @param flag    флаг сообщения лога
 		 * @param message текст сообщения лога
 		 */
-		void subscribe(const log_t::flag_t flag, const string & message){
+		void subscribe([[maybe_unused]] const log_t::flag_t flag, [[maybe_unused]] const string & message){
 			// Выводим сообщение
 			// cout << " ============= " << message << endl;
 		}
@@ -183,7 +182,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём биндинг сетевого ядра
 	client::core_t core(&fmk, &log);
 	// Создаём объект Websocket-клиента
-	websocket_t ws(&core, &fmk, &log);
+	client::websocket_t ws(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	Executor executor(&fmk, &log);
 	// Устанавливаем название сервиса

@@ -63,7 +63,7 @@ class Executor {
 		 * timeout Метод таймаута
 		 * @param id идентификатор таймера
 		 */
-		void timeout(const uint16_t id){
+		void timeout([[maybe_unused]] const uint16_t id){
 			// Выводим информацию в лог
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->_ts).count());
 		}

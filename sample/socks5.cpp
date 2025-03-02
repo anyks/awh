@@ -65,7 +65,7 @@ class Proxy {
 		 * @param bid  идентификатор брокера (клиента)
 		 * @param mode режим события подключения
 		 */
-		void active(const uint64_t bid, const proxy_socks5_t::mode_t mode){
+		void active([[maybe_unused]] const uint64_t bid, const proxy_socks5_t::mode_t mode){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == proxy_socks5_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}

@@ -16,7 +16,6 @@
  * Подписываемся на пространство имён AWH
  */
 using namespace awh;
-using namespace awh::server;
 
 /**
  * Подписываемся на пространство имён заполнителя
@@ -182,7 +181,7 @@ class Executor {
 		 * @param url     адрес входящего запроса
 		 * @param headers заголовки запроса
 		 */
-		void headers(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
+		void headers([[maybe_unused]] const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers){
 			// Создаём объект URI
 			uri_t uri(this->_fmk, this->_log);
 			// Выводим информацию в лог
@@ -217,7 +216,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект сетевого ядра
 	server::core_t core(&fmk, &log);
 	// Создаём объект WebSocket-сервера
-	websocket_t ws(&core, &fmk, &log);
+	server::websocket_t ws(&core, &fmk, &log);
 	// Создаём объект исполнителя
 	Executor executor(&fmk, &log);
 	// Устанавливаем название сервиса
