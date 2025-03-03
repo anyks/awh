@@ -2397,7 +2397,32 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 											}
 										// Если дочерний элемент является файлом то выводим его
 										} else callback(this->realPath(address, actual));
-								}
+									// Если статистика не извлечена
+									} else {
+										/**
+										 * Если операционной системой является MacOS X
+										 */
+										#if __APPLE__ || __MACH__
+											// Если адрес является ссылкой
+											if(this->isLink(address)){
+												// Если дочерний элемент является файлом и расширение файла указано то выводим его
+												if(!ext.empty()){
+													// Получаем расширение файла
+													const string & extension = this->_fmk->format(".%s", ext.c_str());
+													// Получаем длину адреса
+													const size_t length = extension.length();
+													// Если расширение не выше полного адреса
+													if(address.length() > length){
+														// Если расширение файла найдено
+														if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
+															// Выводим полный путь файла
+															callback(this->realPath(address, actual));
+													}
+												// Если дочерний элемент является файлом то выводим его
+												} else callback(this->realPath(address, actual));
+											}
+										#endif
+									}
 						}
 						/**
 						 * Выполняем работу для Windows
