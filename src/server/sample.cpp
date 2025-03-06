@@ -101,7 +101,7 @@ void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Добавляем в очередь список отключившихся клиентов
-		this->_disconnected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+		this->_disconnected.emplace(bid, this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS));
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callbacks.is("active"))
 			// Выводим функцию обратного вызова
@@ -187,7 +187,7 @@ void awh::server::Sample::erase(const uint16_t tid) noexcept {
 	// Если список отключившихся клиентов не пустой
 	if((tid > 0) && !this->_disconnected.empty()){
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 		// Выполняем переход по всему списку отключившихся клиентов
 		for(auto i = this->_disconnected.begin(); i != this->_disconnected.end();){
 			// Если брокер уже давно удалился

@@ -303,7 +303,7 @@ awh::Scheme::Broker::Broker(const uint16_t sid, const fmk_t * fmk, const log_t *
  _event(event_t::type_t::EVENT, fmk, log), _callbacks(log), _ectx(fmk, log),
  _addr(fmk, log), _fmk(fmk), _log(log), _base(nullptr) {
 	// Устанавливаем идентификатор брокера
-	this->_id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+	this->_id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 }
 /**
  * ~Broker Деструктор

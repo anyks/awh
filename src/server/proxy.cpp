@@ -451,7 +451,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						// Устанавливаем метод запроса
 						request.method = i->second->request.params.method;
 						// Выполняем генерацию идентификатора запроса
-						request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+						request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 						// Выполняем установку метода подключения
 						i->second->method = i->second->request.params.method;
 						// Выполняем установку потока в список потоков
@@ -480,7 +480,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 								// Устанавливаем метод запроса
 								request.method = i->second->request.params.method;
 								// Выполняем генерацию идентификатора запроса
-								request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+								request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 								// Выполняем установку потока в список потоков
 								i->second->streams.emplace(request.id, i->second->sid);
 								// Выполняем запрос на сервер
@@ -938,7 +938,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							// Устанавливаем метод запроса
 							request.method = i->second->request.params.method;
 							// Выполняем генерацию идентификатора запроса
-							request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+							request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 							// Выполняем установку потока в список потоков
 							i->second->streams.emplace(request.id, i->second->sid);
 							// Выполняем запрос на сервер
@@ -1025,7 +1025,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Устанавливаем метод запроса
 									request.method = i->second->request.params.method;
 									// Выполняем генерацию идентификатора запроса
-									request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+									request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 									// Выполняем установку потока в список потоков
 									i->second->streams.emplace(request.id, i->second->sid);
 									// Выполняем запрос на сервер
@@ -1050,7 +1050,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Устанавливаем метод запроса
 									request.method = i->second->request.params.method;
 									// Выполняем генерацию идентификатора запроса
-									request.id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+									request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 									// Выполняем установку потока в список потоков
 									i->second->streams.emplace(request.id, i->second->sid);
 									// Выполняем запрос на сервер

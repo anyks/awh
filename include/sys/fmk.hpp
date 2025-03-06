@@ -95,7 +95,7 @@ namespace awh {
 			/**
 			 * Тип штампа времени
 			 */
-			enum class stamp_t : uint8_t {
+			enum class chrono_t : uint8_t {
 				NONE         = 0x00, // Не установлено
 				YEARS        = 0x01, // Годы
 				MONTHS       = 0x02, // Месяцы
@@ -427,7 +427,7 @@ namespace awh {
 			 * @param stamp единицы измерения штампа времени
 			 * @return      штамп времени в указанных единицах измерения
 			 */
-			time_t timestamp(const stamp_t stamp) const noexcept;
+			time_t timestamp(const chrono_t stamp) const noexcept;
 		public:
 			/**
 			 * iconv Метод конвертирования строки кодировки

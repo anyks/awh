@@ -1496,7 +1496,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 						// Если IP-адрес не находится в чёрном списке
 						if(!i->second.forbidden){
 							// Если время жизни кэша ещё не вышло
-							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::SECONDS) - i->second.create) <= i->second.ttl)){
+							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::chrono_t::SECONDS) - i->second.create) <= i->second.ttl)){
 								// Выполняем очистку буфера данных
 								this->_buffer.clear(buffer_t::type_t::ADDR, family);
 								// Получаем размер буфера данных
@@ -1528,7 +1528,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 						// Если IP-адрес не находится в чёрном списке
 						if(!i->second.forbidden){
 							// Если время жизни кэша ещё не вышло
-							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::SECONDS) - i->second.create) <= i->second.ttl)){
+							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::chrono_t::SECONDS) - i->second.create) <= i->second.ttl)){
 								// Выполняем очистку буфера данных
 								this->_buffer.clear(buffer_t::type_t::ADDR, family);
 								// Получаем размер буфера данных
@@ -1763,7 +1763,7 @@ void awh::DNS::setToCache(const int32_t family, const string & domain, const str
 					// Устанавливаем флаг локального хоста
 					cache.localhost = localhost;
 					// Устанавливаем время создания кэша
-					cache.create = this->_fmk->timestamp(fmk_t::stamp_t::SECONDS);
+					cache.create = this->_fmk->timestamp(fmk_t::chrono_t::SECONDS);
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &cache.ip);
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
@@ -1796,7 +1796,7 @@ void awh::DNS::setToCache(const int32_t family, const string & domain, const str
 					// Устанавливаем флаг локального хоста
 					cache.localhost = localhost;
 					// Устанавливаем время жизни кэша
-					cache.create = this->_fmk->timestamp(fmk_t::stamp_t::SECONDS);
+					cache.create = this->_fmk->timestamp(fmk_t::chrono_t::SECONDS);
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &cache.ip);
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера

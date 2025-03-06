@@ -293,7 +293,7 @@ awh::server::Auth::operator string() noexcept {
 					// Флаг создания нового ключа nonce
 					bool createNonce = false;
 					// Получаем текущее значение штампа времени
-					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 					// Если ключ клиента не создан или прошло времени больше 30-ти минут
 					if((createNonce = (this->_digest.nonce.empty() || ((stamp - this->_digest.stamp) >= DIGEST_ALIVE_NONCE)))){
 						// Устанавливаем штамп времени

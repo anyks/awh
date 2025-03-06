@@ -214,7 +214,7 @@ int32_t awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffe
 						// Добавляем полученный чанк в тело данных
 						i->second->http.payload(vector <char> (buffer, buffer + size));
 						// Обновляем время отправленного пинга
-						this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						this->_sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 						// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 						if(this->_callbacks.is("chunks"))
 							// Выполняем функцию обратного вызова
@@ -987,7 +987,7 @@ void awh::client::Http2::pinging(const uint16_t tid) noexcept {
 					// Если агент является клиентом HTTP
 					case static_cast <uint8_t> (agent_t::HTTP): {
 						// Получаем текущий штамп времени
-						const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 						// Если время с предыдущего пинга прошло больше половины времени пинга
 						if((this->_pingInterval > 0) && ((stamp - this->_sendPing) > (this->_pingInterval / 2))){
 							// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
@@ -995,7 +995,7 @@ void awh::client::Http2::pinging(const uint16_t tid) noexcept {
 								// Выполняем закрытие подключения
 								web2_t::close(this->_bid);
 							// Обновляем время отправленного пинга
-							else this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							else this->_sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 						}
 					} break;
 					// Если агент является клиентом Websocket
@@ -1329,7 +1329,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 			// Если идентификатор запроса не установлен
 			if(request.id == 0)
 				// Выполняем генерацию идентификатора запроса
-				const_cast <request_t &> (request).id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+				const_cast <request_t &> (request).id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 			// Если требуется выполнить подключение к Websocket-клиенту
 			if(request.agent == agent_t::WEBSOCKET){
 				// Если протокол Websocket запрещён

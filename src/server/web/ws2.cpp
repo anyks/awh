@@ -396,7 +396,7 @@ int32_t awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t b
 			// Если рукопожатие выполнено
 			else if(options->allow.receive) {
 				// Обнуляем время последнего ответа на пинг
-				options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+				options->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 				// Обновляем время отправленного пинга
 				options->sendPing = options->point;
 				// Добавляем полученные данные в буфер
@@ -483,7 +483,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 														// Если идентификатор брокера совпадает
 														if(bid == result){
 															// Обновляем контрольную точку
-															options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+															options->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 															// Выходим из условия
 															break;
 														}
@@ -1052,7 +1052,7 @@ void awh::server::Websocket2::ping(const uint64_t bid, const void * buffer, cons
 				// Выполняем отправку сообщения клиенту
 				if(web2_t::send(options->sid, bid, frame.data(), frame.size(), http2_t::flag_t::NONE))
 					// Обновляем время отправленного пинга
-					options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					options->sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 			}
 		}
 	}
@@ -1116,7 +1116,7 @@ void awh::server::Websocket2::erase(const uint64_t bid) noexcept {
 			this->_scheme.rm(bid);
 		};
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -1164,7 +1164,7 @@ void awh::server::Websocket2::disconnect(const uint64_t bid) noexcept {
 		// Добавляем в очередь список отключившихся клиентов
 		this->_ws1.disconnect(bid);
 	// Добавляем в очередь список отключившихся клиентов
-	this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+	this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS));
 }
 /**
  * pinging Метод таймера выполнения пинга клиента
@@ -1188,7 +1188,7 @@ void awh::server::Websocket2::pinging(const uint16_t tid) noexcept {
 						// Если рукопожатие выполнено
 						if(item.second->shake){
 							// Получаем текущий штамп времени
-							const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 							// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 							if((this->_waitPong > 0) && ((stamp - item.second->point) >= this->_waitPong)){
 								// Создаём сообщение

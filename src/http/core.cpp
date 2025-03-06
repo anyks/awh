@@ -5180,7 +5180,7 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
 		{505, "HTTP Version Not Supported"}
 	};
 	// Выполняем установку идентификатора объекта
-	this->_web.id(this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS));
+	this->_web.id(this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS));
 	// Устанавливаем функцию обратного вызова для получения чанков
 	this->_web.callback <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", std::bind(&awh::Http::chunking, this, _1, _2, _3));
 }

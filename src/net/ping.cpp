@@ -632,7 +632,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 				// Выполняем отправку отправку запросов до тех пор пока не остановят
 				while(this->_mode){
 					// Запоминаем текущее значение времени в миллисекундах
-					const time_t mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					const time_t mseconds = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 					// Выполняем запрос на сервер
 					const int64_t bytes = this->send(family, index);
 					// Если данные прочитать не удалось
@@ -643,7 +643,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 						return;
 					}
 					// Выполняем подсчёт количество прошедшего времени
-					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
+					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS) - mseconds);
 					// Если разрешено выводить информацию в лог
 					if(this->_verb)
 						// Формируем сообщение для вывода в лог
@@ -948,7 +948,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 				// Выполняем отправку указанного количества запросов
 				for(uint16_t i = 0; i < count; i++){
 					// Запоминаем текущее значение времени в миллисекундах
-					const time_t mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					const time_t mseconds = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 					// Выполняем запрос на сервер
 					const int64_t bytes = this->send(family, i);
 					// Если данные прочитать не удалось
@@ -956,7 +956,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 						// Выводим результат
 						return result;
 					// Выполняем подсчёт количество прошедшего времени
-					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
+					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS) - mseconds);
 					// Если разрешено выводить информацию в лог
 					if(this->_verb)
 						// Формируем сообщение для вывода в лог

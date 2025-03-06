@@ -423,7 +423,7 @@ int32_t awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, c
 							// Добавляем полученный чанк в тело данных
 							stream->http.payload(vector <char> (buffer, buffer + size));
 							// Обновляем время отправленного пинга
-							options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							options->sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 						} break;
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
@@ -1286,7 +1286,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 			this->_scheme.rm(bid);
 		};
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -1369,7 +1369,7 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 			} break;
 		}
 		// Добавляем в очередь список отключившихся клиентов
-		this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+		this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS));
 	}
 }
 /**
@@ -1412,7 +1412,7 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Получаем текущий штамп времени
-								const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 								// Если время с предыдущего пинга прошло больше половины времени пинга
 								if((this->_pingInterval > 0) && ((stamp - item.second->sendPing) > (this->_pingInterval / 2))){
 									// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
@@ -1420,7 +1420,7 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 										// Выполняем закрытие подключения
 										web2_t::close(item.first);
 									// Обновляем время отправленного пинга
-									else item.second->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+									else item.second->sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 								}
 							} break;
 							// Если протокол соответствует протоколу Websocket

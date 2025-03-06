@@ -289,7 +289,7 @@ using namespace placeholders;
 						// Выходим из приложения
 						::exit(SIGINT);
 					// Если время жизни процесса составляет меньше 3-х минут
-					} else if((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - broker->date) <= 180000) {
+					} else if((this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS) - broker->date) <= 180000) {
 						// Выполняем остановку работы
 						this->clear();
 						// Выходим из приложения
@@ -508,7 +508,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// Устанавливаем идентификатор процесса
 								broker->pid = pid;
 								// Устанавливаем время начала жизни процесса
-								broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								broker->date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 								// Устанавливаем базу событий для чтения
 								broker->ev = this->_core->eventBase();
 								// Устанавливаем сокет для чтения
@@ -557,7 +557,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						// Устанавливаем PID-процесса
 						broker->pid = pid;
 						// Устанавливаем время начала жизни процесса
-						broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+						broker->date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 						// Устанавливаем базу событий для чтения
 						broker->ev = this->_core->eventBase();
 						// Устанавливаем сокет для чтения
@@ -742,7 +742,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Устанавливаем идентификатор процесса
 									broker->pid = pid;
 									// Устанавливаем время начала жизни процесса
-									broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+									broker->date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 									// Устанавливаем базу событий для чтения
 									broker->ev = this->_core->eventBase();
 									// Устанавливаем сокет для чтения
@@ -791,7 +791,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							// Устанавливаем PID-процесса
 							broker->pid = pid;
 							// Устанавливаем время начала жизни процесса
-							broker->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							broker->date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 							// Устанавливаем базу событий для чтения
 							broker->ev = this->_core->eventBase();
 							// Устанавливаем сокет для чтения

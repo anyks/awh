@@ -916,7 +916,7 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 			// Если идентификатор запроса не установлен
 			if(request.id == 0)
 				// Выполняем генерацию идентификатора запроса
-				const_cast <request_t &> (request).id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+				const_cast <request_t &> (request).id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 			// Если Websocket ещё не активирован
 			if(this->_agent != agent_t::WEBSOCKET){
 				// Если это первый запрос

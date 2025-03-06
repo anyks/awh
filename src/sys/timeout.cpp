@@ -32,7 +32,7 @@ using namespace placeholders;
  */
 void awh::Timeout::trigger() noexcept {
 	// Получаем текущее значение даты
-	const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+	const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
@@ -82,7 +82,7 @@ void awh::Timeout::process(const data_t data) noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.lock();
 	// Получаем текущее значение даты
-	const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+	const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Идентификатор файлового дескриптора (сокета)

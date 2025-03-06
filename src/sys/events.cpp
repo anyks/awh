@@ -71,7 +71,7 @@ using namespace placeholders;
 						// Запоминаем идентификатор файлового дескриптора
 						SOCKET fd = item->fd;
 						// Определяем сколько прошло времени
-						const time_t elapsed = (this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS) - item->date);
+						const time_t elapsed = (this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS) - item->date);
 						// Определяем вышло ли время выделенное для ожидания
 						const bool timed = (((i->second->data > elapsed) ? (i->second->data - elapsed) : 0) == 0);
 						// Если время вышло
@@ -98,7 +98,7 @@ using namespace placeholders;
 							// Если таймер найден в списке
 							if(j != this->_timers.end()){
 								// Обновляем значение текущей даты
-								item->date = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+								item->date = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 								// Если время ещё не вышло
 								if(!timed)
 									// Выполняем установку оставшегося времени
@@ -2998,7 +2998,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 				// Выходим из функции
 				return result;
 			// Выполняем генерацию идентификатора верхнеуровневого потока
-			result = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+			result = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 			// Выполняем добавление в список верхнеуровневых потоков, новый поток
 			auto ret = this->_upstreams.emplace(result, upstream_t());
 			// Выполняем установку объекта пайпа
@@ -3026,7 +3026,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 			// Делаем сокет неблокирующим
 			this->_socket.blocking(fds[0], socket_t::mode_t::DISABLED);
 			// Выполняем генерацию идентификатора верхнеуровневого потока
-			result = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+			result = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 			// Выполняем добавление в список верхнеуровневых потоков, новый поток
 			auto ret = this->_upstreams.emplace(result, upstream_t());
 			// Выполняем установку объекта пайпа
@@ -3224,7 +3224,7 @@ void awh::Event::start() noexcept {
 			// Устанавливаем флаг запущенной работы
 			this->_mode = !this->_mode;
 			// Выполняем генерацию идентификатора записи
-			this->_id = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+			this->_id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 			// Определяем тип установленного события
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если тип является обычным событием

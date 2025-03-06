@@ -1426,7 +1426,7 @@ bool awh::Framework::compare(const wstring & first, const wstring & second) cons
  * @param stamp единицы измерения штампа времени
  * @return      штамп времени в указанных единицах измерения
  */
-time_t awh::Framework::timestamp(const stamp_t stamp) const noexcept {
+time_t awh::Framework::timestamp(const chrono_t stamp) const noexcept {
 	// Результат работы функции
 	time_t result = 0;
 	/**
@@ -1437,28 +1437,28 @@ time_t awh::Framework::timestamp(const stamp_t stamp) const noexcept {
 		switch(static_cast <uint8_t> (stamp)){
 			/*
 			// Если единицы измерения штампа времени требуется получить в годы
-			case static_cast <uint8_t> (stamp_t::YEARS): {
+			case static_cast <uint8_t> (chrono_t::YEARS): {
 				// Получаем штамп времени в годах
 				chrono::years years = chrono::duration_cast <chrono::years> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
 				result = static_cast <time_t> (years.count());
 			} break;
 			// Если единицы измерения штампа времени требуется получить в месяцах
-			case static_cast <uint8_t> (stamp_t::MONTHS): {
+			case static_cast <uint8_t> (chrono_t::MONTHS): {
 				// Получаем штамп времени в месяцы
 				chrono::months months = chrono::duration_cast <chrono::months> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
 				result = static_cast <time_t> (months.count());
 			} break;
 			// Если единицы измерения штампа времени требуется получить в неделях
-			case static_cast <uint8_t> (stamp_t::WEEKS): {
+			case static_cast <uint8_t> (chrono_t::WEEKS): {
 				// Получаем штамп времени в недели
 				chrono::weeks weeks = chrono::duration_cast <chrono::weeks> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
 				result = static_cast <time_t> (weeks.count());
 			} break;
 			// Если единицы измерения штампа времени требуется получить в днях
-			case static_cast <uint8_t> (stamp_t::DAYS): {
+			case static_cast <uint8_t> (chrono_t::DAYS): {
 				// Получаем штамп времени в дни
 				chrono::days days = chrono::duration_cast <chrono::days> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
@@ -1466,42 +1466,42 @@ time_t awh::Framework::timestamp(const stamp_t stamp) const noexcept {
 			} break;
 			*/
 			// Если единицы измерения штампа времени требуется получить в часах
-			case static_cast <uint8_t> (stamp_t::HOURS): {
+			case static_cast <uint8_t> (chrono_t::HOURS): {
 				// Получаем штамп времени в часы
 				chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
 				result = static_cast <time_t> (hours.count());
 			} break;
 			// Если единицы измерения штампа времени требуется получить в минутах
-			case static_cast <uint8_t> (stamp_t::MINUTES): {
+			case static_cast <uint8_t> (chrono_t::MINUTES): {
 				// Получаем штамп времени в минуты
 				chrono::minutes minutes = chrono::duration_cast <chrono::minutes> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
 				result = static_cast <time_t> (minutes.count());
 			} break;
 			// Если единицы измерения штампа времени требуется получить в секундах
-			case static_cast <uint8_t> (stamp_t::SECONDS): {
+			case static_cast <uint8_t> (chrono_t::SECONDS): {
 				// Получаем штамп времени в секундах
 				chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
 				result = static_cast <time_t> (seconds.count());
 			} break;
 			// Если единицы измерения штампа времени требуется получить в миллисекундах
-			case static_cast <uint8_t> (stamp_t::MILLISECONDS): {
+			case static_cast <uint8_t> (chrono_t::MILLISECONDS): {
 				// Получаем штамп времени в миллисекундах
 				chrono::milliseconds milliseconds = chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
 				result = static_cast <time_t> (milliseconds.count());
 			} break;
 			// Если единицы измерения штампа времени требуется получить в микросекундах
-			case static_cast <uint8_t> (stamp_t::MICROSECONDS): {
+			case static_cast <uint8_t> (chrono_t::MICROSECONDS): {
 				// Получаем штамп времени в микросекунды
 				chrono::microseconds microseconds = chrono::duration_cast <chrono::microseconds> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат
 				result = static_cast <time_t> (microseconds.count());
 			} break;
 			// Если единицы измерения штампа времени требуется получить в наносекундах
-			case static_cast <uint8_t> (stamp_t::NANOSECONDS): {
+			case static_cast <uint8_t> (chrono_t::NANOSECONDS): {
 				// Получаем штамп времени в наносекундах
 				chrono::nanoseconds nanoseconds = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
 				// Получаем результат

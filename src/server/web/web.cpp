@@ -178,7 +178,7 @@ void awh::server::Web::erase(const uint64_t bid) noexcept {
 	// Если список отключившихся клиентов не пустой
 	if(!this->_disconected.empty()){
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -207,7 +207,7 @@ void awh::server::Web::erase(const uint64_t bid) noexcept {
  */
 void awh::server::Web::disconnect(const uint64_t bid) noexcept {
 	// Добавляем в очередь список отключившихся клиентов
-	this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+	this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS));
 }
 /**
  * disconected Метод удаления отключившихся брокеров

@@ -70,7 +70,7 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 		// Если идентификатор запроса не установлен
 		if(this->_rid == 0)
 			// Выполняем генерацию идентификатора запроса
-			this->_rid = this->_fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
+			this->_rid = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
 		// Создаём объек запроса
 		awh::web_t::req_t request(awh::web_t::method_t::GET, this->_scheme.url);
 		// Если активирован режим прокси-сервера
@@ -268,7 +268,7 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 					// Добавляем полученные данные в буфер
 					this->_buffer.push(buffer, size);
 					// Обнуляем время последнего ответа на пинг
-					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					this->_point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
 					this->_sendPing = this->_point;
 					// Выполняем препарирование полученных данных
@@ -473,7 +473,7 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 		// Если разрешено выполнять пинги
 		if(this->_pinging && !this->_close){
 			// Получаем текущий штамп времени
-			const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+			const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 			// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 			if((this->_waitPong > 0) && ((stamp - this->_point) >= this->_waitPong)){
 				// Создаём сообщение
@@ -504,7 +504,7 @@ void awh::client::Websocket1::ping(const void * buffer, const size_t size) noexc
 				// Выполняем отправку сообщения на сервер
 				if(const_cast <client::core_t *> (this->_core)->send(frame.data(), frame.size(), this->_bid))
 					// Обновляем время отправленного пинга
-					this->_sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					this->_sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 			}
 		}
 	}
@@ -648,7 +648,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Получаем размер скользящего окна клиента
 					this->_client.wbit = this->_http.wbit(awh::web_t::hid_t::CLIENT);
 					// Обновляем контрольную точку времени получения данных
-					this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					this->_point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 					// Если данные необходимо зашифровать
 					if(this->_encryption.mode && this->_crypted){
 						// Устанавливаем размер шифрования
@@ -775,7 +775,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 								// Если идентификатор брокера совпадает
 								if(bid == result){
 									// Обновляем контрольную точку
-									this->_point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+									this->_point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 									// Выходим из условия
 									break;
 								}

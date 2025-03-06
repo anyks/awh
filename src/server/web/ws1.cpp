@@ -181,7 +181,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 					// Добавляем полученные данные в буфер
 					options->buffer.payload.push(buffer, size);
 					// Обнуляем время последнего ответа на пинг
-					options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					options->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
 					options->sendPing = options->point;
 					// Если рукопожатие не выполнено
@@ -497,7 +497,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 												// Если идентификатор брокера совпадает
 												if(bid == result){
 													// Обновляем контрольную точку
-													options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+													options->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 													// Выходим из условия
 													break;
 												}
@@ -834,7 +834,7 @@ void awh::server::Websocket1::ping(const uint64_t bid, const void * buffer, cons
 				// Выполняем отправку сообщения брокеру
 				if(const_cast <server::core_t *> (this->_core)->send(frame.data(), frame.size(), bid))
 					// Обновляем время отправленного пинга
-					options->sendPing = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					options->sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 			}
 		}
 	}
@@ -870,7 +870,7 @@ void awh::server::Websocket1::erase(const uint64_t bid) noexcept {
 			this->_scheme.rm(bid);
 		};
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -920,7 +920,7 @@ void awh::server::Websocket1::pinging(const uint16_t tid) noexcept {
 				// Если подключение клиента активно
 				if(!item.second->close){
 					// Получаем текущий штамп времени
-					const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 					// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 					if((this->_waitPong > 0) && ((stamp - item.second->point) >= this->_waitPong)){
 						// Создаём сообщение

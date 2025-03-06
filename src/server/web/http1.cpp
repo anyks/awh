@@ -294,7 +294,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 									// Устанавливаем флаг закрытия подключения
 									options->close = true;
 								// Получаем текущий штамп времени
-								else options->point = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								else options->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 							// Выполняем сброс количества выполненных запросов
 							} else options->requests = 0;
 							// Получаем флаг шифрованных данных
@@ -816,7 +816,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 			this->_scheme.rm(bid);
 		};
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -878,7 +878,7 @@ void awh::server::Http1::pinging(const uint16_t tid) noexcept {
 							// Иначе проверяем прошедшее время
 							else {
 								// Получаем текущий штамп времени
-								const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+								const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
 								// Если брокер не ответил на пинг больше двух интервалов, отключаем его
 								if((stamp - options->point) >= this->_timeAlive)
 									// Завершаем работу
