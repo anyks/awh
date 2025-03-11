@@ -501,7 +501,7 @@ string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
  * @param size максимальная длина строки
  * @return     полученное число строки
  */
-string & awh::Net::zerro(string && num, const uint8_t size) const noexcept {
+string && awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 	// Если число меньше максимальной длины строки
 	if(static_cast <uint8_t> (num.size()) < size){
 		/**
@@ -532,7 +532,7 @@ string & awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 		}
 	}
 	// Выводим результат
-	return num;
+	return ::move(num);
 }
 /**
  * greater Метод проверки больше первое число второго или нет (бинарным методом)

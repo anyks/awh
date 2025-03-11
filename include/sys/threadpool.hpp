@@ -25,6 +25,7 @@
 #include <future>
 #include <stdexcept>
 #include <functional>
+#include <type_traits>
 #include <condition_variable>
 
 /**
@@ -232,13 +233,13 @@ namespace awh {
 			 * @param func функция для обработки
 			 * @param args аргументы для передачи в функцию
 			 */
-			auto push(Func && func, Args && ... args) noexcept -> future <typename result_of <Func (Args...)>::type> {
+			auto push(Func && func, Args && ... args) noexcept -> future <typename invoke_result <Func, Args...>::type> {
 				// Устанавливаем тип возвращаемого значения
-				using return_type = typename result_of <Func(Args...)>::type;
+				using result_t = typename invoke_result <Func, Args...>::type;
 				// Добавляем задачу в очередь для последующего исполнения
-				auto task = make_shared <packaged_task <return_type()>> (std::bind(std::forward <Func> (func), std::forward <Args> (args)...));
+				auto task = make_shared <packaged_task <result_t()>> (std::bind(std::forward <Func> (func), std::forward <Args> (args)...));
 				// Создаем шаблон асинхронных операций
-				future <return_type> res = task->get_future();
+				future <result_t> res = task->get_future();
 				{
 					// Выполняем блокировку уникальным мютексом
 					unique_lock <mutex> lock(this->_locker);

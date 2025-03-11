@@ -4,16 +4,16 @@ cmake_minimum_required(VERSION 3.15)
 project(awh LANGUAGES CXX)
 
 # Устанавливаем название приложения
-set(PROJECT_VENDOR_LONG "ANYKS - WEB")
+SET(PROJECT_VENDOR_LONG "ANYKS - WEB")
 
 # Опции сборки
-set(PROJECT_COPYRIGHT "Copyright (c) ${CURRENT_YEAR} ${PROJECT_VENDOR_LONG}")
+SET(PROJECT_COPYRIGHT "Copyright (c) ${CURRENT_YEAR} ${PROJECT_VENDOR_LONG}")
 
 # Тип сборки
 # cmake -DCMAKE_BUILD_TYPE=YES ..
 if (NOT CMAKE_BUILD_TYPE)
     # Активируем режим отладки
-    set(CMAKE_BUILD_TYPE Debug)
+    SET(CMAKE_BUILD_TYPE Debug)
 endif (NOT CMAKE_BUILD_TYPE)
 
 # Выводим сообщение о типе сборки
@@ -39,28 +39,39 @@ message(STATUS "Architecture: ${ARCHITECTURE}")
 string(REGEX MATCH "Linux" PROJECT_OS_LINUX ${CMAKE_SYSTEM_NAME})
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
-    set(DEBUGGER "-ggdb3")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
+    SET(DEBUGGER "-ggdb3")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     if (NOT MACOS_VERSION)
         EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE MACOS_VERSION)
     endif()
     message(STATUS "Detected OS: MacOS X v${MACOS_VERSION}")
-    set(DEBUGGER "-glldb")    
-    set(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION})
+    SET(DEBUGGER "-glldb")    
+    SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION})
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     message(STATUS "Detected OS: FreeBSD")
-    set(DEBUGGER "-ggdb3")
+    SET(DEBUGGER "-ggdb3")
 else()
-    set(DEBUGGER "")
+    SET(DEBUGGER "")
 endif()
 
 # Enable C++17
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+SET(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Устанавливаем опции компилятора
-set(CMAKE_CXX_COMPILER_ID "clang++")
+# Если операционной системой является Linux
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    # Устанавливаем опции компилятора
+    SET(CMAKE_C_COMPILER_ID "GNU")
+    SET(CMAKE_CXX_COMPILER_ID "GNU")
+# Для всех остальных операционных систем
+else()
+    # Устанавливаем опции компилятора
+    SET(CMAKE_C_COMPILER_ID "clang")
+    SET(CMAKE_CXX_COMPILER_ID "clang++")
+endif()
+
+# Выводим информацию об установленных компиляторах
 message(STATUS "Using C compiler: ${CMAKE_C_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "Using C++ compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}\n")
 
@@ -69,31 +80,39 @@ string(TIMESTAMP CURRENT_YEAR "%Y")
 string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 
 # Опции компилятора
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    set(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
+    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    set(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
+    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    set(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+    SET(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
-    set(AWH_PARAMS "-lutil -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+    SET(AWH_PARAMS "-lutil -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 else()
-    set(AWH_PARAMS "-Wno-unknown-attributes")
+    SET(AWH_PARAMS "-Wno-unknown-attributes")
 endif()
 
+# Если процессор архитектуры ARM
 if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
+    SET(CMAKE_CXX_FLAGS_RELEASE "-pipe -DNDEBUG")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
+# Если процессор архитектуры x86_64
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -mrdrnd -march=core2 -DNDEBUG")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
+    SET(CMAKE_CXX_FLAGS_RELEASE "-pipe -mrdrnd -march=core2 -DNDEBUG")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
+# Устанавливаем параметр отладки
+SET(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG_MODE ${DEBUGGER}")
 
+# Если активирован режим отладки
 if (CMAKE_BUILD_TYPE MATCHES Debug)
+    # Устанавливаем уровень оптимизации
+    SET(CMAKE_C_FLAGS_DISTRIBUTION "-O0")
+    SET(CMAKE_CXX_FLAGS_DISTRIBUTION "-O0")
+
     # Если операцинная система не относится к MS Windows
     if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Устанавливаем сборку профилировщика
@@ -113,7 +132,12 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     # Выводим сообщение отладочной информации
     message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}")
     message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}\n")
+# Если активирован режим релиза
 else()
+    # Устанавливаем уровень оптимизации
+    SET(CMAKE_C_FLAGS_DISTRIBUTION "-O3")
+    SET(CMAKE_CXX_FLAGS_DISTRIBUTION "-O3")
+
     # Выводим сообщение релизной информации
     message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
     message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}\n")
@@ -122,7 +146,7 @@ endif()
 # Если нужно собрать и динамическую библиотеку
 if (CMAKE_SHARED_BUILD_LIB)
     if (MSVC)
-        set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+        SET(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
     endif (MSVC)
 endif (CMAKE_SHARED_BUILD_LIB)
 
@@ -174,7 +198,7 @@ include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 
 # Выполняем подключение исходников
-set(SOURCE_FILES
+SET(SOURCE_FILES
     "${SOURCE_FILES}"
     "${CMAKE_SOURCE_DIR}/src/sys/os.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
@@ -254,25 +278,25 @@ set(SOURCE_FILES
 )
 
 # Задаем именя библиотеки и бинарника
-set(IP_APP_NAME ip)
-set(DNS_APP_NAME dns)
-set(NTP_APP_NAME ntp)
-set(PING_APP_NAME ping)
-set(TIMER_APP_NAME timer)
-set(PROXY_APP_NAME proxy)
-set(SOCKS5_APP_NAME socks5)
-set(CLIENT_APP_NAME client)
-set(SERVER_APP_NAME server)
-set(WS_CLIENT_APP_NAME wsClient)
-set(WS_SERVER_APP_NAME wsServer)
-set(WEB_CLIENT_APP_NAME webClient)
-set(WEB_SERVER_APP_NAME webServer)
-set(INVESTIGATOR_APP_NAME investigator)
-set(AWH_LIB_NAME ${PROJECT_NAME})
+SET(IP_APP_NAME ip)
+SET(DNS_APP_NAME dns)
+SET(NTP_APP_NAME ntp)
+SET(PING_APP_NAME ping)
+SET(TIMER_APP_NAME timer)
+SET(PROXY_APP_NAME proxy)
+SET(SOCKS5_APP_NAME socks5)
+SET(CLIENT_APP_NAME client)
+SET(SERVER_APP_NAME server)
+SET(WS_CLIENT_APP_NAME wsClient)
+SET(WS_SERVER_APP_NAME wsServer)
+SET(WEB_CLIENT_APP_NAME webClient)
+SET(WEB_SERVER_APP_NAME webServer)
+SET(INVESTIGATOR_APP_NAME investigator)
+SET(AWH_LIB_NAME ${PROJECT_NAME})
 
 # Если операционной системой не является Windows
 if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    set(CLUSTER_APP_NAME cluster)
+    SET(CLUSTER_APP_NAME cluster)
 endif()
 
 # Если нужно собрать и динамическую библиотеку
@@ -292,11 +316,11 @@ endif (CMAKE_SHARED_BUILD_LIB)
  if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
     # Устанавливаем необходимые зависимости для MS Windows
-    set(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+    SET(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
-    set(RES_FILES "awh.rc")
-    set(CMAKE_RC_COMPILER_INIT windres)
+    SET(RES_FILES "awh.rc")
+    SET(CMAKE_RC_COMPILER_INIT windres)
     ENABLE_LANGUAGE(RC)
     SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
 
@@ -1137,7 +1161,7 @@ endif (CMAKE_SHARED_BUILD_LIB)
 # Активация формирования дампа ядра в реже отладки под MacOS X
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-        set(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
+        SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
         
         add_custom_command(TARGET "${IP_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${IP_APP_NAME}>" "${entitlements_file}"
@@ -1262,7 +1286,7 @@ endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
 if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local" OR "${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local/")
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
+    SET(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
 endif()
 
 # Устанавливаем сертификаты

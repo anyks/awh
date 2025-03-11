@@ -1165,8 +1165,6 @@ void awh::Engine::Context::clear() noexcept {
 		this->_addr->clear();
 	// Сбрасываем флаг вывода подробной информации
 	this->_verb = false;
-	// Зануляем объект подключения
-	this->_addr = nullptr;
 	// Сбрасываем флаг инициализации
 	this->_encrypted = false;
 }

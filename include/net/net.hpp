@@ -177,7 +177,7 @@ namespace awh {
 			 * @param size максимальная длина строки
 			 * @return     полученное число строки
 			 */
-			string & zerro(string && num, const uint8_t size = 3) const noexcept;
+			string && zerro(string && num, const uint8_t size = 3) const noexcept;
 		private:
 			/**
 			 * greater Метод проверки больше первое число второго или нет (бинарным методом)
