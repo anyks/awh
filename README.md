@@ -128,6 +128,8 @@ $ cmake \
 $ cmake --build .
 ```
 
+---
+
 ### Example WEB-client multirequests
 ```c++
 #include <client/awh.hpp>
@@ -264,6 +266,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example WEB-client
 ```c++
 #include <client/awh.hpp>
@@ -330,6 +334,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example WEB-server
 ```c++
@@ -514,6 +520,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example WebSocket-client
 ```c++
 #include <client/ws.hpp>
@@ -632,6 +640,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example WebSocket-server
 ```c++
@@ -758,6 +768,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example multiprotocol HTTPS-server
 ```c++
@@ -954,6 +966,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example HTTPS PROXY-server
 ```c++
 #include <server/proxy.hpp>
@@ -1044,6 +1058,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example Socks5 PROXY-server
 ```c++
 #include <server/socks5.hpp>
@@ -1110,6 +1126,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example Timer
 ```c++
@@ -1189,6 +1207,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example DNS-resolver
 ```c++
 #include <net/dns.hpp>
@@ -1228,6 +1248,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example NTP-client
 ```c++
 #include <net/ntp.hpp>
@@ -1255,6 +1277,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example ICMP-client PINGER
 ```c++
 #include <net/ping.hpp>
@@ -1278,6 +1302,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example TCP-client
 ```c++
@@ -1340,6 +1366,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example TCP-server
 ```c++
 #include <server/sample.hpp>
@@ -1399,6 +1427,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example TLS-client
 ```c++
@@ -1467,6 +1497,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example TLS-server
 ```c++
 #include <server/sample.hpp>
@@ -1533,6 +1565,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example UDP-client
 ```c++
 #include <client/sample.hpp>
@@ -1594,6 +1628,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example UDP-server
 ```c++
 #include <server/sample.hpp>
@@ -1652,6 +1688,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example SCTP-client
 ```c++
@@ -1720,6 +1758,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example SCTP-server
 ```c++
 #include <server/sample.hpp>
@@ -1785,6 +1825,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example DTLS-client
 ```c++
@@ -1853,6 +1895,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example DTLS-server
 ```c++
 #include <server/sample.hpp>
@@ -1918,6 +1962,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example UnixSocket TCP-client
 ```c++
 #include <client/sample.hpp>
@@ -1980,6 +2026,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example UnixSocket TCP-server
 ```c++
 #include <server/sample.hpp>
@@ -2040,6 +2088,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example UnixSocket UDP-client
 ```c++
@@ -2103,6 +2153,8 @@ int32_t main(int32_t argc, char * argv[]){
 }
 ```
 
+---
+
 ### Example UnixSocket UDP-server
 ```c++
 #include <server/sample.hpp>
@@ -2162,6 +2214,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example Cluster
 ```c++
@@ -2239,6 +2293,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example IP-address
 ```c++
@@ -2430,6 +2486,8 @@ int32_t main(int32_t argc, char * argv[]){
 	return EXIT_SUCCESS;
 }
 ```
+
+---
 
 ### Example Investigator
 ```c++
