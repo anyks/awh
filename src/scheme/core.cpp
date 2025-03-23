@@ -180,7 +180,7 @@ void awh::Scheme::Broker::start() noexcept {
 	// Устанавливаем базу данных событий
 	this->_event = this->_base;
 	// Устанавливаем тип события
-	this->_event = this->_addr.fd;
+	this->_event = this->addr.fd;
 	// Устанавливаем функцию обратного вызова
 	this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
 	// Выполняем запуск работы события
@@ -195,7 +195,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если сокет подключения активен и база событий установлена и активна
-	if((this->_addr.fd != INVALID_SOCKET) && (this->_addr.fd < AWH_MAX_SOCKETS) && (this->_base != nullptr)){
+	if((this->addr.fd != INVALID_SOCKET) && (this->addr.fd < AWH_MAX_SOCKETS) && (this->_base != nullptr)){
 		// Определяем метод события сокета
 		switch(static_cast <uint8_t> (method)){
 			// Если передано событие подписки на чтение
@@ -209,7 +209,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						// Выполняем активацию события закрытий подключения
 						this->_event.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						// Выполняем установку таймаута ожидания
-						this->_ectx.timeout(this->_timeouts.read * 1000, engine_t::method_t::READ);
+						this->ectx.timeout(static_cast <uint32_t> (this->timeouts.read) * 1000, engine_t::method_t::READ);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED):
@@ -229,7 +229,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 						// Выполняем активацию события закрытий подключения
 						this->_event.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						// Выполняем установку таймаута ожидания
-						this->_ectx.timeout(this->_timeouts.write * 1000, engine_t::method_t::WRITE);
+						this->ectx.timeout(static_cast <uint32_t> (this->timeouts.write) * 1000, engine_t::method_t::WRITE);
 					} break;
 					// Если установлен сигнал деактивации сокета
 					case static_cast <uint8_t> (mode_t::DISABLED):
@@ -246,7 +246,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
  * @param seconds время ожидания в секундах
  * @param method  метод режима работы
  */
-void awh::Scheme::Broker::timeout(const time_t seconds, const engine_t::method_t method) noexcept {
+void awh::Scheme::Broker::timeout(const uint16_t seconds, const engine_t::method_t method) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Определяем метод режима работы
@@ -254,17 +254,17 @@ void awh::Scheme::Broker::timeout(const time_t seconds, const engine_t::method_t
 		// Режим работы ЧТЕНИЕ
 		case static_cast <uint8_t> (engine_t::method_t::READ):
 			// Устанавливаем время ожидания на входящие данные
-			this->_timeouts.read = seconds;
+			this->timeouts.read = seconds;
 		break;
 		// Режим работы ЗАПИСЬ
 		case static_cast <uint8_t> (engine_t::method_t::WRITE):
 			// Устанавливаем время ожидания на исходящие данные
-			this->_timeouts.write = seconds;
+			this->timeouts.write = seconds;
 		break;
 		// Режим работы ПОДКЛЮЧЕНИЕ
 		case static_cast <uint8_t> (engine_t::method_t::CONNECT):
 			// Устанавливаем время ожидания на исходящие данные
-			this->_timeouts.connect = seconds;
+			this->timeouts.connect = seconds;
 		break;
 	}
 }
@@ -293,17 +293,16 @@ awh::Scheme::Broker & awh::Scheme::Broker::operator = (base_t * base) noexcept {
 }
 /**
  * Broker Конструктор
- * @param sid  идентификатор схемы сети
- * @param base объект базы событий
- * @param fmk  объект фреймворка
- * @param log  объект для работы с логами
+ * @param sid идентификатор схемы сети
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
  */
 awh::Scheme::Broker::Broker(const uint16_t sid, const fmk_t * fmk, const log_t * log) noexcept :
  _id(0), _sid(sid), _ip{""}, _mac{""}, _port(0), _sonet(sonet_t::TCP),
- _event(event_t::type_t::EVENT, fmk, log), _callbacks(log), _ectx(fmk, log),
- _addr(fmk, log), _fmk(fmk), _log(log), _base(nullptr) {
+ _event(event_t::type_t::EVENT, fmk, log), _callbacks(log),
+ ectx(fmk, log), addr(fmk, log), _fmk(fmk), _log(log), _base(nullptr) {
 	// Устанавливаем идентификатор брокера
-	this->_id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+	this->_id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 }
 /**
  * ~Broker Деструктор
@@ -334,7 +333,7 @@ SOCKET awh::Scheme::socket(const uint64_t bid) const noexcept {
 		// Если брокер найден, выводим
 		if(i != this->_brokers.end())
 			// Выводим полученный сокет
-			return i->second->_addr.fd;
+			return i->second->addr.fd;
 	}
 	// Выводим результат
 	return result;

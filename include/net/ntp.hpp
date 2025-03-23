@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <ctime>
 #include <mutex>
 #include <thread>
 #include <cstdio>
@@ -247,7 +246,7 @@ namespace awh {
 					 * request Метод выполнения запроса
 					 * @return полученный UnixTimeStamp
 					 */
-					time_t request() noexcept;
+					uint64_t request() noexcept;
 				private:
 					/**
 					 * Метод отправки запроса на удалённый сервер NTP
@@ -255,7 +254,7 @@ namespace awh {
 					 * @param to   адрес NTP-сервера на который выполняется запрос
 					 * @return     полученный UnixTimeStamp
 					 */
-					time_t send(const string & from, const string & to) noexcept;
+					uint64_t send(const string & from, const string & to) noexcept;
 				public:
 					/**
 					 * Worker Конструктор
@@ -275,9 +274,6 @@ namespace awh {
 			net_t _net;
 			// Объект DNS-резолвера
 			dns_t _dns;
-		private:
-			// Время жизни кэша в миллисекундах
-			time_t _ttl;
 		private:
 			// Таймаут ожидания выполнения запроса (в секундах)
 			uint8_t _timeout;
@@ -398,13 +394,13 @@ namespace awh {
 			 * request Метод выполнение получения времени с NTP-сервера
 			 * @return полученный UnixTimeStamp
 			 */
-			time_t request() noexcept;
+			uint64_t request() noexcept;
 			/**
 			 * request Метод выполнение получения времени с NTP-сервера
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @return       полученный UnixTimeStamp
 			 */
-			time_t request(const int32_t family) noexcept;
+			uint64_t request(const int32_t family) noexcept;
 		public:
 			/**
 			 * NTP Конструктор

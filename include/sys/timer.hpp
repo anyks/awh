@@ -49,7 +49,7 @@ namespace awh {
 				mutex mtx;
 				// Флаг остановки работы таймера
 				bool stop;
-				// Задержка времени таймера
+				// Задержка времени таймера в миллисекундах
 				uint32_t delay;
 				// Условная переменная, ожидания получения сигналов
 				condition_variable cv;
@@ -90,7 +90,7 @@ namespace awh {
 			/**
 			 * setTimeout Метод установки таймаута
 			 * @param callback функция обратного вызова
-			 * @param delay    интервал задержки времени
+			 * @param delay    интервал задержки времени в миллисекундах
 			 * @return         идентификатор таймаута
 			 */
 			uint32_t setTimeout(function <void (void)> callback, const uint32_t delay) noexcept {
@@ -165,7 +165,7 @@ namespace awh {
 			/**
 			 * setInterval Метод установки таймаута
 			 * @param callback функция для вызова
-			 * @param interval интервал времени выполнения функции
+			 * @param interval интервал времени выполнения функции в миллисекундах
 			 * @return         идентификатор таймаута
 			 */
 			uint32_t setInterval(function <void (void)> callback, const uint32_t interval) noexcept {

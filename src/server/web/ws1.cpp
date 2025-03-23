@@ -181,9 +181,9 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 					// Добавляем полученные данные в буфер
 					options->buffer.payload.push(buffer, size);
 					// Обнуляем время последнего ответа на пинг
-					options->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					options->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
-					options->sendPing = options->point;
+					options->sendPing = options->respPong;
 					// Если рукопожатие не выполнено
 					if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 						// Выполняем парсинг полученных данных
@@ -497,7 +497,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 												// Если идентификатор брокера совпадает
 												if(bid == result){
 													// Обновляем контрольную точку
-													options->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+													options->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 													// Выходим из условия
 													break;
 												}
@@ -834,7 +834,7 @@ void awh::server::Websocket1::ping(const uint64_t bid, const void * buffer, cons
 				// Выполняем отправку сообщения брокеру
 				if(const_cast <server::core_t *> (this->_core)->send(frame.data(), frame.size(), bid))
 					// Обновляем время отправленного пинга
-					options->sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					options->sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 			}
 		}
 	}
@@ -870,7 +870,7 @@ void awh::server::Websocket1::erase(const uint64_t bid) noexcept {
 			this->_scheme.rm(bid);
 		};
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -920,15 +920,15 @@ void awh::server::Websocket1::pinging(const uint16_t tid) noexcept {
 				// Если подключение клиента активно
 				if(!item.second->close){
 					// Получаем текущий штамп времени
-					const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-					if((this->_waitPong > 0) && ((stamp - item.second->point) >= this->_waitPong)){
+					if((this->_waitPong > 0) && ((date - item.second->respPong) >= static_cast <uint64_t> (this->_waitPong))){
 						// Создаём сообщение
 						item.second->mess = ws::mess_t(1005, "PING response not received");
 						// Отправляем серверу сообщение
 						this->sendError(item.first, item.second->mess);
 					// Если время с предыдущего пинга прошло больше половины времени пинга
-					} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((stamp - item.second->sendPing) > (this->_pingInterval / 2)))
+					} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((date - item.second->sendPing) > static_cast <uint64_t> (this->_pingInterval / 2)))
 						// Отправляем запрос брокеру
 						this->ping(item.first, &item.first, sizeof(item.first));
 				}
@@ -1267,17 +1267,17 @@ void awh::server::Websocket1::close(const uint64_t bid) noexcept {
  * waitPong Метод установки времени ожидания ответа WebSocket-клиента
  * @param sec время ожидания в секундах
  */
-void awh::server::Websocket1::waitPong(const time_t sec) noexcept {
+void awh::server::Websocket1::waitPong(const uint16_t sec) noexcept {
 	// Выполняем установку времени ожидания
-	this->_waitPong = (sec * 1000);
+	this->_waitPong = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
  * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::Websocket1::pingInterval(const time_t sec) noexcept {
+void awh::server::Websocket1::pingInterval(const uint16_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов в секундах
-	this->_pingInterval = (sec * 1000);
+	this->_pingInterval = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -1439,14 +1439,6 @@ void awh::server::Websocket1::alive(const bool mode) noexcept {
 	// Выполняем установку долгоживущего подключения
 	web_t::alive(mode);
 }
-/**
- * alive Метод установки времени жизни подключения
- * @param sec время жизни подключения
- */
-void awh::server::Websocket1::alive(const time_t sec) noexcept {
-	// Выполняем установку времени жизни подключения
-	web_t::alive(sec);
-}
 /*
  * core Метод установки сетевого ядра
  * @param core объект сетевого ядра
@@ -1501,7 +1493,7 @@ void awh::server::Websocket1::setHeaders(const unordered_multimap <string, strin
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::server::Websocket1::waitMessage(const time_t sec) noexcept {
+void awh::server::Websocket1::waitMessage(const uint16_t sec) noexcept {
 	// Устанавливаем время ожидания получения данных
 	this->_scheme.timeouts.wait = sec;
 }
@@ -1510,7 +1502,7 @@ void awh::server::Websocket1::waitMessage(const time_t sec) noexcept {
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::server::Websocket1::waitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::server::Websocket1::waitTimeDetect(const uint16_t read, const uint16_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
@@ -1574,7 +1566,7 @@ void awh::server::Websocket1::encryption(const string & pass, const string & sal
  * @param log объект для работы с логами
  */
 awh::server::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _waitPong(_pingInterval * 2), _frameSize(AWH_CHUNK_SIZE), _scheme(fmk, log) {}
+ web_t(fmk, log), _frameSize(AWH_CHUNK_SIZE), _waitPong(PING_INTERVAL * 2), _scheme(fmk, log) {}
 /**
  * Websocket1 Конструктор
  * @param core объект сетевого ядра
@@ -1582,7 +1574,7 @@ awh::server::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
  * @param log  объект для работы с логами
  */
 awh::server::Websocket1::Websocket1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _waitPong(_pingInterval * 2), _frameSize(AWH_CHUNK_SIZE), _scheme(fmk, log) {
+ web_t(core, fmk, log), _frameSize(AWH_CHUNK_SIZE), _waitPong(PING_INTERVAL * 2), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы

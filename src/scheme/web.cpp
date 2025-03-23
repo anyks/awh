@@ -47,7 +47,7 @@ void awh::server::scheme::WEB::set(const uint64_t bid) noexcept {
 		// Устанавливаем список доступных компрессоров
 		ret.first->second->http.compressors(this->compressors);
 		// Устанавливаем контрольную точку
-		ret.first->second->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+		ret.first->second->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 	}
 }
 /**

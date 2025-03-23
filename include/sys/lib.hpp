@@ -16,7 +16,7 @@
 #define __AWH_CONFIG__
 
 // Версия приложения
-#define AWH_VERSION "4.3.0"
+#define AWH_VERSION "4.3.1"
 // Короткое название библиотеки
 #define AWH_SHORT_NAME "AWH"
 // Название библиотеки
@@ -62,8 +62,6 @@
 #define PING_INTERVAL 120000
 // Максимальное количество потоков сервера
 #define MAX_COUNT_THREADS 1000
-// Максимальное время подключения
-#define KEEPALIVE_TIMEOUT 15000
 // Время жизни ключа сессии DIGEST авторизации в милисекундах
 #define DIGEST_ALIVE_NONCE 1800000
 // Максимальный размер файла логов в байтах
@@ -159,7 +157,7 @@
 // Хост сервера по умолчанию
 #define SERVER_HOST "127.0.0.1"
 // Максимальное количество запросов к серверу на одно подключение
-#define SERVER_MAX_REQUESTS 100
+#define SERVER_MAX_REQUESTS 0
 // Количество максимальных подключений к серверу
 #define SERVER_TOTAL_CONNECT 1000
 

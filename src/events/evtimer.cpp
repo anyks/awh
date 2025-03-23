@@ -1,5 +1,5 @@
 /**
- * @file: timeout.cpp
+ * @file: evtimer.cpp
  * @date: 2024-07-02
  * @license: GPL-3.0
  *
@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
-#include <sys/timeout.hpp>
+#include <events/evtimer.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -30,9 +30,9 @@ using namespace placeholders;
 /**
  * trigger Метод обработки событий триггера
  */
-void awh::Timeout::trigger() noexcept {
+void awh::EventTimer::trigger() noexcept {
 	// Получаем текущее значение даты
-	const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+	const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
@@ -46,7 +46,7 @@ void awh::Timeout::trigger() noexcept {
 			// Если время вышло
 			if(date >= i->first){
 				// Определяем размер погрешности
-				const time_t infelicity = (date - i->first);
+				const uint64_t infelicity = (date - i->first);
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
 				// Выполняем поиск файловый дескриптор
@@ -54,7 +54,7 @@ void awh::Timeout::trigger() noexcept {
 				// Если файловый дескриптор найден в списке
 				if(j != this->_fds.end()){
 					// Выполняем запись в сокет данных
-					this->_pipe.write(fd, &infelicity, sizeof(infelicity), j->second);
+					this->_evpipe.write(fd, &infelicity, sizeof(infelicity), j->second);
 					// Выполняем удаление идентификатора таймера
 					this->_fds.erase(j);
 				}
@@ -64,11 +64,11 @@ void awh::Timeout::trigger() noexcept {
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
 		// Получаем первое значение даты в списке
-		const time_t first = this->_timers.begin()->first;
+		const uint64_t first = this->_timers.begin()->first;
 		// Если список таймеров не пустой и время задержки выше 0
 		if(!this->_timers.empty() && ((first > date ? (first - date) : 0) > 0))
 			// Выполняем смену времени таймера
-			this->_screen = static_cast <time_t> (first - date);
+			this->_screen = static_cast <uint64_t> (first - date);
 		// Выполняем обработку входящих данных
 		else this->trigger();
 	// Устанавливаем таймаут по умолчанию
@@ -78,11 +78,11 @@ void awh::Timeout::trigger() noexcept {
  * process Метод обработки процесса добавления таймеров
  * @param data данные таймера для добавления
  */
-void awh::Timeout::process(const data_t data) noexcept {
+void awh::EventTimer::process(const data_t data) noexcept {
 	// Выполняем блокировку потока
 	this->_mtx.lock();
 	// Получаем текущее значение даты
-	const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+	const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Идентификатор файлового дескриптора (сокета)
@@ -94,7 +94,7 @@ void awh::Timeout::process(const data_t data) noexcept {
 			// Если время вышло
 			if(date >= i->first){
 				// Определяем размер погрешности
-				const time_t infelicity = (date - i->first);
+				const uint64_t infelicity = (date - i->first);
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
 				// Выполняем поиск файловый дескриптор
@@ -102,7 +102,7 @@ void awh::Timeout::process(const data_t data) noexcept {
 				// Если файловый дескриптор найден в списке
 				if(j != this->_fds.end()){
 					// Выполняем запись в сокет данных
-					this->_pipe.write(fd, &infelicity, sizeof(infelicity), j->second);
+					this->_evpipe.write(fd, &infelicity, sizeof(infelicity), j->second);
 					// Выполняем удаление идентификатора таймера
 					this->_fds.erase(j);
 				}
@@ -120,25 +120,25 @@ void awh::Timeout::process(const data_t data) noexcept {
 	// Выполняем разблокировку потока
 	this->_mtx.unlock();
 	// Получаем первое значение даты в списке
-	const time_t first = this->_timers.begin()->first;
+	const uint64_t first = this->_timers.begin()->first;
 	// Если список таймеров не пустой и время задержки выше 0
 	if(!this->_timers.empty() && ((first > date ? (first - date) : 0) > 0))
 		// Выполняем смену времени таймера
-		this->_screen = static_cast <time_t> (first - date);
+		this->_screen = static_cast <uint64_t> (first - date);
 	// Выполняем обработку входящих данных
 	else this->trigger();
 }
 /**
  * stop Метод остановки работы таймера
  */
-void awh::Timeout::stop() noexcept {
+void awh::EventTimer::stop() noexcept {
 	// Выполняем остановку работы экрана
 	this->_screen.stop();
 }
 /**
  * start Метод запуска работы таймера
  */
-void awh::Timeout::start() noexcept {
+void awh::EventTimer::start() noexcept {
 	// Выполняем запуск работы экрана
 	this->_screen.start();
 }
@@ -146,7 +146,7 @@ void awh::Timeout::start() noexcept {
  * del Метод удаления таймера
  * @param fd файловый дескриптор таймера
  */
-void awh::Timeout::del(const SOCKET fd) noexcept {
+void awh::EventTimer::del(const SOCKET fd) noexcept {
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
@@ -168,10 +168,10 @@ void awh::Timeout::del(const SOCKET fd) noexcept {
 /**
  * set Метод установки таймера
  * @param fd    файловый дескриптор таймера
- * @param delay задержка времени в наносекундах
+ * @param delay задержка времени в миллисекундах
  * @param port  порт сервера на который нужно отправить ответ
  */
-void awh::Timeout::set(const SOCKET fd, const time_t delay, const uint32_t port) noexcept {
+void awh::EventTimer::set(const SOCKET fd, const uint32_t delay, const uint32_t port) noexcept {
 	// Создаём объект даты для передачи
 	data_t data;
 	// Устанавливаем файловый дескриптор
@@ -179,39 +179,39 @@ void awh::Timeout::set(const SOCKET fd, const time_t delay, const uint32_t port)
 	// Выполняем установку порта
 	data.port = port;
 	// Устанавливаем задержку времени в наносекундах
-	data.delay = delay;
+	data.delay = (static_cast <uint64_t> (delay) * 1000000);
 	// Выполняем отправку события экрану
 	this->_screen = data;
 }
 /**
- * Timeout Конструктор
+ * EventTimer Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Timeout::Timeout(const fmk_t * fmk, const log_t * log) noexcept :
- _pipe(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk), _log(log) {
+awh::EventTimer::EventTimer(const fmk_t * fmk, const log_t * log) noexcept :
+ _evpipe(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk) {
 	/**
 	 * Методы только для OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем тип пайпа
-		this->_pipe.type(pipe_t::type_t::NETWORK);
+		this->_evpipe.type(evpipe_t::type_t::NETWORK);
 	/**
 	 * Методы для всех остальных операционных систем
 	 */
 	#else
 		// Устанавливаем тип пайпа
-		this->_pipe.type(pipe_t::type_t::NATIVE);
+		this->_evpipe.type(evpipe_t::type_t::NATIVE);
 	#endif
 	// Выполняем добавление функции обратного вызова триггера
-	this->_screen = static_cast <function <void (void)>> (std::bind(&timeout_t::trigger, this));
+	this->_screen = static_cast <function <void (void)>> (std::bind(&evtimer_t::trigger, this));
 	// Выполняем добавление функции обратного вызова процесса обработки
-	this->_screen = static_cast <function <void (const data_t)>> (std::bind(&timeout_t::process, this, _1));
+	this->_screen = static_cast <function <void (const data_t)>> (std::bind(&evtimer_t::process, this, _1));
 }
 /**
- * ~Timeout Деструктор
+ * ~EventTimer Деструктор
  */
-awh::Timeout::~Timeout() noexcept {
+awh::EventTimer::~EventTimer() noexcept {
 	// Выполняем остановку работы экрана
 	this->_screen.stop();
 }

@@ -39,7 +39,6 @@
 /**
  * Стандартные модули
  */
-#include <ctime>
 #include <cstdio>
 #include <string>
 #include <cstring>
@@ -202,7 +201,7 @@ namespace awh {
 			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool timeout(const SOCKET fd, const time_t msec, const mode_t mode) const noexcept;
+			bool timeout(const SOCKET fd, const uint32_t msec, const mode_t mode) const noexcept;
 		public:
 			/**
 			 * timeToLive Метод установки времени жизни сокета

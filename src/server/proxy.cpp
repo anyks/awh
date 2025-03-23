@@ -451,7 +451,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						// Устанавливаем метод запроса
 						request.method = i->second->request.params.method;
 						// Выполняем генерацию идентификатора запроса
-						request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+						request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 						// Выполняем установку метода подключения
 						i->second->method = i->second->request.params.method;
 						// Выполняем установку потока в список потоков
@@ -480,7 +480,7 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 								// Устанавливаем метод запроса
 								request.method = i->second->request.params.method;
 								// Выполняем генерацию идентификатора запроса
-								request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+								request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 								// Выполняем установку потока в список потоков
 								i->second->streams.emplace(request.id, i->second->sid);
 								// Выполняем запрос на сервер
@@ -938,7 +938,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							// Устанавливаем метод запроса
 							request.method = i->second->request.params.method;
 							// Выполняем генерацию идентификатора запроса
-							request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+							request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 							// Выполняем установку потока в список потоков
 							i->second->streams.emplace(request.id, i->second->sid);
 							// Выполняем запрос на сервер
@@ -1025,7 +1025,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Устанавливаем метод запроса
 									request.method = i->second->request.params.method;
 									// Выполняем генерацию идентификатора запроса
-									request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+									request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 									// Выполняем установку потока в список потоков
 									i->second->streams.emplace(request.id, i->second->sid);
 									// Выполняем запрос на сервер
@@ -1050,7 +1050,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Устанавливаем метод запроса
 									request.method = i->second->request.params.method;
 									// Выполняем генерацию идентификатора запроса
-									request.id = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+									request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 									// Выполняем установку потока в список потоков
 									i->second->streams.emplace(request.id, i->second->sid);
 									// Выполняем запрос на сервер
@@ -1536,7 +1536,7 @@ void awh::server::Proxy::opaque(const string & opaque) noexcept {
  * maxRequests Метод установки максимального количества запросов
  * @param max максимальное количество запросов
  */
-void awh::server::Proxy::maxRequests(const size_t max) noexcept {
+void awh::server::Proxy::maxRequests(const uint32_t max) noexcept {
 	// Выполняем установку максимального количества запросов
 	this->_server.maxRequests(max);
 }
@@ -1564,14 +1564,6 @@ void awh::server::Proxy::ssl(const node_t::ssl_t & ssl) noexcept {
 void awh::server::Proxy::alive(const bool mode) noexcept {
 	// Устанавливаем долгоживущее подключения
 	this->_server.alive(mode);
-}
-/**
- * alive Метод установки времени жизни подключения
- * @param sec время жизни подключения
- */
-void awh::server::Proxy::alive(const time_t sec) noexcept {
-	// Устанавливаем время жизни подключения
-	this->_server.alive(sec);
 }
 /**
  * alive Метод установки долгоживущего подключения
@@ -1727,7 +1719,7 @@ void awh::server::Proxy::keepAlive(const broker_t broker, const int32_t cnt, con
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param sec    интервал времени в секундах
  */
-void awh::server::Proxy::waitMessage(const broker_t broker, const time_t sec) noexcept {
+void awh::server::Proxy::waitMessage(const broker_t broker, const uint16_t sec) noexcept {
 	// Определяем переданного брокера
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
@@ -1749,7 +1741,7 @@ void awh::server::Proxy::waitMessage(const broker_t broker, const time_t sec) no
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для подключения к серверу
  */
-void awh::server::Proxy::waitTimeDetect(const broker_t broker, const time_t read, const time_t write, const time_t connect) noexcept {
+void awh::server::Proxy::waitTimeDetect(const broker_t broker, const uint16_t read, const uint16_t write, const uint16_t connect) noexcept {
 	// Определяем переданного брокера
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент

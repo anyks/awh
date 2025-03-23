@@ -101,7 +101,7 @@ void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
 		// Добавляем в очередь список отключившихся клиентов
-		this->_disconnected.emplace(bid, this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS));
+		this->_disconnected.emplace(bid, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS));
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(this->_callbacks.is("active"))
 			// Выводим функцию обратного вызова
@@ -187,7 +187,7 @@ void awh::server::Sample::erase(const uint16_t tid) noexcept {
 	// Если список отключившихся клиентов не пустой
 	if((tid > 0) && !this->_disconnected.empty()){
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 		// Выполняем переход по всему списку отключившихся клиентов
 		for(auto i = this->_disconnected.begin(); i != this->_disconnected.end();){
 			// Если брокер уже давно удалился
@@ -381,15 +381,15 @@ void awh::server::Sample::close(const uint64_t bid) noexcept {
  * pingInterval Метод установки интервала времени выполнения пингов
  * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::Sample::pingInterval(const time_t sec) noexcept {
+void awh::server::Sample::pingInterval(const uint16_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов
-	this->_pingInterval = (sec * 1000);
+	this->_pingInterval = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::server::Sample::waitMessage(const time_t sec) noexcept {
+void awh::server::Sample::waitMessage(const uint16_t sec) noexcept {
 	// Устанавливаем время ожидания получения данных
 	this->_scheme.timeouts.wait = sec;
 }
@@ -398,7 +398,7 @@ void awh::server::Sample::waitMessage(const time_t sec) noexcept {
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::server::Sample::waitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::server::Sample::waitTimeDetect(const uint16_t read, const uint16_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись

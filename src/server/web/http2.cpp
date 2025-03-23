@@ -423,7 +423,7 @@ int32_t awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, c
 							// Добавляем полученный чанк в тело данных
 							stream->http.payload(vector <char> (buffer, buffer + size));
 							// Обновляем время отправленного пинга
-							options->sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+							options->sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 						} break;
 						// Если протокол соответствует протоколу Websocket
 						case static_cast <uint8_t> (agent_t::WEBSOCKET):
@@ -619,12 +619,12 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 	if(options != nullptr){
 		// Если подключение не установлено как постоянное
 		if(!this->_service.alive && !options->alive){
-			// Увеличиваем количество выполненных запросов
-			options->requests++;
-			// Если количество выполненных запросов превышает максимальный
-			if(options->requests >= this->_maxRequests)
-				// Устанавливаем флаг закрытия подключения
-				options->close = true;
+			// Если количество запросов ограничен
+			if(this->_maxRequests > 0)
+				// Увеличиваем количество выполненных запросов
+				options->requests++;
+			// Устанавливаем флаг закрытия подключения
+			options->close = ((this->_maxRequests > 0) && (options->requests >= this->_maxRequests));
 		// Выполняем сброс количества выполненных запросов
 		} else options->requests = 0;
 		// Извлекаем данные потока
@@ -1286,7 +1286,7 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 			this->_scheme.rm(bid);
 		};
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -1369,7 +1369,7 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 			} break;
 		}
 		// Добавляем в очередь список отключившихся клиентов
-		this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS));
+		this->_disconected.emplace(bid, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS));
 	}
 }
 /**
@@ -1412,15 +1412,15 @@ void awh::server::Http2::pinging(const uint16_t tid) noexcept {
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Получаем текущий штамп времени
-								const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+								const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 								// Если время с предыдущего пинга прошло больше половины времени пинга
-								if((this->_pingInterval > 0) && ((stamp - item.second->sendPing) > (this->_pingInterval / 2))){
+								if((this->_pingInterval > 0) && ((date - item.second->sendPing) > static_cast <uint64_t> (this->_pingInterval / 2))){
 									// Если переключение протокола на HTTP/2 выполнено и пинг не прошёл
 									if(!this->ping(item.first))
 										// Выполняем закрытие подключения
 										web2_t::close(item.first);
 									// Обновляем время отправленного пинга
-									else item.second->sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+									else item.second->sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 								}
 							} break;
 							// Если протокол соответствует протоколу Websocket
@@ -2689,7 +2689,7 @@ void awh::server::Http2::close(const uint64_t bid) noexcept {
  * waitPong Метод установки времени ожидания ответа WebSocket-клиента
  * @param sec время ожидания в секундах
  */
-void awh::server::Http2::waitPong(const time_t sec) noexcept {
+void awh::server::Http2::waitPong(const uint16_t sec) noexcept {
 	// Выполняем установку времени ожидания
 	this->_ws2.waitPong(sec);
 }
@@ -2697,9 +2697,11 @@ void awh::server::Http2::waitPong(const time_t sec) noexcept {
  * pingInterval Метод установки интервала времени выполнения пингов
  * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::Http2::pingInterval(const time_t sec) noexcept {
+void awh::server::Http2::pingInterval(const uint16_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов в секундах
 	this->_ws2.pingInterval(sec);
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_pingInterval = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -2940,18 +2942,6 @@ void awh::server::Http2::alive(const bool mode) noexcept {
 	this->_http1.alive(mode);
 }
 /**
- * alive Метод установки времени жизни подключения
- * @param sec время жизни подключения
- */
-void awh::server::Http2::alive(const time_t sec) noexcept {
-	// Выполняем установку времени жизни подключения
-	web2_t::alive(sec);
-	// Выполняем установку времени жизни подключения для Websocket-сервера
-	this->_ws2.alive(sec);
-	// Выполняем установку времени жизни подключения для HTTP-сервера
-	this->_http1.alive(sec);
-}
-/**
  * alive Метод установки долгоживущего подключения
  * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
@@ -3024,7 +3014,7 @@ void awh::server::Http2::identity(const http_t::identity_t identity) noexcept {
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::server::Http2::waitMessage(const time_t sec) noexcept {
+void awh::server::Http2::waitMessage(const uint16_t sec) noexcept {
 	// Устанавливаем время ожидания получения данных
 	this->_scheme.timeouts.wait = sec;
 }
@@ -3033,7 +3023,7 @@ void awh::server::Http2::waitMessage(const time_t sec) noexcept {
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::server::Http2::waitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::server::Http2::waitTimeDetect(const uint16_t read, const uint16_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
@@ -3079,11 +3069,9 @@ void awh::server::Http2::chunk(const size_t size) noexcept {
  * maxRequests Метод установки максимального количества запросов
  * @param max максимальное количество запросов
  */
-void awh::server::Http2::maxRequests(const size_t max) noexcept {
+void awh::server::Http2::maxRequests(const uint32_t max) noexcept {
 	// Устанавливаем максимальное количество запросов
-	web2_t::maxRequests(max);
-	// Устанавливаем максимальное количество запросов для Websocket-сервера
-	this->_ws2.maxRequests(max);
+	this->_maxRequests = max;
 	// Устанавливаем максимальное количество запросов для HTTP-сервера
 	this->_http1.maxRequests(max);
 }
@@ -3269,7 +3257,8 @@ void awh::server::Http2::encryption(const string & pass, const string & salt, co
  * @param log объект для работы с логами
  */
 awh::server::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(fmk, log), _webSocket(false), _identity(http_t::identity_t::HTTP), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {}
+ web2_t(fmk, log), _webSocket(false), _maxRequests(SERVER_MAX_REQUESTS),
+ _identity(http_t::identity_t::HTTP), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {}
 /**
  * Http2 Конструктор
  * @param core объект сетевого ядра
@@ -3277,7 +3266,8 @@ awh::server::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Http2::Http2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web2_t(core, fmk, log), _webSocket(false), _identity(http_t::identity_t::HTTP), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {
+ web2_t(core, fmk, log), _webSocket(false), _maxRequests(SERVER_MAX_REQUESTS),
+ _identity(http_t::identity_t::HTTP), _ws2(fmk, log), _http1(fmk, log), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы

@@ -143,7 +143,7 @@ void awh::client::Websocket2::connectEvent(const uint64_t bid, const uint16_t si
 			// Если идентификатор запроса не установлен
 			if(this->_rid == 0)
 				// Выполняем генерацию идентификатора запроса
-				this->_rid = this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS);
+				this->_rid = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 			// Устанавливаем идентификатор запроса
 			this->_ws1._rid = this->_rid;
 			// Если HTTP-заголовки установлены
@@ -321,9 +321,9 @@ int32_t awh::client::Websocket2::chunkSignal(const int32_t sid, const uint8_t * 
 				// Если рукопожатие выполнено
 				else if(this->_allow.receive) {
 					// Обнуляем время последнего ответа на пинг
-					this->_point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					this->_respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
-					this->_sendPing = this->_point;
+					this->_sendPing = this->_respPong;
 					// Добавляем полученные данные в буфер
 					this->_buffer.push(buffer, size);
 				}
@@ -836,15 +836,15 @@ void awh::client::Websocket2::pinging(const uint16_t tid) noexcept {
 				// Если рукопожатие выполнено
 				if(this->_shake){
 					// Получаем текущий штамп времени
-					const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-					if((this->_waitPong > 0) && ((stamp - this->_point) >= this->_waitPong)){
+					if((this->_waitPong > 0) && ((date - this->_respPong) >= static_cast <uint64_t> (this->_waitPong))){
 						// Создаём сообщение
 						this->_mess = ws::mess_t(1005, "PING response not received");
 						// Выполняем отправку сообщения об ошибке
 						this->sendError(this->_mess);
 					// Если время с предыдущего пинга прошло больше половины времени пинга
-					} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((stamp - this->_sendPing) > (this->_pingInterval / 2)))
+					} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((date - this->_sendPing) > static_cast <uint64_t> (this->_pingInterval / 2)))
 						// Отправляем запрос брокеру
 						this->ping(&this->_bid, sizeof(this->_bid));
 				// Если рукопожатие уже выполнено и пинг не прошёл
@@ -872,7 +872,7 @@ void awh::client::Websocket2::ping(const void * buffer, const size_t size) noexc
 				// Выполняем отправку сообщения на сервер
 				if(web2_t::send(this->_sid, frame.data(), frame.size(), http2_t::flag_t::NONE))
 					// Обновляем время отправленного пинга
-					this->_sendPing = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					this->_sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 			}
 		}
 	}
@@ -994,7 +994,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					// Получаем размер скользящего окна клиента
 					this->_client.wbit = this->_http.wbit(awh::web_t::hid_t::CLIENT);
 					// Обновляем контрольную точку времени получения данных
-					this->_point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					this->_respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Если данные необходимо зашифровать
 					if(this->_encryption.mode && this->_crypted){
 						// Устанавливаем размер шифрования
@@ -1113,7 +1113,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 								// Если идентификатор брокера совпадает
 								if(bid == result){
 									// Обновляем контрольную точку
-									this->_point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+									this->_respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 									// Выходим из условия
 									break;
 								}
@@ -1642,21 +1642,21 @@ void awh::client::Websocket2::start() noexcept {
  * waitPong Метод установки времени ожидания ответа WebSocket-сервера
  * @param sec время ожидания в секундах
  */
-void awh::client::Websocket2::waitPong(const time_t sec) noexcept {
+void awh::client::Websocket2::waitPong(const uint16_t sec) noexcept {
 	// Выполняем установку времени ожидания для WebSocket/1.1
 	this->_ws1.waitPong(sec);
 	// Выполняем установку времени ожидания
-	this->_waitPong = (sec * 1000);
+	this->_waitPong = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
  * pingInterval Метод установки интервала времени выполнения пингов
  * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::client::Websocket2::pingInterval(const time_t sec) noexcept {
+void awh::client::Websocket2::pingInterval(const uint16_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов в секундах для WebSocket/1.1
 	this->_ws1.pingInterval(sec);
 	// Выполняем установку интервала времени выполнения пингов в секундах
-	this->_pingInterval = (sec * 1000);
+	this->_pingInterval = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
  * callback Метод установки функций обратного вызова
@@ -2027,7 +2027,7 @@ void awh::client::Websocket2::encryption(const string & pass, const string & sal
 awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _threads(0), _waitPong(_pingInterval * 2), _ws1(fmk, log),
+ _threads(0), _waitPong(_pingInterval * 2), _respPong(0), _ws1(fmk, log),
  _http(fmk, log), _hash(log), _frame(fmk, log), _cipher(hash_t::cipher_t::AES128),
  _resultCallback(log), _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
 	// Если размер фрейма не установлен
@@ -2048,7 +2048,7 @@ awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
 awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web2_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _point(0), _threads(0), _waitPong(_pingInterval * 2), _ws1(fmk, log),
+ _threads(0), _waitPong(_pingInterval * 2), _respPong(0), _ws1(fmk, log),
  _http(fmk, log), _hash(log), _frame(fmk, log), _cipher(hash_t::cipher_t::AES128),
  _resultCallback(log), _proto(engine_t::proto_t::HTTP1_1), _compressor(awh::http_t::compressor_t::NONE) {
 	// Если размер фрейма не установлен

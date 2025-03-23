@@ -29,8 +29,8 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/buffer.hpp>
-#include <sys/events.hpp>
 #include <net/engine.hpp>
+#include <events/evbase.hpp>
 
 /**
  * awh пространство имён
@@ -112,10 +112,10 @@ namespace awh {
 			 * Timeouts Структура таймаутов
 			 */
 			typedef struct Timeouts {
-				time_t wait;    // Таймаут ожидания получения данных
-				time_t read;    // Таймаут на чтение в секундах
-				time_t write;   // Таймаут на запись в секундах
-				time_t connect; // Таймаут на подключение в секундах
+				uint16_t wait;    // Таймаут ожидания получения данных
+				uint16_t read;    // Таймаут на чтение в секундах
+				uint16_t write;   // Таймаут на запись в секундах
+				uint16_t connect; // Таймаут на подключение в секундах
 				/**
 				 * Timeouts Конструктор
 				 */
@@ -168,15 +168,14 @@ namespace awh {
 					fn_t _callbacks;
 				public:
 					// Буфер полезной нагрузки
-					buffer_t _buffer;
-				public:
+					buffer_t buffer;
 					// Объект таймаутов
-					timeouts_t _timeouts;
+					timeouts_t timeouts;
 				public:
 					// Контекст двигателя для работы с передачей данных
-					engine_t::ctx_t _ectx;
+					engine_t::ctx_t ectx;
 					// Объект подключения клиента
-					engine_t::addr_t _addr;
+					engine_t::addr_t addr;
 				private:
 					// Мютекс для блокировки потока
 					recursive_mutex _mtx;
@@ -312,7 +311,7 @@ namespace awh {
 					 * @param seconds время ожидания в секундах
 					 * @param method  метод режима работы
 					 */
-					void timeout(const time_t seconds, const engine_t::method_t method) noexcept;
+					void timeout(const uint16_t seconds, const engine_t::method_t method) noexcept;
 				public:
 					/**
 					 * base Метод установки базы событий

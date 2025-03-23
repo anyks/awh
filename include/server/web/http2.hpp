@@ -43,6 +43,9 @@ namespace awh {
 				// Флаг разрешения использования протокол Websocket
 				bool _webSocket;
 			private:
+				// Максимальное количество запросов
+				uint32_t _maxRequests;
+			private:
 				// Идентичность протокола
 				http_t::identity_t _identity;
 			private:
@@ -423,12 +426,12 @@ namespace awh {
 				 * waitPong Метод установки времени ожидания ответа WebSocket-клиента
 				 * @param sec время ожидания в секундах
 				 */
-				void waitPong(const time_t sec) noexcept;
+				void waitPong(const uint16_t sec) noexcept;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				void pingInterval(const time_t sec) noexcept;
+				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола
@@ -501,11 +504,6 @@ namespace awh {
 				 */
 				void alive(const bool mode) noexcept;
 				/**
-				 * alive Метод установки времени жизни подключения
-				 * @param sec время жизни подключения
-				 */
-				void alive(const time_t sec) noexcept;
-				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг долгоживущего подключения
@@ -528,13 +526,13 @@ namespace awh {
 				 * waitMessage Метод ожидания входящих сообщений
 				 * @param sec интервал времени в секундах
 				 */
-				void waitMessage(const time_t sec) noexcept;
+				void waitMessage(const uint16_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
 				 */
-				void waitTimeDetect(const time_t read, const time_t write) noexcept;
+				void waitTimeDetect(const uint16_t read, const uint16_t write) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера
@@ -556,7 +554,7 @@ namespace awh {
 				 * maxRequests Метод установки максимального количества запросов
 				 * @param max максимальное количество запросов
 				 */
-				void maxRequests(const size_t max) noexcept;
+				void maxRequests(const uint32_t max) noexcept;
 			public:
 				/**
 				 * ident Метод установки идентификации сервера

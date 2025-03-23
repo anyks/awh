@@ -13,6 +13,12 @@
  */
 
 /**
+ * Подключаем модуль работы с временем
+ */
+#include <ctime>
+#include <iomanip>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <http/core.hpp>
@@ -26,6 +32,16 @@ using namespace std;
  * Подписываемся на пространство имён заполнителя
  */
 using namespace placeholders;
+
+/**
+ * Для операционной системы Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * Заменяем функцию gmtime_r на gmtime_s
+	 */
+	#define gmtime_r(T, Tm) (gmtime_s(Tm, T) ? nullptr : Tm)
+#endif
 
 /**
  * chunking Метод вывода полученных чанков полезной нагрузки
@@ -2516,12 +2532,60 @@ void awh::Http::response(const web_t::res_t & res) noexcept {
 }
 /**
  * date Метод получения текущей даты для HTTP-запроса
- * @param stamp штамп времени в числовом виде
- * @return      штамп времени в текстовом виде
+ * @param date дата в формате UnixTimestamp
+ * @return     штамп времени в текстовом виде
  */
-string awh::Http::date(const time_t stamp) const noexcept {
+string awh::Http::date(const uint64_t date) const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Создаем структуру времени
+		std::tm tm = {};
+		// Создаём объект потока
+		stringstream ss;
+		// Преобразуем дату в нужный нам формат
+		time_t value = static_cast <time_t> (date);
+		// Если штамп времени передан в числовом виде
+		if(value == 0)
+			// Формируем время по умолчанию
+			value = ::time(nullptr);
+		// Получаем текущее значение размерности даты
+		const uint8_t current = static_cast <uint8_t> (::floor(::log10(value)));
+		// Получаем размерность актуальной размерности даты
+		const uint8_t actual = static_cast <uint8_t> (::floor(::log10(::time(nullptr))));
+		// Если текущий размер выше актуального
+		if(current > actual)
+			// Переводим указанные единицы в секунды
+			value /= ::pow(10, current - actual);
+		// Формируем локальное время
+		gmtime_r(&value, &tm);
+		// Выполняем извлечение даты
+		ss << put_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+		// Выводим полученное значение даты
+		return ss.str();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
+	}
 	// Выводим результат
-	return this->_fmk->time2str((stamp > 0 ? stamp : ::time(nullptr)), "%a, %d %b %Y %H:%M:%S GMT", fmk_t::date_t::GMT);
+	return result;
 }
 /**
  * message Метод получения HTTP сообщения
@@ -5180,7 +5244,7 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
 		{505, "HTTP Version Not Supported"}
 	};
 	// Выполняем установку идентификатора объекта
-	this->_web.id(this->_fmk->timestamp(fmk_t::chrono_t::NANOSECONDS));
+	this->_web.id(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS));
 	// Устанавливаем функцию обратного вызова для получения чанков
 	this->_web.callback <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", std::bind(&awh::Http::chunking, this, _1, _2, _3));
 }

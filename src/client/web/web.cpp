@@ -777,7 +777,7 @@ void awh::client::Web::bandwidth(const string & read, const string & write) noex
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::client::Web::waitMessage(const time_t sec) noexcept {
+void awh::client::Web::waitMessage(const uint16_t sec) noexcept {
 	// Если объект сетевого ядра установлен
 	if((this->_core != nullptr) && (this->_bid > 0))
 		// Устанавливаем время ожидания получения данных
@@ -791,7 +791,7 @@ void awh::client::Web::waitMessage(const time_t sec) noexcept {
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
  */
-void awh::client::Web::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
+void awh::client::Web::waitTimeDetect(const uint16_t read, const uint16_t write, const uint16_t connect) noexcept {
 	// Если объект сетевого ядра установлен
 	if((this->_core != nullptr) && (this->_bid > 0))
 		// Выполняем установку детекции сообщений по количеству секунд
@@ -988,10 +988,9 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log),
- _nossl(false), _reading(false), _stopped(false), _pinging(true),
- _complete(true), _redirects(false), _sendPing(0), _attempt(0),
- _attempts(15), _pingInterval(PING_INTERVAL), _buffer(log),
+ _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log), _nossl(false),
+ _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
+ _attempt(0), _attempts(15), _sendPing(0), _pingInterval(PING_INTERVAL), _buffer(log),
  _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.verbose(false);
@@ -1007,10 +1006,9 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log),
- _nossl(false), _reading(false), _stopped(false), _pinging(true),
- _complete(true), _redirects(false), _sendPing(0), _attempt(0),
- _attempts(15), _pingInterval(PING_INTERVAL), _buffer(log),
+ _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log), _nossl(false),
+ _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
+ _attempt(0), _attempts(15), _sendPing(0), _pingInterval(PING_INTERVAL), _buffer(log),
  _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);

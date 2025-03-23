@@ -21,7 +21,6 @@
 #include <set>
 #include <map>
 #include <list>
-#include <ctime>
 #include <cmath>
 #include <bitset>
 #include <chrono>
@@ -77,13 +76,6 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Framework {
 		public:
 			/**
-			 * Тип генерируемой даты
-			 */
-			enum class date_t : uint8_t {
-				GMT   = 0x00, // Дата в формате Greenwich Mean Time
-				LOCAL = 0x01  // Дата в формате локальных настроек
-			};
-			/**
 			 * Типы кодировок адресов файлов и каталогов
 			 */
 			enum class codepage_t : uint8_t {
@@ -91,22 +83,6 @@ namespace awh {
 				AUTO        = 0x01, // Автоматическое определение
 				UTF8_CP1251 = 0x02, // Кодировка UTF-8
 				CP1251_UTF8 = 0x03  // Кодировка CP1251
-			};
-			/**
-			 * Тип штампа времени
-			 */
-			enum class chrono_t : uint8_t {
-				NONE         = 0x00, // Не установлено
-				YEARS        = 0x01, // Годы
-				MONTHS       = 0x02, // Месяцы
-				WEEKS        = 0x03, // Недели
-				DAYS         = 0x04, // Дни
-				HOURS        = 0x05, // Часы
-				MINUTES      = 0x06, // Минуты
-				SECONDS      = 0x07, // Секунды
-				MILLISECONDS = 0x08, // Миллисекунды
-				MICROSECONDS = 0x09, // Микросекунды
-				NANOSECONDS  = 0x0A  // Наносекунды
 			};
 			/**
 			 * Флаги трансформации строк
@@ -117,6 +93,22 @@ namespace awh {
 				UPPER = 0x02, // Флаг перевода в верхний регистр
 				LOWER = 0x03, // Флаг перевода в нижний регистр
 				SMART = 0x04  // Флаг умного перевода начальных символов в верхний режим
+			};
+			/**
+			 * Тип штампа времени
+			 */
+			enum class chrono_t : uint8_t {
+				NONE         = 0x00, // Не установлено
+				YEAR         = 0x01, // Год
+				MONTH        = 0x02, // Месяц
+				WEEK         = 0x03, // Неделя
+				DAY          = 0x04, // День
+				HOUR         = 0x05, // Час
+				MINUTES      = 0x06, // Минуты
+				SECONDS      = 0x07, // Секунды
+				MILLISECONDS = 0x08, // Миллисекунды
+				MICROSECONDS = 0x09, // Микросекунды
+				NANOSECONDS  = 0x0A  // Наносекунды
 			};
 			/**
 			 * Флаги проверки текстовых данных
@@ -136,119 +128,8 @@ namespace awh {
 				PRESENCE_LATIAN = 0x0B  // Флаг проверки наличия латинских символов в строке
 			};
 		private:
-			/**
-			 * Symbols Класс основных символов
-			 */
-			typedef class AWHSHARED_EXPORT Symbols {
-				private:
-					// Контейнер римских чисел
-					map <char, uint16_t> _romes;
-					// Контейнер арабских чисел
-					map <char, uint8_t> _arabics;
-				private:
-					// Контейнер римских чисел для UTF-8
-					map <wchar_t, uint16_t> _wideRomes;
-					// Контейнер арабских чисел для UTF-8
-					map <wchar_t, uint8_t> _wideArabics;
-				private:
-					// Контейнер латинских символов
-					map <char, wchar_t> _letters;
-					// Контейнер латинских символов для UTF-8
-					map <wchar_t, char> _wideLetters;
-				public:
-					/**
-					 * isRome Метод проверки соответствия римской цифре
-					 * @param num римская цифра для проверки
-					 * @return    результат проверки
-					 */
-					bool isRome(const char num) const noexcept;
-					/**
-					 * isRome Метод проверки соответствия римской цифре
-					 * @param num римская цифра для проверки
-					 * @return    результат проверки
-					 */
-					bool isRome(const wchar_t num) const noexcept;
-				public:
-					/**
-					 * isArabic Метод проверки соответствия арабской цифре
-					 * @param num арабская цифра для проверки
-					 * @return    результат проверки
-					 */
-					bool isArabic(const char num) const noexcept;
-					/**
-					 * isArabic Метод проверки соответствия арабской цифре
-					 * @param num арабская цифра для проверки
-					 * @return    результат проверки
-					 */
-					bool isArabic(const wchar_t num) const noexcept;
-				public:
-					/**
-					 * isLetter Метод проверки соответствия латинской букве
-					 * @param letter латинская буква для проверки
-					 * @return       результат проверки
-					 */
-					bool isLetter(const char letter) const noexcept;
-					/**
-					 * isLetter Метод проверки соответствия латинской букве
-					 * @param letter латинская буква для проверки
-					 * @return       результат проверки
-					 */
-					bool isLetter(const wchar_t letter) const noexcept;
-				public:
-					/**
-					 * getRome Метод извлечения римской цифры
-					 * @param num римская цифра для извлечения
-					 * @return    арабская цифрва в виде числа
-					 */
-					uint16_t getRome(const char num) const noexcept;
-					/**
-					 * getRome Метод извлечения римской цифры
-					 * @param num римская цифра для извлечения
-					 * @return    арабская цифрва в виде числа
-					 */
-					uint16_t getRome(const wchar_t num) const noexcept;
-				public:
-					/**
-					 * getArabic Метод извлечения арабской цифры
-					 * @param num арабская цифра для извлечения
-					 * @return    арабская цифрва в виде числа
-					 */
-					uint8_t getArabic(const char num) const noexcept;
-					/**
-					 * getArabic Метод извлечения арабской цифры
-					 * @param num арабская цифра для извлечения
-					 * @return    арабская цифрва в виде числа
-					 */
-					uint8_t getArabic(const wchar_t num) const noexcept;
-				public:
-					/**
-					 * getLetter Метод извлечения латинской буквы
-					 * @param letter латинская буква для извлечения
-					 * @return       латинская буква в виде символа
-					 */
-					wchar_t getLetter(const char letter) const noexcept;
-					/**
-					 * getLetter Метод извлечения латинской буквы
-					 * @param letter латинская буква для извлечения
-					 * @return       латинская буква в виде символа
-					 */
-					char getLetter(const wchar_t letter) const noexcept;
-				public:
-					/**
-					 * Symbols Конструктор
-					 */
-					Symbols() noexcept;
-			} symbols_t;
-			/**
-			 * Nums структура параметров чисел
-			 */
-			typedef struct Nums {
-				// Шаблоны римских форматов
-				const vector <wstring> i = {L"", L"I", L"II", L"III", L"IV", L"V", L"VI", L"VII", L"VIII", L"IX"};
-				const vector <wstring> x = {L"", L"X", L"XX", L"XXX", L"XL", L"L", L"LX", L"LXX", L"LXXX", L"XC"};
-				const vector <wstring> c = {L"", L"C", L"CC", L"CCC", L"CD", L"D", L"DC", L"DCC", L"DCCC", L"CM"};
-				const vector <wstring> m = {L"", L"M", L"MM", L"MMM", L"MMMM"};
-			} nums_t;
+			// Объект парсинга nwt адреса
+			nwt_t _nwt;
 		private:
 			// Устанавливаем локаль по умолчанию
 			locale _locale;
@@ -258,17 +139,8 @@ namespace awh {
 		private:
 			// Регулярное выражение для парсинга байт
 			regexp_t::exp_t _bytes;
-			// Регулярное выражение для парсинга секунд
-			regexp_t::exp_t _seconds;
 			// Регулярное выражение для парсинга буферов данных
 			regexp_t::exp_t _buffers;
-		private:
-			// Объект парсинга nwt адреса
-			mutable nwt_t _nwt;
-			// Числовые параметры
-			const nums_t _numbers;
-			// Объект базовых символов
-			const symbols_t _symbols;
 		public:
 			/**
 			 * findInMap Шаблон метода поиска в контейнере map указанного значения
@@ -421,13 +293,43 @@ namespace awh {
 			 * @return       результат сравнения
 			 */
 			bool compare(const wstring & first, const wstring & second) const noexcept;
-		public:
+		private:
 			/**
 			 * timestamp Метод получения штампа времени в указанных единицах измерения
-			 * @param stamp единицы измерения штампа времени
-			 * @return      штамп времени в указанных единицах измерения
+			 * @param buffer буфер бинарных данных для установки штампа времени
+			 * @param size   размер бинарных данных штампа времени
+			 * @param type   тип формируемого штампа времени
+			 * @param text   флаг извлечения данных в текстовом виде
 			 */
-			time_t timestamp(const chrono_t stamp) const noexcept;
+			void timestamp(void * buffer, const size_t size, const chrono_t type, const bool text) const noexcept;
+		public:
+			/**
+			 * timestamp Шаблон метода получения штампа времени в указанных единицах измерения
+			 * @tparam T тип данных в котором извлекаются данные
+			 */
+			template <typename T>
+			/**
+			 * timestamp Метод получения штампа времени в указанных единицах измерения
+			 * @param type тип формируемого штампа времени
+			 * @return     сгенерированный штамп времени
+			 */
+			T timestamp(const chrono_t type) const noexcept {
+				// Результат работы функции
+				T result;
+				// Если данные являются основными
+				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+					// Буфер результата по умолчанию
+					uint8_t buffer[sizeof(T)];
+					// Заполняем нулями буфер данных
+					::memset(buffer, 0, sizeof(T));
+					// Выполняем установку результата по умолчанию
+					::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+				}
+				// Выполняем извлечение данных
+				this->timestamp(&result, sizeof(result), type, is_class_v <T>);
+				// Выводим полученный результат
+				return result;
+			}
 		public:
 			/**
 			 * iconv Метод конвертирования строки кодировки
@@ -836,57 +738,11 @@ namespace awh {
 			string bytes(const double value, const bool onlyNum = false) const noexcept;
 		public:
 			/**
-			 * seconds Метод получения размера в секундах из строки
-			 * @param str строка обозначения размерности (s, m, h, d, w, M, y)
-			 * @return    размер в секундах
-			 */
-			time_t seconds(const string & str) const noexcept;
-			/**
-			 * seconds Метод получения текстового значения времени 
-			 * @param seconds количество секунд для конвертации
-			 * @return        обозначение времени с указанием размерности
-			 */
-			string seconds(const time_t seconds) const noexcept;
-		public:
-			/**
 			 * sizeBuffer Метод получения размера буфера в байтах
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
 			 * @return    размер буфера в байтах
 			 */
 			size_t sizeBuffer(const string & str) const noexcept;
-		public:
-			/**
-			 * time2abbr Метод перевода времени в аббревиатуру
-			 * @param date дата в UnixTimestamp
-			 * @return     строка содержащая аббревиатуру даты
-			 */
-			string time2abbr(const time_t date) const noexcept;
-		public:
-			/**
-			 * strpTime Метод получения Unix TimeStamp из строки
-			 * @param date    строка даты
-			 * @param format1 форматы даты из которой нужно получить дату
-			 * @param format2 форматы даты в который нужно перевести дату
-			 * @return        результат работы
-			 */
-			string strpTime(const string & date, const string & format1, const string & format2) const noexcept;
-		public:
-			/**
-			 * time2str Метод преобразования UnixTimestamp в строку
-			 * @param date   дата в UnixTimestamp
-			 * @param format формат даты
-			 * @param type   тип генерируемой даты
-			 * @return       строка содержащая дату
-			 */
-			string time2str(const time_t date, const string & format = "%a, %d %b %Y %H:%M:%S %Z", const date_t type = date_t::LOCAL) const noexcept;
-			/**
-			 * str2time Метод перевода строки в UnixTimestamp
-			 * @param date   строка даты
-			 * @param format формат даты
-			 * @param type   тип генерируемой даты
-			 * @return       дата в UnixTimestamp
-			 */
-			time_t str2time(const string & date, const string & format = "%a, %d %b %Y %H:%M:%S %Z", const date_t type = date_t::LOCAL) const noexcept;
 		public:
 			/**
 			 * Framework Конструктор

@@ -654,7 +654,7 @@ void awh::server::ProxySocks5::brokerAvailableSize(const size_t size) noexcept {
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::server::ProxySocks5::waitMessage(const time_t sec) noexcept {
+void awh::server::ProxySocks5::waitMessage(const uint16_t sec) noexcept {
 	// Выполняем установку времени ожидания входящих сообщений
 	this->_scheme.timeouts.wait = sec;
 }
@@ -663,7 +663,7 @@ void awh::server::ProxySocks5::waitMessage(const time_t sec) noexcept {
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::server::ProxySocks5::waitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::server::ProxySocks5::waitTimeDetect(const uint16_t read, const uint16_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись

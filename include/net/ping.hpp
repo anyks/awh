@@ -19,7 +19,6 @@
  * Стандартные модули
  */
 #include <mutex>
-#include <ctime>
 #include <chrono>
 #include <thread>
 #include <cstdio>
@@ -64,6 +63,7 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/hold.hpp>
+#include <sys/chrono.hpp>
 #include <net/net.hpp>
 #include <net/dns.hpp>
 #include <net/socket.hpp>
@@ -162,6 +162,8 @@ namespace awh {
 			peer_t _peer;
 			// Объект для работы с сокетами
 			socket_t _socket;
+			// Объект работы с датой и временем
+			chrono_t _chrono;
 		private:
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
@@ -173,12 +175,12 @@ namespace awh {
 			stack <status_t> _status;
 		private:
 			// Сдвиг по времени для выполнения пинга
-			time_t _shifting;
+			uint64_t _shifting;
 		private:
 			// Таймаут на чтение
-			time_t _timeoutRead;
+			uint32_t _timeoutRead;
 			// Таймаут на запись
-			time_t _timeoutWrite;
+			uint32_t _timeoutWrite;
 		private:
 			// Список сетевых интерфейсов для IPv4
 			vector <string> _networkIPv4;
@@ -191,7 +193,7 @@ namespace awh {
 			const log_t * _log;
 		private:
 			// Функция обратного вызова для работы в асинхронном режиме
-			function <void (const time_t, const string &, Ping *)> _callback;
+			function <void (const uint64_t, const string &, Ping *)> _callback;
 		private:
 			/**
 			 * host Метод извлечения хоста компьютера
@@ -286,7 +288,7 @@ namespace awh {
 			 * shifting Метод установки сдвига по времени выполнения пинга в миллисекундах
 			 * @param msec сдвиг по времени в миллисекундах
 			 */
-			void shifting(const time_t msec) noexcept;
+			void shifting(const uint64_t msec) noexcept;
 		public:
 			/**
 			 * ns Метод добавления серверов DNS
@@ -311,13 +313,13 @@ namespace awh {
 			 * @param read  таймаут на чтение
 			 * @param write таймаут на запись
 			 */
-			void timeout(const time_t read, const time_t write) noexcept;
+			void timeout(const uint32_t read, const uint32_t write) noexcept;
 		public:
 			/**
 			 * on Метод установки функции обратного вызова, для работы в асинхронном режиме
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const time_t, const string &, Ping *)> callback) noexcept;
+			void on(function <void (const uint64_t, const string &, Ping *)> callback) noexcept;
 		public:
 			/**
 			 * Ping Конструктор
@@ -326,7 +328,7 @@ namespace awh {
 			 */
 			Ping(const fmk_t * fmk, const log_t * log) noexcept :
 			 _fd(INVALID_SOCKET), _mode(false), _verb(true),
-			 _net(log), _dns(fmk, log), _socket(fmk, log),
+			 _net(log), _dns(fmk, log), _socket(fmk, log), _chrono(fmk),
 			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
 			 _fmk(fmk), _log(log), _callback(nullptr) {}
 			/**

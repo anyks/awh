@@ -23,20 +23,6 @@
 using namespace std;
 
 /**
- * Для операционной системы Windows
- */
-#if defined(_WIN32) || defined(_WIN64)
-	/**
-	 * Заменяем функцию gmtime_r на gmtime_s
-	 */
-	#define gmtime_r(T, Tm) (gmtime_s(Tm, T) ? nullptr : Tm)
-	/**
-	 * Заменяем функцию localtime_r на localtime_s
-	 */
-	#define localtime_r(T, Tm) (localtime_s(Tm, T) ? nullptr : Tm)
-#endif
-
-/**
  * decimalPlaces Функция определения количества знаков после запятой
  * @param number число в котором нужно определить количество знаков
  * @return       количество знаков после запятой
@@ -408,217 +394,256 @@ static T & split(const wstring & str, const wstring & delim, T & container) noex
 	// Выводим результат
 	return container;
 }
+
 /**
- * isRome Метод проверки соответствия римской цифре
- * @param num римская цифра для проверки
- * @return    результат проверки
+ * RomanNumerals структура Римских чисел
  */
-bool awh::Framework::Symbols::isRome(const char num) const noexcept {
-	// Выполняем проверку сущестования цифры
-	return (this->_romes.find(::toupper(num)) != this->_romes.end());
-}
+static struct RomanNumerals {
+	// Шаблоны римских форматов
+	const wstring m[5]  = {L"", L"M", L"MM", L"MMM", L"MMMM"};
+	const wstring i[10] = {L"", L"I", L"II", L"III", L"IV", L"V", L"VI", L"VII", L"VIII", L"IX"};
+	const wstring x[10] = {L"", L"X", L"XX", L"XXX", L"XL", L"L", L"LX", L"LXX", L"LXXX", L"XC"};
+	const wstring c[10] = {L"", L"C", L"CC", L"CCC", L"CD", L"D", L"DC", L"DCC", L"DCCC", L"CM"};
+} romanNumerals;
 /**
- * isRome Метод проверки соответствия римской цифре
- * @param num римская цифра для проверки
- * @return    результат проверки
+ * Symbols Класс основных символов
  */
-bool awh::Framework::Symbols::isRome(const wchar_t num) const noexcept {
-	// Выполняем проверку сущестования цифры
-	return (this->_wideRomes.find(::towupper(num)) != this->_wideRomes.end());
-}
-/**
- * isArabic Метод проверки соответствия арабской цифре
- * @param num арабская цифра для проверки
- * @return    результат проверки
- */
-bool awh::Framework::Symbols::isArabic(const char num) const noexcept {
-	// Выполняем проверку сущестования цифры
-	return (this->_arabics.find(num) != this->_arabics.end());
-}
-/**
- * isArabic Метод проверки соответствия арабской цифре
- * @param num арабская цифра для проверки
- * @return    результат проверки
- */
-bool awh::Framework::Symbols::isArabic(const wchar_t num) const noexcept {
-	// Выполняем проверку сущестования цифры
-	return (this->_wideArabics.find(num) != this->_wideArabics.end());
-}
-/**
- * isLetter Метод проверки соответствия латинской букве
- * @param letter латинская буква для проверки
- * @return       результат проверки
- */
-bool awh::Framework::Symbols::isLetter(const char letter) const noexcept {
-	// Выполняем проверку сущестования латинской буквы
-	return (this->_letters.find(::tolower(letter)) != this->_letters.end());
-}
-/**
- * isLetter Метод проверки соответствия латинской букве
- * @param letter латинская буква для проверки
- * @return       результат проверки
- */
-bool awh::Framework::Symbols::isLetter(const wchar_t letter) const noexcept {
-	// Выполняем проверку сущестования латинской буквы
-	return (this->_wideLetters.find(::towlower(letter)) != this->_wideLetters.end());
-}
-/**
- * getRome Метод извлечения римской цифры
- * @param num римская цифра для извлечения
- * @return    арабская цифрва в виде числа
- */
-uint16_t awh::Framework::Symbols::getRome(const char num) const noexcept {
-	// Результат работы функции
-	uint16_t result = 0;
-	// Выполняем поиск римского числа
-	auto i = this->_romes.find(::toupper(num));
-	// Если римское число найдено
-	if(i != this->_romes.end())
-		// Получаем римское число в чистом виде
-		result = i->second;
-	// Выводим результат
-	return result;
-}
-/**
- * getRome Метод извлечения римской цифры
- * @param num римская цифра для извлечения
- * @return    арабская цифрва в виде числа
- */
-uint16_t awh::Framework::Symbols::getRome(const wchar_t num) const noexcept {
-	// Результат работы функции
-	uint16_t result = 0;
-	// Выполняем поиск римского числа
-	auto i = this->_wideRomes.find(::towupper(num));
-	// Если римское число найдено
-	if(i != this->_wideRomes.end())
-		// Получаем римское число в чистом виде
-		result = i->second;
-	// Выводим результат
-	return result;
-}
-/**
- * getArabic Метод извлечения арабской цифры
- * @param num арабская цифра для извлечения
- * @return    арабская цифрва в виде числа
- */
-uint8_t awh::Framework::Symbols::getArabic(const char num) const noexcept {
-	// Результат работы функции
-	uint8_t result = 0;
-	// Выполняем поиск арабского числа
-	auto i = this->_arabics.find(num);
-	// Если арабское число найдено
-	if(i != this->_arabics.end())
-		// Получаем арабское число в чистом виде
-		result = i->second;
-	// Выводим результат
-	return result;
-}
-/**
- * getArabic Метод извлечения арабской цифры
- * @param num арабская цифра для извлечения
- * @return    арабская цифрва в виде числа
- */
-uint8_t awh::Framework::Symbols::getArabic(const wchar_t num) const noexcept {
-	// Результат работы функции
-	uint8_t result = 0;
-	// Выполняем поиск арабского числа
-	auto i = this->_wideArabics.find(num);
-	// Если арабское число найдено
-	if(i != this->_wideArabics.end())
-		// Получаем арабское число в чистом виде
-		result = i->second;
-	// Выводим результат
-	return result;
-}
-/**
- * getLetter Метод извлечения латинской буквы
- * @param letter латинская буква для извлечения
- * @return       латинская буква в виде символа
- */
-wchar_t awh::Framework::Symbols::getLetter(const char letter) const noexcept {
-	// Результат работы функции
-	wchar_t result = 0;
-	// Выполняем поиск латинской буквы
-	auto i = this->_letters.find(::tolower(letter));
-	// Если латинская буква найдена
-	if(i != this->_letters.end())
-		// Получаем латинскую букву в чистом виде
-		result = i->second;
-	// Выводим результат
-	return result;
-}
-/**
- * getLetter Метод извлечения латинской буквы
- * @param letter латинская буква для извлечения
- * @return       латинская буква в виде символа
- */
-char awh::Framework::Symbols::getLetter(const wchar_t letter) const noexcept {
-	// Результат работы функции
-	char result = 0;
-	// Выполняем поиск латинской буквы
-	auto i = this->_wideLetters.find(::towlower(letter));
-	// Если латинская буква найдена
-	if(i != this->_wideLetters.end())
-		// Получаем латинскую букву в чистом виде
-		result = i->second;
-	// Выводим результат
-	return result;
-}
-/**
- * Symbols Конструктор
- */
-awh::Framework::Symbols::Symbols() noexcept {
-	// Выполняем заполнение арабских чисел
-	this->_arabics = {
-		{'0', 0}, {'1', 1}, {'2', 2},
-		{'3', 3}, {'4', 4}, {'5', 5},
-		{'6', 6}, {'7', 7}, {'8', 8},
-		{'9', 9}
-	};
-	// Выполняем заполнение арабских чисел для UTF-8
-	this->_wideArabics = {
-		{L'0', 0}, {L'1', 1}, {L'2', 2},
-		{L'3', 3}, {L'4', 4}, {L'5', 5},
-		{L'6', 6}, {L'7', 7}, {L'8', 8},
-		{L'9', 9}
-	};
-	// Выполняем заполнение римских чисел
-	this->_romes = {
-		{'I', 1}, {'V', 5}, {'X', 10},
-		{'L', 50}, {'C', 100}, {'D', 500},
-		{'M', 1000}
-	};
-	// Выполняем заполнение римских чисел для UTF-8
-	this->_wideRomes = {
-		{L'I', 1}, {L'V', 5}, {L'X', 10},
-		{L'L', 50}, {L'C', 100}, {L'D', 500},
-		{L'M', 1000}
-	};
-	// Выполняем заполнение латинских символов
-	this->_letters = {
-		{'a', L'a'}, {'b', L'b'}, {'c', L'c'},
-		{'d', L'd'}, {'e', L'e'}, {'f', L'f'},
-		{'g', L'g'}, {'h', L'h'}, {'i', L'i'},
-		{'j', L'j'}, {'k', L'k'}, {'l', L'l'},
-		{'m', L'm'}, {'n', L'n'}, {'o', L'o'},
-		{'p', L'p'}, {'q', L'q'}, {'r', L'r'},
-		{'s', L's'}, {'t', L't'}, {'u', L'u'},
-		{'v', L'v'}, {'w', L'w'}, {'x', L'x'},
-		{'y', L'y'}, {'z', L'z'}
-	};
-	// Выполняем заполнение латинских символов для UTF-8
-	this->_wideLetters = {
-		{L'a', 'a'}, {L'b', 'b'}, {L'c', 'c'},
-		{L'd', 'd'}, {L'e', 'e'}, {L'f', 'f'},
-		{L'g', 'g'}, {L'h', 'h'}, {L'i', 'i'},
-		{L'j', 'j'}, {L'k', 'k'}, {L'l', 'l'},
-		{L'm', 'm'}, {L'n', 'n'}, {L'o', 'o'},
-		{L'p', 'p'}, {L'q', 'q'}, {L'r', 'r'},
-		{L's', 's'}, {L't', 't'}, {L'u', 'u'},
-		{L'v', 'v'}, {L'w', 'w'}, {L'x', 'x'},
-		{L'y', 'y'}, {L'z', 'z'}
-	};
-}
+static class Symbols {
+	private:
+		// Контейнер римских чисел
+		map <char, uint16_t> _romes;
+		// Контейнер арабских чисел
+		map <char, uint8_t> _arabics;
+	private:
+		// Контейнер римских чисел для UTF-8
+		map <wchar_t, uint16_t> _wideRomes;
+		// Контейнер арабских чисел для UTF-8
+		map <wchar_t, uint8_t> _wideArabics;
+	private:
+		// Контейнер латинских символов
+		map <char, wchar_t> _letters;
+		// Контейнер латинских символов для UTF-8
+		map <wchar_t, char> _wideLetters;
+	public:
+		/**
+		 * isRome Метод проверки соответствия римской цифре
+		 * @param num римская цифра для проверки
+		 * @return    результат проверки
+		 */
+		bool isRome(const char num) const noexcept {
+			// Выполняем проверку сущестования цифры
+			return (this->_romes.find(::toupper(num)) != this->_romes.end());
+		}
+		/**
+		 * isRome Метод проверки соответствия римской цифре
+		 * @param num римская цифра для проверки
+		 * @return    результат проверки
+		 */
+		bool isRome(const wchar_t num) const noexcept {
+			// Выполняем проверку сущестования цифры
+			return (this->_wideRomes.find(::towupper(num)) != this->_wideRomes.end());
+		}
+	public:
+		/**
+		 * isArabic Метод проверки соответствия арабской цифре
+		 * @param num арабская цифра для проверки
+		 * @return    результат проверки
+		 */
+		bool isArabic(const char num) const noexcept {
+			// Выполняем проверку сущестования цифры
+			return (this->_arabics.find(num) != this->_arabics.end());
+		}
+		/**
+		 * isArabic Метод проверки соответствия арабской цифре
+		 * @param num арабская цифра для проверки
+		 * @return    результат проверки
+		 */
+		bool isArabic(const wchar_t num) const noexcept {
+			// Выполняем проверку сущестования цифры
+			return (this->_wideArabics.find(num) != this->_wideArabics.end());
+		}
+	public:
+		/**
+		 * isLetter Метод проверки соответствия латинской букве
+		 * @param letter латинская буква для проверки
+		 * @return       результат проверки
+		 */
+		bool isLetter(const char letter) const noexcept {
+			// Выполняем проверку сущестования латинской буквы
+			return (this->_letters.find(::tolower(letter)) != this->_letters.end());
+		}
+		/**
+		 * isLetter Метод проверки соответствия латинской букве
+		 * @param letter латинская буква для проверки
+		 * @return       результат проверки
+		 */
+		bool isLetter(const wchar_t letter) const noexcept {
+			// Выполняем проверку сущестования латинской буквы
+			return (this->_wideLetters.find(::towlower(letter)) != this->_wideLetters.end());
+		}
+	public:
+		/**
+		 * getRome Метод извлечения римской цифры
+		 * @param num римская цифра для извлечения
+		 * @return    арабская цифрва в виде числа
+		 */
+		uint16_t getRome(const char num) const noexcept {
+			// Результат работы функции
+			uint16_t result = 0;
+			// Выполняем поиск римского числа
+			auto i = this->_romes.find(::toupper(num));
+			// Если римское число найдено
+			if(i != this->_romes.end())
+				// Получаем римское число в чистом виде
+				result = i->second;
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * getRome Метод извлечения римской цифры
+		 * @param num римская цифра для извлечения
+		 * @return    арабская цифрва в виде числа
+		 */
+		uint16_t getRome(const wchar_t num) const noexcept {
+			// Результат работы функции
+			uint16_t result = 0;
+			// Выполняем поиск римского числа
+			auto i = this->_wideRomes.find(::towupper(num));
+			// Если римское число найдено
+			if(i != this->_wideRomes.end())
+				// Получаем римское число в чистом виде
+				result = i->second;
+			// Выводим результат
+			return result;
+		}
+	public:
+		/**
+		 * getArabic Метод извлечения арабской цифры
+		 * @param num арабская цифра для извлечения
+		 * @return    арабская цифрва в виде числа
+		 */
+		uint8_t getArabic(const char num) const noexcept {
+			// Результат работы функции
+			uint8_t result = 0;
+			// Выполняем поиск арабского числа
+			auto i = this->_arabics.find(num);
+			// Если арабское число найдено
+			if(i != this->_arabics.end())
+				// Получаем арабское число в чистом виде
+				result = i->second;
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * getArabic Метод извлечения арабской цифры
+		 * @param num арабская цифра для извлечения
+		 * @return    арабская цифрва в виде числа
+		 */
+		uint8_t getArabic(const wchar_t num) const noexcept {
+			// Результат работы функции
+			uint8_t result = 0;
+			// Выполняем поиск арабского числа
+			auto i = this->_wideArabics.find(num);
+			// Если арабское число найдено
+			if(i != this->_wideArabics.end())
+				// Получаем арабское число в чистом виде
+				result = i->second;
+			// Выводим результат
+			return result;
+		}
+	public:
+		/**
+		 * getLetter Метод извлечения латинской буквы
+		 * @param letter латинская буква для извлечения
+		 * @return       латинская буква в виде символа
+		 */
+		wchar_t getLetter(const char letter) const noexcept {
+			// Результат работы функции
+			wchar_t result = 0;
+			// Выполняем поиск латинской буквы
+			auto i = this->_letters.find(::tolower(letter));
+			// Если латинская буква найдена
+			if(i != this->_letters.end())
+				// Получаем латинскую букву в чистом виде
+				result = i->second;
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * getLetter Метод извлечения латинской буквы
+		 * @param letter латинская буква для извлечения
+		 * @return       латинская буква в виде символа
+		 */
+		char getLetter(const wchar_t letter) const noexcept {
+			// Результат работы функции
+			char result = 0;
+			// Выполняем поиск латинской буквы
+			auto i = this->_wideLetters.find(::towlower(letter));
+			// Если латинская буква найдена
+			if(i != this->_wideLetters.end())
+				// Получаем латинскую букву в чистом виде
+				result = i->second;
+			// Выводим результат
+			return result;
+		}
+	public:
+		/**
+		 * Symbols Конструктор
+		 */
+		Symbols() noexcept {
+			// Выполняем заполнение арабских чисел
+			this->_arabics = {
+				{'0', 0}, {'1', 1}, {'2', 2},
+				{'3', 3}, {'4', 4}, {'5', 5},
+				{'6', 6}, {'7', 7}, {'8', 8},
+				{'9', 9}
+			};
+			// Выполняем заполнение арабских чисел для UTF-8
+			this->_wideArabics = {
+				{L'0', 0}, {L'1', 1}, {L'2', 2},
+				{L'3', 3}, {L'4', 4}, {L'5', 5},
+				{L'6', 6}, {L'7', 7}, {L'8', 8},
+				{L'9', 9}
+			};
+			// Выполняем заполнение римских чисел
+			this->_romes = {
+				{'I', 1}, {'V', 5}, {'X', 10},
+				{'L', 50}, {'C', 100}, {'D', 500},
+				{'M', 1000}
+			};
+			// Выполняем заполнение римских чисел для UTF-8
+			this->_wideRomes = {
+				{L'I', 1}, {L'V', 5}, {L'X', 10},
+				{L'L', 50}, {L'C', 100}, {L'D', 500},
+				{L'M', 1000}
+			};
+			// Выполняем заполнение латинских символов
+			this->_letters = {
+				{'a', L'a'}, {'b', L'b'}, {'c', L'c'},
+				{'d', L'd'}, {'e', L'e'}, {'f', L'f'},
+				{'g', L'g'}, {'h', L'h'}, {'i', L'i'},
+				{'j', L'j'}, {'k', L'k'}, {'l', L'l'},
+				{'m', L'm'}, {'n', L'n'}, {'o', L'o'},
+				{'p', L'p'}, {'q', L'q'}, {'r', L'r'},
+				{'s', L's'}, {'t', L't'}, {'u', L'u'},
+				{'v', L'v'}, {'w', L'w'}, {'x', L'x'},
+				{'y', L'y'}, {'z', L'z'}
+			};
+			// Выполняем заполнение латинских символов для UTF-8
+			this->_wideLetters = {
+				{L'a', 'a'}, {L'b', 'b'}, {L'c', 'c'},
+				{L'd', 'd'}, {L'e', 'e'}, {L'f', 'f'},
+				{L'g', 'g'}, {L'h', 'h'}, {L'i', 'i'},
+				{L'j', 'j'}, {L'k', 'k'}, {L'l', 'l'},
+				{L'm', 'm'}, {L'n', 'n'}, {L'o', 'o'},
+				{L'p', 'p'}, {L'q', 'q'}, {L'r', 'r'},
+				{L's', 's'}, {L't', 't'}, {L'u', 'u'},
+				{L'v', 'v'}, {L'w', 'w'}, {L'x', 'x'},
+				{L'y', 'y'}, {L'z', 'z'}
+			};
+		}
+} standardSymbols;
+
 /**
  * is Метод проверки текста на соответствие флагу
  * @param text текст для проверки
@@ -659,12 +684,12 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 				// Если установлен флаг проверки на латинские символы
 				case static_cast <uint8_t> (check_t::LATIAN):
 					// Если символ принадлежит к латинскому алфавиту
-					result = this->_symbols.isLetter(letter);
+					result = standardSymbols.isLetter(letter);
 				break;
 				// Если установлен флаг проверки на число
 				case static_cast <uint8_t> (check_t::NUMBER):
 					// Если символ принадлежит к цифрам
-					result = this->_symbols.isArabic(letter);
+					result = standardSymbols.isArabic(letter);
 				break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8):
@@ -714,7 +739,7 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT):
 					// Выполняем проверку символа
-					result = (iswprint(letter) != 0);
+					result = (::iswprint(letter) != 0);
 				break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER):
@@ -734,12 +759,12 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 				// Если установлен флаг проверки на латинские символы
 				case static_cast <uint8_t> (check_t::LATIAN):
 					// Если символ принадлежит к латинскому алфавиту
-					result = this->_symbols.isLetter(letter);
+					result = standardSymbols.isLetter(letter);
 				break;
 				// Если установлен флаг проверки на число
 				case static_cast <uint8_t> (check_t::NUMBER):
 					// Если символ принадлежит к цифрам
-					result = this->_symbols.isArabic(letter);
+					result = standardSymbols.isArabic(letter);
 				break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8):
@@ -791,7 +816,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
 					// Выполняем парсинг nwt адреса
-					const auto & url = this->_nwt.parse(text);
+					const auto & url = const_cast <fmk_t *> (this)->_nwt.parse(text);
 					// Если ссылка найдена
 					result = ((url.type != nwt_t::types_t::NONE) && (url.type != nwt_t::types_t::WRONG));
 				} break;
@@ -869,15 +894,15 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 									// Выполняем проверку на апостроф
 									result = (
 										(letter == '\'') && (((first != '\'') && (second != '\'')) ||
-										(this->_symbols.isLetter(first) && this->_symbols.isLetter(second)))
+										(standardSymbols.isLetter(first) && standardSymbols.isLetter(second)))
 									);
 								}
 								// Если результат не получен
 								if(!result)
 									// Выводим проверку как она есть
-									result = this->_symbols.isLetter(letter);
+									result = standardSymbols.isLetter(letter);
 							// Выводим проверку как она есть
-							} else result = this->_symbols.isLetter(letter);
+							} else result = standardSymbols.isLetter(letter);
 							// Выводим результат
 							return result;
 						};
@@ -893,7 +918,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								break;
 						}
 					// Если символ принадлежит к латинскому алфавиту
-					} else result = this->_symbols.isLetter(text.front());
+					} else result = standardSymbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8): {
@@ -972,9 +997,9 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 							// Проверяем является ли слово арабским числом
 							result = !(
 								(i == j) ?
-								!this->_symbols.isArabic(text.at(i)) :
-								!this->_symbols.isArabic(text.at(i)) ||
-								!this->_symbols.isArabic(text.at(j))
+								!standardSymbols.isArabic(text.at(i)) :
+								!standardSymbols.isArabic(text.at(i)) ||
+								!standardSymbols.isArabic(text.at(j))
 							);
 							// Если слово не соответствует тогда выходим
 							if(!result)
@@ -982,7 +1007,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								break;
 						}
 					// Если символ всего один, проверяем его так
-					} else result = this->_symbols.isArabic(text.front());
+					} else result = standardSymbols.isArabic(text.front());
 				} break;
 				// Если установлен флаг проверки на число с плавающей точкой
 				case static_cast <uint8_t> (check_t::DECIMAL): {
@@ -1011,7 +1036,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 							}
 						}
 					// Если символ всего один, проверяем его так
-					} else result = this->_symbols.isArabic(text.front());
+					} else result = standardSymbols.isArabic(text.front());
 				} break;
 				// Если установлен флаг проверки наличия латинских символов в строке
 				case static_cast <uint8_t> (check_t::PRESENCE_LATIAN): {
@@ -1022,9 +1047,9 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 							// Проверяем является ли слово латинским
 							result = (
 								(i == j) ?
-								this->_symbols.isLetter(text.at(i)) :
-								this->_symbols.isLetter(text.at(i)) ||
-								this->_symbols.isLetter(text.at(j))
+								standardSymbols.isLetter(text.at(i)) :
+								standardSymbols.isLetter(text.at(i)) ||
+								standardSymbols.isLetter(text.at(j))
 							);
 							// Если найдена хотя бы одна латинская буква тогда выходим
 							if(result)
@@ -1032,14 +1057,14 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								break;
 						}
 					// Если символ всего один, проверяем его так
-					} else result = this->_symbols.isLetter(text.front());
+					} else result = standardSymbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на псевдо-число
 				case static_cast <uint8_t> (check_t::PSEUDO_NUMBER): {
 					// Если не является то проверяем дальше
 					if(!(result = this->is(text, check_t::NUMBER))){
 						// Проверяем являются ли первая и последняя буква слова, числом
-						result = (this->_symbols.isArabic(text.front()) || this->_symbols.isArabic(text.back()));
+						result = (standardSymbols.isArabic(text.front()) || standardSymbols.isArabic(text.back()));
 						// Если оба варианта не сработали
 						if(!result && (text.length() > 2)){
 							// Переходим по всему списку
@@ -1047,9 +1072,9 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								// Проверяем является ли слово арабским числом
 								result = (
 									(i == j) ?
-									this->_symbols.isArabic(text.at(i)) :
-									this->_symbols.isArabic(text.at(i)) ||
-									this->_symbols.isArabic(text.at(j))
+									standardSymbols.isArabic(text.at(i)) :
+									standardSymbols.isArabic(text.at(i)) ||
+									standardSymbols.isArabic(text.at(j))
 								);
 								// Если хоть один символ является числом, выходим
 								if(result)
@@ -1104,7 +1129,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
 					// Выполняем парсинг nwt адреса
-					const auto & url = this->_nwt.parse(this->convert(text));
+					const auto & url = const_cast <fmk_t *> (this)->_nwt.parse(this->convert(text));
 					// Если ссылка найдена
 					result = ((url.type != nwt_t::types_t::NONE) && (url.type != nwt_t::types_t::WRONG));
 				} break;
@@ -1113,7 +1138,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					// Выполняем перебор всех символов строки
 					for(wchar_t letter : text){
 						// Выполняем проверку символа
-						result = (iswprint(letter) != 0);
+						result = (::iswprint(letter) != 0);
 						// Если символ не печатаемый
 						if(!result)
 							// Выходим из цикла
@@ -1182,15 +1207,15 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 									// Выполняем проверку на апостроф
 									result = (
 										(letter == L'\'') && (((first != L'\'') && (second != L'\'')) ||
-										(this->_symbols.isLetter(first) && this->_symbols.isLetter(second)))
+										(standardSymbols.isLetter(first) && standardSymbols.isLetter(second)))
 									);
 								}
 								// Если результат не получен
 								if(!result)
 									// Выводим проверку как она есть
-									result = this->_symbols.isLetter(letter);
+									result = standardSymbols.isLetter(letter);
 							// Выводим проверку как она есть
-							} else result = this->_symbols.isLetter(letter);
+							} else result = standardSymbols.isLetter(letter);
 							// Выводим результат
 							return result;
 						};
@@ -1206,7 +1231,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								break;
 						}
 					// Если символ принадлежит к латинскому алфавиту
-					} else result = this->_symbols.isLetter(text.front());
+					} else result = standardSymbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8): {
@@ -1285,9 +1310,9 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 							// Проверяем является ли слово арабским числом
 							result = !(
 								(i == j) ?
-								!this->_symbols.isArabic(text.at(i)) :
-								!this->_symbols.isArabic(text.at(i)) ||
-								!this->_symbols.isArabic(text.at(j))
+								!standardSymbols.isArabic(text.at(i)) :
+								!standardSymbols.isArabic(text.at(i)) ||
+								!standardSymbols.isArabic(text.at(j))
 							);
 							// Если слово не соответствует тогда выходим
 							if(!result)
@@ -1295,7 +1320,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								break;
 						}
 					// Если символ всего один, проверяем его так
-					} else result = this->_symbols.isArabic(text.front());
+					} else result = standardSymbols.isArabic(text.front());
 				} break;
 				// Если установлен флаг проверки на число с плавающей точкой
 				case static_cast <uint8_t> (check_t::DECIMAL): {
@@ -1324,7 +1349,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 							}
 						}
 					// Если символ всего один, проверяем его так
-					} else result = this->_symbols.isArabic(text.front());
+					} else result = standardSymbols.isArabic(text.front());
 				} break;
 				// Если установлен флаг проверки наличия латинских символов в строке
 				case static_cast <uint8_t> (check_t::PRESENCE_LATIAN): {
@@ -1335,9 +1360,9 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 							// Проверяем является ли слово латинским
 							result = (
 								(i == j) ?
-								this->_symbols.isLetter(text.at(i)) :
-								this->_symbols.isLetter(text.at(i)) ||
-								this->_symbols.isLetter(text.at(j))
+								standardSymbols.isLetter(text.at(i)) :
+								standardSymbols.isLetter(text.at(i)) ||
+								standardSymbols.isLetter(text.at(j))
 							);
 							// Если найдена хотя бы одна латинская буква тогда выходим
 							if(result)
@@ -1345,14 +1370,14 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								break;
 						}
 					// Если символ всего один, проверяем его так
-					} else result = this->_symbols.isLetter(text.front());
+					} else result = standardSymbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на псевдо-число
 				case static_cast <uint8_t> (check_t::PSEUDO_NUMBER): {
 					// Если не является то проверяем дальше
 					if(!(result = this->is(text, check_t::NUMBER))){
 						// Проверяем являются ли первая и последняя буква слова, числом
-						result = (this->_symbols.isArabic(text.front()) || this->_symbols.isArabic(text.back()));
+						result = (standardSymbols.isArabic(text.front()) || standardSymbols.isArabic(text.back()));
 						// Если оба варианта не сработали
 						if(!result && (text.length() > 2)){
 							// Переходим по всему списку
@@ -1360,9 +1385,9 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								// Проверяем является ли слово арабским числом
 								result = (
 									(i == j) ?
-									this->_symbols.isArabic(text.at(i)) :
-									this->_symbols.isArabic(text.at(i)) ||
-									this->_symbols.isArabic(text.at(j))
+									standardSymbols.isArabic(text.at(i)) :
+									standardSymbols.isArabic(text.at(i)) ||
+									standardSymbols.isArabic(text.at(j))
 								);
 								// Если хоть один символ является числом
 								if(result)
@@ -1423,111 +1448,252 @@ bool awh::Framework::compare(const wstring & first, const wstring & second) cons
 }
 /**
  * timestamp Метод получения штампа времени в указанных единицах измерения
- * @param stamp единицы измерения штампа времени
- * @return      штамп времени в указанных единицах измерения
+ * @param buffer буфер бинарных данных для установки штампа времени
+ * @param size   размер бинарных данных штампа времени
+ * @param type   тип формируемого штампа времени
+ * @param text   флаг извлечения данных в текстовом виде
  */
-time_t awh::Framework::timestamp(const chrono_t stamp) const noexcept {
-	// Результат работы функции
-	time_t result = 0;
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Определяем единицы измерения штампа времени
-		switch(static_cast <uint8_t> (stamp)){
-			/*
-			// Если единицы измерения штампа времени требуется получить в годы
-			case static_cast <uint8_t> (chrono_t::YEARS): {
-				// Получаем штамп времени в годах
-				chrono::years years = chrono::duration_cast <chrono::years> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (years.count());
-			} break;
-			// Если единицы измерения штампа времени требуется получить в месяцах
-			case static_cast <uint8_t> (chrono_t::MONTHS): {
-				// Получаем штамп времени в месяцы
-				chrono::months months = chrono::duration_cast <chrono::months> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (months.count());
-			} break;
-			// Если единицы измерения штампа времени требуется получить в неделях
-			case static_cast <uint8_t> (chrono_t::WEEKS): {
-				// Получаем штамп времени в недели
-				chrono::weeks weeks = chrono::duration_cast <chrono::weeks> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (weeks.count());
-			} break;
-			// Если единицы измерения штампа времени требуется получить в днях
-			case static_cast <uint8_t> (chrono_t::DAYS): {
-				// Получаем штамп времени в дни
-				chrono::days days = chrono::duration_cast <chrono::days> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (days.count());
-			} break;
-			*/
-			// Если единицы измерения штампа времени требуется получить в часах
-			case static_cast <uint8_t> (chrono_t::HOURS): {
-				// Получаем штамп времени в часы
-				chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (hours.count());
-			} break;
-			// Если единицы измерения штампа времени требуется получить в минутах
-			case static_cast <uint8_t> (chrono_t::MINUTES): {
-				// Получаем штамп времени в минуты
-				chrono::minutes minutes = chrono::duration_cast <chrono::minutes> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (minutes.count());
-			} break;
-			// Если единицы измерения штампа времени требуется получить в секундах
-			case static_cast <uint8_t> (chrono_t::SECONDS): {
-				// Получаем штамп времени в секундах
-				chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (seconds.count());
-			} break;
-			// Если единицы измерения штампа времени требуется получить в миллисекундах
-			case static_cast <uint8_t> (chrono_t::MILLISECONDS): {
-				// Получаем штамп времени в миллисекундах
-				chrono::milliseconds milliseconds = chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (milliseconds.count());
-			} break;
-			// Если единицы измерения штампа времени требуется получить в микросекундах
-			case static_cast <uint8_t> (chrono_t::MICROSECONDS): {
-				// Получаем штамп времени в микросекунды
-				chrono::microseconds microseconds = chrono::duration_cast <chrono::microseconds> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (microseconds.count());
-			} break;
-			// Если единицы измерения штампа времени требуется получить в наносекундах
-			case static_cast <uint8_t> (chrono_t::NANOSECONDS): {
-				// Получаем штамп времени в наносекундах
-				chrono::nanoseconds nanoseconds = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
-				// Получаем результат
-				result = static_cast <time_t> (nanoseconds.count());
-			} break;
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
+void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t type, const bool text) const noexcept {
+	// Если буфер данных передан правильно
+	if((buffer != nullptr) && (size > 0)){
 		/**
-		 * Если включён режим отладки
+		 * Выполняем отлов ошибок
 		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		try {
+			// Если данные извлекаются в текстовом виде
+			if(text){
+				// Определяем единицы измерения штампа времени
+				switch(static_cast <uint8_t> (type)){
+					// Если единицы измерения штампа времени требуется получить в годы
+					case static_cast <uint8_t> (chrono_t::YEAR): {
+						// Получаем штамп времени в часы
+						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (8760)));
+					} break;
+					// Если единицы измерения штампа времени требуется получить в месяцах
+					case static_cast <uint8_t> (chrono_t::MONTH): {
+						// Получаем штамп времени в часы
+						chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(static_cast <uint64_t> (seconds.count() / static_cast <double> (2629746)));
+					} break;
+					// Если единицы измерения штампа времени требуется получить в неделях
+					case static_cast <uint8_t> (chrono_t::WEEK): {
+						// Получаем штамп времени в часы
+						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (168)));
+					} break;
+					// Если единицы измерения штампа времени требуется получить в днях
+					case static_cast <uint8_t> (chrono_t::DAY): {
+						// Получаем штамп времени в часы
+						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(static_cast <uint64_t> (hours.count() / static_cast <double> (24)));
+					} break;
+					// Если единицы измерения штампа времени требуется получить в часах
+					case static_cast <uint8_t> (chrono_t::HOUR): {
+						// Получаем штамп времени в часы
+						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(hours.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в минутах
+					case static_cast <uint8_t> (chrono_t::MINUTES): {
+						// Получаем штамп времени в минуты
+						chrono::minutes minutes = chrono::duration_cast <chrono::minutes> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(minutes.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в секундах
+					case static_cast <uint8_t> (chrono_t::SECONDS): {
+						// Получаем штамп времени в секундах
+						chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(seconds.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в миллисекундах
+					case static_cast <uint8_t> (chrono_t::MILLISECONDS): {
+						// Получаем штамп времени в миллисекундах
+						chrono::milliseconds milliseconds = chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(milliseconds.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в микросекундах
+					case static_cast <uint8_t> (chrono_t::MICROSECONDS): {
+						// Получаем штамп времени в микросекунды
+						chrono::microseconds microseconds = chrono::duration_cast <chrono::microseconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(microseconds.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в наносекундах
+					case static_cast <uint8_t> (chrono_t::NANOSECONDS): {
+						// Получаем штамп времени в наносекундах
+						chrono::nanoseconds nanoseconds = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						(* reinterpret_cast <string *> (buffer)) = std::to_string(nanoseconds.count());
+					} break;
+				}
+			// Если данные извлекаются в виде числа
+			} else {
+				// Результат работы функции
+				uint64_t result = 0;
+				// Определяем единицы измерения штампа времени
+				switch(static_cast <uint8_t> (type)){
+					// Если единицы измерения штампа времени требуется получить в годы
+					case static_cast <uint8_t> (chrono_t::YEAR): {
+						// Получаем штамп времени в часы
+						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (hours.count() / static_cast <double> (8760));
+					} break;
+					// Если единицы измерения штампа времени требуется получить в месяцах
+					case static_cast <uint8_t> (chrono_t::MONTH): {
+						// Получаем штамп времени в часы
+						chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (seconds.count() / static_cast <double> (2629746));
+					} break;
+					// Если единицы измерения штампа времени требуется получить в неделях
+					case static_cast <uint8_t> (chrono_t::WEEK): {
+						// Получаем штамп времени в часы
+						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (hours.count() / static_cast <double> (168));
+					} break;
+					// Если единицы измерения штампа времени требуется получить в днях
+					case static_cast <uint8_t> (chrono_t::DAY): {
+						// Получаем штамп времени в часы
+						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (hours.count() / static_cast <double> (24));
+					} break;
+					// Если единицы измерения штампа времени требуется получить в часах
+					case static_cast <uint8_t> (chrono_t::HOUR): {
+						// Получаем штамп времени в часы
+						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (hours.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в минутах
+					case static_cast <uint8_t> (chrono_t::MINUTES): {
+						// Получаем штамп времени в минуты
+						chrono::minutes minutes = chrono::duration_cast <chrono::minutes> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (minutes.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в секундах
+					case static_cast <uint8_t> (chrono_t::SECONDS): {
+						// Получаем штамп времени в секундах
+						chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (seconds.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в миллисекундах
+					case static_cast <uint8_t> (chrono_t::MILLISECONDS): {
+						// Получаем штамп времени в миллисекундах
+						chrono::milliseconds milliseconds = chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (milliseconds.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в микросекундах
+					case static_cast <uint8_t> (chrono_t::MICROSECONDS): {
+						// Получаем штамп времени в микросекунды
+						chrono::microseconds microseconds = chrono::duration_cast <chrono::microseconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (microseconds.count());
+					} break;
+					// Если единицы измерения штампа времени требуется получить в наносекундах
+					case static_cast <uint8_t> (chrono_t::NANOSECONDS): {
+						// Получаем штамп времени в наносекундах
+						chrono::nanoseconds nanoseconds = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+						// Получаем результат
+						result = static_cast <uint64_t> (nanoseconds.count());
+					} break;
+				}
+				// Определяем размер буфера данных
+				switch(size){
+					// Если размер данных 1 байт
+					case 1: {
+						// Получаем максимальное число которое содержит буфер
+						const uint8_t length = numeric_limits <uint8_t>::max();
+						// Если полученный результат помещается в буфер
+						if(result <= static_cast <uint64_t> (length))
+							// Выполняем копирование результата в буфер данных
+							::memcpy(buffer, &result, size);
+						// Если результат не помещается в буфер данных
+						else {
+							// Получаем размер множителя
+							const uint64_t rate = static_cast <uint64_t> (::pow(10, ::floor(::log10(result))) / ::pow(10, ::floor(::log10(length))));
+							// Получаем итоговый результат для вывода
+							const uint8_t data = static_cast <uint8_t> ((result - (result % rate)) / rate);
+							// Выполняем копирование результата в буфер данных
+							::memcpy(buffer, &data, size);
+						}
+					} break;
+					// Если размер данных 2 байта
+					case 2: {
+						// Получаем максимальное число которое содержит буфер
+						const uint16_t length = numeric_limits <uint16_t>::max();
+						// Если полученный результат помещается в буфер
+						if(result <= static_cast <uint64_t> (length))
+							// Выполняем копирование результата в буфер данных
+							::memcpy(buffer, &result, size);
+						// Если результат не помещается в буфер данных
+						else {
+							// Получаем размер множителя
+							const uint64_t rate = static_cast <uint64_t> (::pow(10, ::floor(::log10(result))) / ::pow(10, ::floor(::log10(length))));
+							// Получаем итоговый результат для вывода
+							const uint16_t data = static_cast <uint16_t> ((result - (result % rate)) / rate);
+							// Выполняем копирование результата в буфер данных
+							::memcpy(buffer, &data, size);
+						}
+					} break;
+					// Если размер данных 4 байта
+					case 4: {
+						// Получаем максимальное число которое содержит буфер
+						const uint32_t length = numeric_limits <uint32_t>::max();
+						// Если полученный результат помещается в буфер
+						if(result <= static_cast <uint64_t> (length))
+							// Выполняем копирование результата в буфер данных
+							::memcpy(buffer, &result, size);
+						// Если результат не помещается в буфер данных
+						else {
+							// Получаем размер множителя
+							const uint64_t rate = static_cast <uint64_t> (::pow(10, ::floor(::log10(result))) / ::pow(10, ::floor(::log10(length))));
+							// Получаем итоговый результат для вывода
+							const uint32_t data = static_cast <uint32_t> ((result - (result % rate)) / rate);
+							// Выполняем копирование результата в буфер данных
+							::memcpy(buffer, &data, size);
+						}
+					} break;
+					// Если размер данных 8 байт
+					case 8:
+						// Выполняем копирование результата в буфер данных
+						::memcpy(buffer, &result, size);
+					break;
+				}
+			}
 		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
-		#endif
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
 	}
-	// Выводим результат
-	return result;
 }
 /**
  * iconv Метод конвертирования строки кодировки
@@ -2597,7 +2763,7 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 						// Увеличиваем значение итератора
 						++i;
 					// Проверяем является ли символ числом
-					else if(this->_symbols.isArabic(* i) || ((* i) == '.'))
+					else if(standardSymbols.isArabic(* i) || ((* i) == '.'))
 						// Увеличиваем значение итератора
 						++i;
 					// Иначе удаляем символ
@@ -2694,7 +2860,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 						// Выполняем увеличение значения итератора
 						++i;
 					// Проверяем является ли символ числом
-					else if(this->_symbols.isArabic(* i) || ((* i) == '.'))
+					else if(standardSymbols.isArabic(* i) || ((* i) == '.'))
 						// Выполняем увеличение значения итератора
 						++i;
 					// Иначе удаляем символ
@@ -2820,7 +2986,7 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 			// Получаем длину слова
 			const size_t length = word.length();
 			// Если слово состоит всего из одной буквы
-			if((length == 1) && !this->_symbols.isRome(word.front()))
+			if((length == 1) && !standardSymbols.isRome(word.front()))
 				// Выводим результат
 				return result;
 			// Если слово длиннее одной буквы
@@ -2829,9 +2995,9 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 				for(size_t i = 0, j = (length - 1); j > ((length / 2) - 1); i++, j--){
 					// Проверяем является ли слово римским числом
 					if(!((i == j) ?
-						this->_symbols.isRome(word.at(i)) :
-						this->_symbols.isRome(word.at(i)) &&
-						this->_symbols.isRome(word.at(j))
+						standardSymbols.isRome(word.at(i)) :
+						standardSymbols.isRome(word.at(i)) &&
+						standardSymbols.isRome(word.at(j))
 					)) return result;
 				}
 			}
@@ -2960,7 +3126,7 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 			// Получаем длину слова
 			const size_t length = word.length();
 			// Если слово состоит всего из одной буквы
-			if((length == 1) && !this->_symbols.isRome(word.front()))
+			if((length == 1) && !standardSymbols.isRome(word.front()))
 				// Выводим результат
 				return result;
 			// Если слово длиннее одной буквы
@@ -2969,9 +3135,9 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 				for(size_t i = 0, j = (length - 1); j > ((length / 2) - 1); i++, j--){
 					// Проверяем является ли слово римским числом
 					if(!((i == j) ?
-						this->_symbols.isRome(word.at(i)) :
-						this->_symbols.isRome(word.at(i)) &&
-						this->_symbols.isRome(word.at(j))
+						standardSymbols.isRome(word.at(i)) :
+						standardSymbols.isRome(word.at(i)) &&
+						standardSymbols.isRome(word.at(j))
 					)) return result;
 				}
 			}
@@ -3096,19 +3262,19 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 			// Копируем полученное число
 			uint32_t n = number;
 			// Вычисляем до тысяч
-			result.append(this->_numbers.m[::floor(n / 1000)]);
+			result.append(romanNumerals.m[static_cast <uint8_t> (::floor(n / 1000.))]);
 			// Уменьшаем диапазон
 			n %= 1000;
 			// Вычисляем до сотен
-			result.append(this->_numbers.c[::floor(n / 100)]);
+			result.append(romanNumerals.c[static_cast <uint8_t> (::floor(n / 100.))]);
 			// Вычисляем до сотен
 			n %= 100;
 			// Вычисляем до десятых
-			result.append(this->_numbers.x[::floor(n / 10)]);
+			result.append(romanNumerals.x[static_cast <uint8_t> (::floor(n / 10.))]);
 			// Вычисляем до сотен
 			n %= 10;
 			// Формируем окончательный результат
-			result.append(this->_numbers.i[n]);
+			result.append(romanNumerals.i[n]);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -3794,7 +3960,7 @@ map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
 			// Выполням поиск ссылок в тексте
 			while(pos < text.length()){
 				// Выполняем парсинг nwt адреса
-				auto resUri = this->_nwt.parse(text.substr(pos));
+				auto resUri = const_cast <fmk_t *> (this)->_nwt.parse(text.substr(pos));
 				// Если ссылка найдена
 				if(resUri.type != nwt_t::types_t::NONE){
 					// Получаем данные слова
@@ -3878,7 +4044,7 @@ string awh::Framework::icon(const bool end) const noexcept {
 		"🏁","🧾","💶","💷","💴","💵"
 	};
 	// рандомизация генератора случайных чисел
-	::srand(::time(nullptr));
+	::srand(this->timestamp <uint64_t> (chrono_t::NANOSECONDS));
 	// Получаем иконку
 	return (!end ? iconBegin[::rand() % iconBegin.size()] : iconEnd[::rand() % iconEnd.size()]);
 }
@@ -4025,173 +4191,6 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
 	return result;
 }
 /**
- * seconds Метод получения размера в секундах из строки
- * @param str строка обозначения размерности (s, m, h, d, w, M, y)
- * @return    размер в секундах
- */
-time_t awh::Framework::seconds(const string & str) const noexcept {
-	// Количество секунд
-	time_t result = 0;
-	// Выполняем проверку входящей строки
-	const auto & match = this->_regexp.exec(str, this->_seconds);
-	// Если данные найдены
-	if(!match.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Размерность времени
-			float dimension = 1.f;
-			// Получаем значение размерности
-			float value = ::stof(match[1]);
-			// Если это секунды
-			if(match[2].front() == 's')
-				// Выполняем установку множителя
-				dimension = 1.f;
-			// Если это размерность в минутах
-			else if(match[2].front() == 'm')
-				// Выполняем установку множителя
-				dimension = 60.f;
-			// Если это размерность в часах
-			else if(match[2].front() == 'h')
-				// Выполняем установку множителя
-				dimension = 3600.f;
-			// Если это размерность в днях
-			else if(match[2].front() == 'd')
-				// Выполняем установку множителя
-				dimension = 86400.f;
-			// Если это размерность в неделях
-			else if(match[2].front() == 'w')
-				// Выполняем установку множителя
-				dimension = 604800.f;
-			// Если это размерность в месяцах
-			else if(match[2].front() == 'M')
-				// Выполняем установку множителя
-				dimension = 2628000.f;
-			// Если это размерность в годах
-			else if(match[2].front() == 'y')
-				// Выполняем установку множителя
-				dimension = 31536000.f;
-			// Если время установлено тогда расчитываем количество секунд
-			if(value > -1.f)
-				// Выполняем получение количества секунд
-				result = static_cast <time_t> (value * dimension);
-			// Размер буфера по умолчанию
-			else result = static_cast <time_t> (value);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * seconds Метод получения текстового значения времени 
- * @param seconds количество секунд для конвертации
- * @return        обозначение времени с указанием размерности
- */
-string awh::Framework::seconds(const time_t seconds) const noexcept {
-	// Результат работы функции
-	string result = "0s";
-	// Если количество секунд передано
-	if(seconds > 0){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Шаблон минуты
-			const double minute = 60.;
-			// Шаблон часа
-			const double hour = 3600.;
-			// Шаблон дня
-			const double day = 86400.;
-			// Шаблон недели
-			const double week = 604800.;
-			// Шаблон месяца
-			const double month = 2628000.;
-			// Шаблон года
-			const double year = 31536000.;
-			// Если переданное значение соответствует году
-			if(seconds >= year){
-				// Выполняем преобразование в количество лет
-				result = this->noexp(static_cast <double> (seconds) / year, static_cast <uint8_t> (1));
-				// Добавляем наименование единицы измерения
-				result.append(1, 'y');
-			// Если переданное значение соответствует месяцу
-			} else if((seconds >= month) && (seconds < year)) {
-				// Выполняем преобразование в количество месяцев
-				result = this->noexp(static_cast <double> (seconds) / month, static_cast <uint8_t> (1));
-				// Добавляем наименование единицы измерения
-				result.append(1, 'M');
-			// Если переданное значение соответствует недели
-			} else if((seconds >= week) && (seconds < month)) {
-				// Выполняем преобразование в количество недель
-				result = this->noexp(static_cast <double> (seconds) / week, static_cast <uint8_t> (1));
-				// Добавляем наименование единицы измерения
-				result.append(1, 'w');
-			// Если переданное значение соответствует дням
-			} else if((seconds >= day) && (seconds < week)) {
-				// Выполняем преобразование в количество дней
-				result = this->noexp(static_cast <double> (seconds) / day, static_cast <uint8_t> (1));
-				// Добавляем наименование единицы измерения
-				result.append(1, 'd');
-			// Если переданное значение соответствует часам
-			} else if((seconds >= hour) && (seconds < day)) {
-				// Выполняем преобразование в количество часов
-				result = this->noexp(static_cast <double> (seconds) / hour, static_cast <uint8_t> (1));
-				// Добавляем наименование единицы измерения
-				result.append(1, 'h');
-			// Если переданное значение соответствует минут
-			} else if((seconds >= minute) && (seconds < hour)) {
-				// Выполняем преобразование в количество минут
-				result = this->noexp(static_cast <double> (seconds) / minute, static_cast <uint8_t> (1));
-				// Добавляем наименование единицы измерения
-				result.append(1, 'm');
-			// Если переданное значение соответствует секундам
-			} else {
-				// Выполняем преобразование в количество секунд
-				result = std::to_string(seconds);
-				// Добавляем наименование единицы измерения
-				result.append(1, 's');
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * sizeBuffer Метод получения размера буфера в байтах
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    размер буфера в байтах
@@ -4274,285 +4273,11 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 	return result;
 }
 /**
- * time2abbr Метод перевода времени в аббревиатуру
- * @param date дата в UnixTimestamp
- * @return     строка содержащая аббревиатуру даты
- */
-string awh::Framework::time2abbr(const time_t date) const noexcept {
-	// Результат работы функции
-	string result = "0 msec.";
-	// Если число передано
-	if(date > 0){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если число больше года
-			if(date >= 29030400000)
-				// Выполняем формирование результата
-				result = this->format("%.1f year", (date / static_cast <double> (29030400000.)));
-			// Если число больше месяца
-			else if(date >= 2419200000)
-				// Выполняем формирование результата
-				result = this->format("%.1f month", (date / static_cast <double> (2419200000.)));
-			// Если число больше недели
-			else if(date >= 604800000)
-				// Выполняем формирование результата
-				result = this->format("%.1f week", (date / static_cast <double> (604800000.)));
-			// Если число больше дня
-			else if(date >= 86400000)
-				// Выполняем формирование результата
-				result = this->format("%.1f day", (date / static_cast <double> (86400000.)));
-			// Если число больше часа
-			else if(date >= 3600000)
-				// Выполняем формирование результата
-				result = this->format("%.1f hour", (date / static_cast <double> (3600000.)));
-			// Если число больше минуты
-			else if(date >= 60000)
-				// Выполняем формирование результата
-				result = this->format("%.1f min", (date / static_cast <double> (60000.)));
-			// Если число ольше секунды
-			else if(date >= 1000)
-				// Выполняем формирование результата
-				result = this->format("%.1f sec", (date / static_cast <double> (1000.)));
-			// Иначе выводим как есть
-			else result = this->format("%u msec", date);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * strpTime Метод получения Unix TimeStamp из строки
- * @param date    строка даты
- * @param format1 форматы даты из которой нужно получить дату
- * @param format2 форматы даты в который нужно перевести дату
- * @return        результат работы
- */
-string awh::Framework::strpTime(const string & date, const string & format1, const string & format2) const noexcept {
-	// Результат работы функции
-	string result = "";
-	// Если данные переданы
-	if(!date.empty() && !format1.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			/*
-			* Разве стандартная библиотека C++ не хороша? get_time определен таким образом,
-			* что его параметры формата были точно такие же, как у strptime.
-			* Конечно, мы должны сначала создать строковый поток и наполнить его текущей локалью C,
-			* и мы также должны убедиться, что мы возвращаем правильные вещи, если это не удаётся или если это удаётся,
-			* но это все ещё намного проще. Чем любая из версий в любой из стандартных библиотек C.
-			*/
-			// Создаем структуру времени
-			std::tm tm = {};
-			// Создаём строковый поток
-			istringstream ss(date);
-			// Устанавливаем текущую локаль
-			ss.imbue(this->_locale);
-			// Зануляем структуру
-			::memset(&tm, 0, sizeof(tm));
-			// Извлекаем время локали
-			ss >> get_time(&tm, format1.c_str());
-			// Если время получено
-			if(!ss.fail() && !format2.empty()){
-				// Создаём объект потока
-				stringstream ss;
-				// Выполняем извлечение даты
-				ss << put_time(&tm, format2.c_str());
-				// Выводим полученное значение даты
-				result = ss.str();
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * time2str Метод преобразования UnixTimestamp в строку
- * @param date   дата в UnixTimestamp
- * @param format формат даты
- * @param type   тип генерируемой даты
- * @return       строка содержащая дату
- */
-string awh::Framework::time2str(const time_t date, const string & format, const date_t type) const noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаем структуру времени
-		std::tm tm = {};
-		// Создаём объект потока
-		stringstream ss;
-		// Определяем тип генерируемой даты
-		switch(static_cast <uint8_t> (type)){
-			// Если требуется сгенерировать дату в формате GMT
-			case static_cast <uint8_t> (date_t::GMT):
-				// Формируем локальное время
-				gmtime_r(&date, &tm);
-			break;
-			// Если требуется сгенерировать дату в формате локальных настроек
-			case static_cast <uint8_t> (date_t::LOCAL):
-				// Формируем локальное время
-				localtime_r(&date, &tm);
-			break;
-		}
-		// Выполняем извлечение даты
-		ss << put_time(&tm, format.c_str());
-		// Устанавливаем текущую локаль
-		ss.imbue(this->_locale);
-		// Выводим полученное значение даты
-		return ss.str();
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
-		#endif
-		// Выводим пустую строку
-		return "";
-	}
-}
-/**
- * str2time Метод перевода строки в UnixTimestamp
- * @param date   строка даты
- * @param format формат даты
- * @param type   тип генерируемой даты
- * @return       дата в UnixTimestamp
- */
-time_t awh::Framework::str2time(const string & date, const string & format, const date_t type) const noexcept {
-	// Результат работы функции
-	time_t result = 0;
-	// Если данные переданы
-	if(!date.empty() && !format.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаем структуру времени
-			std::tm tm = {};
-			// Создаём строковый поток
-			istringstream ss(date);
-			// Устанавливаем текущую локаль
-			ss.imbue(this->_locale);
-			// Извлекаем время локали
-			ss >> get_time(&tm, format.c_str());
-			// Если результат получен отрицательный
-			if(tm.tm_year == 0){
-				// Получаем значение текущего времени
-				const time_t time = std::time(nullptr);
-				// Определяем тип генерируемой даты
-				switch(static_cast <uint8_t> (type)){
-					// Если требуется сгенерировать дату в формате GMT
-					case static_cast <uint8_t> (date_t::GMT):
-						// Формируем локальное время
-						gmtime_r(&time, &tm);
-					break;
-					// Если требуется сгенерировать дату в формате локальных настроек
-					case static_cast <uint8_t> (date_t::LOCAL):
-						// Заполняем структуру времени
-						localtime_r(&time, &tm);
-					break;
-				}
-				// Получаем текущее значение дня
-				const int32_t day = tm.tm_mday;
-				// Получаем текущее значение часа
-				const int32_t hour = tm.tm_hour;
-				// Получаем текущее значение месяца
-				const int32_t month = tm.tm_mon;
-				// Очищаем поток
-				ss.clear();
-				// Создаём строковый поток
-				ss.str(date);
-				// Устанавливаем текущую локаль
-				ss.imbue(this->_locale);
-				// Извлекаем время локали
-				ss >> get_time(&tm, format.c_str());
-				// Если указанный месяц выше текущего
-				if((tm.tm_mon > month) || ((tm.tm_mon == month) &&
-				  ((tm.tm_mday > day) && (((tm.tm_mday - day) > 1) ||
-				  !((tm.tm_hour == 0) && (hour == 23))))))
-					// Уменьшаем значение текущего года
-					tm.tm_year -= 1;
-			}
-			// Если ошибки не возникает
-			result = mktime(&tm);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * Framework Конструктор
  */
-awh::Framework::Framework() noexcept : _locale(AWH_LOCALE), _nwt("абвгдеёжзийклмнопрстуфхцчшщъыьэюя") {
+awh::Framework::Framework() noexcept : _locale(AWH_LOCALE) {
 	// Устанавливаем локализацию системы
 	this->setLocale();
-	// Устанавливаем регулярное выражение для парсинга времени
-	this->_seconds = this->_regexp.build("([\\d\\.\\,]+)\\s*(s|m|h|d|w|M|y)$", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга буферов данных
 	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)$", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга байт
@@ -4562,11 +4287,9 @@ awh::Framework::Framework() noexcept : _locale(AWH_LOCALE), _nwt("абвгдеё
  * Framework Конструктор
  * @param locale локализация приложения
  */
-awh::Framework::Framework(const string & locale) noexcept : _nwt("абвгдеёжзийклмнопрстуфхцчшщъыьэюя") {
+awh::Framework::Framework(const string & locale) noexcept {
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
-	// Устанавливаем регулярное выражение для парсинга секунд
-	this->_seconds = this->_regexp.build("([\\d\\.\\,]+)\\s*(s|m|h|d|w|M|y)$", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга буферов данных
 	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)$", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга байт

@@ -2037,7 +2037,7 @@ void awh::Engine::Context::proto(const proto_t proto) noexcept {
  * @param method метод для установки таймаута
  * @return       результат установки таймаута
  */
-bool awh::Engine::Context::timeout(const time_t msec, const method_t method) noexcept {
+bool awh::Engine::Context::timeout(const uint32_t msec, const method_t method) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён

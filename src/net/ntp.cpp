@@ -123,9 +123,9 @@ void awh::NTP::Worker::cancel() noexcept {
  * request Метод выполнения запроса
  * @return полученный UnixTimeStamp
  */
-time_t awh::NTP::Worker::request() noexcept {
+uint64_t awh::NTP::Worker::request() noexcept {
 	// Результат работы функции
-	time_t result = 0;
+	uint64_t result = 0;
 	// Получаем хост текущего компьютера
 	const string & host = this->host();
 	// Выполняем пересортировку серверов NTP
@@ -234,9 +234,9 @@ time_t awh::NTP::Worker::request() noexcept {
  * @param to   адрес NTP-сервера на который выполняется запрос
  * @return     полученный UnixTimeStamp
  */
-time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
+uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 	// Результат работы функции
-	time_t result = 0;
+	uint64_t result = 0;
 	// Если доменное имя установлено
 	if(this->_mode && !from.empty() && !to.empty()){
 		// Создаём объект пакета запроса
@@ -347,7 +347,7 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 					 * (1900)---------(1970)**********(Время когд пакет покинул сервер)
 					 */
 					// Получаем количество секунд с UNIX-эпохи
-					return (static_cast <time_t> (packet.transmitedTimeStampSec - NTP_TIMESTAMP_DELTA) * 1000l);
+					result = (static_cast <uint64_t> (packet.transmitedTimeStampSec - NTP_TIMESTAMP_DELTA) * 1000l);
 				}
 				// Если мы получили результат
 				if(result > 0)
@@ -1090,11 +1090,11 @@ void awh::NTP::network(const int32_t family, const vector <string> & network) no
  * request Метод выполнение получения времени с NTP-сервера
  * @return полученный UnixTimeStamp
  */
-time_t awh::NTP::request() noexcept {
+uint64_t awh::NTP::request() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем получение UnixTimeStamp для IPv6
-	const time_t result = this->request(AF_INET6);
+	const uint64_t result = this->request(AF_INET6);
 	// Если результат не получен, выполняем запрос для IPv4
 	if(result == 0)
 		// Выполняем получение UnixTimeStamp для IPv4
@@ -1107,7 +1107,7 @@ time_t awh::NTP::request() noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @return       полученный UnixTimeStamp
  */
-time_t awh::NTP::request(const int32_t family) noexcept {
+uint64_t awh::NTP::request(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
@@ -1145,7 +1145,7 @@ time_t awh::NTP::request(const int32_t family) noexcept {
  * @param log объект для работы с логами
  */
 awh::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept :
- _net(log), _dns(fmk, log), _ttl(0), _timeout(5),
+ _net(log), _dns(fmk, log), _timeout(5),
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
 	this->_workerIPv4 = unique_ptr <worker_t> (new worker_t(AF_INET, this));

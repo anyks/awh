@@ -77,7 +77,7 @@ namespace awh {
 				timer_t _timer;
 			protected:
 				// Интервал времени на выполнение пингов
-				time_t _pingInterval;
+				uint32_t _pingInterval;
 			private:
 				// Хранилище функций обратного вызова
 				fn_t _callbacks;
@@ -88,7 +88,7 @@ namespace awh {
 				hash_t::cipher_t _cipher;
 			private:
 				// Список отключившихся клиентов
-				map <uint64_t, time_t> _disconnected;
+				map <uint64_t, uint64_t> _disconnected;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -265,19 +265,19 @@ namespace awh {
 				 * pingInterval Метод установки интервала времени выполнения пингов
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				void pingInterval(const time_t sec) noexcept;
+				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений
 				 * @param sec интервал времени в секундах
 				 */
-				void waitMessage(const time_t sec) noexcept;
+				void waitMessage(const uint16_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
 				 */
-				void waitTimeDetect(const time_t read, const time_t write) noexcept;
+				void waitTimeDetect(const uint16_t read, const uint16_t write) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений

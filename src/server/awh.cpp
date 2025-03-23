@@ -329,7 +329,7 @@ void awh::server::AWH::close(const uint64_t bid) noexcept {
  * waitPong Метод установки времени ожидания ответа WebSocket-клиента
  * @param sec время ожидания в секундах
  */
-void awh::server::AWH::waitPong(const time_t sec) noexcept {
+void awh::server::AWH::waitPong(const uint16_t sec) noexcept {
 	// Выполняем установку времени ожидания
 	this->_http.waitPong(sec);
 }
@@ -337,7 +337,7 @@ void awh::server::AWH::waitPong(const time_t sec) noexcept {
  * pingInterval Метод установки интервала времени выполнения пингов
  * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::AWH::pingInterval(const time_t sec) noexcept {
+void awh::server::AWH::pingInterval(const uint16_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов в секундах
 	this->_http.pingInterval(sec);
 }
@@ -504,7 +504,7 @@ void awh::server::AWH::chunk(const size_t size) noexcept {
  * maxRequests Метод установки максимального количества запросов
  * @param max максимальное количество запросов
  */
-void awh::server::AWH::maxRequests(const size_t max) noexcept {
+void awh::server::AWH::maxRequests(const uint32_t max) noexcept {
 	// Выполняем установку максимального количества запросов
 	this->_http.maxRequests(max);
 }
@@ -515,14 +515,6 @@ void awh::server::AWH::maxRequests(const size_t max) noexcept {
 void awh::server::AWH::alive(const bool mode) noexcept {
 	// Устанавливаем долгоживущее подключение
 	this->_http.alive(mode);
-}
-/**
- * alive Метод установки времени жизни подключения
- * @param sec время жизни подключения
- */
-void awh::server::AWH::alive(const time_t sec) noexcept {
-	// Устанавливаем время жизни подключения
-	this->_http.alive(sec);
 }
 /**
  * alive Метод установки долгоживущего подключения
@@ -545,7 +537,7 @@ void awh::server::AWH::identity(const http_t::identity_t identity) noexcept {
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::server::AWH::waitMessage(const time_t sec) noexcept {
+void awh::server::AWH::waitMessage(const uint16_t sec) noexcept {
 	// Выполняем установку времени ожидания входящих сообщений
 	this->_http.waitMessage(sec);
 }
@@ -554,7 +546,7 @@ void awh::server::AWH::waitMessage(const time_t sec) noexcept {
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::server::AWH::waitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::server::AWH::waitTimeDetect(const uint16_t read, const uint16_t write) noexcept {
 	// Выполняем установку детекции сообщений по количеству секунд
 	this->_http.waitTimeDetect(read, write);
 }

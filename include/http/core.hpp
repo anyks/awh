@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <ctime>
 #include <string>
 #include <vector>
 #include <cstring>
@@ -494,10 +493,10 @@ namespace awh {
 		public:
 			/**
 			 * date Метод получения текущей даты для HTTP-запроса
-			 * @param stamp штамп времени в числовом виде
-			 * @return      штамп времени в текстовом виде
+			 * @param date дата в формате UnixTimestamp
+			 * @return     штамп времени в текстовом виде
 			 */
-			string date(const time_t stamp = 0) const noexcept;
+			string date(const uint64_t date = 0) const noexcept;
 			/**
 			 * message Метод получения HTTP сообщения
 			 * @param code код сообщения для получение

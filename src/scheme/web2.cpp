@@ -45,7 +45,7 @@ void awh::server::scheme::WEB2::set(const uint64_t bid) noexcept {
 		// Создаём объект параметров активного клиента
 		auto ret = this->_options.emplace(bid, unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
 		// Устанавливаем контрольную точку
-		ret.first->second->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+		ret.first->second->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 	}
 }
 /**

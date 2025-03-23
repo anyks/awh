@@ -485,7 +485,7 @@ namespace awh {
 					 * @param method метод для установки таймаута
 					 * @return       результат установки таймаута
 					 */
-					bool timeout(const time_t msec, const method_t method) noexcept;
+					bool timeout(const uint32_t msec, const method_t method) noexcept;
 				public:
 					/**
 					 * buffer Метод получения размеров буфера

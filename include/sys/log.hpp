@@ -35,7 +35,6 @@
  * Стандартные модули
  */
 #include <set>
-#include <ctime>
 #include <tuple>
 #include <string>
 #include <vector>
@@ -53,6 +52,7 @@
  * Наши модули
  */
 #include <sys/fmk.hpp>
+#include <sys/chrono.hpp>
 #include <sys/screen.hpp>
 
 /**
@@ -177,6 +177,9 @@ namespace awh {
 		private:
 			// Флаг формирования разделителя
 			separator_t _sep;
+		private:
+			// Объект работы с датой и временем
+			chrono_t _chrono;
 		private:
 			// Название сервиса для вывода лога
 			string _name;

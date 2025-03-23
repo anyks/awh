@@ -1,5 +1,5 @@
 /**
- * @file: pipe.cpp
+ * @file: evpipe.cpp
  * @date: 2024-07-03
  * @license: GPL-3.0
  *
@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
-#include <sys/pipe.hpp>
+#include <events/evpipe.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -26,7 +26,7 @@ using namespace std;
  * port Метод получения активного порта
  * @return номер порта сервера
  */
-uint32_t awh::PIPE::port() const noexcept {
+uint32_t awh::EventPipe::port() const noexcept {
 	// Выводим номер активного порта сервера
 	return this->_port;
 }
@@ -34,7 +34,7 @@ uint32_t awh::PIPE::port() const noexcept {
  * type Метод установки типа пайпа
  * @param type тип пайпа для установки
  */
-void awh::PIPE::type(const type_t type) noexcept {
+void awh::EventPipe::type(const type_t type) noexcept {
 	// Выполняем установку типа пайпа
 	this->_type = type;
 }
@@ -42,7 +42,7 @@ void awh::PIPE::type(const type_t type) noexcept {
  * create Метод создания файловых дескрипторов
  * @return файловые дескрипторы для обмена данными
  */
-array <SOCKET, 2> awh::PIPE::create() noexcept {
+array <SOCKET, 2> awh::EventPipe::create() noexcept {
 	// Результат работы функции
 	array <SOCKET, 2> result = {
 		INVALID_SOCKET,
@@ -59,7 +59,7 @@ array <SOCKET, 2> awh::PIPE::create() noexcept {
 				// Создаём объект файловых дескрипторов
 				int32_t fds[2];
 				// Выполняем инициализацию таймера
-				if(::_pipe(fds, sizeof(time_t), O_BINARY) == INVALID_SOCKET){
+				if(::_pipe(fds, sizeof(uint64_t), O_BINARY) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -180,7 +180,7 @@ array <SOCKET, 2> awh::PIPE::create() noexcept {
  * @param size   размер бинарного буфера для чтения
  * @return       размер прочитанных байт
  */
-int64_t awh::PIPE::read(const SOCKET fd, void * buffer, const size_t size) noexcept {
+int64_t awh::EventPipe::read(const SOCKET fd, void * buffer, const size_t size) noexcept {
 	// Если буфер данных не нулевой
 	if((buffer != nullptr) && (size > 0)){
 		// Определяем тип пайпа
@@ -223,7 +223,7 @@ int64_t awh::PIPE::read(const SOCKET fd, void * buffer, const size_t size) noexc
  * @param port   порт сервера на который нужно отправить ответ
  * @return       размер записанных байт
  */
-int64_t awh::PIPE::write(const SOCKET fd, const void * buffer, const size_t size, const uint32_t port) noexcept {
+int64_t awh::EventPipe::write(const SOCKET fd, const void * buffer, const size_t size, const uint32_t port) noexcept {
 	// Если буфер данных передан не пустой
 	if((buffer != nullptr) && (size > 0)){
 		// Определяем тип пайпа

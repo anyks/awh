@@ -19,7 +19,6 @@
  * Стандартные библиотеки
  */
 #include <map>
-#include <ctime>
 #include <mutex>
 #include <vector>
 #include <thread>
@@ -46,9 +45,9 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/cmp.hpp>
-#include <sys/events.hpp>
 #include <net/socket.hpp>
 #include <core/core.hpp>
+#include <events/evbase.hpp>
 
 /**
  * awh пространство имён
@@ -151,7 +150,7 @@ namespace awh {
 				typedef struct Broker {
 					bool end;        // Флаг завершения работы процессом
 					pid_t pid;       // Идентификатор активного процесса
-					time_t date;     // Время начала жизни процесса
+					uint64_t date;   // Время начала жизни процесса
 					SOCKET mfds[2];  // Список файловых дескрипторов родительского процесса
 					SOCKET cfds[2];  // Список файловых дескрипторов дочернего процесса
 					awh::event_t ev; // Объект события на получения сообщений
@@ -178,8 +177,8 @@ namespace awh {
 				 * Broker Структура брокера
 				 */
 				typedef struct Broker {
-					pid_t pid;   // Идентификатор активного процесса
-					time_t date; // Время начала жизни процесса
+					pid_t pid;     // Идентификатор активного процесса
+					uint64_t date; // Время начала жизни процесса
 					/**
 					 * Broker Конструктор
 					 */

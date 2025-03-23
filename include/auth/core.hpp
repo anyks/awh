@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <ctime>
 #include <string>
 
 /**
@@ -66,7 +65,7 @@ namespace awh {
 			 */
 			typedef struct Digest {
 				hash_t hash;   // Алгоритм шифрования (MD5, SHA1, SHA256, SHA512)
-				time_t stamp;  // Штамп времени последнего создания nonce
+				uint64_t date; // Штамп времени последнего создания nonce
 				string nc;     // Счётчик 16-го секретного кода клиента
 				string uri;    // Параметры HTTP запроса
 				string qop;    // Тип авторизации (auth, auth-int)
@@ -81,7 +80,7 @@ namespace awh {
 				Digest() noexcept :
 				 nc{"00000000"}, uri{""}, qop{"auth"},
 				 realm{AWH_HOST}, nonce{""}, opaque{""},
-				 cnonce{""}, resp{""}, stamp{0}, hash{hash_t::MD5} {}
+				 cnonce{""}, resp{""}, date{0}, hash{hash_t::MD5} {}
 			} digest_t;
 		protected:
 			// Тип авторизации
@@ -135,7 +134,8 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Authorization(const fmk_t * fmk, const log_t * log) noexcept : _type(type_t::NONE), _hash(log), _fmk(fmk), _log(log) {}
+			Authorization(const fmk_t * fmk, const log_t * log) noexcept :
+			 _type(type_t::NONE), _hash(log), _fmk(fmk), _log(log) {}
 			/*
 			 * ~Authorization Деструктор
 			 */

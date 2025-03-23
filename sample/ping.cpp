@@ -46,7 +46,7 @@ int32_t main(int32_t argc, char * argv[]){
 	const double result = ping.ping("api.telegram.org", 10);
 	// const double result = ping.ping("127.0.0.1", 10);
 	// Выводим результат пинга
-	log.print("PING result=%f", log_t::flag_t::INFO, result);
+	log.print("PING result=%.1f", log_t::flag_t::INFO, result);
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

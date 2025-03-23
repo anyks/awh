@@ -287,14 +287,14 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 							}
 							// Если подключение не установлено как постоянное
 							if(!this->_service.alive && !options->alive){
-								// Увеличиваем количество выполненных запросов
-								options->requests++;
+								// Если количество запросов ограничен
+								if(this->_maxRequests > 0)
+									// Увеличиваем количество выполненных запросов
+									options->requests++;
 								// Если количество выполненных запросов превышает максимальный
-								if(options->requests >= this->_maxRequests)
-									// Устанавливаем флаг закрытия подключения
-									options->close = true;
-								// Получаем текущий штамп времени
-								else options->point = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+								if(!(options->close = ((this->_maxRequests > 0) && (options->requests >= this->_maxRequests))))
+									// Получаем текущий штамп времени
+									options->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 							// Выполняем сброс количества выполненных запросов
 							} else options->requests = 0;
 							// Получаем флаг шифрованных данных
@@ -816,7 +816,7 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 			this->_scheme.rm(bid);
 		};
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -875,15 +875,6 @@ void awh::server::Http1::pinging(const uint16_t tid) noexcept {
 							if(options->close || !options->http.is(http_t::state_t::ALIVE))
 								// Выполняем отключение клиента от сервера
 								const_cast <server::core_t *> (this->_core)->close(agent.first);
-							// Иначе проверяем прошедшее время
-							else {
-								// Получаем текущий штамп времени
-								const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
-								// Если брокер не ответил на пинг больше двух интервалов, отключаем его
-								if((stamp - options->point) >= this->_timeAlive)
-									// Завершаем работу
-									const_cast <server::core_t *> (this->_core)->close(agent.first);
-							}
 						}
 					} break;
 					// Если агент соответствует серверу Websocket
@@ -1254,9 +1245,9 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 					}
 				}
 				// Если подключение не установлено как постоянное, но подключение долгоживущее
-				if((this->_timeAlive > 0) && !this->_service.alive && !options->alive && options->http.is(http_t::state_t::ALIVE))
+				if((this->_scheme.timeouts.wait > 0) && !this->_service.alive && !options->alive && options->http.is(http_t::state_t::ALIVE))
 					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-					options->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
+					options->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_scheme.timeouts.wait, this->_maxRequests));
 				// Если сообщение ответа не установлено
 				if(mess.empty())
 					// Выполняем установку сообщения по умолчанию
@@ -1494,7 +1485,7 @@ void awh::server::Http1::close(const uint64_t bid) noexcept {
  * waitPong Метод установки времени ожидания ответа WebSocket-клиента
  * @param sec время ожидания в секундах
  */
-void awh::server::Http1::waitPong(const time_t sec) noexcept {
+void awh::server::Http1::waitPong(const uint16_t sec) noexcept {
 	// Выполняем установку времени ожидания
 	this->_ws1.waitPong(sec);
 }
@@ -1502,9 +1493,11 @@ void awh::server::Http1::waitPong(const time_t sec) noexcept {
  * pingInterval Метод установки интервала времени выполнения пингов
  * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::server::Http1::pingInterval(const time_t sec) noexcept {
+void awh::server::Http1::pingInterval(const uint16_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов в секундах
 	this->_ws1.pingInterval(sec);
+	// Выполняем установку интервала времени выполнения пингов в секундах
+	this->_pingInterval = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола
@@ -1645,14 +1638,6 @@ void awh::server::Http1::alive(const bool mode) noexcept {
 	web_t::alive(mode);
 }
 /**
- * alive Метод установки времени жизни подключения
- * @param sec время жизни подключения
- */
-void awh::server::Http1::alive(const time_t sec) noexcept {
-	// Выполняем установку времени жизни подключения
-	web_t::alive(sec);
-}
-/**
  * alive Метод установки долгоживущего подключения
  * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
@@ -1719,7 +1704,7 @@ void awh::server::Http1::identity(const http_t::identity_t identity) noexcept {
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::server::Http1::waitMessage(const time_t sec) noexcept {
+void awh::server::Http1::waitMessage(const uint16_t sec) noexcept {
 	// Устанавливаем время ожидания получения данных
 	this->_scheme.timeouts.wait = sec;
 }
@@ -1728,11 +1713,19 @@ void awh::server::Http1::waitMessage(const time_t sec) noexcept {
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::server::Http1::waitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::server::Http1::waitTimeDetect(const uint16_t read, const uint16_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
 	this->_scheme.timeouts.write = write;
+}
+/**
+ * maxRequests Метод установки максимального количества запросов
+ * @param max максимальное количество запросов
+ */
+void awh::server::Http1::maxRequests(const uint32_t max) noexcept {
+	// Устанавливаем максимальное количество запросов
+	this->_maxRequests = max;
 }
 /**
  * crypted Метод получения флага шифрования
@@ -1795,7 +1788,8 @@ void awh::server::Http1::encryption(const string & pass, const string & salt, co
  * @param log объект для работы с логами
  */
 awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _webSocket(false), _methodConnect(false), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {}
+ web_t(fmk, log), _webSocket(false), _methodConnect(false),
+ _maxRequests(SERVER_MAX_REQUESTS), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {}
 /**
  * Http1 Конструктор
  * @param core объект сетевого ядра
@@ -1803,7 +1797,8 @@ awh::server::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Http1::Http1(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _webSocket(false), _methodConnect(false), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {
+ web_t(core, fmk, log), _webSocket(false), _methodConnect(false),
+ _maxRequests(SERVER_MAX_REQUESTS), _identity(http_t::identity_t::HTTP), _ws1(fmk, log), _scheme(fmk, log) {
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы

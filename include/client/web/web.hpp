@@ -229,16 +229,16 @@ namespace awh {
 				// Флаг выполнения редиректов
 				bool _redirects;
 			protected:
-				// Время отправленного пинга
-				time_t _sendPing;
-			protected:
 				// Количество попыток
 				uint8_t _attempt;
 				// Общее количество попыток
 				uint8_t _attempts;
 			protected:
+				// Время отправленного пинга
+				uint64_t _sendPing;
+			protected:
 				// Интервал времени на выполнение пингов
-				time_t _pingInterval;
+				uint32_t _pingInterval;
 			protected:
 				// Объект буфера данных
 				buffer_t _buffer;
@@ -390,12 +390,12 @@ namespace awh {
 				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
 				 * @param sec время ожидания в секундах
 				 */
-				virtual void waitPong(const time_t sec) noexcept = 0;
+				virtual void waitPong(const uint16_t sec) noexcept = 0;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				virtual void pingInterval(const time_t sec) noexcept = 0;
+				virtual void pingInterval(const uint16_t sec) noexcept = 0;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -466,14 +466,14 @@ namespace awh {
 				 * waitMessage Метод ожидания входящих сообщений
 				 * @param sec интервал времени в секундах
 				 */
-				void waitMessage(const time_t sec) noexcept;
+				void waitMessage(const uint16_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read    количество секунд для детекции по чтению
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для детекции по подключению
 				 */
-				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
+				void waitTimeDetect(const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
 				 * proxy Метод активации/деактивации прокси-склиента

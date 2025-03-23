@@ -112,12 +112,12 @@ namespace awh {
 				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
 				 * @param sec время ожидания в секундах
 				 */
-				void waitPong(const time_t sec) noexcept;
+				void waitPong(const uint16_t sec) noexcept;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				void pingInterval(const time_t sec) noexcept;
+				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова
@@ -350,14 +350,14 @@ namespace awh {
 				 * waitMessage Метод ожидания входящих сообщений
 				 * @param sec интервал времени в секундах
 				 */
-				void waitMessage(const time_t sec) noexcept;
+				void waitMessage(const uint16_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read    количество секунд для детекции по чтению
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для детекции по подключению
 				 */
-				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
+				void waitTimeDetect(const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
 				 * network Метод установки параметров сети

@@ -1,5 +1,5 @@
 /**
- * @file: events.hpp
+ * @file: evbase.hpp
  * @date: 2024-06-26
  * @license: GPL-3.0
  *
@@ -12,15 +12,14 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_EVENTS__
-#define __AWH_EVENTS__
+#ifndef __AWH_EVENT_BASE__
+#define __AWH_EVENT_BASE__
 
 /**
  * Стандартные модули
  */
 #include <map>
 #include <cmath>
-#include <ctime>
 #include <mutex>
 #include <thread>
 #include <chrono>
@@ -46,7 +45,7 @@
 /**
  * Наши модули
  */
-#include <sys/timeout.hpp>
+#include <events/evtimer.hpp>
 
 /**
  * awh пространство имён
@@ -96,11 +95,14 @@ namespace awh {
 			 */
 			typedef function <void (const SOCKET, const event_type_t)> callback_t;
 		private:
+			/**
+			 * Upstream Структура работы вышестоящего потока
+			 */
 			typedef struct Upstream {
 				// Файловые дескрипторы для чтения и записи
 				SOCKET read, write;
 				// Объект работы с пайпом
-				shared_ptr <pipe_t> pipe;
+				shared_ptr <evpipe_t> pipe;
 				// Функция обратного вызова
 				function <void (const uint64_t)> callback;
 				/**
@@ -124,11 +126,11 @@ namespace awh {
 				// Флаг активации серийного таймера
 				bool series;
 				// Задержка времени таймера
-				time_t delay;
+				uint32_t delay;
 				// Функция обратного вызова
 				callback_t callback;
 				// Объект работы с пайпом
-				shared_ptr <pipe_t> pipe;
+				shared_ptr <evpipe_t> pipe;
 				// Список соответствия типов событий режиму работы
 				map <event_type_t, event_mode_t> mode;
 				/**
@@ -192,8 +194,8 @@ namespace awh {
 			// Объект работы с сокетами
 			socket_t _socket;
 		private:
-			// Объект работы с таймерами скрина
-			timeout_t _timeout;
+			// Объект работы с таймером событий
+			evtimer_t _evtimer;
 		private:
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
@@ -265,7 +267,7 @@ namespace awh {
 			 * @param series   флаг серийного таймаута
 			 * @return         результат работы функции
 			 */
-			bool add(const uint64_t id, SOCKET & fd, callback_t callback = nullptr, const time_t delay = 0, const bool series = false) noexcept;
+			bool add(const uint64_t id, SOCKET & fd, callback_t callback = nullptr, const uint32_t delay = 0, const bool series = false) noexcept;
 		private:
 			/**
 			 * mode Метод установки режима работы модуля
@@ -382,7 +384,7 @@ namespace awh {
 			type_t _type;
 		private:
 			// Задержка времени таймера
-			time_t _delay;
+			uint32_t _delay;
 		private:
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
@@ -431,7 +433,7 @@ namespace awh {
 			 * @param delay  задержка времени в миллисекундах
 			 * @param series флаг серийного таймаута
 			 */
-			void timeout(const time_t delay, const bool series = false) noexcept;
+			void timeout(const uint32_t delay, const bool series = false) noexcept;
 		public:
 			/**
 			 * mode Метод установки режима работы модуля
@@ -467,7 +469,7 @@ namespace awh {
 			 * @param delay задержка времени в миллисекундах
 			 * @return      текущий объект
 			 */
-			Event & operator = (const time_t delay) noexcept;
+			Event & operator = (const uint32_t delay) noexcept;
 			/**
 			 * Оператор [=] для установки функции обратного вызова
 			 * @param callback функция обратного вызова
@@ -491,4 +493,4 @@ namespace awh {
 	} event_t;
 };
 
-#endif // __AWH_EVENTS__
+#endif // __AWH_EVENT_BASE__

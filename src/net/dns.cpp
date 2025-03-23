@@ -839,7 +839,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 														// Выполняем извлечение PTR-записи
 														items.push_back(item.record);
 														// Записываем данные в кэш
-														self->setToCache(this->_family, item.record, this->_self->_net.get(), static_cast <time_t> (item.ttl));
+														self->setToCache(this->_family, item.record, this->_self->_net.get(), item.ttl);
 													}
 												} break;
 												// Если тип полученной записи IPv4
@@ -882,7 +882,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 															// Добавляем IP-адрес в список адресов
 															items.push_back(ip);
 															// Записываем данные в кэш
-															self->setToCache(family, name, ip, static_cast <time_t> (item.ttl));
+															self->setToCache(family, name, ip, item.ttl);
 														}
 														// Определяем тип записи
 														switch(item.type){
@@ -934,7 +934,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Выполняем установку ARPA-адреса
 													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn))
 														// Записываем данные в кэш
-														self->setToCache(this->_family, item.record, this->_self->_net.get(), static_cast <time_t> (item.ttl));
+														self->setToCache(this->_family, item.record, this->_self->_net.get(), item.ttl);
 												} break;
 												// Если тип полученной записи IPv4
 												case 1:
@@ -974,7 +974,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 														// Если IP-адрес не находится в чёрном списке
 														if(!self->isInBlackList(family, name, ip))
 															// Записываем данные в кэш
-															self->setToCache(family, name, ip, static_cast <time_t> (item.ttl));
+															self->setToCache(family, name, ip, item.ttl);
 														// Определяем тип записи
 														switch(item.type){
 															// Если тип полученной записи IPv4
@@ -1013,7 +1013,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 														// Выполняем извлечение PTR-записи
 														items.push_back(item.record);
 														// Записываем данные в кэш
-														self->setToCache(this->_family, item.record, this->_self->_net.get(), static_cast <time_t> (item.ttl));
+														self->setToCache(this->_family, item.record, this->_self->_net.get(), item.ttl);
 													}
 												} break;
 												// Если тип полученной записи IPv4
@@ -1056,7 +1056,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 															// Добавляем IP-адрес в список адресов
 															items.push_back(ip);
 															// Записываем данные в кэш
-															self->setToCache(family, name, ip, static_cast <time_t> (item.ttl));
+															self->setToCache(family, name, ip, item.ttl);
 														}
 													}
 												} break;
@@ -1078,7 +1078,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													// Выполняем установку ARPA-адреса
 													if(const_cast <dns_t *> (this->_self)->_net.arpa(fqdn))
 														// Записываем данные в кэш
-														self->setToCache(this->_family, item.record, this->_self->_net.get(), static_cast <time_t> (item.ttl));
+														self->setToCache(this->_family, item.record, this->_self->_net.get(), item.ttl);
 												} break;
 												// Если тип полученной записи IPv4
 												case 1:
@@ -1118,7 +1118,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 														// Если IP-адрес не находится в чёрном списке
 														if(!self->isInBlackList(family, name, ip))
 															// Записываем данные в кэш
-															self->setToCache(family, name, ip, static_cast <time_t> (item.ttl));
+															self->setToCache(family, name, ip, item.ttl);
 													}
 												} break;
 											}
@@ -1496,7 +1496,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 						// Если IP-адрес не находится в чёрном списке
 						if(!i->second.forbidden){
 							// Если время жизни кэша ещё не вышло
-							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::chrono_t::SECONDS) - i->second.create) <= i->second.ttl)){
+							if((i->second.create == 0) || ((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS) - i->second.create) <= static_cast <uint64_t> (i->second.ttl))){
 								// Выполняем очистку буфера данных
 								this->_buffer.clear(buffer_t::type_t::ADDR, family);
 								// Получаем размер буфера данных
@@ -1528,7 +1528,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 						// Если IP-адрес не находится в чёрном списке
 						if(!i->second.forbidden){
 							// Если время жизни кэша ещё не вышло
-							if((i->second.create == 0) || ((this->_fmk->timestamp(fmk_t::chrono_t::SECONDS) - i->second.create) <= i->second.ttl)){
+							if((i->second.create == 0) || ((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS) - i->second.create) <= static_cast <uint64_t> (i->second.ttl))){
 								// Выполняем очистку буфера данных
 								this->_buffer.clear(buffer_t::type_t::ADDR, family);
 								// Получаем размер буфера данных
@@ -1698,7 +1698,7 @@ void awh::DNS::clearCache(const int32_t family, const bool localhost) noexcept {
  * @param ttl       время жизни кэша доменного имени
  * @param localhost флаг обозначающий добавление локального адреса
  */
-void awh::DNS::setToCache(const string & domain, const string & ip, const time_t ttl, const bool localhost) noexcept {
+void awh::DNS::setToCache(const string & domain, const string & ip, const uint32_t ttl, const bool localhost) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
@@ -1726,7 +1726,7 @@ void awh::DNS::setToCache(const string & domain, const string & ip, const time_t
  * @param ttl       время жизни кэша доменного имени
  * @param localhost флаг обозначающий добавление локального адреса
  */
-void awh::DNS::setToCache(const int32_t family, const string & domain, const string & ip, const time_t ttl, const bool localhost) noexcept {
+void awh::DNS::setToCache(const int32_t family, const string & domain, const string & ip, const uint32_t ttl, const bool localhost) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
@@ -1763,7 +1763,7 @@ void awh::DNS::setToCache(const int32_t family, const string & domain, const str
 					// Устанавливаем флаг локального хоста
 					cache.localhost = localhost;
 					// Устанавливаем время создания кэша
-					cache.create = this->_fmk->timestamp(fmk_t::chrono_t::SECONDS);
+					cache.create = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &cache.ip);
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
@@ -1795,8 +1795,8 @@ void awh::DNS::setToCache(const int32_t family, const string & domain, const str
 					cache.ttl = ttl;
 					// Устанавливаем флаг локального хоста
 					cache.localhost = localhost;
-					// Устанавливаем время жизни кэша
-					cache.create = this->_fmk->timestamp(fmk_t::chrono_t::SECONDS);
+					// Устанавливаем время создания кэша
+					cache.create = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
 					// Выполняем копирование полученных данных в переданный буфер
 					::inet_pton(family, ip.c_str(), &cache.ip);
 					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
@@ -2795,7 +2795,7 @@ void awh::DNS::hosts(const string & filename) noexcept {
 							// Выполняем перебор всего списка хостов
 							for(size_t i = 1; i < hosts.size(); i++)
 								// Выполняем добавление в кэш новый IP-адрес
-								this->setToCache(family, hosts.at(i), hosts.front(), 3153600000, true);
+								this->setToCache(family, hosts.at(i), hosts.front(), 4294967295, true);
 						// Сообщаем, что определить IP-адрес не удалось
 						} else this->_log->print("Entry provided [%s] is not an IP-address", log_t::flag_t::WARNING, hosts.front().c_str());
 					// Выводим сообщение, что текст передан неверный

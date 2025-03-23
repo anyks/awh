@@ -19,7 +19,6 @@
  * Стандартные модули
  */
 #include <map>
-#include <ctime>
 #include <vector>
 
 /**
@@ -74,9 +73,9 @@ namespace awh {
 							bool alive;                                   // Флаг долгоживущего подключения
 							bool close;                                   // Флаг требования закрыть брокера
 							bool stopped;                                 // Флаг принудительной остановки
-							time_t point;                                 // Контрольная точка ответа на пинг
-							time_t sendPing;                              // Время отправленного пинга
-							size_t requests;                              // Количество выполненных запросов
+							uint32_t requests;                            // Количество выполненных запросов
+							uint64_t respPong;                            // Контрольная точка ответа на пинг
+							uint64_t sendPing;                            // Время отправленного пинга
 							engine_t::proto_t proto;                      // Активный прототип интернета
 							map <int32_t, unique_ptr <stream_t>> streams; // Список активных потоков
 						public:
@@ -91,8 +90,9 @@ namespace awh {
 							 * @param log объект для работы с логами
 							 */
 							Options(const fmk_t * fmk, const log_t * log) noexcept :
-							 alive(false), close(false), stopped(false), point(0), sendPing(0),
-							 requests(0), proto(engine_t::proto_t::HTTP1_1), fmk(fmk), log(log) {}
+							 alive(false), close(false), stopped(false),
+							 requests(0), respPong(0), sendPing(0),
+							 proto(engine_t::proto_t::HTTP1_1), fmk(fmk), log(log) {}
 						/**
 						 * ~Options Деструктор
 						 */

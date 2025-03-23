@@ -19,7 +19,6 @@
  * Стандартные модули
  */
 #include <map>
-#include <ctime>
 #include <vector>
 
 /**
@@ -60,8 +59,8 @@ namespace awh {
 						bool crypted;                    // Флаг шифрования сообщений
 						bool stopped;                    // Флаг принудительной остановки
 						int32_t sid;                     // Идентификатор потока
-						time_t point;                    // Контрольная точка ответа на пинг
-						size_t requests;                 // Количество выполненных запросов
+						uint32_t requests;               // Количество выполненных запросов
+						uint64_t respPong;               // Контрольная точка ответа на пинг
 						http_t http;                     // Объект для работы с HTTP
 						awh::buffer_t buffer;            // Буфер бинарных необработанных данных
 						hash_t::cipher_t cipher;         // Формат шифрования
@@ -74,8 +73,9 @@ namespace awh {
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
 						 mode(false), alive(false), close(false),
-						 crypted(false), stopped(false), sid(1),
-						 point(0), requests(0), http(fmk, log), buffer(log),
+						 crypted(false), stopped(false),
+						 sid(1), requests(0), respPong(0),
+						 http(fmk, log), buffer(log),
 						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),
 						 compressor(awh::http_t::compressor_t::NONE) {}

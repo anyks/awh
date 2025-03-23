@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <ctime>
 #include <mutex>
 #include <thread>
 #include <cstdio>
@@ -128,11 +127,11 @@ namespace awh {
 			 * Cache Структура кэша DNS
 			 */
 			struct Cache {
-				time_t ttl;     // Время жизни кэша
-				time_t create;  // Время создания кэша
-				bool localhost; // Флаг локального адреса
-				bool forbidden; // Флаг запрещённого адреса
-				uint32_t ip[T]; // Буфер IP-адреса
+				uint32_t ttl;    // Время жизни кэша
+				uint64_t create; // Время создания кэша
+				bool localhost;  // Флаг локального адреса
+				bool forbidden;  // Флаг запрещённого адреса
+				uint32_t ip[T];  // Буфер IP-адреса
 				/**
 				 * Cache Конструктор
 				 */
@@ -517,7 +516,7 @@ namespace awh {
 			 * @param ttl       время жизни кэша доменного имени
 			 * @param localhost флаг обозначающий добавление локального адреса
 			 */
-			void setToCache(const string & domain, const string & ip, const time_t ttl, const bool localhost = false) noexcept;
+			void setToCache(const string & domain, const string & ip, const uint32_t ttl, const bool localhost = false) noexcept;
 			/**
 			 * setToCache Метод добавления IP-адреса в кэш
 			 * @param family    тип интернет-протокола AF_INET, AF_INET6
@@ -526,7 +525,7 @@ namespace awh {
 			 * @param ttl       время жизни кэша доменного имени
 			 * @param localhost флаг обозначающий добавление локального адреса
 			 */
-			void setToCache(const int32_t family, const string & domain, const string & ip, const time_t ttl, const bool localhost = false) noexcept;
+			void setToCache(const int32_t family, const string & domain, const string & ip, const uint32_t ttl, const bool localhost = false) noexcept;
 		public:
 			/**
 			 * clearBlackList Метод очистки чёрного списка

@@ -19,7 +19,6 @@
  * Стандартные модули
  */
 #include <map>
-#include <ctime>
 #include <vector>
 
 /**
@@ -114,8 +113,8 @@ namespace awh {
 						bool inflate;                    // Флаг переданных сжатых данных
 						bool stopped;                    // Флаг принудительной остановки
 						int32_t sid;                     // Идентификатор потока
-						time_t point;                    // Контрольная точка ответа на пинг
-						time_t sendPing;                 // Время отправленного пинга
+						uint64_t respPong;               // Контрольная точка ответа на пинг
+						uint64_t sendPing;               // Время отправленного пинга
 						hash_t hash;                     // Объект хэширования
 						allow_t allow;                   // Объект разрешения обмена данными
 						frame_t frame;                   // Объект фрейма WebSocket
@@ -134,8 +133,9 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
-						 close(false), shake(false), crypted(false), inflate(false),
-						 stopped(false), sid(1), point(0), sendPing(0), hash(log),
+						 close(false), shake(false),
+						 crypted(false), inflate(false), stopped(false),
+						 sid(1), respPong(0), sendPing(0), hash(log),
 						 frame(fmk, log), buffer(log), http(fmk, log),
 						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),

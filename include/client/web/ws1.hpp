@@ -122,11 +122,11 @@ namespace awh {
 				bool _crypted;
 				// Флаг переданных сжатых данных
 				bool _inflate;
-				// Контрольная точка ответа на пинг
-				time_t _point;
 			private:
 				// Время ожидания понга
-				time_t _waitPong;
+				uint32_t _waitPong;
+				// Контрольная точка ответа на пинг
+				uint64_t _respPong;
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
@@ -327,12 +327,12 @@ namespace awh {
 				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
 				 * @param sec время ожидания в секундах
 				 */
-				void waitPong(const time_t sec) noexcept;
+				void waitPong(const uint16_t sec) noexcept;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				void pingInterval(const time_t sec) noexcept;
+				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
 				 * callbacks Метод установки функций обратного вызова

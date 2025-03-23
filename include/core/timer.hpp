@@ -122,21 +122,20 @@ namespace awh {
 			 * @param delay задержка времени в миллисекундах
 			 * @return      идентификатор таймера
 			 */
-			uint16_t timeout(const time_t delay) noexcept;
+			uint16_t timeout(const uint32_t delay) noexcept;
 			/**
 			 * interval Метод создания интервала
 			 * @param delay задержка времени в миллисекундах
 			 * @return      идентификатор таймера
 			 */
-			uint16_t interval(const time_t delay) noexcept;
+			uint16_t interval(const uint32_t delay) noexcept;
 		public:
 			/**
 			 * Timer Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Timer(const fmk_t * fmk, const log_t * log) noexcept :
-			 awh::core_t(fmk, log), _callbacks(log) {}
+			Timer(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _callbacks(log) {}
 			/**
 			 * ~Timer Деструктор
 			 */

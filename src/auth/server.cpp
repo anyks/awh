@@ -293,11 +293,11 @@ awh::server::Auth::operator string() noexcept {
 					// Флаг создания нового ключа nonce
 					bool createNonce = false;
 					// Получаем текущее значение штампа времени
-					const time_t stamp = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Если ключ клиента не создан или прошло времени больше 30-ти минут
-					if((createNonce = (this->_digest.nonce.empty() || ((stamp - this->_digest.stamp) >= DIGEST_ALIVE_NONCE)))){
+					if((createNonce = (this->_digest.nonce.empty() || ((date - this->_digest.date) >= DIGEST_ALIVE_NONCE)))){
 						// Устанавливаем штамп времени
-						this->_digest.stamp = stamp;
+						this->_digest.date = date;
 						// Если ключ клиента, ещё небыл сгенерирован
 						if(!this->_digest.nonce.empty())
 							// Выполняем установку полученного значения
@@ -312,7 +312,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::MD5, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::MD5, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -325,7 +325,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA1, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA1, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -338,7 +338,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA224, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA224, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -351,7 +351,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA256, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA256, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -364,7 +364,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA384, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA384, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -377,7 +377,7 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce)
 								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(::time(nullptr)), awh::hash_t::type_t::SHA512, this->_digest.nonce);
+								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA512, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения

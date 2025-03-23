@@ -207,13 +207,11 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/cmp.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/pipe.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/hash.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/events.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/cluster.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/timeout.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/investigator.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/core.cpp"
@@ -237,6 +235,9 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/events/evpipe.cpp"
+    "${CMAKE_SOURCE_DIR}/src/events/evbase.cpp"
+    "${CMAKE_SOURCE_DIR}/src/events/evtimer.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/node.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/timer.cpp"
@@ -282,6 +283,7 @@ SET(IP_APP_NAME ip)
 SET(DNS_APP_NAME dns)
 SET(NTP_APP_NAME ntp)
 SET(PING_APP_NAME ping)
+SET(DATE_APP_NAME date)
 SET(TIMER_APP_NAME timer)
 SET(PROXY_APP_NAME proxy)
 SET(SOCKS5_APP_NAME socks5)
@@ -329,6 +331,7 @@ endif (CMAKE_SHARED_BUILD_LIB)
     add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
     add_executable(${NTP_APP_NAME} sample/ntp.cpp ${RES_FILES})
     add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
+    add_executable(${DATE_APP_NAME} sample/date.cpp ${RES_FILES})
     add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
@@ -346,6 +349,7 @@ else()
     add_executable(${DNS_APP_NAME} sample/dns.cpp)
     add_executable(${NTP_APP_NAME} sample/ntp.cpp)
     add_executable(${PING_APP_NAME} sample/ping.cpp)
+    add_executable(${DATE_APP_NAME} sample/date.cpp)
     add_executable(${TIMER_APP_NAME} sample/timer.cpp)
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp)
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp)
@@ -440,6 +444,15 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения даты и времени
+        target_link_libraries(
+            ${DATE_APP_NAME}
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
@@ -576,6 +589,14 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+        # Выполняем сборку приложения даты и времени
+        target_link_libraries(
+            ${DATE_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
+            ${AWH_IDN}
+        )
+
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
@@ -695,6 +716,13 @@ if (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${TCMALLOC_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения даты и времени
+        target_link_libraries(
+            ${DATE_APP_NAME}
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
         )
@@ -834,6 +862,16 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+        # Выполняем сборку приложения даты и времени
+        target_link_libraries(
+            ${DATE_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
@@ -969,6 +1007,15 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
+        # Выполняем сборку приложения даты и времени
+        target_link_libraries(
+            ${DATE_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+            ${AWH_IDN}
+        )
+
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
@@ -1094,6 +1141,14 @@ else (CMAKE_SHARED_BUILD_LIB)
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
+            ${AWH_LIB_NAME}
+            ${DEPEND_LIBRARY}
+            ${TCMALLOC_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения даты и времени
+        target_link_libraries(
+            ${DATE_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
@@ -1199,6 +1254,12 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
+        add_custom_command(TARGET "${DATE_APP_NAME}" POST_BUILD
+            COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${DATE_APP_NAME}>" "${entitlements_file}"
+            COMMENT "Sign target \"${DATE_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
         add_custom_command(TARGET "${TIMER_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${TIMER_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${TIMER_APP_NAME}\" to enable core dump on MacOS X"
@@ -1271,6 +1332,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
         pvs_studio_add_target(TARGET ${DNS_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DNS_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${NTP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${NTP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PING_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${DATE_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DATE_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${TIMER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PROXY_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PROXY_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${SOCKS5_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SOCKS5_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -1322,6 +1384,7 @@ install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_
 install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${NTP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${DATE_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

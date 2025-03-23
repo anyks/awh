@@ -1,5 +1,5 @@
 /**
- * @file: pipe.hpp
+ * @file: evpipe.hpp
  * @date: 2024-07-03
  * @license: GPL-3.0
  *
@@ -12,13 +12,12 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_PIPE__
-#define __AWH_PIPE__
+#ifndef __AWH_EVENT_TIMER_PIPE__
+#define __AWH_EVENT_TIMER_PIPE__
 
 /**
  * Стандартные модули
  */
-#include <ctime>
 #include <array>
 #include <vector>
 #include <string>
@@ -40,9 +39,9 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * PIPE Класс передачи данных между процессами
+	 * EventPipe Класс передачи данных между процессами
 	 */
-	typedef class AWHSHARED_EXPORT PIPE {
+	typedef class AWHSHARED_EXPORT EventPipe {
 		public:
 			/**
 			 * Тип пайпа с которым производится работа
@@ -80,8 +79,6 @@ namespace awh {
 			// Выполняем инициализацию генератора
 			random_device _randev;
 		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
 		public:
@@ -122,17 +119,17 @@ namespace awh {
 			int64_t write(const SOCKET fd, const void * buffer, const size_t size, const uint32_t port = 0) noexcept;
 		public:
 			/**
-			 * PIPE Конструктор
+			 * EventPipe Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			PIPE(const fmk_t * fmk, const log_t * log) noexcept :
-			 _type(type_t::NONE), _port(0), _socket(fmk, log), _fmk(fmk), _log(log) {}
+			EventPipe(const fmk_t * fmk, const log_t * log) noexcept :
+			 _type(type_t::NONE), _port(0), _socket(fmk, log), _log(log) {}
 			/**
-			 * ~PIPE Деструктор
+			 * ~EventPipe Деструктор
 			 */
-			~PIPE() noexcept {}
-	} pipe_t;
+			~EventPipe() noexcept {}
+	} evpipe_t;
 };
 
-#endif // __AWH_PIPE__
+#endif // __AWH_EVENT_TIMER_PIPE__

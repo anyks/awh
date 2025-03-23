@@ -1238,6 +1238,7 @@ using namespace awh;
 int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
+	chrono_t chrono(&fmk);
 	ntp_t ntp(&fmk, &log);
 	core_t core(&fmk, &log);
 
@@ -1248,7 +1249,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	ntp.servers({"0.ru.pool.ntp.org", "1.ru.pool.ntp.org", "2.ru.pool.ntp.org", "3.ru.pool.ntp.org"});
 
-	log.print("Time: %s", log_t::flag_t::INFO, fmk.time2str((ntp.request() / 1000), "%H:%M:%S %d.%m.%Y").c_str());
+	log.print("Time: %s", log_t::flag_t::INFO, chrono.format(ntp.request(), "%H:%M:%S %d.%m.%Y").c_str());
 
 	return EXIT_SUCCESS;
 }
@@ -1272,7 +1273,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	const double result = ping.ping("api.telegram.org", 10);
 
-	log.print("PING result=%f", log_t::flag_t::INFO, result);
+	log.print("PING result=%.1f", log_t::flag_t::INFO, result);
 
 	return EXIT_SUCCESS;
 }
@@ -2450,6 +2451,168 @@ int32_t main(int32_t argc, char * argv[]){
 		const pid_t pid = static_cast <pid_t> (::stoi(argv[1]));
 		log.print("Investigator: NAME=%s", log_t::flag_t::INFO, igtr.inquiry(pid).c_str());
 	} else log.print("Investigator: NAME=%s", log_t::flag_t::INFO, igtr.inquiry().c_str());
+
+	return EXIT_SUCCESS;
+}
+```
+
+---
+
+### Date and Time Formatting Rules
+| **Format Date and Time** | **Description**                                                                                                                           |
+|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| **%y**                   | Abbreviated year entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **25**.                                     |
+| **%Y**                   | Full year entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **2025**.                                          |
+| **%b**                   | Abbreviated month name entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **Mar**.                              |
+| **%B**                   | Full month name entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **Mar**.                                     |
+| **%m**                   | Full month entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **03**.                                           |
+| **%d**                   | Full date entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **02**.                                            |
+| **%e**                   | Abbreviated date entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **2**.                                      |
+| **%a**                   | Abbreviated day name entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **Sun**.                                |
+| **%A**                   | Full day name entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **Sunday**.                                    |
+| **%u**                   | Count of days from the beginning of the week, starting from Monday. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **7**. |
+| **%w**                   | Count of days from the beginning of the week, starting from Sunday. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **0**. |
+| **%W**                   | Full day entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **09**.                                             |
+| **%j**                   | Count of days since the beginning of the year. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **061**.             |
+| **%D**                   | Equivalent to **%m/%d/%y**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **03/02/25**.                           |
+| **%F**                   | Equivalent to **%Y-%m-%d**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **2025-03-02**.                         |
+| **%H**                   | Full hour entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **15**.                                            |
+| **%I**                   | Parses the hour (12-hour clock) as a decimal number. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **03**.        |
+| **%M**                   | Full minutes entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **44**.                                         |
+| **%S**                   | Full seconds entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **32**.                                         |
+| **%s**                   | Full milliseconds entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **000**.                                   |
+| **%p**                   | Parses the locale's equivalent of the **AM/PM** designations associated with a 12-hour clock. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **PM**. |
+| **%R**                   | Equivalent to **%H:%M**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **15:44**.                                 |
+| **%T**                   | Equivalent to **%H:%M:%S**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **15:44:32**.                           |
+| **%r**                   | Parses the locale's 12-hour clock time. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **03:44:32 PM**.            |
+| **%c**                   | Standard date and time representation. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **Sun Mar 2 15:44:32 2025**. |
+| **%o**                   | Format [+|-]h[h][:mm] (i.e., requiring a : between the hours and minutes and making the leading zero for hour optional). For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **+03:00**. |
+| **%z**                   | For example **-0430** refers to 4 hours 30 minutes behind UTC and 04 refers to 4 hours ahead of UTC.                                      |
+| **%Z**                   | Parses the time zone abbreviation or name, taken as the longest sequence of characters that only contains the characters **A** through **Z**, **a** through **z**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **MSK**. |
+
+### Example Date and Time
+```c++
+#include <sys/log.hpp>
+#include <sys/chrono.hpp>
+
+using namespace awh;
+
+int32_t main(int32_t argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	chrono_t chrono(&fmk);
+
+	uint64_t date = chrono.parse("2023-03-05T12:55:58.0490925Z", "%Y-%m-%dT%H:%M:%S.%s%Z");
+	string result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("2024-08-06T11:08:55.101Z", "%Y-%m-%dT%H:%M:%S.%s%Z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("2024-08-06T14:47:34.741876+03:00", "%Y-%m-%dT%H:%M:%S.%s%o");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("2024-08-06T14:47:34.728093306+03:0", "%Y-%m-%dT%H:%M:%S.%s%o");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("7/26/2023 2:39:42 PM", "%m/%d/%Y %I:%M:%S %p");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("2023-07-26T14:39:4", "%Y-%m-%dT%H:%M:%S");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("7/26/2023 2:39:42 PM (2934007)", "%m/%d/%Y %I:%M:%S %p (%s)");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("2024-11-15 17:14:03,331", "%Y-%m-%d %H:%M:%S,%s");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Jun 11 09:56:56", "%h %d %H:%M:%S");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Tue Jul 16 10:45:40.020399 2024", "%a %h %d %H:%M:%S.%s %Y");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("05/Apr/2023:12:45:12.345678901 +0300", "%d/%h/%Y:%H:%M:%S.%s %z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Aug 13 17:43:12", "%h %d %H:%M:%S");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("2024-10-16 10:30:45.789", "%Y-%m-%d %H:%M:%S.%s");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("[18/Jul/2024:13:34:00 +0300]", "%d/%h/%Y:%H:%M:%S %z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("2024/07/18 13:33:17", "%Y/%m/%d %H:%M:%S");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("17.07.2023 13:25:53", "%d.%m.%Y %H:%M:%S");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("[04-22 13:54:55.343240]", "%m-%d %H:%M:%S.%s");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("17:54:49", "%H:%M:%S");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Wed Mar 19 2025 15:51:10 GMT+0300", "%a %h %e %Y %H:%M:%S %z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Wed Mar 19 2025 15:51:10", "%a %h %e %Y %H:%M:%S %z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Wed Mar 19 15:51:10 GMT+0300", "%a %h %e %H:%M:%S %z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Wed Mar 20 19:56:10 GMT+0300", "%a %h %e %H:%M:%S %z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Wed Mar 20 19:56:10", "%a %h %e %H:%M:%S %z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Wed Mar 20 19:56:10 GMT+0430", "%a %h %e %H:%M:%S %z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Wed Mar 30 2025 15:51:10 GMT+0300", "%a %h %e %Y %H:%M:%S %Z%z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Dec 03 12:00 MSK+0332", "%h %d %H:%M %Z%z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("Wed Mar 31 00:51:10 11 GMT+0300 080", "%a %h %e %H:%M:%S %W %z %j");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
+
+	date = chrono.parse("20050809T183142+0330", "%Y%m%dT%H%M%S%z");
+	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
+	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
 
 	return EXIT_SUCCESS;
 }

@@ -34,6 +34,8 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект работы с датой и временем
+	chrono_t chrono(&fmk);
 	// Создаём объект NTP-клиента
 	ntp_t ntp(&fmk, &log);
 	// Создаём объект сетевого ядра
@@ -47,7 +49,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем установку списка сервером времени
 	ntp.servers({"0.ru.pool.ntp.org", "1.ru.pool.ntp.org", "2.ru.pool.ntp.org", "3.ru.pool.ntp.org"});
 	// Выполняем запрос на получение первого времени
-	log.print("Time: %s", log_t::flag_t::INFO, fmk.time2str((ntp.request() / 1000), "%H:%M:%S %d.%m.%Y").c_str());
+	log.print("Time: %s", log_t::flag_t::INFO, chrono.format(ntp.request(), "%H:%M:%S %d.%m.%Y").c_str());
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

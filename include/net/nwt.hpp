@@ -130,6 +130,11 @@ namespace awh {
 			set <string> _general;
 			// Список интернациональных доменных зон интернета
 			set <string> _national;
+		private:
+			/**
+			 * init Метод инициализации
+			 */
+			void init() noexcept;
 		public:
 			/**
 			 * zone Метод установки пользовательской зоны
@@ -162,13 +167,17 @@ namespace awh {
 			 * letters Метод добавления букв алфавита
 			 * @param letters список букв алфавита
 			 */
-			void letters(const string & letters) noexcept;
+			void letters(const string & letters = "") noexcept;
 		public:
+			/**
+			 * NWT Конструктор
+			 */
+			NWT() noexcept;
 			/**
 			 * NWT Конструктор
 			 * @param letters список букв алфавита
 			 */
-			NWT(const string & letters = "") noexcept;
+			NWT(const string & letters) noexcept;
 			/**
 			 * ~NWT Деструктор
 			 */

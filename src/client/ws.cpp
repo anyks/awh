@@ -107,7 +107,7 @@ void awh::client::Websocket::start() noexcept {
  * waitPong Метод установки времени ожидания ответа WebSocket-сервера
  * @param sec время ожидания в секундах
  */
-void awh::client::Websocket::waitPong(const time_t sec) noexcept {
+void awh::client::Websocket::waitPong(const uint16_t sec) noexcept {
 	// Выполняем установку времени ожидания
 	this->_ws.waitPong(sec);
 }
@@ -115,7 +115,7 @@ void awh::client::Websocket::waitPong(const time_t sec) noexcept {
  * pingInterval Метод установки интервала времени выполнения пингов
  * @param sec интервал времени выполнения пингов в секундах
  */
-void awh::client::Websocket::pingInterval(const time_t sec) noexcept {
+void awh::client::Websocket::pingInterval(const uint16_t sec) noexcept {
 	// Выполняем установку интервала времени выполнения пингов в секундах
 	this->_ws.pingInterval(sec);
 }
@@ -415,7 +415,7 @@ void awh::client::Websocket::authTypeProxy(const auth_t::type_t type, const auth
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::client::Websocket::waitMessage(const time_t sec) noexcept {
+void awh::client::Websocket::waitMessage(const uint16_t sec) noexcept {
 	// Выполняем установку интервала времени ожидания входящих сообщений
 	this->_ws.waitMessage(sec);
 }
@@ -425,7 +425,7 @@ void awh::client::Websocket::waitMessage(const time_t sec) noexcept {
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
  */
-void awh::client::Websocket::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
+void awh::client::Websocket::waitTimeDetect(const uint16_t read, const uint16_t write, const uint16_t connect) noexcept {
 	// Выполняем установку детекции сообщений по количеству секунд
 	this->_ws.waitTimeDetect(read, write, connect);
 }

@@ -617,7 +617,7 @@ void awh::client::Sample::keepAlive(const int32_t cnt, const int32_t idle, const
  * waitMessage Метод ожидания входящих сообщений
  * @param sec интервал времени в секундах
  */
-void awh::client::Sample::waitMessage(const time_t sec) noexcept {
+void awh::client::Sample::waitMessage(const uint16_t sec) noexcept {
 	// Устанавливаем время ожидания получения данных
 	this->_scheme.timeouts.wait = sec;
 }
@@ -627,7 +627,7 @@ void awh::client::Sample::waitMessage(const time_t sec) noexcept {
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
  */
-void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
+void awh::client::Sample::waitTimeDetect(const uint16_t read, const uint16_t write, const uint16_t connect) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись

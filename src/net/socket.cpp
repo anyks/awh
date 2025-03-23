@@ -576,21 +576,19 @@ bool awh::Socket::onlyIPv6(const SOCKET fd, const mode_t mode) const noexcept {
  * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
-bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode) const noexcept {
+bool awh::Socket::timeout(const SOCKET fd, const uint32_t msec, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Для операционной системы Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		// Устанавливаем время таймаута в миллисекундах
-		const uint32_t timeout = static_cast <uint32_t> (msec);
 		// Определяем флаг блокировки
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо установить таймаут на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <const char *> (&timeout), sizeof(timeout))))){
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <const char *> (&msec), sizeof(msec))))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -603,7 +601,7 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 			// Если необходимо установить таймаут на запись
 			case static_cast <uint8_t> (mode_t::WRITE): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <const char *> (&timeout), sizeof(timeout))))){
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <const char *> (&msec), sizeof(msec))))){
 					/**
 					 * Если включён режим отладки
 					 */

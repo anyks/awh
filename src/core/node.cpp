@@ -274,16 +274,16 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS)){
+		if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS)){
 			// Если буфер полезной нагрузки уже инициализирован
-			if(broker->_buffer.size > 0){
+			if(broker->buffer.size > 0){
 				// Выполняем зануление размера буфера данных
-				broker->_buffer.size = 0;
+				broker->buffer.size = 0;
 				// Выполняем удаление буфера данных
-				broker->_buffer.data.reset(nullptr);
+				broker->buffer.data.reset(nullptr);
 			}
 			// Получаем максимальный размер буфера
-			const int64_t size = broker->_ectx.buffer(engine_t::method_t::READ);
+			const int64_t size = broker->ectx.buffer(engine_t::method_t::READ);
 			// Если размер буфера получен
 			if(size > 0){
 				/**
@@ -291,9 +291,9 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 				 */
 				try {
 					// Устанавливаем размер буфера данных
-					broker->_buffer.size = size;
+					broker->buffer.size = size;
 					// Выполняем создание буфера данных
-					broker->_buffer.data = unique_ptr <char []> (new char [size]);
+					broker->buffer.data = unique_ptr <char []> (new char [size]);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -315,7 +315,7 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 					::exit(EXIT_FAILURE);
 				}
 				// Получаем максимальный размер буфера
-				this->_payloadSize = broker->_ectx.buffer(engine_t::method_t::WRITE);
+				this->_payloadSize = broker->ectx.buffer(engine_t::method_t::WRITE);
 			}
 		}
 	}
@@ -516,7 +516,7 @@ awh::engine_t::proto_t awh::Node::proto(const uint64_t bid) const noexcept {
 		// Если брокер подключения найден
 		if(i != this->_brokers.end())
 			// Выполняем извлечение активного протокола подключения
-			return this->_engine.proto(const_cast <awh::scheme_t::broker_t *> (i->second)->_ectx);
+			return this->_engine.proto(const_cast <awh::scheme_t::broker_t *> (i->second)->ectx);
 	}
 	// Выводим результат
 	return engine_t::proto_t::NONE;
@@ -691,9 +691,9 @@ bool awh::Node::cork(const uint64_t bid, const engine_t::mode_t mode) noexcept {
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS))
+		if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS))
 			// Выполняем активирование/деактивирование алгоритма TCP/CORK
-			return broker->_ectx.cork(mode);
+			return broker->ectx.cork(mode);
 	}
 	// Сообщаем, что ничего не установлено
 	return false;
@@ -713,9 +713,9 @@ bool awh::Node::nodelay(const uint64_t bid, const engine_t::mode_t mode) noexcep
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->_addr.fd != INVALID_SOCKET) && (broker->_addr.fd < AWH_MAX_SOCKETS))
+		if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS))
 			// Выполняем активирование/деактивирование алгоритма Нейгла
-			return broker->_ectx.nodelay(mode);
+			return broker->ectx.nodelay(mode);
 	}
 	// Сообщаем, что ничего не установлено
 	return false;
@@ -834,7 +834,7 @@ void awh::Node::bandwidth(const uint64_t bid, const string & read, const string 
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Устанавливаем размер буфера
-		broker->_ectx.buffer(
+		broker->ectx.buffer(
 			static_cast <int32_t> (!read.empty() ? this->_fmk->sizeBuffer(read) : AWH_BUFFER_SIZE_RCV),
 			static_cast <int32_t> (!write.empty() ? this->_fmk->sizeBuffer(write) : AWH_BUFFER_SIZE_SND)
 		);

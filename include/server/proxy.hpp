@@ -142,10 +142,10 @@ namespace awh {
 				 * WaitTimeDetect Структура таймаутов на обмен данными в миллисекундах
 				 */
 				typedef struct WaitTimeDetect {
-					time_t wait;    // Время ожидания получения данных
-					time_t read;    // Время ожидания на получение данных
-					time_t write;   // Время ожидания на отправку данных
-					time_t connect; // Время ожидания подключения
+					uint16_t wait;    // Время ожидания получения данных
+					uint16_t read;    // Время ожидания на получение данных
+					uint16_t write;   // Время ожидания на отправку данных
+					uint16_t connect; // Время ожидания подключения
 					/**
 					 * WaitTimeDetect Конструктор
 					 */
@@ -636,7 +636,7 @@ namespace awh {
 				 * maxRequests Метод установки максимального количества запросов
 				 * @param max максимальное количество запросов
 				 */
-				void maxRequests(const size_t max) noexcept;
+				void maxRequests(const uint32_t max) noexcept;
 			public:
 				/**
 				 * ssl Метод установки параметров SSL-шифрования
@@ -649,11 +649,6 @@ namespace awh {
 				 * @param mode флаг долгоживущего подключения
 				 */
 				void alive(const bool mode) noexcept;
-				/**
-				 * alive Метод установки времени жизни подключения
-				 * @param sec время жизни подключения
-				 */
-				void alive(const time_t sec) noexcept;
 				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param bid  идентификатор брокера
@@ -730,7 +725,7 @@ namespace awh {
 				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 				 * @param sec    интервал времени в секундах
 				 */
-				void waitMessage(const broker_t broker, const time_t sec) noexcept;
+				void waitMessage(const broker_t broker, const uint16_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
@@ -738,7 +733,7 @@ namespace awh {
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для подключения к серверу
 				 */
-				void waitTimeDetect(const broker_t broker, const time_t read, const time_t write, const time_t connect = 0) noexcept;
+				void waitTimeDetect(const broker_t broker, const uint16_t read, const uint16_t write, const uint16_t connect = 0) noexcept;
 			public:
 				/**
 				 * sonet Метод установки типа сокета подключения

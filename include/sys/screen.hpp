@@ -20,7 +20,6 @@
  */
 #include <queue>
 #include <mutex>
-#include <ctime>
 #include <chrono>
 #include <thread>
 #include <atomic>
@@ -91,7 +90,7 @@ namespace awh {
 			chrono::nanoseconds _delay;
 		private:
 			// Таймаут блокировки времени по умолчанию (100ms)
-			static constexpr const time_t TIMEOUT = 0x5F5E100;
+			static constexpr const uint64_t TIMEOUT = 0x5F5E100;
 		private:
 			// Функция обратного вызова при активации триггера
 			function <void (void)> _trigger;
@@ -322,10 +321,42 @@ namespace awh {
 			}
 		public:
 			/**
+			 * timeout Метод установки таймаута в миллисекундах
+			 * @param delay значение таймаута для установки в миллисекундах
+			 */
+			void timeout(const uint32_t delay) noexcept {
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем блокировку потока
+					const lock_guard <recursive_mutex> lock(this->_mtx);
+					// Выполняем установку задержки времени
+					this->_delay = chrono::nanoseconds(static_cast <uint64_t> (delay) * 1000000);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						::fprintf(stderr, "%s\n", error.what());
+					#endif
+				}
+			}
+			/**
 			 * timeout Метод установки таймаута в наносекундах
 			 * @param delay значение таймаута для установки в наносекундах
 			 */
-			void timeout(const time_t delay = TIMEOUT) noexcept {
+			void timeout(const uint64_t delay = TIMEOUT) noexcept {
 				/**
 				 * Выполняем отлов ошибок
 				 */
@@ -551,7 +582,18 @@ namespace awh {
 			 * @param delay значение таймаута для установки в наносекундах
 			 * @return      текущий объект
 			 */
-			Screen & operator = (const time_t delay) noexcept {
+			Screen & operator = (const uint64_t delay) noexcept {
+				// Выполняем установку таймаута
+				this->timeout(delay);
+				// Выводим значение текущего объекта
+				return (* this);
+			}
+			/**
+			 * Оператор [=] установки таймаута в миллисекундах
+			 * @param delay значение таймаута для установки в миллисекундах
+			 * @return      текущий объект
+			 */
+			Screen & operator = (const uint32_t delay) noexcept {
 				// Выполняем установку таймаута
 				this->timeout(delay);
 				// Выводим значение текущего объекта

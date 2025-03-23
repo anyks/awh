@@ -149,7 +149,7 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
  * @param delay задержка времени в миллисекундах
  * @return      идентификатор таймера
  */
-uint16_t awh::Timer::timeout(const time_t delay) noexcept {
+uint16_t awh::Timer::timeout(const uint32_t delay) noexcept {
 	// Если данные переданы
 	if(delay > 0){
 		/**
@@ -205,7 +205,7 @@ uint16_t awh::Timer::timeout(const time_t delay) noexcept {
  * @param delay задержка времени в миллисекундах
  * @return      идентификатор таймера
  */
-uint16_t awh::Timer::interval(const time_t delay) noexcept {
+uint16_t awh::Timer::interval(const uint32_t delay) noexcept {
 	// Если данные переданы
 	if(delay > 0){
 		/**

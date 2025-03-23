@@ -632,7 +632,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 				// Выполняем отправку отправку запросов до тех пор пока не остановят
 				while(this->_mode){
 					// Запоминаем текущее значение времени в миллисекундах
-					const time_t mseconds = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					const uint64_t mseconds = this->_chrono.timestamp(chrono_t::type_t::MILLISECONDS);
 					// Выполняем запрос на сервер
 					const int64_t bytes = this->send(family, index);
 					// Если данные прочитать не удалось
@@ -643,13 +643,60 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 						return;
 					}
 					// Выполняем подсчёт количество прошедшего времени
-					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS) - mseconds);
+					const uint64_t timeShifting = (this->_chrono.timestamp(chrono_t::type_t::MILLISECONDS) - mseconds);
 					// Если разрешено выводить информацию в лог
-					if(this->_verb)
+					if(this->_verb){
+						// Лейбл единиц измерений
+						string label = "";
+						// Получаем аббревиатуру даты
+						const auto & abbr = this->_chrono.abbreviation(timeShifting);
+						// Определяем тип аббревиатуры
+						switch(static_cast <uint8_t> (abbr.first)){
+							// Если мы получили год
+							case static_cast <uint8_t> (chrono_t::type_t::YEAR):
+								// Устанавливаем лейбл единиц измерений
+								label = "year";
+							break;
+							// Если мы получили месяц
+							case static_cast <uint8_t> (chrono_t::type_t::MONTH):
+								// Устанавливаем лейбл единиц измерений
+								label = "month";
+							break;
+							// Если мы получили неделя
+							case static_cast <uint8_t> (chrono_t::type_t::WEEK):
+								// Устанавливаем лейбл единиц измерений
+								label = "week";
+							break;
+							// Если мы получили день
+							case static_cast <uint8_t> (chrono_t::type_t::DAY):
+								// Устанавливаем лейбл единиц измерений
+								label = "day";
+							break;
+							// Если мы получили час
+							case static_cast <uint8_t> (chrono_t::type_t::HOUR):
+								// Устанавливаем лейбл единиц измерений
+								label = "hour";
+							break;
+							// Если мы получили минуты
+							case static_cast <uint8_t> (chrono_t::type_t::MINUTES):
+								// Устанавливаем лейбл единиц измерений
+								label = "min";
+							break;
+							// Если мы получили секунды
+							case static_cast <uint8_t> (chrono_t::type_t::SECONDS):
+								// Устанавливаем лейбл единиц измерений
+								label = "sec";
+							break;
+							// Если мы получили миллисекунды
+							case static_cast <uint8_t> (chrono_t::type_t::MILLISECONDS):
+								// Устанавливаем лейбл единиц измерений
+								label = "msec";
+							break;
+						}
 						// Формируем сообщение для вывода в лог
-						// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, index + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
-						this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
-					{
+						// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, bytes, ip.c_str(), index, index + ((this->_shifting / 1000) * 2), abbr.second, label.c_str());
+						this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, bytes, ip.c_str(), index, (this->_timeoutRead + this->_timeoutWrite) / 1000, abbr.second, label.c_str());
+					}{
 						// Выполняем блокировку потока
 						const lock_guard <recursive_mutex> lock(this->_mtx);
 						// Если функция обратного вызова установлена
@@ -948,7 +995,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 				// Выполняем отправку указанного количества запросов
 				for(uint16_t i = 0; i < count; i++){
 					// Запоминаем текущее значение времени в миллисекундах
-					const time_t mseconds = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+					const uint64_t mseconds = this->_chrono.timestamp(chrono_t::type_t::MILLISECONDS);
 					// Выполняем запрос на сервер
 					const int64_t bytes = this->send(family, i);
 					// Если данные прочитать не удалось
@@ -956,12 +1003,60 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 						// Выводим результат
 						return result;
 					// Выполняем подсчёт количество прошедшего времени
-					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS) - mseconds);
+					const uint64_t timeShifting = (this->_chrono.timestamp(chrono_t::type_t::MILLISECONDS) - mseconds);
 					// Если разрешено выводить информацию в лог
-					if(this->_verb)
+					if(this->_verb){
+						// Лейбл единиц измерений
+						string label = "";
+						// Получаем аббревиатуру даты
+						const auto & abbr = this->_chrono.abbreviation(timeShifting);
+						// Определяем тип аббревиатуры
+						switch(static_cast <uint8_t> (abbr.first)){
+							// Если мы получили год
+							case static_cast <uint8_t> (chrono_t::type_t::YEAR):
+								// Устанавливаем лейбл единиц измерений
+								label = "year";
+							break;
+							// Если мы получили месяц
+							case static_cast <uint8_t> (chrono_t::type_t::MONTH):
+								// Устанавливаем лейбл единиц измерений
+								label = "month";
+							break;
+							// Если мы получили неделя
+							case static_cast <uint8_t> (chrono_t::type_t::WEEK):
+								// Устанавливаем лейбл единиц измерений
+								label = "week";
+							break;
+							// Если мы получили день
+							case static_cast <uint8_t> (chrono_t::type_t::DAY):
+								// Устанавливаем лейбл единиц измерений
+								label = "day";
+							break;
+							// Если мы получили час
+							case static_cast <uint8_t> (chrono_t::type_t::HOUR):
+								// Устанавливаем лейбл единиц измерений
+								label = "hour";
+							break;
+							// Если мы получили минуты
+							case static_cast <uint8_t> (chrono_t::type_t::MINUTES):
+								// Устанавливаем лейбл единиц измерений
+								label = "min";
+							break;
+							// Если мы получили секунды
+							case static_cast <uint8_t> (chrono_t::type_t::SECONDS):
+								// Устанавливаем лейбл единиц измерений
+								label = "sec";
+							break;
+							// Если мы получили миллисекунды
+							case static_cast <uint8_t> (chrono_t::type_t::MILLISECONDS):
+								// Устанавливаем лейбл единиц измерений
+								label = "msec";
+							break;
+						}
 						// Формируем сообщение для вывода в лог
-						// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
-						this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
+						// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + ((this->_shifting / 1000) * 2), abbr.second, label.c_str());
+						this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, bytes, ip.c_str(), i, (this->_timeoutRead + this->_timeoutWrite) / 1000, abbr.second, label.c_str());
+					}
 					// Увеличиваем общее количество времени
 					result += static_cast <double> (timeShifting);
 					// Если работа резолвера ещё не остановлена
@@ -980,12 +1075,59 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 				result = this->_fmk->floor(result, 3);
 				// Если разрешено выводить информацию в лог
 				if(this->_verb){
+					// Лейбл единиц измерений
+					string label = "";
+					// Получаем аббревиатуру даты
+					const auto & abbr = this->_chrono.abbreviation(result);
+					// Определяем тип аббревиатуры
+					switch(static_cast <uint8_t> (abbr.first)){
+						// Если мы получили год
+						case static_cast <uint8_t> (chrono_t::type_t::YEAR):
+							// Устанавливаем лейбл единиц измерений
+							label = "year";
+						break;
+						// Если мы получили месяц
+						case static_cast <uint8_t> (chrono_t::type_t::MONTH):
+							// Устанавливаем лейбл единиц измерений
+							label = "month";
+						break;
+						// Если мы получили неделя
+						case static_cast <uint8_t> (chrono_t::type_t::WEEK):
+							// Устанавливаем лейбл единиц измерений
+							label = "week";
+						break;
+						// Если мы получили день
+						case static_cast <uint8_t> (chrono_t::type_t::DAY):
+							// Устанавливаем лейбл единиц измерений
+							label = "day";
+						break;
+						// Если мы получили час
+						case static_cast <uint8_t> (chrono_t::type_t::HOUR):
+							// Устанавливаем лейбл единиц измерений
+							label = "hour";
+						break;
+						// Если мы получили минуты
+						case static_cast <uint8_t> (chrono_t::type_t::MINUTES):
+							// Устанавливаем лейбл единиц измерений
+							label = "min";
+						break;
+						// Если мы получили секунды
+						case static_cast <uint8_t> (chrono_t::type_t::SECONDS):
+							// Устанавливаем лейбл единиц измерений
+							label = "sec";
+						break;
+						// Если мы получили миллисекунды
+						case static_cast <uint8_t> (chrono_t::type_t::MILLISECONDS):
+							// Устанавливаем лейбл единиц измерений
+							label = "msec";
+						break;
+					}
 					// Если времени затрачено меньше 5-ти секунд
 					if(result < 5.0)
 						// Выводим сообщение результата в лог
-						this->_log->print("Your connection is good. Avg ping %s", log_t::flag_t::INFO, this->_fmk->time2abbr(result).c_str());
+						this->_log->print("Your connection is good. Avg ping %.1f %s", log_t::flag_t::INFO, abbr.second, label.c_str());
 					// Выводим сообщение как есть
-					else this->_log->print("Bad connection. Avg ping %s", log_t::flag_t::WARNING, this->_fmk->time2abbr(result).c_str());
+					else this->_log->print("Bad connection. Avg ping %.1f %s", log_t::flag_t::WARNING, abbr.second, label.c_str());
 				}
 			}
 		}
@@ -1007,7 +1149,7 @@ void awh::Ping::verbose(const bool mode) noexcept {
  * shifting Метод установки сдвига по времени выполнения пинга в миллисекундах
  * @param msec сдвиг по времени в миллисекундах
  */
-void awh::Ping::shifting(const time_t msec) noexcept {
+void awh::Ping::shifting(const uint64_t msec) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку сдвига по времени выполнения пинга
@@ -1127,7 +1269,7 @@ void awh::Ping::network(const int32_t family, const vector <string> & network) n
  * @param read  таймаут на чтение
  * @param write таймаут на запись
  */
-void awh::Ping::timeout(const time_t read, const time_t write) noexcept {
+void awh::Ping::timeout(const uint32_t read, const uint32_t write) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку таймаута на чтение
@@ -1139,7 +1281,7 @@ void awh::Ping::timeout(const time_t read, const time_t write) noexcept {
  * on Метод установки функции обратного вызова, для работы в асинхронном режиме
  * @param callback функция обратного вызова
  */
-void awh::Ping::on(function <void (const time_t, const string &, Ping *)> callback) noexcept {
+void awh::Ping::on(function <void (const uint64_t, const string &, Ping *)> callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем функцию обратного вызова

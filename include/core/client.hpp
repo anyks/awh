@@ -120,7 +120,7 @@ namespace awh {
 				 * @param bid  идентификатор брокера
 				 * @param msec время ожидания получения данных в миллисекундах
 				 */
-				void createTimeout(const uint64_t bid, const time_t msec) noexcept;
+				void createTimeout(const uint64_t bid, const uint32_t msec) noexcept;
 				/**
 				 * createTimeout Метод создания таймаута подключения или переподключения
 				 * @param sid  идентификатор схемы сети
@@ -223,7 +223,7 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 * @param sec интервал времени в секундах
 				 */
-				void waitMessage(const uint64_t bid, const time_t sec) noexcept;
+				void waitMessage(const uint64_t bid, const uint16_t sec) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param bid     идентификатор брокера
@@ -231,7 +231,7 @@ namespace awh {
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для детекции по подключению
 				 */
-				void waitTimeDetect(const uint64_t bid, const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
+				void waitTimeDetect(const uint64_t bid, const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
 				 * Core Конструктор

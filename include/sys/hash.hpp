@@ -18,7 +18,6 @@
 /**
  * Стандартные модули
  */
-#include <ctime>
 #include <string>
 #include <vector>
 #include <cstdio>

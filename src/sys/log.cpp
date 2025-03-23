@@ -121,7 +121,7 @@ void awh::Log::rotate() const noexcept {
 			// Если размер файла лога, превышает максимально-установленный
 			if(size >= this->_maxSize){
 				// Выполняем извлечение даты
-				const string & date = this->_fmk->time2str(::time(nullptr), "_%m-%d-%Y_%H-%M-%S");
+				const string & date = this->_chrono.format("_%m-%d-%Y_%H-%M-%S");
 				/**
 				 * Выполняем работу для Windows
 				 */
@@ -241,7 +241,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	// Флаг конца строки
 	bool isEnd = false;
 	// Выполняем извлечение даты
-	const string & date = this->_fmk->time2str(::time(nullptr), this->_format);
+	const string & date = this->_chrono.format(this->_format);
 	// Если размер буфера меньше 3-х байт
 	if(payload.text.length() < 3)
 		// Проверяем является ли это переводом строки
@@ -694,8 +694,9 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  */
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
  _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400),
- _level(level_t::ALL), _sep(separator_t::ALWAYS), _name{AWH_SHORT_NAME}, _format{DATE_FORMAT},
- _filename{filename}, _screen(Screen <payload_t>::health_t::DEAD), _fn(nullptr), _fmk(fmk) {
+ _level(level_t::ALL), _sep(separator_t::ALWAYS), _chrono(fmk),
+ _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{filename},
+ _screen(Screen <payload_t>::health_t::DEAD), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = ::getpid();
 	// Выполняем разрешение на вывод всех видов логов

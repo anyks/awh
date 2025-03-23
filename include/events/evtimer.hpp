@@ -1,5 +1,5 @@
 /**
- * @file: timeout.hpp
+ * @file: evtimer.hpp
  * @date: 2024-07-03
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_TIMEOUT__
-#define __AWH_TIMEOUT__
+#ifndef __AWH_EVENT_TIMER__
+#define __AWH_EVENT_TIMER__
 
 /**
  * Стандартные модули
@@ -24,8 +24,8 @@
 /**
  * Наши модули
  */
-#include <sys/pipe.hpp>
 #include <sys/screen.hpp>
+#include <events/evpipe.hpp>
 
 /**
  * awh пространство имён
@@ -36,9 +36,9 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Timeout Класс для работы с таймером в экране
+	 * EventTimer Класс для работы с таймером в экране
 	 */
-	typedef class AWHSHARED_EXPORT Timeout {
+	typedef class AWHSHARED_EXPORT EventTimer {
 		private:
 			/**
 			 * Data структура обмена данными
@@ -46,14 +46,14 @@ namespace awh {
 			typedef struct Data {
 				// Файловый дескрипторв (сокет)
 				SOCKET fd;
-				// Время задержки работы таймера
-				time_t delay;
 				// Порт на который нужно отправить
 				uint32_t port;
+				// Время задержки работы таймера
+				uint64_t delay;
 				/**
 				 * Data Конструктор
 				 */
-				Data() noexcept : fd(INVALID_SOCKET), delay(0), port(0) {}
+				Data() noexcept : fd(INVALID_SOCKET), port(0), delay(0) {}
 			} __attribute__((packed)) data_t;
 		private:
 			/**
@@ -61,13 +61,13 @@ namespace awh {
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Объект работы с пайпом
-				pipe_t _pipe;
+				evpipe_t _evpipe;
 			/**
 			 * Методы для всех остальных операционных систем
 			 */
 			#else
 				// Объект работы с пайпом
-				pipe_t _pipe;
+				evpipe_t _evpipe;
 			#endif
 		private:
 			// Мютекс для блокировки потока
@@ -79,12 +79,10 @@ namespace awh {
 			// Список существующих файловых дескрипторов
 			map <SOCKET, uint32_t> _fds;
 			// Список активных таймеров
-			multimap <time_t, SOCKET> _timers;
+			multimap <uint64_t, SOCKET> _timers;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
 		private:
 			/**
 			 * trigger Метод обработки событий триггера
@@ -113,22 +111,22 @@ namespace awh {
 			/**
 			 * set Метод установки таймера
 			 * @param fd    файловый дескриптор таймера
-			 * @param delay задержка времени в наносекундах
+			 * @param delay задержка времени в миллисекундах
 			 * @param port  порт сервера на который нужно отправить ответ
 			 */
-			void set(const SOCKET fd, const time_t delay, const uint32_t port = 0) noexcept;
+			void set(const SOCKET fd, const uint32_t delay, const uint32_t port = 0) noexcept;
 		public:
 			/**
-			 * Timeout Конструктор
+			 * EventTimer Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Timeout(const fmk_t * fmk, const log_t * log) noexcept;
+			EventTimer(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Timeout Деструктор
+			 * ~EventTimer Деструктор
 			 */
-			~Timeout() noexcept;
-	} timeout_t;
+			~EventTimer() noexcept;
+	} evtimer_t;
 };
 
-#endif // __AWH_TIMEOUT__
+#endif // __AWH_EVENT_TIMER__

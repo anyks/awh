@@ -157,18 +157,14 @@ namespace awh {
 				// Флаг остановки работы базы событий
 				bool _complete;
 			protected:
-				// Максимальный интервал времени жизни подключения
-				time_t _timeAlive;
 				// Размер одного чанка
 				size_t _chunkSize;
-				// Максимальное количество запросов
-				size_t _maxRequests;
 			protected:
 				// Интервал времени на выполнение пингов
-				time_t _pingInterval;
+				uint32_t _pingInterval;
 			protected:
 				// Список мусорных брокеров
-				map <uint64_t, time_t> _disconected;
+				map <uint64_t, uint64_t> _disconected;
 			protected:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -280,12 +276,12 @@ namespace awh {
 				 * waitPong Метод установки времени ожидания ответа WebSocket-клиента
 				 * @param sec время ожидания в секундах
 				 */
-				virtual void waitPong(const time_t sec) noexcept = 0;
+				virtual void waitPong(const uint16_t sec) noexcept = 0;
 				/**
 				 * pingInterval Метод установки интервала времени выполнения пингов
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
-				virtual void pingInterval(const time_t sec) noexcept = 0;
+				virtual void pingInterval(const uint16_t sec) noexcept = 0;
 			public:
 				/**
 				 * init Метод инициализации WEB брокера
@@ -377,11 +373,6 @@ namespace awh {
 				 * @param mode флаг долгоживущего подключения
 				 */
 				virtual void alive(const bool mode) noexcept;
-				/**
-				 * alive Метод установки времени жизни подключения
-				 * @param sec время жизни подключения
-				 */
-				virtual void alive(const time_t sec) noexcept;
 			public:
 				/**
 				 * core Метод установки сетевого ядра
@@ -414,13 +405,13 @@ namespace awh {
 				 * waitMessage Метод ожидания входящих сообщений
 				 * @param sec интервал времени в секундах
 				 */
-				virtual void waitMessage(const time_t sec) noexcept = 0;
+				virtual void waitMessage(const uint16_t sec) noexcept = 0;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
 				 */
-				virtual void waitTimeDetect(const time_t read, const time_t write) noexcept = 0;
+				virtual void waitTimeDetect(const uint16_t read, const uint16_t write) noexcept = 0;
 			public:
 				/**
 				 * realm Метод установки название сервера
@@ -438,11 +429,6 @@ namespace awh {
 				 * @param size размер чанка для установки
 				 */
 				virtual void chunk(const size_t size) noexcept;
-				/**
-				 * maxRequests Метод установки максимального количества запросов
-				 * @param max максимальное количество запросов
-				 */
-				virtual void maxRequests(const size_t max) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений

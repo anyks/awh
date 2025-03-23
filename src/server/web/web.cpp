@@ -178,7 +178,7 @@ void awh::server::Web::erase(const uint64_t bid) noexcept {
 	// Если список отключившихся клиентов не пустой
 	if(!this->_disconected.empty()){
 		// Получаем текущее значение времени
-		const time_t date = this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS);
+		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 		// Если идентификатор брокера передан
 		if(bid > 0){
 			// Выполняем поиск указанного брокера
@@ -207,7 +207,7 @@ void awh::server::Web::erase(const uint64_t bid) noexcept {
  */
 void awh::server::Web::disconnect(const uint64_t bid) noexcept {
 	// Добавляем в очередь список отключившихся клиентов
-	this->_disconected.emplace(bid, this->_fmk->timestamp(fmk_t::chrono_t::MILLISECONDS));
+	this->_disconected.emplace(bid, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS));
 }
 /**
  * disconected Метод удаления отключившихся брокеров
@@ -313,14 +313,6 @@ void awh::server::Web::alive(const bool mode) noexcept {
 	this->_service.alive = mode;
 }
 /**
- * alive Метод установки времени жизни подключения
- * @param sec время жизни подключения
- */
-void awh::server::Web::alive(const time_t sec) noexcept {
-	// Устанавливаем время жизни подключения
-	this->_timeAlive = (sec * 1000);
-}
-/**
  * core Метод установки сетевого ядра
  * @param core объект сетевого ядра
  */
@@ -383,14 +375,6 @@ void awh::server::Web::chunk(const size_t size) noexcept {
 	this->_chunkSize = (size > 0 ? size : AWH_CHUNK_SIZE);
 }
 /**
- * maxRequests Метод установки максимального количества запросов
- * @param max максимальное количество запросов
- */
-void awh::server::Web::maxRequests(const size_t max) noexcept {
-	// Устанавливаем максимальное количество запросов
-	this->_maxRequests = max;
-}
-/**
  * ident Метод установки идентификации сервера
  * @param id   идентификатор сервиса
  * @param name название сервиса
@@ -443,10 +427,11 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _uri(fmk, log), _callbacks(log), _timer(fmk, log),
- _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
- _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS),
- _pingInterval(PING_INTERVAL), _fmk(fmk), _log(log), _core(nullptr) {
+ _pid(::getpid()),
+ _uri(fmk, log), _callbacks(log), _timer(fmk, log),
+ _pinging(true), _complete(true),
+ _chunkSize(AWH_CHUNK_SIZE), _pingInterval(PING_INTERVAL),
+ _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
@@ -459,10 +444,11 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _uri(fmk, log), _callbacks(log), _timer(fmk, log),
- _pinging(true), _complete(true), _timeAlive(KEEPALIVE_TIMEOUT),
- _chunkSize(AWH_CHUNK_SIZE), _maxRequests(SERVER_MAX_REQUESTS),
- _pingInterval(PING_INTERVAL), _fmk(fmk), _log(log), _core(core) {
+ _pid(::getpid()),
+ _uri(fmk, log), _callbacks(log), _timer(fmk, log),
+ _pinging(true), _complete(true),
+ _chunkSize(AWH_CHUNK_SIZE), _pingInterval(PING_INTERVAL),
+ _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
