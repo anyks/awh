@@ -2530,7 +2530,7 @@ int32_t main(int32_t argc, char * argv[]){
 | **%A**                   | Full day name entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **Sunday**.                                    |
 | **%u**                   | Count of days from the beginning of the week, starting from Monday. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **7**. |
 | **%w**                   | Count of days from the beginning of the week, starting from Sunday. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **0**. |
-| **%W**                   | Full day entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **09**.                                             |
+| **%W**                   | Week count since the beginning of the year. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **09**.                 |
 | **%j**                   | Count of days since the beginning of the year. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **061**.             |
 | **%D**                   | Equivalent to **%m/%d/%y**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **03/02/25**.                           |
 | **%F**                   | Equivalent to **%Y-%m-%d**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **2025-03-02**.                         |
@@ -2538,15 +2538,15 @@ int32_t main(int32_t argc, char * argv[]){
 | **%I**                   | Parses the hour (12-hour clock) as a decimal number. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **03**.        |
 | **%M**                   | Full minutes entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **44**.                                         |
 | **%S**                   | Full seconds entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **32**.                                         |
-| **%s**                   | Full milliseconds entry. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **000**.                                   |
+| **%s**                   | Full milliseconds entry. For example date: **2025-03-02 15:44:32.032 GMT+0300** will correspond to **032**.                                   |
 | **%p**                   | Parses the locale's equivalent of the **AM/PM** designations associated with a 12-hour clock. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **PM**. |
 | **%R**                   | Equivalent to **%H:%M**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **15:44**.                                 |
 | **%T**                   | Equivalent to **%H:%M:%S**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **15:44:32**.                           |
 | **%r**                   | Parses the locale's 12-hour clock time. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **03:44:32 PM**.            |
 | **%c**                   | Standard date and time representation. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **Sun Mar 2 15:44:32 2025**. |
-| **%o**                   | Format [+|-]h[h][:mm] (i.e., requiring a : between the hours and minutes and making the leading zero for hour optional). For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **+03:00**. |
+| **%o**                   | Format \[+\|-\]h\[h\]\[:mm\] (i.e., requiring a (**:**) between the hours and minutes and making the leading zero for hour optional). For example date: **2025-03-02 15:44:32 GMT+03:00** will correspond to **+03:00**. |
 | **%z**                   | For example **-0430** refers to 4 hours 30 minutes behind UTC and 04 refers to 4 hours ahead of UTC.                                      |
-| **%Z**                   | Parses the time zone abbreviation or name, taken as the longest sequence of characters that only contains the characters **A** through **Z**, **a** through **z**. For example date: **2025-03-02 15:44:32 GMT+0300** will correspond to **MSK**. |
+| **%Z**                   | Parses the time zone abbreviation or name, taken as the longest sequence of characters that only contains the characters **A** through **Z**, **a** through **z**. For example date: **2025-03-02 15:44:32 MSK** will correspond to **MSK**. |
 
 ### Example Date and Time
 ```c++
