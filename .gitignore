@@ -38,6 +38,7 @@
 /build
 /third_party
 /tests
+submodules/
 submodules/libiconv/
 submodules/libidn2/
 
