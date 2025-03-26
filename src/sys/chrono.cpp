@@ -101,10 +101,17 @@ void awh::Chrono::clear() noexcept {
 		this->_dt.microseconds = (microseconds.count() % 1000);
 		// Устанавливаем количество наносекунд
 		this->_dt.nanoseconds = (nanoseconds.count() % 1000000);
-		// Устанавливаем флаг смещения временной зоны по умолчанию
-		this->_dt.offset = this->getTimeZone();
 		// Устанавливаем количество миллисекунд
 		this->makeDate(static_cast <uint64_t> (milliseconds.count()), this->_dt);
+		// Устанавливаем смещение временной зоны по умолчанию
+		this->_dt.offset = this->getTimeZone();
+		// Если смещение выше нуля
+		if(this->_dt.offset != 0){
+			// Выполняем замену полученной даты
+			const uint64_t date = this->makeDate(this->_dt);
+			// Устанавливаем количество миллисекунд
+			this->makeDate(date, this->_dt);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -8492,7 +8499,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 				if(!flags[0]){
 					// Устанавливаем идентификатор временной зоны
 					this->_dt.zone = zone_t::UTC;
-					// Устанавливаем флаг смещения временной зоны по умолчанию
+					// Устанавливаем смещение временной зоны по умолчанию
 					this->_dt.offset = this->getTimeZone();
 				}
 				// Получаем смещение временной зоны
@@ -8536,7 +8543,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 				if(!flags[0]){
 					// Устанавливаем идентификатор временной зоны
 					dt.zone = zone_t::UTC;
-					// Устанавливаем флаг смещения временной зоны по умолчанию
+					// Устанавливаем смещение временной зоны по умолчанию
 					dt.offset = this->getTimeZone();
 				}
 				// Если смещение временной зоны установлено
@@ -10175,13 +10182,6 @@ string awh::Chrono::format(const string & format, const storage_t storage) const
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Создаем структуру времени
 				dt_t dt = this->_dt;
-				// Если смещение выше нуля
-				if(dt.offset != 0){
-					// Выполняем замену полученной даты
-					const uint64_t date = this->makeDate(dt);
-					// Устанавливаем количество миллисекунд
-					this->makeDate(date, dt);
-				}
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
