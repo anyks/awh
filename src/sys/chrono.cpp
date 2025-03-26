@@ -106,12 +106,9 @@ void awh::Chrono::clear() noexcept {
 		// Устанавливаем смещение временной зоны по умолчанию
 		this->_dt.offset = this->getTimeZone();
 		// Если смещение выше нуля
-		if(this->_dt.offset != 0){
-			// Выполняем замену полученной даты
-			const uint64_t date = this->makeDate(this->_dt);
+		if(this->_dt.offset != 0)
 			// Устанавливаем количество миллисекунд
-			this->makeDate(date, this->_dt);
-		}
+			this->makeDate(this->makeDate(this->_dt), this->_dt);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -10062,7 +10059,7 @@ string awh::Chrono::format(const uint64_t date, const string & format) const noe
 		// Устанавливаем количество миллисекунд
 		this->makeDate(date, dt);
 		// Устанавливаем локальную временную зону
-		dt.offset = this->getTimeZone(storage_t::GLOBAL);
+		dt.offset = this->getTimeZone();
 		// Если смещение выше нуля
 		if(dt.offset != 0){
 			// Выполняем замену полученной даты
@@ -10182,6 +10179,8 @@ string awh::Chrono::format(const string & format, const storage_t storage) const
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Создаем структуру времени
 				dt_t dt = this->_dt;
+				// Устанавливаем количество миллисекунд
+				this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -10194,12 +10193,9 @@ string awh::Chrono::format(const string & format, const storage_t storage) const
 				// Устанавливаем локальную временную зону
 				dt.offset = this->getTimeZone(storage);
 				// Если смещение выше нуля
-				if(dt.offset != 0){
-					// Выполняем замену полученной даты
-					const uint64_t date = this->makeDate(dt);
+				if(dt.offset != 0)
 					// Устанавливаем количество миллисекунд
-					this->makeDate(date, dt);
-				}
+					this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -10227,12 +10223,9 @@ string awh::Chrono::format(const int32_t zone, const string & format, const stor
 				// Выполняем установку смещения временной зоны
 				dt.offset = zone;
 				// Если смещение выше нуля
-				if(dt.offset != 0){
-					// Выполняем замену полученной даты
-					const uint64_t date = this->makeDate(dt);
+				if(dt.offset != 0)
 					// Устанавливаем количество миллисекунд
-					this->makeDate(date, dt);
-				}
+					this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -10245,12 +10238,9 @@ string awh::Chrono::format(const int32_t zone, const string & format, const stor
 				// Выполняем установку смещения временной зоны
 				dt.offset = zone;
 				// Если смещение выше нуля
-				if(dt.offset != 0){
-					// Выполняем замену полученной даты
-					const uint64_t date = this->makeDate(dt);
+				if(dt.offset != 0)
 					// Устанавливаем количество миллисекунд
-					this->makeDate(date, dt);
-				}
+					this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -10280,12 +10270,9 @@ string awh::Chrono::format(const zone_t zone, const string & format, const stora
 				// Выполняем установку смещения временной зоны
 				dt.offset = this->getTimeZone(zone);
 				// Если смещение выше нуля
-				if(dt.offset != 0){
-					// Выполняем замену полученной даты
-					const uint64_t date = this->makeDate(dt);
+				if(dt.offset != 0)
 					// Устанавливаем количество миллисекунд
-					this->makeDate(date, dt);
-				}
+					this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -10300,12 +10287,9 @@ string awh::Chrono::format(const zone_t zone, const string & format, const stora
 				// Выполняем установку смещения временной зоны
 				dt.offset = this->getTimeZone(zone);
 				// Если смещение выше нуля
-				if(dt.offset != 0){
-					// Выполняем замену полученной даты
-					const uint64_t date = this->makeDate(dt);
+				if(dt.offset != 0)
 					// Устанавливаем количество миллисекунд
-					this->makeDate(date, dt);
-				}
+					this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -10335,12 +10319,9 @@ string awh::Chrono::format(const string & zone, const string & format, const sto
 				// Выполняем установку смещения временной зоны
 				dt.offset = this->getTimeZone(zone);
 				// Если смещение выше нуля
-				if(dt.offset != 0){
-					// Выполняем замену полученной даты
-					const uint64_t date = this->makeDate(dt);
+				if(dt.offset != 0)
 					// Устанавливаем количество миллисекунд
-					this->makeDate(date, dt);
-				}
+					this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -10355,12 +10336,9 @@ string awh::Chrono::format(const string & zone, const string & format, const sto
 				// Выполняем установку смещения временной зоны
 				dt.offset = this->getTimeZone(zone);
 				// Если смещение выше нуля
-				if(dt.offset != 0){
-					// Выполняем замену полученной даты
-					const uint64_t date = this->makeDate(dt);
+				if(dt.offset != 0)
 					// Устанавливаем количество миллисекунд
-					this->makeDate(date, dt);
-				}
+					this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
