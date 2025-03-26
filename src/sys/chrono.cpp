@@ -101,6 +101,8 @@ void awh::Chrono::clear() noexcept {
 		this->_dt.microseconds = (microseconds.count() % 1000);
 		// Устанавливаем количество наносекунд
 		this->_dt.nanoseconds = (nanoseconds.count() % 1000000);
+		// Устанавливаем флаг смещения временной зоны по умолчанию
+		this->_dt.offset = this->getTimeZone();
 		// Устанавливаем количество миллисекунд
 		this->makeDate(static_cast <uint64_t> (milliseconds.count()), this->_dt);
 	/**
