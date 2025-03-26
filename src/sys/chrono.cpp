@@ -103,12 +103,6 @@ void awh::Chrono::clear() noexcept {
 		this->_dt.nanoseconds = (nanoseconds.count() % 1000000);
 		// Устанавливаем количество миллисекунд
 		this->makeDate(static_cast <uint64_t> (milliseconds.count()), this->_dt);
-		// Устанавливаем смещение временной зоны по умолчанию
-		this->_dt.offset = this->getTimeZone();
-		// Если смещение выше нуля
-		if(this->_dt.offset != 0)
-			// Устанавливаем количество миллисекунд
-			this->makeDate(this->makeDate(this->_dt), this->_dt);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -10179,6 +10173,10 @@ string awh::Chrono::format(const string & format, const storage_t storage) const
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Создаем структуру времени
 				dt_t dt = this->_dt;
+				// Если временная зона не установлена
+				if((dt.offset == 0) && (dt.zone == zone_t::NONE))
+					// Устанавливаем смещение временной зоны по умолчанию
+					dt.offset = this->getTimeZone();
 				// Устанавливаем количество миллисекунд
 				this->makeDate(this->makeDate(dt), dt);
 				// Выполняем формирование формата даты
