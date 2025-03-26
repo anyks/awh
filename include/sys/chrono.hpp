@@ -495,7 +495,7 @@ namespace awh {
 			uint64_t actual(const type_t value, const type_t type, const actual_t actual, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * offset Метод инкремента на указанное количество единиц времени
+			 * offset Метод смещения на указанное количество единиц времени
 			 * @param date   дата относительно которой производится смещение
 			 * @param value  значение на которое производится смещение
 			 * @param type   тип единиц измерений даты
@@ -504,7 +504,7 @@ namespace awh {
 			 */
 			uint64_t offset(const uint64_t date, const uint64_t value, const type_t type, const offset_t offset) const noexcept;
 			/**
-			 * offset Метод инкремента текущей даты на указанное количество единиц времени
+			 * offset Метод смещения текущей даты на указанное количество единиц времени
 			 * @param value   значение на которое производится смещение
 			 * @param type    тип единиц измерений даты
 			 * @param offset  направление смещения

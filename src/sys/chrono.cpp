@@ -2897,7 +2897,7 @@ uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual
 	return this->actual(this->timestamp(type_t::MILLISECONDS, storage), value, type, actual);
 }
 /**
- * offset Метод инкремента на указанное количество единиц времени
+ * offset Метод смещения на указанное количество единиц времени
  * @param date   дата относительно которой производится смещение
  * @param value  значение на которое производится смещение
  * @param type   тип единиц измерений даты
@@ -3271,7 +3271,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 	return result;
 }
 /**
- * offset Метод инкремента текущей даты на указанное количество единиц времени
+ * offset Метод смещения текущей даты на указанное количество единиц времени
  * @param value   значение на которое производится смещение
  * @param type    тип единиц измерений даты
  * @param offset  направление смещения
