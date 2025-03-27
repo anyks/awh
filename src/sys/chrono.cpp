@@ -230,7 +230,7 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 					// Получаем текущее количество дней с компенсацией високосного года
 					days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && dt.leap ? 1 : 0));
 					// Если мы не дошли до предела
-					if(dt.days > (days + count))
+					if(dt.days >= (days + count))
 						// Увеличиваем количество прошедших дней
 						count += days;
 					// Выходим из цикла
