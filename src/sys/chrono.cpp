@@ -89,6 +89,8 @@ void awh::Chrono::clear() noexcept {
 		this->clearTimeZones();
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->_mtx.date);
+		// Выполняем сброс локального объекта даты и времени
+		this->_dt = dt_t();
 		// Получаем текущий штамп времени
 		const auto now = chrono::system_clock::now();
 		// Получаем штамп времени в наносекундах
