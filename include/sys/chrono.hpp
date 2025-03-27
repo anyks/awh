@@ -481,7 +481,7 @@ namespace awh {
 			 * @param value  тип определяемых единиц измерений времени
 			 * @param type   тип единиц измерений даты
 			 * @param actual направление актуализации
-			 * @return       результат вычисления в формате UnixTimestamp
+			 * @return       результат вычисления
 			 */
 			uint64_t actual(const uint64_t date, const type_t value, const type_t type, const actual_t actual) const noexcept;
 			/**
@@ -490,7 +490,7 @@ namespace awh {
 			 * @param type    тип единиц измерений даты
 			 * @param actual  направление актуализации
 			 * @param storage хранение значение времени
-			 * @return        результат вычисления в формате UnixTimestamp
+			 * @return        результат вычисления
 			 */
 			uint64_t actual(const type_t value, const type_t type, const actual_t actual, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:

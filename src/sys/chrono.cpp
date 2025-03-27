@@ -1253,7 +1253,7 @@ uint64_t awh::Chrono::begin(const type_t type, const storage_t storage) const no
  * @param value  тип определяемых единиц измерений времени
  * @param type   тип единиц измерений даты
  * @param actual направление актуализации
- * @return       результат вычисления в формате UnixTimestamp
+ * @return       результат вычисления
  */
 uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type_t type, const actual_t actual) const noexcept {
 	// Результат работы функции
@@ -2892,7 +2892,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
  * @param type    тип единиц измерений даты
  * @param actual  направление актуализации
  * @param storage хранение значение времени
- * @return        результат вычисления в формате UnixTimestamp
+ * @return        результат вычисления
  */
 uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual_t actual, const storage_t storage) const noexcept {
 	// Выполняем актуализацию текущей даты на указанное количество единиц времени
