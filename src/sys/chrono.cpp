@@ -7589,7 +7589,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->_mtx.tz);
 		// Выполняем добавление временной зоны в список временных зон
-		this->_timeZones.emplace(this->_fmk->transform(const_cast <string &> (name), fmk_t::transform_t::LOWER), offset);
+		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER), offset);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -7616,8 +7616,15 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->_mtx.tz);
-	// Выполняем установку списка временных зон
-	this->_timeZones = zones;
+	// Название временной зоны
+	string name = "";
+	// Выполняем перебор всего списка временных зон
+	for(auto & zone : zones){
+		// Получаем название временной зоны
+		name = zone.first;
+		// Выполняем добавление временной зоны в список временных зон
+		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER), zone.second);
+	}
 }
 /**
  * timestamp Метод установки штампа времени в указанных единицах измерения
