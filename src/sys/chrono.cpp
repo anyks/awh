@@ -3788,9 +3788,12 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Год для установки
 						const uint16_t year = static_cast <uint16_t> (::stoul(* reinterpret_cast <const string *> (buffer)));
 						// Если год передан
-						if(year > 0)
+						if(year > 0){
 							// Устанавливаем год
 							this->_dt.year = year;
+							// Устанавливаем флаг високосного года
+							this->_dt.leap = ((this->_dt.year % 4) == 0);
+						}
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
@@ -3800,9 +3803,12 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Выполняем получение года
 							::memcpy(&year, buffer, sizeof(year));
 							// Если год передан
-							if(year > 0)
+							if(year > 0){
 								// Устанавливаем год
 								this->_dt.year = year;
+								// Устанавливаем флаг високосного года
+								this->_dt.leap = ((this->_dt.year % 4) == 0);
+							}
 						}
 					}
 				} break;
