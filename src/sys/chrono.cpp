@@ -7618,6 +7618,20 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 					// Получаем глобальное значение временной зоны в секундах
 					result = (_timezone * -1);
 				/**
+				 * Если мы работаем в FreeBSD
+				 */
+				#elif __FreeBSD__
+					// Устанавливаем временную зону по умолчанию
+					::tzset();
+					// Создаем структуру времени
+					std::tm tm = {};
+					// Получаем значение текущего времени
+					const time_t time = std::time(nullptr);
+					// Заполняем структуру времени
+					localtime_r(&time, &tm);
+					// Получаем смещение временной зоны в секундах
+					result = static_cast <int32_t> (tm.tm_gmtoff);
+				/**
 				 * Для всех остальных операционных систем
 				 */
 				#else
