@@ -139,7 +139,7 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		// Определяем количество прошедших лет
 		const uint16_t lastYears = (dt.year > 0 ? (dt.year - 1970) : 0);
 		// Определяем количество прошедших високосных лет
-		const uint16_t leapCount = (lastYears > 0 ? static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4))) : 0);
+		const uint16_t leapCount = (lastYears > 0 ? static_cast <uint16_t> (::round((lastYears - 1) / 4.)) : 0);
 		// Получаем штамп времени начала года
 		result = (
 			(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
@@ -206,13 +206,13 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 		 */
 		try {
 			// Выполняем установку текущее значение года
-			dt.year = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)) + static_cast <double> (1970));
+			dt.year = this->year(date);
 			// Устанавливаем флаг високосного года
 			dt.leap = ((dt.year % 4) == 0);
 			// Определяем количество прошедших лет
 			const uint16_t lastYears = (dt.year - 1970);
 			// Определяем количество прошедших високосных лет
-			const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+			const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 			// Получаем штамп времени начала года
 			const uint64_t beginYear = (
 				(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
@@ -221,7 +221,7 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 			// Начало месяца и начало суток
 			uint64_t beginMonth = 0, beginDay = 0;
 			// Определяем сколько дней прошло с начала года
-			dt.days = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+			dt.days = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 			{
 				// Подсчитываем количество дней в предыдущих месяцах
 				uint16_t count = 0, days = 0;
@@ -259,16 +259,16 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 						dt.day = 7;
 				}
 				// Получаем количество недель прошедших с начала года
-				dt.weeks = static_cast <uint8_t> (::round((date - beginYear) / static_cast <double> (604800000)));
+				dt.weeks = static_cast <uint8_t> (::round((date - beginYear) / 604800000.L));
 			}
 			// Получаем количество миллисекунд
 			dt.milliseconds = static_cast <uint32_t> (date % 1000);
 			// Получаем количество часов
-			dt.hour = static_cast <uint8_t> (::floor((date - beginDay) / static_cast <double> (3600000)));
+			dt.hour = static_cast <uint8_t> (::floor((date - beginDay) / 3600000.L));
 			// Получаем количество минут
-			dt.minutes = static_cast <uint8_t> (::floor(((date - beginDay) % 3600000) / static_cast <double> (60000)));
+			dt.minutes = static_cast <uint8_t> (::floor(((date - beginDay) % 3600000) / 60000.));
 			// Получаем количество секунд
-			dt.seconds = static_cast <uint8_t> (::floor((((date - beginDay) % 3600000) % 60000) / static_cast <double> (1000)));
+			dt.seconds = static_cast <uint8_t> (::floor((((date - beginDay) % 3600000) % 60000) / 1000.));
 			// Если время утреннее
 			if(dt.hour < 12)
 				// Устанавливаем статус времени до полудня
@@ -892,33 +892,33 @@ pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t date
 			// Если число больше года
 			if(date >= 29030400000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::YEAR, date / static_cast <double> (29030400000));
+				result = ::make_pair(type_t::YEAR, static_cast <double> (date / 29030400000.L));
 			// Если число больше месяца
 			else if(date >= 2419200000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::MONTH, date / static_cast <double> (2419200000));
+				result = ::make_pair(type_t::MONTH, static_cast <double> (date / 2419200000.L));
 			// Если число больше недели
 			else if(date >= 604800000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::WEEK, date / static_cast <double> (604800000));
+				result = ::make_pair(type_t::WEEK, static_cast <double> (date / 604800000.L));
 			// Если число больше дня
 			else if(date >= 86400000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::DAY, date / static_cast <double> (86400000));
+				result = ::make_pair(type_t::DAY, static_cast <double> (date / 86400000.L));
 			// Если число больше часа
 			else if(date >= 3600000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::HOUR, date / static_cast <double> (3600000));
+				result = ::make_pair(type_t::HOUR, static_cast <double> (date / 3600000.L));
 			// Если число больше минуты
 			else if(date >= 60000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::MINUTES, date / static_cast <double> (60000));
+				result = ::make_pair(type_t::MINUTES, static_cast <double> (date / 60000.L));
 			// Если число ольше секунды
 			else if(date >= 1000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::SECONDS, date / static_cast <double> (1000));
+				result = ::make_pair(type_t::SECONDS, static_cast <double> (date / 1000.L));
 			// Иначе выводим как есть
-			else result = ::make_pair(type_t::MILLISECONDS, date);
+			else result = ::make_pair(type_t::MILLISECONDS, static_cast <double> (date));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -960,10 +960,12 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 			switch(static_cast <uint8_t> (type)){
 				// Если нам нужно получить конец года
 				case static_cast <uint8_t> (type_t::YEAR): {
+					// Получаем значение текущего года
+					const uint16_t year = this->year(date);
 					// Определяем количество прошедших лет
-					const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+					const uint16_t lastYears = (year - 1970);
 					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
 					result = (
 						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
@@ -980,17 +982,19 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 				} break;
 				// Если нам нужно получить конец месяца
 				case static_cast <uint8_t> (type_t::MONTH): {
+					// Получаем значение текущего года
+					const uint16_t year = this->year(date);
 					// Определяем количество прошедших лет
-					const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+					const uint16_t lastYears = (year - 1970);
 					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
 					const uint64_t beginYear = (
 						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 						(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 					);
 					// Определяем сколько дней прошло с начала года
-					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 					{
 						// Подсчитываем количество дней в предыдущих месяцах
 						uint16_t count = 0, days = 0;
@@ -1092,10 +1096,12 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 			switch(static_cast <uint8_t> (type)){
 				// Если нам нужно получить начало года
 				case static_cast <uint8_t> (type_t::YEAR): {
+					// Получаем значение текущего года
+					const uint16_t year = this->year(date);
 					// Определяем количество прошедших лет
-					const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+					const uint16_t lastYears = (year - 1970);
 					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
 					result = (
 						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
@@ -1104,17 +1110,19 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 				} break;
 				// Если нам нужно получить начало месяца
 				case static_cast <uint8_t> (type_t::MONTH): {
+					// Получаем значение текущего года
+					const uint16_t year = this->year(date);
 					// Определяем количество прошедших лет
-					const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+					const uint16_t lastYears = (year - 1970);
 					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
 					const uint64_t beginYear = (
 						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 						(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 					);
 					// Определяем сколько дней прошло с начала года
-					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 					{
 						// Подсчитываем количество дней в предыдущих месяцах
 						uint16_t count = 0, days = 0;
@@ -1137,24 +1145,24 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 				} break;
 				// Если нам нужно получить начало недели
 				case static_cast <uint8_t> (type_t::WEEK): {
+					// Получаем значение текущего года
+					const uint16_t year = this->year(date);
 					// Определяем количество прошедших лет
-					const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+					const uint16_t lastYears = (year - 1970);
 					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
 					const uint64_t beginYear = (
 						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 						(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 					);
 					// Определяем сколько дней прошло с начала года
-					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 					{
 						// Номер текущего месяца
 						uint8_t month = 0;
 						// Подсчитываем количество дней в предыдущих месяцах
 						uint16_t count = 0, days = 0;
-						// Получаем текущее значение года
-						const uint16_t year = (lastYears + 1970);
 						// Устанавливаем флаг високосного года
 						const bool leap = ((year % 4) == 0);
 						// Выполняем перебор всех дней месяца
@@ -1276,24 +1284,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся месяцев
 								case static_cast <uint8_t> (type_t::MONTH): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -1315,10 +1323,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество оставшихся недель
 								case static_cast <uint8_t> (type_t::WEEK): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
@@ -1329,25 +1339,27 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Если год високосный
 									if(((lastYears + 1970) % 4) == 0)
 										// Получаем количество недель в году
-										weeks = static_cast <uint8_t> (::round(31622400000 / static_cast <double> (604800000)));
+										weeks = static_cast <uint8_t> (::round(31622400000 / 604800000.L));
 									// Если год не високосный
-									else weeks = static_cast <uint8_t> (::round(31536000000 / static_cast <double> (604800000)));
+									else weeks = static_cast <uint8_t> (::round(31536000000 / 604800000.L));
 									// Получаем количество недель оставшихся в году
-									result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginYear) / static_cast <double> (604800000))));
+									result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginYear) / 604800000.L)));
 								} break;
 								// Если нам нужно получить количество оставшихся дней
 								case static_cast <uint8_t> (type_t::DAY): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									// Если год високосный
 									if(((lastYears + 1970) % 4) == 0)
 										// Определяем сколько осталось дней в году
@@ -1357,17 +1369,19 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество оставшихся часов
 								case static_cast <uint8_t> (type_t::HOUR): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Получаем количество часов прошедших с начала года
-									const uint32_t hours = static_cast <uint32_t> (::ceil((date - beginYear) / static_cast <double> (3600000)));
+									const uint32_t hours = static_cast <uint32_t> (::ceil((date - beginYear) / 3600000.L));
 									// Если год високосный
 									if(((lastYears + 1970) % 4) == 0)
 										// Определяем количество оставшихся часов
@@ -1377,17 +1391,19 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Получаем количество минут прошедших с начала года
-									const uint64_t minutes = static_cast <uint64_t> (::ceil((date - beginYear) / static_cast <double> (60000)));
+									const uint64_t minutes = static_cast <uint64_t> (::ceil((date - beginYear) / 60000.));
 									// Если год високосный
 									if(((lastYears + 1970) % 4) == 0)
 										// Определяем количество оставшихся минут
@@ -1397,17 +1413,19 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Получаем количество секунд прошедших с начала года
-									const uint64_t seconds = static_cast <uint64_t> (::ceil((date - beginYear) / static_cast <double> (1000)));
+									const uint64_t seconds = static_cast <uint64_t> (::ceil((date - beginYear) / 1000.));
 									// Если год високосный
 									if(((lastYears + 1970) % 4) == 0)
 										// Определяем количество оставшихся секунд
@@ -1417,10 +1435,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
@@ -1443,10 +1463,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
+										// Получаем значение текущего года
+										const uint16_t year = this->year(date);
 										// Определяем количество прошедших лет
-										const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000000)));
+										const uint16_t lastYears = (year - 1970);
 										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 										// Получаем штамп времени начала года
 										const uint64_t beginYear = (
 											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000)) +
@@ -1476,10 +1498,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
+										// Получаем значение текущего года
+										const uint16_t year = this->year(date);
 										// Определяем количество прошедших лет
-										const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000000000)));
+										const uint16_t lastYears = (year - 1970);
 										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 										// Получаем штамп времени начала года
 										const uint64_t beginYear = (
 											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000000)) +
@@ -1509,24 +1533,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся недель
 								case static_cast <uint8_t> (type_t::WEEK): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -1547,38 +1571,38 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2)){
 											// Получаем количество недель в месяце
-											const uint8_t weeks = static_cast <uint8_t> (::ceil((daysInMonths.at(month - 1) + 1) / static_cast <double> (7)));
+											const uint8_t weeks = static_cast <uint8_t> (::ceil((daysInMonths.at(month - 1) + 1) / 7.));
 											// Получаем количество оставшихся недель в месяце
-											result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginMonth) / static_cast <double> (604800000))));
+											result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginMonth) / 604800000.L)));
 										// Если год не високосный или месяц не февраль
 										} else {
 											// Получаем количество недель в месяце
-											const uint8_t weeks = static_cast <uint8_t> (::ceil(daysInMonths.at(month - 1) / static_cast <double> (7)));
+											const uint8_t weeks = static_cast <uint8_t> (::ceil(daysInMonths.at(month - 1) / 7.));
 											// Получаем количество оставшихся недель в месяце
-											result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginMonth) / static_cast <double> (604800000))));
+											result = static_cast <uint64_t> (weeks - static_cast <uint8_t> (::round((date - beginMonth) / 604800000.L)));
 										}
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся дней
 								case static_cast <uint8_t> (type_t::DAY): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -1599,31 +1623,31 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся дней в месяце
-											result = static_cast <uint64_t> ((daysInMonths.at(month - 1) + 1) - static_cast <uint8_t> (::round((date - beginMonth) / static_cast <double> (86400000))));
+											result = static_cast <uint64_t> ((daysInMonths.at(month - 1) + 1) - static_cast <uint8_t> (::round((date - beginMonth) / 86400000.L)));
 										// Получаем количество оставшихся дней в месяце
-										else result = static_cast <uint64_t> (daysInMonths.at(month - 1) - static_cast <uint8_t> (::round((date - beginMonth) / static_cast <double> (86400000))));
+										else result = static_cast <uint64_t> (daysInMonths.at(month - 1) - static_cast <uint8_t> (::round((date - beginMonth) / 86400000.L)));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся часов
 								case static_cast <uint8_t> (type_t::HOUR): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -1651,24 +1675,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -1696,24 +1720,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -1741,24 +1765,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -1792,24 +1816,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
+										// Получаем значение текущего года
+										const uint16_t year = this->year(date);
 										// Определяем количество прошедших лет
-										const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000000)));
+										const uint16_t lastYears = (year - 1970);
 										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 										// Получаем штамп времени начала года
 										const uint64_t beginYear = (
 											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000)) +
 											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000))
 										);
 										// Определяем сколько дней прошло с начала года
-										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000000)));
+										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000.L));
 										{
 											// Номер текущего месяца
 											uint8_t month = 0;
 											// Подсчитываем количество дней в предыдущих месяцах
 											uint16_t count = 0, days = 0;
-											// Получаем текущее значение года
-											const uint16_t year = (lastYears + 1970);
 											// Устанавливаем флаг високосного года
 											const bool leap = ((year % 4) == 0);
 											// Выполняем перебор всех дней месяца
@@ -1850,24 +1874,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
+										// Получаем значение текущего года
+										const uint16_t year = this->year(date);
 										// Определяем количество прошедших лет
-										const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000000000)));
+										const uint16_t lastYears = (year - 1970);
 										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 										// Получаем штамп времени начала года
 										const uint64_t beginYear = (
 											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000000)) +
 											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000000))
 										);
 										// Определяем сколько дней прошло с начала года
-										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000000000)));
+										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000000.L));
 										{
 											// Номер текущего месяца
 											uint8_t month = 0;
 											// Подсчитываем количество дней в предыдущих месяцах
 											uint16_t count = 0, days = 0;
-											// Получаем текущее значение года
-											const uint16_t year = (lastYears + 1970);
 											// Устанавливаем флаг високосного года
 											const bool leap = ((year % 4) == 0);
 											// Выполняем перебор всех дней месяца
@@ -1911,28 +1935,28 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших дней
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (86400000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(date - begin))) / 86400000.L);
 								} break;
 								// Если нам нужно получить количество оставшихся часов
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших часов
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (3600000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(date - begin))) / 3600000.L);
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (60000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(date - begin))) / 60000.);
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (1000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (604800000) - static_cast <uint64_t> (::floor(date - begin))) / 1000.);
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -1966,21 +1990,21 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших часов
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (3600000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(date - begin))) / 3600000.L);
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (60000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(date - begin))) / 60000.);
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (1000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (86400000) - static_cast <uint64_t> (::floor(date - begin))) / 1000.);
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2014,14 +2038,14 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (3600000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (60000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (3600000) - static_cast <uint64_t> (::floor(date - begin))) / 60000.);
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (3600000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (1000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (3600000) - static_cast <uint64_t> (::floor(date - begin))) / 1000.);
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2055,7 +2079,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> ((static_cast <uint64_t> (60000) - static_cast <uint64_t> (::floor(date - begin))) / static_cast <double> (1000));
+									result = static_cast <uint64_t> ((static_cast <uint64_t> (60000) - static_cast <uint64_t> (::floor(date - begin))) / 1000.);
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2119,24 +2143,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших месяцев
 								case static_cast <uint8_t> (type_t::MONTH): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -2158,80 +2182,92 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество прошедших недель
 								case static_cast <uint8_t> (type_t::WEEK): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Получаем количество недель прошедших в году
-									result = static_cast <uint64_t> (::round((date - beginYear) / static_cast <double> (604800000)));
+									result = static_cast <uint64_t> (::round((date - beginYear) / 604800000.L));
 								} break;
 								// Если нам нужно получить количество прошедших дней
 								case static_cast <uint8_t> (type_t::DAY): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									result = static_cast <uint64_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									result = static_cast <uint64_t> (::floor((date - beginYear) / 86400000.L));
 								} break;
 								// Если нам нужно получить количество прошедших часов
 								case static_cast <uint8_t> (type_t::HOUR): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Получаем количество часов прошедших с начала года
-									result = static_cast <uint64_t> (::floor((date - beginYear) / static_cast <double> (3600000)));
+									result = static_cast <uint64_t> (::floor((date - beginYear) / 3600000.L));
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Получаем количество минут прошедших с начала года
-									result = static_cast <uint64_t> (::floor((date - beginYear) / static_cast <double> (60000)));
+									result = static_cast <uint64_t> (::floor((date - beginYear) / 60000.));
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Получаем количество секунд прошедших с начала года
-									result = static_cast <uint64_t> (::floor((date - beginYear) / static_cast <double> (1000)));
+									result = static_cast <uint64_t> (::floor((date - beginYear) / 1000.));
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
@@ -2248,10 +2284,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
+										// Получаем значение текущего года
+										const uint16_t year = this->year(date);
 										// Определяем количество прошедших лет
-										const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000000)));
+										const uint16_t lastYears = (year - 1970);
 										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 										// Получаем штамп времени начала года
 										const uint64_t beginYear = (
 											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000)) +
@@ -2275,10 +2313,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
+										// Получаем значение текущего года
+										const uint16_t year = this->year(date);
 										// Определяем количество прошедших лет
-										const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000000000)));
+										const uint16_t lastYears = (year - 1970);
 										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 										// Получаем штамп времени начала года
 										const uint64_t beginYear = (
 											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000000)) +
@@ -2302,24 +2342,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших недель
 								case static_cast <uint8_t> (type_t::WEEK): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -2338,29 +2378,29 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество оставшихся недель в месяце
-										result = static_cast <uint64_t> (::round((date - beginMonth) / static_cast <double> (604800000)));
+										result = static_cast <uint64_t> (::round((date - beginMonth) / 604800000.L));
 									}
 								} break;
 								// Если нам нужно получить количество прошедших дней
 								case static_cast <uint8_t> (type_t::DAY): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -2379,29 +2419,29 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество оставшихся дней в месяце
-										result = static_cast <uint64_t> (::round((date - beginMonth) / static_cast <double> (86400000)) - 1);
+										result = static_cast <uint64_t> (::round((date - beginMonth) / 86400000.L) - 1);
 									}
 								} break;
 								// Если нам нужно получить количество прошедших часов
 								case static_cast <uint8_t> (type_t::HOUR): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -2425,24 +2465,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -2466,24 +2506,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -2507,24 +2547,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
+									// Получаем значение текущего года
+									const uint16_t year = this->year(date);
 									// Определяем количество прошедших лет
-									const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+									const uint16_t lastYears = (year - 1970);
 									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
 									const uint64_t beginYear = (
 										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 									);
 									// Определяем сколько дней прошло с начала года
-									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
 										// Номер текущего месяца
 										uint8_t month = 0;
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
-										// Получаем текущее значение года
-										const uint16_t year = (lastYears + 1970);
 										// Устанавливаем флаг високосного года
 										const bool leap = ((year % 4) == 0);
 										// Выполняем перебор всех дней месяца
@@ -2554,24 +2594,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
+										// Получаем значение текущего года
+										const uint16_t year = this->year(date);
 										// Определяем количество прошедших лет
-										const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000000)));
+										const uint16_t lastYears = (year - 1970);
 										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 										// Получаем штамп времени начала года
 										const uint64_t beginYear = (
 											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000)) +
 											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000))
 										);
 										// Определяем сколько дней прошло с начала года
-										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000000)));
+										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000.L));
 										{
 											// Номер текущего месяца
 											uint8_t month = 0;
 											// Подсчитываем количество дней в предыдущих месяцах
 											uint16_t count = 0, days = 0;
-											// Получаем текущее значение года
-											const uint16_t year = (lastYears + 1970);
 											// Устанавливаем флаг високосного года
 											const bool leap = ((year % 4) == 0);
 											// Выполняем перебор всех дней месяца
@@ -2608,24 +2648,24 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
+										// Получаем значение текущего года
+										const uint16_t year = this->year(date);
 										// Определяем количество прошедших лет
-										const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000000000)));
+										const uint16_t lastYears = (year - 1970);
 										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 										// Получаем штамп времени начала года
 										const uint64_t beginYear = (
 											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000000)) +
 											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000000))
 										);
 										// Определяем сколько дней прошло с начала года
-										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000000000)));
+										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000000.L));
 										{
 											// Номер текущего месяца
 											uint8_t month = 0;
 											// Подсчитываем количество дней в предыдущих месяцах
 											uint16_t count = 0, days = 0;
-											// Получаем текущее значение года
-											const uint16_t year = (lastYears + 1970);
 											// Устанавливаем флаг високосного года
 											const bool leap = ((year % 4) == 0);
 											// Выполняем перебор всех дней месяца
@@ -2665,28 +2705,28 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших дней
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (86400000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 86400000.L);
 								} break;
 								// Если нам нужно получить количество прошедших часов
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших часов
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (3600000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 3600000.L);
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (60000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 60000.);
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (1000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 1000.);
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2720,21 +2760,21 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших часов
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (3600000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 3600000.L);
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (60000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 60000.);
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (1000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 1000.);
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2768,14 +2808,14 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (60000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 60000.);
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (1000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 1000.);
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2809,7 +2849,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(date - begin) / static_cast <double> (1000));
+									result = static_cast <uint64_t> (::floor(date - begin) / 1000.);
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2925,8 +2965,8 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						case static_cast <uint8_t> (type_t::YEAR): {
 							// Устанавливаем текущее значение даты
 							result = date;
-							// Выполняем установку текущее значение года
-							const uint16_t year = static_cast <uint16_t> (::floor(result / static_cast <double> (31536000000)) + static_cast <double> (1970));
+							// Получаем значение текущего года
+							const uint16_t year = this->year(result);
 							// Выполняем перебор всех лет
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
 								// Если будущий год является високосным
@@ -2941,24 +2981,24 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						case static_cast <uint8_t> (type_t::MONTH): {
 							// Устанавливаем текущее значение даты
 							result = date;
+							// Получаем значение текущего года
+							const uint16_t year = this->year(result);
 							// Определяем количество прошедших лет
-							const uint16_t lastYears = static_cast <uint16_t> (::floor(result / static_cast <double> (31536000000)));
+							const uint16_t lastYears = (year - 1970);
 							// Определяем количество прошедших високосных лет
-							const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+							const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 							// Получаем штамп времени начала года
 							const uint64_t beginYear = (
 								(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 								(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 							);
 							// Определяем сколько дней прошло с начала года
-							const uint16_t lastDays = static_cast <uint16_t> (::floor((result - beginYear) / static_cast <double> (86400000)));
+							const uint16_t lastDays = static_cast <uint16_t> (::floor((result - beginYear) / 86400000.L));
 							{
 								// Номер текущего месяца
 								uint8_t month = 0;
 								// Подсчитываем количество дней в предыдущих месяцах
 								uint16_t count = 0, days = 0;
-								// Получаем текущее значение года
-								const uint16_t year = (lastYears + 1970);
 								// Устанавливаем флаг високосного года
 								const bool leap = ((year % 4) == 0);
 								// Выполняем перебор всех дней месяца
@@ -3091,8 +3131,8 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						case static_cast <uint8_t> (type_t::YEAR): {
 							// Устанавливаем текущее значение даты
 							result = date;
-							// Выполняем установку текущее значение года
-							const uint16_t year = static_cast <uint16_t> (::floor(result / static_cast <double> (31536000000)) + static_cast <double> (1970));
+							// Получаем значение текущего года
+							const uint16_t year = this->year(result);
 							// Выполняем перебор всех лет
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
 								// Если предыдущий год является високосным
@@ -3107,24 +3147,24 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						case static_cast <uint8_t> (type_t::MONTH): {
 							// Устанавливаем текущее значение даты
 							result = date;
+							// Получаем значение текущего года
+							const uint16_t year = this->year(result);
 							// Определяем количество прошедших лет
-							const uint16_t lastYears = static_cast <uint16_t> (::floor(result / static_cast <double> (31536000000)));
+							const uint16_t lastYears = (year - 1970);
 							// Определяем количество прошедших високосных лет
-							const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+							const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 							// Получаем штамп времени начала года
 							const uint64_t beginYear = (
 								(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 								(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 							);
 							// Определяем сколько дней прошло с начала года
-							const uint16_t lastDays = static_cast <uint16_t> (::floor((result - beginYear) / static_cast <double> (86400000)));
+							const uint16_t lastDays = static_cast <uint16_t> (::floor((result - beginYear) / 86400000.L));
 							{
 								// Номер текущего месяца
 								uint8_t month = 0;
 								// Подсчитываем количество дней в предыдущих месяцах
 								uint16_t count = 0, days = 0;
-								// Получаем текущее значение года
-								const uint16_t year = (lastYears + 1970);
 								// Устанавливаем флаг високосного года
 								const bool leap = ((year % 4) == 0);
 								// Выполняем перебор всех дней месяца
@@ -3568,6 +3608,72 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 	return result;
 }
 /**
+ * year Метод извлечения значения года
+ * @param date дата для извлечения года
+ */
+uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
+	// Выполняем извлечение значения годы из даты
+	return static_cast <uint16_t> (
+		static_cast <uint32_t> (
+			::floor(
+				(
+					date - (
+						static_cast <uint64_t> (
+							::ceil(date / 126489600000.L)
+						) * static_cast <uint64_t> (86400000)
+					)
+				) / 31536000000.L
+			)
+		) + 1970
+	);
+}
+/**
+ * year Метод получение текущего значения года
+ * @param storage хранение значение времени
+ * @return        текущее значение года
+ */
+uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
+	// Результат работы функции
+	uint16_t result = 0;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Определяем хранилизе значение времени
+		switch(static_cast <uint8_t> (storage)){
+			// Если хранилизе локальное
+			case static_cast <uint8_t> (storage_t::LOCAL):
+				// Получаем установленное значение года
+				result = this->_dt.year;
+			break;
+			// Если хранилище глобальное
+			case static_cast <uint8_t> (storage_t::GLOBAL):
+				// Выполняем извлечение текущее значение года
+				result = this->year(this->timestamp(type_t::MILLISECONDS, storage));
+			break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * dst Метод проверки принадлежит ли дата к лету
  * @param date дата для проверки
  * @return     результат проверки
@@ -3579,24 +3685,24 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Получаем значение текущего года
+			const uint16_t year = this->year(date);
 			// Определяем количество прошедших лет
-			const uint16_t lastYears = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)));
+			const uint16_t lastYears = (year - 1970);
 			// Определяем количество прошедших високосных лет
-			const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / static_cast <double> (4)));
+			const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 			// Получаем штамп времени начала года
 			const uint64_t beginYear = (
 				(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 				(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 			);
 			// Определяем сколько дней прошло с начала года
-			const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / static_cast <double> (86400000)));
+			const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 			{
 				// Номер текущего месяца
 				uint8_t month = 0;
 				// Подсчитываем количество дней в предыдущих месяцах
 				uint16_t count = 0, days = 0;
-				// Получаем текущее значение года
-				const uint16_t year = (lastYears + 1970);
 				// Устанавливаем флаг високосного года
 				const bool leap = ((year % 4) == 0);
 				// Выполняем перебор всех дней месяца
@@ -3659,7 +3765,7 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 		 */
 		try {
 			// Устанавливаем флаг високосного года
-			return (((static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000))) + 1970) % 4) == 0);
+			return ((this->year(date) % 4) == 0);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4178,8 +4284,8 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 				case static_cast <uint8_t> (unit_t::YEAR): {
 					// Если размер данных умещается в буфер
 					if(size >= sizeof(uint16_t)){
-						// Выполняем установку текущее значение года
-						const uint16_t year = static_cast <uint16_t> (::floor(date / static_cast <double> (31536000000)) + static_cast <double> (1970));
+						// Получаем значение текущего года
+						const uint16_t year = this->year(date);
 						// Если данные переданы в виде текста
 						if(text){
 							// Получаем результирующий буфер для получения результата
@@ -7687,14 +7793,14 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 					// Устанавливаем количество микросекунд
 					this->_dt.microseconds = (date % 1000);
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date / static_cast <double> (1000));
+					stamp = static_cast <uint64_t> (date / 1000.L);
 				} break;
 				// Если единицы измерения штампа времени требуется установить в наносекундах
 				case static_cast <uint8_t> (type_t::NANOSECONDS): {
 					// Устанавливаем количество наносекунд
 					this->_dt.nanoseconds = (date % 1000000);
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date / static_cast <double> (1000000));
+					stamp = static_cast <uint64_t> (date / 1000000.L);
 				} break;
 			}
 			// Выполняем блокировку потока
@@ -7743,14 +7849,14 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / static_cast <double> (31536000000));
+						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 31536000000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
 						// Получаем штамп времени в часы
 						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						result = static_cast <uint64_t> (hours.count() / static_cast <double> (8760));
+						result = static_cast <uint64_t> (hours.count() / 8760.L);
 					} break;
 				}
 			} break;
@@ -7761,14 +7867,14 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / static_cast <double> (2629746000));
+						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 2629746000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
 						// Получаем штамп времени в часы
 						chrono::seconds seconds = chrono::duration_cast <chrono::seconds> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						result = static_cast <uint64_t> (seconds.count() / static_cast <double> (2629746));
+						result = static_cast <uint64_t> (seconds.count() / 2629746.L);
 					} break;
 				}
 			} break;
@@ -7779,14 +7885,14 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / static_cast <double> (604800000));
+						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 604800000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
 						// Получаем штамп времени в часы
 						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						result = static_cast <uint64_t> (hours.count() / static_cast <double> (168));
+						result = static_cast <uint64_t> (hours.count() / 168.L);
 					} break;
 				}
 			} break;
@@ -7797,14 +7903,14 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / static_cast <double> (86400000));
+						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 86400000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
 						// Получаем штамп времени в часы
 						chrono::hours hours = chrono::duration_cast <chrono::hours> (chrono::system_clock::now().time_since_epoch());
 						// Получаем результат
-						result = static_cast <uint64_t> (hours.count() / static_cast <double> (24));
+						result = static_cast <uint64_t> (hours.count() / 24.L);
 					} break;
 				}
 			} break;
@@ -7815,7 +7921,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / static_cast <double> (3600000));
+						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 3600000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -7833,7 +7939,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / static_cast <double> (60000));
+						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 60000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -7851,7 +7957,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = static_cast <uint64_t> (this->makeDate(this->_dt) / static_cast <double> (1000));
+						result = static_cast <uint64_t> (this->makeDate(this->_dt) / 1000.L);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -7986,7 +8092,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 				// Получаем текущее значение штампа времени
 				result = this->makeDate(this->_dt);
 				// Получаем количество минут прошедших с 1970-го года
-				lastMinutes = static_cast <uint64_t> (result / static_cast <double> (1000) / static_cast <double> (60));
+				lastMinutes = static_cast <uint64_t> (result / 1000.L / 60.L);
 			} break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -7995,7 +8101,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 				// Устанавливаем количество миллисекунд
 				this->makeDate(result, dt);
 				// Получаем количество минут прошедших с 1970-го года
-				lastMinutes = static_cast <uint64_t> (result / static_cast <double> (1000) / static_cast <double> (60));
+				lastMinutes = static_cast <uint64_t> (result / 1000.L / 60.L);
 			} break;
 		}
 		// Выполняем перебор формата
@@ -8532,7 +8638,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 					this->_dt.offset = offset;
 				}
 				// Если количество минут переданной даты с начала 1970-го года выше чем текущее количество минут
-				if(!flags[1] && (static_cast <uint64_t> (result / static_cast <double> (1000) / static_cast <double> (60)) > lastMinutes)){
+				if(!flags[1] && (static_cast <uint64_t> (result / 1000.L / 60.L) > lastMinutes)){
 					// Уменьшаем значение текущего года
 					this->_dt.year--;
 					// Устанавливаем флаг високосного года
@@ -8567,7 +8673,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 				// Выполняем формирование UnixTimestamp
 				result = this->makeDate(dt);
 				// Если количество минут переданной даты с начала 1970-го года выше чем текущее количество минут
-				if(!flags[1] && (static_cast <uint64_t> (result / static_cast <double> (1000) / static_cast <double> (60)) > lastMinutes)){
+				if(!flags[1] && (static_cast <uint64_t> (result / 1000.L / 60.L) > lastMinutes)){
 					// Уменьшаем значение текущего года
 					dt.year--;
 					// Устанавливаем флаг високосного года
@@ -8602,7 +8708,7 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 		// Временное значение переменной
 		double intpart = 0;
 		// Выполняем конвертацию часов в секунду
-		const double seconds = (::abs(zone) / static_cast <double> (3600));
+		const double seconds = (::abs(zone) / 3600.L);
 		// Выполняем проверку есть ли дробная часть у числа
 		if(::modf(seconds, &intpart) == 0)
 			// Добавляем переданную зону
@@ -9967,7 +10073,7 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 								// Временное значение переменной
 								double intpart = 0;
 								// Выполняем конвертацию часов в секунду
-								const double seconds = (::abs(dt.offset) / static_cast <double> (3600));
+								const double seconds = (::abs(dt.offset) / 3600.);
 								// Выполняем проверку есть ли дробная часть у числа
 								if(::modf(seconds, &intpart) == 0) {
 									// Получаем количество секунд времени
@@ -10003,7 +10109,7 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 								// Временное значение переменной
 								double intpart = 0;
 								// Выполняем конвертацию часов в секунду
-								const double seconds = (::abs(dt.offset) / static_cast <double> (3600));
+								const double seconds = (::abs(dt.offset) / 3600.);
 								// Выполняем проверку есть ли дробная часть у числа
 								if(::modf(seconds, &intpart) == 0) {
 									// Получаем количество секунд времени

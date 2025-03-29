@@ -539,6 +539,18 @@ namespace awh {
 			h12_t h12(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
+			 * year Метод извлечения значения года
+			 * @param date дата для извлечения года
+			 */
+			uint16_t year(const uint64_t date) const noexcept;
+			/**
+			 * year Метод получение текущего значения года
+			 * @param storage хранение значение времени
+			 * @return        текущее значение года
+			 */
+			uint16_t year(const storage_t storage = storage_t::GLOBAL) const noexcept;
+		public:
+			/**
 			 * dst Метод проверки принадлежит ли дата к лету
 			 * @param date дата для проверки
 			 * @return     результат проверки
