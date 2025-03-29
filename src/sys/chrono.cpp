@@ -7616,7 +7616,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 					// Устанавливаем временную зону по умолчанию
 					_tzset();
 					// Получаем глобальное значение временной зоны в секундах
-					result = (_timezone * -1);
+					result = static_cast <int32_t> (_timezone * -1);
 				/**
 				 * Если мы работаем в FreeBSD
 				 */
@@ -7638,7 +7638,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 					// Устанавливаем временную зону по умолчанию
 					::tzset();
 					// Получаем глобальное значение временной зоны в секундах
-					result = (timezone * -1);
+					result = static_cast <int32_t> (timezone * -1);
 				#endif
 			} break;
 		}
