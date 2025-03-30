@@ -1,6 +1,7 @@
 /**
  * @file: threadpool.hpp
  * @date: 2023-12-22
+ * @license: GPL-3.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

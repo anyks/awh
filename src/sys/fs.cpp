@@ -1,6 +1,7 @@
 /**
  * @file: fs.cpp
  * @date: 2024-02-25
+ * @license: GPL-3.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

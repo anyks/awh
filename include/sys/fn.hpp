@@ -1,6 +1,7 @@
 /**
  * @file: fn.hpp
  * @date: 2023-11-30
+ * @license: GPL-3.0
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev
