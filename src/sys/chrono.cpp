@@ -7730,7 +7730,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 	}
 }
 /**
- * setTimeZones Метод установки собственной временной зоны
+ * setTimeZones Метод установки своего списка временных зон
  * @param zones список временных зон для установки
  */
 void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) noexcept {

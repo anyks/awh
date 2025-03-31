@@ -744,7 +744,7 @@ namespace awh {
 			 */
 			void addTimeZone(const string & name, const int32_t offset) noexcept;
 			/**
-			 * setTimeZones Метод установки собственной временной зоны
+			 * setTimeZones Метод установки своего списка временных зон
 			 * @param zones список временных зон для установки
 			 */
 			void setTimeZones(const unordered_map <string, int32_t> & zones) noexcept;
