@@ -1078,7 +1078,7 @@ uint64_t awh::Chrono::end(const type_t type, const storage_t storage) const noex
 	return this->end(this->timestamp(type_t::MILLISECONDS, storage), type);
 }
 /**
- * end Метод получения начала позиции указанной даты
+ * begin Метод получения начала позиции указанной даты
  * @param date дата для которой необходимо получить позицию
  * @param type тип единиц измерений даты
  * @return     начало указанной даты в формате UnixTimestamp
@@ -1246,7 +1246,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 	return result;
 }
 /**
- * end Метод получения начала позиции текущей даты
+ * begin Метод получения начала позиции текущей даты
  * @param type    тип единиц измерений даты
  * @param storage хранение значение времени
  * @return        начало текущей даты в формате UnixTimestamp

@@ -461,14 +461,14 @@ namespace awh {
 			uint64_t end(const type_t type, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * end Метод получения начала позиции указанной даты
+			 * begin Метод получения начала позиции указанной даты
 			 * @param date дата для которой необходимо получить позицию
 			 * @param type тип единиц измерений даты
 			 * @return     начало указанной даты в формате UnixTimestamp
 			 */
 			uint64_t begin(const uint64_t date, const type_t type) const noexcept;
 			/**
-			 * end Метод получения начала позиции текущей даты
+			 * begin Метод получения начала позиции текущей даты
 			 * @param type    тип единиц измерений даты
 			 * @param storage хранение значение времени
 			 * @return        начало текущей даты в формате UnixTimestamp
