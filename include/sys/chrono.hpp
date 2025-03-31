@@ -586,7 +586,7 @@ namespace awh {
 			void set(const void * buffer, const size_t size, const unit_t unit, const bool text) noexcept;
 		public:
 			/**
-			 * get Шаблон метода установки данных даты и времени
+			 * set Шаблон метода установки данных даты и времени
 			 * @tparam T тип данных в котором устанавливаются данные
 			 */
 			template <typename T>
