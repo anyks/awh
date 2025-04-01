@@ -858,7 +858,7 @@ namespace awh {
 			string format(const string & zone, const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * strip Метод получения UnixTimestamp из строки
+			 * strip Метод преобразования даты из оного формата в другой
 			 * @param date    строка даты
 			 * @param format1 форматы даты из которой нужно получить дату
 			 * @param format2 форматы даты в который нужно перевести дату

@@ -10481,7 +10481,7 @@ string awh::Chrono::format(const string & zone, const string & format, const sto
 	return "";
 }
 /**
- * strip Метод получения UnixTimestamp из строки
+ * strip Метод преобразования даты из оного формата в другой
  * @param date    строка даты
  * @param format1 форматы даты из которой нужно получить дату
  * @param format2 форматы даты в который нужно перевести дату
