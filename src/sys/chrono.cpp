@@ -5266,7 +5266,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 }
 /**
  * setTimeZone Метод установки временной зоны
- * @param zone временная зона для установки (в секундах)
+ * @param zone смещение временной зоны для установки (в секундах)
  */
 void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	// Выполняем блокировку потока
@@ -6153,7 +6153,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 	return result;
 }
 /**
- * getTimeZone Метод перевода временной зоны в числовой эквивалент
+ * getTimeZone Метод перевода временной зоны в смещение
  * @param zone временная зона для конвертации
  * @return     временная зона в секундах
  */
@@ -6643,7 +6643,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
 	return this->_dt.offset;
 }
 /**
- * getTimeZone Метод перевода временной зоны в числовой эквивалент
+ * getTimeZone Метод перевода временной зоны в смещение
  * @param zone временная зона для конвертации
  * @return     временная зона в секундах
  */
@@ -7699,7 +7699,7 @@ void awh::Chrono::clearTimeZones() noexcept {
 /**
  * addTimeZone Метод установки собственной временной зоны
  * @param name   название временной зоны
- * @param offset смещение времени в миллисекундах
+ * @param offset смещение времени в секундах
  */
 void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcept {
 	/**
@@ -8059,7 +8059,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 	return result;
 }
 /**
- * parse Метод парсинга строки в UnixTimestamp
+ * parse Метод парсинга строки даты и времени в UnixTimestamp
  * @param date    строка даты
  * @param format  формат даты
  * @param storage хранение значение времени
@@ -8702,7 +8702,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 	return result;
 }
 /**
- * format Метод генерации формата временной зоны
+ * format Метод форматирования временной зоны
  * @param zone временная зона (в секундах) в которой нужно получить результат
  * @return     строковое обозначение временной зоны
  */
@@ -8760,7 +8760,7 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 	return result;
 }
 /**
- * format Метод генерации формата временной зоны
+ * format Метод форматирования временной зоны
  * @param zone временная зона в которой нужно получить результат
  * @return     строковое обозначение временной зоны
  */
@@ -9615,7 +9615,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 	return "UTC";
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования объекта даты и времени
  * @param dt     объект даты и времени
  * @param format формат даты
  * @return       строка содержащая дату
@@ -10175,7 +10175,7 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 	return result;
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования UnixTimestamp без учёта временной зоны
  * @param date   дата в UnixTimestamp
  * @param format формат даты
  * @return       строка содержащая дату
@@ -10203,7 +10203,7 @@ string awh::Chrono::format(const uint64_t date, const string & format) const noe
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования UnixTimestamp с учётом временной зоны
  * @param date   дата в UnixTimestamp
  * @param zone   временная зона в которой нужно получить дату (в секундах)
  * @param format формат даты
@@ -10232,7 +10232,7 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, const string
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования UnixTimestamp с учётом временной зоны
  * @param date   дата в UnixTimestamp
  * @param zone   временная зона в которой нужно получить дату
  * @param format формат даты
@@ -10263,7 +10263,7 @@ string awh::Chrono::format(const uint64_t date, const zone_t zone, const string 
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования UnixTimestamp с учётом временной зоны
  * @param date   дата в UnixTimestamp
  * @param zone   временная зона в которой нужно получить дату
  * @param format формат даты
@@ -10294,7 +10294,7 @@ string awh::Chrono::format(const uint64_t date, const string & zone, const strin
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования текущей даты без учёта временной зоны
  * @param format  формат даты
  * @param storage хранение значение времени
  * @return        строка содержащая дату
@@ -10338,7 +10338,7 @@ string awh::Chrono::format(const string & format, const storage_t storage) const
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования текущей даты с учётом временной зоны
  * @param zone    временная зона в которой нужно получить дату (в секундах)
  * @param format  формат даты
  * @param storage хранение значение времени
@@ -10383,7 +10383,7 @@ string awh::Chrono::format(const int32_t zone, const string & format, const stor
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования текущей даты с учётом временной зоны
  * @param zone    временная зона в которой нужно получить дату
  * @param format  формат даты
  * @param storage хранение значение времени
@@ -10432,7 +10432,7 @@ string awh::Chrono::format(const zone_t zone, const string & format, const stora
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp в строку
+ * format Метод формирования текущей даты с учётом временной зоны
  * @param zone    временная зона в которой нужно получить дату
  * @param format  формат даты
  * @param storage хранение значение времени
