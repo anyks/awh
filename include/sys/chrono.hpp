@@ -865,7 +865,7 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        результат работы
 			 */
-			string strip(const string & date, const string & format1, const string & format2, const storage_t storage) const noexcept;
+			string strip(const string & date, const string & format1, const string & format2, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
 			 * Chrono Конструктор
