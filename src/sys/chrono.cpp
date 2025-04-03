@@ -7697,7 +7697,7 @@ void awh::Chrono::clearTimeZones() noexcept {
 	}
 }
 /**
- * addTimeZone Метод установки собственной временной зоны
+ * addTimeZone Метод добавления собственной временной зоны
  * @param name   название временной зоны
  * @param offset смещение времени в секундах
  */

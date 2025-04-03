@@ -592,12 +592,12 @@ namespace awh {
 			template <typename T>
 			/**
 			 * set Метод установки данных даты и времени
-			 * @param value дата для обработки
-			 * @param unit  элементы данных для установки
+			 * @param date дата для обработки
+			 * @param unit элементы данных для установки
 			 */
-			void set(const T value, const unit_t unit) noexcept {
+			void set(const T date, const unit_t unit) noexcept {
 				// Выполняем установку данных
-				this->set(&value, sizeof(value), unit, is_class_v <T>);
+				this->set(&date, sizeof(date), unit, is_class_v <T>);
 			}
 		private:
 			/**
@@ -627,7 +627,7 @@ namespace awh {
 			/**
 			 * get Метод извлечения данных даты и времени
 			 * @param date дата для обработки
-			 * @param unit элементы данных для установки
+			 * @param unit элементы данных для извлечения
 			 * @return     значение данных даты и времени
 			 */
 			T get(const uint64_t date, const unit_t unit) const noexcept {
@@ -654,7 +654,7 @@ namespace awh {
 			template <typename T>
 			/**
 			 * get Метод извлечения данных даты и времени
-			 * @param unit    элементы данных для установки
+			 * @param unit    элементы данных для извлечения
 			 * @param storage хранение значение времени
 			 * @return        значение данных даты и времени
 			 */
@@ -738,7 +738,7 @@ namespace awh {
 			 */
 			void clearTimeZones() noexcept;
 			/**
-			 * addTimeZone Метод установки собственной временной зоны
+			 * addTimeZone Метод добавления собственной временной зоны
 			 * @param name   название временной зоны
 			 * @param offset смещение времени в секундах
 			 */
