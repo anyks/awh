@@ -208,7 +208,7 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 			// Выполняем установку текущее значение года
 			dt.year = this->year(date);
 			// Устанавливаем флаг високосного года
-			dt.leap = ((dt.year % 4) == 0);
+			dt.leap = this->leap(dt.year);
 			// Определяем количество прошедших лет
 			const uint16_t lastYears = (dt.year - 1970);
 			// Определяем количество прошедших високосных лет
@@ -468,14 +468,14 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 										// Устанавливаем год
 										dt.year = (2000 + num);
 										// Устанавливаем флаг високосного года
-										dt.leap = ((dt.year % 4) == 0);
+										dt.leap = this->leap(dt.year);
 									} break;
 									// Если формат получен как %Y
 									case static_cast <uint8_t> (format_t::Y): {
 										// Устанавливаем год
 										dt.year = static_cast <uint16_t> (::stoul(string(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so)));
 										// Устанавливаем флаг високосного года
-										dt.leap = ((dt.year % 4) == 0);
+										dt.leap = this->leap(dt.year);
 									} break;
 									// Если формат получен как %d
 									case static_cast <uint8_t> (format_t::d):
@@ -707,7 +707,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Устанавливаем год
 									dt.year = (2000 + num);
 									// Устанавливаем флаг високосного года
-									dt.leap = ((dt.year % 4) == 0);
+									dt.leap = this->leap(dt.year);
 								}
 							}
 						}
@@ -727,7 +727,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Устанавливаем год
 									dt.year = static_cast <uint16_t> (::stoul(string(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so)));
 									// Устанавливаем флаг високосного года
-									dt.leap = ((dt.year % 4) == 0);
+									dt.leap = this->leap(dt.year);
 								// Если мы получили номер месяца
 								} else if(j == 2)
 									// Получаем значение номера месяца
@@ -863,7 +863,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 									// Устанавливаем год
 									dt.year = static_cast <uint16_t> (::stoul(string(text.c_str() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so)));
 									// Устанавливаем флаг високосного года
-									dt.leap = ((dt.year % 4) == 0);
+									dt.leap = this->leap(dt.year);
 								}
 							}
 						}
@@ -976,7 +976,7 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 						// Увеличиваем количество дней в месяце
 						result += (static_cast <uint64_t> (daysInMonths.at(i)) * static_cast <uint64_t> (86400000));
 					// Если год високосный
-					if(((lastYears + 1970) % 4) == 0)
+					if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 						// Добавляем ещё один день
 						result += 86400000;
 				} break;
@@ -999,7 +999,7 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 						// Подсчитываем количество дней в предыдущих месяцах
 						uint16_t count = 0, days = 0;
 						// Устанавливаем флаг високосного года
-						const bool leap = (((lastYears + 1970) % 4) == 0);
+						const bool leap = this->leap(static_cast <uint16_t> (lastYears + 1970));
 						// Выполняем перебор всех дней месяца
 						for(uint8_t i = 0; i < daysInMonths.size(); i++){
 							// Получаем текущее количество дней с компенсацией високосного года
@@ -1127,7 +1127,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 						// Подсчитываем количество дней в предыдущих месяцах
 						uint16_t count = 0, days = 0;
 						// Устанавливаем флаг високосного года
-						const bool leap = (((lastYears + 1970) % 4) == 0);
+						const bool leap = this->leap(static_cast <uint16_t> (lastYears + 1970));
 						// Выполняем перебор всех дней месяца
 						for(uint8_t i = 0; i < daysInMonths.size(); i++){
 							// Получаем текущее количество дней с компенсацией високосного года
@@ -1164,7 +1164,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 						// Подсчитываем количество дней в предыдущих месяцах
 						uint16_t count = 0, days = 0;
 						// Устанавливаем флаг високосного года
-						const bool leap = ((year % 4) == 0);
+						const bool leap = this->leap(year);
 						// Выполняем перебор всех дней месяца
 						for(uint8_t i = 0; i < daysInMonths.size(); i++){
 							// Увеличиваем номер месяца
@@ -1303,7 +1303,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -1337,7 +1337,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Количество недель в году
 									uint8_t weeks = 0;
 									// Если год високосный
-									if(((lastYears + 1970) % 4) == 0)
+									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 										// Получаем количество недель в году
 										weeks = static_cast <uint8_t> (::round(31622400000 / 604800000.L));
 									// Если год не високосный
@@ -1361,7 +1361,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									// Если год високосный
-									if(((lastYears + 1970) % 4) == 0)
+									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 										// Определяем сколько осталось дней в году
 										result = static_cast <uint64_t> (366 - (lastDays + 1));
 									// Если год не високосный
@@ -1383,7 +1383,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем количество часов прошедших с начала года
 									const uint32_t hours = static_cast <uint32_t> (::ceil((date - beginYear) / 3600000.L));
 									// Если год високосный
-									if(((lastYears + 1970) % 4) == 0)
+									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 										// Определяем количество оставшихся часов
 										result = static_cast <uint64_t> (static_cast <uint32_t> (31622400000 / 3600000) - hours);
 									// Если год не високосный
@@ -1405,7 +1405,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем количество минут прошедших с начала года
 									const uint64_t minutes = static_cast <uint64_t> (::ceil((date - beginYear) / 60000.));
 									// Если год високосный
-									if(((lastYears + 1970) % 4) == 0)
+									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 										// Определяем количество оставшихся минут
 										result = (static_cast <uint64_t> (31622400000 / 60000) - minutes);
 									// Если год не високосный
@@ -1427,7 +1427,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем количество секунд прошедших с начала года
 									const uint64_t seconds = static_cast <uint64_t> (::ceil((date - beginYear) / 1000.));
 									// Если год високосный
-									if(((lastYears + 1970) % 4) == 0)
+									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 										// Определяем количество оставшихся секунд
 										result = (static_cast <uint64_t> (31622400000 / 1000) - seconds);
 									// Если год не високосный
@@ -1449,7 +1449,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем количество миллисекунд прошедших с начала года
 									const uint64_t milliseconds = static_cast <uint64_t> (date - beginYear);
 									// Если год високосный
-									if(((lastYears + 1970) % 4) == 0)
+									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 										// Определяем количество оставшихся миллисекунд
 										result = (static_cast <uint64_t> (31622400000) - (milliseconds + 1));
 									// Если год не високосный
@@ -1477,7 +1477,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Получаем количество микросекунд прошедших с начала года
 										const uint64_t microseconds = static_cast <uint64_t> (date - beginYear);
 										// Если год високосный
-										if(((lastYears + 1970) % 4) == 0)
+										if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 											// Определяем количество оставшихся микросекунд
 											result = (static_cast <uint64_t> (31622400000000) - (microseconds + 1));
 										// Если год не високосный
@@ -1512,7 +1512,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Получаем количество наносекунд прошедших с начала года
 										const uint64_t nanoseconds = static_cast <uint64_t> (date - beginYear);
 										// Если год високосный
-										if(((lastYears + 1970) % 4) == 0)
+										if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
 											// Определяем количество оставшихся наносекунд
 											result = (static_cast <uint64_t> (31622400000000000) - (nanoseconds + 1));
 										// Если год не високосный
@@ -1552,7 +1552,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -1604,7 +1604,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -1649,7 +1649,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -1694,7 +1694,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -1739,7 +1739,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -1784,7 +1784,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -1835,7 +1835,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Подсчитываем количество дней в предыдущих месяцах
 											uint16_t count = 0, days = 0;
 											// Устанавливаем флаг високосного года
-											const bool leap = ((year % 4) == 0);
+											const bool leap = this->leap(year);
 											// Выполняем перебор всех дней месяца
 											for(uint8_t i = 0; i < daysInMonths.size(); i++){
 												// Увеличиваем номер месяца
@@ -1893,7 +1893,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Подсчитываем количество дней в предыдущих месяцах
 											uint16_t count = 0, days = 0;
 											// Устанавливаем флаг високосного года
-											const bool leap = ((year % 4) == 0);
+											const bool leap = this->leap(year);
 											// Выполняем перебор всех дней месяца
 											for(uint8_t i = 0; i < daysInMonths.size(); i++){
 												// Увеличиваем номер месяца
@@ -2162,7 +2162,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -2361,7 +2361,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -2402,7 +2402,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -2443,7 +2443,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -2484,7 +2484,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -2525,7 +2525,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -2566,7 +2566,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Подсчитываем количество дней в предыдущих месяцах
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
-										const bool leap = ((year % 4) == 0);
+										const bool leap = this->leap(year);
 										// Выполняем перебор всех дней месяца
 										for(uint8_t i = 0; i < daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
@@ -2613,7 +2613,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Подсчитываем количество дней в предыдущих месяцах
 											uint16_t count = 0, days = 0;
 											// Устанавливаем флаг високосного года
-											const bool leap = ((year % 4) == 0);
+											const bool leap = this->leap(year);
 											// Выполняем перебор всех дней месяца
 											for(uint8_t i = 0; i < daysInMonths.size(); i++){
 												// Увеличиваем номер месяца
@@ -2667,7 +2667,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Подсчитываем количество дней в предыдущих месяцах
 											uint16_t count = 0, days = 0;
 											// Устанавливаем флаг високосного года
-											const bool leap = ((year % 4) == 0);
+											const bool leap = this->leap(year);
 											// Выполняем перебор всех дней месяца
 											for(uint8_t i = 0; i < daysInMonths.size(); i++){
 												// Увеличиваем номер месяца
@@ -2970,7 +2970,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Выполняем перебор всех лет
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
 								// Если будущий год является високосным
-								if(((year + (i + 1)) % 4) == 0)
+								if(this->leap(static_cast <uint16_t> (year + (i + 1))))
 									// Увеличиваем текущее значение года на 366 дней
 									result += 31622400000;
 								// Увеличиваем текущее значение года на 365 дней
@@ -3000,7 +3000,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 								// Подсчитываем количество дней в предыдущих месяцах
 								uint16_t count = 0, days = 0;
 								// Устанавливаем флаг високосного года
-								const bool leap = ((year % 4) == 0);
+								const bool leap = this->leap(year);
 								// Выполняем перебор всех дней месяца
 								for(uint8_t i = 0; i < daysInMonths.size(); i++){
 									// Увеличиваем номер месяца
@@ -3136,7 +3136,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Выполняем перебор всех лет
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
 								// Если предыдущий год является високосным
-								if(((year - (i + 1)) % 4) == 0)
+								if(this->leap(static_cast <uint16_t> (year - (i + 1))))
 									// Уменьшаем текущее значение года на 366 дней
 									result -= (result >= 31622400000 ? 31622400000 : 0);
 								// Уменьшаем текущее значение года на 365 дней
@@ -3166,7 +3166,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 								// Подсчитываем количество дней в предыдущих месяцах
 								uint16_t count = 0, days = 0;
 								// Устанавливаем флаг високосного года
-								const bool leap = ((year % 4) == 0);
+								const bool leap = this->leap(year);
 								// Выполняем перебор всех дней месяца
 								for(uint8_t i = 0; i < daysInMonths.size(); i++){
 									// Увеличиваем номер месяца
@@ -3612,9 +3612,14 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
  * @param date дата для извлечения года
  */
 uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
-	// Выполняем извлечение значения годы из даты
-	return static_cast <uint16_t> (
-		static_cast <uint32_t> (
+	// Результат работы функции
+	uint16_t result = 0;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем извлечение значение годы из даты
+		result = static_cast <uint16_t> (
 			::floor(
 				(
 					date - (
@@ -3624,8 +3629,40 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 					)
 				) / 31536000000.L
 			)
-		) + 1970
-	);
+		);
+		// Определяем количество прошедших високосных лет
+		const uint16_t leaps = static_cast <uint16_t> (::round((result - 1) / 4.));
+		// Получаем штамп времени начала года
+		const uint64_t begin = (
+			(static_cast <uint64_t> (leaps) * static_cast <uint64_t> (31622400000)) +
+			(static_cast <uint64_t> (result - leaps) * static_cast <uint64_t> (31536000000))
+		);
+		// Формируем итоговый результат
+		result += 1970;
+		// Если прошло больше года с начала года
+		if((date - begin) >= (this->leap(result) ? 31622400000 : 31536000000))
+			// Увеличиваем полученный результат
+			result++;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "%s\n", error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * year Метод получение текущего значения года
@@ -3704,7 +3741,7 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 				// Подсчитываем количество дней в предыдущих месяцах
 				uint16_t count = 0, days = 0;
 				// Устанавливаем флаг високосного года
-				const bool leap = ((year % 4) == 0);
+				const bool leap = this->leap(year);
 				// Выполняем перебор всех дней месяца
 				for(uint8_t i = 0; i < daysInMonths.size(); i++){
 					// Увеличиваем номер месяца
@@ -3754,6 +3791,42 @@ bool awh::Chrono::dst(const storage_t storage) const noexcept {
 }
 /**
  * leap Метод проверки является ли год високосным
+ * @param year год для проверки
+ * @return     результат проверки
+ */
+bool awh::Chrono::leap(const uint16_t year) const noexcept {
+	// Если дата передана
+	if(year > 0){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Устанавливаем флаг високосного года
+			return (((year % 4) == 0) && (((year % 100) != 0) || ((year % 400) == 0)));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * leap Метод проверки является ли год високосным
  * @param date дата для проверки
  * @return     результат проверки
  */
@@ -3765,7 +3838,7 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 		 */
 		try {
 			// Устанавливаем флаг високосного года
-			return ((this->year(date) % 4) == 0);
+			return this->leap(this->year(date));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -3898,7 +3971,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Устанавливаем год
 							this->_dt.year = year;
 							// Устанавливаем флаг високосного года
-							this->_dt.leap = ((this->_dt.year % 4) == 0);
+							this->_dt.leap = this->leap(this->_dt.year);
 						}
 					// Если данные переданы в виде числа
 					} else {
@@ -3913,7 +3986,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Устанавливаем год
 								this->_dt.year = year;
 								// Устанавливаем флаг високосного года
-								this->_dt.leap = ((this->_dt.year % 4) == 0);
+								this->_dt.leap = this->leap(this->_dt.year);
 							}
 						}
 					}
@@ -8656,7 +8729,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 					// Уменьшаем значение текущего года
 					this->_dt.year--;
 					// Устанавливаем флаг високосного года
-					this->_dt.leap = ((this->_dt.year % 4) == 0);
+					this->_dt.leap = this->leap(this->_dt.year);
 					// Выполняем формирование UnixTimestamp
 					result = this->makeDate(this->_dt);
 					// Выполняем установку пересчитанной временной зоны обратно
@@ -8691,7 +8764,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 					// Уменьшаем значение текущего года
 					dt.year--;
 					// Устанавливаем флаг високосного года
-					dt.leap = ((dt.year % 4) == 0);
+					dt.leap = this->leap(dt.year);
 					// Выполняем формирование UnixTimestamp
 					result = this->makeDate(dt);
 				}

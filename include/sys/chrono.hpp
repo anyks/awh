@@ -565,6 +565,12 @@ namespace awh {
 		public:
 			/**
 			 * leap Метод проверки является ли год високосным
+			 * @param year год для проверки
+			 * @return     результат проверки
+			 */
+			bool leap(const uint16_t year) const noexcept;
+			/**
+			 * leap Метод проверки является ли год високосным
 			 * @param date дата для проверки
 			 * @return     результат проверки
 			 */
