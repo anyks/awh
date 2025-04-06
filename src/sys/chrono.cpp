@@ -1005,7 +1005,7 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 							// Получаем текущее количество дней с компенсацией високосного года
 							days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 							// Если мы не дошли до предела
-							if(lastDays > (days + count))
+							if(lastDays >= (days + count))
 								// Увеличиваем количество прошедших дней
 								count += days;
 							// Выходим из цикла
@@ -1133,7 +1133,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 							// Получаем текущее количество дней с компенсацией високосного года
 							days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 							// Если мы не дошли до предела
-							if(lastDays > (days + count))
+							if(lastDays >= (days + count))
 								// Увеличиваем количество прошедших дней
 								count += days;
 							// Выходим из цикла
@@ -1172,7 +1172,7 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 							// Получаем текущее количество дней с компенсацией високосного года
 							days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 							// Если мы не дошли до предела
-							if(lastDays > (days + count))
+							if(lastDays >= (days + count))
 								// Увеличиваем количество прошедших дней
 								count += days;
 							// Выходим из цикла
@@ -1311,7 +1311,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -1560,7 +1560,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -1612,7 +1612,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -1657,7 +1657,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -1702,7 +1702,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -1747,7 +1747,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -1792,7 +1792,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -1843,7 +1843,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 												// Получаем текущее количество дней с компенсацией високосного года
 												days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 												// Если мы не дошли до предела
-												if(lastDays > (days + count))
+												if(lastDays >= (days + count))
 													// Увеличиваем количество прошедших дней
 													count += days;
 												// Выходим из цикла
@@ -1901,7 +1901,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 												// Получаем текущее количество дней с компенсацией високосного года
 												days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 												// Если мы не дошли до предела
-												if(lastDays > (days + count))
+												if(lastDays >= (days + count))
 													// Увеличиваем количество прошедших дней
 													count += days;
 												// Выходим из цикла
@@ -2170,7 +2170,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -2369,7 +2369,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -2410,7 +2410,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -2451,7 +2451,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -2492,7 +2492,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -2533,7 +2533,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -2574,7 +2574,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											// Получаем текущее количество дней с компенсацией високосного года
 											days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 											// Если мы не дошли до предела
-											if(lastDays > (days + count))
+											if(lastDays >= (days + count))
 												// Увеличиваем количество прошедших дней
 												count += days;
 											// Выходим из цикла
@@ -2621,7 +2621,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 												// Получаем текущее количество дней с компенсацией високосного года
 												days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 												// Если мы не дошли до предела
-												if(lastDays > (days + count))
+												if(lastDays >= (days + count))
 													// Увеличиваем количество прошедших дней
 													count += days;
 												// Выходим из цикла
@@ -2675,7 +2675,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 												// Получаем текущее количество дней с компенсацией високосного года
 												days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 												// Если мы не дошли до предела
-												if(lastDays > (days + count))
+												if(lastDays >= (days + count))
 													// Увеличиваем количество прошедших дней
 													count += days;
 												// Выходим из цикла
@@ -3008,7 +3008,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 									// Получаем текущее количество дней с компенсацией високосного года
 									days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 									// Если мы не дошли до предела
-									if(lastDays > (days + count))
+									if(lastDays >= (days + count))
 										// Увеличиваем количество прошедших дней
 										count += days;
 									// Выходим из цикла
@@ -3174,7 +3174,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 									// Получаем текущее количество дней с компенсацией високосного года
 									days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 									// Если мы не дошли до предела
-									if(lastDays > (days + count))
+									if(lastDays >= (days + count))
 										// Увеличиваем количество прошедших дней
 										count += days;
 									// Выходим из цикла
@@ -3749,7 +3749,7 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 					// Получаем текущее количество дней с компенсацией високосного года
 					days = (static_cast <uint16_t> (daysInMonths.at(i)) + ((i == 1) && leap ? 1 : 0));
 					// Если мы не дошли до предела
-					if(lastDays > (days + count))
+					if(lastDays >= (days + count))
 						// Увеличиваем количество прошедших дней
 						count += days;
 					// Выходим из цикла
