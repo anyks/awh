@@ -8782,52 +8782,55 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 string awh::Chrono::format(const int32_t zone) const noexcept {
 	// Результат работы функции
 	string result = "UTC";
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если переданная зона больше нуля
-		if(zone >= 0)
-			// Добавляем плюс
-			result.append(1, '+');
-		// Добавляем минус
-		else result.append(1, '-');
-		// Временное значение переменной
-		double intpart = 0;
-		// Выполняем конвертацию часов в секунду
-		const double seconds = (::abs(zone) / 3600.L);
-		// Выполняем проверку есть ли дробная часть у числа
-		if(::modf(seconds, &intpart) == 0)
-			// Добавляем переданную зону
-			result.append(std::to_string(static_cast <uint32_t> (seconds)));
-		// Если мы нашли дробную часть числа
-		else {
-			// Добавляем первую часть часа
-			result.append(std::to_string(static_cast <uint32_t> (intpart)));
-			// Добавляем разделитель времени
-			result.append(1, ':');
-			// Добавляем дробную часть часа
-			result.append(std::to_string(static_cast <uint32_t> ((seconds - intpart) * 60)));
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
+	// Если временная зона передана
+	if(zone != 0){
 		/**
-		 * Если включён режим отладки
+		 * Выполняем отлов ошибок
 		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+		try {
+			// Если переданная зона больше нуля
+			if(zone >= 0)
+				// Добавляем плюс
+				result.append(1, '+');
+			// Добавляем минус
+			else result.append(1, '-');
+			// Временное значение переменной
+			double intpart = 0;
+			// Выполняем конвертацию часов в секунду
+			const double seconds = (::abs(zone) / 3600.L);
+			// Выполняем проверку есть ли дробная часть у числа
+			if(::modf(seconds, &intpart) == 0)
+				// Добавляем переданную зону
+				result.append(std::to_string(static_cast <uint32_t> (seconds)));
+			// Если мы нашли дробную часть числа
+			else {
+				// Добавляем первую часть часа
+				result.append(std::to_string(static_cast <uint32_t> (intpart)));
+				// Добавляем разделитель времени
+				result.append(1, ':');
+				// Добавляем дробную часть часа
+				result.append(std::to_string(static_cast <uint32_t> ((seconds - intpart) * 60)));
+			}
 		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
-		#endif
-		// Выводим результат по умолчанию
-		return "UTC+0";
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Формируем результат по умолчанию
+			result = "UTC";
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
 	}
 	// Выводим результат
 	return result;
