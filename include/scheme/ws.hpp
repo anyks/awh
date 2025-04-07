@@ -1,5 +1,5 @@
 /**
- * @file: websocket.hpp
+ * @file: ws.hpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
