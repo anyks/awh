@@ -3325,7 +3325,7 @@ uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offs
 	return this->offset(this->timestamp(type_t::MILLISECONDS, storage), value, type, offset);
 }
 /**
- * seconds Метод получения текстового значения времени 
+ * seconds Метод получения текстового значения времени
  * @param seconds количество секунд для конвертации
  * @return        обозначение времени с указанием размерности
  */
@@ -3417,14 +3417,14 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 }
 /**
  * seconds Метод получения размера в секундах из строки
- * @param seconds строка обозначения размерности (s, m, h, d, w, M, y)
- * @return        размер в секундах
+ * @param value строка обозначения размерности (s, m, h, d, w, M, y)
+ * @return      размер в секундах
  */
-double awh::Chrono::seconds(const string & seconds) const noexcept {
+double awh::Chrono::seconds(const string & value) const noexcept {
 	// Количество секунд
 	double result = 0.;
 	// Если строка с секундами передана
-	if(!seconds.empty()){
+	if(!value.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -3438,13 +3438,13 @@ double awh::Chrono::seconds(const string & seconds) const noexcept {
 				// Создаём объект матчинга
 				regmatch_t match[i->second.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&i->second, seconds.c_str(), i->second.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&i->second, value.c_str(), i->second.re_nsub + 1, match, REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Обозначение размерности числа
 					string label = "";
 					// Размерность времени и размерность секунд
-					double dimension = 1., value = 0.;
+					double dimension = 1., seconds = 0.;
 					// Выполняем перебор всех полученных вариантов
 					for(uint8_t j = 1; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
 						// Если результат получен
@@ -3454,12 +3454,12 @@ double awh::Chrono::seconds(const string & seconds) const noexcept {
 								// Если мы получили само число
 								case 1:
 									// Получаем значение числа
-									value = ::stod(string(seconds.c_str() + match[j].rm_so, match[j].rm_eo - match[j].rm_so));
+									seconds = ::stod(string(value.c_str() + match[j].rm_so, match[j].rm_eo - match[j].rm_so));
 								break;
 								// Если мы получили размерность числа
 								case 2: {
 									// Получаем обозначение размерности числа
-									label.assign(seconds.c_str() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									label.assign(value.c_str() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
 									// Если мы получили секунды
 									if(label.front() == 's')
 										// Выполняем установку множителя
@@ -3493,11 +3493,11 @@ double awh::Chrono::seconds(const string & seconds) const noexcept {
 						}
 					}
 					// Если время установлено тогда расчитываем количество секунд
-					if(value > -1.)
+					if(seconds > -1.)
 						// Выполняем получение количества секунд
-						result = (value * dimension);
+						result = (seconds * dimension);
 					// Размер буфера по умолчанию
-					else result = value;
+					else result = seconds;
 				}
 			}
 		/**

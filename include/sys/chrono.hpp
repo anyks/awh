@@ -514,17 +514,17 @@ namespace awh {
 			uint64_t offset(const uint64_t value, const type_t type, const offset_t offset, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * seconds Метод получения текстового значения времени 
+			 * seconds Метод получения текстового значения времени
 			 * @param seconds количество секунд для конвертации
 			 * @return        обозначение времени с указанием размерности
 			 */
 			string seconds(const double seconds) const noexcept;
 			/**
 			 * seconds Метод получения размера в секундах из строки
-			 * @param seconds строка обозначения размерности (s, m, h, d, w, M, y)
-			 * @return        размер в секундах
+			 * @param value строка обозначения размерности (s, m, h, d, w, M, y)
+			 * @return      размер в секундах
 			 */
-			double seconds(const string & seconds) const noexcept;
+			double seconds(const string & value) const noexcept;
 		public:
 			/**
 			 * h12 Метод извлечения статуса 12-и часового формата времени
