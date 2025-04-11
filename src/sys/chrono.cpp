@@ -6228,7 +6228,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 /**
  * getTimeZone Метод перевода временной зоны в смещение
  * @param zone временная зона для конвертации
- * @return     временная зона в секундах
+ * @return     смещение временной зоны в секундах
  */
 int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
 	// Определяем временную зону
@@ -6718,7 +6718,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
 /**
  * getTimeZone Метод перевода временной зоны в смещение
  * @param zone временная зона для конвертации
- * @return     временная зона в секундах
+ * @return     смещение временной зоны в секундах
  */
 int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 	// Результат работы функции
@@ -7621,7 +7621,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
  * getTimeZone Метод определения текущей временной зоны относительно летнего времени
  * @param std временная зона стандартного времени
  * @param sum временная зона летнего времени
- * @return    текущее значение временной зоны
+ * @return    смещение временной зоны в секундах
  */
 int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexcept {
 	/**
@@ -7664,7 +7664,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 /**
  * getTimeZone Метод получения установленной временной зоны
  * @param storage хранение значение времени
- * @return        установленное значение временной зоны
+ * @return        смещение временной зоны в секундах
  */
 int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 	// Результат работы функции

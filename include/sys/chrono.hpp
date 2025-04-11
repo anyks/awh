@@ -714,13 +714,13 @@ namespace awh {
 			/**
 			 * getTimeZone Метод перевода временной зоны в смещение
 			 * @param zone временная зона для конвертации
-			 * @return     временная зона в секундах
+			 * @return     смещение временной зоны в секундах
 			 */
 			int32_t getTimeZone(const zone_t zone) const noexcept;
 			/**
 			 * getTimeZone Метод перевода временной зоны в смещение
 			 * @param zone временная зона для конвертации
-			 * @return     временная зона в секундах
+			 * @return     смещение временной зоны в секундах
 			 */
 			int32_t getTimeZone(const string & zone) const noexcept;
 		public:
@@ -728,14 +728,14 @@ namespace awh {
 			 * getTimeZone Метод определения текущей временной зоны относительно летнего времени
 			 * @param std временная зона стандартного времени
 			 * @param sum временная зона летнего времени
-			 * @return    текущее значение временной зоны
+			 * @return    смещение временной зоны в секундах
 			 */
 			int32_t getTimeZone(const zone_t std, const zone_t sum) const noexcept;
 		public:
 			/**
 			 * getTimeZone Метод получения установленной временной зоны
 			 * @param storage хранение значение времени
-			 * @return        установленное значение временной зоны
+			 * @return        смещение временной зоны в секундах
 			 */
 			int32_t getTimeZone(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
