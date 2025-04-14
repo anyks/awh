@@ -2002,7 +2002,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 						// Если получен диапазон IP-адресов
 						if(i->second.end->type() == type_t::IPV4){
 							// Если адрес входит в диапазон адресов
-							if(net.range(* i->second.begin.get(), * i->second.end.get(), i->second.prefix)){
+							if((net >= (* i->second.begin.get())) && (net <= * (i->second.end.get()))){
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
@@ -2032,7 +2032,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 						// Если получен диапазон IP-адресов
 						if(i->second.end->type() == type_t::IPV6){
 							// Если адрес входит в диапазон адресов
-							if(net.range(* i->second.begin.get(), * i->second.end.get(), i->second.prefix)){
+							if((net >= (* i->second.begin.get())) && (net <= (* i->second.end.get()))){
 								// Если адрес зарезервирован
 								if(i->second.reserved)
 									// Устанавливаем результат
