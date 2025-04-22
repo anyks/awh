@@ -3923,7 +3923,7 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 					// Если конца значения записи мы не нашли
 					if((valueEnd == string::npos) || (valueEnd < valueBegin))
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = (text.length() - 1);
+						valueEnd = text.length();
 				}
 				// Если мы нашли и ключ и значение записи
 				if(valueBegin < valueEnd)
@@ -4034,7 +4034,7 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 					// Если конца значения записи мы не нашли
 					if((valueEnd == wstring::npos) || (valueEnd < valueBegin))
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = (text.length() - 1);
+						valueEnd = text.length();
 				}
 				// Если мы нашли и ключ и значение записи
 				if(valueBegin < valueEnd)
