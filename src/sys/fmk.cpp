@@ -3853,6 +3853,228 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
 	return this->replace(* const_cast <wstring *> (&text), word, alt);
 }
 /**
+ * kv Метод извлечения ключей и значений из текста
+ * @param text      текст из которого извлекаются записи
+ * @param delim     разделитель записей
+ * @param separator разделитель ключа и значения
+ * @param escaping  символы экранирования
+ * @return          список найденных элементов
+ */
+unordered_map <string, string> awh::Framework::kv(const string & text, const string & delim, const string & separator, const string & escaping) const noexcept {
+	// Результат работы функции
+	unordered_map <string, string> result;
+	// Если данные для обработки текста передан
+	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Количество экранирования
+			uint8_t escapingCount = 0;
+			// Позиции ключа в тексте
+			size_t keyBegin = 0, keyEnd = 0;
+			// Позиции значения в тексте
+			size_t valueBegin = 0, valueEnd = 0;
+			// Выполняем парсинг текста
+			while(keyBegin < text.length()){
+				// Выполняем поиск разделителя ключа и значения
+				keyEnd = text.find(separator, keyBegin);
+				// Если разделитель не найден, выходим
+				if(keyEnd == string::npos)
+					// Выходим из цикла
+					break;
+				// Выполняем поиск позиции начала значения
+				valueBegin = (keyEnd + separator.length());
+				// Если в тексте присутствуют символы экранирования
+				if(((keyEnd + escaping.length() + separator.length()) < text.length()) &&
+					(std::strncmp(&text.c_str()[keyEnd + separator.length()], escaping.c_str(), escaping.length()) == 0)){
+					// Сбрасываем количество экранирований
+					escapingCount = 0;
+					// Получаем начало значения
+					valueBegin += escaping.length();
+					// Получаем конец значения
+					valueEnd = (keyEnd + delim.length());
+					/**
+					 * Выполняем поиск конца значения
+					 */
+					do {
+						// Устанавливаем количество экранирований на одно значение
+						escapingCount = 1;
+						// Определяем конец значения
+						valueEnd = text.find(escaping, valueEnd + escaping.length() + delim.length());
+						// Если мы нашли экранирование
+						while(((valueEnd - static_cast <size_t> (escapingCount)) > 0) && (text[valueEnd - static_cast <size_t> (escapingCount)] == '\\'))
+							// Увеличиваем количество найденных экранирований
+							++escapingCount;
+					// Если мы ещё не достигли конца значения
+					} while((valueEnd != string::npos) && ((escapingCount % 2) == 0));
+					// Если конец значения не найден
+					if(valueEnd == string::npos)
+						// Устанавливаем конец значения последний символ текста
+						valueEnd = (text.length() - 1);
+				// Если символов экранирования в тексте нет
+				} else {
+					// Устанавливаем конец значения по разделителю
+					valueEnd = text.find(separator, valueBegin);
+					// Если разделитель найден
+					if(valueEnd != string::npos)
+						// Выполняем поиск конца текущей записи
+						valueEnd = text.rfind(delim, valueEnd);
+					// Если конца значения записи мы не нашли
+					if((valueEnd == string::npos) || (valueEnd < valueBegin))
+						// Устанавливаем конец значения последний символ текста
+						valueEnd = (text.length() - 1);
+				}
+				// Если мы нашли и ключ и значение записи
+				if(valueBegin < valueEnd)
+					// Выполняем формирование записи результата
+					result.emplace(
+						text.substr(keyBegin, keyEnd - keyBegin),
+						text.substr(valueBegin, valueEnd - valueBegin)
+					);
+				// Выполняем поиск следующей записи
+				keyBegin = text.find(delim, valueEnd);
+				// Если начало следующей записи не найдено
+				if(keyBegin == string::npos)
+					// Устанавливаем конец текста
+					keyBegin = text.length();
+				// Выполняем смещение записи на размер разделителя записи
+				keyBegin += delim.length();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * kv Метод извлечения ключей и значений из текста
+ * @param text      текст из которого извлекаются записи
+ * @param delim     разделитель записей
+ * @param separator разделитель ключа и значения
+ * @param escaping  символы экранирования
+ * @return          список найденных элементов
+ */
+unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const wstring & delim, const wstring & separator, const wstring & escaping) const noexcept {
+	// Результат работы функции
+	unordered_map <wstring, wstring> result;
+	// Если данные для обработки текста передан
+	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Количество экранирования
+			uint8_t escapingCount = 0;
+			// Позиции ключа в тексте
+			size_t keyBegin = 0, keyEnd = 0;
+			// Позиции значения в тексте
+			size_t valueBegin = 0, valueEnd = 0;
+			// Выполняем парсинг текста
+			while(keyBegin < text.length()){
+				// Выполняем поиск разделителя ключа и значения
+				keyEnd = text.find(separator, keyBegin);
+				// Если разделитель не найден, выходим
+				if(keyEnd == wstring::npos)
+					// Выходим из цикла
+					break;
+				// Выполняем поиск позиции начала значения
+				valueBegin = (keyEnd + separator.length());
+				// Если в тексте присутствуют символы экранирования
+				if(((keyEnd + escaping.length() + separator.length()) < text.length()) &&
+					(std::wcsncmp(&text.c_str()[keyEnd + separator.length()], escaping.c_str(), escaping.length()) == 0)){
+					// Сбрасываем количество экранирований
+					escapingCount = 0;
+					// Получаем начало значения
+					valueBegin += escaping.length();
+					// Получаем конец значения
+					valueEnd = (keyEnd + delim.length());
+					/**
+					 * Выполняем поиск конца значения
+					 */
+					do {
+						// Устанавливаем количество экранирований на одно значение
+						escapingCount = 1;
+						// Определяем конец значения
+						valueEnd = text.find(escaping, valueEnd + escaping.length() + delim.length());
+						// Если мы нашли экранирование
+						while(((valueEnd - static_cast <size_t> (escapingCount)) > 0) && (text[valueEnd - static_cast <size_t> (escapingCount)] == L'\\'))
+							// Увеличиваем количество найденных экранирований
+							++escapingCount;
+					// Если мы ещё не достигли конца значения
+					} while((valueEnd != wstring::npos) && ((escapingCount % 2) == 0));
+					// Если конец значения не найден
+					if(valueEnd == wstring::npos)
+						// Устанавливаем конец значения последний символ текста
+						valueEnd = (text.length() - 1);
+				// Если символов экранирования в тексте нет
+				} else {
+					// Устанавливаем конец значения по разделителю
+					valueEnd = text.find(separator, valueBegin);
+					// Если разделитель найден
+					if(valueEnd != wstring::npos)
+						// Выполняем поиск конца текущей записи
+						valueEnd = text.rfind(delim, valueEnd);
+					// Если конца значения записи мы не нашли
+					if((valueEnd == wstring::npos) || (valueEnd < valueBegin))
+						// Устанавливаем конец значения последний символ текста
+						valueEnd = (text.length() - 1);
+				}
+				// Если мы нашли и ключ и значение записи
+				if(valueBegin < valueEnd)
+					// Выполняем формирование записи результата
+					result.emplace(
+						text.substr(keyBegin, keyEnd - keyBegin),
+						text.substr(valueBegin, valueEnd - valueBegin)
+					);
+				// Выполняем поиск следующей записи
+				keyBegin = text.find(delim, valueEnd);
+				// Если начало следующей записи не найдено
+				if(keyBegin == wstring::npos)
+					// Устанавливаем конец текста
+					keyBegin = text.length();
+				// Выполняем смещение записи на размер разделителя записи
+				keyBegin += delim.length();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * domainZone Метод установки пользовательской зоны
  * @param zone пользовательская зона
  */

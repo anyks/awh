@@ -688,6 +688,25 @@ namespace awh {
 			const wstring & replace(const wstring & text, const wstring & word, const wstring & alt = L"") const noexcept;
 		public:
 			/**
+			 * kv Метод извлечения ключей и значений из текста
+			 * @param text      текст из которого извлекаются записи
+			 * @param delim     разделитель записей
+			 * @param separator разделитель ключа и значения
+			 * @param escaping  символы экранирования
+			 * @return          список найденных элементов
+			 */
+			unordered_map <string, string> kv(const string & text, const string & delim, const string & separator = "=", const string & escaping = "\"") const noexcept;
+			/**
+			 * kv Метод извлечения ключей и значений из текста
+			 * @param text      текст из которого извлекаются записи
+			 * @param delim     разделитель записей
+			 * @param separator разделитель ключа и значения
+			 * @param escaping  символы экранирования
+			 * @return          список найденных элементов
+			 */
+			unordered_map <wstring, wstring> kv(const wstring & text, const wstring & delim, const wstring & separator = L"=", const wstring & escaping = L"\"") const noexcept;
+		public:
+			/**
 			 * domainZone Метод установки пользовательской зоны
 			 * @param zone пользовательская зона
 			 */
