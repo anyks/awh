@@ -28,7 +28,7 @@
 /**
  * Наши модули
  */
-#include <sys/cluster.hpp>
+#include <cluster/cluster.hpp>
 
 /**
  * awh пространство имён

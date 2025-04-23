@@ -20,8 +20,8 @@
  */
 #include <core/node.hpp>
 #include <core/timer.hpp>
-#include <sys/cluster.hpp>
 #include <scheme/server.hpp>
+#include <cluster/cluster.hpp>
 
 /**
  * awh пространство имён

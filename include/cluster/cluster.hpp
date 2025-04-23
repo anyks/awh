@@ -44,9 +44,9 @@
 #include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <sys/cmp.hpp>
 #include <net/socket.hpp>
 #include <core/core.hpp>
+#include <cluster/cmp.hpp>
 #include <events/evbase.hpp>
 
 /**
