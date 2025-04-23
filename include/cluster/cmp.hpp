@@ -246,6 +246,13 @@ namespace awh {
 				operator size_t() const noexcept;
 			public:
 				/**
+				 * Оператор [=] установки максимального размера одного блока
+				 * @param size размер блока данных
+				 * @return     текущий объект протокола
+				 */
+				Decoder & operator = (const size_t size) noexcept;
+			public:
+				/**
 				 * Decoder Конструктор
 				 * @param log объект для работы с логами
 				 */

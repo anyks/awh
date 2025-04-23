@@ -632,3 +632,14 @@ awh::cmp::Decoder::operator size_t() const noexcept {
 	// Выводим количество записей в протоколе
 	return this->size();
 }
+/**
+ * Оператор [=] установки максимального размера одного блока
+ * @param size размер блока данных
+ * @return     текущий объект протокола
+ */
+awh::cmp::Decoder & awh::cmp::Decoder::operator = (const size_t size) noexcept {
+	// Выполняем установку размера чанка
+	this->chunkSize(size);
+	// Выводим текущий объект
+	return (* this);
+}
