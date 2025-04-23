@@ -103,50 +103,53 @@ namespace awh {
 			 * process Метод запуска обработки поступившей задачи
 			 */
 			void process() noexcept {
-				/**
-				 * Выполняем отлов ошибок
-				 */
-				try {
-					// Если функция обратного вызова триггера установлена
-					if(this->_trigger != nullptr)
-						// Выполняем функцию обратного вызова
-						this->_trigger();
-					// Если данные в очереди существуют
-					if(!this->_payload.empty()){
-						// Извлекаем данные полезной нагрузки
-						const auto & payload = this->_payload.front();
-						// Если функция подписки на логи установлена, выводим результат
-						if(this->_callback != nullptr)
-							// Выводим сообщение лога всем подписавшимся
-							this->_callback(payload);
-						// Выполняем блокировку потока
-						this->_mtx.lock();
-						// Удаляем текущее задание
-						this->_payload.pop();
-						// Выполняем разблокировку потока
-						this->_mtx.unlock();
-						// Если функция обратного вызова установлена
-						if(this->_state != nullptr)
-							// Выполняем функцию обратного вызова
-							this->_state(state_t::DECREMENT, this->_payload.size());
-					}
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const exception & error) {
+				// Если не производится остановка
+				if(!this->_stop){
 					/**
-					 * Если включён режим отладки
+					 * Выполняем отлов ошибок
 					 */
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+					try {
+						// Если функция обратного вызова триггера установлена
+						if(this->_trigger != nullptr)
+							// Выполняем функцию обратного вызова
+							this->_trigger();
+						// Если данные в очереди существуют
+						if(!this->_payload.empty()){
+							// Извлекаем данные полезной нагрузки
+							const auto & payload = this->_payload.front();
+							// Если функция подписки на логи установлена, выводим результат
+							if(this->_callback != nullptr)
+								// Выводим сообщение лога всем подписавшимся
+								this->_callback(payload);
+							// Выполняем блокировку потока
+							this->_mtx.lock();
+							// Удаляем текущее задание
+							this->_payload.pop();
+							// Выполняем разблокировку потока
+							this->_mtx.unlock();
+							// Если функция обратного вызова установлена
+							if(this->_state != nullptr)
+								// Выполняем функцию обратного вызова
+								this->_state(state_t::DECREMENT, this->_payload.size());
+						}
 					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						::fprintf(stderr, "%s\n", error.what());
-					#endif
+					 * Если возникает ошибка
+					 */
+					} catch(const exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "%s\n", error.what());
+						#endif
+					}
 				}
 			}
 		private:
