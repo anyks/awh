@@ -58,10 +58,10 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 					if(size > 0){
 						// Если последний символ это перенос строки
 						if(buffer[size - 1] == '\n')
-							// Формируем завершающий ноль
-							buffer[size - 1] = '\0';
+							// Выполняем формирование результата
+							result.assign(buffer, buffer + (size - 1));
 						// Выполняем формирование результата
-						result.assign(buffer, buffer + size);
+						else result.assign(buffer, buffer + size);
 					}
 					// Выполняем закрытие файла
 					::fclose(file);
