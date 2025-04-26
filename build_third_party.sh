@@ -159,8 +159,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.4.1
-	VER="3.4.1"
+	# Версия OpenSSL v3.5.0
+	VER="3.5.0"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*
@@ -466,7 +466,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src/build/cmake" || exit 1
 
 	# Версия ZSTD
-	VER="1.5.6"
+	VER="1.5.7"
 
 	# Выполняем удаление предыдущей закаченной версии
 	git tag -d v${VER}
@@ -945,7 +945,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия PCRE2
-	VER="10.44"
+	VER="10.45"
 
 	# Выполняем удаление предыдущей закаченной версии
 	git tag -d pcre2-${VER}
@@ -1243,7 +1243,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgHttp2
-	VER="1.64.0"
+	VER="1.65.0"
 
 	# Переключаемся на master
 	git checkout master
@@ -1352,7 +1352,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия GPerfTools
-	VER="2.16"
+	VER="2.16.90"
 
 	# Закачиваем все изменения
 	git fetch --all
