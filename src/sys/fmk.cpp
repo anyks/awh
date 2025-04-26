@@ -3871,6 +3871,8 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 		try {
 			// Количество экранирования
 			uint8_t escapingCount = 0;
+			// Позиция экранирования
+			size_t escapingPosition = 0;
 			// Позиции ключа в тексте
 			size_t keyBegin = 0, keyEnd = 0;
 			// Позиции значения в тексте
@@ -3902,10 +3904,12 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 						escapingCount = 1;
 						// Определяем конец значения
 						valueEnd = text.find(escaping, valueEnd + escaping.length() + delim.length());
+						// Получаем позицию поиска экранирования
+						escapingPosition = (valueEnd - static_cast <size_t> (escapingCount));
 						// Если мы нашли экранирование
-						while(((valueEnd - static_cast <size_t> (escapingCount)) > 0) && (text[valueEnd - static_cast <size_t> (escapingCount)] == '\\'))
-							// Увеличиваем количество найденных экранирований
-							++escapingCount;
+						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text.at(escapingPosition) == '\\'))
+							// Получаем позицию поиска экранирования
+							escapingPosition = (valueEnd - static_cast <size_t> (++escapingCount));
 					// Если мы ещё не достигли конца значения
 					} while((valueEnd != string::npos) && ((escapingCount % 2) == 0));
 					// Если конец значения не найден
@@ -3982,6 +3986,8 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 		try {
 			// Количество экранирования
 			uint8_t escapingCount = 0;
+			// Позиция экранирования
+			size_t escapingPosition = 0;
 			// Позиции ключа в тексте
 			size_t keyBegin = 0, keyEnd = 0;
 			// Позиции значения в тексте
@@ -4013,10 +4019,12 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 						escapingCount = 1;
 						// Определяем конец значения
 						valueEnd = text.find(escaping, valueEnd + escaping.length() + delim.length());
+						// Получаем позицию поиска экранирования
+						escapingPosition = (valueEnd - static_cast <size_t> (escapingCount));
 						// Если мы нашли экранирование
-						while(((valueEnd - static_cast <size_t> (escapingCount)) > 0) && (text[valueEnd - static_cast <size_t> (escapingCount)] == L'\\'))
-							// Увеличиваем количество найденных экранирований
-							++escapingCount;
+						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text.at(escapingPosition) == L'\\'))
+							// Получаем позицию поиска экранирования
+							escapingPosition = (valueEnd - static_cast <size_t> (++escapingCount));
 					// Если мы ещё не достигли конца значения
 					} while((valueEnd != wstring::npos) && ((escapingCount % 2) == 0));
 					// Если конец значения не найден
