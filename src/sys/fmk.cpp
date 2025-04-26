@@ -3860,7 +3860,7 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-unordered_map <string, string> awh::Framework::kv(const string & text, const string & delim, const string & separator, const string & escaping) const noexcept {
+unordered_map <string, string> awh::Framework::kv(const string & text, const string & delim, const string & separator, const vector <string> & escaping) const noexcept {
 	// Результат работы функции
 	unordered_map <string, string> result;
 	// Если данные для обработки текста передан
@@ -3887,13 +3887,20 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 					break;
 				// Выполняем поиск позиции начала значения
 				valueBegin = (keyEnd + separator.length());
-				// Если в тексте присутствуют символы экранирования
-				if(((keyEnd + escaping.length() + separator.length()) < text.length()) &&
-					(std::strncmp(&text.c_str()[keyEnd + separator.length()], escaping.c_str(), escaping.length()) == 0)){
+				// Выполняем поиск экранирования разделителя
+				const auto i = find_if(escaping.begin(), escaping.end(), [keyEnd, &separator, &text](const string & esc) noexcept -> bool {
+					// Выполняем проверку
+					return (
+						((keyEnd + esc.length() + separator.length()) < text.length()) &&
+						(std::strncmp(&text.data()[keyEnd + separator.length()], esc.data(), esc.length()) == 0)
+					);
+				});
+				// Если экранирование найдено
+				if(i != escaping.end()){
 					// Сбрасываем количество экранирований
 					escapingCount = 0;
 					// Получаем начало значения
-					valueBegin += escaping.length();
+					valueBegin += i->length();
 					// Получаем конец значения
 					valueEnd = (keyEnd + delim.length());
 					/**
@@ -3903,7 +3910,7 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 						// Устанавливаем количество экранирований на одно значение
 						escapingCount = 1;
 						// Определяем конец значения
-						valueEnd = text.find(escaping, valueEnd + escaping.length() + delim.length());
+						valueEnd = text.find(* i, valueEnd + i->length() + delim.length());
 						// Получаем позицию поиска экранирования
 						escapingPosition = (valueEnd - static_cast <size_t> (escapingCount));
 						// Если мы нашли экранирование
@@ -3915,15 +3922,26 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 					// Если конец значения не найден
 					if(valueEnd == string::npos)
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = (text.length() - 1);
-				// Если символов экранирования в тексте нет
+						valueEnd = text.length();
+				// Если экранирование не найдено
 				} else {
-					// Устанавливаем конец значения по разделителю
-					valueEnd = text.find(separator, valueBegin);
+					// Устанавливаем конец позиции значения как начало позиции
+					valueEnd = valueBegin;
+					/**
+					 * Выполняем поиск конца строки
+					 */
+					do {
+						// Выполняем поиск разделителя
+						valueEnd = text.find(separator, valueEnd + 1);
+					/**
+					 * Если мы не дошли до конца или нашли экранирование
+					 */
+					} while((valueEnd != string::npos) && (text[valueEnd - 1] == '\\'));
 					// Если разделитель найден
 					if(valueEnd != string::npos)
 						// Выполняем поиск конца текущей записи
 						valueEnd = text.rfind(delim, valueEnd);
+					
 					// Если конца значения записи мы не нашли
 					if((valueEnd == string::npos) || (valueEnd < valueBegin))
 						// Устанавливаем конец значения последний символ текста
@@ -3937,13 +3955,12 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 						text.substr(valueBegin, valueEnd - valueBegin)
 					);
 				// Выполняем поиск следующей записи
-				keyBegin = text.find(delim, valueEnd);
-				// Если начало следующей записи не найдено
-				if(keyBegin == string::npos)
-					// Устанавливаем конец текста
-					keyBegin = text.length();
-				// Выполняем смещение записи на размер разделителя записи
-				keyBegin += delim.length();
+				keyBegin = (valueEnd + (i != escaping.end() ? i->length() : 0));
+				// Выполняем поиск начало следующего ключа
+				while(((keyBegin + delim.length()) < text.length()) &&
+				       (std::strncmp(&text.data()[keyBegin], delim.data(), delim.length()) == 0))
+					// Выполняем установку начала следующего ключа
+					keyBegin += delim.length();
 			}
 		/**
 		 * Если возникает ошибка
@@ -3975,7 +3992,7 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const wstring & delim, const wstring & separator, const wstring & escaping) const noexcept {
+unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const wstring & delim, const wstring & separator, const vector <wstring> & escaping) const noexcept {
 	// Результат работы функции
 	unordered_map <wstring, wstring> result;
 	// Если данные для обработки текста передан
@@ -4002,13 +4019,20 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 					break;
 				// Выполняем поиск позиции начала значения
 				valueBegin = (keyEnd + separator.length());
-				// Если в тексте присутствуют символы экранирования
-				if(((keyEnd + escaping.length() + separator.length()) < text.length()) &&
-					(std::wcsncmp(&text.c_str()[keyEnd + separator.length()], escaping.c_str(), escaping.length()) == 0)){
+				// Выполняем поиск экранирования разделителя
+				const auto i = find_if(escaping.begin(), escaping.end(), [keyEnd, &separator, &text](const wstring & esc) noexcept -> bool {
+					// Выполняем проверку
+					return (
+						((keyEnd + esc.length() + separator.length()) < text.length()) &&
+						(std::wcsncmp(&text.data()[keyEnd + separator.length()], esc.data(), esc.length()) == 0)
+					);
+				});
+				// Если экранирование найдено
+				if(i != escaping.end()){
 					// Сбрасываем количество экранирований
 					escapingCount = 0;
 					// Получаем начало значения
-					valueBegin += escaping.length();
+					valueBegin += i->length();
 					// Получаем конец значения
 					valueEnd = (keyEnd + delim.length());
 					/**
@@ -4018,11 +4042,11 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 						// Устанавливаем количество экранирований на одно значение
 						escapingCount = 1;
 						// Определяем конец значения
-						valueEnd = text.find(escaping, valueEnd + escaping.length() + delim.length());
+						valueEnd = text.find(* i, valueEnd + i->length() + delim.length());
 						// Получаем позицию поиска экранирования
 						escapingPosition = (valueEnd - static_cast <size_t> (escapingCount));
 						// Если мы нашли экранирование
-						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text.at(escapingPosition) == L'\\'))
+						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text.at(escapingPosition) == '\\'))
 							// Получаем позицию поиска экранирования
 							escapingPosition = (valueEnd - static_cast <size_t> (++escapingCount));
 					// Если мы ещё не достигли конца значения
@@ -4030,15 +4054,26 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 					// Если конец значения не найден
 					if(valueEnd == wstring::npos)
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = (text.length() - 1);
-				// Если символов экранирования в тексте нет
+						valueEnd = text.length();
+				// Если экранирование не найдено
 				} else {
-					// Устанавливаем конец значения по разделителю
-					valueEnd = text.find(separator, valueBegin);
+					// Устанавливаем конец позиции значения как начало позиции
+					valueEnd = valueBegin;
+					/**
+					 * Выполняем поиск конца строки
+					 */
+					do {
+						// Выполняем поиск разделителя
+						valueEnd = text.find(separator, valueEnd + 1);
+					/**
+					 * Если мы не дошли до конца или нашли экранирование
+					 */
+					} while((valueEnd != wstring::npos) && (text[valueEnd - 1] == '\\'));
 					// Если разделитель найден
 					if(valueEnd != wstring::npos)
 						// Выполняем поиск конца текущей записи
 						valueEnd = text.rfind(delim, valueEnd);
+					
 					// Если конца значения записи мы не нашли
 					if((valueEnd == wstring::npos) || (valueEnd < valueBegin))
 						// Устанавливаем конец значения последний символ текста
@@ -4052,13 +4087,12 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 						text.substr(valueBegin, valueEnd - valueBegin)
 					);
 				// Выполняем поиск следующей записи
-				keyBegin = text.find(delim, valueEnd);
-				// Если начало следующей записи не найдено
-				if(keyBegin == wstring::npos)
-					// Устанавливаем конец текста
-					keyBegin = text.length();
-				// Выполняем смещение записи на размер разделителя записи
-				keyBegin += delim.length();
+				keyBegin = (valueEnd + (i != escaping.end() ? i->length() : 0));
+				// Выполняем поиск начало следующего ключа
+				while(((keyBegin + delim.length()) < text.length()) &&
+				       (std::wcsncmp(&text.data()[keyBegin], delim.data(), delim.length()) == 0))
+					// Выполняем установку начала следующего ключа
+					keyBegin += delim.length();
 			}
 		/**
 		 * Если возникает ошибка

@@ -695,7 +695,7 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 */
-			unordered_map <string, string> kv(const string & text, const string & delim, const string & separator = "=", const string & escaping = "\"") const noexcept;
+			unordered_map <string, string> kv(const string & text, const string & delim, const string & separator = "=", const vector <string> & escaping = {"\""}) const noexcept;
 			/**
 			 * kv Метод извлечения ключей и значений из текста
 			 * @param text      текст из которого извлекаются записи
@@ -704,7 +704,7 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 */
-			unordered_map <wstring, wstring> kv(const wstring & text, const wstring & delim, const wstring & separator = L"=", const wstring & escaping = L"\"") const noexcept;
+			unordered_map <wstring, wstring> kv(const wstring & text, const wstring & delim, const wstring & separator = L"=", const vector <wstring> & escaping = {L"\""}) const noexcept;
 		public:
 			/**
 			 * domainZone Метод установки пользовательской зоны
