@@ -3941,9 +3941,12 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 					if(valueEnd != string::npos)
 						// Выполняем поиск конца текущей записи
 						valueEnd = text.rfind(delim, valueEnd);
-					
 					// Если конца значения записи мы не нашли
 					if((valueEnd == string::npos) || (valueEnd < valueBegin))
+						// Выполняем поиск следующего элемента относительно текущей позиции
+						valueEnd = text.find(delim, valueBegin);
+					// Если конца значения записи мы не нашли
+					if(valueEnd == string::npos)
 						// Устанавливаем конец значения последний символ текста
 						valueEnd = text.length();
 				}
@@ -4073,9 +4076,12 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 					if(valueEnd != wstring::npos)
 						// Выполняем поиск конца текущей записи
 						valueEnd = text.rfind(delim, valueEnd);
-					
 					// Если конца значения записи мы не нашли
-					if((valueEnd == wstring::npos) || (valueEnd < valueBegin))
+					if((valueEnd == string::npos) || (valueEnd < valueBegin))
+						// Выполняем поиск следующего элемента относительно текущей позиции
+						valueEnd = text.find(delim, valueBegin);
+					// Если конца значения записи мы не нашли
+					if(valueEnd == wstring::npos)
 						// Устанавливаем конец значения последний символ текста
 						valueEnd = text.length();
 				}
