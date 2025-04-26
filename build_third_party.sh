@@ -1370,12 +1370,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 	git checkout -b gperftools-v${VER}-branch gperftools-${VER}
 
 	# Создаём каталог сборки
-	mkdir -p "build" || exit 1
+	mkdir -p "build_awh" || exit 1
 	# Переходим в каталог
-	cd "build" || exit 1
+	cd "build_awh" || exit 1
 
 	# Удаляем старый файл кэша
-	rm -rf "$src/build/CMakeCache.txt"
+	rm -rf "$src/build_awh/CMakeCache.txt"
 
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
@@ -1407,10 +1407,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 	mkdir "$PREFIX/include/gperftools"
 
 	# Производим установку собранных библиотек
-	for i in $(ls "$src/build" | grep ".*\.a$");
+	for i in $(ls "$src/build_awh" | grep ".*\.a$");
 	do
-		echo "Move \"$src/build/$i\" to \"$PREFIX/lib/$i\""
-		cp "$src/build/$i" "$PREFIX/lib/$i" || exit 1
+		echo "Move \"$src/build_awh/$i\" to \"$PREFIX/lib/$i\""
+		cp "$src/build_awh/$i" "$PREFIX/lib/$i" || exit 1
 	done
 
 	# Производим установку заголовочных файлов по нужному пути
