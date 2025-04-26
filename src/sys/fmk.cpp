@@ -3922,7 +3922,7 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
 					// Если конец значения не найден
 					if(valueEnd == string::npos)
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = text.length();
+						valueEnd = (text.length() - 1);
 				// Если экранирование не найдено
 				} else {
 					// Устанавливаем конец позиции значения как начало позиции
@@ -4057,7 +4057,7 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 					// Если конец значения не найден
 					if(valueEnd == wstring::npos)
 						// Устанавливаем конец значения последний символ текста
-						valueEnd = text.length();
+						valueEnd = (text.length() - 1);
 				// Если экранирование не найдено
 				} else {
 					// Устанавливаем конец позиции значения как начало позиции
