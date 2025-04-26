@@ -4077,7 +4077,7 @@ unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const 
 						// Выполняем поиск конца текущей записи
 						valueEnd = text.rfind(delim, valueEnd);
 					// Если конца значения записи мы не нашли
-					if((valueEnd == string::npos) || (valueEnd < valueBegin))
+					if((valueEnd == wstring::npos) || (valueEnd < valueBegin))
 						// Выполняем поиск следующего элемента относительно текущей позиции
 						valueEnd = text.find(delim, valueBegin);
 					// Если конца значения записи мы не нашли
