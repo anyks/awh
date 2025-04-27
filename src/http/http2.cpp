@@ -1574,7 +1574,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					// Если буфер полезной нагрузки не существует
 					else {
 						// Выполняем создание буфера полезной нагрузки
-						auto ret = this->_payloads.emplace(id, unique_ptr <buffer_t> (new buffer_t(this->_log)));
+						auto ret = this->_payloads.emplace(id, make_unique <buffer_t> (this->_log));
 						// Выполняем добавление в буфер данных полезной нагрузки
 						ret.first->second->push(buffer, size);
 					}

@@ -161,7 +161,7 @@ uint16_t awh::Timer::timeout(const uint32_t delay) noexcept {
 			// Получаем идентификатор таймера
 			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
+			auto ret = this->_brokers.emplace(tid, make_unique <broker_t> (this->_fmk, this->_log));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем время задержки таймера
@@ -217,7 +217,7 @@ uint16_t awh::Timer::interval(const uint32_t delay) noexcept {
 			// Получаем идентификатор таймера
 			const uint16_t tid = (this->_brokers.empty() ? 1 : this->_brokers.rbegin()->first + 1);
 			// Создаём объект таймера
-			auto ret = this->_brokers.emplace(tid, unique_ptr <broker_t> (new broker_t(this->_fmk, this->_log)));
+			auto ret = this->_brokers.emplace(tid, make_unique <broker_t> (this->_fmk, this->_log));
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Устанавливаем флаг персистентной работы

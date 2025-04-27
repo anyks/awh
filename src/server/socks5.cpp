@@ -157,7 +157,7 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 						// Выводим функцию обратного вызова
 						this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid1, mode_t::CONNECT);
 					// Выполняем создание нового подключённого клиента
-					auto ret = this->_clients.emplace(bid1, unique_ptr <client::core_t> (new client::core_t(&this->_dns, this->_fmk, this->_log)));
+					auto ret = this->_clients.emplace(bid1, make_unique <client::core_t> (&this->_dns, this->_fmk, this->_log));
 					// Выполняем отключение информационных сообщений сетевого ядра клиента
 					ret.first->second->verbose(false);
 					// Устанавливаем параметры SSL-шифрвоания
@@ -450,7 +450,7 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, unique_ptr <queue_t> (new queue_t(this->_log)));
+				auto ret = this->_payloads.emplace(bid, make_unique <queue_t> (this->_log));
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 				ret.first->second->push(buffer, size);
 			}

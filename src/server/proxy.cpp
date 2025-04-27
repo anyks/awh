@@ -147,7 +147,7 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, unique_ptr <queue_t> (new queue_t(this->_log)));
+				auto ret = this->_payloads.emplace(bid, make_unique <queue_t> (this->_log));
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 				ret.first->second->push(buffer, size);
 			}
@@ -275,7 +275,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Устанавливаем постоянное подключение для клиента
 			this->_server.alive(bid, true);
 			// Выполняем создание клиента
-			auto ret = this->_clients.emplace(bid, unique_ptr <client_t> (new client_t(this->_fmk, this->_log)));
+			auto ret = this->_clients.emplace(bid, make_unique <client_t> (this->_fmk, this->_log));
 			// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров
 			ret.first->second->core.memoryAvailableSize(this->_memoryAvailableSize);
 			// Выполняем установку размера хранимой полезной нагрузки для одного брокера

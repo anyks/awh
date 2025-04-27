@@ -43,7 +43,7 @@ void awh::server::scheme::WEB2::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (this->_options.count(bid) < 1)){
 		// Создаём объект параметров активного клиента
-		auto ret = this->_options.emplace(bid, unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
+		auto ret = this->_options.emplace(bid, make_unique <options_t> (this->_fmk, this->_log));
 		// Устанавливаем контрольную точку
 		ret.first->second->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 	}
@@ -102,7 +102,7 @@ void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid
 		// Если брокер найден, выводим его параметры
 		if(i != this->_options.end()){
 			// Создаём объект параметров активного клиента
-			auto ret = i->second->streams.emplace(sid, unique_ptr <stream_t> (new stream_t(i->second->fmk, i->second->log)));
+			auto ret = i->second->streams.emplace(sid, make_unique <stream_t> (i->second->fmk, i->second->log));
 			// Устанавливаем идентификатор потока
 			ret.first->second->sid = sid;
 			// Устанавливаем список доступных компрессоров

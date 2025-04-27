@@ -759,7 +759,7 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 				// Если для потока почередь полезной нагрузки ещё не сформированна
 				else {
 					// Создаём новую очередь полезной нагрузки
-					auto ret = this->_payloads.emplace(bid, unique_ptr <buffer_t> (new buffer_t(this->_log)));
+					auto ret = this->_payloads.emplace(bid, make_unique <buffer_t> (this->_log));
 					// Выполняем добавление полезной нагрузки
 					ret.first->second->push(buffer, size);
 				}

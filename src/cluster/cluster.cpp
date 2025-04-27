@@ -522,9 +522,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// выполняем активацию работы события закрытия подключения
 								broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 								// Создаём новый объект протокола передачи данных
-								this->_cmp.emplace(wid, unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
+								this->_cmp.emplace(wid, make_unique <cmp::encoder_t> (this->_log));
 								// Создаём новый объект протокола получения данных
-								i->second->_cmp.emplace(this->_pid, unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+								i->second->_cmp.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
 								// Если функция обратного вызова установлена
 								if(this->_callbacks.is("process"))
 									// Выполняем функцию обратного вызова
@@ -571,7 +571,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						// выполняем активацию работы события закрытия подключения
 						broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						// Создаём новый объект протокола получения данных
-						i->second->_cmp.emplace(pid, unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+						i->second->_cmp.emplace(pid, make_unique <cmp::decoder_t> (this->_log));
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("rebase") && (opid > 0))
 							// Выполняем функцию обратного вызова
@@ -756,9 +756,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// выполняем активацию работы события закрытия подключения
 									broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 									// Создаём новый объект протокола передачи данных
-									this->_cmp.emplace(wid, unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
+									this->_cmp.emplace(wid, make_unique <cmp::encoder_t> (this->_log));
 									// Создаём новый объект протокола получения данных
-									i->second->_cmp.emplace(this->_pid, unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+									i->second->_cmp.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
 									// Если функция обратного вызова установлена
 									if(this->_callbacks.is("process"))
 										// Выполняем функцию обратного вызова
@@ -803,7 +803,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							// Выполняем создание новых процессов
 							this->create(i->first, index + 1);
 							// Создаём новый объект протокола получения данных
-							i->second->_cmp.emplace(pid, unique_ptr <cmp::decoder_t> (new cmp::decoder_t(this->_log)));
+							i->second->_cmp.emplace(pid, make_unique <cmp::decoder_t> (this->_log));
 						}
 					}
 				// Если все процессы удачно созданы
@@ -820,7 +820,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							broker->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 						}
 						// Создаём новый объект протокола передачи данных
-						this->_cmp.emplace(wid, unique_ptr <cmp::encoder_t> (new cmp::encoder_t(this->_log)));
+						this->_cmp.emplace(wid, make_unique <cmp::encoder_t> (this->_log));
 						// Если функция обратного вызова установлена
 						if(this->_callbacks.is("process"))
 							// Выполняем функцию обратного вызова
@@ -1438,7 +1438,7 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 		// Если воркер не найден
 		if(i == this->_workers.end())
 			// Добавляем воркер в список воркеров
-			this->_workers.emplace(wid, unique_ptr <worker_t> (new worker_t(wid, this, this->_log)));
+			this->_workers.emplace(wid, make_unique <worker_t> (wid, this, this->_log));
 		// Выполняем установку максимально-возможного количества процессов
 		this->count(wid, count);
 	/**

@@ -670,7 +670,7 @@ void awh::client::Http2::redirect(const int32_t from, const int32_t to) noexcept
 	// Если воркер для предыдущего потока найден
 	if(i != this->_workers.end()){
 		// Выполняем установку объекта воркера
-		auto ret = this->_workers.emplace(to, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
+		auto ret = this->_workers.emplace(to, make_unique <worker_t> (this->_fmk, this->_log));
 		// Выполняем очистку параметров HTTP-запроса
 		ret.first->second->http.clear();
 		// Выполняем сброс состояния HTTP-парсера
@@ -1555,7 +1555,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 			if(result > 0){
 				{
 					// Добавляем полученный запрос в список запросов
-					auto ret = this->_requests.emplace(result, unique_ptr <request_t> (new request_t));
+					auto ret = this->_requests.emplace(result, make_unique <request_t> ());
 					// Выполняем установку идентификатора запроса
 					ret.first->second->id = request.id;
 					// Выполняем копирование URL-адреса
@@ -1572,7 +1572,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						ret.first->second->entity.assign(request.entity.begin(), request.entity.end());
 				}{
 					// Выполняем установку объекта воркера
-					auto ret = this->_workers.emplace(result, unique_ptr <worker_t> (new worker_t(this->_fmk, this->_log)));
+					auto ret = this->_workers.emplace(result, make_unique <worker_t> (this->_fmk, this->_log));
 					// Выполняем установку идентификатора запроса
 					ret.first->second->id = request.id;
 					// Выполняем установку типа агента

@@ -987,7 +987,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock2(this->_mtx.timeout);
 			// Выполняем инициализацию нового таймера
-			this->_timer = unique_ptr <timer_t> (new timer_t(this->_fmk, this->_log));
+			this->_timer = make_unique <timer_t> (this->_fmk, this->_log);
 			// Устанавливаем флаг запрещающий вывод информационных сообщений
 			this->_timer->verbose(false);
 			// Выполняем биндинг сетевого ядра таймера
@@ -1166,7 +1166,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 										// Выполняем блокировку потока
 										this->_mtx.accept.lock();
 										// Выполняем создание брокера подключения
-										auto ret = this->_brokers.emplace(sid, unique_ptr <awh::scheme_t::broker_t> (new awh::scheme_t::broker_t(sid, this->_fmk, this->_log)));
+										auto ret = this->_brokers.emplace(sid, make_unique <awh::scheme_t::broker_t> (sid, this->_fmk, this->_log));
 										// Выполняем блокировку потока
 										this->_mtx.accept.unlock();
 										// Устанавливаем активный сокет сервера
@@ -2668,7 +2668,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 											// Выполняем блокировку потока
 											this->_mtx.accept.lock();
 											// Выполняем создание брокера подключения
-											auto ret = this->_brokers.emplace(sid, unique_ptr <awh::scheme_t::broker_t> (new awh::scheme_t::broker_t(sid, this->_fmk, this->_log)));
+											auto ret = this->_brokers.emplace(sid, make_unique <awh::scheme_t::broker_t> (sid, this->_fmk, this->_log));
 											// Выполняем блокировку потока
 											this->_mtx.accept.unlock();
 											// Устанавливаем активный сокет сервера

@@ -4227,7 +4227,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			// Если нужно произвести проверку
 			if(this->_verify){
 				// Создаём объект проверки домена
-				target._verify = unique_ptr <verify_t> (new verify_t(host, this));
+				target._verify = make_unique <verify_t> (host, this);
 				// Выполняем проверку сертификата
 				::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 				// Выполняем проверку всех дочерних сертификатов

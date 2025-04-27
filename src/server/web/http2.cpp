@@ -1061,7 +1061,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						// Если активная сессия найдена
 						if(i != this->_sessions.end()){
 							// Выполняем создание нового объекта сессии HTTP/2
-							auto ret = this->_ws2._sessions.emplace(bid, unique_ptr <awh::http2_t> (new awh::http2_t(this->_fmk, this->_log)));
+							auto ret = this->_ws2._sessions.emplace(bid, make_unique <awh::http2_t> (this->_fmk, this->_log));
 							// Выполняем копирование контекста сессии HTTP/2
 							ret.first->second = i->second;
 						}

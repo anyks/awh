@@ -41,7 +41,7 @@ void awh::server::scheme::Sample::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
 	if((bid > 0) && (this->_options.count(bid) < 1))
 		// Создаём объект параметров активного клиента
-		this->_options.emplace(bid, unique_ptr <options_t> (new options_t(this->_fmk, this->_log)));
+		this->_options.emplace(bid, make_unique <options_t> (this->_fmk, this->_log));
 }
 /**
  * rm Метод удаления параметров активного клиента

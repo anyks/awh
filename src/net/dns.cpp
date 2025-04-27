@@ -3314,9 +3314,9 @@ awh::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
  _net(log), _timeout(5), _prefix{AWH_SHORT_NAME},
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
-	this->_workerIPv4 = unique_ptr <worker_t> (new worker_t(AF_INET, this));
+	this->_workerIPv4 = make_unique <worker_t> (AF_INET, this);
 	// Выполняем создание воркера для IPv6
-	this->_workerIPv6 = unique_ptr <worker_t> (new worker_t(AF_INET6, this));
+	this->_workerIPv6 = make_unique <worker_t> (AF_INET6, this);
 }
 /**
  * ~DNS Деструктор

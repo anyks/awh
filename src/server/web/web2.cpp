@@ -77,7 +77,7 @@ void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid) no
 				// Устанавливаем функцию обработки вызова на событие получения ошибок
 				callbacks.set <void (const log_t::flag_t, const http::error_t, const string &)> ("error", std::bind(this->_callbacks.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3));
 			// Выполняем создание нового объекта сессии HTTP/2
-			auto ret = this->_sessions.emplace(bid, unique_ptr <http2_t> (new http2_t(this->_fmk, this->_log)));
+			auto ret = this->_sessions.emplace(bid, make_unique <http2_t> (this->_fmk, this->_log));
 			// Выполняем установку функции обратного вызова
 			ret.first->second->callbacks(callbacks);
 			// Если инициализация модуля NgHttp2 не выполнена

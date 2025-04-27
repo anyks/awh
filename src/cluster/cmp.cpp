@@ -510,7 +510,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 							// Если мы получили одну из записей
 							else {
 								// Выполняем добавление записи во временный объект
-								auto ret = this->_temp.emplace(static_cast <uint32_t> (header.id), unique_ptr <buffer_t> (new buffer_t(this->_log)));
+								auto ret = this->_temp.emplace(static_cast <uint32_t> (header.id), make_unique <buffer_t> (this->_log));
 								// Выделяем достаточно данных для формирования объекта
 								ret.first->second->reserve(static_cast <size_t> (header.size));
 								// Если размер полезной нагрузки установлен
