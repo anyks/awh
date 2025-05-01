@@ -1,5 +1,5 @@
 /**
- * @file: timer.hpp
+ * @file: timeout.hpp
  * @date: 2021-12-19
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_TIMER__
-#define __AWH_TIMER__
+#ifndef __AWH_TIMEOUT__
+#define __AWH_TIMEOUT__
 
 #include <map>
 #include <mutex>
@@ -37,9 +37,9 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Timer Класс таймера
+	 * Timeout Класс модуля таймера
 	 */
-	typedef class Timer {
+	typedef class Timeout {
 		private:
 			/**
 			 * Worker Класс воркера
@@ -270,7 +270,7 @@ namespace awh {
 				// Дожидаемся пока все таймеры будут удалены
 				while(!this->_timers.empty());
 			}
-	} timer_t;
+	} timeout_t;
 };
 
-#endif // __AWH_TIMER__
+#endif // __AWH_TIMEOUT__
