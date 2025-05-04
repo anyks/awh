@@ -586,7 +586,7 @@ void awh::client::Web::init(const string & dest, const vector <awh::http_t::comp
 		// Устанавливаем unix-сокет адрес в файловой системе
 		this->_scheme.url = this->_uri.parse(this->_fmk->format("unix:%s.sock", dest.c_str()));
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем установку unix-сокета 

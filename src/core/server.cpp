@@ -2810,7 +2810,7 @@ void awh::server::Core::total(const uint16_t sid, const uint16_t total) noexcept
  */
 void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
@@ -2818,7 +2818,7 @@ void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 		// Разрешаем автоматический перезапуск упавших процессов
 		this->_clusterAutoRestart = mode;
 	/**
-	 * Если операционной системой является Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -2844,7 +2844,7 @@ awh::scheme_t::mode_t awh::server::Core::cluster() const noexcept {
  */
 void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t size) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
@@ -2875,7 +2875,7 @@ void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t 
 			break;
 		}
 	/**
-	 * Если операционной системой является Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог

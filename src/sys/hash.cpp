@@ -2154,13 +2154,13 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
-			 * Если операционной системой является Nix-подобная
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выходим из приложения
 				::raise(SIGINT);
 			/**
-			 * Если операционной системой является MS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#else
 				// Выходим из приложения
@@ -2195,13 +2195,13 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
-			 * Если операционной системой является Nix-подобная
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выходим из приложения
 				::raise(SIGINT);
 			/**
-			 * Если операционной системой является MS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#else
 				// Выходим из приложения

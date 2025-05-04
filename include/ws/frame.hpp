@@ -25,10 +25,14 @@
 #include <cstring>
 #include <algorithm>
 
-// Если - это Windows
+/**
+ * Для операционной системы OS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <winsock2.h>
-// Если - это Unix
+/**
+ * Для операционной системы не являющейся OS Windows
+ */
 #else
 	#include <arpa/inet.h>
 #endif

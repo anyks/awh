@@ -31,7 +31,7 @@
 #include <unordered_set>
 
 /**
- * Если операционной системой является Nix-подобная
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#define SOCKET int32_t
@@ -39,13 +39,13 @@
 #endif
 
 /**
- * Если операционной системой является MS Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 /**
- * Если операционной системой является Nix-подобная
+ * Для операционной системы не являющейся OS Windows
  */
 #else
 	#include <netdb.h>

@@ -512,7 +512,7 @@ void awh::server::ProxySocks5::erase([[maybe_unused]] const uint16_t tid, const 
  */
 void awh::server::ProxySocks5::init(const string & socket) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Устанавливаем unix-сокет сервера
@@ -534,7 +534,7 @@ void awh::server::ProxySocks5::init(const uint32_t port, const string & host) no
 	// Устанавливаем хост сервера
 	this->_host = host;
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Удаляем unix-сокет сервера

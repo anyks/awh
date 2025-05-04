@@ -311,13 +311,13 @@ void awh::DNS::Worker::close() noexcept {
 	// Если файловый дескриптор не закрыт
 	if(this->_fd != INVALID_SOCKET){
 		/**
-		 * Если операционной системой является Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие сокета
 			closesocket(this->_fd);
 		/**
-		 * Если операционной системой является Nix-подобная
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
@@ -577,7 +577,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
 							/**
-							 * Если мы работаем не в MS Windows
+							 * Для операционной системы не являющейся OS Windows
 							 */
 							#if !defined(_WIN32) && !defined(_WIN64)
 								// Если произведена неудачная запись в PIPE
@@ -591,7 +591,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 									self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 								break;
 							/**
-							 * Методы только для OS Windows
+							 * Для операционной системы OS Windows
 							 */
 							#else
 								// Если произведён сброс подключения
@@ -1202,7 +1202,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
 						/**
-						 * Если мы работаем не в MS Windows
+						 * Для операционной системы не являющейся OS Windows
 						 */
 						#if !defined(_WIN32) && !defined(_WIN64)
 							// Если произведена неудачная запись в PIPE
@@ -1216,7 +1216,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 								this->_self->_log->print("ECONNRESET [SERVER=%s, DOMAIN=%s]", log_t::flag_t::WARNING, to.c_str(), fqdn.c_str());
 							break;
 						/**
-						 * Методы только для OS Windows
+						 * Для операционной системы OS Windows
 						 */
 						#else
 							// Если произведён сброс подключения
@@ -1259,7 +1259,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 		// Если доменное имя передано
 		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
 			/**
-			 * Если операционной системой является Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Результирующий буфер данных
@@ -1271,7 +1271,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 				// Получаем результат кодирования
 				else result = this->_fmk->convert(wstring{buffer});
 			/**
-			 * Если операционной системой является Nix-подобная
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#else
 				// Результирующий буфер данных
@@ -1309,7 +1309,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 		// Если доменное имя передано
 		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
 			/**
-			 * Если операционной системой является Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Результирующий буфер данных
@@ -1321,7 +1321,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 				// Получаем результат кодирования
 				else result = this->_fmk->convert(wstring{buffer});
 			/**
-			 * Если операционной системой является Nix-подобная
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#else
 				// Результирующий буфер данных
@@ -2845,7 +2845,7 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 				// Переводим доменное имя в нижний регистр
 				this->_fmk->transform(name, fmk_t::transform_t::LOWER);
 				/**
-				 * Методы только для OS Windows
+				 * Для операционной системы OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Выполняем резолвинг доменного имени
@@ -2871,7 +2871,7 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 						return result;
 					}
 				/**
-				 * Если операционной системой является Nix-подобная
+				 * Для операционной системы не являющейся OS Windows
 				 */
 				#else
 					// Переменная получения ошибки

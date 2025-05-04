@@ -232,7 +232,7 @@ void awh::server::Sample::pinging(const uint16_t tid) noexcept {
  */
 void awh::server::Sample::init(const string & socket) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если объект сетевого ядра установлен

@@ -33,7 +33,7 @@
 #endif
 
 /**
- * Если операционной системой является MS Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
@@ -66,7 +66,7 @@
 	 */
 	#pragma execution_character_set("utf-8")
 /**
- * Если операционной системой является Nix-подобная
+ * Для операционной системы не являющейся OS Windows
  */
 #else
 	/**

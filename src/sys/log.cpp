@@ -94,7 +94,7 @@ awh::Log::Payload::Payload() noexcept : flag(flag_t::NONE), text{""} {}
  */
 void awh::Log::rotate() const noexcept {
 	/**
-	 * Выполняем работу для Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Размер файла лога
@@ -108,7 +108,7 @@ void awh::Log::rotate() const noexcept {
 			// Получаем размер файла лога
 			size = static_cast <uintmax_t> (GetFileSize(file, nullptr));
 	/**
-	 * Выполняем работу для Unix
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
 		// Структура проверка статистики
@@ -123,7 +123,7 @@ void awh::Log::rotate() const noexcept {
 				// Выполняем извлечение даты
 				const string & date = this->_chrono.format("_%m-%d-%Y_%H-%M-%S");
 				/**
-				 * Выполняем работу для Windows
+				 * Для операционной системы OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Буфер данных для чтения
@@ -153,7 +153,7 @@ void awh::Log::rotate() const noexcept {
 						}
 					}
 				/**
-				 * Выполняем работу для Unix
+				 * Для операционной системы не являющейся OS Windows
 				 */
 				#else
 					// Открываем файл на чтение
@@ -188,7 +188,7 @@ void awh::Log::rotate() const noexcept {
 			}
 		}
 		/**
-		 * Выполняем работу для Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие файла
@@ -319,7 +319,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 		// Выполняем очистку от символов форматирования
 		this->cleaner(const_cast <string &> (payload.text));
 		/**
-		 * Выполняем работу для Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем открытие файла на запись
@@ -359,7 +359,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 			// Выполняем ротацию логов
 			this->rotate();
 		/**
-		 * Выполняем работу для Unix
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Открываем файл на запись
@@ -423,7 +423,7 @@ pair <string, string> awh::Log::components(const string & filename) const noexce
 			// Ищем расширение файла
 			if((pos2 = filename.find('.')) != string::npos){
 				/**
-				 * Выполняем работу для Unix
+				 * Для операционной системы не являющейся OS Windows
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Устанавливаем адрес файла где хранится файл

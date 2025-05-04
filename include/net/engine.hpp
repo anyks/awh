@@ -60,7 +60,7 @@
 #include <sys/types.h>
 
 /**
- * Если операционной системой является Nix-подобная
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/un.h>
@@ -185,9 +185,9 @@ namespace awh {
 					// Файловый дескриптор
 					SOCKET fd;
 				private:
-					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
+					// Тип сокета (SOCK_STREAM | SOCK_DGRAM)
 					int32_t _type;
-					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
+					// Протокол сокета (IPPROTO_TCP | IPPROTO_UDP | IPPROTO_SCTP)
 					int32_t _protocol;
 				private:
 					// Флаг асинхронного режима работы сокета
@@ -230,7 +230,7 @@ namespace awh {
 					const log_t * _log;
 				private:
 					/**
-					 * Если операционной системой является Windows
+					 * Для операционной системы OS Windows
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Объект данных запроса
@@ -606,7 +606,7 @@ namespace awh {
 			bool certHostcheck(const string & host, const string & patt) const noexcept;
 		private:
 			/**
-			 * Если операционной системой является Linux или FreeBSD
+			 * Для операционной системы Linux или FreeBSD
 			 */
 			#if defined(__linux__) || defined(__FreeBSD__)
 				/**

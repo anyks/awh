@@ -224,7 +224,7 @@ void awh::server::Web::disconected(const uint16_t tid) noexcept {
  */
 void awh::server::Web::init([[maybe_unused]] const string & socket, [[maybe_unused]] const vector <http_t::compressor_t> & compressors) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если объект сетевого ядра создан

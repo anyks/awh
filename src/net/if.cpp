@@ -485,13 +485,13 @@ void awh::IfNet::close(const int32_t fd) const noexcept {
 	// Если файловый дескриптор подключён
 	if(fd != INVALID_SOCKET){
 		/**
-		 * Если операционной системой является Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие сокета
 			::closesocket(fd);
 		/**
-		 * Если операционной системой является Nix-подобная
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
@@ -544,7 +544,7 @@ string awh::IfNet::name(const string & eth) const noexcept {
 	// Если сетевой интерфейс получен
 	if(!eth.empty()){
 		/**
-		 * Устанавливаем настройки для OS Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Получаем размер буфера данных

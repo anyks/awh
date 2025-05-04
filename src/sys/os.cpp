@@ -29,7 +29,7 @@
 #endif
 
 /**
- * Если операционной системой не является Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -39,7 +39,7 @@
 	#include <grp.h>
 	#include <sys/resource.h>
 /**
- * Если операционной системой является MS Windows
+ * Для операционной системы OS Windows
  */
 #else
 	/**
@@ -74,7 +74,7 @@ using namespace std;
  */
 void awh::OS::boost() const noexcept {
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Vista/7 также включает «Compound TCP (CTCP)», который похож на CUBIC в Linux
@@ -82,7 +82,7 @@ void awh::OS::boost() const noexcept {
 		// Если вам вообще нужно включить автонастройку, вот команды
 		this->exec("netsh interface tcp set global autotuninglevel=normal");
 	/**
-	 * Операционной системой является MacOS X
+	 * Для операционной системы MacOS X
 	 */
 	#elif __APPLE__ || __MACH__
 		// Если эффективный идентификатор пользователя принадлежит ROOT
@@ -108,7 +108,7 @@ void awh::OS::boost() const noexcept {
 			this->sysctl("net.inet.tcp.local_slowstart_flightsize", 20);
 		}
 	/**
-	 * Операционной системой является Linux
+	 * Для операционной системы Linux
 	 */
 	#elif __linux__
 		// Если эффективный идентификатор пользователя принадлежит ROOT
@@ -147,7 +147,7 @@ void awh::OS::boost() const noexcept {
 				this->sysctl("net.ipv4.tcp_congestion_control", algorithm);
 		}
 	/**
-	 * Операционной системой является FreeBSD
+	 * Для операционной системы FreeBSD
 	 */
 	#elif __FreeBSD__
 		// Если эффективный идентификатор пользователя принадлежит ROOT
@@ -188,7 +188,7 @@ void awh::OS::boost() const noexcept {
 				this->sysctl("net.inet.tcp.cc.algorithm", algorithm);
 		}
 	/**
-	 * Операционной системой является Unix
+	 * Для операционной системы Unix
 	 */
 	#elif __unix || __unix__
 		// Если эффективный идентификатор пользователя принадлежит ROOT
@@ -259,7 +259,7 @@ bool awh::OS::enableCoreDumps() const noexcept {
 	 */
 	#if defined(DEBUG_MODE)
 		/**
-		 * Методы только не для OS Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Структура лимитов дампов
@@ -284,7 +284,7 @@ uid_t awh::OS::uid(const string & name) const noexcept {
 	// Результат работы функции
 	uid_t result = 0;
 	/**
-	 * Выполняем работу для Unix
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если имя пользователя передано
@@ -311,7 +311,7 @@ gid_t awh::OS::gid(const string & name) const noexcept {
 	// Результат работы функции
 	gid_t result = 0;
 	/**
-	 * Выполняем работу для Unix
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если имя пользователя передано
@@ -359,7 +359,7 @@ string awh::OS::congestionControl(const string & str) const noexcept {
  */
 bool awh::OS::limitFDs(const uint32_t cur, const uint32_t max) const noexcept {
 	/**
-	 * Методы только не для OS Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Структура для установки лимитов
@@ -371,7 +371,7 @@ bool awh::OS::limitFDs(const uint32_t cur, const uint32_t max) const noexcept {
 		// установим указанное кол-во
 		return (::setrlimit(RLIMIT_NOFILE, &limit) == 0);
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Сообщаем, что ничего не установленно
@@ -386,7 +386,7 @@ bool awh::OS::limitFDs(const uint32_t cur, const uint32_t max) const noexcept {
  */
 bool awh::OS::chown(const uid_t uid, const gid_t gid) const noexcept {
 	/**
-	 * Методы только не для OS Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Результат работы функции
@@ -402,7 +402,7 @@ bool awh::OS::chown(const uid_t uid, const gid_t gid) const noexcept {
 		// Выводим результат
 		return result;
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Сообщаем, что ничего не установленно
@@ -417,7 +417,7 @@ bool awh::OS::chown(const uid_t uid, const gid_t gid) const noexcept {
  */
 bool awh::OS::chown(const string & user, const string & group) const noexcept {
 	/**
-	 * Методы только не для OS Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Результат работы функции
@@ -447,7 +447,7 @@ bool awh::OS::chown(const string & user, const string & group) const noexcept {
 		// Выводим результат
 		return result;
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Сообщаем, что ничего не установленно
@@ -640,7 +640,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 	// Если комманда запуска приложения передана правильно
 	if(!cmd.empty()){
 		/**
-		 * Методы только не для OS Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Создаем буфер для чтения результата
@@ -662,7 +662,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 				::pclose(stream);
 			}
 		/**
-		 * Методы только для OS Windows
+		 * Для операционной системы OS Windows
 		 */
 		#else
 			// Создаем буфер для чтения результата

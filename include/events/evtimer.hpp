@@ -56,19 +56,8 @@ namespace awh {
 				Data() noexcept : fd(INVALID_SOCKET), port(0), delay(0) {}
 			} __attribute__((packed)) data_t;
 		private:
-			/**
-			 * Методы только для OS Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Объект работы с пайпом
-				evpipe_t _evpipe;
-			/**
-			 * Методы для всех остальных операционных систем
-			 */
-			#else
-				// Объект работы с пайпом
-				evpipe_t _evpipe;
-			#endif
+			// Объект работы с пайпом
+			evpipe_t _evpipe;
 		private:
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;

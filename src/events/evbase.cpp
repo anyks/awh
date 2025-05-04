@@ -28,7 +28,7 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Если операционной системой является Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
@@ -76,7 +76,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 		// Если необходимо активировать сетевые методы
 		case static_cast <uint8_t> (event_mode_t::ENABLED): {
 			/**
-			 * Методы только для OS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Если WinSocksAPI ещё не инициализирована
@@ -114,7 +114,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 					}
 				}
 			/**
-			 * Если это Linux
+			 * Для операционной системы Linux
 			 */
 			#elif __linux__
 				// Выполняем инициализацию EPoll
@@ -138,7 +138,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 				// Выполняем открытие файлового дескриптора
 				::fcntl(this->_efd, F_SETFD, FD_CLOEXEC);
 			/**
-			 * Если это FreeBSD или MacOS X
+			 * Для операционной системы FreeBSD или MacOS X
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__
 				// Выполняем инициализацию Kqueue
@@ -166,7 +166,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 		// Если необходимо деактивировать сетевые методы
 		case static_cast <uint8_t> (event_mode_t::DISABLED): {
 			/**
-			 * Методы только для OS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Если WinSocksAPI была инициализированна в этой базе событий
@@ -174,13 +174,13 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 					// Очищаем сетевой контекст
 					WSACleanup();
 			/**
-			 * Если это Linux
+			 * Для операционной системы Linux
 			 */
 			#elif __linux__
 				// Выполняем закрытие подключения
 				::close(this->_efd);
 			/**
-			 * Если это FreeBSD или MacOS X
+			 * Для операционной системы FreeBSD или MacOS X
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__
 				// Выполняем закрытие подключения
@@ -241,7 +241,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		/**
-		 * Методы только для OS Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем блокировку чтения базы событий
@@ -277,7 +277,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем разблокировку чтения базы событий
 			this->_locker = false;
 		/**
-		 * Если это Linux
+		 * Для операционной системы Linux
 		 */
 		#elif __linux__
 			// Флаг удалённого события из базы событий
@@ -339,7 +339,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем разблокировку чтения базы событий
 			this->_locker = false;
 		/**
-		 * Если это FreeBSD или MacOS X
+		 * Для операционной системы FreeBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Флаг удалённого события из базы событий
@@ -429,7 +429,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		/**
-		 * Методы только для OS Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем поиск файлового дескриптора в базе событий
@@ -466,7 +466,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				this->_locker = false;
 			}
 		/**
-		 * Если это Linux
+		 * Для операционной системы Linux
 		 */
 		#elif __linux__
 			// Выполняем поиск файлового дескриптора в базе событий
@@ -522,7 +522,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				this->_locker = false;
 			}
 		/**
-		 * Если это FreeBSD или MacOS X
+		 * Для операционной системы FreeBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Выполняем поиск файлового дескриптора в базе событий
@@ -634,7 +634,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx);
 			/**
-			 * Методы только для OS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Выполняем поиск файлового дескриптора в базе событий
@@ -768,7 +768,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 					this->_locker = false;
 				}
 			/**
-			 * Если это Linux
+			 * Для операционной системы Linux
 			 */
 			#elif __linux__
 				// Выполняем поиск файлового дескриптора в базе событий
@@ -869,7 +869,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 					this->_locker = false;
 				}
 			/**
-			 * Если это FreeBSD или MacOS X
+			 * Для операционной системы FreeBSD или MacOS X
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__
 				// Выполняем поиск файлового дескриптора в базе событий
@@ -1083,7 +1083,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				/**
-				 * Методы только для OS Windows
+				 * Для операционной системы OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Выполняем поиск файлового дескриптора в базе событий
@@ -1101,7 +1101,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = shared_ptr <evpipe_t> (new evpipe_t(this->_fmk, this->_log));
+							auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
 							// Устанавливаем тип пайпа
 							pipe->type(evpipe_t::type_t::NETWORK);
 							// Выполняем создание сокетов
@@ -1154,7 +1154,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						}
 					}
 				/**
-				 * Если это Linux
+				 * Для операционной системы Linux
 				 */
 				#elif __linux__
 					// Выполняем поиск файлового дескриптора в базе событий
@@ -1172,7 +1172,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = shared_ptr <evpipe_t> (new evpipe_t(this->_fmk, this->_log));
+							auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
 							// Устанавливаем тип пайпа
 							pipe->type(evpipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
@@ -1249,7 +1249,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						}
 					}
 				/**
-				 * Если это FreeBSD или MacOS X
+				 * Для операционной системы FreeBSD или MacOS X
 				 */
 				#elif __APPLE__ || __MACH__ || __FreeBSD__
 					// Выполняем поиск файлового дескриптора в базе событий
@@ -1267,7 +1267,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Создаём объект пайпа
-							auto pipe = shared_ptr <evpipe_t> (new evpipe_t(this->_fmk, this->_log));
+							auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
 							// Устанавливаем тип пайпа
 							pipe->type(evpipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
@@ -1388,7 +1388,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 					// Выполняем установку режима работы модуля
 					j->second = mode;
 					/**
-					 * Методы только для OS Windows
+					 * Для операционной системы OS Windows
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Если тип установлен как не закрытие подключения
@@ -1460,7 +1460,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 							}
 						}
 					/**
-					 * Если это Linux
+					 * Для операционной системы Linux
 					 */
 					#elif __linux__
 						// Выполняем поиск файлового дескриптора из списка событий
@@ -1669,7 +1669,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 							}
 						}
 					/**
-					 * Если это FreeBSD или MacOS X
+					 * Для операционной системы FreeBSD или MacOS X
 					 */
 					#elif __APPLE__ || __MACH__ || __FreeBSD__
 						// Если тип установлен как не закрытие подключения
@@ -1792,7 +1792,7 @@ void awh::Base::clear() noexcept {
 		// Выполняем блокировку чтения базы событий
 		this->_locker = true;
 		/**
-		 * Методы только для OS Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем поиск файлового дескриптора из списка событий
@@ -1819,7 +1819,7 @@ void awh::Base::clear() noexcept {
 				i = this->_fds.erase(i);
 			}
 		/**
-		 * Если это Linux
+		 * Для операционной системы Linux
 		 */
 		#elif __linux__
 			// Выполняем поиск файлового дескриптора из списка изменений
@@ -1843,7 +1843,7 @@ void awh::Base::clear() noexcept {
 				// Выполняем удаление события из списка отслеживания
 				i = this->_events.erase(i);
 		/**
-		 * Если это FreeBSD или MacOS X
+		 * Для операционной системы FreeBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Выполняем поиск файлового дескриптора из списка событий
@@ -2084,7 +2084,7 @@ void awh::Base::start() noexcept {
 			// Выполняем запуск базы события
 			while(this->_started){
 				/**
-				 * Методы только для OS Windows
+				 * Для операционной системы OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Если опрос базы событий не заблокирован
@@ -2294,7 +2294,7 @@ void awh::Base::start() noexcept {
 					// Замораживаем поток на период времени частоты обновления базы событий
 					this_thread::sleep_for(100ms);
 				/**
-				 * Если это Linux
+				 * Для операционной системы Linux
 				 */
 				#elif __linux__
 					// Если опрос базы событий не заблокирован
@@ -2494,7 +2494,7 @@ void awh::Base::start() noexcept {
 					// Замораживаем поток на период времени частоты обновления базы событий
 					this_thread::sleep_for(100ms);
 				/**
-				 * Если это FreeBSD или MacOS X
+				 * Для операционной системы FreeBSD или MacOS X
 				 */
 				#elif __APPLE__ || __MACH__ || __FreeBSD__
 					// Если опрос базы событий не заблокирован
@@ -2849,7 +2849,7 @@ void awh::Base::eraseUpstream(const uint64_t sid) noexcept {
 			// Выводим сообщение что событие не вышло активировать
 			this->_log->print("Failed remove upstream event for SOCKET=%d", log_t::flag_t::WARNING, i->second.read);
 		/**
-		 * Для всех остальных операционных систем
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем закрытие открытого сокета на запись
@@ -2878,13 +2878,13 @@ void awh::Base::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept 
 		// Если верхнеуровневый поток обнаружен
 		if(i != this->_upstreams.end()){
 			/**
-			 * Методы только для OS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Выполняем запись в сокет данных
 				i->second.pipe->write(i->second.write, reinterpret_cast <const char *> (&tid), sizeof(tid), i->second.pipe->port());
 			/**
-			 * Для всех остальных операционных систем
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#else
 				// Выполняем запись в сокет данных
@@ -2910,11 +2910,11 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		/**
-		 * Методы только для OS Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Создаём объект пайпа
-			auto pipe = shared_ptr <evpipe_t> (new evpipe_t(this->_fmk, this->_log));
+			auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
 			// Устанавливаем тип пайпа
 			pipe->type(evpipe_t::type_t::NETWORK);
 			// Выполняем создание сокетов
@@ -2936,11 +2936,11 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 			// Выполняем установку функции обратного вызова
 			ret.first->second.callback = callback;
 		/**
-		 * Для всех остальных операционных систем
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Создаём объект пайпа
-			auto pipe = shared_ptr <evpipe_t> (new evpipe_t(this->_fmk, this->_log));
+			auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
 			// Устанавливаем тип пайпа
 			pipe->type(evpipe_t::type_t::NATIVE);
 			// Выполняем создание сокетов

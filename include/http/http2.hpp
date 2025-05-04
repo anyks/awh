@@ -26,7 +26,7 @@
 #include <unordered_map>
 
 /**
- * Методы только для OS Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	// Подключаем библиотеку асинхронного ввода-вывода

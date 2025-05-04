@@ -284,7 +284,7 @@ void awh::cluster::Core::callbacks(const fn_t & callbacks) noexcept {
  */
 void awh::cluster::Core::size(const uint16_t size) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Устанавливаем количество рабочих процессов кластера
@@ -292,7 +292,7 @@ void awh::cluster::Core::size(const uint16_t size) noexcept {
 		// Выполняем инициализацию кластера
 		this->_cluster.init(0, this->_size);
 	/**
-	 * Если операционной системой является Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -309,13 +309,13 @@ void awh::cluster::Core::size(const uint16_t size) noexcept {
  */
 void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем установку флага автоматического перезапуска убитых дочерних процессов
 		this->_cluster.restart(0, mode);
 	/**
-	 * Если операционной системой является Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог

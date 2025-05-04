@@ -92,7 +92,7 @@ static uint8_t decimalPlaces(double number) noexcept {
 }
 
 /**
- * Выполняем работу не для OS Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -1711,7 +1711,7 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 		 */
 		try {
 			/**
-			 * Выполняем работу для MS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Определяем кодировку в которую нам нужно сконвертировать текст
@@ -1783,7 +1783,7 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 					default: return text;
 				}
 			/**
-			 * Выполняем работу для Unix
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#else
 				/**
@@ -4170,7 +4170,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			// this->_locale = ::locale::global(loc);
 			this->_locale = ::locale(locale.c_str());
 			/**
-			 * Устанавливаем типы данных для Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Параметры устанавливаемого шрифта

@@ -27,7 +27,7 @@
 #include <functional>
 
 /**
- * Для OS Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <windows.h>
@@ -54,7 +54,7 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Signals {
 		private:
 			/**
-			 * Если операционной системой не является Windows
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				/**
@@ -74,7 +74,7 @@ namespace awh {
 					Events() noexcept {}
 				} ev_t;
 			/**
-			 * Если операционной системой является MS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#else
 				// Устанавливаем прототип функции обработчика сигнала

@@ -467,7 +467,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
 		// Устанавливаем URL адрес запроса (как заглушка)
 		this->_scheme.url = this->_uri.parse("http://unixsocket");
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем установку unix-сокет

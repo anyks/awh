@@ -53,7 +53,7 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 		// Если тип пайпа соответствует нативному
 		case static_cast <uint8_t> (type_t::NATIVE): {
 			/**
-			 * Методы только для OS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Создаём объект файловых дескрипторов
@@ -81,7 +81,7 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 				// Выполняем установку сокета на запись
 				result[1] = static_cast <SOCKET> (fds[1]);
 			/**
-			 * Методы для всех остальных операционных систем
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#else
 				// Выполняем инициализацию таймера
@@ -188,13 +188,13 @@ int64_t awh::EventPipe::read(const SOCKET fd, void * buffer, const size_t size) 
 			// Если тип пайпа соответствует нативному
 			case static_cast <uint8_t> (type_t::NATIVE): {
 				/**
-				 * Методы только для OS Windows
+				 * Для операционной системы OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Выполняем чтение из сокета данных
 					return static_cast <int64_t> (::_read(fd, buffer, size));
 				/**
-				 * Методы для всех остальных операционных систем
+				 * Для операционной системы не являющейся OS Windows
 				 */
 				#else
 					// Выполняем чтение из сокета данных
@@ -231,13 +231,13 @@ int64_t awh::EventPipe::write(const SOCKET fd, const void * buffer, const size_t
 			// Если тип пайпа соответствует нативному
 			case static_cast <uint8_t> (type_t::NATIVE): {
 				/**
-				 * Методы только для OS Windows
+				 * Для операционной системы OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Выполняем запись в сокет данных
 					return static_cast <int64_t> (::_write(fd, buffer, size));
 				/**
-				 * Методы для всех остальных операционных систем
+				 * Для операционной системы не являющейся OS Windows
 				 */
 				#else
 					// Выполняем запись в сокет данных

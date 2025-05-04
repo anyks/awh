@@ -73,13 +73,13 @@ void awh::Chrono::clear() noexcept {
 	 */
 	try {
 		/**
-		 * Устанавливаем типы данных для Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Устанавливаем временную зону по умолчанию
 			_tzset();
 		/**
-		 * Для всех остальных операционных систем
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Устанавливаем временную зону по умолчанию
@@ -7683,7 +7683,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
 				/**
-				 * Устанавливаем типы данных для Windows
+				 * Для операционной системы OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Устанавливаем временную зону по умолчанию
@@ -7691,7 +7691,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 					// Получаем глобальное значение временной зоны в секундах
 					result = static_cast <int32_t> (_timezone * -1);
 				/**
-				 * Если мы работаем в FreeBSD
+				 * Для операционной системы FreeBSD
 				 */
 				#elif __FreeBSD__
 					// Устанавливаем временную зону по умолчанию

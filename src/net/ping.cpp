@@ -207,7 +207,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
 						/**
-						 * Если мы работаем не в MS Windows
+						 * Для операционной системы не являющейся OS Windows
 						 */
 						#if !defined(_WIN32) && !defined(_WIN64)
 							// Если произведена неудачная запись в PIPE
@@ -225,7 +225,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 									this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
 							} break;
 						/**
-						 * Методы только для OS Windows
+						 * Для операционной системы OS Windows
 						 */
 						#else
 							// Если произведён сброс подключения
@@ -257,7 +257,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 					// Если ошибка не обнаружена, выходим
 					case 0: break;
 					/**
-					 * Если мы работаем не в MS Windows
+					 * Для операционной системы не являющейся OS Windows
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
 						// Если произведена неудачная запись в PIPE
@@ -275,7 +275,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 								this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
 						} break;
 					/**
-					 * Методы только для OS Windows
+					 * Для операционной системы OS Windows
 					 */
 					#else
 						// Если произведён сброс подключения
@@ -328,13 +328,13 @@ void awh::Ping::close() noexcept {
 	// Если файловый дескриптор не закрыт
 	if(this->_fd != INVALID_SOCKET){
 		/**
-		 * Если операционной системой является Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие сокета
 			closesocket(this->_fd);
 		/**
-		 * Если операционной системой является Nix-подобная
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
@@ -532,13 +532,13 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					// Обнуляем серверную структуру
 					::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					/**
-					 * Методы только для OS Windows
+					 * Для операционной системы OS Windows
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Создаём сокет подключения
 						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					/**
-					 * Методы только для *Nix-подобных операционных систем
+					 * Для операционной системы не являющейся OS Windows
 					 */
 					#else
 						// Если пользователь является привилигированным
@@ -578,13 +578,13 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					/**
-					 * Методы только для OS Windows
+					 * Для операционной системы OS Windows
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Создаём сокет подключения  (IPPROTO_ICMP6)
 						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					/**
-					 * Методы только для *Nix-подобных операционных систем
+					 * Для операционной системы не являющейся OS Windows
 					 */
 					#else
 						// Если пользователь является привилигированным
@@ -902,13 +902,13 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					// Обнуляем серверную структуру
 					::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					/**
-					 * Методы только для OS Windows
+					 * Для операционной системы OS Windows
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Создаём сокет подключения
 						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					/**
-					 * Методы только для *Nix-подобных операционных систем
+					 * Для операционной системы не являющейся OS Windows
 					 */
 					#else
 						// Если пользователь является привилигированным
@@ -948,13 +948,13 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					/**
-					 * Методы только для OS Windows
+					 * Для операционной системы OS Windows
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Создаём сокет подключения (IPPROTO_ICMP6)
 						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					/**
-					 * Методы только для *Nix-подобных операционных систем
+					 * Для операционной системы не являющейся OS Windows
 					 */
 					#else
 						// Если пользователь является привилигированным

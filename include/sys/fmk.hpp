@@ -49,7 +49,7 @@
 #include <net/nwt.hpp>
 
 /**
- * Выполняем работу не для OS Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**

@@ -29,7 +29,7 @@
 #include <sys/types.h>
 
 /**
- * Если операционной системой не является Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -115,7 +115,7 @@ namespace awh {
 					const Cluster * _ctx;
 				public:
 					/**
-					 * Если операционной системой не является Windows
+					 * Для операционной системы не являющейся OS Windows
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
 						/**
@@ -141,7 +141,7 @@ namespace awh {
 			} worker_t;
 		private:
 			/**
-			 * Если операционной системой не является Windows
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				/**
@@ -170,7 +170,7 @@ namespace awh {
 					~Broker() noexcept {}
 				} broker_t;
 			/**
-			 * Если операционной системой является Windows
+			 * Для операционной системы OS Windows
 			 */
 			#else
 				/**
@@ -196,7 +196,7 @@ namespace awh {
 			socket_t _socket;
 		private:
 			/**
-			 * Если операционной системой не является Windows
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Объект перехвата сигнала
@@ -221,7 +221,7 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * Если операционной системой не является Windows
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				/**

@@ -29,13 +29,13 @@
 #include <functional>
 
 /**
- * Если это Linux
+ * Для операционной системы Linux
  */
 #if __linux__
 	// Подключаем модуль EPoll
 	#include <sys/epoll.h>
 /**
- * Если это FreeBSD или MacOS X
+ * Для операционной системы FreeBSD или MacOS X
  */
 #elif __APPLE__ || __MACH__ || __FreeBSD__
 	// Подключаем модуль Kqueue
@@ -160,7 +160,7 @@ namespace awh {
 			uint32_t _maxCount;
 		private:
 			/**
-			 * Методы только для OS Windows
+			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Объект данных запроса
@@ -170,7 +170,7 @@ namespace awh {
 				// Список активных файловых дескрипторов
 				vector <WSAPOLLFD> _fds;
 			/**
-			 * Если это Linux
+			 * Для операционной системы Linux
 			 */
 			#elif __linux__
 				// Идентификатор активного EPoll
@@ -180,7 +180,7 @@ namespace awh {
 				// Список активных событий
 				vector <struct epoll_event> _events;
 			/**
-			 * Если это FreeBSD или MacOS X
+			 * Для операционной системы FreeBSD или MacOS X
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__
 				// Идентификатор активного kqueue

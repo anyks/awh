@@ -436,7 +436,7 @@ bool awh::Node::sockname(const string & name) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если название unix-сокета передано
@@ -451,7 +451,7 @@ bool awh::Node::sockname(const string & name) noexcept {
 			this->_fmk->transform(this->_settings.sockname, fmk_t::transform_t::LOWER);
 		}
 	/**
-	 * Если операционной системой является MS Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Выводим в лог сообщение
@@ -471,7 +471,7 @@ bool awh::Node::sockpath(const string & path) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если адрес каталога в файловой системе где хранится unix-сокет передан
@@ -484,7 +484,7 @@ bool awh::Node::sockpath(const string & path) noexcept {
 			this->_settings.sockpath = "/tmp";
 		}
 	/**
-	 * Если операционной системой является MS Windows
+	 * Для операционной системы OS Windows
 	 */
 	#else
 		// Выводим в лог сообщение
@@ -580,7 +580,7 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 	this->_settings.family = family;
 	// Выполняем разблокировку потока
 	this->_mtx.main.unlock();
-	// Если тип сокета подключения - unix-сокет
+	// Если тип сокета подключения соответствует unix-сокету
 	if(this->_settings.family == scheme_t::family_t::NIX){
 		// Если название unix-сокета ещё не инициализированно
 		if(this->_settings.sockname.empty())
@@ -591,7 +591,7 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 			 (this->_type == engine_t::type_t::SERVER) &&
 			 (this->_settings.family != scheme_t::family_t::NIX)) {
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем блокировку потока
@@ -885,7 +885,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 			 (this->_type == engine_t::type_t::SERVER) &&
 			 (this->_settings.family != scheme_t::family_t::NIX)) {
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем блокировку потока
@@ -1042,7 +1042,7 @@ awh::Node::~Node() noexcept {
 	  (this->_type == engine_t::type_t::SERVER) &&
 	  (this->_settings.family == scheme_t::family_t::NIX)){
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Получаем адрес файла unix-сокет

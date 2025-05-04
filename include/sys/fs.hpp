@@ -16,7 +16,7 @@
 #define __AWH_FS__
 
 /**
- * Для операционной системы MS Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <windows.h>
@@ -46,13 +46,13 @@
 #endif
 
 /**
- * Для операционной системы MS Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <conio.h>
 	#include <direct.h>
 /**
- * Выполняем работу для Unix
+ * Для операционной системы не являющейся OS Windows
  */
 #else
 	#include <sys/mman.h>
@@ -73,7 +73,7 @@
 #include <sys/log.hpp>
 
 /**
- * Для операционной системы MS Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <tchar.h>
@@ -220,7 +220,7 @@ namespace awh {
 			bool chmod(const string & path, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * Выполняем работу для Unix
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				/**
@@ -232,7 +232,7 @@ namespace awh {
 				 */
 				bool chown(const string & path, const string & user, const string & group) const noexcept;
 			/**
-			 * Выполняем работу для Windows
+			 * Для операционной системы OS Windows
 			 */
 			#else
 				/**

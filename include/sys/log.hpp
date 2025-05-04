@@ -16,14 +16,14 @@
 #define __AWH_LOG__
 
 /**
- * Для операционной системы Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	// Формируем переносы строк лога
 	#define AWH_STRING_BREAK "\r\n"
 	#define AWH_STRING_BREAKS AWH_STRING_BREAK""AWH_STRING_BREAK
 /**
- * Для всех остальных операционных систем
+ * Для операционной системы не являющейся OS Windows
  */
 #else
 	// Формируем переносы строк лога

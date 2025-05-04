@@ -31,13 +31,13 @@
 #define AWH_CONTACT "https://t.me/forman"
 
 /**
- * Определяем сепаратор
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	// Локаль словаря по умолчанию
 	#define AWH_LOCALE "C"
 /**
- * Для всех остальных операционных систем
+ * Для операционной системы не являющейся OS Windows
  */
 #else
 	// Локаль словаря по умолчанию
@@ -166,25 +166,25 @@
  */
 
 /**
- * Если операционной системой является Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "%ProgramFiles%\\OpenSSL-Win64\\bin\\PEM\\cert.pem"
 /**
- * Если операционной системой является MacOS X
+ * Для операционной системы MacOS X
  */
 #elif __APPLE__ || __MACH__
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/usr/local/etc/openssl/cert.pem"
 /**
- * Если операционной системой является Linux
+ * Для операционной системы Linux
  */
 #elif __linux__
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/etc/ssl/certs/certSIGN_ROOT_CA.pem"
 /**
- * Если операционной системой является FreeBSD
+ * Для операционной системы FreeBSD
  */
 #elif __FreeBSD__
 	// Адрес файла корневого сертификата

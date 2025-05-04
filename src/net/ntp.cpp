@@ -91,13 +91,13 @@ void awh::NTP::Worker::close() noexcept {
 	// Если файловый дескриптор не закрыт
 	if(this->_fd != INVALID_SOCKET){
 		/**
-		 * Если операционной системой является Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем закрытие сокета
 			closesocket(this->_fd);
 		/**
-		 * Если операционной системой является Nix-подобная
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
@@ -295,7 +295,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
 							/**
-							 * Если мы работаем не в MS Windows
+							 * Для операционной системы не являющейся OS Windows
 							 */
 							#if !defined(_WIN32) && !defined(_WIN64)
 								// Если произведена неудачная запись в PIPE
@@ -309,7 +309,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 									self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 								break;
 							/**
-							 * Методы только для OS Windows
+							 * Для операционной системы OS Windows
 							 */
 							#else
 								// Если произведён сброс подключения
@@ -364,7 +364,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
 						/**
-						 * Если мы работаем не в MS Windows
+						 *  Для операционной системы не являющейся OS Windows
 						 */
 						#if !defined(_WIN32) && !defined(_WIN64)
 							// Если произведена неудачная запись в PIPE
@@ -378,7 +378,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 								this->_self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 							break;
 						/**
-						 * Методы только для OS Windows
+						 * Для операционной системы OS Windows
 						 */
 						#else
 							// Если произведён сброс подключения

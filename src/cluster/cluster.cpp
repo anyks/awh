@@ -28,7 +28,7 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Если операционной системой не является Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -256,7 +256,7 @@ using namespace placeholders;
 	}
 #endif
 /**
- * Если операционной системой не является Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -350,7 +350,7 @@ using namespace placeholders;
  */
 void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
@@ -431,7 +431,7 @@ void awh::Cluster::write(const uint16_t wid, const SOCKET fd) noexcept {
  */
 void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
@@ -608,7 +608,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
  */
 void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
@@ -886,7 +886,7 @@ set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Если брокер найден
 	if((i != this->_brokers.end()) && !i->second.empty()){
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Переходим по всему списку брокеров
@@ -916,7 +916,7 @@ void awh::Cluster::send(const uint16_t wid) noexcept {
  */
 void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t size) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Получаем идентификатор текущего процесса
@@ -974,7 +974,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid) noexcept {
  */
 void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
@@ -1028,7 +1028,7 @@ void awh::Cluster::broadcast(const uint16_t wid) noexcept {
  */
 void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
@@ -1103,7 +1103,7 @@ void awh::Cluster::close() noexcept {
 		// Переходим по всем брокерам
 		for(auto & item : this->_brokers){
 			/**
-			 * Если операционной системой не является Windows
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Переходим по всему списку брокеров
@@ -1137,7 +1137,7 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 	// Если брокер найден
 	if((i != this->_brokers.end()) && !i->second.empty()){
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Переходим по всему списку брокеров
@@ -1182,7 +1182,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				i->second->_restart = false;
 			}
 			/**
-			 * Если операционной системой не является Windows
+			 * Для операционной системы не являющейся OS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выполняем закрытие подключения передачи сообщений
@@ -1219,7 +1219,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
  */
 void awh::Cluster::start(const uint16_t wid) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
@@ -1254,7 +1254,7 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
  */
 void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
@@ -1303,7 +1303,7 @@ void awh::Cluster::core(core_t * core) noexcept {
  */
 void awh::Cluster::emplace(const uint16_t wid) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
@@ -1341,7 +1341,7 @@ void awh::Cluster::emplace(const uint16_t wid) noexcept {
  */
 void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
@@ -1484,7 +1484,7 @@ void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
 awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _callbacks(log), _socket(fmk, log), _core(nullptr), _fmk(fmk), _log(log) {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем установку объекта кластера
@@ -1510,7 +1510,7 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _callbacks(log), _socket(fmk, log), _core(core), _fmk(fmk), _log(log) {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем установку объекта кластера

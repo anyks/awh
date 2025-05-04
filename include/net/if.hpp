@@ -27,7 +27,7 @@
 #include <unordered_map>
 
 /**
- * Если операционной системой является Nix-подобная
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#define SOCKET int32_t
@@ -35,53 +35,51 @@
 #endif
 
 /**
- * Устанавливаем настройки для *Nix подобных систем
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
-
-/**
- * Стандартные библиотеки
- */
-#include <unistd.h>
-#include <net/if.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-
-/**
- * Если операционной системой является MacOS X или FreeBSD
- */
-#if __APPLE__ || __MACH__ || __FreeBSD__
 	/**
 	 * Стандартные библиотеки
 	 */
-	#include <netdb.h>
-	#include <net/if_dl.h>
-	#include <net/ethernet.h>
-	#include <netinet/if_ether.h>
-	#include <sys/sockio.h>
-	#include <sys/sysctl.h>
-	#include <net/route.h>
-	// Создаём функцию округления
-	#define ROUNDUP(a) \
-		((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-/**
- * Если операционной системой является Linux
- */
-#elif __linux__
-	/**
-	 * Стандартные библиотеки
-	 */
-	#include <cstddef>
-	#include <ifaddrs.h>
-	#include <stdbool.h>
-	#include <net/if_arp.h>
-#endif
+	#include <unistd.h>
+	#include <net/if.h>
+	#include <arpa/inet.h>
+	#include <sys/types.h>
+	#include <sys/ioctl.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
 
+	/**
+	 * Для операционной системы MacOS X или FreeBSD
+	 */
+	#if __APPLE__ || __MACH__ || __FreeBSD__
+		/**
+		 * Стандартные библиотеки
+		 */
+		#include <netdb.h>
+		#include <net/if_dl.h>
+		#include <net/ethernet.h>
+		#include <netinet/if_ether.h>
+		#include <sys/sockio.h>
+		#include <sys/sysctl.h>
+		#include <net/route.h>
+		// Создаём функцию округления
+		#define ROUNDUP(a) \
+			((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
+	/**
+	 * Для операционной системы Linux
+	 */
+	#elif __linux__
+		/**
+		 * Стандартные библиотеки
+		 */
+		#include <cstddef>
+		#include <ifaddrs.h>
+		#include <stdbool.h>
+		#include <net/if_arp.h>
+	#endif
 /**
- * Если операционной системой является OS Windows
+ * Для операционной системы OS Windows
  */
 #else
 	/**

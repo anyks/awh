@@ -29,7 +29,7 @@
 #define AWH_MAX_SOCKETS 0x5F5E100
 
 /**
- * Если операционной системой является Nix-подобная
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#define SOCKET int32_t
@@ -55,7 +55,7 @@
 	// Используем библиотеку ws2_32.lib
 	#pragma comment(lib, "Ws2_32.lib")
 /**
- * Для всех остальных операционных систем
+ * Для операционной системы не являющейся OS Windows
  */
 #else
 	#include <vector>

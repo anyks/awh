@@ -30,7 +30,7 @@ bool awh::Socket::noSigILL() const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаем структуру активации сигнала
@@ -152,7 +152,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем параметр
@@ -168,7 +168,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 			#endif
 		}
 	/**
-	 * Для всех остальных операционных систем
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
 		// Устанавливаем параметр
@@ -213,7 +213,7 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Флаги файлового дескриптора
@@ -256,7 +256,7 @@ bool awh::Socket::blocking(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Флаги файлового дескриптора
@@ -287,7 +287,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Определяем режим блокировки
@@ -324,7 +324,7 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 			} break;
 		}
 	/**
-	 * Для всех остальных операционных систем
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
 		// Флаги файлового дескриптора
@@ -528,7 +528,7 @@ string awh::Socket::message(const int32_t code) const noexcept {
 		// Выполняем получение кода ошибки
 		const_cast <int32_t &> (code) = AWH_ERROR();
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Создаём буфер сообщения ошибки
@@ -538,7 +538,7 @@ string awh::Socket::message(const int32_t code) const noexcept {
 		// Выводим текст полученной ошибки
 		return this->_fmk->convert(message);
 	/**
-	 * Для всех остальных операционных систем
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
 		// Выводим текст полученной ошибки
@@ -580,7 +580,7 @@ bool awh::Socket::timeout(const SOCKET fd, const uint32_t msec, const mode_t mod
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Определяем флаг блокировки
@@ -613,7 +613,7 @@ bool awh::Socket::timeout(const SOCKET fd, const uint32_t msec, const mode_t mod
 			} break;
 		}
 	/**
-	 * Для всех остальных операционных систем
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
 		// Создаём объект таймаута
@@ -804,13 +804,13 @@ bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_
 		// Выводим сообщение об ошибке
 		} else this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->message(AWH_ERROR()).c_str());
 		/**
-		 * Для операционной системы Windows
+		 * Для операционной системы OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Закрываем файловый дескриптор
 			::closesocket(fd);
 		/**
-		 * Для всех остальных операционных систем
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Закрываем файловый дескриптор
@@ -832,7 +832,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		{
@@ -886,7 +886,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			}
 		}*/
 	/**
-	 * Только для *Nix-подобных операционных систем
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
 		// Устанавливаем параметр
@@ -1003,7 +1003,7 @@ u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexc
 	// Результат работы функции
 	u_long result = 0;
 	/**
-	 * Для операционной системы Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Определяем флаг блокировки
@@ -1023,7 +1023,7 @@ u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexc
 			} break;
 		}
 	/**
-	 * Для всех остальных операционных систем
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
 		// Получаем количество байт находящихся в сокете

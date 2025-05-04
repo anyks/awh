@@ -191,13 +191,13 @@ void awh::EventTimer::set(const SOCKET fd, const uint32_t delay, const uint32_t 
 awh::EventTimer::EventTimer(const fmk_t * fmk, const log_t * log) noexcept :
  _evpipe(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk) {
 	/**
-	 * Методы только для OS Windows
+	 * Для операционной системы OS Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем тип пайпа
 		this->_evpipe.type(evpipe_t::type_t::NETWORK);
 	/**
-	 * Методы для всех остальных операционных систем
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
 		// Устанавливаем тип пайпа

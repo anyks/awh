@@ -34,7 +34,7 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Для операционной системы Windows
+ * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	/**

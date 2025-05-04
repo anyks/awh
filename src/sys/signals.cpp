@@ -13,7 +13,7 @@
  */
 
 /**
- * Если операционной системой не является Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -42,7 +42,7 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Если операционной системой не является Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -61,7 +61,7 @@ using namespace placeholders;
 static function <void (const int32_t)> callbackFn = nullptr;
 
 /**
- * Если операционной системой не является Windows
+ * Для операционной системы не являющейся OS Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -110,7 +110,7 @@ static function <void (const int32_t)> callbackFn = nullptr;
 		}
 	}
 /**
- * Если операционной системой является MS Windows
+ * Для операционной системы OS Windows
  */
 #else
 	/**
@@ -146,7 +146,7 @@ void awh::Signals::stop() noexcept {
 		// Снимаем флаг запуска отслеживания сигналов
 		this->_mode = !this->_mode;
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Устанавливаем функцию перехвадчика событий
@@ -166,7 +166,7 @@ void awh::Signals::stop() noexcept {
 			::sigaction(SIGTERM, &this->_ev.sigTerm, nullptr);
 			::sigaction(SIGSEGV, &this->_ev.sigSegv, nullptr);
 		/**
-		 * Если операционной системой является MS Windows
+		 * Для операционной системы OS Windows
 		 */
 		#else
 			// Создаём обработчик сигнала для SIGINT
@@ -193,7 +193,7 @@ void awh::Signals::start() noexcept {
 		// Устанавливаем флаг запуска отслеживания сигналов
 		this->_mode = !this->_mode;
 		/**
-		 * Если операционной системой не является Windows
+		 * Для операционной системы не являющейся OS Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигналов SIGPIPE
@@ -241,7 +241,7 @@ void awh::Signals::start() noexcept {
 			// Отправка сигнала для теста
 			// ::raise(SIGABRT);
 		/**
-		 * Если операционной системой является MS Windows
+		 * Для операционной системы OS Windows
 		 */
 		#else
 			// Создаём обработчик сигнала для SIGINT
@@ -276,7 +276,7 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
  */
 awh::Signals::Signals([[maybe_unused]] const fmk_t * fmk, [[maybe_unused]] const log_t * log) noexcept : _mode(false), _callback(nullptr) {
 	/**
-	 * Если операционной системой не является Windows
+	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Запоминаем объект фреймворка
