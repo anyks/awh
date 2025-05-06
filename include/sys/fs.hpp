@@ -150,7 +150,7 @@ namespace awh {
 			/**
 			 * type Метод определяющая тип файловой системы по адресу
 			 * @param addr   адрес дирректории
-			 * @param actual флаг проверки актуальных файлов
+			 * @param actual флаг формирования актуальных адресов
 			 * @return       тип файловой системы
 			 */
 			type_t type(const string & addr, const bool actual = true) const noexcept;
@@ -158,7 +158,7 @@ namespace awh {
 			/**
 			 * realPath Метод извлечения реального адреса
 			 * @param path   путь который нужно определить
-			 * @param actual флаг проверки актуальных файлов
+			 * @param actual флаг формирования актуальных адресов
 			 * @return       полный путь
 			 */
 			string realPath(const string & path, const bool actual = true) const noexcept;
@@ -166,7 +166,7 @@ namespace awh {
 			/**
 			 * delPath Метод удаления полного пути
 			 * @param path   полный путь для удаления
-			 * @param actual флаг проверки актуальных файлов
+			 * @param actual флаг формирования актуальных адресов
 			 * @return       количество дочерних элементов
 			 */
 			int32_t delPath(const string & path, const bool actual = true) const noexcept;
@@ -201,7 +201,7 @@ namespace awh {
 			/**
 			 * components Метод извлечения названия и расширения файла
 			 * @param addr   адрес файла для извлечения его параметров
-			 * @param actual флаг проверки актуальных файлов
+			 * @param actual флаг формирования актуальных адресов
 			 * @param before флаг определения первой точки расширения слева
 			 */
 			pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
@@ -310,7 +310,7 @@ namespace awh {
 			 * @param ext      расширение файла по которому идет фильтрация
 			 * @param rec      флаг рекурсивного перебора каталогов
 			 * @param callback функция обратного вызова
-			 * @param actual   флаг проверки актуальных файлов
+			 * @param actual   флаг формирования актуальных адресов
 			 */
 			void readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback, const bool actual = true) const noexcept;
 			/**
@@ -319,7 +319,7 @@ namespace awh {
 			 * @param ext      расширение файла по которому идет фильтрация
 			 * @param rec      флаг рекурсивного перебора каталогов
 			 * @param callback функция обратного вызова
-			 * @param actual   флаг проверки актуальных файлов
+			 * @param actual   флаг формирования актуальных адресов
 			 */
 			void readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback, const bool actual = true) const noexcept;
 		public:

@@ -89,7 +89,7 @@ bool awh::FS::isLink(const string & addr) const noexcept {
 /**
  * type Метод определяющая тип файловой системы по адресу
  * @param addr   адрес дирректории
- * @param actual флаг проверки актуальных файлов
+ * @param actual флаг формирования актуальных адресов
  * @return       тип файловой системы
  */
 awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noexcept {
@@ -278,7 +278,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 /**
  * realPath Метод извлечения реального адреса
  * @param path   путь который нужно определить
- * @param actual флаг проверки актуальных файлов
+ * @param actual флаг формирования актуальных адресов
  * @return       полный путь
  */
 string awh::FS::realPath(const string & path, const bool actual) const noexcept {
@@ -523,7 +523,7 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 /**
  * delPath Метод удаления полного пути
  * @param path   полный путь для удаления
- * @param actual флаг проверки актуальных файлов
+ * @param actual флаг формирования актуальных адресов
  * @return       количество дочерних элементов
  */
 int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept {
@@ -1090,7 +1090,7 @@ bool awh::FS::makeDir(const string & path, [[maybe_unused]] const string & user,
 /**
  * components Метод извлечения названия и расширения файла
  * @param addr   адрес файла для извлечения его параметров
- * @param actual флаг проверки актуальных файлов
+ * @param actual флаг формирования актуальных адресов
  * @param before флаг определения первой точки расширения слева
  */
 pair <string, string> awh::FS::components(const string & addr, const bool actual, const bool before) const noexcept {
@@ -2351,7 +2351,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
  * @param ext      расширение файла по которому идет фильтрация
  * @param rec      флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
- * @param actual   флаг проверки актуальных файлов
+ * @param actual   флаг формирования актуальных адресов
  */
 void awh::FS::readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback, const bool actual) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
@@ -2559,7 +2559,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
  * @param ext      расширение файла по которому идет фильтрация
  * @param rec      флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
- * @param actual   флаг проверки актуальных файлов
+ * @param actual   флаг формирования актуальных адресов
  */
 void awh::FS::readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback, const bool actual) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
