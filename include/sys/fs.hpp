@@ -156,19 +156,20 @@ namespace awh {
 			type_t type(const string & addr, const bool actual = true) const noexcept;
 		public:
 			/**
-			 * delPath Метод удаления полного пути
-			 * @param path полный путь для удаления
-			 * @return     количество дочерних элементов
-			 */
-			int32_t delPath(const string & path) const noexcept;
-		public:
-			/**
 			 * realPath Метод извлечения реального адреса
 			 * @param path   путь который нужно определить
 			 * @param actual флаг проверки актуальных файлов
 			 * @return       полный путь
 			 */
 			string realPath(const string & path, const bool actual = true) const noexcept;
+		public:
+			/**
+			 * delPath Метод удаления полного пути
+			 * @param path   полный путь для удаления
+			 * @param actual флаг проверки актуальных файлов
+			 * @return       количество дочерних элементов
+			 */
+			int32_t delPath(const string & path, const bool actual = true) const noexcept;
 		public:
 			/**
 			 * symLink Метод создания символьной ссылки
