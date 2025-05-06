@@ -107,8 +107,10 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 			#if defined(_WIN32) || defined(_WIN64)
 				// Структура проверка статистики
 				struct _stat info;
+				// Выполняем извлечение актуального значения адреса
+				const string & address = this->realPath(addr, actual);
 				// Выполняем извлечение данных статистики
-				const int32_t status = _wstat(this->_fmk->convert(addr).c_str(), &info);
+				const int32_t status = (!address.empty() ? _wstat(this->_fmk->convert(address).c_str(), &info) : -1);
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
