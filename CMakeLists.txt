@@ -71,16 +71,26 @@ endif()
 SET(CMAKE_CXX_STANDARD 17)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Если операционной системой является Linux
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    # Устанавливаем опции компилятора
-    SET(CMAKE_C_COMPILER_ID "GNU")
-    SET(CMAKE_CXX_COMPILER_ID "GNU")
-# Для всех остальных операционных систем
-else()
+# Используем Clang
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # Устанавливаем опции компилятора
     SET(CMAKE_C_COMPILER_ID "clang")
     SET(CMAKE_CXX_COMPILER_ID "clang++")
+# Используем GCC
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # Устанавливаем опции компилятора
+    SET(CMAKE_C_COMPILER_ID "GNU")
+    SET(CMAKE_CXX_COMPILER_ID "GNU")
+# Используем Intel C++
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+    # Устанавливаем опции компилятора
+    SET(CMAKE_C_COMPILER_ID "Intel")
+    SET(CMAKE_CXX_COMPILER_ID "Intel")
+# Используем Visual Studio C++
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # Устанавливаем опции компилятора
+    SET(CMAKE_C_COMPILER_ID "MSVC")
+    SET(CMAKE_CXX_COMPILER_ID "MSVC")
 endif()
 
 # Выводим информацию об установленных компиляторах
