@@ -23,6 +23,7 @@
 #include <string>
 #include <cstring>
 #include <unistd.h>
+#include <stdint.h>
 
 // Если используется BOOST
 #ifdef USE_BOOST_CONVERT

@@ -40,7 +40,19 @@ string(REGEX MATCH "Linux" PROJECT_OS_LINUX ${CMAKE_SYSTEM_NAME})
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
     SET(DEBUGGER "-ggdb3")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
+    # Используем Clang
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+     # Используем GCC
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
+    # Используем Intel C++
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    # Используем Visual Studio C++
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    endif()
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     if (NOT MACOS_VERSION)
         EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE MACOS_VERSION)
