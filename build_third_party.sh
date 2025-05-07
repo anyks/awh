@@ -137,14 +137,32 @@ else # Linux
 	INSTALL_CMD="install -D -m 0644"
 fi
 
-# Применяем патчи
+# Функция применения патча
 apply_patch(){
-	patch="$ROOT/patches/$1/$2"
-	if ! git apply --reverse --check "$patch" 2> /dev/null; then
-		echo "applaying patch $patch"
-		git apply "$patch" || exit 1
+	PATCH="$ROOT/patches/$1/$2"
+	if ! git apply --reverse --check "$PATCH" 2> /dev/null; then
+		echo "applaying patch $PATCH"
+		git apply "$PATCH" || exit 1
 	else
-		echo "patch $patch already applied"
+		echo "patch $PATCH already applied"
+	fi
+}
+
+# Фукция компенсации неверных каталогов
+restorelibs(){
+	# Если на вход получен каталог
+	if [[ -d "$1/lib64" ]]; then
+		# Переносим всё что есть в каталоге, в нужный нам каталог
+		for i in $(ls "$1/lib64");
+		do
+			# Если файла нет в каталоге
+			if [[ ! -f "$1/lib/$i" ]] && [[ -f "$1/lib64/$i" ]]; then
+				echo "Move \"$1/lib64/$i\" to \"$1/lib/$i\""
+				mv "$1/lib64/$i" "$1/lib/$i" || exit 1
+			fi
+		done
+		# Удаляем ненужный нам каталог
+		rm -rf "$1/lib64" || exit 1
 	fi
 }
 
@@ -219,17 +237,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make install_sw || exit 1
 	make install_ssldirs || exit 1
 
-	# Если библиотека лежит не по тому адресу
-	if [ -f "$PREFIX/lib64/libssl.a" ]; then
-		# Переносим собранную библиотеку
-		mv "$PREFIX/lib64/libssl.a" "$PREFIX/lib/libssl.a"
-	fi
-
-	# Если библиотека лежит не по тому адресу
-	if [ -f "$PREFIX/lib64/libcrypto.a" ]; then
-		# Переносим собранную библиотеку
-		mv "$PREFIX/lib64/libcrypto.a" "$PREFIX/lib/libcrypto.a"
-	fi
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -292,6 +301,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	make install || exit 1
+
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
 
 	# Если операционной системой является Windows
 	if [ $OS = "Windows" ]; then
@@ -371,6 +383,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем установку проекта
 	make install || exit 1
 
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
+
 	# Создаём каталог BZip2
 	mkdir "$PREFIX/include/bz2"
 
@@ -443,6 +458,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	make install || exit 1
+
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
 
 	# Создаём каталог LZ4
 	mkdir "$PREFIX/include/lz4"
@@ -518,6 +536,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	make install || exit 1
+
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
 
 	# Создаём каталог ZSTD
 	mkdir "$PREFIX/include/zstd"
@@ -597,6 +618,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	make install || exit 1
+
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
 
 	# Создаём каталог LZMA
 	mkdir "$PREFIX/include/lzma2"
@@ -861,6 +885,9 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			# Выполняем установку проекта
 			make install || exit 1
 
+			# Выполняем компенсацию каталогов
+			restorelibs $PREFIX
+
 			# Помечаем флагом, что сборка и установка произведена
 			touch "$src/.stamp_done"
 			cd "$ROOT" || exit 1
@@ -926,6 +953,9 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			make || exit 1
 			# Выполняем установку проекта
 			make install || exit 1
+
+			# Выполняем компенсацию каталогов
+			restorelibs $PREFIX
 
 			# Помечаем флагом, что сборка и установка произведена
 			touch "$src/.stamp_done"
@@ -1015,6 +1045,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	make install || exit 1
+
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
 
 	# Создаём каталог PCRE
 	mkdir "$PREFIX/include/pcre2"
@@ -1336,6 +1369,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	make -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	make install || exit 1
+
+	# Выполняем компенсацию каталогов
+	restorelibs $PREFIX
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"

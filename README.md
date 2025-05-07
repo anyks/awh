@@ -52,6 +52,14 @@ $ sudo modprobe sctp
 $ sudo sysctl -w net.sctp.auth_enable=1
 ```
 
+#### Linux (Fedora)
+
+```bash
+$ sudo yum install lksctp-tools-devel
+$ sudo modprobe sctp
+$ sudo sysctl -w net.sctp.auth_enable=1
+```
+
 ```bash
 $ cd ./certs
 $ ./certs.sh example.com
