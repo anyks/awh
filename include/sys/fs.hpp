@@ -34,6 +34,7 @@
 #include <cstdlib>
 #include <functional>
 #include <dirent.h>
+#include <unistd.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -109,6 +110,9 @@ namespace awh {
 		private:
 			// Объект работы с операционной системой
 			os_t _os;
+		private:
+			// Идентификатор родительского процесса
+			pid_t _pid;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -328,7 +332,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			FS(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+			FS(const fmk_t * fmk, const log_t * log) noexcept : _pid(::getpid()), _fmk(fmk), _log(log) {}
 			/**
 			 * ~FS деструктор
 			 */

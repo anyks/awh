@@ -385,22 +385,25 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 					 * Если операционной системой является MacOS X
 					 */
 					#if __APPLE__ || __MACH__
-						// Создаём объект файловой системы
-						FSRef link;
-						// Создаём флаги принадлежности адреса
-						Boolean isFolder = false, wasAliased = false;
-						// Выполняем чтение указанного каталога
-						if(FSPathMakeRef(reinterpret_cast <const UInt8 *> (result.c_str()), &link, nullptr) == 0){
-							// Выполняем проверку является ли адрес ярлыком
-							if(FSResolveAliasFile(&link, true, &isFolder, &wasAliased) == 0){
-								// Если адрес является ярлыком
-								if(static_cast <bool> (wasAliased)){
-									// Создаём буфер данных адреса
-									UInt8 buffer[1025];
-									// Выполняем извлечение полного адреса файла
-									if(FSRefMakePath(&link, buffer, 1024) == 0)
-										// Получаем полный адрес файла
-										return this->_fmk->format("%s%s", buffer, (isFolder ? "/" : ""));
+						// Если процесс является родительским
+						if(this->_pid == static_cast <pid_t> (::getpid())){
+							// Создаём объект файловой системы
+							FSRef link;
+							// Создаём флаги принадлежности адреса
+							Boolean isFolder = false, wasAliased = false;
+							// Выполняем чтение указанного каталога
+							if(FSPathMakeRef(reinterpret_cast <const UInt8 *> (result.c_str()), &link, nullptr) == 0){
+								// Выполняем проверку является ли адрес ярлыком
+								if(FSResolveAliasFile(&link, true, &isFolder, &wasAliased) == 0){
+									// Если адрес является ярлыком
+									if(static_cast <bool> (wasAliased)){
+										// Создаём буфер данных адреса
+										UInt8 buffer[1025];
+										// Выполняем извлечение полного адреса файла
+										if(FSRefMakePath(&link, buffer, 1024) == 0)
+											// Получаем полный адрес файла
+											return this->_fmk->format("%s%s", buffer, (isFolder ? "/" : ""));
+									}
 								}
 							}
 						}
