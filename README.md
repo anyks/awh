@@ -381,6 +381,10 @@ class WebServer {
 			return true;
 		}
 
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
+		}
+
 		void active([[maybe_unused]] const uint64_t bid, const server::web_t::mode_t mode){
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
@@ -512,6 +516,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.addAltSvc("example.net", "h2=\":2222\"");
 	// awh.addAltSvc("example.com", "h2=\":8000\"");
 
+	awh.callback <void (const string &, const uint32_t)> ("launched", std::bind(&WebServer::launched, &executor, _1, _2));
 	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
 	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
@@ -683,6 +688,10 @@ class Executor {
 			return true;
 		}
 
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
+		}
+
 		void active([[maybe_unused]] const uint64_t bid, const server::web_t::mode_t mode){
 			switch(static_cast <uint8_t> (mode)){
 				case static_cast <uint8_t> (server::web_t::mode_t::CONNECT):
@@ -763,6 +772,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.init(2222, "", {awh::http_t::compressor_t::DEFLATE});
 	ws.init(2222, "127.0.0.1", {awh::http_t::compressor_t::DEFLATE});
 
+	ws.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Executor::launched, &executor, _1, _2));
 	ws.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Executor::password, &executor, _1, _2));
 	ws.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
 	ws.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
@@ -813,6 +823,10 @@ class WebServer {
 			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
+		}
+
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 
 		void active([[maybe_unused]] const uint64_t bid, const server::web_t::mode_t mode){
@@ -956,6 +970,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	awh.subprotocols({"test1", "test2", "test3"});
 
+	awh.callback <void (const string &, const uint32_t)> ("launched", std::bind(&WebServer::launched, &executor, _1, _2));
 	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
 	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
 	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
@@ -1001,7 +1016,7 @@ class Proxy {
 		}
 	public:
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
 		}
@@ -1090,7 +1105,7 @@ class Proxy {
 	public:
 
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
 		}
@@ -1390,9 +1405,13 @@ class Server {
 	public:
 
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
+		}
+
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 
 		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
@@ -1426,6 +1445,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
+	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
@@ -1521,9 +1541,13 @@ class Server {
 	public:
 
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
+		}
+
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 
 		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
@@ -1563,6 +1587,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
+	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
@@ -1652,9 +1677,13 @@ class Server {
 	public:
 
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
+		}
+
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 
 		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
@@ -1687,6 +1716,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
+	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
@@ -1782,9 +1812,13 @@ class Server {
 	public:
 
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
+		}
+
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 
 		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
@@ -1824,6 +1858,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
+	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
@@ -1919,9 +1954,13 @@ class Server {
 	public:
 
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
+		}
+
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 
 		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
@@ -1960,6 +1999,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
+	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
@@ -2050,9 +2090,13 @@ class Server {
 	public:
 
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
+		}
+
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 
 		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
@@ -2087,6 +2131,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init("anyks");
 
+	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
@@ -2177,9 +2222,13 @@ class Server {
 	public:
 
 		bool accept(const string & ip, const string & mac, const uint32_t port){
-			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: IP=%s, MAC=%s, PORT=%d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 
 			return true;
+		}
+
+		void launched(const string & host, const uint32_t port){
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 
 		void active([[maybe_unused]] const uint64_t bid, const server::sample_t::mode_t mode){
@@ -2213,6 +2262,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init("anyks");
 
+	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
 	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));

@@ -80,6 +80,15 @@ class Executor {
 			return true;
 		}
 		/**
+		 * launched Метод получения события запуска сервера
+		 * @param host хост запущенного сервера
+		 * @param port порт запущенного сервера
+		 */
+		void launched(const string & host, const uint32_t port){
+			// Выводим информацию в лог
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
+		}
+		/**
 		 * available Метод получения событий освобождения памяти буфера полезной нагрузки
 		 * @param bid  идентификатор брокера
 		 * @param size размер буфера полезной нагрузки
@@ -295,6 +304,8 @@ int32_t main(int32_t argc, char * argv[]){
 	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&Executor::available, &executor, _1, _2, &core));
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
 	core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&Executor::unavailable, &executor, _1, _2, _3));
+	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
+	ws.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Executor::launched, &executor, _1, _2));
 	// Устанавливаем функцию извлечения пароля пользователя для авторизации
 	ws.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Executor::password, &executor, _1, _2));
 	// Устанавливаем функцию проверки авторизации прользователя

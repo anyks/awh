@@ -1495,6 +1495,8 @@ void awh::server::Websocket2::callbacks(const fn_t & callbacks) noexcept {
 		callbacks.set("chunking", this->_callbacks);
 		// Выполняем установку функции завершения выполнения запроса
 		callbacks.set("complete", this->_callbacks);
+		// Выполняем установку функции обратного вызова для выполнения события запуска сервера
+		callbacks.set("launched", this->_callbacks);
 		// Выполняем установку функции обратного вызова при выполнении рукопожатия
 		callbacks.set("handshake", this->_callbacks);
 		// Выполняем установку функции обратного вызова для обработки авторизации

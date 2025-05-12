@@ -183,6 +183,12 @@ namespace awh {
 				 * @param status флаг запуска/остановки
 				 */
 				virtual void statusEvents(const awh::core_t::status_t status) noexcept;
+				/**
+				 * launchedEvents Метод получения события запуска сервера
+				 * @param host хост запущенного сервера
+				 * @param port порт запущенного сервера
+				 */
+				void launchedEvents(const string & host, const uint32_t port) noexcept;
 			protected:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу

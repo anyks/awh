@@ -2554,9 +2554,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX)
 								// Выводим информацию о запущенном сервере на unix-сокете
-								this->_log->print("Start server [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+								this->_log->print("Server has started [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-							else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+							else this->_log->print("Server has started [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 						}
 						// Определяем режим активации кластера
 						switch(static_cast <uint8_t> (this->_clusterMode)){
@@ -2569,6 +2569,15 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 									// Выполняем функцию обратного вызова
 									this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for \"UDP-protocol\" is not supported PID=%d", ::getpid()));
 							} break;
+						}
+						// Если функция обратного вызова установлена
+						if(this->_callbacks.is("launched")){
+							// Если unix-сокет используется
+							if(this->_settings.family == scheme_t::family_t::NIX)
+								// Выполняем функцию обратного вызова
+								this->_callbacks.call <void (const string &, const uint32_t)> ("launched", this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), 0);
+							// Выполняем функцию обратного вызова
+							else this->_callbacks.call <void (const string &, const uint32_t)> ("launched", shm->_host, shm->_port);
 						}
 						// Выполняем активацию сервера
 						this->accept(1, sid);
@@ -2584,9 +2593,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 								// Если unix-сокет используется
 								if(this->_settings.family == scheme_t::family_t::NIX)
 									// Выводим информацию о запущенном сервере на unix-сокете
-									this->_log->print("Start server [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+									this->_log->print("Server has started [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+								else this->_log->print("Server has started [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 							}
 							// Определяем режим активации кластера
 							switch(static_cast <uint8_t> (this->_clusterMode)){
@@ -2599,6 +2608,15 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 										// Выполняем функцию обратного вызова
 										this->_callbacks.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::START, this->_fmk->format("Working in cluster mode for \"DTLS-protocol\" is not supported PID=%d", ::getpid()));
 								} break;
+							}
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("launched")){
+								// Если unix-сокет используется
+								if(this->_settings.family == scheme_t::family_t::NIX)
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const string &, const uint32_t)> ("launched", this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), 0);
+								// Выполняем функцию обратного вызова
+								else this->_callbacks.call <void (const string &, const uint32_t)> ("launched", shm->_host, shm->_port);
 							}
 							// Выполняем создание нового DTLS-брокера
 							this->initDTLS(sid);
@@ -2634,9 +2652,18 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 								// Если unix-сокет используется
 								if(this->_settings.family == scheme_t::family_t::NIX)
 									// Выводим информацию о запущенном сервере на unix-сокете
-									this->_log->print("Start server [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+									this->_log->print("Server has started [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-								else this->_log->print("Start server [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+								else this->_log->print("Server has started [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+							}
+							// Если функция обратного вызова установлена
+							if(this->_callbacks.is("launched")){
+								// Если unix-сокет используется
+								if(this->_settings.family == scheme_t::family_t::NIX)
+									// Выполняем функцию обратного вызова
+									this->_callbacks.call <void (const string &, const uint32_t)> ("launched", this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), 0);
+								// Выполняем функцию обратного вызова
+								else this->_callbacks.call <void (const string &, const uint32_t)> ("launched", shm->_host, shm->_port);
 							}
 							// Определяем режим активации кластера
 							switch(static_cast <uint8_t> (this->_clusterMode)){
@@ -2779,6 +2806,8 @@ void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("connect", callbacks);
 	// Выполняем установку функции обратного вызова при получении сообщения кластера
 	this->_callbacks.set("message", callbacks);
+	// Выполняем установку функции обратного вызова для выполнения события запуска сервера
+	this->_callbacks.set("launched", callbacks);
 	// Выполняем установку функции обратного вызова при освобождении буфера хранения полезной нагрузки
 	this->_callbacks.set("available", callbacks);
 	// Выполняем установку функции обратного вызова при заполнении буфера хранения полезной нагрузки

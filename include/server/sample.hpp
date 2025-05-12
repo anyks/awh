@@ -120,6 +120,12 @@ namespace awh {
 				 */
 				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
+				 * launchedEvent Метод получения события запуска сервера
+				 * @param host хост запущенного сервера
+				 * @param port порт запущенного сервера
+				 */
+				void launchedEvent(const string & host, const uint32_t port) noexcept;
+				/**
 				 * readEvent Метод обратного вызова при чтении сообщения с брокера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение

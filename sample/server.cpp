@@ -51,6 +51,15 @@ class Server {
 			return true;
 		}
 		/**
+		 * launched Метод получения события запуска сервера
+		 * @param host хост запущенного сервера
+		 * @param port порт запущенного сервера
+		 */
+		void launched(const string & host, const uint32_t port){
+			// Выводим информацию в лог
+			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
+		}
+		/**
 		 * active Метод идентификации активности на сервере
 		 * @param bid  идентификатор брокера
 		 * @param mode режим события подключения
@@ -138,6 +147,8 @@ int32_t main(int32_t argc, char * argv[]){
 	sample.waitTimeDetect(1, 1);
 	// Запрещаем перехват сигналов
 	core.signalInterception(scheme_t::mode_t::DISABLED);
+	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
+	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере

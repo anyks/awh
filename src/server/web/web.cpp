@@ -80,6 +80,20 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 		this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
 }
 /**
+ * launchedEvents Метод получения события запуска сервера
+ * @param host хост запущенного сервера
+ * @param port порт запущенного сервера
+ */
+void awh::server::Web::launchedEvents(const string & host, const uint32_t port) noexcept {
+	// Если параметра активации сервера переданы
+	if(!host.empty() && (port > 0)){
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("launched"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const string &, const uint32_t)> ("launched", host, port);
+	}
+}
+/**
  * acceptEvents Метод обратного вызова при проверке подключения брокера
  * @param ip   адрес интернет подключения брокера
  * @param mac  мак-адрес подключившегося брокера
@@ -280,6 +294,8 @@ void awh::server::Web::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("chunking", callbacks);
 	// Выполняем установку функции завершения выполнения запроса
 	this->_callbacks.set("complete", callbacks);
+	// Выполняем установку функции обратного вызова для выполнения события запуска сервера
+	this->_callbacks.set("launched", callbacks);
 	// Выполняем установку функции обратного вызова при выполнении рукопожатия
 	this->_callbacks.set("handshake", callbacks);
 	// Выполняем установку функции обратного вызова для обработки авторизации
@@ -455,6 +471,8 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
 	this->_callbacks.callback(std::bind(&web_t::callbacksEvents, this, _1, _2, _3, _4));
 	// Устанавливаем функцию активации ядра сервера
 	const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&web_t::statusEvents, this, _1));
+	// Устанавливаем функцию получения события запуска сервера
+	const_cast <server::core_t *> (this->_core)->callback <void (const string &, const uint32_t)> ("launched", std::bind(&web_t::launchedEvents, this, _1, _2));
 	// Устанавливаем функцию обратного вызова на перехват событий кластера
 	const_cast <server::core_t *> (this->_core)->callback <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", std::bind(&web_t::clusterEvents, this, _1, _2, _3, _4));
 }

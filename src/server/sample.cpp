@@ -109,6 +109,20 @@ void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
 	}
 }
 /**
+ * launchedEvent Метод получения события запуска сервера
+ * @param host хост запущенного сервера
+ * @param port порт запущенного сервера
+ */
+void awh::server::Sample::launchedEvent(const string & host, const uint32_t port) noexcept {
+	// Если параметра активации сервера переданы
+	if(!host.empty() && (port > 0)){
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("launched"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const string &, const uint32_t)> ("launched", host, port);
+	}
+}
+/**
  * readEvent Метод обратного вызова при чтении сообщения с брокера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
@@ -467,6 +481,8 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
 		// Устанавливаем событие отключения
 		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
+		// Устанавливаем функцию получения события запуска сервера
+		const_cast <server::core_t *> (this->_core)->callback <void (const string &, const uint32_t)> ("launched", std::bind(&sample_t::launchedEvent, this, _1, _2));
 		// Устанавливаем функцию чтения данных
 		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
 		// Устанавливаем функцию записи данных
