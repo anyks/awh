@@ -25,7 +25,7 @@ using namespace std;
 /**
  * Для операционной системы NetBSD или OpenBSD
  */
-#ifdef __NetBSD__ || __OpenBSD__
+#if defined(__NetBSD__) || defined(__OpenBSD__)
 	/**
 	 * readData Функция извлечения данных записи
 	 * @param filename адрес файла для извлечения
