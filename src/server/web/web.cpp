@@ -86,7 +86,7 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
  */
 void awh::server::Web::launchedEvents(const string & host, const uint32_t port) noexcept {
 	// Если параметра активации сервера переданы
-	if(!host.empty() && (port > 0)){
+	if(!host.empty()){
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("launched"))
 			// Выполняем функцию обратного вызова

@@ -117,7 +117,7 @@ int32_t main(int32_t argc, char * argv[]){
 	/**
 	 * Запрет вывода информационных сообщений
 	 */
-	// sample.mode({client::sample_t::flag_t::NOT_INFO});
+	// sample.mode({server::sample_t::flag_t::NOT_INFO});
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Активируем максимальное количество рабочих процессов

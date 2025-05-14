@@ -115,7 +115,7 @@ void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
  */
 void awh::server::Sample::launchedEvent(const string & host, const uint32_t port) noexcept {
 	// Если параметра активации сервера переданы
-	if(!host.empty() && (port > 0)){
+	if(!host.empty()){
 		// Если функция обратного вызова установлена
 		if(this->_callbacks.is("launched"))
 			// Выполняем функцию обратного вызова
