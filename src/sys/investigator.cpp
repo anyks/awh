@@ -177,19 +177,25 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 				// Формируем название файла
 				ss << "/proc/" << pid << "/exe";
 				// Создаём буфер строки
-				char buffer[PATH_MAX + 1];
+				char buffer[1024];
 				// Заполняем нулями буфер данных
 				::memset(buffer, 0, sizeof(buffer));
+				// Выполняем извлечение данных в буфер
+				const ssizet_t size = ::readlink(ss.str().c_str(), buffer, sizeof(buffer));
 				// Выполняем чтение данных в бинарный буфер
-				if(::readlink(ss.str().c_str(), buffer, sizeof(buffer)) > 0) {
+				if(size > 0) {
 					// Устанавливаем последний символ
-					buffer[PATH_MAX] = '\0';
+					buffer[size] = '\0';
 					// Если мы нашли разделитель
 					if(const char * p = ::strrchr(buffer, '/'))
 						// Выполняем удаление разделителя
 						result = (p + 1);
 					// Выполняем получение названия приложения
 					else result = buffer;
+					// Если последний символ является переносом строки
+					if(result.rbegin()[0] == '\n')
+						// Выполняем удаление последнего символа
+						result.pop_back();
 				}
 			}
 		/**
