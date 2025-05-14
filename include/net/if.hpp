@@ -50,9 +50,9 @@
 	#include <netinet/in.h>
 
 	/**
-	 * Для операционной системы MacOS X или FreeBSD
+	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 	 */
-	#if __APPLE__ || __MACH__ || __FreeBSD__
+	#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		/**
 		 * Стандартные библиотеки
 		 */

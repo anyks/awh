@@ -35,9 +35,9 @@
 	// Подключаем модуль EPoll
 	#include <sys/epoll.h>
 /**
- * Для операционной системы FreeBSD или MacOS X
+ * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
  */
-#elif __APPLE__ || __MACH__ || __FreeBSD__
+#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 	// Подключаем модуль Kqueue
 	#include <sys/event.h>
 #endif
@@ -180,9 +180,9 @@ namespace awh {
 				// Список активных событий
 				vector <struct epoll_event> _events;
 			/**
-			 * Для операционной системы FreeBSD или MacOS X
+			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Идентификатор активного kqueue
 				int32_t _kq;
 				// Список активных изменений событий

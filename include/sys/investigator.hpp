@@ -40,7 +40,7 @@
 /**
  * Для операционной системы MacOS X
  */
-#elif __APPLE__ || __MACH__
+#elif __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 	#include <libproc.h>
 /**
  * Для операционной системы Windows

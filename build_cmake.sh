@@ -35,16 +35,8 @@ if [ -n "$DESTINATION" ]; then
 	# Выполняем копирование CMAKE-файла
 	cp "$ROOT/contrib/cmake/$NAME" "$CMAKE"
 
-	# Если операционная система FreeBSD
-	if [ "$OS" = "FreeBSD" ]; then
-		# Заменяем конечный адрес назначения
-		sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party!${DESTINATION}!" "$CMAKE"
-		# Удаляем временные паразитные файлы
-		if [ -f "$CMAKE-e" ]; then
-			rm "$CMAKE-e"
-		fi
 	# Если операционная система MacOS X
-	elif [ "$OS" = "Darwin" ]; then
+	if [ "$OS" = "Darwin" ]; then
 		# Заменяем конечный адрес назначения
 		sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party!${DESTINATION}!" "$CMAKE"
 		# Удаляем временные паразитные файлы
@@ -59,6 +51,14 @@ if [ -n "$DESTINATION" ]; then
 	elif [ "$OS" = "Windows" ]; then
 		# Заменяем конечный адрес назначения
 		sed -i "s%\${CMAKE_SOURCE_DIR}/third_party%${DESTINATION}%g" "$CMAKE"
+	# Если операционная система FreeBSD, NetBSD или OpenBSD
+	elif [ "$OS" = "FreeBSD" ] || [ "$OS" = "NetBSD" ] || [ "$OS" = "OpenBSD" ]; then
+		# Заменяем конечный адрес назначения
+		sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party!${DESTINATION}!" "$CMAKE"
+		# Удаляем временные паразитные файлы
+		if [ -f "$CMAKE-e" ]; then
+			rm "$CMAKE-e"
+		fi
 	fi
 # Если место назначения не указанно
 else

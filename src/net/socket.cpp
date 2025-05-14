@@ -124,9 +124,9 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 			return -1;
 		*/
 	/**
-	 * Для операционных систем FreeBSD или MacOS X
+	 * Для операционных систем FreeBSD, NetBSD, OpenBSD или MacOS X
 	 */
-	#elif __APPLE__ || __MACH__ || __FreeBSD__
+	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Устанавливаем параметр
 		const int32_t on = 1;
 		// Устанавливаем SO_NOSIGPIPE
@@ -419,9 +419,9 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 			#endif
 		}
 	/**
-	 * Для операционных систем FreeBSD или MacOS X
+	 * Для операционных систем FreeBSD, NetBSD, OpenBSD или MacOS X
 	 */
-	#elif __APPLE__ || __MACH__ || __FreeBSD__
+	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Флаг активации или деактивации алгоритма TCP/CORK
 		int32_t flag = -1;
 		// Определяем режим установки типа сокета
@@ -932,9 +932,9 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 				return result;
 			}
 		/**
-		 * Если мы работаем в FreeBSD или Linux
+		 * Если мы работаем в FreeBSD, NetBSD, OpenBSD или Linux
 		 */
-		#elif __linux__ || __FreeBSD__
+		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Время через которое происходит проверка подключения
 			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
 				/**

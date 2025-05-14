@@ -3476,6 +3476,10 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										case static_cast <uint8_t> (os_t::type_t::MACOSX): os = "MacOS X"; break;
 										// Если операционной системой является FreeBSD
 										case static_cast <uint8_t> (os_t::type_t::FREEBSD): os = "FreeBSD"; break;
+										// Если операционной системой является NetBSD
+										case static_cast <uint8_t> (os_t::type_t::NETBSD): os = "NetBSD"; break;
+										// Если операционной системой является OpenBSD
+										case static_cast <uint8_t> (os_t::type_t::OPENBSD): os = "OpenBSD"; break;
 									}
 									// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 									this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
@@ -4481,6 +4485,10 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										case static_cast <uint8_t> (os_t::type_t::MACOSX): os = "MacOS X"; break;
 										// Если операционной системой является FreeBSD
 										case static_cast <uint8_t> (os_t::type_t::FREEBSD): os = "FreeBSD"; break;
+										// Если операционной системой является NetBSD
+										case static_cast <uint8_t> (os_t::type_t::NETBSD): os = "NetBSD"; break;
+										// Если операционной системой является OpenBSD
+										case static_cast <uint8_t> (os_t::type_t::OPENBSD): os = "OpenBSD"; break;
 									}
 									// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 									this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
@@ -5119,6 +5127,10 @@ string awh::Http::ident(const process_t flag) const noexcept {
 				case static_cast <uint8_t> (os_t::type_t::MACOSX): os = "MacOS X"; break;
 				// Если операционной системой является FreeBSD
 				case static_cast <uint8_t> (os_t::type_t::FREEBSD): os = "FreeBSD"; break;
+				// Если операционной системой является NetBSD
+				case static_cast <uint8_t> (os_t::type_t::NETBSD): os = "NetBSD"; break;
+				// Если операционной системой является OpenBSD
+				case static_cast <uint8_t> (os_t::type_t::OPENBSD): os = "OpenBSD"; break;
 			}
 			// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 			result = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());

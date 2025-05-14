@@ -49,9 +49,9 @@
 #endif
 
 /**
- * Если операционной системой является MacOS X или FreeBSD
+ * Если операционной системой является MacOS X, FreeBSD, NetBSD, OpenBSD
  */
-#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
+#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 	/**
 	 * Стандартные модули
 	 */
@@ -99,7 +99,7 @@ void awh::OS::boost() const noexcept {
 			// Увеличиваем максимальный размер буферов для чтения
 			this->sysctl("net.inet.tcp.recvspace", 1042560);
 			// В MacOS X значение по умолчанию 3, что очень мало
-			this->sysctl("net.inet.tcp.win_scale_factor", 8);
+			this->sysctl("net.inet.tcp.r", 8);
 			// Увеличиваем максимумы автонастройки MacOS X TCP
 			this->sysctl("net.inet.tcp.autorcvbufmax", 33554432);
 			this->sysctl("net.inet.tcp.autosndbufmax", 33554432);
@@ -147,9 +147,9 @@ void awh::OS::boost() const noexcept {
 				this->sysctl("net.ipv4.tcp_congestion_control", algorithm);
 		}
 	/**
-	 * Для операционной системы FreeBSD
+	 * Для операционной системы FreeBSD, NetBSD или OpenBSD
 	 */
-	#elif __FreeBSD__
+	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Если эффективный идентификатор пользователя принадлежит ROOT
 		if(::geteuid() == 0){
 			/**
@@ -239,6 +239,18 @@ awh::OS::type_t awh::OS::type() const noexcept {
 	#elif __FreeBSD__
 		// Заполняем структуру
 		result = type_t::FREEBSD;
+	/**
+	 * Операционной системой является NetBSD
+	 */
+	#elif __NetBSD__
+		// Заполняем структуру
+		result = type_t::NETBSD;
+	/**
+	 * Операционной системой является OpenBSD
+	 */
+	#elif __OpenBSD__
+		// Заполняем структуру
+		result = type_t::OPENBSD;
 	/**
 	 * Операционной системой является Unix
 	 */
@@ -465,9 +477,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 		// Выполняем очистку буфера данных
 		buffer.clear();
 		/**
-		 * Если мы работаем в MacOS X или FreeBSD
+		 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
-		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
+		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 			// Получаем размер буфера
 			size_t length = 0;
 			// Если размеры удачно получены
@@ -603,9 +615,9 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 	// Если название параметра передано
 	if(!name.empty()){
 		/**
-		 * Если мы работаем в MacOS X или FreeBSD
+		 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
-		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
+		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 			// Устанавливаем новые параметры настройки ядра
 			return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (buffer.data()), buffer.size()) == 0);
 		/**

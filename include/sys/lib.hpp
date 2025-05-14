@@ -190,6 +190,18 @@
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/usr/local/openssl/cert.pem"
 /**
+ * Для операционной системы OpenBSD
+ */
+#elif __OpenBSD__
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE "/usr/local/openssl/cert.pem"
+/**
+ * Для операционной системы NetBSD
+ */
+#elif __NetBSD__
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE "/usr/src/crypto/external/bsd/openssl/dist/apps/cert.pem"
+/**
  * Для всех остальных Unix-подобных операционных систем
  */
 #elif __unix || __unix__

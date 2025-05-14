@@ -28,9 +28,9 @@ using namespace std;
  */
 void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 	/**
-	 * Если операционной системой является MacOS X или FreeBSD
+	 * Если операционной системой является MacOS X, FreeBSD, NetBSD или OpenBSD
 	 */
-	#if __APPLE__ || __MACH__ || __FreeBSD__
+	#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Структура параметров сетевого интерфейса
 		struct ifconf ifc;
 		// Структура сетевого интерфейса
@@ -280,9 +280,9 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
  */
 void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 	/**
-	 * Если операционной системой является MacOS X или FreeBSD
+	 * Если операционной системой является MacOS X, FreeBSD, NetBSD или OpenBSD
 	 */
-	#if __APPLE__ || __MACH__ || __FreeBSD__
+	#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Структура параметров сетевого интерфейса
 		struct ifconf ifc;
 		// Временный буфер MAC-адреса
@@ -613,9 +613,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 	// Если IP-адрес передан
 	if(!ip.empty()){
 		/**
-		 * Если операционной системой является MacOS X или FreeBSD
+		 * Если операционной системой является MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
-		#if __APPLE__ || __MACH__ || __FreeBSD__
+		#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Определяем тип протокола интернета
 			switch(family){
 				// Если запрашиваемый адрес IPv4

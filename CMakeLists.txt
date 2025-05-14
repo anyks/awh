@@ -63,6 +63,12 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     message(STATUS "Detected OS: FreeBSD")
     SET(DEBUGGER "-ggdb3")
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD")
+    message(STATUS "Detected OS: NetBSD")
+    SET(DEBUGGER "-ggdb3")
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+    message(STATUS "Detected OS: OpenBSD")
+    SET(DEBUGGER "-ggdb3")
 else()
     SET(DEBUGGER "")
 endif()
@@ -110,7 +116,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     SET(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     SET(AWH_PARAMS "-lutil -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 else()
     SET(AWH_PARAMS "-Wno-unknown-attributes")
@@ -364,7 +370,7 @@ endif (CMAKE_SHARED_BUILD_LIB)
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
     add_executable(${INVESTIGATOR_APP_NAME} sample/investigator.cpp ${RES_FILES})
-# Если операционной системой является Linux, FreeBSD, MacOS X
+# Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
 else()
     # Выполняем создание демонстрационных приложений
     add_executable(${IP_APP_NAME} sample/ip.cpp)
@@ -535,7 +541,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
+    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
     elseif (CMAKE_BUILD_IDN)
 
         # Выполняем сборку динамической библиотеки
@@ -675,7 +681,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-    # Если операционной системой является Linux, FreeBSD, MacOS X
+    # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
     else()
 
         # Выполняем сборку динамической библиотеки
@@ -954,7 +960,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
+    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
     elseif (CMAKE_BUILD_IDN)
 
         # Выполняем сборку приложения работы с IP-адресами
@@ -1101,7 +1107,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-    # Если операционной системой является Linux, FreeBSD, MacOS X
+    # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
     else()
 
         # Выполняем сборку приложения работы с IP-адресами

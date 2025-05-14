@@ -113,7 +113,9 @@ namespace awh {
 				WIND32  = 0x03, // Операционная система является Windows 32bit
 				WIND64  = 0x04, // Операционная система является Windows 64bit
 				MACOSX  = 0x05, // Операционная система является MacOS X
-				FREEBSD = 0x06  // Операционная система является FreeBSD
+				FREEBSD = 0x06, // Операционная система является FreeBSD
+				NETBSD  = 0x07, // Операционная система является NetBSD
+				OPENBSD = 0x08  // Операционная система является OpenBSD
 			};
 		private:
 			/**

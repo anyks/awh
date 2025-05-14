@@ -119,14 +119,14 @@ if [ $OS = "Darwin" ]; then
 		# Устанавливаем версию операционной системы
 		export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)
 	fi
-# Если сборка производится в операционной системе FreeBSD or NetBSD
-elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ]; then
-	# Устанавливаем количество ядер системы
-	numproc=$(sysctl -n hw.ncpu)
 # Если сборка производится в операционной системе Windows или Linux
 elif [ $OS = "Windows" ] || [ $OS = "Linux" ]; then
 	# Устанавливаем количество ядер системы
 	numproc=$(nproc)
+# Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
+elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+	# Устанавливаем количество ядер системы
+	numproc=$(sysctl -n hw.ncpu)
 # Если операционная система не определена
 else
 	echo "Operating system not defined"
@@ -136,12 +136,12 @@ fi
 # Если сборка производится в операционной системе MacOS X
 if [ $OS = "Darwin" ]; then
 	INSTALL_CMD="ditto -v"
-# Если сборка производится в операционной системе FreeBSD or NetBSD
-elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ]; then
-	INSTALL_CMD="install -m 0644"
 # Если сборка производится в операционной системе Windows или Linux
 elif [ $OS = "Windows" ] || [ $OS = "Linux" ]; then
 	INSTALL_CMD="install -D -m 0644"
+# Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
+elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+	INSTALL_CMD="install -m 0644"
 # Если операционная система не определена
 else
 	echo "Operating system not defined"
@@ -933,8 +933,8 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 				# Выполняем патчинг библиотеки для дальнейшей сборки
 				sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_encode.c"
 				sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_decode.c"
-			# Если операционной системой является MacOS X или FreeBSD или NetBSD
-			elif [[ $OS = "Darwin" ]] || [[ $OS = "FreeBSD" ]] || [[ $OS = "NetBSD" ]]; then
+			# Если операционной системой является MacOS X, FreeBSD, NetBSD или OpenBSD
+			elif [[ $OS = "Darwin" ]] || [[ $OS = "FreeBSD" ]] || [[ $OS = "NetBSD" ]] || [[ $OS = "OpenBSD" ]]; then
 				# Выполняем патчинг библиотеки для дальнейшей сборки
 				sed -i -e 's!#ifdef HAVE_SYMVER_ALIAS_SUPPORT!#if 0!' "$src/lib/puny_encode.c"
 				sed -i -e 's!#ifdef HAVE_SYMVER_ALIAS_SUPPORT!#if 0!' "$src/lib/puny_decode.c"

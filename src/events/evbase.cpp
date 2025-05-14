@@ -138,9 +138,9 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 				// Выполняем открытие файлового дескриптора
 				::fcntl(this->_efd, F_SETFD, FD_CLOEXEC);
 			/**
-			 * Для операционной системы FreeBSD или MacOS X
+			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Выполняем инициализацию Kqueue
 				if((this->_kq = kqueue()) == INVALID_SOCKET){
 					/**
@@ -180,9 +180,9 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 				// Выполняем закрытие подключения
 				::close(this->_efd);
 			/**
-			 * Для операционной системы FreeBSD или MacOS X
+			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Выполняем закрытие подключения
 				::close(this->_kq);
 			#endif
@@ -339,9 +339,9 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем разблокировку чтения базы событий
 			this->_locker = false;
 		/**
-		 * Для операционной системы FreeBSD или MacOS X
+		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Флаг удалённого события из базы событий
 			bool erased = false;
 			// Выполняем блокировку чтения базы событий
@@ -522,9 +522,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				this->_locker = false;
 			}
 		/**
-		 * Для операционной системы FreeBSD или MacOS X
+		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_items.find(fd);
 			// Если файловый дескриптор есть в базе событий
@@ -869,9 +869,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 					this->_locker = false;
 				}
 			/**
-			 * Для операционной системы FreeBSD или MacOS X
+			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Выполняем поиск файлового дескриптора в базе событий
 				auto i = this->_items.find(fd);
 				// Если файловый дескриптор есть в базе событий
@@ -1249,9 +1249,9 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						}
 					}
 				/**
-				 * Для операционной системы FreeBSD или MacOS X
+				 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 				 */
-				#elif __APPLE__ || __MACH__ || __FreeBSD__
+				#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 					// Выполняем поиск файлового дескриптора в базе событий
 					auto i = this->_items.find(fd);
 					// Если файловый дескриптор есть в базе событий
@@ -1669,9 +1669,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 							}
 						}
 					/**
-					 * Для операционной системы FreeBSD или MacOS X
+					 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 					 */
-					#elif __APPLE__ || __MACH__ || __FreeBSD__
+					#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 						// Если тип установлен как не закрытие подключения
 						if(type != event_type_t::CLOSE){
 							// Выполняем поиск файлового дескриптора из списка событий
@@ -1843,9 +1843,9 @@ void awh::Base::clear() noexcept {
 				// Выполняем удаление события из списка отслеживания
 				i = this->_events.erase(i);
 		/**
-		 * Для операционной системы FreeBSD или MacOS X
+		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_events.begin(); i != this->_events.end();){
 				// Выполняем поиск файлового дескриптора в базе событий
@@ -2058,9 +2058,9 @@ void awh::Base::start() noexcept {
 		// Получаем идентификатор потока
 		this->_id = this->id();
 		/**
-		 * Если это FreeBSD или MacOS X
+		 * Если это FreeBSD, NetBSD, OpenBSD или MacOS X
 		 */
-		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__)
+		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 			// Создаём объект временного таймаута
 			struct timespec baseDelay = {0, 0};
 			// Если установлен конкретный таймаут
@@ -2494,9 +2494,9 @@ void awh::Base::start() noexcept {
 					// Замораживаем поток на период времени частоты обновления базы событий
 					this_thread::sleep_for(100ms);
 				/**
-				 * Для операционной системы FreeBSD или MacOS X
+				 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 				 */
-				#elif __APPLE__ || __MACH__ || __FreeBSD__
+				#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 					// Если опрос базы событий не заблокирован
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса

@@ -81,9 +81,9 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 				::free(proc);
 			}
 		/**
-		 * Для операционной системы MacOS X
+		 * Для операционной системы MacOS X, NetBSD или OpenBSD
 		 */
-		#elif __APPLE__ || __MACH__
+		#elif __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 			// Создаём буфер строки
 			char buffer[512];
 			// Заполняем нулями буфер данных
