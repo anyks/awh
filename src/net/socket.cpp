@@ -15,7 +15,7 @@
 /**
  * Для операционных систем FreeBSD, NetBSD, OpenBSD или MacOS X
  */
-#elif __NetBSD__ || __OpenBSD__
+#if __NetBSD__ || __OpenBSD__
 	/**
 	 * Активируем TCP флаги
 	 */
