@@ -48,7 +48,15 @@
 	#include <sys/ioctl.h>
 	#include <sys/socket.h>
 	#include <netinet/in.h>
-
+	/**
+	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+	 */
+	#if __APPLE__ || __MACH__ || __FreeBSD__
+		/**
+		 * Стандартные библиотеки
+		 */
+		#include <net/ethernet.h>
+	#endif
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
 	 */
@@ -58,7 +66,6 @@
 		 */
 		#include <netdb.h>
 		#include <net/if_dl.h>
-		#include <net/ethernet.h>
 		#include <netinet/if_ether.h>
 		#include <sys/sockio.h>
 		#include <sys/sysctl.h>

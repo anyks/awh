@@ -636,7 +636,17 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					mib[2] = 0;
 					mib[3] = family;
 					mib[4] = NET_RT_FLAGS;
-					mib[5] = RTF_LLINFO;
+					/**
+					 * Если операционной системой является NetBSD или OpenBSD
+					 */
+					#if __NetBSD__ || __OpenBSD__
+						mib[5] = RTF_LLDATA;
+					/**
+					 * Если операционной системой является MacOS X или FreeBSD
+					 */
+					#else
+						mib[5] = RTF_LLINFO;
+					#endif
 					// Выполняем получение размера буфера
 					if(::sysctl(mib, 6, nullptr, &size, nullptr, 0) < 0){
 						// Выводим сообщение об ошибке
@@ -710,7 +720,17 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					mib[2] = 0;
 					mib[3] = family;
 					mib[4] = NET_RT_FLAGS;
-					mib[5] = RTF_LLINFO;
+					/**
+					 * Если операционной системой является NetBSD или OpenBSD
+					 */
+					#if __NetBSD__ || __OpenBSD__
+						mib[5] = RTF_LLDATA;
+					/**
+					 * Если операционной системой является MacOS X или FreeBSD
+					 */
+					#else
+						mib[5] = RTF_LLINFO;
+					#endif
 					// Заполняем нулями структуру объекта подключения
 					::memset(&addr, 0, sizeof(addr));
 					// Устанавливаем протокол интернета

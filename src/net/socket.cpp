@@ -13,6 +13,16 @@
  */
 
 /**
+ * Для операционных систем FreeBSD, NetBSD, OpenBSD или MacOS X
+ */
+#elif __NetBSD__ || __OpenBSD__
+	/**
+	 * Активируем TCP флаги
+	 */
+	#define notyet
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <net/socket.hpp>
