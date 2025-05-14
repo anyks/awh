@@ -181,7 +181,7 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 				// Заполняем нулями буфер данных
 				::memset(buffer, 0, sizeof(buffer));
 				// Выполняем извлечение данных в буфер
-				const ssizet_t size = ::readlink(ss.str().c_str(), buffer, sizeof(buffer));
+				const int32_t size = static_cast <int32_t> (::readlink(ss.str().c_str(), buffer, sizeof(buffer)));
 				// Выполняем чтение данных в бинарный буфер
 				if(size > 0) {
 					// Устанавливаем последний символ
