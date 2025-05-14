@@ -23,6 +23,66 @@
 using namespace std;
 
 /**
+ * Для операционной системы NetBSD или OpenBSD
+ */
+#ifdef __NetBSD__ || __OpenBSD__
+	/**
+	 * readData Функция извлечения данных записи
+	 * @param filename адрес файла для извлечения
+	 * @return         содержимое файла
+	 */
+	static string readData(const string & filename) noexcept {
+		// Результат работы функции
+		string result = "";
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Устанавливаем адрес файла для чтения
+			ifstream file(filename.c_str());
+			// Если файл прочитан удачно
+			if(file.is_open()){
+				// Переходим в конец файла
+				file.seekg(0, ios::end);
+				// Определяем размер файла
+				const ssize_t size = static_cast <ssize_t> (file.tellg());
+				// Переходим в начало файла
+				file.seekg(0, ios::beg);
+				// Если размер файла получен
+				if(size != static_cast <decltype(size)> (-1))
+					// Выделяем память для буфера данных
+					result.reserve(static_cast <size_t> (file.tellg()));
+				// Выполняем заполнение данными буфер памяти
+				result.assign(istreambuf_iterator <char> (file), istreambuf_iterator <char> ());
+				// Закрываем файл
+				file.close();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Выполняем сброс количества знаков после запятой
+			result = 0;
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n", error.what());
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+#endif
+
+/**
  * inquiry Метод проведения дознания
  * @param pid идентификатор процесса
  * @return    название приложения которому принадлежит процесс
@@ -81,9 +141,9 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 				::free(proc);
 			}
 		/**
-		 * Для операционной системы MacOS X, NetBSD или OpenBSD
+		 * Для операционной системы MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+		#elif __APPLE__ || __MACH__
 			// Создаём буфер строки
 			char buffer[512];
 			// Заполняем нулями буфер данных
@@ -94,6 +154,44 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 			if(size > 0)
 				// Выполняем формирование результата
 				result.assign(buffer, buffer + size);
+		/**
+		 * Для операционной системы NetBSD или OpenBSD
+		 */
+		#elif __NetBSD__ || __OpenBSD__
+			// Строковый поток названия файла
+			stringstream ss;
+			// Формируем название файла
+			ss << "/proc/" << pid << "/comm";
+			// Выполняем извлечение данных файла
+			result = ::readData(ss.str());
+			// Если файл прочитан удачно
+			if(!result.empty()){
+				// Если последний символ является переносом строки
+				if(result.rbegin()[0] == '\n')
+					// Выполняем удаление последнего символа
+					result.pop_back();
+			// Если не может быть прочитан
+			} else {
+				// Выполняем очистку потока
+				ss.str("");
+				// Формируем название файла
+				ss << "/proc/" << pid << "/exe";
+				// Создаём буфер строки
+				char buffer[PATH_MAX + 1];
+				// Заполняем нулями буфер данных
+				::memset(buffer, 0, sizeof(buffer));
+				// Выполняем чтение данных в бинарный буфер
+				if(::readlink(ss.str().c_str(), buffer, sizeof(buffer)) > 0) {
+					// Устанавливаем последний символ
+					buffer[PATH_MAX] = '\0';
+					// Если мы нашли разделитель
+					if(const char * p = ::strrchr(buffer, '/'))
+						// Выполняем удаление разделителя
+						result = (p + 1);
+					// Выполняем получение названия приложения
+					else result = buffer;
+				}
+			}
 		/**
 		 * Для операционной системы Windows
 		 */
