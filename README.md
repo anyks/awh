@@ -65,13 +65,13 @@ $ cd ./certs
 $ ./certs.sh example.com
 ```
 
-### Build third party for MacOS X, Linux, FreeBSD, NetBSD or OpenBSD
+### Build third party for MacOS X, Linux, FreeBSD
 
 ```bash
 $ ./build_third_party.sh --idn
 ```
 
-### Build on MacOS X, Linux, FreeBSD, NetBSD or OpenBSD
+### Build on MacOS X, Linux, FreeBSD
 
 ```bash
 $ mkdir ./build
