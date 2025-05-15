@@ -216,8 +216,13 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Выполняем конфигурацию проекта
 		./Configure \
 		 sctp \
+		 no-docs \
+		 no-apps \
+		 no-tests \
 		 no-async \
 		 no-shared \
+		 enable-tfo \
+		 --release \
 		 --prefix="$PREFIX" \
 		 --openssldir="$PREFIX" \
 		 -Wl,-rpath,"$PREFIX/lib" || exit 1
@@ -226,8 +231,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Выполняем конфигурацию проекта
 		./Configure \
 		 mingw64 \
+		 no-docs \
+		 no-apps \
+		 no-tests \
 		 no-async \
 		 no-shared \
+		 --release \
 		 --prefix="$PREFIX" \
 		 --openssldir="$PREFIX" \
 		 -Wl,-rpath,"$PREFIX/lib" || exit 1
@@ -235,8 +244,13 @@ if [ ! -f "$src/.stamp_done" ]; then
 	else
 		# Выполняем конфигурацию проекта
 		./Configure \
+		 no-docs \
+		 no-apps \
+		 no-tests \
 		 no-async \
 		 no-shared \
+		 enable-tfo \
+		 --release \
 		 --prefix="$PREFIX" \
 		 --openssldir="$PREFIX" \
 		 -Wl,-rpath,"$PREFIX/lib" || exit 1
