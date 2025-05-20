@@ -300,6 +300,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.encryption(string{"PASS"});
 	// Устанавливаем сабпротоколы
 	ws.subprotocols({"test1", "test2", "test3"});
+	// Активируем правило асинхронной работы передачи данных
+	core.transferRule(server::core_t::transfer_t::ASYNC);
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
 	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&Executor::available, &executor, _1, _2, &core));
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки

@@ -41,6 +41,13 @@ namespace awh {
 		typedef class AWHSHARED_EXPORT Core : public awh::node_t {
 			public:
 				/**
+				 * Правила передачи данных
+				 */
+				enum class transfer_t : uint8_t {
+					SYNC  = 0x00, // Данные передаются синхронно
+					ASYNC = 0x01  // Данные передаются асинхронно
+				};
+				/**
 				 * Коды ошибок клиента
 				 */
 				enum class error_t : uint8_t {
@@ -80,6 +87,9 @@ namespace awh {
 				socket_t _socket;
 				// Объект кластера
 				cluster_t _cluster;
+			private:
+				// Правило передачи данных
+				transfer_t _transfer;
 			private:
 				// Размер кластера
 				int16_t _clusterSize;
@@ -349,6 +359,12 @@ namespace awh {
 				 * @param callbacks функции обратного вызова
 				 */
 				void callbacks(const fn_t & callbacks) noexcept;
+			public:
+				/**
+				 * transferRule Метод установки правила передачи данных
+				 * @param transfer правило передачи данных
+				 */
+				void transferRule(const transfer_t transfer) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений

@@ -158,14 +158,16 @@ namespace awh {
 				 * ProxyClient Структура параметров прокси-клиента
 				 */
 				typedef struct ProxyClient {
-					string uri;                // Параметры запроса на прокси-сервер
-					auth_t auth;               // Параметры авторизации на прокси-сервере
-					scheme_t::family_t family; // Cемейстово интернет протоколов (IPV4 / IPV6 / NIX)
+					string uri;                    // Параметры запроса на прокси-сервер
+					auth_t auth;                   // Параметры авторизации на прокси-сервере
+					scheme_t::family_t family;     // Cемейстово интернет протоколов (IPV4 / IPV6 / NIX)
+					client::scheme_t::work_t work; // Флаг активации-деактивации прокси-клиента
 					/**
 					 * ProxyClient Конструктор
 					 */
 					ProxyClient() noexcept :
-					 uri{""}, family(scheme_t::family_t::IPV4) {}
+					 uri{""}, family(scheme_t::family_t::IPV4),
+					 work(client::scheme_t::work_t::DISALLOW) {}
 				} proxy_t;
 				/**
 				 * Encryption Структура параметров шифрования
@@ -290,6 +292,13 @@ namespace awh {
 				const fmk_t * _fmk;
 				// Объект работы с логами
 				const log_t * _log;
+			private:
+				/**
+				 * launchedEvents Метод получения события запуска сервера
+				 * @param host хост запущенного сервера
+				 * @param port порт запущенного сервера
+				 */
+				void launchedEvents(const string & host, const uint32_t port) noexcept;
 			private:
 				/**
 				 * passwordEvents Метод извлечения пароля (для авторизации методом Digest)
@@ -563,6 +572,17 @@ namespace awh {
 				void start() noexcept;
 			public:
 				/**
+				 * bind Метод подключения модуля ядра к текущей базе событий
+				 * @param core модуль ядра для подключения
+				 */
+				void bind(awh::core_t * core) noexcept;
+				/**
+				 * unbind Метод отключения модуля ядра от текущей базы событий
+				 * @param core модуль ядра для отключения
+				 */
+				void unbind(awh::core_t * core) noexcept;
+			public:
+				/**
 				 * close Метод закрытия подключения брокера
 				 * @param bid идентификатор брокера
 				 */
@@ -776,6 +796,11 @@ namespace awh {
 				 */
 				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
+				/**
+				 * proxy Метод активации/деактивации прокси-склиента
+				 * @param work флаг активации/деактивации прокси-клиента
+				 */
+				void proxy(const client::scheme_t::work_t work) noexcept;
 				/**
 				 * proxy Метод установки прокси-сервера
 				 * @param uri    параметры прокси-сервера

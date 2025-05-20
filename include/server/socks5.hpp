@@ -131,6 +131,13 @@ namespace awh {
 				void openEvents(const uint16_t sid) noexcept;
 			private:
 				/**
+				 * launchedEvents Метод получения события запуска сервера
+				 * @param host хост запущенного сервера
+				 * @param port порт запущенного сервера
+				 */
+				void launchedEvents(const string & host, const uint32_t port) noexcept;
+			private:
+				/**
 				 * acceptEvents Метод обратного вызова при проверке подключения клиента
 				 * @param ip   адрес интернет подключения клиента
 				 * @param mac  мак-адрес подключившегося клиента
@@ -278,6 +285,17 @@ namespace awh {
 				 * start Метод запуска сервера
 				 */
 				void start() noexcept;
+			public:
+				/**
+				 * bind Метод подключения модуля ядра к текущей базе событий
+				 * @param core модуль ядра для подключения
+				 */
+				void bind(awh::core_t * core) noexcept;
+				/**
+				 * unbind Метод отключения модуля ядра от текущей базы событий
+				 * @param core модуль ядра для отключения
+				 */
+				void unbind(awh::core_t * core) noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения

@@ -424,6 +424,8 @@ int32_t main(int32_t argc, char * argv[]){
 	awh.addAltSvc("example.com", "h2=\":8000\"");
 	// Устанавливаем сабпротоколы
 	awh.subprotocols({"test1", "test2", "test3"});
+	// Активируем правило асинхронной работы передачи данных
+	core.transferRule(server::core_t::transfer_t::ASYNC);
 	// Разрешаем перехват сигналов
 	core.signalInterception(awh::scheme_t::mode_t::ENABLED);
 	// Устанавливаем функцию обработки сигналов завершения работы приложения

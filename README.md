@@ -492,6 +492,8 @@ int32_t main(int32_t argc, char * argv[]){
 	ssl.cert   = "./certs/certificates/server-cert.pem";
 	core.ssl(ssl);
 
+	core.transferRule(server::core_t::transfer_t::ASYNC);
+
 	// awh.authType(auth_t::type_t::BASIC);
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
@@ -763,6 +765,8 @@ int32_t main(int32_t argc, char * argv[]){
 	ssl.cert   = "./certs/certificates/server-cert.pem";
 	core.ssl(ssl);
 
+	core.transferRule(server::core_t::transfer_t::ASYNC);
+
 	ws.subprotocols({"test1", "test2", "test3"});
 
 	// ws.authType(awh::auth_t::type_t::BASIC);
@@ -943,6 +947,8 @@ int32_t main(int32_t argc, char * argv[]){
 	ssl.key    = "./certs/certificates/server-key.pem";
 	ssl.cert   = "./certs/certificates/server-cert.pem";
 	core.ssl(ssl);
+
+	core.transferRule(server::core_t::transfer_t::ASYNC);
 
 	// awh.authType(auth_t::type_t::BASIC);
 	awh.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);

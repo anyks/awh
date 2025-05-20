@@ -2393,24 +2393,29 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 void awh::server::Core::write(const uint64_t bid) noexcept {
 	// Если данные переданы
 	if(this->working() && this->has(bid)){
-		// Ещем для указанного потока очередь полезной нагрузки
-		auto i = this->_payloads.find(bid);
-		// Если для потока очередь полезной нагрузки получена
-		if((i != this->_payloads.end()) && !i->second->empty()){
-			// Создаём бъект активного брокера подключения
-			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-			// Выполняем запись в сокет
-			const size_t bytes = this->write(reinterpret_cast <const char *> (i->second->get()), i->second->size(), bid);
-			// Если данные записаны удачно
-			if((bytes > 0) && this->has(bid))
-				// Выполняем освобождение памяти хранения полезной нагрузки
-				this->erase(bid, bytes);
-			// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
-			if(this->_payloads.find(bid) != this->_payloads.end()){
-				// Если сокет подключения активен
-				if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS))
-					// Запускаем ожидание записи данных
-					broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если брокер подключения получен
+		if(broker != nullptr){
+			// Останавливаем детектирования возможности записи в сокет
+			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+			// Ещем для указанного потока очередь полезной нагрузки
+			auto i = this->_payloads.find(bid);
+			// Если для потока очередь полезной нагрузки получена
+			if((i != this->_payloads.end()) && !i->second->empty()){
+				// Выполняем запись в сокет
+				const size_t bytes = this->write(reinterpret_cast <const char *> (i->second->get()), i->second->size(), bid);
+				// Если данные записаны удачно
+				if((bytes > 0) && this->has(bid))
+					// Выполняем освобождение памяти хранения полезной нагрузки
+					this->erase(bid, bytes);
+				// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
+				if(this->_payloads.find(bid) != this->_payloads.end()){
+					// Если сокет подключения активен
+					if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS))
+						// Запускаем ожидание записи данных
+						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+				}
 			}
 		}
 	}
@@ -2437,19 +2442,36 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
 			if(i != this->_schemes.end()){
-				// Определяем тип сокета
-				switch(static_cast <uint8_t> (this->_settings.sonet)){
-					// Если тип сокета установлен как UDP
-					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-					// Если тип сокета установлен как TCP/IP
-					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-					// Если тип сокета установлен как TCP/IP TLS
-					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-					// Если тип сокета установлен как SCTP
-					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-						// Переводим сокет в блокирующий режим
-						broker->ectx.blocking(engine_t::mode_t::ENABLED);
-					break;
+				// Определяем правило передачи данных
+				switch(static_cast <uint8_t> (this->_transfer)){
+					// Если передавать данные необходимо синхронно
+					case static_cast <uint8_t> (transfer_t::SYNC): {
+						// Определяем тип сокета
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как UDP
+							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+							// Если тип сокета установлен как TCP/IP
+							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+							// Если тип сокета установлен как TCP/IP TLS
+							case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+							// Если тип сокета установлен как SCTP
+							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+								// Переводим сокет в блокирующий режим
+								broker->ectx.blocking(engine_t::mode_t::ENABLED);
+							break;
+						}
+					} break;
+					// Если передавать данные необходимо асинхронно
+					case static_cast <uint8_t> (transfer_t::ASYNC): {
+						// Определяем тип сокета
+						switch(static_cast <uint8_t> (this->_settings.sonet)){
+							// Если тип сокета установлен как UDP
+							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Переводим сокет в блокирующий режим
+								broker->ectx.blocking(engine_t::mode_t::ENABLED);
+							break;
+						}
+					} break;
 				}
 				// Получаем максимальный размер буфера
 				const int32_t max = broker->ectx.buffer(engine_t::method_t::WRITE);
@@ -2481,19 +2503,36 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 						this->close(bid);
 					// Если дисконнекта не произошло
 					if(bytes != 0){
-						// Определяем тип сокета
-						switch(static_cast <uint8_t> (this->_settings.sonet)){
-							// Если тип сокета установлен как UDP
-							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-							// Если тип сокета установлен как TCP/IP
-							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-							// Если тип сокета установлен как TCP/IP TLS
-							case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-							// Если тип сокета установлен как SCTP
-							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-								// Переводим сокет в неблокирующий режим
-								broker->ectx.blocking(engine_t::mode_t::DISABLED);
-							break;
+						// Определяем правило передачи данных
+						switch(static_cast <uint8_t> (this->_transfer)){
+							// Если передавать данные необходимо синхронно
+							case static_cast <uint8_t> (transfer_t::SYNC): {
+								// Определяем тип сокета
+								switch(static_cast <uint8_t> (this->_settings.sonet)){
+									// Если тип сокета установлен как UDP
+									case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+									// Если тип сокета установлен как TCP/IP
+									case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+									// Если тип сокета установлен как TCP/IP TLS
+									case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+									// Если тип сокета установлен как SCTP
+									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+										// Переводим сокет в неблокирующий режим
+										broker->ectx.blocking(engine_t::mode_t::DISABLED);
+									break;
+								}
+							} break;
+							// Если передавать данные необходимо асинхронно
+							case static_cast <uint8_t> (transfer_t::ASYNC): {
+								// Определяем тип сокета
+								switch(static_cast <uint8_t> (this->_settings.sonet)){
+									// Если тип сокета установлен как UDP
+									case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+										// Переводим сокет в неблокирующий режим
+										broker->ectx.blocking(engine_t::mode_t::DISABLED);
+									break;
+								}
+							} break;
 						}
 					}
 					// Если данные отправлены удачно и функция обратного вызова установлена
@@ -2814,6 +2853,16 @@ void awh::server::Core::callbacks(const fn_t & callbacks) noexcept {
 	this->_callbacks.set("unavailable", callbacks);
 	// Выполняем установку функции обратного вызова при отключении клиента от сервера
 	this->_callbacks.set("disconnect", callbacks);
+}
+/**
+ * transferRule Метод установки правила передачи данных
+ * @param transfer правило передачи данных
+ */
+void awh::server::Core::transferRule(const transfer_t transfer) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Выполняем установку правила передачи данных
+	this->_transfer = transfer;
 }
 /**
  * total Метод установки максимального количества одновременных подключений
@@ -3147,7 +3196,7 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  awh::node_t(dns, fmk, log), _socket(fmk, log), _cluster(this, fmk, log),
- _clusterSize(-1), _clusterAutoRestart(false),
+ _transfer(transfer_t::SYNC), _clusterSize(-1), _clusterAutoRestart(false),
  _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;

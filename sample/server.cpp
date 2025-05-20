@@ -147,6 +147,8 @@ int32_t main(int32_t argc, char * argv[]){
 	sample.waitTimeDetect(1, 1);
 	// Запрещаем перехват сигналов
 	core.signalInterception(scheme_t::mode_t::DISABLED);
+	// Активируем правило асинхронной работы передачи данных
+	// core.transferRule(server::core_t::transfer_t::ASYNC);
 	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
 	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

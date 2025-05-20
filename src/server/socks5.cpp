@@ -41,6 +41,20 @@ void awh::server::ProxySocks5::openEvents(const uint16_t sid) noexcept {
 	}
 }
 /**
+ * launchedEvents Метод получения события запуска сервера
+ * @param host хост запущенного сервера
+ * @param port порт запущенного сервера
+ */
+void awh::server::ProxySocks5::launchedEvents(const string & host, const uint32_t port) noexcept {
+	// Если параметра активации сервера переданы
+	if(!host.empty()){
+		// Если функция обратного вызова установлена
+		if(this->_callbacks.is("launched"))
+			// Выполняем функцию обратного вызова
+			this->_callbacks.call <void (const string &, const uint32_t)> ("launched", host, port);
+	}
+}
+/**
  * acceptEvents Метод обратного вызова при проверке подключения клиента
  * @param ip   адрес интернет подключения клиента
  * @param mac  мак-адрес подключившегося клиента
@@ -607,6 +621,22 @@ void awh::server::ProxySocks5::start() noexcept {
 		this->_core.start();
 }
 /**
+ * bind Метод подключения модуля ядра к текущей базе событий
+ * @param core модуль ядра для подключения
+ */
+void awh::server::ProxySocks5::bind(awh::core_t * core) noexcept {
+	// Выполняем подключение модуля ядра
+	this->_core.bind(core);
+}
+/**
+ * unbind Метод отключения модуля ядра от текущей базы событий
+ * @param core модуль ядра для отключения
+ */
+void awh::server::ProxySocks5::unbind(awh::core_t * core) noexcept {
+	// Выполняем отключение модуля ядра
+	this->_core.unbind(core);
+}
+/**
  * close Метод закрытия подключения
  * @param bid идентификатор брокера
  */
@@ -803,6 +833,10 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	this->_timer.verbose(false);
 	// Устанавливаем протокол интернет-подключения
 	this->_core.sonet(scheme_t::sonet_t::TCP);
+	// Активируем правило асинхронной работы передачи данных
+	this->_core.transferRule(server::core_t::transfer_t::ASYNC);
+	// Устанавливаем функцию получения события запуска сервера
+	this->_core.callback <void (const string &, const uint32_t)> ("launched", std::bind(&proxy_socks5_t::launchedEvents, this, _1, _2));
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
 	this->_core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&proxy_socks5_t::available, this, broker_t::SERVER, _1, _2, &this->_core));
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
