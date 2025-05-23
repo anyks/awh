@@ -40,7 +40,7 @@ vector <char> awh::Socks5::ipToHex(const string & ip, const int32_t family) cons
 			// Если тип адреса IPv4
 			case AF_INET: {
 				// Увеличиваем память бинарного буфера
-				result.resize(sizeof(struct in_addr), 0x0);
+				result.resize(sizeof(struct in_addr), 0x00);
 				// Выполняем конвертацию IP адреса
 				conv = inet_pton(family, ip.c_str(), result.data());
 			} break;
@@ -53,7 +53,7 @@ vector <char> awh::Socks5::ipToHex(const string & ip, const int32_t family) cons
 					// Удаляем лишние символы
 					ip6.assign(ip6.begin() + 1, ip6.end() - 1);
 				// Увеличиваем память бинарного буфера
-				result.resize(sizeof(struct in6_addr), 0x0);
+				result.resize(sizeof(struct in6_addr), 0x00);
 				// Выполняем конвертацию IP адреса
 				conv = inet_pton(family, ip6.c_str(), result.data());
 			} break;

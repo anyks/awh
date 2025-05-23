@@ -48,7 +48,7 @@ void awh::server::Socks5::cmd(const rep_t rep) const noexcept {
 		// Получаем значение порта
 		const uint16_t port = htons(this->_url.port);
 		// Увеличиваем память на 4 октета
-		this->_buffer.resize(sizeof(uint8_t) * 4, 0x0);
+		this->_buffer.resize(sizeof(uint8_t) * 4, 0x00);
 		// Устанавливаем версию протокола
 		uint16_t offset = this->octet(VER);
 		// Устанавливаем комманду ответа
@@ -127,7 +127,7 @@ void awh::server::Socks5::method(const vector <uint8_t> & methods) const noexcep
 		// Выполняем очистку временного буфера данных
 		vector <char> ().swap(this->_buffer);
 	// Увеличиваем память на 4 октета
-	this->_buffer.resize(sizeof(uint8_t) * 2, 0x0);
+	this->_buffer.resize(sizeof(uint8_t) * 2, 0x00);
 	// Копируем в буфер нашу структуру ответа
 	::memcpy(this->_buffer.data(), &response, sizeof(response));
 }
@@ -157,7 +157,7 @@ void awh::server::Socks5::auth(const string & login, const string & password) co
 		// Выполняем очистку временного буфера данных
 		vector <char> ().swap(this->_buffer);
 	// Увеличиваем память на 4 октета
-	this->_buffer.resize(sizeof(uint8_t) * 2, 0x0);
+	this->_buffer.resize(sizeof(uint8_t) * 2, 0x00);
 	// Копируем в буфер нашу структуру ответа
 	::memcpy(this->_buffer.data(), &response, sizeof(response));
 }
@@ -182,19 +182,19 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 				// Если данных достаточно для получения ответа
 				if(size > sizeof(uint16_t)){
 					// Версия прокси-протокола
-					uint8_t version = 0x0;
+					uint8_t version = 0x00;
 					// Выполняем чтение версии протокола
 					::memcpy(&version, buffer, sizeof(version));
 					// Если версия протокола соответствует
 					if(version == VER){
 						// Количество методов авторизации
-						uint8_t count = 0x0;
+						uint8_t count = 0x00;
 						// Выполняем чтение количество методов авторизации
 						::memcpy(&count, buffer + sizeof(uint8_t), sizeof(count));
 						// Если количество методов авторизации получено
 						if((count > 0) && (size >= (sizeof(uint16_t) + (sizeof(uint8_t) * count)))){
 							// Полученный метод авторизации
-							uint8_t method = 0x0;
+							uint8_t method = 0x00;
 							// Список методов авторизации
 							vector <uint8_t> methods(count);
 							// Переходим по всем методам авторизации
@@ -241,7 +241,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 				// Если данных достаточно для получения ответа
 				if(size > sizeof(uint32_t)){
 					// Версия прокси-протокола
-					uint8_t version = 0x0;
+					uint8_t version = 0x00;
 					// Выполняем чтение версии соглашения авторизации
 					::memcpy(&version, buffer, sizeof(version));
 					// Получаем смещение в буфере
@@ -249,7 +249,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 					// Если версия соглашения авторизации соответствует
 					if(version == AVER){
 						// Размер логина пользователя
-						uint8_t length = 0x0;
+						uint8_t length = 0x00;
 						// Выполняем получение длины логина пользователя
 						::memcpy(&length, buffer + offset, sizeof(length));
 						// Если количество байт достаточно, чтобы получить логин пользователя
@@ -418,7 +418,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
  */
 void awh::server::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
-	this->_code = 0x0;
+	this->_code = 0x00;
 	// Выполняем очистку буфера данных
 	this->_buffer.clear();
 	// Если размер выделенной памяти выше максимального размера буфера

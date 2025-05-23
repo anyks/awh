@@ -72,6 +72,7 @@ namespace awh {
 				 * @param rep код ответа сервера
 				 */
 				void cmd(const rep_t rep) const noexcept;
+			private:
 				/**
 				 * method Метод получения бинарного буфера выбора метода подключения
 				 * @param methods методы авторизаций выбранныйе пользователем

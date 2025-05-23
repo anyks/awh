@@ -39,13 +39,13 @@ void awh::client::Socks5::cmd() const noexcept {
 		// Получаем значение порта
 		const uint16_t port = htons(this->_url.port);
 		// Увеличиваем память на 4 октета
-		this->_buffer.resize(sizeof(uint8_t) * 4, 0x0);
+		this->_buffer.resize(sizeof(uint8_t) * 4, 0x00);
 		// Устанавливаем версию протокола
 		uint16_t offset = this->octet(VER);
 		// Устанавливаем комманду запроса
 		offset = this->octet(static_cast <uint8_t> (cmd_t::CONNECT), offset);
 		// Устанавливаем RSV октет
-		offset = this->octet(0x0, offset);
+		offset = this->octet(0x00, offset);
 		// Если IP адрес получен
 		if(!this->_url.ip.empty()){
 			// Получаем бинарные буфер IP адреса
@@ -88,7 +88,7 @@ void awh::client::Socks5::auth() const noexcept {
 	// Если логин и пароль переданы
 	if(!this->_login.empty() && !this->_pass.empty()){
 		// Увеличиваем память на 4 октета
-		this->_buffer.resize(sizeof(uint8_t), 0x0);
+		this->_buffer.resize(sizeof(uint8_t), 0x00);
 		// Устанавливаем версию протокола
 		this->octet(AVER);
 		// Добавляем в буфер логин пользователя
@@ -108,7 +108,7 @@ void awh::client::Socks5::methods() const noexcept {
 		// Выполняем очистку временного буфера данных
 		vector <char> ().swap(this->_buffer);
 	// Увеличиваем память на 4 октета
-	this->_buffer.resize(sizeof(uint8_t) * 4, 0x0);
+	this->_buffer.resize(sizeof(uint8_t) * 4, 0x00);
 	// Устанавливаем версию протокола
 	uint16_t offset = this->octet(VER);
 	// Устанавливаем количество методов авторизации
@@ -339,7 +339,7 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
  */
 void awh::client::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
-	this->_code = 0x0;
+	this->_code = 0x00;
 	// Выполняем очистку буфера данных
 	this->_buffer.clear();
 	// Если размер выделенной памяти выше максимального размера буфера
