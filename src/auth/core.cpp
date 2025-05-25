@@ -33,9 +33,9 @@ const awh::Authorization::digest_t & awh::Authorization::digest() const noexcept
 /**
  * response Метод создания ответа на дайджест авторизацию
  * @param method метод HTTP запроса
- * @param digest параметры дайджест авторизации
  * @param user   логин пользователя для проверки
  * @param pass   пароль пользователя для проверки
+ * @param digest параметры дайджест авторизации
  * @return       ответ в 16-м виде
  */
 string awh::Authorization::response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept {
