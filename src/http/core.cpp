@@ -1164,10 +1164,10 @@ void awh::Http::precise(const bool mode) noexcept {
 void awh::Http::clear() noexcept {
 	// Выполняем очистку данных парсера
 	this->_web.clear();
-	// Выполняем сброс чёрного списка HTTP заголовков
-	this->_black.clear();
 	// Очищаем список установленных трейлеров
 	this->_trailers.clear();
+	// Выполняем сброс чёрного списка HTTP заголовков
+	this->_blacklist.clear();
 	// Снимаем флаг зашифрованной полезной нагрузки
 	this->_crypted = false;
 	// Выполняем сброс флага формирования чанков
@@ -1408,14 +1408,14 @@ void awh::Http::payload(const vector <char> & payload) noexcept {
 	this->_web.body(payload);
 }
 /**
- * black Метод добавления заголовка в чёрный список
+ * blacklist Метод добавления заголовка в чёрный список
  * @param key ключ заголовка
  */
-void awh::Http::black(const string & key) noexcept {
+void awh::Http::blacklist(const string & key) noexcept {
 	// Если ключ заголовка передан, добавляем в список
 	if(!key.empty())
 		// Выполняем добавление заголовка в чёрный список
-		this->_black.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+		this->_blacklist.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
 }
 /**
  * body Метод получения данных тела запроса
@@ -2073,11 +2073,11 @@ vector <char> awh::Http::dump() const noexcept {
 		// Устанавливаем данные User-Agent для HTTP-запроса
 		result.insert(result.end(), this->_userAgent.begin(), this->_userAgent.end());
 		// Получаем количество записей чёрного списка
-		count = this->_black.size();
+		count = this->_blacklist.size();
 		// Устанавливаем количество записей чёрного списка
 		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
 		// Выполняем переход по всему чёрному списку
-		for(auto & header : this->_black){
+		for(auto & header : this->_blacklist){
 			// Получаем размер заголовка из чёрного списка
 			length = header.size();
 			// Устанавливаем размер заголовка из чёрного списка
@@ -2246,7 +2246,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем сброс заголовков чёрного списка
-			this->_black.clear();
+			this->_blacklist.clear();
 			// Если количество элементов получено
 			if(count > 0){
 				// Выполняем последовательную загрузку всех заголовков
@@ -2266,7 +2266,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 						// Если заголовок чёрного списка получен
 						if(!header.empty())
 							// Выполняем добавление заголовка чёрного списка
-							this->_black.emplace(::move(header));
+							this->_blacklist.emplace(::move(header));
 					}
 				}
 			}
@@ -2325,7 +2325,7 @@ bool awh::Http::empty(const suite_t suite) const noexcept {
 		// Если набор соответствует заголовку чёрного списка
 		case static_cast <uint8_t> (suite_t::BLACK):
 			// Выполняем проверку наличия заголовков в чёрном списке
-			return this->_black.empty();
+			return this->_blacklist.empty();
 		// Если набор соответствует заголовку сообщения
 		case static_cast <uint8_t> (suite_t::HEADER):
 			// Выполняем проверку наличия заголовков
@@ -2333,7 +2333,7 @@ bool awh::Http::empty(const suite_t suite) const noexcept {
 		// Если набор соответствует стандартному заголовку
 		case static_cast <uint8_t> (suite_t::STANDARD):
 			// Выполняем проверку наличия всех данных парсера
-			return (this->_web.body().empty() && this->_black.empty() && this->_web.headers().empty());
+			return (this->_web.body().empty() && this->_blacklist.empty() && this->_web.headers().empty());
 	}
 	// Выводим результат
 	return false;
@@ -2461,7 +2461,7 @@ bool awh::Http::is(const suite_t suite, const string & key) const noexcept {
 			// Если набор соответствует заголовку чёрного списка
 			case static_cast <uint8_t> (suite_t::BLACK):
 				// Выполняем проверку наличия заголовка в чёрном списке
-				return (this->_black.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) != this->_black.end());
+				return (this->_blacklist.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) != this->_blacklist.end());
 			// Если набор соответствует заголовку сообщения
 			case static_cast <uint8_t> (suite_t::HEADER):
 				// Выводим результат проверки
@@ -2488,7 +2488,7 @@ void awh::Http::rm(const suite_t suite, const string & key) const noexcept {
 			// Если набор соответствует заголовку чёрного списка
 			case static_cast <uint8_t> (suite_t::BLACK):
 				// Выполняем удаление заголовка из чёрного списка
-				this->_black.erase(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+				this->_blacklist.erase(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
 			break;
 			// Если набор соответствует заголовку сообщения
 			case static_cast <uint8_t> (suite_t::HEADER):
@@ -2843,11 +2843,11 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 		 */
 		try {
 			// Добавляем в чёрный список заголовок Accept
-			const_cast <http_t *> (this)->black("Accept");
+			const_cast <http_t *> (this)->blacklist("Accept");
 			// Добавляем в чёрный список заголовок Accept-Language
-			const_cast <http_t *> (this)->black("Accept-Language");
+			const_cast <http_t *> (this)->blacklist("Accept-Language");
 			// Добавляем в чёрный список заголовок Accept-Encoding
-			const_cast <http_t *> (this)->black("Accept-Encoding");
+			const_cast <http_t *> (this)->blacklist("Accept-Encoding");
 			// Если заголовок подключения ещё не существует
 			if(!this->_web.isHeader("connection"))
 				// Добавляем поддержку постоянного подключения
@@ -2897,11 +2897,11 @@ vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const
 	// Если хост сервера получен
 	if(!req.url.host.empty() && (req.url.port > 0) && (req.method == web_t::method_t::CONNECT)){
 		// Добавляем в чёрный список заголовок Accept
-		const_cast <http_t *> (this)->black("Accept");
+		const_cast <http_t *> (this)->blacklist("Accept");
 		// Добавляем в чёрный список заголовок Accept-Language
-		const_cast <http_t *> (this)->black("Accept-Language");
+		const_cast <http_t *> (this)->blacklist("Accept-Language");
 		// Добавляем в чёрный список заголовок Accept-Encoding
-		const_cast <http_t *> (this)->black("Accept-Encoding");
+		const_cast <http_t *> (this)->blacklist("Accept-Encoding");
 		// Добавляем заголовок протокола подключения
 		const_cast <http_t *> (this)->header(":protocol", "proxy");
 		// Устанавливаем параметры REST-запроса

@@ -221,11 +221,11 @@ namespace awh {
 			// Список HTTP-ответов
 			map <uint16_t, string> _responses;
 		protected:
-			// Чёрный список заголовков
-			mutable unordered_set <string> _black;
-		protected:
 			// Список отправляемых трейлеров
 			unordered_map <string, string> _trailers;
+		protected:
+			// Чёрный список заголовков
+			mutable unordered_set <string> _blacklist;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -316,10 +316,10 @@ namespace awh {
 			void payload(const vector <char> & payload) noexcept;
 		public:
 			/**
-			 * black Метод добавления заголовка в чёрный список
+			 * blacklist Метод добавления заголовка в чёрный список
 			 * @param key ключ заголовка
 			 */
-			void black(const string & key) noexcept;
+			void blacklist(const string & key) noexcept;
 		public:
 			/**
 			 * body Метод получения данных тела запроса

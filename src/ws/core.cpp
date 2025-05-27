@@ -192,7 +192,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 			// Если нужно сформировать данные ответа
 			case static_cast <uint8_t> (process_t::RESPONSE): {
 				// Добавляем в чёрный список заголовок Content-Type
-				this->black("Content-Type");
+				this->blacklist("Content-Type");
 				// Получаем объект ответа клиенту
 				const web_t::res_t & res = this->_web.response();
 				// Если ответ сервера положительный
@@ -200,9 +200,9 @@ void awh::WCore::init(const process_t flag) noexcept {
 					// Выполняем применение расширений
 					this->applyExtensions(flag);
 					// Добавляем в чёрный список заголовок Content-Encoding
-					this->black("Content-Encoding");
+					this->blacklist("Content-Encoding");
 					// Добавляем в чёрный список заголовок X-AWH-Encryption
-					this->black("X-AWH-Encryption");
+					this->blacklist("X-AWH-Encryption");
 				}
 				// Если список выбранных сабпротоколов установлен
 				if(!this->is(suite_t::HEADER, "Sec-WebSocket-Protocol") && !this->_selectedProtocols.empty()){
