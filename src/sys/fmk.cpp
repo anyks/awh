@@ -1024,7 +1024,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								// Получаем текущую букву
 								letter = text.at(i);
 								// Если плавающая точка найдена
-								if((letter == '.') || (letter == ',')){
+								if((letter == '.') || (letter == ',') || (letter == 'e')){
 									// Проверяем правые и левую части
 									result = (
 										this->is(text.substr(pos, i - pos), check_t::NUMBER) &&
