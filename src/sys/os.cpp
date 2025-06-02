@@ -515,19 +515,19 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 				for(auto & item : result){
 					// Если символ является пробелом
 					if(::isspace(item) || (item == '\t') || (item == '\n') || (item == '\r') || (item == '\f') || (item == '\v')){
-						// Если запись является числом
-						if(data.back().second){
-							// Выполняем создание блока данных
-							pair <string, bool> record = make_pair("", true);
-							// Выполняем добавление записи в очередь
-							data.push(::move(record));
-						// Если запись является строкой, добавляем полученный символ в запись
-						} else data.back().first.append(1, ' ');
+						// Если очередь уже не пустая
+						if(!data.empty()){
+							// Если запись является числом
+							if(data.back().second){
+								// Выполняем создание блока данных
+								pair <string, bool> record = make_pair("", true);
+								// Выполняем добавление записи в очередь
+								data.push(::move(record));
+							// Если запись является строкой, добавляем полученный символ в запись
+							} else data.back().first.append(1, ' ');
+						}
 					// Если символ является числом
-					} else if((item == '0') || (item == '1') || (item == '2') ||
-					          (item == '3') || (item == '4') || (item == '5') ||
-							  (item == '6') || (item == '7') || (item == '8') ||
-							  (item == '9') || ((item == '-') && (data.empty() || data.back().first.empty()))) {
+					} else if(std::isdigit(item) || ((item == '-') && (data.empty() || data.back().first.empty()))) {
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
