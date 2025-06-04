@@ -8149,6 +8149,8 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 		ssize_t pos = 0;
 		// Символ для обработки
 		char letter = 0;
+		// Режим детекции переменной формата
+		bool mode = false;
 		// Текущее количество минут прошедших с 1970-го года
 		uint64_t lastMinutes = 0;
 		// Флаги установки параметров
@@ -8160,10 +8162,6 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			false, // Флаг установки секунд
 			false  // Флаг установки миллисекунд
 		};
-		// Буфер содержащий переменную
-		char buffer[2];
-		// Сбрасываем буфер переменной
-		::memset(buffer, 0, 2);
 		// Определяем хранилизе значение времени
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
@@ -8198,7 +8196,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			// Определяем символ парсинга
 			switch(letter){
 				// Если мы нашли идентификатор переменной
-				case '%': buffer[0] = '%'; break;
+				case '%': mode = true; break;
 				// Если мы нашли переменную (y)
 				case 'y':
 				// Если мы нашли переменную (g)
@@ -8268,7 +8266,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 				// Если мы нашли переменную (Z)
 				case 'Z': {
 					// Если мы ищем переменную
-					if(buffer[0] == '%'){
+					if(mode){
 						// Определяем хранилизе значение времени
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
@@ -8681,11 +8679,11 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 							// Завершаем перебор
 							i = format.length();
 					}
-					// Сбрасываем буфер переменной
-					::memset(buffer, 0, 2);
+					// Сбрасываем режим детекции переменной формата
+					mode = false;
 				} break;
 				// Если получен любой другой символ
-				default: ::memset(buffer, 0, 2);
+				default: mode = false;
 			}
 		}
 		// Определяем хранилизе значение времени
@@ -9703,10 +9701,8 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 	if(!format.empty()){
 		// Символ для обработки
 		char letter = 0;
-		// Буфер содержащий переменную
-		char buffer[2];
-		// Сбрасываем буфер переменной
-		::memset(buffer, 0, 2);
+		// Режим детекции переменной формата
+		bool mode = false;
 		// Выполняем перебор формата
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
@@ -9714,7 +9710,7 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 			// Определяем символ парсинга
 			switch(letter){
 				// Если мы нашли идентификатор переменной
-				case '%': buffer[0] = '%'; break;
+				case '%': mode = true; break;
 				// Если мы нашли переменную (y)
 				case 'y':
 				// Если мы нашли переменную (g)
@@ -9784,7 +9780,7 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 				// Если мы нашли переменную (Z)
 				case 'Z': {
 					// Если мы ищем переменную
-					if(buffer[0] == '%'){
+					if(mode){
 						// Определяем символ парсинга
 						switch(letter){
 							// Если мы нашли переменную (y)
@@ -10234,13 +10230,13 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 						}
 					// Добавляем полученный символ в результат
 					} else result.append(1, letter);
-					// Сбрасываем буфер переменной
-					::memset(buffer, 0, 2);
+					// Сбрасываем режим соответствия переменной формата
+					mode = false;
 				} break;
 				// Если получен любой другой символ
 				default: {
-					// Сбрасываем буфер переменной
-					::memset(buffer, 0, 2);
+					// Сбрасываем режим соответствия переменной формата
+					mode = false;
 					// Добавляем полученный символ в результат
 					result.append(1, letter);
 				}
