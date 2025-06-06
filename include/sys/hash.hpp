@@ -104,7 +104,7 @@ namespace awh {
 				/**
 				 * State Конструктор
 				 */
-				State() noexcept : num(0), ivec{0} {}
+				State() noexcept : num(0), key{{0}, 0}, ivec{0} {}
 			} state_t;
 		public:
 			/**
