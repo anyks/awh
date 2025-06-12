@@ -1163,6 +1163,10 @@ void awh::URI::create(url_t & dest, const url_t & src) const noexcept {
 		if(dest.params.empty() && !src.params.empty())
 			// Выполняем установку параметров запроса
 			dest.params.assign(src.params.begin(), src.params.end());
+		// Если фукнция обратного вызова не указана
+		if(dest.callback == nullptr)
+			// Выполняем установку функции обратного вызова
+			dest.callback = src.callback;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1238,6 +1242,8 @@ void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
 			dest.params.assign(src.params.begin(), src.params.end());
 		// Выполняем очистку параметров запроса
 		else dest.params.clear();
+		// Выполняем установку функции обратного вызова
+		dest.callback = src.callback;
 	/**
 	 * Если возникает ошибка
 	 */
