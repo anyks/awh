@@ -282,6 +282,7 @@ int32_t main(int32_t argc, char * argv[]){
 	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию Websocket клиента
 	// ws.init("wss://stream.binance.com:9443/stream");
+	// ws.init("wss://stream.testnet.binance.vision:9443/stream");
 	// ws.init("ws://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
 	ws.init("wss://127.0.0.1:2222", {awh::http_t::compressor_t::DEFLATE});
 	// ws.init("wss://anyks.net:2222", {awh::http_t::compressor_t::DEFLATE});
@@ -303,6 +304,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 	// Выполняем подписку на получение логов
 	// log.subscribe(std::bind(&Executor::subscribe, &executor, _1, _2));
+	// Активируем правило асинхронной работы передачи данных
+	core.transferRule(client::core_t::transfer_t::ASYNC);
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
 	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&Executor::available, &executor, _1, _2, &core));
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки

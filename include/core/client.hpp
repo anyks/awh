@@ -40,6 +40,13 @@ namespace awh {
 		typedef class AWHSHARED_EXPORT Core : public awh::node_t {
 			public:
 				/**
+				 * Правила передачи данных
+				 */
+				enum class transfer_t : uint8_t {
+					SYNC  = 0x00, // Данные передаются синхронно
+					ASYNC = 0x01  // Данные передаются асинхронно
+				};
+				/**
 				 * Коды ошибок клиента
 				 */
 				enum class error_t : uint8_t {
@@ -67,6 +74,9 @@ namespace awh {
 			private:
 				// Объект работы таймера
 				timer_t _timer;
+			private:
+				// Правило передачи данных
+				transfer_t _transfer;
 			private:
 				// Список таймаутов на получение данных
 				map <uint64_t, uint16_t> _receive;
@@ -217,6 +227,12 @@ namespace awh {
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
 				 */
 				void work(const uint16_t sid, const string & ip, const int32_t family) noexcept;
+			public:
+				/**
+				 * transferRule Метод установки правила передачи данных
+				 * @param transfer правило передачи данных
+				 */
+				void transferRule(const transfer_t transfer) noexcept;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений

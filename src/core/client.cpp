@@ -1544,17 +1544,23 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
-					// Определяем тип сокета
-					switch(static_cast <uint8_t> (this->_settings.sonet)){
-						// Если тип сокета установлен как TCP/IP
-						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-						// Если тип сокета установлен как TCP/IP TLS
-						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-						// Если тип сокета установлен как SCTP
-						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-							// Переводим сокет в блокирующий режим
-							broker->ectx.blocking(engine_t::mode_t::ENABLED);
-						break;
+					// Определяем правило передачи данных
+					switch(static_cast <uint8_t> (this->_transfer)){
+						// Если передавать данные необходимо синхронно
+						case static_cast <uint8_t> (transfer_t::SYNC): {
+							// Определяем тип сокета
+							switch(static_cast <uint8_t> (this->_settings.sonet)){
+								// Если тип сокета установлен как TCP/IP
+								case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+								// Если тип сокета установлен как TCP/IP TLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+								// Если тип сокета установлен как SCTP
+								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+									// Переводим сокет в блокирующий режим
+									broker->ectx.blocking(engine_t::mode_t::ENABLED);
+								break;
+							}
+						} break;
 					}
 					// Получаем максимальный размер буфера
 					const int32_t max = broker->ectx.buffer(engine_t::method_t::WRITE);
@@ -1592,17 +1598,23 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 							this->close(bid);
 						// Если дисконнекта не произошло
 						if(bytes != 0){
-							// Определяем тип сокета
-							switch(static_cast <uint8_t> (this->_settings.sonet)){
-								// Если тип сокета установлен как TCP/IP
-								case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-								// Если тип сокета установлен как TCP/IP TLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-								// Если тип сокета установлен как SCTP
-								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-									// Переводим сокет в неблокирующий режим
-									broker->ectx.blocking(engine_t::mode_t::DISABLED);
-								break;
+							// Определяем правило передачи данных
+							switch(static_cast <uint8_t> (this->_transfer)){
+								// Если передавать данные необходимо синхронно
+								case static_cast <uint8_t> (transfer_t::SYNC): {
+									// Определяем тип сокета
+									switch(static_cast <uint8_t> (this->_settings.sonet)){
+										// Если тип сокета установлен как TCP/IP
+										case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+										// Если тип сокета установлен как TCP/IP TLS
+										case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+										// Если тип сокета установлен как SCTP
+										case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+											// Переводим сокет в неблокирующий режим
+											broker->ectx.blocking(engine_t::mode_t::DISABLED);
+										break;
+									}
+								} break;
 							}
 						}
 						// Если данные удачно отправленны
@@ -1711,6 +1723,14 @@ void awh::client::Core::work(const uint16_t sid, const string & ip, const int32_
 	}
 }
 /**
+ * transferRule Метод установки правила передачи данных
+ * @param transfer правило передачи данных
+ */
+void awh::client::Core::transferRule(const transfer_t transfer) noexcept {
+	// Выполняем установку правила передачи данных
+	this->_transfer = transfer;
+}
+/**
  * waitMessage Метод ожидания входящих сообщений
  * @param bid идентификатор брокера
  * @param sec интервал времени в секундах
@@ -1762,7 +1782,8 @@ void awh::client::Core::waitTimeDetect(const uint64_t bid, const uint16_t read, 
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::node_t(fmk, log), _timer(fmk, log) {
+awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
+ awh::node_t(fmk, log), _timer(fmk, log), _transfer(transfer_t::SYNC) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::CLIENT;
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -1776,7 +1797,8 @@ awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::no
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::client::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept : awh::node_t(dns, fmk, log), _timer(fmk, log) {
+awh::client::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
+ awh::node_t(dns, fmk, log), _timer(fmk, log), _transfer(transfer_t::SYNC) {
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::CLIENT;
 	// Устанавливаем флаг запрещающий вывод информационных сообщений

@@ -3527,8 +3527,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
-				if(::SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
+				// Выполняем установку кривых P-256, P-384 и P-521
+				if(::SSL_CTX_set1_curves_list(target._ctx, "P-521:P-384:P-256") != 1){
 					// Выводим в лог сообщение
 					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					// Выходим
@@ -3539,7 +3539,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			 */
 			#else 
 				{
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
+					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
 					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
 					// Если кривые не получилось установить
 					if(ecdh == nullptr){
@@ -3805,8 +3805,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
-				if(::SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
+				// Выполняем установку кривых P-256, P-384 и P-521
+				if(::SSL_CTX_set1_curves_list(target._ctx, "P-521:P-384:P-256") != 1){
 					// Выводим в лог сообщение
 					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					// Выходим
@@ -3817,7 +3817,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			 */
 			#else 
 				{
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
+					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
 					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
 					// Если кривые не получилось установить
 					if(ecdh == nullptr){
@@ -4121,8 +4121,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
-				if(::SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
+				// Выполняем установку кривых P-256, P-384 и P-521
+				if(::SSL_CTX_set1_curves_list(target._ctx, "P-521:P-384:P-256") != 1){
 					// Выводим в лог сообщение
 					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					// Выходим
@@ -4133,7 +4133,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			 */
 			#else 
 				{
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
+					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
 					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
 					// Если кривые не получилось установить
 					if(ecdh == nullptr){

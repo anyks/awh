@@ -180,6 +180,8 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 					ret.first->second->scheme(&options->scheme);
 					// Устанавливаем параметры сети клиента
 					ret.first->second->network(this->_settings.ips);
+					// Активируем правило асинхронной работы передачи данных
+					ret.first->second->transferRule(client::core_t::transfer_t::ASYNC);
 					// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров
 					ret.first->second->memoryAvailableSize(this->_memoryAvailableSize);
 					// Выполняем установку размера хранимой полезной нагрузки для одного брокера

@@ -290,6 +290,8 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			this->_server.alive(bid, true);
 			// Выполняем создание клиента
 			auto ret = this->_clients.emplace(bid, make_unique <client_t> (this->_fmk, this->_log));
+			// Активируем правило асинхронной работы передачи данных
+			ret.first->second->core.transferRule(client::core_t::transfer_t::ASYNC);
 			// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров
 			ret.first->second->core.memoryAvailableSize(this->_memoryAvailableSize);
 			// Выполняем установку размера хранимой полезной нагрузки для одного брокера

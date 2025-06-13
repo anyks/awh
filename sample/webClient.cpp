@@ -200,6 +200,8 @@ int32_t main(int32_t argc, char * argv[]){
 	*/
 	// Выполняем установку параметров SSL-шифрования
 	core.ssl(ssl);
+	// Активируем правило асинхронной работы передачи данных
+	core.transferRule(client::core_t::transfer_t::ASYNC);
 	// Активируем шифрование
 	// awh.encryption(true);
 	// Устанавливаем пароль шифрования
