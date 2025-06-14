@@ -2719,7 +2719,7 @@ void awh::server::Http2::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::Http2::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::server::Http2::subprotocols(const unordered_set <string> & subprotocols) noexcept {
 	// Выполняем установку списка поддерживаемых сабпротоколов для Websocket-модуля
 	this->_ws2.subprotocols(subprotocols);
 	// Выполняем установку списка поддерживаемых сабпротоколов для HTTP-модуля
@@ -2730,9 +2730,9 @@ void awh::server::Http2::subprotocols(const set <string> & subprotocols) noexcep
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const noexcept {
+const unordered_set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const noexcept {
 	// Результат работы функции
-	static const set <string> result;
+	static const unordered_set <string> result;
 	// Получаем параметры активного клиента
 	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены

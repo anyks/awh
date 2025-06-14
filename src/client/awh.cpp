@@ -1038,7 +1038,7 @@ void awh::client::AWH::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::AWH::subprotocols() const noexcept {
+const unordered_set <string> & awh::client::AWH::subprotocols() const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
 	return this->_http.subprotocols();
 }
@@ -1046,7 +1046,7 @@ const set <string> & awh::client::AWH::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::AWH::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::client::AWH::subprotocols(const unordered_set <string> & subprotocols) noexcept {
 	// Выполняем установку поддерживаемых сабпротоколов
 	this->_http.subprotocols(subprotocols);
 }

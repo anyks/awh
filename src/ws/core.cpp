@@ -1793,7 +1793,7 @@ void awh::WCore::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::WCore::subprotocols() const noexcept {
+const unordered_set <string> & awh::WCore::subprotocols() const noexcept {
 	// Выводим список выбранных сабпротоколов
 	return this->_selectedProtocols;
 }
@@ -1801,7 +1801,7 @@ const set <string> & awh::WCore::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::WCore::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::WCore::subprotocols(const unordered_set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
 	if(!subprotocols.empty())
 		// Выполняем установку списка поддерживаемых сабпротоколов

@@ -167,7 +167,7 @@ void awh::server::Websocket::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::Websocket::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::server::Websocket::subprotocols(const unordered_set <string> & subprotocols) noexcept {
 	// Выполняем установку списка сабпротоколов поддерживаемых сервером
 	this->_ws.subprotocols(subprotocols);
 }
@@ -176,7 +176,7 @@ void awh::server::Websocket::subprotocols(const set <string> & subprotocols) noe
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const set <string> & awh::server::Websocket::subprotocols(const uint64_t bid) const noexcept {
+const unordered_set <string> & awh::server::Websocket::subprotocols(const uint64_t bid) const noexcept {
 	// Выводим извлечение списка выбранных сабпротоколов
 	return this->_ws.subprotocols(bid);
 }

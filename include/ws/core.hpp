@@ -86,13 +86,13 @@ namespace awh {
 			// Компрессор для жатия данных
 			compressors_t _compressors;
 		protected:
-			// Список выбранных сабпротоколов
-			set <string> _selectedProtocols;
-			// Список поддерживаемых сабпротоколов
-			set <string> _supportedProtocols;
-		protected:
 			// Список поддверживаемых расширений
 			vector <vector <string>> _extensions;
+		protected:
+			// Список выбранных сабпротоколов
+			unordered_set <string> _selectedProtocols;
+			// Список поддерживаемых сабпротоколов
+			unordered_set <string> _supportedProtocols;
 		private:
 			/**
 			 * init Метод инициализации
@@ -255,12 +255,12 @@ namespace awh {
 			 * subprotocol Метод получения списка выбранных сабпротоколов
 			 * @return список выбранных сабпротоколов
 			 */
-			const set <string> & subprotocols() const noexcept;
+			const unordered_set <string> & subprotocols() const noexcept;
 			/**
 			 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 			 * @param subprotocols сабпротоколы для установки
 			 */
-			void subprotocols(const set <string> & subprotocols) noexcept;
+			void subprotocols(const unordered_set <string> & subprotocols) noexcept;
 		public:
 			/**
 			 * takeover Метод получения флага переиспользования контекста компрессии

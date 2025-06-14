@@ -74,7 +74,7 @@ namespace awh {
 				scheme::ws_t::partner_t _server;
 			private:
 				// Поддерживаемые сабпротоколы
-				set <string> _subprotocols;
+				unordered_set <string> _subprotocols;
 			private:
 				// Список поддверживаемых расширений
 				vector <vector <string>> _extensions;
@@ -325,13 +325,13 @@ namespace awh {
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const set <string> & subprotocols) noexcept;
+				void subprotocols(const unordered_set <string> & subprotocols) noexcept;
 				/**
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const unordered_set <string> & subprotocols(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * extensions Метод установки списка расширений

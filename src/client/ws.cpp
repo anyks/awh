@@ -139,7 +139,7 @@ void awh::client::Websocket::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::Websocket::subprotocols() const noexcept {
+const unordered_set <string> & awh::client::Websocket::subprotocols() const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
 	return this->_ws.subprotocols();
 }
@@ -147,7 +147,7 @@ const set <string> & awh::client::Websocket::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Websocket::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::client::Websocket::subprotocols(const unordered_set <string> & subprotocols) noexcept {
 	// Выполняем установку поддерживаемых сабпротоколов
 	this->_ws.subprotocols(subprotocols);
 }

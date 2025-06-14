@@ -1725,7 +1725,7 @@ void awh::client::Websocket2::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const set <string> & awh::client::Websocket2::subprotocols() const noexcept {
+const unordered_set <string> & awh::client::Websocket2::subprotocols() const noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
 	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выводим список выбранных сабпротоколов
@@ -1739,7 +1739,7 @@ const set <string> & awh::client::Websocket2::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Websocket2::subprotocols(const set <string> & subprotocols) noexcept {
+void awh::client::Websocket2::subprotocols(const unordered_set <string> & subprotocols) noexcept {
 	// Если список поддерживаемых сабпротоколов получен
 	if(!subprotocols.empty()){
 		// Устанавливаем список поддерживаемых сабсабпротоколов для Websocket-клиента
