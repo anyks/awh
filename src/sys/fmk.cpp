@@ -451,7 +451,7 @@ static class Symbols {
 		 */
 		bool isArabic(const char num) const noexcept {
 			// Выполняем проверку сущестования цифры
-			return (this->_arabics.find(num) != this->_arabics.end());
+			return isdigit(static_cast <int32_t> (num));
 		}
 		/**
 		 * isArabic Метод проверки соответствия арабской цифре
@@ -460,7 +460,7 @@ static class Symbols {
 		 */
 		bool isArabic(const wchar_t num) const noexcept {
 			// Выполняем проверку сущестования цифры
-			return (this->_wideArabics.find(num) != this->_wideArabics.end());
+			return iswdigit(static_cast <wint_t> (num));
 		}
 	public:
 		/**
@@ -1195,13 +1195,13 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 							// Результат работы функции
 							bool result = false;
 							// Получаем текущую букву
-							const char letter = text.at(index);
+							const wchar_t letter = text.at(index);
 							// Если буква не первая и не последняя
 							if((index > 0) && (index < (text.length() - 1))){
 								// Получаем предыдущую букву
-								const char first = text.at(index - 1);
+								const wchar_t first = text.at(index - 1);
 								// Получаем следующую букву
-								const char second = text.at(index + 1);
+								const wchar_t second = text.at(index + 1);
 								// Если проверка не пройдена, проверяем на апостроф
 								if(!(result = (((letter == L'-') && (first != L'-') && (second != L'-')) || ::iswspace(letter)))){
 									// Выполняем проверку на апостроф
@@ -1327,7 +1327,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					// Если длина слова больше 1-го символа
 					if(text.length() > 1){
 						// Текущая буква
-						char letter = 0;
+						wchar_t letter = 0;
 						// Начальная позиция поиска
 						const uint8_t pos = ((text.front() == L'-') || (text.front() == L'+') ? 1 : 0);
 						// Переходим по всем символам слова
@@ -1337,7 +1337,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								// Получаем текущую букву
 								letter = text.at(i);
 								// Если плавающая точка найдена
-								if((letter == L'.') || (letter == L',')){
+								if((letter == L'.') || (letter == L',') || (letter == L'e')){
 									// Проверяем правые и левую части
 									result = (
 										this->is(text.substr(pos, i - pos), check_t::NUMBER) &&
