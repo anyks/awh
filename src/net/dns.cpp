@@ -1051,6 +1051,12 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 													}
 													// Если IP-адрес получен
 													if(!ip.empty()){
+														/**
+														 * Копируем IP-адрес непосредственно в результат
+														 * нам приходится это делать, так-как при разрыве подключения адрес добавляется в черный список
+														 * если в выдаче IP-адрес только один, то он находится в чёрном списке, в этом случае результат всегда будет пустым.
+														 */
+														result = ip;
 														// Если IP-адрес не находится в чёрном списке
 														if(!self->isInBlackList(family, name, ip)){
 															// Добавляем IP-адрес в список адресов
@@ -1158,7 +1164,10 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 									}
 								// Если запись получена, то запоминаем полученную запись
 								} else self->_using.emplace(result);
-							}
+							// Если IP-адрес получен всего один и он в чёрном списке
+							} else if(!result.empty())
+								// Выполняем удаления IP-адреса из чёрного списка
+								self->delInBlackList(this->_family, fqdn, result);
 						} break;
 						// Если сервер DNS не смог интерпретировать запрос
 						case 1:
