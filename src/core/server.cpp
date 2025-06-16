@@ -925,12 +925,12 @@ void awh::server::Core::launching(const bool mode, const bool status) noexcept {
  * @param status флаг вывода события статуса
  */
 void awh::server::Core::closedown(const bool mode, const bool status) noexcept {
-	// Выполняем функцию в базовом модуле
-	node_t::closedown(mode, status);
 	// Если требуется закрыть подключение
 	if(mode)
 		// Выполняем отключение всех брокеров
 		this->close();
+	// Выполняем функцию в базовом модуле
+	node_t::closedown(mode, status);
 }
 /**
  * clearTimeout Метод удаления таймера ожидания получения данных

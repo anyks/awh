@@ -527,12 +527,12 @@ void awh::client::Core::launching(const bool mode, const bool status) noexcept {
  * @param status флаг вывода события статуса
  */
 void awh::client::Core::closedown(const bool mode, const bool status) noexcept {
-	// Выполняем функцию в базовом модуле
-	node_t::closedown(mode, status);
 	// Если требуется закрыть подключение
 	if(mode)
 		// Выполняем отключение всех брокеров
 		this->close();
+	// Выполняем функцию в базовом модуле
+	node_t::closedown(mode, status);
 }
 /**
  * timeout Метод вызова при срабатывании локального таймаута

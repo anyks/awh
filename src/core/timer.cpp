@@ -42,12 +42,12 @@ void awh::Timer::launching(const bool mode, const bool status) noexcept {
  * @param status флаг вывода события статуса
  */
 void awh::Timer::closedown(const bool mode, const bool status) noexcept {
-	// Выполняем функцию в базовом модуле
-	core_t::closedown(mode, status);
 	// Если требуется закрыть подключение
 	if(mode)
 		// Выполняем остановку всех таймеров
 		this->clear();
+	// Выполняем функцию в базовом модуле
+	core_t::closedown(mode, status);
 }
 /**
  * event Метод события таймера
