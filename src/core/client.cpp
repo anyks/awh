@@ -424,6 +424,23 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				#endif
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		}
 	}
@@ -626,7 +643,7 @@ void awh::client::Core::createTimeout(const uint64_t bid, const uint32_t msec) n
 			this->_receive.emplace(bid, (tid = this->_timer.timeout(msec)));
 		}
 		// Выполняем добавление функции обратного вызова
-		this->_timer.set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid));
+		this->_timer.attach(tid, static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid);
 	}
 }
 /**
@@ -655,7 +672,7 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 			this->_timeouts.emplace(sid, (tid = this->_timer.timeout(5000)));
 		}
 		// Выполняем добавление функции обратного вызова
-		this->_timer.set <void (const uint16_t, const scheme_t::mode_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode));
+		this->_timer.attach(tid, static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode);
 	}
 }
 /**

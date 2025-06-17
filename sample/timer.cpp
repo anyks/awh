@@ -91,11 +91,11 @@ class Executor {
 					// Устанавливаем задержку времени на 12 секунд
 					uint16_t tid = timer->timeout(12000);
 					// Выполняем добавление функции обратного вызова
-					timer->set <void (const uint16_t)> (tid, std::bind(&Executor::timeout, this, tid));
+					timer->attach(tid, &Executor::timeout, this, tid);
 					// Устанавливаем задержку времени на 5 секунд
 					tid = timer->interval(5000);
 					// Устанавливаем интервал времени времени на 5 секунд
-					timer->set <void (const uint16_t, awh::timer_t *)> (tid, std::bind(&Executor::interval, this, tid, timer));
+					timer->attach(tid, &Executor::interval, this, tid, timer);
 				} break;
 				// Если система остановлена
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):

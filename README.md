@@ -1203,11 +1203,11 @@ class Executor {
 
 					uint16_t tid = timer->timeout(10000);
 
-					timer->set <void (const uint16_t)> (tid, std::bind(&Executor::timeout, this, tid));
+					timer->attach(tid, &Executor::timeout, this, tid);
 
 					tid = timer->interval(5000);
 
-					timer->set <void (const uint16_t, awh::timer_t *)> (tid, std::bind(&Executor::interval, this, tid, timer));
+					timer->attach(tid, &Executor::interval, this, tid, timer);
 				} break;
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
 					this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");

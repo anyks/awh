@@ -244,7 +244,7 @@ void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uin
 					// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 					const uint16_t tid = this->_timer.timeout(3000);
 					// Выполняем добавление функции обратного вызова
-					this->_timer.set <void (const uint16_t)> (tid, std::bind(&proxy_socks5_t::erase, this, tid, bid1));
+					this->_timer.attach(tid, &proxy_socks5_t::erase, this, tid, bid1);
 				}
 			} break;
 		}

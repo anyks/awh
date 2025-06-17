@@ -58,12 +58,12 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 					// Устанавливаем интервал времени на выполнения пинга клиента
 					const uint16_t tid = this->_timer.interval(this->_pingInterval);
 					// Выполняем добавление функции обратного вызова
-					this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
+					this->_timer.attach(tid, &web_t::pinging, this, tid);
 				}
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				const uint16_t tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
+				this->_timer.attach(tid, &web_t::disconected, this, tid);
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
@@ -160,12 +160,12 @@ void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uin
 					// Устанавливаем интервал времени на выполнения пинга клиента
 					const uint16_t tid = this->_timer.interval(this->_pingInterval);
 					// Выполняем добавление функции обратного вызова
-					this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::pinging, this, tid));
+					this->_timer.attach(tid, &web_t::pinging, this, tid);
 				}
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				const uint16_t tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.set <void (const uint16_t)> (tid, std::bind(&web_t::disconected, this, tid));
+				this->_timer.attach(tid, &web_t::disconected, this, tid);
 			}
 		} break;
 		// Если событие остановки сервиса

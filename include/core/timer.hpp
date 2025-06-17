@@ -57,14 +57,13 @@ namespace awh {
 					~Broker() noexcept {}
 			} broker_t;
 		private:
-			// Хранилище функций обратного вызова
-			fn_t _callbacks;
-		private:
 			// Мютекс для блокировки основного потока
 			recursive_mutex _mtx;
 		private:
 			// Список активных брокеров
 			map <uint16_t, unique_ptr <broker_t>> _brokers;
+			// Хранилище функций обратного вызова
+			map <uint16_t, function <void (void)>> _callbacks;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -98,22 +97,54 @@ namespace awh {
 			void clear(const uint16_t tid) noexcept;
 		public:
 			/**
-			 * callback Шаблон метода установки финкции обратного вызова
-			 * @tparam A тип функции обратного вызова
+			 * attach Шаблон метода прикрепления финкции обратного вызова
 			 */
-			template <typename A>
+			template <class... Args>
 			/**
-			 * set Метод установки функции обратного вызова
-			 * @param tid идентификатор таймера для установки
-			 * @param fn  функция обратного вызова для установки
+			 * attach Метод прикрепления финкции обратного вызова
+			 * @param tid  идентификатор таймера
+			 * @param args аргументы функции обратного вызова
 			 */
-			void set(const uint16_t tid, function <A> fn) noexcept {
-				// Если функция обратного вызова передана
-				if((tid > 0) && (fn != nullptr)){
-					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx);
-					// Выполняем установку функции обратного вызова
-					this->_callbacks.set <A> (static_cast <uint64_t> (tid), fn);
+			void attach(const uint16_t tid, Args... args) noexcept {
+				// Если идентификатор таймера передан
+				if(tid > 0){
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Выполняем поиск активного таймера
+						auto i = this->_brokers.find(tid);
+						// Если активный таймер найден
+						if(i != this->_brokers.end()){
+							// Выполняем блокировку потока
+							const lock_guard <recursive_mutex> lock(this->_mtx);
+							// Выполняем поиск функции обратного вызова
+							auto j = this->_callbacks.find(tid);
+							// Если функция найдена в списке
+							if(j != this->_callbacks.end())
+								// Выполняем замену функции обратного вызова
+								j->second = std::bind(args...);
+							// Выполняем установку функции обратного вызова
+							else this->_callbacks.emplace(tid, std::bind(args...));
+						}
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tid), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
+					}
 				}
 			}
 		public:
@@ -135,7 +166,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Timer(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _callbacks(log) {}
+			Timer(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log) {}
 			/**
 			 * ~Timer Деструктор
 			 */

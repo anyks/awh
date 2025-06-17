@@ -313,6 +313,23 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 					#endif
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(bid), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
 				}
 				// Получаем максимальный размер буфера
 				this->_payloadSize = broker->ectx.buffer(engine_t::method_t::WRITE);

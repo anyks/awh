@@ -55,49 +55,74 @@ void awh::Timer::closedown(const bool mode, const bool status) noexcept {
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
-void awh::Timer::event(const uint16_t tid, const SOCKET fd, const base_t::event_type_t event) noexcept {
+void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET fd, const base_t::event_type_t event) noexcept {
 	// Определяем тип события
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие таймера
 		case static_cast <uint8_t> (base_t::event_type_t::TIMER): {
-			// Выполняем поиск активного брокера
-			auto i = this->_brokers.find(tid);
-			// Если активный брокер найден
-			if(i != this->_brokers.end()){
-				// Если персистентная работа не установлена, удаляем таймер
-				if(!i->second->persist){
-					// Выполняем остановку активного брокера
-					i->second->event.stop();
-					// Выполняем блокировку потока
-					this->_mtx.lock();
-					// Выполняем удаление таймера
-					this->_brokers.erase(i);
-					// Выполняем разблокировку потока
-					this->_mtx.unlock();
-					// Если функция обратного вызова существует
-					if(this->_callbacks.is(static_cast <uint64_t> (tid))){
-						// Объект работы с функциями обратного вызова
-						fn_t callback(this->_log);
-						// Копируем функции обратного вызова
-						callback = this->_callbacks;
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Выполняем поиск активного брокера
+				auto i = this->_brokers.find(tid);
+				// Если активный брокер найден
+				if(i != this->_brokers.end()){
+					// Если персистентная работа не установлена, удаляем таймер
+					if(!i->second->persist){
+						// Выполняем остановку активного брокера
+						i->second->event.stop();
 						// Выполняем блокировку потока
 						this->_mtx.lock();
-						// Выполняем удаление функции обратного вызова
-						this->_callbacks.erase(static_cast <uint64_t> (tid));
+						// Выполняем удаление таймера
+						this->_brokers.erase(i);
 						// Выполняем разблокировку потока
 						this->_mtx.unlock();
-						// Выполняем функцию обратного вызова
-						callback.bind(static_cast <uint64_t> (tid));
+						// Выполняем поиск функции обратного вызова
+						auto j = this->_callbacks.find(i->first);
+						// Если функция обратного вызова найдена
+						if(j != this->_callbacks.end()){
+							// Выполняем извлечение функции обратного вызова
+							auto fn = j->second;
+							// Выполняем блокировку потока
+							this->_mtx.lock();
+							// Выполняем удаление функции обратного вызова
+							this->_callbacks.erase(j);
+							// Выполняем разблокировку потока
+							this->_mtx.unlock();
+							// Выполняем функцию обратного вызова
+							apply(fn, make_tuple());
+						}
+					// Если мы работаем не с таймером а с интервалом
+					} else {
+						// Выполняем поиск функции обратного вызова
+						auto j = this->_callbacks.find(i->first);
+						// Если функция обратного вызова найдена
+						if(j != this->_callbacks.end()){
+							// Выполняем извлечение функции обратного вызова
+							auto fn = j->second;
+							// Выполняем функцию обратного вызова
+							apply(fn, make_tuple());
+						}
 					}
-				// Если функция обратного вызова существует
-				} else if(this->_callbacks.is(static_cast <uint64_t> (tid))) {
-					// Объект работы с функциями обратного вызова
-					fn_t callback(this->_log);
-					// Копируем функции обратного вызова
-					callback = this->_callbacks;
-					// Выполняем функцию обратного вызова
-					callback.bind(static_cast <uint64_t> (tid));
 				}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tid, fd, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		} break;
 	}
@@ -106,21 +131,45 @@ void awh::Timer::event(const uint16_t tid, const SOCKET fd, const base_t::event_
  * clear Метод очистки всех таймеров
  */
 void awh::Timer::clear() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если список брокеров не пустой
-	if(!this->_brokers.empty()){
-		// Выполняем перебор всех активных брокеров
-		for(auto i = this->_brokers.begin(); i != this->_brokers.end();){
-			// Если функция обратного вызова существует
-			if(this->_callbacks.is(static_cast <uint64_t> (i->first)))
-				// Выполняем удаление функции обратного вызова
-				this->_callbacks.erase(static_cast <uint64_t> (i->first));
-			// Выполняем остановку активного брокера
-			i->second->event.stop();
-			// Выполняем удаление таймера
-			i = this->_brokers.erase(i);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Если список брокеров не пустой
+		if(!this->_brokers.empty()){
+			// Выполняем перебор всех активных брокеров
+			for(auto i = this->_brokers.begin(); i != this->_brokers.end();){
+				// Выполняем остановку активного брокера
+				i->second->event.stop();
+				// Если функция обратного вызова существует
+				auto j = this->_callbacks.find(i->first);
+				// Если функция обратного вызова найдена
+				if(j != this->_callbacks.end())
+					// Выполняем удаление функции обратного вызова
+					this->_callbacks.erase(j);
+				// Выполняем удаление таймера
+				i = this->_brokers.erase(i);
+			}
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -128,20 +177,44 @@ void awh::Timer::clear() noexcept {
  * @param tid идентификатор таймера для очистки
  */
 void awh::Timer::clear(const uint16_t tid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если функция обратного вызова существует
-	if(this->_callbacks.is(static_cast <uint64_t> (tid)))
-		// Выполняем удаление функции обратного вызова
-		this->_callbacks.erase(static_cast <uint64_t> (tid));
-	// Выполняем поиск активного брокера
-	auto i = this->_brokers.find(tid);
-	// Если активный брокер найден
-	if(i != this->_brokers.end()){
-		// Выполняем остановку активного брокера
-		i->second->event.stop();
-		// Выполняем удаление таймера
-		this->_brokers.erase(i);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Выполняем поиск активного брокера
+		auto i = this->_brokers.find(tid);
+		// Если активный брокер найден
+		if(i != this->_brokers.end()){
+			// Выполняем остановку активного брокера
+			i->second->event.stop();
+			// Если функция обратного вызова существует
+			auto j = this->_callbacks.find(i->first);
+			// Если функция обратного вызова найдена
+			if(j != this->_callbacks.end())
+				// Выполняем удаление функции обратного вызова
+				this->_callbacks.erase(j);
+			// Выполняем удаление таймера
+			this->_brokers.erase(i);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -195,6 +268,23 @@ uint16_t awh::Timer::timeout(const uint32_t delay) noexcept {
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат
@@ -253,6 +343,23 @@ uint16_t awh::Timer::interval(const uint32_t delay) noexcept {
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат

@@ -187,6 +187,23 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						#endif
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd, sid), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
 					}
 				} break;
 				// Если тип сокета установлен как TCP/IP
@@ -580,6 +597,23 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						#endif
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const exception & error) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd, sid), log_t::flag_t::CRITICAL, error.what());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						#endif
 					}
 				} break;
 			}
@@ -1017,7 +1051,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 						this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
 					}
 					// Выполняем добавление функции обратного вызова
-					this->_timer->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid));
+					this->_timer->attach(tid, static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid);
 				}
 			} break;
 			// Если необходимо создать таймер на разрешение подключения
@@ -1042,7 +1076,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 						this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
 					}
 					// Выполняем добавление функции обратного вызова
-					this->_timer->set <void (const uint16_t, const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid));
+					this->_timer->attach(tid, static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid);
 				}
 			} break;
 			// Если необходимо создать таймер на ожидание входящих данных
@@ -1067,7 +1101,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 						this->_receive.emplace(bid, (tid = this->_timer->timeout(msec)));
 					}
 					// Выполняем добавление функции обратного вызова
-					this->_timer->set <void (const uint64_t)> (tid, std::bind(static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid));
+					this->_timer->attach(tid, static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid);
 				}
 			} break;
 		}
@@ -1198,6 +1232,23 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 										#endif
 										// Выходим из приложения
 										::exit(EXIT_FAILURE);
+									/**
+									 * Если возникает ошибка
+									 */
+									} catch(const exception & error) {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if defined(DEBUG_MODE)
+											// Выводим сообщение об ошибке
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, pid, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+										/**
+										* Если режим отладки не включён
+										*/
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+										#endif
 									}
 								}
 							}
@@ -1317,6 +1368,23 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 				#endif
 				// Выходим из приложения
 				::exit(EXIT_FAILURE);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		}
 	}
@@ -2766,6 +2834,23 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 											#endif
 											// Выходим из приложения
 											::exit(EXIT_FAILURE);
+										/**
+										 * Если возникает ошибка
+										 */
+										} catch(const exception & error) {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if defined(DEBUG_MODE)
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, ip, family), log_t::flag_t::CRITICAL, error.what());
+											/**
+											* Если режим отладки не включён
+											*/
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+											#endif
 										}
 									}
 								} break;

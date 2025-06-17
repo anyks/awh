@@ -16,7 +16,7 @@
 #define __AWH_CONFIG__
 
 // Версия приложения
-#define AWH_VERSION "4.3.2"
+#define AWH_VERSION "4.3.3"
 // Короткое название библиотеки
 #define AWH_SHORT_NAME "AWH"
 // Название библиотеки
