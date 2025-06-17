@@ -1008,7 +1008,7 @@ string awh::URI::query(const url_t & url) const noexcept {
 			// Выполняем сборку якоря запроса
 			const string & anchor = (!url.anchor.empty() ? this->_fmk->format("#%s", this->encode(url.anchor).c_str()) : "");
 			// Выполняем генерацию URL адреса
-			const string & uri = ((url.callback != nullptr) ? this->_fmk->format("&%s", url.callback(&url, this).c_str()) : "");
+			const string & uri = ((url.callback != nullptr) ? this->_fmk->format("&%s", apply(url.callback, make_tuple(&url, this)).c_str()) : "");
 			// Иначе порт не устанавливаем
 			result = this->_fmk->format("%s%s%s%s", path.c_str(), params.c_str(), uri.c_str(), anchor.c_str());
 		/**

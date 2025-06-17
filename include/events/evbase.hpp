@@ -200,6 +200,8 @@ namespace awh {
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
 		private:
+			// Список существующих таймеров
+			set <SOCKET> _timers;
 			// Список отслеживаемых участников
 			map <SOCKET, item_t> _items;
 			// Спиоск активных верхнеуровневых потоков

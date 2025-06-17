@@ -213,7 +213,7 @@ void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t
 					// Если функция обратного вызова существует
 					if(i->second.callback != nullptr)
 						// Выполняем функцию обратного вызова
-						i->second.callback(tid);
+						apply(i->second.callback, make_tuple(tid));
 				}
 			} break;
 			// Если событие является закрытием подключения
@@ -298,6 +298,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						this->_evtimer.del(reinterpret_cast <item_t *> (i->data.ptr)->timer);
 						// Выполняем закрытие таймера
 						::close(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+						// Выполняем поиск таймера в списке таймеров
+						auto j = this->_timers.find(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+						// Если таймер в списке таймеров найден, удаляем его
+						if(j != this->_timers.end())
+							// Выполняем удаление таймера
+							this->_timers.erase(j);
 					}
 					// Выполняем удаление события из списка отслеживания
 					this->_events.erase(i);
@@ -321,6 +327,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 							this->_evtimer.del(reinterpret_cast <item_t *> (i->data.ptr)->timer);
 							// Выполняем закрытие таймера
 							::close(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+							// Выполняем поиск таймера в списке таймеров
+							auto j = this->_timers.find(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+							// Если таймер в списке таймеров найден, удаляем его
+							if(j != this->_timers.end())
+								// Выполняем удаление таймера
+								this->_timers.erase(j);
 						}
 					}
 					// Выполняем удаление события из списка изменений
@@ -356,6 +368,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 					this->_evtimer.del(i->second.timer);
 					// Выполняем закрытие таймера
 					::close(i->second.timer);
+					// Выполняем поиск таймера в списке таймеров
+					auto j = this->_timers.find(i->second.timer);
+					// Если таймер в списке таймеров найден, удаляем его
+					if(j != this->_timers.end())
+						// Выполняем удаление таймера
+						this->_timers.erase(j);
 				}
 			}
 			// Выполняем поиск файлового дескриптора из списка событий
@@ -480,9 +498,16 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				// Выполняем удаление таймера
 				this->_evtimer.del(i->second.timer);
 				// Если событие является таймером
-				if(i->second.delay > 0)
+				if(i->second.delay > 0){
 					// Выполняем закрытие таймера
 					::close(i->second.timer);
+					// Выполняем поиск таймера в списке таймеров
+					auto j = this->_timers.find(i->second.timer);
+					// Если таймер в списке таймеров найден, удаляем его
+					if(j != this->_timers.end())
+						// Выполняем удаление таймера
+						this->_timers.erase(j);
+				}
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 					// Если файловый дескриптор найден
@@ -536,9 +561,16 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				// Выполняем удаление таймера
 				this->_evtimer.del(i->second.timer);
 				// Если событие является таймером
-				if(i->second.delay > 0)
+				if(i->second.delay > 0){
 					// Выполняем закрытие таймера
 					::close(i->second.timer);
+					// Выполняем поиск таймера в списке таймеров
+					auto j = this->_timers.find(i->second.timer);
+					// Если таймер в списке таймеров найден, удаляем его
+					if(j != this->_timers.end())
+						// Выполняем удаление таймера
+						this->_timers.erase(j);
+				}
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 					// Если файловый дескриптор найден
@@ -830,6 +862,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 									::close(i->second.fd);
 									// Выполняем закрытие таймера
 									::close(i->second.timer);
+									// Выполняем поиск таймера в списке таймеров
+									auto j = this->_timers.find(i->second.timer);
+									// Если таймер в списке таймеров найден, удаляем его
+									if(j != this->_timers.end())
+										// Выполняем удаление таймера
+										this->_timers.erase(j);
 								}
 								// Выходим из цикла
 								break;
@@ -855,6 +893,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 									::close(i->second.fd);
 									// Выполняем закрытие таймера
 									::close(i->second.timer);
+									// Выполняем поиск таймера в списке таймеров
+									auto j = this->_timers.find(i->second.timer);
+									// Если таймер в списке таймеров найден, удаляем его
+									if(j != this->_timers.end())
+										// Выполняем удаление таймера
+										this->_timers.erase(j);
 								}
 								// Выполняем удаление события из списка событий
 								this->_events.erase(k);
@@ -914,6 +958,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 										::close(i->second.fd);
 										// Выполняем закрытие таймера
 										::close(i->second.timer);
+										// Выполняем поиск таймера в списке таймеров
+										auto l = this->_timers.find(i->second.timer);
+										// Если таймер в списке таймеров найден, удаляем его
+										if(l != this->_timers.end())
+											// Выполняем удаление таймера
+											this->_timers.erase(l);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка изменений
@@ -1021,6 +1071,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 									::close(i->second.fd);
 									// Выполняем закрытие таймера
 									::close(i->second.timer);
+									// Выполняем поиск таймера в списке таймеров
+									auto j = this->_timers.find(i->second.timer);
+									// Если таймер в списке таймеров найден, удаляем его
+									if(j != this->_timers.end())
+										// Выполняем удаление таймера
+										this->_timers.erase(j);
 								// Выполняем полное удаление события из базы событий
 								} else EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 								// Выполняем удаление события из списка событий
@@ -1185,6 +1241,8 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							fd = fds[0];
 							// Делаем сокет неблокирующим
 							this->_socket.blocking(fd, socket_t::mode_t::DISABLED);
+							// Выполняем добавление таймера в список таймеров
+							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_items.emplace(fd, item_t());
 							// Выполняем установку объекта пайпа
@@ -1280,6 +1338,8 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							fd = fds[0];
 							// Делаем сокет неблокирующим
 							this->_socket.blocking(fd, socket_t::mode_t::DISABLED);
+							// Выполняем добавление таймера в список таймеров
+							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_items.emplace(fd, item_t());
 							// Выполняем установку объекта пайпа
@@ -1834,6 +1894,12 @@ void awh::Base::clear() noexcept {
 					this->_evtimer.del(reinterpret_cast <item_t *> (i->data.ptr)->timer);
 					// Выполняем закрытие таймера
 					::close(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+					// Выполняем поиск таймера в списке таймеров
+					auto j = this->_timers.find(reinterpret_cast <item_t *> (i->data.ptr)->timer);
+					// Если таймер в списке таймеров найден, удаляем его
+					if(j != this->_timers.end())
+						// Выполняем удаление таймера
+						this->_timers.erase(j);
 				}
 				// Выполняем удаление события из списка изменений
 				i = this->_change.erase(i);
@@ -1862,6 +1928,12 @@ void awh::Base::clear() noexcept {
 						::close(j->second.fd);
 						// Выполняем закрытие таймера
 						::close(j->second.timer);
+						// Выполняем поиск таймера в списке таймеров
+						auto k = this->_timers.find(j->second.timer);
+						// Если таймер в списке таймеров найден, удаляем его
+						if(k != this->_timers.end())
+							// Выполняем удаление таймера
+							this->_timers.erase(k);
 					// Если событие является обычным
 					} else {
 						// Выполняем удаление объекта события
@@ -1891,6 +1963,12 @@ void awh::Base::clear() noexcept {
 						::close(j->second.fd);
 						// Выполняем закрытие таймера
 						::close(j->second.timer);
+						// Выполняем поиск таймера в списке таймеров
+						auto k = this->_timers.find(j->second.timer);
+						// Если таймер в списке таймеров найден, удаляем его
+						if(k != this->_timers.end())
+							// Выполняем удаление таймера
+							this->_timers.erase(k);
 					// Если событие является обычным
 					} else {
 						// Выполняем удаление объекта события
@@ -2167,7 +2245,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																j->second.callback(fd, event_type_t::TIMER);
+																apply(j->second.callback, make_tuple(fd, event_type_t::TIMER));
 														}
 														// Выполняем поиск указанной записи
 														j = this->_items.find(fd);
@@ -2196,7 +2274,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															j->second.callback(fd, event_type_t::READ);
+															apply(j->second.callback, make_tuple(fd, event_type_t::READ));
 													}
 												}
 											// Если файловый дескриптор не нулевой
@@ -2219,7 +2297,7 @@ void awh::Base::start() noexcept {
 													// Если событие найдено и оно активированно
 													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
-														j->second.callback(fd, event_type_t::WRITE);
+														apply(j->second.callback, make_tuple(fd, event_type_t::WRITE));
 												}
 											}
 										}
@@ -2260,7 +2338,7 @@ void awh::Base::start() noexcept {
 															// Удаляем файловый дескриптор из базы событий
 															this->del(j->second.id, fd);
 															// Выполняем функцию обратного вызова
-															callback();
+															apply(callback, make_tuple());
 															// Продолжаем обход дальше
 															continue;
 														}
@@ -2371,7 +2449,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																item->callback(item->fd, event_type_t::TIMER);
+																apply(item->callback, make_tuple(item->fd, event_type_t::TIMER));
 														}
 														// Выполняем поиск файлового дескриптора в базе событий
 														auto j = this->_items.find(fd);
@@ -2400,7 +2478,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															item->callback(item->fd, event_type_t::READ);
+															apply(item->callback, make_tuple(item->fd, event_type_t::READ));
 													}
 												}
 											}
@@ -2417,7 +2495,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															i->second.callback(i->second.fd, event_type_t::WRITE);
+															apply(i->second.callback, make_tuple(i->second.fd, event_type_t::WRITE));
 													}
 												}
 											}
@@ -2456,7 +2534,7 @@ void awh::Base::start() noexcept {
 																// Удаляем файловый дескриптор из базы событий
 																this->del(i->second.id, i->second.fd);
 																// Выполняем функцию обратного вызова
-																callback();
+																apply(callback, make_tuple());
 																// Продолжаем обход дальше
 																continue;
 															}
@@ -2464,8 +2542,10 @@ void awh::Base::start() noexcept {
 														// Удаляем файловый дескриптор из базы событий
 														this->del(i->second.id, i->second.fd);
 													}
-												// Выполняем удаление фантомного файлового дескриптора
-												} else this->del(fd);
+												// Если файловый дескриптор не принадлежит таймерам
+												} else if(this->_timers.find(fd) == this->_timers.end())
+													// Выполняем удаление фантомного файлового дескриптора
+													this->del(fd);
 											}
 										// Если файловый дескриптор не нулевой
 										} else if(event.data.fd > 0)
@@ -2577,7 +2657,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																item->callback(item->fd, event_type_t::TIMER);
+																apply(item->callback, make_tuple(item->fd, event_type_t::TIMER));
 														}
 														// Выполняем поиск файлового дескриптора в базе событий
 														j = this->_items.find(fd);
@@ -2606,7 +2686,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															item->callback(fd, event_type_t::READ);
+															apply(item->callback, make_tuple(fd, event_type_t::READ));
 													}
 												}
 											}
@@ -2623,7 +2703,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															j->second.callback(j->second.fd, event_type_t::WRITE);
+															apply(j->second.callback, make_tuple(j->second.fd, event_type_t::WRITE));
 													}
 												}
 											}
@@ -2662,7 +2742,7 @@ void awh::Base::start() noexcept {
 																// Удаляем файловый дескриптор из базы событий
 																this->del(j->second.id, j->second.fd);
 																// Выполняем функцию обратного вызова
-																callback();
+																apply(callback, make_tuple());
 																// Продолжаем обход дальше
 																continue;
 															}
@@ -2670,8 +2750,10 @@ void awh::Base::start() noexcept {
 														// Удаляем файловый дескриптор из базы событий
 														this->del(j->second.id, j->second.fd);
 													}
-												// Выполняем удаление фантомного файлового дескриптора
-												} else this->del(fd);
+												// Если файловый дескриптор не принадлежит таймерам
+												} else if(this->_timers.find(fd) == this->_timers.end())
+													// Выполняем удаление фантомного файлового дескриптора
+													this->del(fd);
 											}
 										// Если файловый дескриптор не нулевой
 										} else if(event.ident > 0)
