@@ -917,8 +917,8 @@ void awh::server::Websocket1::pinging(const uint16_t tid) noexcept {
 		if(this->_pinging){
 			// Выполняем перебор всех активных клиентов
 			for(auto & item : this->_scheme.get()){
-				// Если подключение клиента активно
-				if(!item.second->close){
+				// Если подключение клиента активно и рукопожатие не выполнено
+				if(!item.second->close && reinterpret_cast <http_t &> (item.second->http).is(http_t::state_t::HANDSHAKE)){
 					// Получаем текущий штамп времени
 					const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Если брокер не ответил на пинг больше двух интервалов, отключаем его

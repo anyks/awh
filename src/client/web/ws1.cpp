@@ -471,7 +471,7 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 	// Если данные существуют
 	if((tid > 0) && (this->_core != nullptr)){
 		// Если разрешено выполнять пинги
-		if(this->_pinging && !this->_close){
+		if(this->_pinging && this->_shake && !this->_close){
 			// Получаем текущий штамп времени
 			const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 			// Если брокер не ответил на пинг больше двух интервалов, отключаем его
