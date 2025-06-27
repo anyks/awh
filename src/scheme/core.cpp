@@ -104,20 +104,20 @@ void awh::Scheme::Broker::mac(const string & mac) noexcept {
 		this->_mac = mac;
 }
 /**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::Scheme::Broker::callbacks(const fn_t & callbacks) noexcept {
+void awh::Scheme::Broker::callback(const callback_t & callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку функции обратного вызова при активации сокета на чтение
-	this->_callbacks.set("read", callbacks);
+	this->_callback.set("read", callback);
 	// Выполняем установку функции обратного вызова при готовности сокета к записи
-	this->_callbacks.set("write", callbacks);
+	this->_callback.set("write", callback);
 	// Выполняем установку функции обратного вызова при отключении сокета
-	this->_callbacks.set("close", callbacks);
+	this->_callback.set("close", callback);
 	// Выполняем установку функции обратного вызова при срабатывании таймаута
-	this->_callbacks.set("timeout", callbacks);
+	this->_callback.set("timeout", callback);
 }
 /**
  * sonet Метод установки типа сокета подключения
@@ -142,23 +142,23 @@ void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET fd, const base_
 			// Выполняем остановку работы события
 			this->_event.stop();
 			// Если функция обратного вызова на закратие подключения установлена
-			if(this->_callbacks.is("close"))
+			if(this->_callback.is("close"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const uint64_t)> ("close", this->_id);
+				this->_callback.call <void (const uint64_t)> ("close", this->_id);
 		} break;
 		// Если выполняется событие чтения данных с сокета
 		case static_cast <uint8_t> (base_t::event_type_t::READ): {
 			// Если функция обратного вызова на чтение данных с сокета установлена
-			if(this->_callbacks.is("read"))
+			if(this->_callback.is("read"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const uint64_t)> ("read", this->_id);
+				this->_callback.call <void (const uint64_t)> ("read", this->_id);
 		} break;
 		// Если выполняется событие записи данных с сокета
 		case static_cast <uint8_t> (base_t::event_type_t::WRITE): {
 			// Если функция обратного вызова на запись данных в сокет установлена
-			if(this->_callbacks.is("write"))
+			if(this->_callback.is("write"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const uint64_t)> ("write", this->_id);
+				this->_callback.call <void (const uint64_t)> ("write", this->_id);
 		} break;
 	}
 }
@@ -299,7 +299,7 @@ awh::Scheme::Broker & awh::Scheme::Broker::operator = (base_t * base) noexcept {
  */
 awh::Scheme::Broker::Broker(const uint16_t sid, const fmk_t * fmk, const log_t * log) noexcept :
  _id(0), _sid(sid), _ip{""}, _mac{""}, _port(0), _sonet(sonet_t::TCP),
- _event(event_t::type_t::EVENT, fmk, log), _callbacks(log),
+ _event(event_t::type_t::EVENT, fmk, log), _callback(log),
  ectx(fmk, log), addr(fmk, log), _fmk(fmk), _log(log), _base(nullptr) {
 	// Устанавливаем идентификатор брокера
 	this->_id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);

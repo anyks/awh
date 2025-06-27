@@ -56,11 +56,11 @@ void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexce
 				// Устанавливаем интервал времени на выполнения пинга клиента
 				uint16_t tid = this->_timer.interval(this->_pingInterval);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.attach(tid, &sample_t::pinging, this, tid);
+				this->_timer.on(tid, &sample_t::pinging, this, tid);
 				// Устанавливаем интервал времени на удаление отключившихся клиентов раз в 3 секунды
 				tid = this->_timer.interval(3000);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.attach(tid, &sample_t::erase, this, tid);
+				this->_timer.on(tid, &sample_t::erase, this, tid);
 			} break;
 			// Если система остановлена
 			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
@@ -71,9 +71,9 @@ void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexce
 			} break;
 		}
 		// Если функция получения событий запуска и остановки сетевого ядра установлена
-		if(this->_callbacks.is("status"))
+		if(this->_callback.is("status"))
 			// Выводим функцию обратного вызова
-			this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
+			this->_callback.call <void (const awh::core_t::status_t)> ("status", status);
 	}
 }
 /**
@@ -87,9 +87,9 @@ void awh::server::Sample::connectEvent(const uint64_t bid, const uint16_t sid) n
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
-		if(this->_callbacks.is("active"))
+		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::CONNECT);
+			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::CONNECT);
 	}
 }
 /**
@@ -103,9 +103,9 @@ void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
 		// Добавляем в очередь список отключившихся клиентов
 		this->_disconnected.emplace(bid, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS));
 		// Если функция обратного вызова при подключении/отключении установлена
-		if(this->_callbacks.is("active"))
+		if(this->_callback.is("active"))
 			// Выводим функцию обратного вызова
-			this->_callbacks.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
+			this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid, mode_t::DISCONNECT);
 	}
 }
 /**
@@ -117,9 +117,9 @@ void awh::server::Sample::launchedEvent(const string & host, const uint32_t port
 	// Если параметра активации сервера переданы
 	if(!host.empty()){
 		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("launched"))
+		if(this->_callback.is("launched"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const string &, const uint32_t)> ("launched", host, port);
+			this->_callback.call <void (const string &, const uint32_t)> ("launched", host, port);
 	}
 }
 /**
@@ -141,9 +141,9 @@ void awh::server::Sample::readEvent(const char * buffer, const size_t size, cons
 			// Если разрешено получение данных
 			if(options->allow.receive){
 				// Если функция обратного вызова при получении входящих сообщений установлена
-				if(this->_callbacks.is("message"))
+				if(this->_callback.is("message"))
 					// Выводим данные полученного сообщения
-					this->_callbacks.call <void (const uint64_t, const vector <char> &)> ("message", bid, vector <char> (buffer, buffer + size));
+					this->_callback.call <void (const uint64_t, const vector <char> &)> ("message", bid, vector <char> (buffer, buffer + size));
 			}
 		}
 	}
@@ -186,9 +186,9 @@ bool awh::server::Sample::acceptEvent(const string & ip, const string & mac, con
 	// Если данные существуют
 	if(!ip.empty() && !mac.empty() && (sid > 0)){
 		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("accept"))
+		if(this->_callback.is("accept"))
 			// Выводим функцию обратного вызова
-			return this->_callbacks.call <bool (const string &, const string &, const uint32_t)> ("accept", ip, mac, port);
+			return this->_callback.call <bool (const string &, const string &, const uint32_t)> ("accept", ip, mac, port);
 	}
 	// Разрешаем подключение брокеру
 	return result;
@@ -267,18 +267,18 @@ void awh::server::Sample::init(const uint32_t port, const string & host) noexcep
 	this->_host = host;
 }
 /**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::server::Sample::callbacks(const fn_t & callbacks) noexcept {
+void awh::server::Sample::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
-	this->_callbacks.set("active", callbacks);
+	this->_callback.set("active", callback);
 	// Выполняем установку функции обратного вызова получения событий запуска и остановки сетевого ядра
-	this->_callbacks.set("status", callbacks);
+	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова на событие активации брокера на сервере
-	this->_callbacks.set("accept", callbacks);
+	this->_callback.set("accept", callback);
 	// Выполняем установку функции обратного вызова на событие получения сообщений
-	this->_callbacks.set("message", callbacks);
+	this->_callback.set("message", callback);
 }
 /**
  * response Метод отправки сообщения брокеру
@@ -466,7 +466,7 @@ void awh::server::Sample::keepAlive(const int32_t cnt, const int32_t idle, const
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _alive(false), _pinging(true), _complete(true),
  _port(SERVER_PORT), _host{""}, _uri(fmk, log), _timer(fmk, log), _pingInterval(PING_INTERVAL),
- _callbacks(log), _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
+ _callback(log), _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _fmk(fmk), _log(log), _core(core) {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Выполняем отключение информационных сообщений сетевого ядра таймера
@@ -474,20 +474,20 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 		// Добавляем схему сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Устанавливаем функцию активации ядра сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&sample_t::statusEvent, this, _1));
+		const_cast <server::core_t *> (this->_core)->on <void (const awh::core_t::status_t)> ("status", &sample_t::statusEvent, this, _1);
 		// Устанавливаем событие на запуск системы
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&sample_t::openEvent, this, _1));
+		const_cast <server::core_t *> (this->_core)->on <void (const uint16_t)> ("open", &sample_t::openEvent, this, _1);
 		// Устанавливаем событие подключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&sample_t::connectEvent, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connect", &sample_t::connectEvent, this, _1, _2);
 		// Устанавливаем событие отключения
-		const_cast <server::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&sample_t::disconnectEvent, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("disconnect", &sample_t::disconnectEvent, this, _1, _2);
 		// Устанавливаем функцию получения события запуска сервера
-		const_cast <server::core_t *> (this->_core)->callback <void (const string &, const uint32_t)> ("launched", std::bind(&sample_t::launchedEvent, this, _1, _2));
+		const_cast <server::core_t *> (this->_core)->on <void (const string &, const uint32_t)> ("launched", &sample_t::launchedEvent, this, _1, _2);
 		// Устанавливаем функцию чтения данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&sample_t::readEvent, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", &sample_t::readEvent, this, _1, _2, _3, _4);
 		// Устанавливаем функцию записи данных
-		const_cast <server::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", std::bind(&sample_t::writeEvent, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &sample_t::writeEvent, this, _1, _2, _3, _4);
 		// Добавляем событие аццепта брокера
-		const_cast <server::core_t *> (this->_core)->callback <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", std::bind(&sample_t::acceptEvent, this, _1, _2, _3, _4));
+		const_cast <server::core_t *> (this->_core)->on <bool (const string &, const string &, const uint32_t, const uint64_t)> ("accept", &sample_t::acceptEvent, this, _1, _2, _3, _4);
 	}
 }

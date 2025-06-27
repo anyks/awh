@@ -79,15 +79,15 @@ void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET fd, con
 						// Выполняем разблокировку потока
 						this->_mtx.unlock();
 						// Выполняем поиск функции обратного вызова
-						auto j = this->_callbacks.find(i->first);
+						auto j = this->_callback.find(i->first);
 						// Если функция обратного вызова найдена
-						if(j != this->_callbacks.end()){
+						if(j != this->_callback.end()){
 							// Выполняем извлечение функции обратного вызова
 							auto fn = j->second;
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Выполняем удаление функции обратного вызова
-							this->_callbacks.erase(j);
+							this->_callback.erase(j);
 							// Выполняем разблокировку потока
 							this->_mtx.unlock();
 							// Выполняем функцию обратного вызова
@@ -96,9 +96,9 @@ void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET fd, con
 					// Если мы работаем не с таймером а с интервалом
 					} else {
 						// Выполняем поиск функции обратного вызова
-						auto j = this->_callbacks.find(i->first);
+						auto j = this->_callback.find(i->first);
 						// Если функция обратного вызова найдена
-						if(j != this->_callbacks.end()){
+						if(j != this->_callback.end()){
 							// Выполняем извлечение функции обратного вызова
 							auto fn = j->second;
 							// Выполняем функцию обратного вызова
@@ -144,11 +144,11 @@ void awh::Timer::clear() noexcept {
 				// Выполняем остановку активного брокера
 				i->second->event.stop();
 				// Если функция обратного вызова существует
-				auto j = this->_callbacks.find(i->first);
+				auto j = this->_callback.find(i->first);
 				// Если функция обратного вызова найдена
-				if(j != this->_callbacks.end())
+				if(j != this->_callback.end())
 					// Выполняем удаление функции обратного вызова
-					this->_callbacks.erase(j);
+					this->_callback.erase(j);
 				// Выполняем удаление таймера
 				i = this->_brokers.erase(i);
 			}
@@ -190,11 +190,11 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 			// Выполняем остановку активного брокера
 			i->second->event.stop();
 			// Если функция обратного вызова существует
-			auto j = this->_callbacks.find(i->first);
+			auto j = this->_callback.find(i->first);
 			// Если функция обратного вызова найдена
-			if(j != this->_callbacks.end())
+			if(j != this->_callback.end())
 				// Выполняем удаление функции обратного вызова
-				this->_callbacks.erase(j);
+				this->_callback.erase(j);
 			// Выполняем удаление таймера
 			this->_brokers.erase(i);
 		}

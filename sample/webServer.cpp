@@ -429,31 +429,31 @@ int32_t main(int32_t argc, char * argv[]){
 	// Разрешаем перехват сигналов
 	core.signalInterception(awh::scheme_t::mode_t::ENABLED);
 	// Устанавливаем функцию обработки сигналов завершения работы приложения
-	core.callback <void (const int)> ("crash", std::bind(&WebServer::crash, &executor, _1));
+	core.on <void (const int)> ("crash", &WebServer::crash, &executor, _1);
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
-	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&WebServer::available, &executor, _1, _2, &core));
+	core.on <void (const uint64_t, const size_t)> ("available", &WebServer::available, &executor, _1, _2, &core);
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-	core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&WebServer::unavailable, &executor, _1, _2, _3));
+	core.on <void (const uint64_t, const char *, const size_t)> ("unavailable", &WebServer::unavailable, &executor, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
-	awh.callback <void (const string &, const uint32_t)> ("launched", std::bind(&WebServer::launched, &executor, _1, _2));
+	awh.on <void (const string &, const uint32_t)> ("launched", &WebServer::launched, &executor, _1, _2);
 	// Устанавливаем функцию извлечения пароля пользователя для авторизации
-	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
+	awh.on <string (const uint64_t, const string &)> ("extractPassword", &WebServer::password, &executor, _1, _2);
 	// Устанавливаем функцию проверки авторизации прользователя
-	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
+	awh.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &WebServer::auth, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	awh.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
+	awh.on <bool (const string &, const string &, const uint32_t)> ("accept", &WebServer::accept, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2, &core));
+	awh.on <void (const uint64_t, const server::web_t::mode_t)> ("active", &WebServer::active, &executor, _1, _2, &core);
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	awh.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
+	awh.on <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", &WebServer::error, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	awh.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3, &awh));
+	awh.on <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", &WebServer::message, &executor, _1, _2, _3, &awh);
 	// Устанавливаем функцию обратного вызова при выполнении удачного рукопожатия
-	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3, &awh));
+	awh.on <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", &WebServer::handshake, &executor, _1, _2, _3, &awh);
 	// Установливаем функцию обратного вызова на событие получения запроса
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4, &awh));
+	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", &WebServer::request, &executor, _1, _2, _3, _4, &awh);
 	// Установливаем функцию обратного вызова на событие получения полного запроса клиента
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
+	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", &WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
 	// Выполняем запуск WEB-сервер
 	awh.start();
 	// Выводим результат

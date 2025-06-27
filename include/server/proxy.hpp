@@ -261,10 +261,10 @@ namespace awh {
 				uri_t _uri;
 				// Объект идентификации сервиса
 				ident_t _ident;
-				// Хранилище функций обратного вызова
-				fn_t _callbacks;
 				// Объект параметров клиента
 				settings_t _settings;
+				// Хранилище функций обратного вызова
+				callback_t _callback;
 			private:
 				// Объект сетевого ядра
 				server::core_t _core;
@@ -345,11 +345,10 @@ namespace awh {
 				/**
 				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
 				 * @param event событие контейнера функций обратного вызова
-				 * @param idw   идентификатор функции обратного вызова
-				 * @param name  название функции обратного вызова
+				 * @param fid   идентификатор функции обратного вызова
 				 * @param dump  дамп данных функции обратного вызова
 				 */
-				void eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept;
+				void eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept;
 			private:
 				/** 
 				 * eraseClient Метод удаления подключённого клиента
@@ -505,42 +504,91 @@ namespace awh {
 				void init(const uint32_t port = SERVER_PROXY_PORT, const string & host = "", const http_t::compressor_t compressor = http_t::compressor_t::NONE, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * callbacks Метод установки функций обратного вызова
-				 * @param callbacks функции обратного вызова
+				 * callback Метод установки функций обратного вызова
+				 * @param callback функции обратного вызова
 				 */
-				void callbacks(const fn_t & callbacks) noexcept;
+				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * callback Шаблон метода установки финкции обратного вызова
-				 * @tparam A тип функции обратного вызова
+				 * @tparam Шаблон метода подключения финкции обратного вызова
+				 * @param T    тип функции обратного вызова
+				 * @param Args аргументы функции обратного вызова
 				 */
-				template <typename A>
+				template <typename T, class... Args>
 				/**
-				 * callback Метод установки функции обратного вызова
-				 * @param idw идентификатор функции обратного вызова
-				 * @param fn  функция обратного вызова для установки
+				 * on Метод подключения финкции обратного вызова
+				 * @param name  идентификатор функкции обратного вызова
+				 * @param args аргументы функции обратного вызова
+				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				void callback(const uint64_t idw, function <A> fn) noexcept {
-					// Если функция обратного вызова передана
-					if((idw > 0) && (fn != nullptr))
+				auto on(const char * name, Args... args) noexcept -> uint64_t {
+					// Если мы получили название функции обратного вызова
+					if(name != nullptr)
 						// Выполняем установку функции обратного вызова
-						this->_callbacks.set <A> (idw, fn);
+						return this->_callback.on <T> (name, args...);
+					// Выводим результат по умолчанию
+					return 0;
 				}
 				/**
-				 * callback Шаблон метода установки финкции обратного вызова
-				 * @tparam A тип функции обратного вызова
+				 * @tparam Шаблон метода подключения финкции обратного вызова
+				 * @param T    тип функции обратного вызова
+				 * @param Args аргументы функции обратного вызова
 				 */
-				template <typename A>
+				template <typename T, class... Args>
 				/**
-				 * callback Метод установки функции обратного вызова
-				 * @param name название функции обратного вызова
-				 * @param fn   функция обратного вызова для установки
+				 * on Метод подключения финкции обратного вызова
+				 * @param name  идентификатор функкции обратного вызова
+				 * @param args аргументы функции обратного вызова
+				 * @return     идентификатор добавленной функции обратного вызова
 				 */
-				void callback(const string & name, function <A> fn) noexcept {
-					// Если функция обратного вызова передана
-					if(!name.empty() && (fn != nullptr))
+				auto on(const string & name, Args... args) noexcept -> uint64_t {
+					// Если мы получили название функции обратного вызова
+					if(!name.empty())
 						// Выполняем установку функции обратного вызова
-						this->_callbacks.set <A> (name, fn);
+						return this->_callback.on <T> (name, args...);
+					// Выводим результат по умолчанию
+					return 0;
+				}
+				/**
+				 * @tparam Шаблон метода подключения финкции обратного вызова
+				 * @param T    тип функции обратного вызова
+				 * @param Args аргументы функции обратного вызова
+				 */
+				template <typename T, class... Args>
+				/**
+				 * on Метод подключения финкции обратного вызова
+				 * @param fid  идентификатор функкции обратного вызова
+				 * @param args аргументы функции обратного вызова
+				 * @return     идентификатор добавленной функции обратного вызова
+				 */
+				auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+					// Если мы получили название функции обратного вызова
+					if(fid > 0)
+						// Выполняем установку функции обратного вызова
+						return this->_callback.on <T> (fid, args...);
+					// Выводим результат по умолчанию
+					return 0;
+				}
+				/**
+				 * @tparam Шаблон метода подключения финкции обратного вызова
+				 * @param A    тип идентификатора функции
+				 * @param B    тип функции обратного вызова
+				 * @param Args аргументы функции обратного вызова
+				 */
+				template <typename A, typename B, class... Args>
+				/**
+				 * on Метод подключения финкции обратного вызова
+				 * @param fid  идентификатор функкции обратного вызова
+				 * @param args аргументы функции обратного вызова
+				 * @return     идентификатор добавленной функции обратного вызова
+				 */
+				auto on(const A fid, Args... args) noexcept -> uint64_t {
+					// Если мы получили на вход число
+					if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+						// Выполняем установку функции обратного вызова
+						return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+					// Выводим результат по умолчанию
+					return 0;
 				}
 			public:
 				/**

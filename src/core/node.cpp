@@ -375,9 +375,9 @@ void awh::Node::erase(const uint64_t bid, const size_t size) noexcept {
 		} else this->_payloads.erase(i);
 	}
 	// Если функция обратного вызова установлена
-	if(this->_callbacks.is("available"))
+	if(this->_callback.is("available"))
 		// Выполняем функцию обратного вызова сообщая об освобождении памяти
-		this->_callbacks.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < amount) ? 0 : min(this->_brokerAvailableSize - amount, this->_memoryAvailableSize));
+		this->_callback.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < amount) ? 0 : min(this->_brokerAvailableSize - amount, this->_memoryAvailableSize));
 }
 /**
  * broker Метод извлечения брокера подключения
@@ -795,9 +795,9 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 				// Выполняем разблокировку потока
 				this->_mtx.main.unlock();
 			// Если функция обратного вызова установлена
-			} else if(this->_callbacks.is("unavailable"))
+			} else if(this->_callback.is("unavailable"))
 				// Выводим функцию обратного вызова сигнализирующая о том, что передаваемые данные небыли отправленны
-				this->_callbacks.call <void (const uint64_t, const char *, const size_t)> ("unavailable", bid, buffer, size);
+				this->_callback.call <void (const uint64_t, const char *, const size_t)> ("unavailable", bid, buffer, size);
 		}
 	/**
 	 * Если возникает ошибка

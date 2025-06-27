@@ -151,9 +151,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем таймеры ожидания по одной секунде на чтение и запись
 	sample.waitTimeDetect(1, 1);
 	// Подписываемся на событие получения сообщения
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
+	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
 	// Подписываемся на событие коннекта и дисконнекта клиента
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 	// Выполняем инициализацию подключения
 	sample.init(2222, "127.0.0.1");
 	// sample.init("anyks");

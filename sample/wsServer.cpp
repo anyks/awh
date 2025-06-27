@@ -303,25 +303,25 @@ int32_t main(int32_t argc, char * argv[]){
 	// Активируем правило асинхронной работы передачи данных
 	core.transferRule(server::core_t::transfer_t::ASYNC);
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
-	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&Executor::available, &executor, _1, _2, &core));
+	core.on <void (const uint64_t, const size_t)> ("available", &Executor::available, &executor, _1, _2, &core);
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-	core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&Executor::unavailable, &executor, _1, _2, _3));
+	core.on <void (const uint64_t, const char *, const size_t)> ("unavailable", &Executor::unavailable, &executor, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
-	ws.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Executor::launched, &executor, _1, _2));
+	ws.on <void (const string &, const uint32_t)> ("launched", &Executor::launched, &executor, _1, _2);
 	// Устанавливаем функцию извлечения пароля пользователя для авторизации
-	ws.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Executor::password, &executor, _1, _2));
+	ws.on <string (const uint64_t, const string &)> ("extractPassword", &Executor::password, &executor, _1, _2);
 	// Устанавливаем функцию проверки авторизации прользователя
-	ws.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
+	ws.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &Executor::auth, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	ws.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
+	ws.on <bool (const string &, const string &, const uint32_t)> ("accept", &Executor::accept, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	ws.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2, &core));
+	ws.on <void (const uint64_t, const server::web_t::mode_t)> ("active", &Executor::active, &executor, _1, _2, &core);
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	ws.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3, &ws));
+	ws.on <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", &Executor::error, &executor, _1, _2, _3, &ws);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	ws.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3, &ws));
+	ws.on <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, _3, &ws);
 	// Устанавливаем функцию обратного вызова на получение входящих сообщений запросов
-	ws.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&Executor::headers, &executor, _1, _2, _3, _4, _5));
+	ws.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", &Executor::headers, &executor, _1, _2, _3, _4, _5);
 	// Выполняем запуск Websocket сервер
 	ws.start();
 	// Выводим результат

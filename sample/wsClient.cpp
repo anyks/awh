@@ -307,17 +307,17 @@ int32_t main(int32_t argc, char * argv[]){
 	// Активируем правило асинхронной работы передачи данных
 	core.transferRule(client::core_t::transfer_t::ASYNC);
 	// Подписываемся на получении события освобождения памяти протокола сетевого ядра
-	core.callback <void (const uint64_t, const size_t)> ("available", std::bind(&Executor::available, &executor, _1, _2, &core));
+	core.on <void (const uint64_t, const size_t)> ("available", &Executor::available, &executor, _1, _2, &core);
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-	core.callback <void (const uint64_t, const char *, const size_t)> ("unavailable", std::bind(&Executor::unavailable, &executor, _1, _2, _3));
+	core.on <void (const uint64_t, const char *, const size_t)> ("unavailable", &Executor::unavailable, &executor, _1, _2, _3);
 	// Подписываемся на событие запуска/остановки сервера
-	ws.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
+	ws.on <void (const awh::core_t::status_t)> ("status", &Executor::status, &executor, _1);
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.callback <void (const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
+	ws.on <void (const uint32_t, const string &)> ("errorWebsocket", &Executor::error, &executor, _1, _2);
 	// Подписываемся на событие получения сообщения с сервера
-	ws.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, &ws));
+	ws.on <void (const vector <char> &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, &ws);
 	// Подписываемся на событие рукопожатия
-	ws.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3, &ws));
+	ws.on <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", &Executor::handshake, &executor, _1, _2, _3, &ws);
 	// Выполняем запуск Websocket клиента
 	ws.start();
 	// Выводим результат

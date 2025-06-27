@@ -360,9 +360,9 @@ void awh::Core::signal(const int32_t signal) noexcept {
 	// Если процесс является родительским
 	} else {
 		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("crash"))
+		if(this->_callback.is("crash"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const int32_t)> ("crash", signal);
+			this->_callback.call <void (const int32_t)> ("crash", signal);
 		// Выходим из приложения
 		else ::exit(signal);
 	}
@@ -476,9 +476,9 @@ void awh::Core::launching([[maybe_unused]] const bool mode, const bool status) n
 		// Устанавливаем статус сетевого ядра
 		this->_status = status_t::START;
 		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("status"))
+		if(this->_callback.is("status"))
 			// Выполняем запуск функции в основном потоке
-			this->_callbacks.call <void (const status_t)> ("status", this->_status);
+			this->_callback.call <void (const status_t)> ("status", this->_status);
 		// Если разрешено выводить информацию в лог
 		if(this->_verb)
 			// Выводим в консоль информацию
@@ -498,9 +498,9 @@ void awh::Core::closedown([[maybe_unused]] const bool mode, const bool status) n
 		// Устанавливаем статус сетевого ядра
 		this->_status = status_t::STOP;
 		// Если функция обратного вызова установлена
-		if(this->_callbacks.is("status"))
+		if(this->_callback.is("status"))
 			// Выполняем запуск функции в основном потоке
-			this->_callbacks.call <void (const status_t)> ("status", this->_status);
+			this->_callback.call <void (const status_t)> ("status", this->_status);
 		// Если разрешено выводить информацию в лог
 		if(this->_verb)
 			// Выводим в консоль информацию
@@ -508,18 +508,18 @@ void awh::Core::closedown([[maybe_unused]] const bool mode, const bool status) n
 	}
 }
 /**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::Core::callbacks(const fn_t & callbacks) noexcept {
+void awh::Core::callback(const callback_t & callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку функции обратного вызова при краше приложения
-	this->_callbacks.set("crash", callbacks);
+	this->_callback.set("crash", callback);
 	// Выполняем установку функции обратного вызова на событие получения ошибки
-	this->_callbacks.set("error", callbacks);
+	this->_callback.set("error", callback);
 	// Выполняем установку функции обратного вызова при запуске/остановки работы модуля
-	this->_callbacks.set("status", callbacks);
+	this->_callback.set("status", callback);
 }
 /**
  * working Метод проверки на запуск работы
@@ -661,7 +661,7 @@ uint64_t awh::Core::emplaceUpstream(function <void (const uint64_t)> callback) n
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  _pid(::getpid()), _mode(false), _verb(true),
- _callbacks(log), _dispatch(fmk, log), _sig(fmk, log),
+ _dispatch(fmk, log), _callback(log), _sig(fmk, log),
  _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {
 	// Выполняем установку функции активации базы событий

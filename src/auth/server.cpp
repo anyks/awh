@@ -74,18 +74,18 @@ bool awh::server::Auth::check(const string & method) noexcept {
 		// Если тип авторизации - Базовая
 		case static_cast <uint8_t> (type_t::BASIC): {
 			// Если функция обратного вызова установлена
-			if(this->_callbacks.is("auth"))
+			if(this->_callback.is("auth"))
 				// Выполняем проверку авторизации
-				return this->_callbacks.call <bool (const string &, const string &)> ("auth", this->_user, this->_pass);
+				return this->_callback.call <bool (const string &, const string &)> ("auth", this->_user, this->_pass);
 		} break;
 		// Если тип авторизации - Дайджест
 		case static_cast <uint8_t> (type_t::DIGEST): {
 			// Если данные пользователя переданы
 			if(!method.empty() && !this->_user.empty() && !this->_locale.nc.empty() && !this->_locale.uri.empty() && !this->_locale.cnonce.empty() && !this->_locale.resp.empty()){
 				// Если на сервере счётчик меньше
-				if((this->_fmk->atoi <size_t> (this->_digest.nc, 16) <= this->_fmk->atoi <size_t> (this->_locale.nc, 16)) && this->_callbacks.is("extract")){
+				if((this->_fmk->atoi <size_t> (this->_digest.nc, 16) <= this->_fmk->atoi <size_t> (this->_locale.nc, 16)) && this->_callback.is("extract")){
 					// Получаем пароль пользователя
-					const string & pass = this->_callbacks.call <string (const string &)> ("extract", this->_user);
+					const string & pass = this->_callback.call <string (const string &)> ("extract", this->_user);
 					// Если пароль пользователя получен
 					if(!pass.empty()){
 						// Параметры проверки дайджест авторизации
@@ -137,7 +137,7 @@ void awh::server::Auth::opaque(const string & opaque) noexcept {
  */
 void awh::server::Auth::extractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callbacks.set <string (const string &)> ("extract", callback);
+	this->_callback.on <string (const string &)> ("extract", callback);
 }
 /**
  * authCallback Метод добавления функции обработки авторизации
@@ -145,7 +145,7 @@ void awh::server::Auth::extractPassCallback(function <string (const string &)> c
  */
 void awh::server::Auth::authCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callbacks.set <bool (const string &, const string &)> ("auth", callback);
+	this->_callback.on <bool (const string &, const string &)> ("auth", callback);
 }
 /**
  * header Метод установки параметров авторизации из заголовков

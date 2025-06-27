@@ -223,7 +223,7 @@ void awh::client::Web::statusEvent(const awh::core_t::status_t status) noexcept 
 				// Устанавливаем интервал времени на выполнения пинга удалённого сервера
 				const uint16_t tid = this->_timer.interval(this->_pingInterval);
 				// Выполняем добавление функции обратного вызова
-				this->_timer.attach(tid, &web_t::pinging, this, tid);
+				this->_timer.on(tid, &web_t::pinging, this, tid);
 			}
 		} break;
 		// Если система остановлена
@@ -238,9 +238,9 @@ void awh::client::Web::statusEvent(const awh::core_t::status_t status) noexcept 
 		} break;
 	}
 	// Если функция получения событий запуска и остановки сетевого ядра установлена
-	if(this->_callbacks.is("status"))
+	if(this->_callback.is("status"))
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const awh::core_t::status_t)> ("status", status);
+		this->_callback.call <void (const awh::core_t::status_t)> ("status", status);
 }
 /**
  * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
@@ -388,9 +388,9 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 									}
 								#endif
 								// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-								if(this->_callbacks.is("response"))
+								if(this->_callback.is("response"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", 1, 0, code, message);
+									this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", 1, 0, code, message);
 								// Завершаем работу
 								const_cast <client::core_t *> (this->_core)->close(bid);
 								// Завершаем работу
@@ -445,9 +445,9 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 									status = awh::http_t::status_t::GOOD;
 							}
 							// Если функция обратного вызова получения статуса ответа установлена
-							if(this->_callbacks.is("answer"))
+							if(this->_callback.is("answer"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", 1, 0, status);
+								this->_callback.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", 1, 0, status);
 							// Выполняем проверку авторизации
 							switch(static_cast <uint8_t> (status)){
 								// Если нужно попытаться ещё раз
@@ -489,25 +489,25 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 								break;
 							}
 							// Если функция обратного вызова активности потока установлена
-							if(this->_callbacks.is("stream"))
+							if(this->_callback.is("stream"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, 0, mode_t::CLOSE);
+								this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, 0, mode_t::CLOSE);
 							// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
-							if(this->_callbacks.is("response"))
+							if(this->_callback.is("response"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", 1, 0, response.code, response.message);
+								this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", 1, 0, response.code, response.message);
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
-							if(this->_callbacks.is("headers"))
+							if(this->_callback.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
+								this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
-							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callbacks.is("entity"))
+							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", 1, 0, response.code, response.message, this->_scheme.proxy.http.body());
+								this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", 1, 0, response.code, response.message, this->_scheme.proxy.http.body());
 							// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
-							if(this->_callbacks.is("complete"))
+							if(this->_callback.is("complete"))
 								// Выполняем функцию обратного вызова
-								this->_callbacks.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", 1, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
+								this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", 1, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
 							// Завершаем работу
 							const_cast <client::core_t *> (this->_core)->close(bid);
 							// Завершаем работу
@@ -555,9 +555,9 @@ void awh::client::Web::chunking([[maybe_unused]] const uint64_t bid, const vecto
 		// Выполняем добавление полученного чанка в тело ответа
 		const_cast <awh::http_t *> (http)->body(chunk);
 		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
-		if(this->_callbacks.is("chunks"))
+		if(this->_callback.is("chunks"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", 1, 0, chunk);
+			this->_callback.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", 1, 0, chunk);
 	}
 }
 /**
@@ -569,9 +569,9 @@ void awh::client::Web::chunking([[maybe_unused]] const uint64_t bid, const vecto
  */
 void awh::client::Web::errors([[maybe_unused]] const uint64_t bid, const log_t::flag_t flag, const awh::http::error_t error, const string & message) noexcept {
 	// Если функция обратного вызова на на вывод ошибок установлена
-	if(this->_callbacks.is("error"))
+	if(this->_callback.is("error"))
 		// Выполняем функцию обратного вызова
-		this->_callbacks.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", flag, error, message);
+		this->_callback.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", flag, error, message);
 }
 /**
  * init Метод инициализации WEB клиента
@@ -679,50 +679,50 @@ void awh::client::Web::start() noexcept {
 	}
 }
 /**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::client::Web::callbacks(const fn_t & callbacks) noexcept {
+void awh::client::Web::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова для вывода бинарных данных в сыром виде полученных с сервера
-	this->_callbacks.set("raw", callbacks);
+	this->_callback.set("raw", callback);
 	// Выполняем установку функции обратного вызова при завершении запроса
-	this->_callbacks.set("end", callbacks);
+	this->_callback.set("end", callback);
 	// Выполняем установку функции обратного вызова на событие получения ошибки
-	this->_callbacks.set("error", callbacks);
+	this->_callback.set("error", callback);
 	// Выполняем установку функции обратного вызова на событие запуска или остановки подключения
-	this->_callbacks.set("active", callbacks);
+	this->_callback.set("active", callback);
 	// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
-	this->_callbacks.set("status", callbacks);
+	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова завершения запроса
-	this->_callbacks.set("result", callbacks);
+	this->_callback.set("result", callback);
 	// Выполняем установку функции обратного вызова активности потока
-	this->_callbacks.set("stream", callbacks);
+	this->_callback.set("stream", callback);
 	// Выполняем установку функции обратного вызова при получении источника подключения
-	this->_callbacks.set("origin", callbacks);
+	this->_callback.set("origin", callback);
 	// Выполняем установку функции обратного вызова при получении альтернативных сервисов
-	this->_callbacks.set("altsvc", callbacks);
+	this->_callback.set("altsvc", callback);
 	// Выполняем установку функции обратного вызова при получении ответа сервера
-	this->_callbacks.set("answer", callbacks);
+	this->_callback.set("answer", callback);
 	// Выполняем установку функции обратного вызова для вывода полученного чанка бинарных данных с сервера
-	this->_callbacks.set("chunks", callbacks);
+	this->_callback.set("chunks", callback);
 	// Выполняем установку функции обратного вызова для вывода полученного заголовка с сервера
-	this->_callbacks.set("header", callbacks);
+	this->_callback.set("header", callback);
 	// Выполняем установку функции обратного вызова для вывода полученного тела данных с сервера
-	this->_callbacks.set("entity", callbacks);
+	this->_callback.set("entity", callback);
 	// Выполняем установку функции обратного вызова для вывода полученных заголовков с сервера
-	this->_callbacks.set("headers", callbacks);
+	this->_callback.set("headers", callback);
 	// Выполняем установку функции обратного вызова для вывода ответа сервера на ранее выполненный запрос
-	this->_callbacks.set("response", callbacks);
+	this->_callback.set("response", callback);
 	// Выполняем установку функции обратного вызова для перехвата полученных чанков
-	this->_callbacks.set("chunking", callbacks);
+	this->_callback.set("chunking", callback);
 	// Выполняем установку функции завершения выполнения запроса
-	this->_callbacks.set("complete", callbacks);
+	this->_callback.set("complete", callback);
 	// Выполняем установку функции обратного вызова при выполнении рукопожатия
-	this->_callbacks.set("handshake", callbacks);
+	this->_callback.set("handshake", callback);
 	// Выполняем установку функции обратного вызова на событие получения ошибок Websocket
-	this->_callbacks.set("errorWebsocket", callbacks);
+	this->_callback.set("errorWebsocket", callback);
 	// Выполняем установку функции обратного вызова на событие получения сообщений Websocket
-	this->_callbacks.set("messageWebsocket", callbacks);
+	this->_callback.set("messageWebsocket", callback);
 }
 /**
  * proto Метод извлечения поддерживаемого протокола подключения
@@ -882,21 +882,21 @@ void awh::client::Web::core(const client::core_t * core) noexcept {
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <client::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Устанавливаем событие на запуск системы
-		const_cast <client::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&web_t::openEvent, this, _1));
+		const_cast <client::core_t *> (this->_core)->on <void (const uint16_t)> ("open", &web_t::openEvent, this, _1);
 		// Выполняем установку функций обратного вызова для HTTP-клиента
-		const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&web_t::statusEvent, this, _1));
+		const_cast <client::core_t *> (this->_core)->on <void (const awh::core_t::status_t)> ("status", &web_t::statusEvent, this, _1);
 		// Устанавливаем событие подключения
-		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&web_t::connectEvent, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connect", &web_t::connectEvent, this, _1, _2);
 		// Устанавливаем событие отключения
-		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&web_t::disconnectEvent, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("disconnect", &web_t::disconnectEvent, this, _1, _2);
 		// Устанавливаем событие на подключение к прокси-серверу
-		const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connectProxy", std::bind(&web_t::proxyConnectEvent, this, _1, _2));
+		const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connectProxy", &web_t::proxyConnectEvent, this, _1, _2);
 		// Устанавливаем событие на активацию шифрованного SSL канала
-		const_cast <client::core_t *> (this->_core)->callback <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", std::bind(&web_t::enableSSLEvent, this, _1, _2, _3));
+		const_cast <client::core_t *> (this->_core)->on <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", &web_t::enableSSLEvent, this, _1, _2, _3);
 		// Устанавливаем функцию чтения данных
-		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&web_t::readEvent, this, _1, _2, _3, _4));
+		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", &web_t::readEvent, this, _1, _2, _3, _4);
 		// Устанавливаем событие на чтение данных с прокси-сервера
-		const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", std::bind(&web_t::proxyReadEvent, this, _1, _2, _3, _4));
+		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", &web_t::proxyReadEvent, this, _1, _2, _3, _4);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Удаляем схему сети из сетевого ядра
@@ -988,16 +988,16 @@ void awh::client::Web::encryption(const string & pass, const string & salt, cons
  * @param log объект для работы с логами
  */
 awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log), _nossl(false),
+ _bid(0), _uri(fmk, log), _scheme(fmk, log), _callback(log), _nossl(false),
  _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
  _attempt(0), _attempts(15), _sendPing(0), _pingInterval(PING_INTERVAL), _buffer(log),
  _timer(fmk, log), _fmk(fmk), _log(log), _core(nullptr) {
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callbacks.callback(std::bind(&web_t::eventCallback, this, _1, _2, _3, _4));
+	this->_callback.on(std::bind(&web_t::eventCallback, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_scheme.proxy.http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&web_t::chunking, this, _1, _2, _3));
+	this->_scheme.proxy.http.on <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", &web_t::chunking, this, _1, _2, _3);
 }
 /**
  * Web Конструктор
@@ -1006,32 +1006,32 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _bid(0), _uri(fmk, log), _callbacks(log), _scheme(fmk, log), _nossl(false),
+ _bid(0), _uri(fmk, log), _scheme(fmk, log), _callback(log), _nossl(false),
  _reading(false), _stopped(false), _pinging(true), _complete(true), _redirects(false),
  _attempt(0), _attempts(15), _sendPing(0), _pingInterval(PING_INTERVAL), _buffer(log),
  _timer(fmk, log), _fmk(fmk), _log(log), _core(core) {
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callbacks.callback(std::bind(&web_t::eventCallback, this, _1, _2, _3, _4));
+	this->_callback.on(std::bind(&web_t::eventCallback, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
-	this->_scheme.proxy.http.callback <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", std::bind(&web_t::chunking, this, _1, _2, _3));
+	this->_scheme.proxy.http.on <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", &web_t::chunking, this, _1, _2, _3);
 	// Добавляем схемы сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->scheme(&this->_scheme);
 	// Устанавливаем событие на запуск системы
-	const_cast <client::core_t *> (this->_core)->callback <void (const uint16_t)> ("open", std::bind(&web_t::openEvent, this, _1));
+	const_cast <client::core_t *> (this->_core)->on <void (const uint16_t)> ("open", &web_t::openEvent, this, _1);
 	// Выполняем установку функций обратного вызова для HTTP-клиента
-	const_cast <client::core_t *> (this->_core)->callback <void (const awh::core_t::status_t)> ("status", std::bind(&web_t::statusEvent, this, _1));
+	const_cast <client::core_t *> (this->_core)->on <void (const awh::core_t::status_t)> ("status", &web_t::statusEvent, this, _1);
 	// Устанавливаем событие подключения
-	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connect", std::bind(&web_t::connectEvent, this, _1, _2));
+	const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connect", &web_t::connectEvent, this, _1, _2);
 	// Устанавливаем событие отключения
-	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("disconnect", std::bind(&web_t::disconnectEvent, this, _1, _2));
+	const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("disconnect", &web_t::disconnectEvent, this, _1, _2);
 	// Устанавливаем событие на подключение к прокси-серверу
-	const_cast <client::core_t *> (this->_core)->callback <void (const uint64_t, const uint16_t)> ("connectProxy", std::bind(&web_t::proxyConnectEvent, this, _1, _2));
+	const_cast <client::core_t *> (this->_core)->on <void (const uint64_t, const uint16_t)> ("connectProxy", &web_t::proxyConnectEvent, this, _1, _2);
 	// Устанавливаем событие на активацию шифрованного SSL канала
-	const_cast <client::core_t *> (this->_core)->callback <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", std::bind(&web_t::enableSSLEvent, this, _1, _2, _3));
+	const_cast <client::core_t *> (this->_core)->on <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", &web_t::enableSSLEvent, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
-	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", std::bind(&web_t::readEvent, this, _1, _2, _3, _4));
+	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", &web_t::readEvent, this, _1, _2, _3, _4);
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	const_cast <client::core_t *> (this->_core)->callback <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", std::bind(&web_t::proxyReadEvent, this, _1, _2, _3, _4));
+	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", &web_t::proxyReadEvent, this, _1, _2, _3, _4);
 }

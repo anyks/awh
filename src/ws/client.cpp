@@ -242,9 +242,9 @@ void awh::client::WS::commit() noexcept {
 		 */
 		} catch(const exception & error) {
 			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callbacks.is("error"))
+			if(this->_callback.is("error"))
 				// Выполняем функцию обратного вызова
-				this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+				this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 			/**
 			 * Если включён режим отладки
 			 */
@@ -319,9 +319,9 @@ awh::Http::status_t awh::client::WS::status() noexcept {
 	 */
 	} catch(const exception & error) {
 		// Если функция обратного вызова на на вывод ошибок установлена
-		if(this->_callbacks.is("error"))
+		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callbacks.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
 		/**
 		 * Если включён режим отладки
 		 */

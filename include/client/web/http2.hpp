@@ -62,7 +62,7 @@ namespace awh {
 					uint64_t id;             // Идентификатор запроса
 					bool update;             // Флаг обновления параметров запроса
 					http_t http;             // Объект для работы с HTTP
-					fn_t callback;           // Хранилище функций обратного вызова
+					callback_t callback;     // Хранилище функций обратного вызова
 					agent_t agent;           // Агент воркера
 					engine_t::proto_t proto; // Активный прототип интернета
 					/**
@@ -205,11 +205,10 @@ namespace awh {
 				/**
 				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
 				 * @param event событие контейнера функций обратного вызова
-				 * @param idw   идентификатор функции обратного вызова
-				 * @param name  название функции обратного вызова
+				 * @param fid   идентификатор функции обратного вызова
 				 * @param dump  дамп данных функции обратного вызова
 				 */
-				void eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept;
+				void eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -344,10 +343,10 @@ namespace awh {
 				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
-				 * callbacks Метод установки функций обратного вызова
-				 * @param callbacks функции обратного вызова
+				 * callback Метод установки функций обратного вызова
+				 * @param callback функции обратного вызова
 				 */
-				void callbacks(const fn_t & callbacks) noexcept;
+				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

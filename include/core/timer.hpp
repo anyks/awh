@@ -63,7 +63,7 @@ namespace awh {
 			// Список активных брокеров
 			map <uint16_t, unique_ptr <broker_t>> _brokers;
 			// Хранилище функций обратного вызова
-			map <uint16_t, function <void (void)>> _callbacks;
+			map <uint16_t, function <void (void)>> _callback;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -97,15 +97,16 @@ namespace awh {
 			void clear(const uint16_t tid) noexcept;
 		public:
 			/**
-			 * attach Шаблон метода прикрепления финкции обратного вызова
+			 * @tparam Шаблон метода подключения финкции обратного вызова
+			 * @param Args аргументы функции обратного вызова
 			 */
 			template <class... Args>
 			/**
-			 * attach Метод прикрепления финкции обратного вызова
+			 * on Метод подключения финкции обратного вызова
 			 * @param tid  идентификатор таймера
 			 * @param args аргументы функции обратного вызова
 			 */
-			void attach(const uint16_t tid, Args... args) noexcept {
+			void on(const uint16_t tid, Args... args) noexcept {
 				// Если идентификатор таймера передан
 				if(tid > 0){
 					/**
@@ -119,13 +120,13 @@ namespace awh {
 							// Выполняем блокировку потока
 							const lock_guard <recursive_mutex> lock(this->_mtx);
 							// Выполняем поиск функции обратного вызова
-							auto j = this->_callbacks.find(tid);
+							auto j = this->_callback.find(tid);
 							// Если функция найдена в списке
-							if(j != this->_callbacks.end())
+							if(j != this->_callback.end())
 								// Выполняем замену функции обратного вызова
 								j->second = std::bind(args...);
 							// Выполняем установку функции обратного вызова
-							else this->_callbacks.emplace(tid, std::bind(args...));
+							else this->_callback.emplace(tid, std::bind(args...));
 						}
 					/**
 					 * Если возникает ошибка

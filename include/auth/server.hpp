@@ -18,8 +18,8 @@
 /**
  * Наши модули
  */
-#include <sys/fn.hpp>
 #include <auth/core.hpp>
+#include <sys/callback.hpp>
 
 /**
  * awh пространство имён
@@ -60,10 +60,10 @@ namespace awh {
 				// Пароль пользователя
 				string _pass;
 			private:
-				// Хранилище функций обратного вызова
-				fn_t _callbacks;
 				// Параметры Digest авторизации пользователя
 				digest_t _locale;
+				// Хранилище функций обратного вызова
+				callback_t _callback;
 			public:
 				/**
 				 * data Метод извлечения данных авторизации
@@ -122,7 +122,8 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user{""}, _pass{""}, _callbacks(log) {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept :
+				 auth_t(fmk, log), _user{""}, _pass{""}, _callback(log) {}
 		} auth_t;
 	};
 };

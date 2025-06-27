@@ -115,7 +115,7 @@ using namespace placeholders;
 						// Если данные прочитанны правильно
 						if(bytes > 0){
 							// Если функция обратного вызова установлена
-							if(this->_ctx->_callbacks.is("message")){
+							if(this->_ctx->_callback.is("message")){
 								// Выполняем поиск объекта работы с протоколом передачи данных
 								auto i = this->_cmp.find(pid);
 								// Если объект работы с протоколом передачи данных найден
@@ -129,9 +129,9 @@ using namespace placeholders;
 										// Если буфер данных получен
 										if((buffer.first != nullptr) && (buffer.second > 0))
 											// Выполняем функцию обратного вызова
-											this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, reinterpret_cast <const char *> (buffer.first), buffer.second);
+											this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, reinterpret_cast <const char *> (buffer.first), buffer.second);
 										// Выводим значение по умолчанию
-										else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, nullptr, 0);
+										else this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, nullptr, 0);
 										// Выполняем удаление указанной записи
 										i->second->pop();
 									}
@@ -211,7 +211,7 @@ using namespace placeholders;
 							// Если данные прочитанны правильно
 							if(bytes > 0){
 								// Если функция обратного вызова установлена
-								if(this->_ctx->_callbacks.is("message")){
+								if(this->_ctx->_callback.is("message")){
 									// Выполняем поиск объекта работы с протоколом передачи данных
 									auto i = this->_cmp.find(::getppid());
 									// Если объект работы с протоколом передачи данных найден
@@ -225,9 +225,9 @@ using namespace placeholders;
 											// Если буфер данных получен
 											if((buffer.first != nullptr) && (buffer.second > 0))
 												// Выполняем функцию обратного вызова
-												this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, reinterpret_cast <const char *> (buffer.first), buffer.second);
+												this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, reinterpret_cast <const char *> (buffer.first), buffer.second);
 											// Выводим значение по умолчанию
-											else this->_ctx->_callbacks.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, nullptr, 0);
+											else this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, this->_ctx->_pid, nullptr, 0);
 											// Выполняем удаление указанной записи
 											i->second->pop();
 										}
@@ -296,13 +296,13 @@ using namespace placeholders;
 						::exit(status);
 					}
 					// Если функция обратного вызова установлена
-					if(this->_callbacks.is("exit"))
+					if(this->_callback.is("exit"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", item.first, pid, status);
+						this->_callback.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", item.first, pid, status);
 					// Если функция обратного вызова установлена
-					if(this->_callbacks.is("process"))
+					if(this->_callback.is("process"))
 						// Выполняем функцию обратного вызова
-						this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", item.first, pid, event_t::STOP);
+						this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", item.first, pid, event_t::STOP);
 					// Выполняем поиск воркера
 					auto i = this->_workers.find(item.first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
@@ -526,9 +526,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// Создаём новый объект протокола получения данных
 								i->second->_cmp.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
 								// Если функция обратного вызова установлена
-								if(this->_callbacks.is("process"))
+								if(this->_callback.is("process"))
 									// Выполняем функцию обратного вызова
-									this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
+									this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
 							}
 						// Если процесс превратился в зомби
 						} else {
@@ -573,9 +573,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						// Создаём новый объект протокола получения данных
 						i->second->_cmp.emplace(pid, make_unique <cmp::decoder_t> (this->_log));
 						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("rebase") && (opid > 0))
+						if(this->_callback.is("rebase") && (opid > 0))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const uint16_t, const pid_t, const pid_t)> ("rebase", i->first, pid, opid);
+							this->_callback.call <void (const uint16_t, const pid_t, const pid_t)> ("rebase", i->first, pid, opid);
 					}
 				}
 			}
@@ -760,9 +760,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Создаём новый объект протокола получения данных
 									i->second->_cmp.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
 									// Если функция обратного вызова установлена
-									if(this->_callbacks.is("process"))
+									if(this->_callback.is("process"))
 										// Выполняем функцию обратного вызова
-										this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
+										this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
 								}
 							// Если процесс превратился в зомби
 							} else {
@@ -822,9 +822,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 						// Создаём новый объект протокола передачи данных
 						this->_cmp.emplace(wid, make_unique <cmp::encoder_t> (this->_log));
 						// Если функция обратного вызова установлена
-						if(this->_callbacks.is("process"))
+						if(this->_callback.is("process"))
 							// Выполняем функцию обратного вызова
-							this->_callbacks.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, this->_pid, event_t::START);
+							this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, this->_pid, event_t::START);
 					}
 				}
 			}
@@ -1463,18 +1463,18 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 	}
 }
 /**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
+void awh::Cluster::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова при завершении работы процесса
-	this->_callbacks.set("exit", callbacks);
+	this->_callback.set("exit", callback);
 	// Выполняем установку функции обратного вызова при пересоздании процесса
-	this->_callbacks.set("rebase", callbacks);
+	this->_callback.set("rebase", callback);
 	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
-	this->_callbacks.set("process", callbacks);
+	this->_callback.set("process", callback);
 	// Выполняем установку функции обратного вызова при получении сообщения
-	this->_callbacks.set("message", callbacks);
+	this->_callback.set("message", callback);
 }
 /**
  * Cluster Конструктор
@@ -1482,7 +1482,7 @@ void awh::Cluster::callbacks(const fn_t & callbacks) noexcept {
  * @param log объект для работы с логами
  */
 awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _callbacks(log), _socket(fmk, log), _core(nullptr), _fmk(fmk), _log(log) {
+ _pid(::getpid()), _socket(fmk, log), _callback(log), _core(nullptr), _fmk(fmk), _log(log) {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
@@ -1508,7 +1508,7 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _callbacks(log), _socket(fmk, log), _core(core), _fmk(fmk), _log(log) {
+ _pid(::getpid()), _socket(fmk, log), _callback(log), _core(core), _fmk(fmk), _log(log) {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */

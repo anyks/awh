@@ -120,12 +120,12 @@ void awh::client::Websocket::pingInterval(const uint16_t sec) noexcept {
 	this->_ws.pingInterval(sec);
 }
 /**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::client::Websocket::callbacks(const fn_t & callbacks) noexcept {
+void awh::client::Websocket::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функций обратного вызова
-	this->_ws.callbacks(callbacks);
+	this->_ws.callback(callback);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола

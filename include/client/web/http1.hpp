@@ -64,7 +64,7 @@ namespace awh {
 				int16_t _threads;
 			private:
 				// Хранилище функций обратного вызова для вывода результата
-				fn_t _resultCallback;
+				callback_t _callback;
 			private:
 				// Список активых запросов
 				map <int32_t, request_t> _requests;
@@ -149,11 +149,10 @@ namespace awh {
 				/**
 				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
 				 * @param event событие контейнера функций обратного вызова
-				 * @param idw   идентификатор функции обратного вызова
-				 * @param name  название функции обратного вызова
+				 * @param fid   идентификатор функции обратного вызова
 				 * @param dump  дамп данных функции обратного вызова
 				 */
-				void eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept;
+				void eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -258,10 +257,10 @@ namespace awh {
 				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
-				 * callbacks Метод установки функций обратного вызова
-				 * @param callbacks функции обратного вызова
+				 * callback Метод установки функций обратного вызова
+				 * @param callback функции обратного вызова
 				 */
-				void callbacks(const fn_t & callbacks) noexcept;
+				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

@@ -137,11 +137,11 @@ namespace awh {
 				// Объект партнёра сервера
 				partner_t _server;
 			private:
+				// Хранилище функций обратного вызова для вывода результата
+				callback_t _callback;
+			private:
 				// Формат шифрования
 				hash_t::cipher_t _cipher;
-			private:
-				// Хранилище функций обратного вызова для вывода результата
-				fn_t _resultCallback;
 			private:
 				// Активный прототип интернета
 				engine_t::proto_t _proto;
@@ -249,11 +249,10 @@ namespace awh {
 				/**
 				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
 				 * @param event событие контейнера функций обратного вызова
-				 * @param idw   идентификатор функции обратного вызова
-				 * @param name  название функции обратного вызова
+				 * @param fid   идентификатор функции обратного вызова
 				 * @param dump  дамп данных функции обратного вызова
 				 */
-				void eventCallback(const fn_t::event_t event, const uint64_t idw, const string & name, const fn_t::dump_t * dump) noexcept;
+				void eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
@@ -354,10 +353,10 @@ namespace awh {
 				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
-				 * callbacks Метод установки функций обратного вызова
-				 * @param callbacks функции обратного вызова
+				 * callback Метод установки функций обратного вызова
+				 * @param callback функции обратного вызова
 				 */
-				void callbacks(const fn_t & callbacks) noexcept;
+				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
 				 * subprotocol Метод установки поддерживаемого сабпротокола

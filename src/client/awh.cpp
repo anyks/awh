@@ -21,6 +21,10 @@
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён заполнителя
+ */
+using namespace placeholders;
 
 /**
  * proto Метод извлечения поддерживаемого протокола подключения
@@ -812,14 +816,14 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			 * Подписываемся на событие коннекта и дисконнекта клиента
 			 * @param mode событие модуля HTTP
 			 */
-			this->callback <void (const web_t::mode_t)> ("active", [&request, this](const web_t::mode_t mode) noexcept -> void {
+			this->on <void (const web_t::mode_t)> ("active", [&request, this](const web_t::mode_t mode) noexcept -> void {
 				// Если подключение выполнено
 				if(mode == client::web_t::mode_t::CONNECT)
 					// Выполняем запрос на сервер
 					this->send(request);
 				// Выполняем остановку работы модуля
 				else this->stop();
-			});
+			}, _1);
 			/**
 			 * Подписываемся на получение сообщения сервера
 			 * @param sid     идентификатор потока
@@ -827,7 +831,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			 * @param code    код ответа сервера
 			 * @param message сообщение ответа сервера
 			 */
-			this->callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", [&response, this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & message) noexcept -> void {
+			this->on <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", [&response, this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & message) noexcept -> void {
 				// Устанавливаем идентификатор потока
 				response.sid = sid;
 				// Устанавливаем идентификатор запроса
@@ -852,7 +856,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 						this->_log->print("%s: %u %s", log_t::flag_t::WARNING, "Request failed", response.code, response.message.c_str());
 					#endif
 				}
-			});
+			}, _1, _2, _3, _4);
 			/**
 			 * Подписываем на событие получения ответа с сервера
 			 * @param sid     идентификатор потока
@@ -862,7 +866,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			 * @param entity  данные полученного тела сообщения
 			 * @param headers данные полученных заголовков сообщения
 			 */
-			this->callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", [&response, this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept -> void {
+			this->on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", [&response, this](const int32_t sid, const uint64_t rid, const uint32_t code, const string & message, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept -> void {
 				// Устанавливаем идентификатор потока
 				response.sid = sid;
 				// Устанавливаем идентификатор запроса
@@ -923,7 +927,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 				}
 				// Выполняем остановку
 				this->stop();
-			});
+			}, _1, _2, _3, _4, _5, _6);
 			// Если список доступных компрессоров пустой
 			if(this->_compressors.empty()){
 				// Выполняем инициализацию подключения
@@ -1019,12 +1023,12 @@ void awh::client::AWH::pingInterval(const uint16_t sec) noexcept {
 	this->_http.pingInterval(sec);
 }
 /**
- * callbacks Метод установки функций обратного вызова
- * @param callbacks функции обратного вызова
+ * callback Метод установки функций обратного вызова
+ * @param callback функции обратного вызова
  */
-void awh::client::AWH::callbacks(const fn_t & callbacks) noexcept {
+void awh::client::AWH::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функций обратного вызова
-	this->_http.callbacks(callbacks);
+	this->_http.callback(callback);
 }
 /**
  * subprotocol Метод установки поддерживаемого сабпротокола

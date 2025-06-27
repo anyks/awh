@@ -150,13 +150,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Активируем правило асинхронной работы передачи данных
 	// core.transferRule(server::core_t::transfer_t::ASYNC);
 	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
-	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
+	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
+	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
+	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
 	// Выполняем запуск SAMPLE сервер
 	sample.start();
 	// Выводим результат

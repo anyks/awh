@@ -91,11 +91,11 @@ class Executor {
 					// Устанавливаем задержку времени на 12 секунд
 					uint16_t tid = timer->timeout(12000);
 					// Выполняем добавление функции обратного вызова
-					timer->attach(tid, &Executor::timeout, this, tid);
+					timer->on(tid, &Executor::timeout, this, tid);
 					// Устанавливаем задержку времени на 5 секунд
 					tid = timer->interval(5000);
 					// Устанавливаем интервал времени времени на 5 секунд
-					timer->attach(tid, &Executor::interval, this, tid, timer);
+					timer->on(tid, &Executor::interval, this, tid, timer);
 				} break;
 				// Если система остановлена
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
@@ -111,7 +111,6 @@ class Executor {
 		 */
 		Executor(log_t * log) : _ts(chrono::system_clock::now()), _is(chrono::system_clock::now()), _count(0), _log(log) {}
 };
-
 /**
  * main Главная функция приложения
  * @param argc длина массива параметров
@@ -132,7 +131,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
-	timer.callback <void (const awh::core_t::status_t, core_t *)> ("status", std::bind(&Executor::status, &executor, _1, &timer));
+	dynamic_cast <awh::core_t &> (timer).on <void (const awh::core_t::status_t, core_t *)> ("status", &Executor::status, &executor, _1, &timer);
 	// Выполняем запуск таймера
 	timer.start();
 	// Выводим результат

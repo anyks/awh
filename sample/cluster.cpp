@@ -139,11 +139,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Разрешаем выполнять автоматический перезапуск упавшего процесса
 	core.autoRestart(true);
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
+	core.on <void (const awh::core_t::status_t)> ("status", &Executor::status, &executor, _1);
 	// Устанавливаем функцию обратного вызова при получении событий
-	core.callback <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, &core));
+	core.on <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", &Executor::events, &executor, _1, _2, _3, &core);
 	// Устанавливаем функцию обработки входящих сообщений
-	core.callback <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4));
+	core.on <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", &Executor::message, &executor, _1, _2, _3, _4);
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

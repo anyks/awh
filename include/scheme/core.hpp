@@ -25,10 +25,10 @@
 /**
  * Наши модули
  */
-#include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/buffer.hpp>
+#include <sys/callback.hpp>
 #include <net/engine.hpp>
 #include <events/evbase.hpp>
 
@@ -163,14 +163,14 @@ namespace awh {
 				private:
 					// Объект основных событий
 					event_t _event;
-				private:
-					// Хранилище функций обратного вызова
-					fn_t _callbacks;
 				public:
 					// Буфер полезной нагрузки
 					buffer_t buffer;
 					// Объект таймаутов
 					timeouts_t timeouts;
+				private:
+					// Хранилище функций обратного вызова
+					callback_t _callback;
 				public:
 					// Контекст двигателя для работы с передачей данных
 					engine_t::ctx_t ectx;
@@ -234,48 +234,91 @@ namespace awh {
 					void mac(const string & mac) noexcept;
 				public:
 					/**
-					 * callbacks Метод установки функций обратного вызова
-					 * @param callbacks функции обратного вызова
+					 * callback Метод установки функций обратного вызова
+					 * @param callback функции обратного вызова
 					 */
-					void callbacks(const fn_t & callbacks) noexcept;
+					void callback(const callback_t & callback) noexcept;
 				public:
 					/**
-					 * callback Шаблон метода установки финкции обратного вызова
-					 * @tparam A тип функции обратного вызова
+					 * @tparam Шаблон метода подключения финкции обратного вызова
+					 * @param T    тип функции обратного вызова
+					 * @param Args аргументы функции обратного вызова
 					 */
-					template <typename A>
+					template <typename T, class... Args>
 					/**
-					 * callback Метод установки функции обратного вызова
-					 * @param idw идентификатор функции обратного вызова
-					 * @param fn  функция обратного вызова для установки
+					 * on Метод подключения финкции обратного вызова
+					 * @param name  идентификатор функкции обратного вызова
+					 * @param args аргументы функции обратного вызова
+					 * @return     идентификатор добавленной функции обратного вызова
 					 */
-					void callback(const uint64_t idw, function <A> fn) noexcept {
-						// Если функция обратного вызова передана
-						if((idw > 0) && (fn != nullptr)){
-							// Выполняем блокировку потока
-							const lock_guard <recursive_mutex> lock(this->_mtx);
+					auto on(const char * name, Args... args) noexcept -> uint64_t {
+						// Если мы получили название функции обратного вызова
+						if(name != nullptr)
 							// Выполняем установку функции обратного вызова
-							this->_callbacks.set <A> (idw, fn);
-						}
+							return this->_callback.on <T> (name, args...);
+						// Выводим результат по умолчанию
+						return 0;
 					}
 					/**
-					 * callback Шаблон метода установки финкции обратного вызова
-					 * @tparam A тип функции обратного вызова
+					 * @tparam Шаблон метода подключения финкции обратного вызова
+					 * @param T    тип функции обратного вызова
+					 * @param Args аргументы функции обратного вызова
 					 */
-					template <typename A>
+					template <typename T, class... Args>
 					/**
-					 * callback Метод установки функции обратного вызова
-					 * @param name название функции обратного вызова
-					 * @param fn   функция обратного вызова для установки
+					 * on Метод подключения финкции обратного вызова
+					 * @param name  идентификатор функкции обратного вызова
+					 * @param args аргументы функции обратного вызова
+					 * @return     идентификатор добавленной функции обратного вызова
 					 */
-					void callback(const string & name, function <A> fn) noexcept {
-						// Если функция обратного вызова передана
-						if(!name.empty() && (fn != nullptr)){
-							// Выполняем блокировку потока
-							const lock_guard <recursive_mutex> lock(this->_mtx);
+					auto on(const string & name, Args... args) noexcept -> uint64_t {
+						// Если мы получили название функции обратного вызова
+						if(!name.empty())
 							// Выполняем установку функции обратного вызова
-							this->_callbacks.set <A> (name, fn);
-						}
+							return this->_callback.on <T> (name, args...);
+						// Выводим результат по умолчанию
+						return 0;
+					}
+					/**
+					 * @tparam Шаблон метода подключения финкции обратного вызова
+					 * @param T    тип функции обратного вызова
+					 * @param Args аргументы функции обратного вызова
+					 */
+					template <typename T, class... Args>
+					/**
+					 * on Метод подключения финкции обратного вызова
+					 * @param fid  идентификатор функкции обратного вызова
+					 * @param args аргументы функции обратного вызова
+					 * @return     идентификатор добавленной функции обратного вызова
+					 */
+					auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
+						// Если мы получили название функции обратного вызова
+						if(fid > 0)
+							// Выполняем установку функции обратного вызова
+							return this->_callback.on <T> (fid, args...);
+						// Выводим результат по умолчанию
+						return 0;
+					}
+					/**
+					 * @tparam Шаблон метода подключения финкции обратного вызова
+					 * @param A    тип идентификатора функции
+					 * @param B    тип функции обратного вызова
+					 * @param Args аргументы функции обратного вызова
+					 */
+					template <typename A, typename B, class... Args>
+					/**
+					 * on Метод подключения финкции обратного вызова
+					 * @param fid  идентификатор функкции обратного вызова
+					 * @param args аргументы функции обратного вызова
+					 * @return     идентификатор добавленной функции обратного вызова
+					 */
+					auto on(const A fid, Args... args) noexcept -> uint64_t {
+						// Если мы получили на вход число
+						if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+							// Выполняем установку функции обратного вызова
+							return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+						// Выводим результат по умолчанию
+						return 0;
 					}
 				private:
 					/**
