@@ -22,6 +22,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <limits>
 
 /**
  * Наши модули
@@ -47,26 +48,25 @@ namespace awh {
 		 * Режим передачи буфера данных
 		 */
 		enum class mode_t : uint8_t {
-			NONE    = 0x00, // Режим буфера данных не установлен
 			END     = 0x01, // Режим буфера данных конец передачи
-			BEGIN   = 0x02, // Режим буфера данных начало передачи
-			CONTINE = 0x03  // Режим буфера данных продолжение передачи
+			CONTINE = 0x02  // Режим буфера данных продолжение передачи
 		};
 		/**
 		 * Header Структура работы с заголовком буфера данных
 		 */
 		typedef struct Header {
 			mode_t mode;    // Режим работы буфера данных
+			uint8_t mid;    // Идентификатор сообщения
+			pid_t pid;      // Идентификатор процесса
 			uint32_t id;    // Идентификатор сообщения
-			uint64_t size;  // Общий размер записи
 			uint16_t bytes; // Размер текущего чанка
 			/**
 			 * Header Конструктор
-			 * @param id   идентификатор записи
-			 * @param size полный размер записи
+			 * @param id идентификатор записи
 			 */
-			Header(const uint32_t id = 0, const uint64_t size = 0) noexcept :
-			 mode(mode_t::NONE), id(id), size(size), bytes(0) {}
+			Header(const uint32_t id = 0) noexcept :
+			 mode(mode_t::END), mid(0),
+			 pid(::getpid()), id(id), bytes(0) {}
 		} __attribute__((packed)) header_t;
 		/**
 		 * Устанавливаем максимальный размер одного буфера данных
@@ -80,14 +80,13 @@ namespace awh {
 				// Мютекс для блокировки потока
 				mutex _mtx;
 			private:
-				// Набор собранных данных
-				queue_t _queue;
-			private:
 				// Количество записей
 				uint32_t _count;
-			private:
 				// Размер одного блока данных
 				size_t _chunkSize;
+			private:
+				// Объект буфера данных
+				buffer_t _buffer;
 			private:
 				// Объект работы с логами
 				const log_t * _log;
@@ -99,8 +98,8 @@ namespace awh {
 				bool empty() const noexcept;
 			public:
 				/**
-				 * size Метод получения количества подготовленных буферов
-				 * @return количество подготовленных буферов
+				 * size Метод получения размера бинарных данных буфера
+				 * @return размер бинарных данных буфера
 				 */
 				size_t size() const noexcept;
 			public:
@@ -110,22 +109,16 @@ namespace awh {
 				void clear() noexcept;
 			public:
 				/**
-				 * get Метод получения записи протокола
-				 * @return объект данных записи
+				 * data Метод получения бинарных данных буфера
+				 * @return бинарные данные буфера
 				 */
-				queue_t::buffer_t get() const noexcept;
+				const void * data() const noexcept;
 			public:
 				/**
-				 * pop Метод удаления первой записи протокола
+				 * erase Метод удаления количества первых байт буфера
+				 * @param size размер данных для удаления
 				 */
-				void pop() noexcept;
-			public:
-				/**
-				 * push Метод добавления новой записи в протокол
-				 * @param buffer буфер данных для добавления
-				 * @param size   размер буфера данных
-				 */
-				void push(const void * buffer, const size_t size) noexcept;
+				void erase(const size_t size) noexcept;
 			public:
 				/**
 				 * chunkSize Метод установки максимального размера одного блока
@@ -134,15 +127,28 @@ namespace awh {
 				void chunkSize(const size_t size = CHUNK_SIZE) noexcept;
 			public:
 				/**
+				 * push Метод добавления новой записи в протокол
+				 * @param mid    идентификатор сообщения
+				 * @param buffer буфер данных для добавления
+				 * @param size   размер буфера данных
+				 */
+				void push(const uint8_t mid, const void * buffer, const size_t size) noexcept;
+			public:
+				/**
 				 * Оператор проверки на доступность данных в контейнере
 				 * @return результат проверки
 				 */
 				operator bool() const noexcept;
 				/**
-				 * Оператор получения количества записей
-				 * @return количество записей в протоколе
+				 * Оператор определения размера бинарных данных буфера
+				 * @return размер бинарных данных буфера
 				 */
 				operator size_t() const noexcept;
+				/**
+				 * Оператор получения бинарных данных буфера
+				 * @return бинарные данные буфера
+				 */
+				operator const void * () const noexcept;
 			public:
 				/**
 				 * Оператор [=] установки максимального размера одного блока
@@ -156,7 +162,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Encoder(const log_t * log) noexcept :
-				 _queue(log), _count(0), _chunkSize(CHUNK_SIZE), _log(log) {}
+				 _count(0), _chunkSize(CHUNK_SIZE), _buffer(log), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */
@@ -166,18 +172,35 @@ namespace awh {
 		 * Decoder Класс для работы с протоколом получения данных
 		 */
 		typedef class AWHSHARED_EXPORT Decoder {
+			public:
+				/**
+				 * Record Структура записи
+				 */
+				typedef struct Record {
+					uint8_t mid;       // Идентификатор сообщения
+					pid_t pid;         // Идентификатор процесса
+					size_t size;       // Размер извлекаемого сообщения
+					const char * data; // данные сообщения
+					/**
+					 * Record Конструктор
+					 */
+					Record() noexcept :
+					 mid(0), pid(0), size(0), data(nullptr) {}
+				} __attribute__((packed)) record_t;
 			private:
 				// Мютекс для блокировки потока
 				mutex _mtx;
 			private:
 				// Набор собранных данных
 				queue_t _queue;
+				// Объект буфера данных
+				buffer_t _buffer;
 			private:
 				// Размер одного блока данных
 				size_t _chunkSize;
 			private:
-				// Объект буфера данных
-				awh::buffer_t _buffer;
+				// Временный буфер для вставки в очередь
+				vector <queue_t::buffer_t> _arbitrary;
 			private:
 				// Набор временных буферов данных
 				map <uint32_t, unique_ptr <buffer_t>> _temp;
@@ -206,7 +229,7 @@ namespace awh {
 				 * get Метод получения записи протокола
 				 * @return объект данных записи
 				 */
-				queue_t::buffer_t get() const noexcept;
+				record_t get() const noexcept;
 			public:
 				/**
 				 * pop Метод удаления первой записи протокола
@@ -257,7 +280,9 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Decoder(const log_t * log) noexcept :
-				 _queue(log), _chunkSize(CHUNK_SIZE), _buffer(log), _log(log) {}
+				 _queue(log), _buffer(log),
+				 _chunkSize(CHUNK_SIZE),
+				 _arbitrary(3), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */

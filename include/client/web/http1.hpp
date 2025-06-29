@@ -90,13 +90,21 @@ namespace awh {
 				 */
 				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
+				 * writeEvent Метод обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
 				 * @param sid    идентификатор схемы сети
 				 */
-				void writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+				void writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+			private:
+				/**
+				 * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+				 * @param event событие контейнера функций обратного вызова
+				 * @param fid   идентификатор функции обратного вызова
+				 * @param fn    функция обратного вызова в чистом виде
+				 */
+				void callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept;
 			private:
 				/**
 				 * answer Метод получение статуса ответа сервера
@@ -145,14 +153,6 @@ namespace awh {
 				 * @param http  объект модуля HTTP
 				 */
 				void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
-			private:
-				/**
-				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
-				 * @param event событие контейнера функций обратного вызова
-				 * @param fid   идентификатор функции обратного вызова
-				 * @param dump  дамп данных функции обратного вызова
-				 */
-				void eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса

@@ -173,6 +173,12 @@ namespace awh {
 				void close() noexcept;
 			public:
 				/**
+				 * name Метод установки названия кластера
+				 * @param name название кластера для установки
+				 */
+				void name(const string & name) noexcept;
+			public:
+				/**
 				 * callback Метод установки функций обратного вызова
 				 * @param callback функции обратного вызова
 				 */
@@ -188,6 +194,19 @@ namespace awh {
 				 * @param mode флаг перезапуска процессов
 				 */
 				void autoRestart(const bool mode) noexcept;
+			public:
+				/**
+				 * transfer Метод установки режима передачи данных
+				 * @param transfer режим передачи данных
+				 */
+				void transfer(const cluster_t::transfer_t transfer) noexcept;
+			public:
+				/**
+				 * bandwidth Метод установки пропускной способности сети
+				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+				 */
+				void bandwidth(const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
 				 * Core Конструктор

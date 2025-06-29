@@ -158,7 +158,7 @@ namespace awh {
 			// Флаг разрешения работы
 			bool _mode;
 			// Флаг разрешающий вывод информационных сообщений
-			bool _verb;
+			bool _info;
 		protected:
 			// Объект для работы с чтением базы событий
 			dispatch_t _dispatch;

@@ -256,7 +256,7 @@ bool awh::Engine::Address::connect() noexcept {
 				// Выполняем инициализацию SCTP протокола
 				this->_socket.events(this->fd);
 		#endif
-		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
+		// Выполняем подключение к удаленному серверу
 		if((this->_peer.size > 0) && (::connect(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) == 0))
 			// Устанавливаем статус подключения
 			this->status = status_t::CONNECTED;
@@ -277,7 +277,7 @@ bool awh::Engine::Address::connect() noexcept {
 					this->_peer.size = sizeof(struct sockaddr_in6);
 				break;
 			}
-			// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
+			// Выполняем подключение к удаленному серверу
 			if((this->_peer.size > 0) && (::connect(this->fd, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) == 0))
 				// Устанавливаем статус подключения
 				this->status = status_t::CONNECTED;

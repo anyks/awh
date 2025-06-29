@@ -466,7 +466,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Переводим сокет в неблокирующий режим
 								ret.first->second->ectx.blocking(engine_t::mode_t::DISABLED);
 								// Если вывод информационных данных не запрещён
-								if(this->_verb){
+								if(this->_info){
 									// Если порт установлен
 									if(ret.first->second->port() > 0){
 										// Определяем тип протокола подключения
@@ -817,7 +817,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							// Переводим сокет в блокирующий режим
 							broker->ectx.blocking(engine_t::mode_t::ENABLED);
 							// Если вывод информационных данных не запрещён
-							if(this->_verb){
+							if(this->_info){
 								// Если порт установлен
 								if(broker->port() > 0){
 									// Определяем тип протокола подключения
@@ -1155,7 +1155,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 					// Если процесс является родительским
 					case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
 						// Если разрешено выводить информационыне уведомления
-						if(this->_verb)
+						if(this->_info)
 							// Выводим сообщение о том, что кластер запущен
 							this->_log->print("Cluster has been successfully launched", log_t::flag_t::INFO);
 						// Получаем список дочерних процессов
@@ -1638,7 +1638,7 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 						// Выполняем удаление параметров активного брокера
 						node_t::remove(bid);
 						// Если разрешено выводить информационыне уведомления
-						if(this->_verb)
+						if(this->_info)
 							// Выводим информацию об удачном отключении от сервера
 							this->_log->print("Disconnect client from server", log_t::flag_t::INFO);
 						// Если функция обратного вызова установлена
@@ -1774,7 +1774,7 @@ void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 						// Выполняем удаление параметров активного брокера
 						node_t::remove(bid);
 						// Если разрешено выводить информационыне уведомления
-						if(this->_verb)
+						if(this->_info)
 							// Выводим информацию об удачном отключении от сервера
 							this->_log->print("Disconnect server", log_t::flag_t::INFO);
 					}
@@ -1810,7 +1810,7 @@ void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 						// Выполняем удаление параметров активного брокера
 						node_t::remove(bid);
 						// Если разрешено выводить информационыне уведомления
-						if(this->_verb)
+						if(this->_info)
 							// Выводим информацию об удачном отключении от сервера
 							this->_log->print("Disconnect client from server", log_t::flag_t::INFO);
 						// Если функция обратного вызова установлена
@@ -1828,19 +1828,19 @@ void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->_log->print("Server cannot be init [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+								this->_log->print("Server [%s/%s.sock] cannot be started", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s/%s.sock]", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
+									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server [%s/%s.sock] cannot be started", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
 							// Если используется хост и порт
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту
-								this->_log->print("Server cannot be init [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
+								this->_log->print("Server [%s:%u] cannot be started", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server cannot be init [%s:%u]", shm->_host.c_str(), shm->_port));
+									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Server [%s:%u] cannot be started", shm->_host.c_str(), shm->_port));
 							}
 						}
 						// Удаляем блокировку брокера
@@ -2657,13 +2657,13 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 					// Если тип сокета установлен как UDP
 					case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
 						// Если разрешено выводить информационные сообщения
-						if(this->_verb){
+						if(this->_info){
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX)
 								// Выводим информацию о запущенном сервере на unix-сокете
-								this->_log->print("Server has started [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+								this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-							else this->_log->print("Server has started [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+							else this->_log->print("Server [%s:%u] has been started successfully", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 						}
 						// Определяем режим активации кластера
 						switch(static_cast <uint8_t> (this->_clusterMode)){
@@ -2696,13 +2696,13 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 						// Если сокет подключения получен
 						if(this->create(sid)){
 							// Если разрешено выводить информационные сообщения
-							if(this->_verb){
+							if(this->_info){
 								// Если unix-сокет используется
 								if(this->_settings.family == scheme_t::family_t::NIX)
 									// Выводим информацию о запущенном сервере на unix-сокете
-									this->_log->print("Server has started [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+									this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-								else this->_log->print("Server has started [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+								else this->_log->print("Server [%s:%u] has been started successfully", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 							}
 							// Определяем режим активации кластера
 							switch(static_cast <uint8_t> (this->_clusterMode)){
@@ -2734,7 +2734,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->_log->print("Server cannot be started [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+								this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
@@ -2742,7 +2742,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если используется хост и порт
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту
-								this->_log->print("Server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
+								this->_log->print("Server [%s:%u] has been started successfully", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
@@ -2755,13 +2755,13 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 						// Если сокет подключения получен
 						if(this->create(sid)){
 							// Если разрешено выводить информационные сообщения
-							if(this->_verb){
+							if(this->_info){
 								// Если unix-сокет используется
 								if(this->_settings.family == scheme_t::family_t::NIX)
 									// Выводим информацию о запущенном сервере на unix-сокете
-									this->_log->print("Server has started [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+									this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-								else this->_log->print("Server has started [%s:%u]", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
+								else this->_log->print("Server [%s:%u] has been started successfully", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 							}
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("launched")){
@@ -2862,7 +2862,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если unix-сокет используется
 							if(this->_settings.family == scheme_t::family_t::NIX){
 								// Выводим информацию об незапущенном сервере на unix-сокете
-								this->_log->print("Server cannot be started [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+								this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
@@ -2870,7 +2870,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если используется хост и порт
 							} else {
 								// Выводим сообщение об незапущенном сервере за порту
-								this->_log->print("Server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
+								this->_log->print("Server [%s:%u] has been started successfully", log_t::flag_t::CRITICAL, shm->_host.c_str(), shm->_port);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
@@ -2968,6 +2968,31 @@ void awh::server::Core::total(const uint16_t sid, const uint16_t total) noexcept
 	}
 }
 /**
+ * clusterName Метод установки названия кластера
+ * @param name название кластера для установки
+ */
+void awh::server::Core::clusterName(const string & name) noexcept {
+	/**
+	 * Для операционной системы не являющейся OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Выполняем установку названия кластера
+		this->_cluster.name(name);
+	/**
+	 * Для операционной системы OS Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+	#endif
+}
+/**
  * clusterAutoRestart Метод установки флага перезапуска процессов
  * @param mode флаг перезапуска процессов
  */
@@ -2980,6 +3005,57 @@ void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
 		// Разрешаем автоматический перезапуск упавших процессов
 		this->_clusterAutoRestart = mode;
+	/**
+	 * Для операционной системы OS Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+	#endif
+}
+/**
+ * clusterTransfer Метод установки режима передачи данных
+ * @param transfer режим передачи данных
+ */
+void awh::server::Core::clusterTransfer(const cluster_t::transfer_t transfer) noexcept {
+	/**
+	 * Для операционной системы не являющейся OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Выполняем установку режима передачи данных
+		this->_cluster.transfer(transfer);
+	/**
+	 * Для операционной системы OS Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("error"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+	#endif
+}
+/**
+ * clusterBandwidth Метод установки пропускной способности сети кластера
+ * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+ * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+ */
+void awh::server::Core::clusterBandwidth(const string & read, const string & write) noexcept {
+	/**
+	 * Для операционной системы не являющейся OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Выполняем установку пропускной способности сети кластера
+		this->_cluster.bandwidth(read, write);
 	/**
 	 * Для операционной системы OS Windows
 	 */

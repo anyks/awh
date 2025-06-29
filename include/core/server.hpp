@@ -374,10 +374,29 @@ namespace awh {
 				void total(const uint16_t sid, const uint16_t total) noexcept;
 			public:
 				/**
+				 * clusterName Метод установки названия кластера
+				 * @param name название кластера для установки
+				 */
+				void clusterName(const string & name) noexcept;
+			public:
+				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
 				 * @param mode флаг перезапуска процессов
 				 */
 				void clusterAutoRestart(const bool mode) noexcept;
+			public:
+				/**
+				 * clusterTransfer Метод установки режима передачи данных
+				 * @param transfer режим передачи данных
+				 */
+				void clusterTransfer(const cluster_t::transfer_t transfer) noexcept;
+			public:
+				/**
+				 * clusterBandwidth Метод установки пропускной способности сети кластера
+				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+				 */
+				void clusterBandwidth(const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
 				 * cluster Метод проверки активации кластера

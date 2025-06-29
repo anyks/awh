@@ -99,14 +99,20 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * realloc Метод увеличения памяти под записи
+			 * alignment Метод выравнивания памяти
+			 * @param size необходимый размер
 			 */
-			void realloc() noexcept;
+			void alignment(const size_t size = 0) noexcept;
 		public:
 			/**
 			 * clear Метод очистки всех данных очереди
 			 */
 			void clear() noexcept;
+		public:
+			/**
+			 * reset Метод очистки всех ресурсов
+			 */
+			void reset() noexcept;
 		public:
 			/**
 			 * empty Метод проверки на заполненность очереди

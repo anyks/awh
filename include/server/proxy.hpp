@@ -326,6 +326,13 @@ namespace awh {
 				bool acceptEvents(const string & ip, const string & mac, const uint32_t port) noexcept;
 			private:
 				/**
+				 * callbackEvents Метод отлавливания событий контейнера функций обратного вызова
+				 * @param event событие контейнера функций обратного вызова
+				 * @param fid   идентификатор функции обратного вызова
+				 */
+				void callbackEvents(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t &) noexcept;
+			private:
+				/**
 				 * available Метод получения событий освобождения памяти буфера полезной нагрузки
 				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 				 * @param bid    идентификатор брокера
@@ -341,14 +348,6 @@ namespace awh {
 				 * @param size   размер буфера полезной нагрузки
 				 */
 				void unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept;
-			private:
-				/**
-				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
-				 * @param event событие контейнера функций обратного вызова
-				 * @param fid   идентификатор функции обратного вызова
-				 * @param dump  дамп данных функции обратного вызова
-				 */
-				void eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept;
 			private:
 				/** 
 				 * eraseClient Метод удаления подключённого клиента

@@ -82,9 +82,9 @@
 // Размер бинарного буфера
 #define AWH_BUFFER_SIZE 0xFA000
 // Размер буфера на чтение
-#define AWH_BUFFER_SIZE_RCV 0x10624D
+#define AWH_BUFFER_SIZE_RCV 0x8000
 // Размер буфера на запись
-#define AWH_BUFFER_SIZE_SND 0x10624D
+#define AWH_BUFFER_SIZE_SND 0x8000
 
 /**
  * HTTP заголовки по умолчанию

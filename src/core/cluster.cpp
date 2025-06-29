@@ -261,6 +261,14 @@ void awh::cluster::Core::close() noexcept {
 	this->_cluster.close(0);
 }
 /**
+ * name Метод установки названия кластера
+ * @param name название кластера для установки
+ */
+void awh::cluster::Core::name(const string & name) noexcept {
+	// Выполняем установку названия кластера
+	this->_cluster.name(name);
+}
+/**
  * callback Метод установки функций обратного вызова
  * @param callback функции обратного вызова
  */
@@ -325,6 +333,23 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
+}
+/**
+ * transfer Метод установки режима передачи данных
+ * @param transfer режим передачи данных
+ */
+void awh::cluster::Core::transfer(const cluster_t::transfer_t transfer) noexcept {
+	// Выполняем установку режима передачи данных
+	this->_cluster.transfer(transfer);
+}
+/**
+ * bandwidth Метод установки пропускной способности сети
+ * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+ * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+ */
+void awh::cluster::Core::bandwidth(const string & read , const string & write) noexcept {
+	// Выполняем установку пропускной способности сети
+	this->_cluster.bandwidth(read, write);
 }
 /**
  * Core Конструктор

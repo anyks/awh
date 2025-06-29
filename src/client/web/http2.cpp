@@ -154,13 +154,13 @@ void awh::client::Http2::readEvent(const char * buffer, const size_t size, const
 	}
 }
 /**
- * writeCallback Метод обратного вызова при записи сообщения на клиенте
+ * writeEvent Метод обратного вызова при записи сообщения на клиенте
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::client::Http2::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Http2::writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((bid > 0) && (sid > 0)){
 		// Выполняем перебор всех доступных воркеров
@@ -172,15 +172,43 @@ void awh::client::Http2::writeCallback(const char * buffer, const size_t size, c
 					// Если переключение протокола на HTTP/2 не выполнено
 					if(worker.second->proto != engine_t::proto_t::HTTP2)
 						// Выполняем переброс вызова записи на клиент HTTP/1.1
-						this->_http1.writeCallback(buffer, size, bid, sid);
+						this->_http1.writeEvent(buffer, size, bid, sid);
 				} break;
 				// Если агент является клиентом Websocket
 				case static_cast <uint8_t> (agent_t::WEBSOCKET):
 					// Выполняем переброс вызова записи на клиент Websocket
-					this->_ws2.writeCallback(buffer, size, bid, sid);
+					this->_ws2.writeEvent(buffer, size, bid, sid);
 				break;
 			}
 		}
+	}
+}
+/**
+ * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param fid   идентификатор функции обратного вызова
+ * @param fn    функция обратного вызова в чистом виде
+ */
+void awh::client::Http2::callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept {
+	// Определяем входящее событие контейнера функций обратного вызова
+	switch(static_cast <uint8_t> (event)){
+		// Если событием является установка функции обратного вызова
+		case static_cast <uint8_t> (callback_t::event_t::SET): {
+			// Если переменная не является закрытием потока, редиректом и не является событием подключения
+			if((fid != web2_t::_callback.fid("end")) && (fid != web2_t::_callback.fid("redirect")) && (fid != web2_t::_callback.fid("active"))){
+				// Создаём локальный контейнер функций обратного вызова
+				callback_t callback(this->_log);
+				// Выполняем установку функции обратного вызова
+				callback.set(fid, fn);
+				// Если функции обратного вызова установлены
+				if(!callback.empty()){
+					// Выполняем установку функций обратного вызова для Websocket-клиента
+					this->_ws2.callback(callback);
+					// Выполняем установку функции обратного вызова для HTTP-клиента
+					this->_http1.callback(callback);
+				}
+			}
+		} break;
 	}
 }
 /**
@@ -908,34 +936,6 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * eventCallback Метод отлавливания событий контейнера функций обратного вызова
- * @param event событие контейнера функций обратного вызова
- * @param fid   идентификатор функции обратного вызова
- * @param dump  дамп данных функции обратного вызова
- */
-void awh::client::Http2::eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept {
-	// Определяем входящее событие контейнера функций обратного вызова
-	switch(static_cast <uint8_t> (event)){
-		// Если событием является установка функции обратного вызова
-		case static_cast <uint8_t> (callback_t::event_t::SET): {
-			// Если переменная не является закрытием потока, редиректом и не является событием подключения
-			if((fid != web2_t::_callback.fid("end")) && (fid != web2_t::_callback.fid("redirect")) && (fid != web2_t::_callback.fid("active"))){
-				// Создаём локальный контейнер функций обратного вызова
-				callback_t callback(this->_log);
-				// Выполняем установку функции обратного вызова
-				callback.set(fid, dump);
-				// Если функции обратного вызова установлены
-				if(!callback.empty()){
-					// Выполняем установку функций обратного вызова для Websocket-клиента
-					this->_ws2.callback(callback);
-					// Выполняем установку функции обратного вызова для HTTP-клиента
-					this->_http1.callback(callback);
-				}
-			}
-		} break;
-	}
 }
 /**
  * flush Метод сброса параметров запроса
@@ -2016,7 +2016,7 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
-		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http2_t::writeCallback, this, _1, _2, _3, _4);
+		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http2_t::writeEvent, this, _1, _2, _3, _4);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -2257,7 +2257,7 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", &http2_t::errors, this, _1, _2, _3, _4);
 	// Устанавливаем функцию записи данных
-	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http2_t::writeCallback, this, _1, _2, _3, _4);
+	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http2_t::writeEvent, this, _1, _2, _3, _4);
 }
 /**
  * ~Http2 Деструктор

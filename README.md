@@ -261,11 +261,11 @@ int32_t main(int32_t argc, char * argv[]){
 	});
 	*/
 
-	awh.callback <void (const client::web_t::mode_t)> ("active", std::bind(&WebClient::active, &executor, _1, &awh));
-	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", std::bind(&WebClient::message, &executor, _1, _2, _3, _4));
-	// awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebClient::headers, &executor, _1, _2, _3, _4, _5));
-	// awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", std::bind(&WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh));
-	awh.callback <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
+	awh.on <void (const client::web_t::mode_t)> ("active", &WebClient::active, &executor, _1, &awh);
+	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", &WebClient::message, &executor, _1, _2, _3, _4);
+	// awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", &WebClient::headers, &executor, _1, _2, _3, _4, _5);
+	// awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", &WebClient::entity, &executor, _1, _2, _3, _4, _5, &awh);
+	awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", &WebClient::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
 	
 	awh.init("https://apple.com");
 	awh.start();
@@ -518,16 +518,16 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.addAltSvc("example.net", "h2=\":2222\"");
 	// awh.addAltSvc("example.com", "h2=\":8000\"");
 
-	awh.callback <void (const string &, const uint32_t)> ("launched", std::bind(&WebServer::launched, &executor, _1, _2));
-	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
-	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
-	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
-	awh.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
-	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3, &awh));
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4, &awh));
-	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
-	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5, &awh));
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
+	awh.on <void (const string &, const uint32_t)> ("launched", &WebServer::launched, &executor, _1, _2);
+	awh.on <string (const uint64_t, const string &)> ("extractPassword", &WebServer::password, &executor, _1, _2);
+	awh.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &WebServer::auth, &executor, _1, _2, _3);
+	awh.on <void (const uint64_t, const server::web_t::mode_t)> ("active", &WebServer::active, &executor, _1, _2);
+	awh.on <bool (const string &, const string &, const uint32_t)> ("accept", &WebServer::accept, &executor, _1, _2, _3);
+	awh.on <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", &WebServer::handshake, &executor, _1, _2, _3, &awh);
+	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", &WebServer::request, &executor, _1, _2, _3, _4, &awh);
+	// awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", &WebServer::headers, &executor, _1, _2, _3, _4, _5);
+	// awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", &WebServer::entity, &executor, _1, _2, _3, _4, _5, &awh);
+	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", &WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
 
 	awh.start();
 
@@ -645,10 +645,10 @@ int32_t main(int32_t argc, char * argv[]){
 	ws.subprotocols({"test2", "test8", "test9"});
 	// ws.extensions({{"test1", "test2", "test3"},{"good1", "good2", "good3"}});
 
-	ws.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::status, &executor, _1));
-	ws.callback <void (const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2));
-	ws.callback <void (const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, &ws));
-	ws.callback <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", std::bind(&Executor::handshake, &executor, _1, _2, _3, &ws));
+	ws.on <void (const awh::core_t::status_t)> ("status", &Executor::status, &executor, _1);
+	ws.on <void (const uint32_t, const string &)> ("errorWebsocket", &Executor::error, &executor, _1, _2);
+	ws.on <void (const vector <char> &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, &ws);
+	ws.on <void (const int32_t, const uint64_t, const client::web_t::agent_t)> ("handshake", &Executor::handshake, &executor, _1, _2, _3, &ws);
 
 	ws.start();
 
@@ -776,14 +776,14 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.init(2222, "", {awh::http_t::compressor_t::DEFLATE});
 	ws.init(2222, "127.0.0.1", {awh::http_t::compressor_t::DEFLATE});
 
-	ws.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Executor::launched, &executor, _1, _2));
-	ws.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Executor::password, &executor, _1, _2));
-	ws.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Executor::auth, &executor, _1, _2, _3));
-	ws.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Executor::accept, &executor, _1, _2, _3));
-	ws.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&Executor::active, &executor, _1, _2));
-	ws.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&Executor::error, &executor, _1, _2, _3));
-	ws.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&Executor::message, &executor, _1, _2, _3, &ws));
-	ws.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&Executor::headers, &executor, _1, _2, _3, _4, _5));
+	ws.on <void (const string &, const uint32_t)> ("launched", &Executor::launched, &executor, _1, _2);
+	ws.on <string (const uint64_t, const string &)> ("extractPassword", &Executor::password, &executor, _1, _2);
+	ws.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &Executor::auth, &executor, _1, _2, _3);
+	ws.on <bool (const string &, const string &, const uint32_t)> ("accept", &Executor::accept, &executor, _1, _2, _3);
+	ws.on <void (const uint64_t, const server::web_t::mode_t)> ("active", &Executor::active, &executor, _1, _2);
+	ws.on <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", &Executor::error, &executor, _1, _2, _3);
+	ws.on <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", &Executor::message, &executor, _1, _2, _3, &ws);
+	ws.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", &Executor::headers, &executor, _1, _2, _3, _4, _5);
 
 	ws.start();
 
@@ -976,18 +976,18 @@ int32_t main(int32_t argc, char * argv[]){
 
 	awh.subprotocols({"test1", "test2", "test3"});
 
-	awh.callback <void (const string &, const uint32_t)> ("launched", std::bind(&WebServer::launched, &executor, _1, _2));
-	awh.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&WebServer::password, &executor, _1, _2));
-	awh.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&WebServer::auth, &executor, _1, _2, _3));
-	awh.callback <void (const uint64_t, const server::web_t::mode_t)> ("active", std::bind(&WebServer::active, &executor, _1, _2));
-	awh.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&WebServer::accept, &executor, _1, _2, _3));
-	awh.callback <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", std::bind(&WebServer::error, &executor, _1, _2, _3));
-	awh.callback <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", std::bind(&WebServer::message, &executor, _1, _2, _3, &awh));
-	awh.callback <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", std::bind(&WebServer::handshake, &executor, _1, _2, _3, &awh));
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", std::bind(&WebServer::request, &executor, _1, _2, _3, _4, &awh));
-	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", std::bind(&WebServer::entity, &executor, _1, _2, _3, _4, _5, &awh));
-	// awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", std::bind(&WebServer::headers, &executor, _1, _2, _3, _4, _5));
-	awh.callback <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", std::bind(&WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh));
+	awh.on <void (const string &, const uint32_t)> ("launched", &WebServer::launched, &executor, _1, _2);
+	awh.on <string (const uint64_t, const string &)> ("extractPassword", &WebServer::password, &executor, _1, _2);
+	awh.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &WebServer::auth, &executor, _1, _2, _3);
+	awh.on <void (const uint64_t, const server::web_t::mode_t)> ("active", &WebServer::active, &executor, _1, _2);
+	awh.on <bool (const string &, const string &, const uint32_t)> ("accept", &WebServer::accept, &executor, _1, _2, _3);
+	awh.on <void (const uint64_t, const uint32_t, const string &)> ("errorWebsocket", &WebServer::error, &executor, _1, _2, _3);
+	awh.on <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", &WebServer::message, &executor, _1, _2, _3, &awh);
+	awh.on <void (const int32_t, const uint64_t, const server::web_t::agent_t)> ("handshake", &WebServer::handshake, &executor, _1, _2, _3, &awh);
+	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &)> ("request", &WebServer::request, &executor, _1, _2, _3, _4, &awh);
+	// awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", &WebServer::entity, &executor, _1, _2, _3, _4, _5, &awh);
+	// awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", &WebServer::headers, &executor, _1, _2, _3, _4, _5);
+	awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", &WebServer::complete, &executor, _1, _2, _3, _4, _5, _6, &awh);
 
 	awh.start();
 
@@ -1076,10 +1076,10 @@ int32_t main(int32_t argc, char * argv[]){
 	// proxy.init(2222, "", http_t::compressor_t::GZIP);
 	proxy.init(2222, "127.0.0.1", http_t::compressor_t::GZIP);
 
-	proxy.callback <string (const uint64_t, const string &)> ("extractPassword", std::bind(&Proxy::password, &executor, _1, _2));
-	proxy.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
-	proxy.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
-	proxy.callback <void (const uint64_t, const server::proxy_t::broker_t, const server::web_t::mode_t)> ("active", std::bind(&Proxy::active, &executor, _1, _2, _3));
+	proxy.on <string (const uint64_t, const string &)> ("extractPassword", &Proxy::password, &executor, _1, _2);
+	proxy.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &Proxy::auth, &executor, _1, _2, _3);
+	proxy.on <bool (const string &, const string &, const uint32_t)> ("accept", &Proxy::accept, &executor, _1, _2, _3);
+	proxy.on <void (const uint64_t, const server::proxy_t::broker_t, const server::web_t::mode_t)> ("active", &Proxy::active, &executor, _1, _2, _3);
 
 	proxy.start();
 
@@ -1146,9 +1146,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// proxy.init(2222);
 	proxy.init(2222, "127.0.0.1");
 
-	proxy.callback <void (const size_t, const proxy_socks5_t::mode_t)> ("active", std::bind(&Proxy::active, &executor, _1, _2));
-	proxy.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Proxy::accept, &executor, _1, _2, _3));
-	// proxy.callback <bool (const uint64_t, const string &, const string &)> ("checkPassword", std::bind(&Proxy::auth, &executor, _1, _2, _3));
+	proxy.on <void (const size_t, const proxy_socks5_t::mode_t)> ("active", &Proxy::active, &executor, _1, _2);
+	proxy.on <bool (const string &, const string &, const uint32_t)> ("accept", &Proxy::accept, &executor, _1, _2, _3);
+	// proxy.on <bool (const uint64_t, const string &, const string &)> ("checkPassword", &Proxy::auth, &executor, _1, _2, _3);
 
 	proxy.start();
 
@@ -1203,11 +1203,11 @@ class Executor {
 
 					uint16_t tid = timer->timeout(10000);
 
-					timer->attach(tid, &Executor::timeout, this, tid);
+					timer->on(tid, &Executor::timeout, this, tid);
 
 					tid = timer->interval(5000);
 
-					timer->attach(tid, &Executor::interval, this, tid, timer);
+					timer->on(tid, &Executor::interval, this, tid, timer);
 				} break;
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
 					this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
@@ -1229,7 +1229,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log.name("Timer");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	timer.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::launched, &executor, _1, &timer));
+	timer.on <void (const awh::core_t::status_t)> ("status", &Executor::launched, &executor, _1, &timer);
 	timer.start();
 
 	return EXIT_SUCCESS;
@@ -1386,8 +1386,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
+	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 
 	sample.start();
 
@@ -1451,10 +1451,10 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
-	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
+	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
+	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
+	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
 
 	sample.start();
 
@@ -1522,8 +1522,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
+	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 
 	sample.start();
 
@@ -1593,10 +1593,10 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
-	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
+	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
+	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
+	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
 
 	sample.start();
 
@@ -1658,8 +1658,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
+	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 
 	sample.start();
 
@@ -1722,10 +1722,10 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
-	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
+	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
+	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
+	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
 
 	sample.start();
 
@@ -1793,8 +1793,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
+	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 
 	sample.start();
 
@@ -1864,10 +1864,10 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
-	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
+	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
+	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
+	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
 
 	sample.start();
 
@@ -1935,8 +1935,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
+	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 
 	sample.start();
 
@@ -2005,10 +2005,10 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init(2222, "127.0.0.1");
 
-	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
-	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
+	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
+	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
+	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
 
 	sample.start();
 
@@ -2071,8 +2071,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init("anyks");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
+	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 
 	sample.start();
 
@@ -2137,10 +2137,10 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init("anyks");
 
-	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
-	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
+	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
+	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
+	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
 
 	sample.start();
 
@@ -2203,8 +2203,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init("anyks");
 
-	sample.callback <void (const vector <char> &)> ("message", std::bind(&Client::message, &executor, _1, &sample));
-	sample.callback <void (const client::sample_t::mode_t)> ("active", std::bind(&Client::active, &executor, _1, &sample));
+	sample.on <void (const vector <char> &)> ("message", &Client::message, &executor, _1, &sample);
+	sample.on <void (const client::sample_t::mode_t)> ("active", &Client::active, &executor, _1, &sample);
 
 	sample.start();
 
@@ -2268,10 +2268,10 @@ int32_t main(int32_t argc, char * argv[]){
 
 	sample.init("anyks");
 
-	sample.callback <void (const string &, const uint32_t)> ("launched", std::bind(&Server::launched, &executor, _1, _2));
-	sample.callback <void (const uint64_t, const server::sample_t::mode_t)> ("active", std::bind(&Server::active, &executor, _1, _2));
-	sample.callback <bool (const string &, const string &, const uint32_t)> ("accept", std::bind(&Server::accept, &executor, _1, _2, _3));
-	sample.callback <void (const uint64_t, const vector <char> &)> ("message", std::bind(&Server::message, &executor, _1, _2, &sample));
+	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
+	sample.on <void (const uint64_t, const server::sample_t::mode_t)> ("active", &Server::active, &executor, _1, _2);
+	sample.on <bool (const string &, const string &, const uint32_t)> ("accept", &Server::accept, &executor, _1, _2, _3);
+	sample.on <void (const uint64_t, const vector <char> &)> ("message", &Server::message, &executor, _1, _2, &sample);
 
 	sample.start();
 
@@ -2348,9 +2348,9 @@ int32_t main(int32_t argc, char * argv[]){
 	core.size();
 	core.autoRestart(true);
 
-	core.callback <void (const awh::core_t::status_t)> ("status", std::bind(&Executor::launched, &executor, _1));
-	core.callback <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", std::bind(&Executor::events, &executor, _1, _2, _3, &core));
-	core.callback <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", std::bind(&Executor::message, &executor, _1, _2, _3, _4));
+	core.on <void (const awh::core_t::status_t)> ("status", &Executor::launched, &executor, _1);
+	core.on <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", &Executor::events, &executor, _1, _2, _3, &core);
+	core.on <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", &Executor::message, &executor, _1, _2, _3, _4);
 
 	core.start();
 

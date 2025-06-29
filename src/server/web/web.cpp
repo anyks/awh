@@ -135,9 +135,9 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
  * callbackEvents Метод отлавливания событий контейнера функций обратного вызова
  * @param event событие контейнера функций обратного вызова
  * @param fid   идентификатор функции обратного вызова
- * @param dump  дамп данных функции обратного вызова
+ * @param fn    функция обратного вызова в чистом виде
  */
-void awh::server::Web::callbackEvents([[maybe_unused]] const callback_t::event_t event, [[maybe_unused]] const uint64_t fid, [[maybe_unused]] const callback_t::type_t & dump) noexcept {}
+void awh::server::Web::callbackEvents([[maybe_unused]] const callback_t::event_t event, [[maybe_unused]] const uint64_t fid, [[maybe_unused]] const callback_t::fn_t & fn) noexcept {}
 /**
  * clusterEvents Метод вывода статуса кластера
  * @param family флаг семейства кластера

@@ -135,11 +135,11 @@ void awh::client::Websocket1::disconnectEvent(const uint64_t bid, const uint16_t
 		// Выполняем очистку оставшихся данных
 		this->_buffer.clear();
 		// Выполняем очистку оставшихся фрагментов
-		this->_fragmes.clear();
+		this->_fragments.clear();
 		// Если размер выделенной памяти выше максимального размера буфера
-		if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+		if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 			// Выполняем очистку временного буфера данных
-			vector <char> ().swap(this->_fragmes);
+			vector <char> ().swap(this->_fragments);
 	// Если подключение не является постоянным
 	} else {
 		// Выполняем сброс параметров запроса
@@ -289,13 +289,13 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 	}
 }
 /**
- * writeCallback Метод обратного вызова при записи сообщения на клиенте
+ * writeEvent Метод обратного вызова при записи сообщения на клиенте
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::client::Websocket1::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Websocket1::writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((bid > 0) && (sid > 0)){
 		// Если необходимо выполнить закрыть подключение
@@ -309,6 +309,23 @@ void awh::client::Websocket1::writeCallback(const char * buffer, const size_t si
 				// Выполняем функцию обратного вызова
 				web_t::_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, this->_rid, direct_t::SEND);
 		}
+	}
+}
+/**
+ * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param fid   идентификатор функции обратного вызова
+ */
+void awh::client::Websocket1::callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t &) noexcept {
+	// Определяем входящее событие контейнера функций обратного вызова
+	switch(static_cast <uint8_t> (event)){
+		// Если событием является установка функции обратного вызова
+		case static_cast <uint8_t> (callback_t::event_t::SET): {
+			// Если функция обратного вызова на перехват полученных чанков установлена
+			if(fid == web_t::_callback.fid("chunking"))
+				// Устанавливаем внешнюю функцию обратного вызова
+				this->_http.on <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", web_t::_callback.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
+		} break;
 	}
 }
 /**
@@ -426,24 +443,6 @@ void awh::client::Websocket1::chunking([[maybe_unused]] const uint64_t bid, cons
 	}
 }
 /**
- * eventCallback Метод отлавливания событий контейнера функций обратного вызова
- * @param event событие контейнера функций обратного вызова
- * @param fid   идентификатор функции обратного вызова
- * @param dump  дамп данных функции обратного вызова
- */
-void awh::client::Websocket1::eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept {
-	// Определяем входящее событие контейнера функций обратного вызова
-	switch(static_cast <uint8_t> (event)){
-		// Если событием является установка функции обратного вызова
-		case static_cast <uint8_t> (callback_t::event_t::SET): {
-			// Если функция обратного вызова на перехват полученных чанков установлена
-			if(fid == web_t::_callback.fid("chunking"))
-				// Устанавливаем внешнюю функцию обратного вызова
-				this->_http.on <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", web_t::_callback.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
-		} break;
-	}
-}
-/**
  * flush Метод сброса параметров запроса
  */
 void awh::client::Websocket1::flush() noexcept {
@@ -456,11 +455,11 @@ void awh::client::Websocket1::flush() noexcept {
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
 	// Выполняем очистку оставшихся фрагментов
-	this->_fragmes.clear();
+	this->_fragments.clear();
 	// Если размер выделенной памяти выше максимального размера буфера
-	if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+	if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(this->_fragmes);
+		vector <char> ().swap(this->_fragments);
 }
 /**
  * pinging Метод таймера выполнения пинга удалённого сервера
@@ -633,11 +632,11 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Выполняем сброс количества попыток
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
-					this->_fragmes.clear();
+					this->_fragments.clear();
 					// Если размер выделенной памяти выше максимального размера буфера
-					if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+					if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 						// Выполняем очистку временного буфера данных
-						vector <char> ().swap(this->_fragmes);
+						vector <char> ().swap(this->_fragments);
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
@@ -805,13 +804,13 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 							// Выполняем реконнект
 							return status_t::STOP;
 						// Если список фрагментированных сообщений существует
-						} else if(!this->_fragmes.empty()) {
+						} else if(!this->_fragments.empty()) {
 							// Очищаем список фрагментированных сообщений
-							this->_fragmes.clear();
+							this->_fragments.clear();
 							// Если размер выделенной памяти выше максимального размера буфера
-							if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+							if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 								// Выполняем очистку временного буфера данных
-								vector <char> ().swap(this->_fragmes);
+								vector <char> ().swap(this->_fragments);
 							// Создаём сообщение
 							this->_mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
@@ -825,7 +824,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 						// Если сообщение является не последнем
 						} else if(!head.fin)
 							// Заполняем фрагментированное сообщение
-							this->_fragmes.insert(this->_fragmes.end(), payload.begin(), payload.end());
+							this->_fragments.insert(this->_fragments.end(), payload.begin(), payload.end());
 						// Если сообщение является последним
 						else {
 							// Если тредпул активирован
@@ -839,23 +838,23 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Если ответом является CONTINUATION
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
 						// Если фрагменты сообщения уже собраны
-						if(!this->_fragmes.empty()){
+						if(!this->_fragments.empty()){
 							// Заполняем фрагментированное сообщение
-							this->_fragmes.insert(this->_fragmes.end(), payload.begin(), payload.end());
+							this->_fragments.insert(this->_fragments.end(), payload.begin(), payload.end());
 							// Если сообщение является последним
 							if(head.fin){
 								// Если тредпул активирован
 								if(this->_thr.is())
 									// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-									this->_thr.push(std::bind(&ws1_t::extraction, this, this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+									this->_thr.push(std::bind(&ws1_t::extraction, this, this->_fragments, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
 								// Если тредпул не активирован, выполняем извлечение полученных сообщений
-								else this->extraction(this->_fragmes, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+								else this->extraction(this->_fragments, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 								// Очищаем список фрагментированных сообщений
-								this->_fragmes.clear();
+								this->_fragments.clear();
 								// Если размер выделенной памяти выше максимального размера буфера
-								if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+								if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 									// Выполняем очистку временного буфера данных
-									vector <char> ().swap(this->_fragmes);
+									vector <char> ().swap(this->_fragments);
 							}
 						// Если фрагментированные сообщения не существуют
 						} else {
@@ -935,11 +934,11 @@ void awh::client::Websocket1::error(const ws::mess_t & message) const noexcept {
 	// Очищаем список буффер бинарных данных
 	const_cast <ws1_t *> (this)->_buffer.clear();
 	// Очищаем список фрагментированных сообщений
-	const_cast <ws1_t *> (this)->_fragmes.clear();
+	const_cast <ws1_t *> (this)->_fragments.clear();
 	// Если размер выделенной памяти выше максимального размера буфера
-	if(this->_fragmes.capacity() > AWH_BUFFER_SIZE)
+	if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(const_cast <ws1_t *> (this)->_fragmes);
+		vector <char> ().swap(const_cast <ws1_t *> (this)->_fragments);
 	// Если код ошибки указан
 	if(message.code > 0){
 		// Если сообщение об ошибке пришло
@@ -1447,7 +1446,7 @@ void awh::client::Websocket1::core(const client::core_t * core) noexcept {
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
-		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &ws1_t::writeCallback, this, _1, _2, _3, _4);
+		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &ws1_t::writeEvent, this, _1, _2, _3, _4);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -1640,7 +1639,7 @@ awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * f
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
 	this->_http.on <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", &ws1_t::headers, this, _1, _2, _3, _4);
 	// Устанавливаем функцию записи данных
-	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &ws1_t::writeCallback, this, _1, _2, _3, _4);
+	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &ws1_t::writeEvent, this, _1, _2, _3, _4);
 }
 /**
  * ~Websocket1 Деструктор

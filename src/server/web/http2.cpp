@@ -242,9 +242,9 @@ void awh::server::Http2::writeEvents(const char * buffer, const size_t size, con
  * callbackEvents Метод отлавливания событий контейнера функций обратного вызова
  * @param event событие контейнера функций обратного вызова
  * @param fid   идентификатор функции обратного вызова
- * @param dump  дамп данных функции обратного вызова
+ * @param fn    функция обратного вызова в чистом виде
  */
-void awh::server::Http2::callbackEvents(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept {
+void awh::server::Http2::callbackEvents(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept {
 	// Определяем входящее событие контейнера функций обратного вызова
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
@@ -254,7 +254,7 @@ void awh::server::Http2::callbackEvents(const callback_t::event_t event, const u
 				// Создаём локальный контейнер функций обратного вызова
 				callback_t callback(this->_log);
 				// Выполняем установку функции обратного вызова
-				callback.set(fid, dump);
+				callback.set(fid, fn);
 				// Если функции обратного вызова установлены
 				if(!callback.empty()){
 					// Выполняем установку функций обратного вызова для Websocket-сервера

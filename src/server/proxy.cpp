@@ -86,6 +86,27 @@ bool awh::server::Proxy::acceptEvents(const string & ip, const string & mac, con
 	return false;
 }
 /**
+ * callbackEvents Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param fid   идентификатор функции обратного вызова
+ */
+void awh::server::Proxy::callbackEvents(const callback_t::event_t event, const uint64_t fid, [[maybe_unused]] const callback_t::fn_t &) noexcept {
+	// Определяем входящее событие контейнера функций обратного вызова
+	switch(static_cast <uint8_t> (event)){
+		// Если событием является установка функции обратного вызова
+		case static_cast <uint8_t> (callback_t::event_t::SET): {
+			// Если функция обратного вызова для получения событий запуска и остановки сетевого ядра передана
+			if(fid == this->_callback.fid("status"))
+				// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
+				this->_server.on <void (const awh::core_t::status_t)> ("status", this->_callback.get <void (const awh::core_t::status_t)> ("status"));
+			// Если функция установки обратного вызова на событие получении ошибки передана
+			else if(fid == this->_callback.fid("error"))
+				// Выполняем установку функции обратного вызова на событие получения ошибки
+				this->_server.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), _1, broker_t::SERVER, _2, _3, _4);
+		} break;
+	}
+}
+/**
  * available Метод получения событий освобождения памяти буфера полезной нагрузки
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param bid    идентификатор брокера
@@ -185,28 +206,6 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
-	}
-}
-/**
- * eventCallback Метод отлавливания событий контейнера функций обратного вызова
- * @param event событие контейнера функций обратного вызова
- * @param fid   идентификатор функции обратного вызова
- * @param dump  дамп данных функции обратного вызова
- */
-void awh::server::Proxy::eventCallback(const callback_t::event_t event, const uint64_t fid, [[maybe_unused]] const callback_t::type_t & dump) noexcept {
-	// Определяем входящее событие контейнера функций обратного вызова
-	switch(static_cast <uint8_t> (event)){
-		// Если событием является установка функции обратного вызова
-		case static_cast <uint8_t> (callback_t::event_t::SET): {
-			// Если функция обратного вызова для получения событий запуска и остановки сетевого ядра передана
-			if(fid == this->_callback.fid("status"))
-				// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
-				this->_server.on <void (const awh::core_t::status_t)> ("status", this->_callback.get <void (const awh::core_t::status_t)> ("status"));
-			// Если функция установки обратного вызова на событие получении ошибки передана
-			else if(fid == this->_callback.fid("error"))
-				// Выполняем установку функции обратного вызова на событие получения ошибки
-				this->_server.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), _1, broker_t::SERVER, _2, _3, _4);
-		} break;
 	}
 }
 /** 
@@ -2180,7 +2179,7 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	// Выполняем установку идентичности протокола модуля
 	this->_server.identity(awh::http_t::identity_t::PROXY);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callback.on(std::bind(&server::proxy_t::eventCallback, this, _1, _2, _3));
+	this->_callback.on(std::bind(&server::proxy_t::callbackEvents, this, _1, _2, _3));
 	// Устанавливаем функцию получения события запуска сервера
 	this->_core.on <void (const string &, const uint32_t)> ("launched", &server::proxy_t::launchedEvents, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки

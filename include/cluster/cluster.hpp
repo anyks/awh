@@ -69,6 +69,13 @@ namespace awh {
 			static constexpr size_t MAX_MESSAGE = 0x3B9ACA00;
 		public:
 			/**
+			 * Режим обмена сообщениям
+			 */
+			enum class transfer_t : uint8_t {
+				PIPE = 0x00, // Передача сообщений через Shared Memory
+				IPC  = 0x01  // Передача сообщений через Unix-socket
+			};
+			/**
 			 * События работы кластера
 			 */
 			enum class event_t : uint8_t {
@@ -83,6 +90,15 @@ namespace awh {
 				NONE     = 0x00, // Воркер не установлено
 				MASTER   = 0x02, // Воркер является мастером
 				CHILDREN = 0x01  // Воркер является ребёнком
+			};
+		private:
+			/**
+			 * Тип сообщения
+			 */
+			enum class message_t : uint8_t {
+				NONE    = 0x00, // Тип сообщения не установлен
+				HELLO   = 0x01, // Тип сообщения рукопожатия
+				GENERAL = 0x02  // Тип сообщения общего назначения
 			};
 		public:
 			/**
@@ -107,8 +123,8 @@ namespace awh {
 					// Бинарный буфер полученных данных
 					uint8_t _buffer[4096];
 				private:
-					// Список объектов работы с протоколом кластера
-					map <pid_t, unique_ptr <cmp::decoder_t>> _cmp;
+					// Список декодеров для декодирования сообщений мастера
+					map <pid_t, unique_ptr <cmp::decoder_t>> _decoders;
 				private:
 					// Объект для работы с логами
 					const log_t * _log;
@@ -120,7 +136,7 @@ namespace awh {
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
 						/**
-						 * message Функция обратного вызова получении сообщений
+						 * message Метод обратного вызова получении сообщений
 						 * @param fd    файловый дескриптор (сокет)
 						 * @param event произошедшее событие
 						 */
@@ -134,12 +150,89 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Worker(const uint16_t wid, const Cluster * ctx, const log_t * log) noexcept :
-					 _working(false), _restart(false), _wid(wid), _count(1), _buffer{0}, _log(log), _ctx(ctx) {}
+					 _working(false), _restart(false), _wid(wid),
+					 _count(1), _buffer{0}, _log(log), _ctx(ctx) {}
 					/**
 					 * ~Worker Деструктор
 					 */
 					~Worker() noexcept {}
 			} worker_t;
+		private:
+			/**
+			 * Bandwidth Структура пропускной способности
+			 */
+			typedef struct Bandwidth {
+				// Размер буфера на чтение
+				size_t read;
+				// Размер буфера на запись
+				size_t write;
+				/**
+				 * Bandwidth Конструктор
+				 */
+				Bandwidth() noexcept :
+				 read(AWH_BUFFER_SIZE_RCV),
+				 write(AWH_BUFFER_SIZE_SND) {}
+			} __attribute__((packed)) bandwidth_t;
+			/**
+			 * Peer Структура подключения
+			 */
+			typedef struct Peer {
+				// Размер объекта подключения
+				socklen_t size;
+				// Параметры подключения
+				struct sockaddr_storage addr;
+				/**
+				 * Peer Конструктор
+				 */
+				Peer() noexcept : size(0), addr{} {}
+			} peer_t;
+			/**
+			 * Client Структура клиента
+			 */
+			typedef struct Client {
+				// Файловый дескриптор
+				SOCKET fd;
+				// Объект подключения
+				peer_t peer;
+				// Объект события на получения сообщений
+				awh::event_t read;
+				// Объект события на запись сообщений
+				awh::event_t write;
+				/**
+				 * Client Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Client(const fmk_t * fmk, const log_t * log) noexcept :
+				 fd(INVALID_SOCKET),
+				 read(awh::event_t::type_t::EVENT, fmk, log),
+				 write(awh::event_t::type_t::EVENT, fmk, log) {}
+			} client_t;
+			/**
+			 * Server Структура сервера
+			 */
+			typedef struct Server {
+				// Файловый дескриптор
+				SOCKET fd;
+				// Адрес unix-сокета
+				string ipc;
+				// Объект работы с файловой системой
+				fs_t fs;
+				// Объект подключения
+				peer_t peer;
+				// Объект работы с сокетами
+				socket_t socket;
+				// Объект события на получения сообщений
+				awh::event_t ev;
+				/**
+				 * Server Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Server(const fmk_t * fmk, const log_t * log) noexcept :
+				 fd(INVALID_SOCKET), ipc{""}, fs(fmk, log),
+				 socket(fmk, log), ev(awh::event_t::type_t::EVENT, fmk, log) {}
+			} server_t;
 		private:
 			/**
 			 * Для операционной системы не являющейся OS Windows
@@ -149,12 +242,13 @@ namespace awh {
 				 * Broker Структура брокера
 				 */
 				typedef struct Broker {
-					bool end;        // Флаг завершения работы процессом
-					pid_t pid;       // Идентификатор активного процесса
-					uint64_t date;   // Время начала жизни процесса
-					SOCKET mfds[2];  // Список файловых дескрипторов родительского процесса
-					SOCKET cfds[2];  // Список файловых дескрипторов дочернего процесса
-					awh::event_t ev; // Объект события на получения сообщений
+					bool end;           // Флаг завершения работы процессом
+					pid_t pid;          // Идентификатор активного процесса
+					uint64_t date;      // Время начала жизни процесса
+					SOCKET mfds[2];     // Список файловых дескрипторов родительского процесса
+					SOCKET cfds[2];     // Список файловых дескрипторов дочернего процесса
+					awh::event_t read;  // Объект события на получения сообщений
+					awh::event_t write; // Объект события на запись сообщений
 					/**
 					 * Broker Конструктор
 					 * @param fmk объект фреймворка
@@ -164,7 +258,8 @@ namespace awh {
 					 end(false), pid(::getpid()), date(0),
 					 mfds{INVALID_SOCKET, INVALID_SOCKET},
 					 cfds{INVALID_SOCKET, INVALID_SOCKET},
-					 ev(awh::event_t::type_t::EVENT, fmk, log) {}
+					 read(awh::event_t::type_t::EVENT, fmk, log),
+					 write(awh::event_t::type_t::EVENT, fmk, log) {}
 					/**
 					 * ~Broker Деструктор
 					 */
@@ -190,11 +285,20 @@ namespace awh {
 			// Идентификатор родительского процесса
 			pid_t _pid;
 		private:
-			// Объект работы с сокетами
-			socket_t _socket;
+			// Название кластера
+			string _name;
+		private:
+			// Объект параметров сервера
+			server_t _server;
 		private:
 			// Хранилище функций обратного вызова
 			callback_t _callback;
+		private:
+			// Режим передачи данных
+			transfer_t _transfer;
+		private:
+			// Параметры пропускной способности
+			bandwidth_t _bandwidth;
 		private:
 			/**
 			 * Для операционной системы не являющейся OS Windows
@@ -206,10 +310,14 @@ namespace awh {
 		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
+			// Список активных сокетов привязанных к процессам
+			map <SOCKET, pid_t> _sockets;
+			// Список активных клиентов дочерних процессов
+			map <SOCKET, unique_ptr <client_t>> _clients;
 			// Список активных воркеров
 			map <uint16_t, unique_ptr <worker_t>> _workers;
-			// Список объектов работы с протоколом кластера
-			map <uint16_t, unique_ptr <cmp::encoder_t>> _cmp;
+			// Список энкодеров для кодирования сообщений
+			map <pid_t, unique_ptr <cmp::encoder_t>> _encoders;
 			// Список дочерних брокеров
 			map <uint16_t, vector <unique_ptr <broker_t>>> _brokers;
 		private:
@@ -226,6 +334,11 @@ namespace awh {
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				/**
+				 * ipc Метод инициализации unix-сокета для обмены данными
+				 * @param family семейстов кластера
+				 */
+				void ipc(const family_t family) noexcept;
+				/**
 				 * process Метод перезапуска упавшего процесса
 				 * @param pid    идентификатор упавшего процесса
 				 * @param status статус остановившегося процесса
@@ -241,11 +354,38 @@ namespace awh {
 			#endif
 		private:
 			/**
+			 * list Метод активации прослушивания сокета
+			 * @return результат выполнения операции
+			 */
+			bool list() noexcept;
+			/**
+			 * connect Метод выполнения подключения
+			 * @return результат выполнения операции
+			 */
+			bool connect() noexcept;
+			/**
+			 * accept Метод обратного вызова получении запроса на подключение
+			 * @param wid идентификатор воркера
+			 * @param fd  файловый дескриптор (сокет)
+			 */
+			void accept(const uint16_t wid, const SOCKET fd, const base_t::event_type_t) noexcept;
+		private:
+			/**
 			 * write Метод записи буфера данных в сокет
 			 * @param wid идентификатор воркера
+			 * @param pid идентификатор процесса для получения сообщения
 			 * @param fd  идентификатор файлового дескриптора
 			 */
-			void write(const uint16_t wid, const SOCKET fd) noexcept;
+			void write(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept;
+		private:
+			/**
+			 * sending Метод обратного вызова получении сообщений готовности сокета на запись
+			 * @param wid   идентификатор воркера
+			 * @param pid   идентификатор процесса для отправки сообщения
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param event произошедшее событие
+			 */
+			void sending(const uint16_t wid, const pid_t pid, const SOCKET fd, const base_t::event_type_t event) noexcept;
 		private:
 			/**
 			 * emplace Метод размещения нового дочернего процесса
@@ -361,6 +501,18 @@ namespace awh {
 			void core(core_t * core) noexcept;
 		public:
 			/**
+			 * name Метод установки названия кластера
+			 * @param name название кластера для установки
+			 */
+			void name(const string & name) noexcept;
+		public:
+			/**
+			 * transfer Метод установки режима передачи данных
+			 * @param transfer режим передачи данных
+			 */
+			void transfer(const transfer_t transfer) noexcept;
+		public:
+			/**
 			 * emplace Метод размещения нового дочернего процесса
 			 * @param wid идентификатор воркера
 			 */
@@ -391,6 +543,13 @@ namespace awh {
 			 * @param count максимальное количество процессов
 			 */
 			void init(const uint16_t wid, const uint16_t count = 1) noexcept;
+		public:
+			/**
+			 * bandwidth Метод установки пропускной способности сети
+			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+			 */
+			void bandwidth(const string & read = "", const string & write = "") noexcept;
 		public:
 			/**
 			 * callback Метод установки функций обратного вызова

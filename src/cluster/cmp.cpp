@@ -28,7 +28,7 @@ using namespace std;
  */
 bool awh::cmp::Encoder::empty() const noexcept {
 	// Выводим результат проверки
-	return this->_queue.empty();
+	return this->_buffer.empty();
 }
 /**
  * size Метод получения количества подготовленных буферов
@@ -36,7 +36,7 @@ bool awh::cmp::Encoder::empty() const noexcept {
  */
 size_t awh::cmp::Encoder::size() const noexcept {
 	// Выводим количество записей в протоколе
-	return this->_queue.size();
+	return this->_buffer.size();
 }
 /**
  * clear Метод очистки данных
@@ -49,7 +49,7 @@ void awh::cmp::Encoder::clear() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->_mtx);
 		// Выполняем очистку очереди данных
-		this->_queue.clear();
+		this->_buffer.clear();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -70,33 +70,26 @@ void awh::cmp::Encoder::clear() noexcept {
 	}
 }
 /**
- * get Метод получения записи протокола
- * @return объект данных записи
+ * data Метод получения бинарных данных буфера
+ * @return бинарные данные буфера
  */
-awh::queue_t::buffer_t awh::cmp::Encoder::get() const noexcept {
-	// Результат работы функции
-	queue_t::buffer_t result;
-	// Устанавливаем размер данных
-	result.second = this->_queue.size(queue_t::pos_t::FRONT);
-	// Устанавливаем адрес заднных
-	result.first = reinterpret_cast <const char *> (this->_queue.get(queue_t::pos_t::FRONT));
-	// Выводим результат
-	return result;
+const void * awh::cmp::Encoder::data() const noexcept {
+	// Выводим бинарные данные буфера
+	return this->_buffer.get();
 }
 /**
- * pop Метод удаления первой записи протокола
+ * erase Метод удаления количества первых байт буфера
+ * @param size размер данных для удаления
  */
-void awh::cmp::Encoder::pop() noexcept {
+void awh::cmp::Encoder::erase(const size_t size) noexcept {
 	/**
 	 * Выполняем обработку ошибки
 	 */
 	try {
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->_mtx);
-		// Если список записей не пустой
-		if(!this->_queue.empty())
-			// Выполняем удаление первой записи
-			this->_queue.pop();
+		// Выполняем удаление данных в буфере
+		this->_buffer.erase(size);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -107,6 +100,38 @@ void awh::cmp::Encoder::pop() noexcept {
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * chunkSize Метод установки максимального размера одного блока
+ * @param size размер блока данных
+ */
+void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
+	/**
+	 * Выполняем обработку ошибки
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx);
+		// Выполняем установку размера чанка
+		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -118,10 +143,11 @@ void awh::cmp::Encoder::pop() noexcept {
 }
 /**
  * push Метод добавления новой записи в протокол
+ * @param mid    идентификатор сообщения
  * @param buffer буфер данных для добавления
  * @param size   размер буфера данных
  */
-void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
+void awh::cmp::Encoder::push(const uint8_t mid, const void * buffer, const size_t size) noexcept {
 	// Если данные для добавления переданы
 	if((buffer != nullptr) && (size > 0)){
 		/**
@@ -130,8 +156,14 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 		try {
 			// Выполняем блокировку потока
 			const lock_guard <mutex> lock(this->_mtx);
+			// Если число достигло предела
+			if(this->_count == numeric_limits <decltype(this->_count)>::max())
+				// Выполняем сброс счётчика
+				this->_count = 0;
 			// Заголовоки блока данных
-			header_t header(this->_count++, size);
+			header_t header(this->_count++);
+			// Устанавливаем идентификатор сообщения
+			header.mid = mid;
 			// Получаем размер заголовка
 			const size_t headerSize = sizeof(header);
 			// Если размер данных больше размера чанка
@@ -142,27 +174,21 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 				while((size - offset) > 0){
 					// Если данные не помещаются в буфере
 					if((headerSize + (size - offset)) > this->_chunkSize){
+						// Устанавливаем режим отравки буфера данных
+						header.mode = mode_t::CONTINE;
 						// Формируем актуальный размер данных буфера
 						header.bytes = static_cast <uint16_t> (this->_chunkSize - headerSize);
-						// Устанавливаем режим отравки буфера данных
-						header.mode = (offset == 0 ? mode_t::BEGIN : mode_t::CONTINE);
-						// Добавляем в буфер новую запись
-						this->_queue.push(vector <queue_t::buffer_t> ({
-							{&header, headerSize},
-							{reinterpret_cast <const char *> (buffer) + offset, static_cast <size_t> (header.bytes)}
-						}), static_cast <size_t> (header.bytes) + headerSize);
 					// Если данные помещаются в буфере
 					} else {
 						// Устанавливаем режим отравки буфера данных
 						header.mode = mode_t::END;
 						// Формируем актуальный размер данных буфера
 						header.bytes = static_cast <uint16_t> (size - offset);
-						// Добавляем в буфер новую запись
-						this->_queue.push(vector <queue_t::buffer_t> ({
-							{&header, headerSize},
-							{reinterpret_cast <const char *> (buffer) + offset, static_cast <size_t> (header.bytes)}
-						}), static_cast <size_t> (header.bytes) + headerSize);
 					}
+					// Выполняем добавление блока заголовка
+					this->_buffer.push(&header, headerSize);
+					// Выполняем добавление полезную нагрузку
+					this->_buffer.push(reinterpret_cast <const char *> (buffer) + offset, static_cast <size_t> (header.bytes));
 					// Увеличиваем смещение в буфере
 					offset += static_cast <size_t> (header.bytes);
 				}
@@ -172,11 +198,10 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 				header.mode = mode_t::END;
 				// Формируем актуальный размер данных буфера
 				header.bytes = static_cast <uint16_t> (size);
-				// Добавляем в буфер новую запись
-				this->_queue.push(vector <queue_t::buffer_t> ({
-					{&header, headerSize},
-					{reinterpret_cast <const char *> (buffer), static_cast <size_t> (header.bytes)}
-				}), static_cast <size_t> (header.bytes) + headerSize);
+				// Выполняем добавление блока заголовка
+				this->_buffer.push(&header, headerSize);
+				// Выполняем добавление полезную нагрузку
+				this->_buffer.push(reinterpret_cast <const char *> (buffer), static_cast <size_t> (header.bytes));
 			}
 		/**
 		 * Если возникает ошибка
@@ -214,38 +239,6 @@ void awh::cmp::Encoder::push(const void * buffer, const size_t size) noexcept {
 	}
 }
 /**
- * chunkSize Метод установки максимального размера одного блока
- * @param size размер блока данных
- */
-void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
-	/**
-	 * Выполняем обработку ошибки
-	 */
-	try {
-		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем установку размера чанка
-		this->_chunkSize = (size > 0 ? size : CHUNK_SIZE);
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-		/**
-		* Если режим отладки не включён
-		*/
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
-/**
  * Оператор проверки на доступность данных в контейнере
  * @return результат проверки
  */
@@ -260,6 +253,14 @@ awh::cmp::Encoder::operator bool() const noexcept {
 awh::cmp::Encoder::operator size_t() const noexcept {
 	// Выводим количество записей в протоколе
 	return this->size();
+}
+/**
+ * Оператор получения бинарных данных буфера
+ * @return бинарные данные буфера
+ */
+awh::cmp::Encoder::operator const void * () const noexcept {
+	// Выводим бинарные данные буфера
+	return this->data();
 }
 /**
  * Оператор [=] установки максимального размера одного блока
@@ -301,7 +302,7 @@ void awh::cmp::Decoder::clear() noexcept {
 		// Выполняем удаление всех временных данных
 		this->_temp.clear();
 		// Выполняем очистку очереди данных
-		this->_queue.clear();
+		this->_queue.reset();
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Очищаем выделенную память для временных данных
@@ -329,13 +330,21 @@ void awh::cmp::Decoder::clear() noexcept {
  * get Метод получения записи протокола
  * @return объект данных записи
  */
-awh::queue_t::buffer_t awh::cmp::Decoder::get() const noexcept {
+awh::cmp::Decoder::record_t awh::cmp::Decoder::get() const noexcept {
 	// Результат работы функции
-	queue_t::buffer_t result;
+	record_t result;
 	// Устанавливаем размер данных
-	result.second = this->_queue.size(queue_t::pos_t::FRONT);
+	result.size = this->_queue.size(queue_t::pos_t::FRONT);
 	// Устанавливаем адрес заднных
-	result.first = reinterpret_cast <const char *> (this->_queue.get(queue_t::pos_t::FRONT));
+	result.data = reinterpret_cast <const char *> (this->_queue.get(queue_t::pos_t::FRONT));
+	// Извлекаем идентификатор сообщения
+	result.mid = static_cast <uint8_t> (result.data[0]);
+	// Извлекаем данные идентификатора процесса
+	::memcpy(&result.pid, result.data + sizeof(result.mid), sizeof(result.pid));
+	// Уменьшаем общий размер сообщения
+	result.size -= (sizeof(result.mid) + sizeof(result.pid));
+	// Выполняем смещение в буфере данных
+	result.data += (sizeof(result.mid) + sizeof(result.pid));
 	// Выводим результат
 	return result;
 }
@@ -464,7 +473,7 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 				// Выполняем получение режима работы буфера данных
 				::memcpy(&header, reinterpret_cast <const char *> (buffer), headerSize);
 				// Если общий размер блока слишком большой
-				if((header.size == 0) || (static_cast <size_t> (header.bytes) > (this->_chunkSize - headerSize))){
+				if((header.bytes == 0) || (static_cast <size_t> (header.bytes) > (this->_chunkSize - headerSize))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -496,23 +505,57 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 								i->second->push(reinterpret_cast <const uint8_t *> (buffer) + result, static_cast <size_t> (header.bytes));
 							// Если запись мы получили последнюю
 							if(header.mode == mode_t::END){
+								// Устанавливаем данные идентификатора сообщения
+								this->_arbitrary.at(0).first = &header.mid;
+								// Устанавливаем размер идентификатора сообщения
+								this->_arbitrary.at(0).second = sizeof(header.mid);
+								// Устанавливаем данные идентификатора процесса
+								this->_arbitrary.at(1).first = &header.pid;
+								// Устанавливаем размер идентификатора процесса
+								this->_arbitrary.at(1).second = sizeof(header.pid);
+								// Устанавливаем данные сообщения
+								this->_arbitrary.at(2).first = i->second->get();
+								// Устанавливаем размер сообщения
+								this->_arbitrary.at(2).second = i->second->size();
 								// Выполняем перемещение данных в очередь
-								this->_queue.push(i->second->get(), i->second->size());
+								this->_queue.push(
+									this->_arbitrary,
+									this->_arbitrary.at(0).second +
+									this->_arbitrary.at(1).second +
+									this->_arbitrary.at(2).second
+								);
 								// Выполняем удаление данных из временного контейнера
 								this->_temp.erase(i);
 							}
 						// Если запись не найдена во временном блоке данных
 						} else {
 							// Если запись мы получили последнюю
-							if(header.mode == mode_t::END)
+							if(header.mode == mode_t::END){
+								// Устанавливаем данные идентификатора сообщения
+								this->_arbitrary.at(0).first = &header.mid;
+								// Устанавливаем размер идентификатора сообщения
+								this->_arbitrary.at(0).second = sizeof(header.mid);
+								// Устанавливаем данные идентификатора процесса
+								this->_arbitrary.at(1).first = &header.pid;
+								// Устанавливаем размер идентификатора процесса
+								this->_arbitrary.at(1).second = sizeof(header.pid);
+								// Устанавливаем данные сообщения
+								this->_arbitrary.at(2).first = (reinterpret_cast <const uint8_t *> (buffer) + result);
+								// Устанавливаем размер сообщения
+								this->_arbitrary.at(2).second = static_cast <size_t> (header.bytes);
 								// Выполняем перемещение данных в очередь
-								this->_queue.push(reinterpret_cast <const uint8_t *> (buffer) + result, static_cast <size_t> (header.size));
+								this->_queue.push(
+									this->_arbitrary,
+									this->_arbitrary.at(0).second +
+									this->_arbitrary.at(1).second +
+									this->_arbitrary.at(2).second
+								);
 							// Если мы получили одну из записей
-							else {
+							} else {
 								// Выполняем добавление записи во временный объект
 								auto ret = this->_temp.emplace(static_cast <uint32_t> (header.id), make_unique <buffer_t> (this->_log));
 								// Выделяем достаточно данных для формирования объекта
-								ret.first->second->reserve(static_cast <size_t> (header.size));
+								ret.first->second->reserve(static_cast <size_t> (header.bytes));
 								// Если размер полезной нагрузки установлен
 								if(header.bytes > 0)
 									// Выполняем копирование данных полезной нагрузки

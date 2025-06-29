@@ -995,7 +995,7 @@ awh::client::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 	// Выполняем отключение информационных сообщений сетевого ядра пинга
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callback.on(std::bind(&web_t::eventCallback, this, _1, _2, _3));
+	this->_callback.on(std::bind(&web_t::callbackEvent, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_scheme.proxy.http.on <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", &web_t::chunking, this, _1, _2, _3);
 }
@@ -1013,7 +1013,7 @@ awh::client::Web::Web(const client::core_t * core, const fmk_t * fmk, const log_
 	// Выполняем отключение информационных сообщений сетевого ядра таймера
 	this->_timer.verbose(false);
 	// Выполняем активацию ловушки событий контейнера функций обратного вызова
-	this->_callback.on(std::bind(&web_t::eventCallback, this, _1, _2, _3));
+	this->_callback.on(std::bind(&web_t::callbackEvent, this, _1, _2, _3));
 	// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента
 	this->_scheme.proxy.http.on <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", &web_t::chunking, this, _1, _2, _3);
 	// Добавляем схемы сети в сетевое ядро

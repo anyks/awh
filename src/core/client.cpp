@@ -186,7 +186,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->print("Connection server host is not set", log_t::flag_t::CRITICAL);
 							// Если разрешено выводить информационные сообщения
-							if(this->_verb)
+							if(this->_info)
 								// Выводим сообщение об ошибке
 								this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 							// Если функция обратного вызова установлена
@@ -212,7 +212,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Выводим сообщение об ошибке
 							this->_log->print("Encryption mode cannot be activated", log_t::flag_t::CRITICAL);
 							// Если разрешено выводить информационные сообщения
-							if(this->_verb)
+							if(this->_info)
 								// Выводим сообщение об ошибке
 								this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 							// Если функция обратного вызова установлена
@@ -265,11 +265,11 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Если unix-сокет используется
 						if(family == scheme_t::family_t::NIX){
 							// Выводим ионформацию об обрыве подключении по unix-сокету
-							this->_log->print("Connecting to HOST=%s/%s.sock", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+							this->_log->print("Connecting to IPC=%s/%s.sock", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to HOST=%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
+								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to IPC=%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
 						// Если используется хост и порт
 						} else {
 							// Выводим ионформацию об обрыве подключении по хосту и порту
@@ -277,7 +277,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("error"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Сonnecting to HOST=%s, PORT=%u", url.ip.c_str(), url.port));
+								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to HOST=%s, PORT=%u", url.ip.c_str(), url.port));
 						}
 						// Если объект DNS-резолвера установлен
 						if(this->_dns != nullptr){
@@ -329,13 +329,17 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						// Выполняем установку таймаута ожидания
 						ret.first->second->ectx.timeout(static_cast <uint32_t> (ret.first->second->timeouts.connect) * 1000, engine_t::method_t::READ);
 						// Если разрешено выводить информационные сообщения
-						if(this->_verb){
+						if(this->_info){
 							// Если unix-сокет используется
 							if(family == scheme_t::family_t::NIX)
 								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
-								this->_log->print("Good host %s/%s.sock, SOCKET=%d", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str(), ret.first->second->addr.fd);
+								this->_log->print("Host server [%s/%s.sock] SOCKET=%d is good", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str(), ret.first->second->addr.fd);
+							// Если доменное имя используется
+							else if(!url.domain.empty())
+								// Выводим ионформацию об удачном подключении к серверу по хосту и порту
+								this->_log->print("Host server %s [%s:%d] SOCKET=%d is good", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->addr.fd);
 							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
-							else this->_log->print("Good host %s [%s:%d], SOCKET=%d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->addr.fd);
+							else this->_log->print("Host server [%s:%d] SOCKET=%d is good", log_t::flag_t::INFO, url.ip.c_str(), url.port, ret.first->second->addr.fd);
 						}
 					}
 					// Выходим из функции
@@ -345,19 +349,27 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Если unix-сокет используется
 					if(family == scheme_t::family_t::NIX){
 						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
-						this->_log->print("Client cannot be started [%s/%s.sock]", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
+						this->_log->print("Host server %s/%s.sock is bad", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s/%s.sock]", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
-					// Если используется хост и порт
+							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Host server %s/%s.sock is bad", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()));
+					// Если доменное имя используется
+					} else if(!url.domain.empty()) {
+						// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
+						this->_log->print("Host server %s [%s:%u] is bad", log_t::flag_t::CRITICAL, url.domain.c_str(), url.ip.c_str(), url.port);
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Host server %s [%s:%u] is bad", url.domain.c_str(), url.ip.c_str(), url.port));
+					// Если доменное имя не используется
 					} else {
 						// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
-						this->_log->print("Client cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+						this->_log->print("Host server [%s:%u] is bad", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Client cannot be started [%s:%u]", url.ip.c_str(), url.port));
+							this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Host server [%s:%u] is bad", url.ip.c_str(), url.port));
 					}
 				}
 				// Если нужно выполнить автоматическое переподключение
@@ -397,7 +409,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						}
 					}
 					// Если разрешено выводить информационные сообщения
-					if(this->_verb)
+					if(this->_info)
 						// Выводим сообщение об ошибке
 						this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 					// Если функция обратного вызова установлена
@@ -1047,7 +1059,7 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 		// Если функция дисконнекта установлена
 		if(callback.is("disconnect")){
 			// Если разрешено выводить информационные сообщения
-			if(this->_verb)
+			if(this->_info)
 				// Выводим сообщение об ошибке
 				this->_log->print("Disconnected from server", log_t::flag_t::INFO);
 			// Выполняем функцию обратного вызова дисконнекта
@@ -1259,9 +1271,14 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 						// Выполняем создание буфера полезной нагрузки
 						this->initBuffer(broker->id());
 						// Если разрешено выводить информационные сообщения
-						if(this->_verb)
+						if(this->_info){
+							// Если доменное имя используется
+							if(!url.domain.empty())
+								// Выводим в лог сообщение
+								this->_log->print("Connect client to server %s [%s:%d]", log_t::flag_t::INFO, url.domain.c_str(), host.c_str(), url.port);
 							// Выводим в лог сообщение
-							this->_log->print("Connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+							else this->_log->print("Connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+						}
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
@@ -1280,9 +1297,14 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 						// Выполняем создание буфера полезной нагрузки
 						this->initBuffer(broker->id());
 						// Если разрешено выводить информационные сообщения
-						if(this->_verb)
+						if(this->_info){
+							// Если доменное имя используется
+							if(!url.domain.empty())
+								// Выводим в лог сообщение
+								this->_log->print("Connect client to server %s [%s:%d]", log_t::flag_t::INFO, url.domain.c_str(), host.c_str(), url.port);
 							// Выводим в лог сообщение
-							this->_log->print("Connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+							else this->_log->print("Connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+						}
 					} break;
 					// Если тип протокола подключения unix-сокет
 					case static_cast <uint8_t> (scheme_t::family_t::NIX): {
@@ -1293,7 +1315,7 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 						// Выполняем создание буфера полезной нагрузки
 						this->initBuffer(broker->id());
 						// Если разрешено выводить информационные сообщения
-						if(this->_verb)
+						if(this->_info)
 							// Выводим в лог сообщение
 							this->_log->print("Connect client to server [%s/%s.sock]", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 					} break;

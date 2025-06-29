@@ -316,20 +316,20 @@ namespace awh {
 				bool enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid) noexcept;
 			protected:
 				/**
+				 * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+				 * @param event обытие контейнера функций обратного вызова
+				 * @param fid   идентификатор функции обратного вызова
+				 * @param fn    функция обратного вызова в чистом виде
+				 */
+				virtual void callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept = 0;
+			protected:
+				/**
 				 * chunking Метод обработки получения чанков
 				 * @param bid   идентификатор брокера
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
 				virtual void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
-			protected:
-				/**
-				 * eventCallback Метод отлавливания событий контейнера функций обратного вызова
-				 * @param event событие контейнера функций обратного вызова
-				 * @param fid   идентификатор функции обратного вызова
-				 * @param dump  дамп данных функции обратного вызова
-				 */
-				virtual void eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept = 0;
 			protected:
 				/**
 				 * errors Метод вывода полученных ошибок протокола

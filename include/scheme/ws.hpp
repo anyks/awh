@@ -57,7 +57,7 @@ namespace awh {
 						// Бинарный буфер полезной нагрузки
 						awh::buffer_t payload;
 						// Данные фрагметрированного сообщения
-						vector <char> fragmes;
+						vector <char> fragments;
 						/**
 						 * Buffer Конструктор
 						 * @param log объект для работы с логами

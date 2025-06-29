@@ -33,6 +33,7 @@
  * Стандартная библиотека
  */
 #include <mutex>
+#include <vector>
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
@@ -55,28 +56,11 @@ namespace awh {
 	 */
 	typedef class AWHSHARED_EXPORT Buffer {
 		private:
-			// Количество аллоцированных элементов 100Mb
-			static constexpr uint32_t BATCH = 0x6400000;
-		private:
 			// Мютекс для блокировки потока
 			mutex _mtx;
 		private:
-			// Последний элемент в очереди
-			size_t _end;
-			// Первый элемент в очереди
-			size_t _begin;
-		private:
-			// Текущий размер очереди
-			size_t _size;
-		private:
-			// Максимальный размер выделяемой памяти
-			size_t _batch;
-		private:
-			// Размер всех добавленных данных
-			size_t _bytes;
-		private:
-			// Адреса добавленных данных
-			uint8_t * _data;
+			// Объект буфера данных
+			vector <uint8_t> _buffer;
 		private:
 			// Объект для работы с логами
 			const log_t * _log;
@@ -154,7 +138,7 @@ namespace awh {
 					// Получаем размер данных
 					const size_t size = sizeof(result);
 					// Выполняем копирование данных контейнера
-					::memcpy(&result, this->get() + (this->_end - size), size);
+					::memcpy(&result, this->get() + (this->_buffer.size() - size), size);
 				}
 				// Выводим результат
 				return result;
@@ -239,16 +223,10 @@ namespace awh {
 			void erase(const size_t size) noexcept;
 		public:
 			/**
-			 * batch Метод установки размера выделяемой памяти
-			 * @param batch размер выделяемой памяти
-			 */
-			void batch(const size_t batch) noexcept;
-		public:
-			/**
 			 * reserve Метод резервирования размера очереди
 			 * @param size размер выделяемой памяти
 			 */
-			void reserve(const size_t size = 0) noexcept;
+			void reserve(const size_t size) noexcept;
 		public:
 			/**
 			 * push Метод добавления бинарного буфера данных в очередь
@@ -310,18 +288,11 @@ namespace awh {
 			 * Buffer Конструктор
 			 * @param log объект для работы с логами
 			 */
-			Buffer(const log_t * log) noexcept;
-			/**
-			 * Buffer Конструктор
-			 * @param batch максимальный размер выделяемой памяти
-			 * @param log   объект для работы с логами
-			 */
-			Buffer(const size_t batch, const log_t * log) noexcept;
-		public:
+			Buffer(const log_t * log) noexcept : _log(log) {}
 			/**
 			 * ~Buffer Деструктор
 			 */
-			~Buffer() noexcept;
+			~Buffer() noexcept {}
 	} buffer_t;
 };
 

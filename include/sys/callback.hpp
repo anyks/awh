@@ -85,21 +85,21 @@ namespace awh {
 			/**
 			 * Создаём тип данных функции обратного вызова
 			 */
-			typedef shared_ptr <Function> type_t;
+			typedef shared_ptr <Function> fn_t;
 		private:
 			// Мютекс для блокировки основного потока
 			mutex _mtx;
 		private:
 			// Хранилище распределения по названиям
-			map <uint64_t, type_t> _callbacks;
+			map <uint64_t, fn_t> _callbacks;
 		private:
 			/**
 			 * Функция обратного вызова при получении события установки или удаления функции
 			 * @param флаг типа события
 			 * @param идентификатор функции
-			 * @param данные функции обратного вызова
+			 * @param функция обратного вызова в чистом виде
 			 */
-			function <void (const event_t, const uint64_t, const type_t &)> _callback;
+			function <void (const event_t, const uint64_t, const fn_t &)> _callback;
 		private:
 			// Объект работы с логами
 			const log_t * _log;
@@ -157,7 +157,7 @@ namespace awh {
 			 * dump Метод получения дампа функций обратного вызова
 			 * @return выводим созданный блок дампа контейнера
 			 */
-			const map <uint64_t, type_t> & dump() const noexcept {
+			const map <uint64_t, fn_t> & dump() const noexcept {
 				// Выводим дамп функций обратного вызова
 				return this->_callbacks;
 			}
@@ -165,7 +165,7 @@ namespace awh {
 			 * dump Метод установки дампа функций обратного вызова
 			 * @param callbacks дамп данных функций обратного вызова
 			 */
-			void dump(const map <uint64_t, type_t> & callbacks) noexcept {
+			void dump(const map <uint64_t, fn_t> & callbacks) noexcept {
 				// Если данные функций обратного вызова переданы
 				if(!callbacks.empty()){
 					/**
@@ -208,7 +208,7 @@ namespace awh {
 					// Выполняем очистку списка функций обратного вызова
 					this->_callbacks.clear();
 					// Выполняем очистку выделенной памяти для списка функций обратного вызова
-					map <uint64_t, type_t> ().swap(this->_callbacks);
+					map <uint64_t, fn_t> ().swap(this->_callbacks);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -797,7 +797,7 @@ namespace awh {
 			 * @param fid      идентификатор устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 */
-			void _set(const uint64_t fid, const type_t & callback) noexcept {
+			void _set(const uint64_t fid, const fn_t & callback) noexcept {
 				// Если параметры функции обратного вызова переданы
 				if((fid > 0) && (callback != nullptr)){
 					/**
@@ -878,7 +878,7 @@ namespace awh {
 			 * @param name     название устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 */
-			void set(const char * name, const type_t & callback) noexcept {
+			void set(const char * name, const fn_t & callback) noexcept {
 				// Если название функции обратного вызова передано
 				if((name != nullptr) && (callback != nullptr))
 					// Выполняем установку функции обратного вызова
@@ -889,7 +889,7 @@ namespace awh {
 			 * @param name     название устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 */
-			void set(const string & name, const type_t & callback) noexcept {
+			void set(const string & name, const fn_t & callback) noexcept {
 				// Если название функции обратного вызова передано
 				if(!name.empty() && (callback != nullptr))
 					// Выполняем установку функции обратного вызова
@@ -905,7 +905,7 @@ namespace awh {
 			 * @param fid      идентификатор устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
 			 */
-			void set(const T fid, const type_t & callback) noexcept {
+			void set(const T fid, const fn_t & callback) noexcept {
 				// Если мы получили на вход число
 				if((callback != nullptr) && (is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>))
 					// Выполняем установку функции обратного вызова
@@ -917,7 +917,7 @@ namespace awh {
 			 * @param fid идентификатор функции обратного вызова
 			 * @return    функция обратного вызова если существует
 			 */
-			auto _get(const uint64_t fid) const noexcept -> const type_t & {
+			auto _get(const uint64_t fid) const noexcept -> const fn_t & {
 				// Если идентификатор функции передан
 				if(fid > 0){
 					/**
@@ -975,7 +975,7 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 */
-			auto get(const char * name) const noexcept -> const type_t & {
+			auto get(const char * name) const noexcept -> const fn_t & {
 				// Выполняем получение функции обратного вызова
 				return this->_get(this->fid(name));
 			}
@@ -984,7 +984,7 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 */
-			auto get(const string & name) const noexcept -> const type_t & {
+			auto get(const string & name) const noexcept -> const fn_t & {
 				// Выполняем получение функции обратного вызова
 				return this->_get(this->fid(name));
 			}
@@ -993,7 +993,7 @@ namespace awh {
 			 * @param fid идентификатор функции обратного вызова
 			 * @return    запрашиваемая функция обратного вызова
 			 */
-			auto get(const uint64_t fid) const noexcept -> const type_t & {
+			auto get(const uint64_t fid) const noexcept -> const fn_t & {
 				// Выполняем получение функции обратного вызова
 				return this->_get(fid);
 			}
@@ -1007,7 +1007,7 @@ namespace awh {
 			 * @param fid идентификатор функции обратного вызова
 			 * @return    запрашиваемая функция обратного вызова
 			 */
-			auto get(const T fid) const noexcept -> const type_t & {
+			auto get(const T fid) const noexcept -> const fn_t & {
 				// Выполняем получение функции обратного вызова
 				return this->_get(static_cast <uint64_t> (fid));
 			}
@@ -1704,7 +1704,7 @@ namespace awh {
 			 * on Метод установки функции обратного события на получения событий модуля
 			 * @param callback функция обратного вызова для установки
 			 */
-			void on(function <void (const event_t, const uint64_t, const type_t &)> callback) noexcept {
+			void on(function <void (const event_t, const uint64_t, const fn_t &)> callback) noexcept {
 				/**
 				 * Выполняем отлов ошибок
 				 */
@@ -1803,7 +1803,7 @@ namespace awh {
 			 * @param args     аргументы функции обратного вызова
 			 * @return         результат выполнения функции
 			 */
-			auto _call(const type_t & callback, const uint64_t fid, Args... args) const noexcept -> typename function <T>::result_type {
+			auto _call(const fn_t & callback, const uint64_t fid, Args... args) const noexcept -> typename function <T>::result_type {
 				/**
 				 * Выполняем отлов ошибок
 				 */
@@ -1865,7 +1865,7 @@ namespace awh {
 			 * @param args     аргументы функции обратного вызова
 			 * @return         результат выполнения функции
 			 */
-			auto call(const type_t & callback, Args... args) const noexcept -> typename function <T>::result_type {
+			auto call(const fn_t & callback, Args... args) const noexcept -> typename function <T>::result_type {
 				// Выполняем функцию обратного вызова
 				return this->_call <T> (callback, 0, args...);
 			}
@@ -1882,7 +1882,7 @@ namespace awh {
 			 * @param args     аргументы функции обратного вызова
 			 * @return         результат выполнения функции
 			 */
-			auto call(const type_t & callback, const char * name, Args... args) const noexcept -> typename function <T>::result_type {
+			auto call(const fn_t & callback, const char * name, Args... args) const noexcept -> typename function <T>::result_type {
 				// Выполняем функцию обратного вызова
 				return this->_call <T> (callback, this->fid(name), args...);
 			}
@@ -1899,7 +1899,7 @@ namespace awh {
 			 * @param args     аргументы функции обратного вызова
 			 * @return         результат выполнения функции
 			 */
-			auto call(const type_t & callback, const string & name, Args... args) const noexcept -> typename function <T>::result_type {
+			auto call(const fn_t & callback, const string & name, Args... args) const noexcept -> typename function <T>::result_type {
 				// Выполняем функцию обратного вызова
 				return this->_call <T> (callback, this->fid(name), args...);
 			}
@@ -1916,7 +1916,7 @@ namespace awh {
 			 * @param args     аргументы функции обратного вызова
 			 * @return         результат выполнения функции
 			 */
-			auto call(const type_t & callback, const uint64_t fid, Args... args) const noexcept -> typename function <T>::result_type {
+			auto call(const fn_t & callback, const uint64_t fid, Args... args) const noexcept -> typename function <T>::result_type {
 				// Выполняем функцию обратного вызова
 				return this->_call <T> (callback, fid, args...);
 			}
@@ -1934,7 +1934,7 @@ namespace awh {
 			 * @param args     аргументы функции обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			auto call(const type_t & callback, const A fid, Args... args) noexcept -> typename function <B>::result_type {
+			auto call(const fn_t & callback, const A fid, Args... args) noexcept -> typename function <B>::result_type {
 				// Если мы получили на вход число
 				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
 					// Выполняем установку функции обратного вызова

@@ -23,9 +23,10 @@
 using namespace std;
 
 /**
- * realloc Метод увеличения памяти под записи
+ * alignment Метод выравнивания памяти
+ * @param size необходимый размер
  */
-void awh::Queue::realloc() noexcept {
+void awh::Queue::alignment(const size_t size) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -42,76 +43,24 @@ void awh::Queue::realloc() noexcept {
 				else {
 					// Выполняем блокировку потока
 					const lock_guard <mutex> lock(this->_mtx);
-					{
-						// Выделяем новую порцию данных
-						uint64_t * data = reinterpret_cast <uint64_t *> (::malloc(this->_size * sizeof(uint64_t)));
-						// Если память не выделенна
-						if(data == nullptr){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
-							#endif
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						// Если память выделенна удачно
-						} else {
-							// Копируем в новую порцию данных список указателей
-							::memcpy(data, this->_data + this->_begin, (this->_size - this->_begin) * sizeof(uint64_t));
-							// Выполняем удаление старого буфера данных
-							::free(this->_data);
-							// Присваиваем старому буферу данных новый указатель
-							this->_data = data;
-						}
-					}{
-						// Выделяем новую порцию данных для списка размеров
-						size_t * data = reinterpret_cast <size_t *> (::malloc(this->_size * sizeof(size_t)));
-						// Если память не выделенна
-						if(data == nullptr){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
-							/**
-							* Если режим отладки не включён
-							*/
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
-							#endif
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						// Если память выделенна удачно
-						} else {
-							// Копируем в новую порцию данных список указателей
-							::memcpy(data, this->_sizes + this->_begin, (this->_size - this->_begin) * sizeof(size_t));
-							// Выполняем удаление старого буфера данных
-							::free(this->_sizes);
-							// Присваиваем старому буферу данных новый указатель
-							this->_sizes = data;
-						}
-					}
+					// Перемещаем текущие позиции данных наверх
+					::memcpy(this->_data, this->_data + this->_begin, (this->_end - this->_begin) * sizeof(uint64_t));
+					// Перемещаем текущие позиции размеров наверх
+					::memcpy(this->_sizes, this->_sizes + this->_begin, (this->_end - this->_begin) * sizeof(size_t));
 					// Смещаем конец записей
-					this->_end = (this->_size - this->_begin);
+					this->_end = (this->_end - this->_begin);
 					// Смещаем начальную позицию в самое начало
 					this->_begin = 0;
 				}
+			}
 			// Если нужно выделить новую порцию данных
-			} else {
+			if(size > 0 ? (size > (this->_size - this->_end)) : (this->_batch > this->_size)){
 				// Выполняем блокировку потока
 				const lock_guard <mutex> lock(this->_mtx);
+				// Получаем размер шага следующей порции данных
+				const size_t step = (size > 0 ? (this->_size + this->_batch) : this->_batch);
 				// Устанавличаем новый размер записей
-				this->_size = (this->_end + this->_batch);
+				this->_size = (size > 0 ? (size > step ? size : step) : step);
 				// Выделяем новую порцию данных
 				this->_sizes = reinterpret_cast <size_t *> (::realloc(this->_sizes, this->_size * sizeof(size_t)));
 				// Выделяем новую порцию данных
@@ -159,6 +108,53 @@ void awh::Queue::realloc() noexcept {
  * clear Метод очистки всех данных очереди
  */
 void awh::Queue::clear() noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если данные есть в списке
+		if(this->_end > 0){
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx);
+			// Выполняем удаление всех добавленных данных в очередь
+			for(size_t i = this->_begin; i < this->_end; i++){
+				// Выполняем получение указателя на данные
+				uintptr_t ptr = static_cast <uintptr_t> (this->_data[i]);
+				// Выполняем удаление выделенных данных
+				::free(reinterpret_cast <uint8_t *> (ptr));
+			}
+			// Выполняем сброс конечной позиции очереди
+			this->_end = 0;
+			// Выполняем сброс начальной позиции очереди
+			this->_begin = 0;
+			// Выполняем сброс общего размера данных
+			this->_bytes = 0;
+			// Устанавливаем размер очереди
+			this->_size = this->_batch;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * reset Метод очистки всех ресурсов
+ */
+void awh::Queue::reset() noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -259,8 +255,8 @@ void awh::Queue::reserve(const size_t count) noexcept {
 		// Выполняем установку батча по умолчанию
 		else this->_batch = static_cast <size_t> (BATCH);
 	}
-	// Выполняем увеличения записей под данные
-	this->realloc();
+	// Выполняем выравнивание памяти
+	this->alignment();
 }
 /**
  * pop Метод удаления записи в очереди
@@ -440,8 +436,8 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем увеличения записей под данные
-			this->realloc();
+			// Выполняем выравнивание памяти
+			this->alignment(size);
 			// Выполняем блокировку потока
 			const lock_guard <mutex> lock(this->_mtx);
 			// Выделяем память для добавления данных
@@ -510,8 +506,8 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем увеличения записей под данные
-			this->realloc();
+			// Выполняем выравнивание памяти
+			this->alignment(size);
 			// Выполняем блокировку потока
 			const lock_guard <mutex> lock(this->_mtx);
 			// Выделяем память для добавления данных
@@ -624,8 +620,8 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
  * @param log объект для работы с логами
  */
 awh::Queue::Queue(const log_t * log) noexcept :
- _end(0), _begin(0), _size(0), _batch(BATCH), _bytes(0),
- _sizes(nullptr), _data(nullptr), _log(log) {
+ _end(0), _begin(0), _size(0), _batch(BATCH),
+ _bytes(0), _sizes(nullptr), _data(nullptr), _log(log) {
 	/**
 	 * Выполняем отлов ошибок
 	 */

@@ -247,13 +247,13 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 	}
 }
 /**
- * writeCallback Метод обратного вызова при записи сообщения на клиенте
+ * writeEvent Метод обратного вызова при записи сообщения на клиенте
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
  * @param sid    идентификатор схемы сети
  */
-void awh::client::Http1::writeCallback(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
+void awh::client::Http1::writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((bid > 0) && (sid > 0)){
 		// Определяем протокол клиента
@@ -271,9 +271,38 @@ void awh::client::Http1::writeCallback(const char * buffer, const size_t size, c
 			// Если агент является клиентом Websocket
 			case static_cast <uint8_t> (agent_t::WEBSOCKET):
 				// Выполняем переброс вызова записи на клиент Websocket
-				this->_ws1.writeCallback(buffer, size, bid, sid);
+				this->_ws1.writeEvent(buffer, size, bid, sid);
 			break;
 		}
+	}
+}
+/**
+ * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+ * @param event событие контейнера функций обратного вызова
+ * @param fid   идентификатор функции обратного вызова
+ * @param fn    функция обратного вызова в чистом виде
+ */
+void awh::client::Http1::callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept {
+	// Определяем входящее событие контейнера функций обратного вызова
+	switch(static_cast <uint8_t> (event)){
+		// Если событием является установка функции обратного вызова
+		case static_cast <uint8_t> (callback_t::event_t::SET): {
+			// Если дамп функции обратного вызова передан и событие не является событием подключения
+			if(fid != web_t::_callback.fid("active")){
+				// Создаём локальный контейнер функций обратного вызова
+				callback_t callback(this->_log);
+				// Выполняем установку функции обратного вызова
+				callback.set(fid, fn);
+				// Если функции обратного вызова установлены
+				if(!callback.empty())
+					// Выполняем установку функций обратного вызова для Websocket-клиента
+					this->_ws1.callback(callback);
+				// Если функция обратного вызова на перехват полученных чанков установлена
+				if(fid == web_t::_callback.fid("chunking"))
+					// Устанавливаем внешнюю функцию обратного вызова
+					this->_http.on <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", web_t::_callback.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
+			}
+		} break;
 	}
 }
 /**
@@ -500,35 +529,6 @@ void awh::client::Http1::chunking([[maybe_unused]] const uint64_t bid, const vec
 					web_t::_callback.call <void (const int32_t, const uint64_t, const vector <char> &)> ("chunks", i->first, i->second.id, chunk);
 			}
 		}
-	}
-}
-/**
- * eventCallback Метод отлавливания событий контейнера функций обратного вызова
- * @param event событие контейнера функций обратного вызова
- * @param fid   идентификатор функции обратного вызова
- * @param dump  дамп данных функции обратного вызова
- */
-void awh::client::Http1::eventCallback(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept {
-	// Определяем входящее событие контейнера функций обратного вызова
-	switch(static_cast <uint8_t> (event)){
-		// Если событием является установка функции обратного вызова
-		case static_cast <uint8_t> (callback_t::event_t::SET): {
-			// Если дамп функции обратного вызова передан и событие не является событием подключения
-			if(fid != web_t::_callback.fid("active")){
-				// Создаём локальный контейнер функций обратного вызова
-				callback_t callback(this->_log);
-				// Выполняем установку функции обратного вызова
-				callback.set(fid, dump);
-				// Если функции обратного вызова установлены
-				if(!callback.empty())
-					// Выполняем установку функций обратного вызова для Websocket-клиента
-					this->_ws1.callback(callback);
-				// Если функция обратного вызова на перехват полученных чанков установлена
-				if(fid == web_t::_callback.fid("chunking"))
-					// Устанавливаем внешнюю функцию обратного вызова
-					this->_http.on <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking", web_t::_callback.get <void (const int32_t, const uint64_t, const vector <char> &)> ("chunking"));
-			}
-		} break;
 	}
 }
 /**
@@ -1283,7 +1283,7 @@ void awh::client::Http1::core(const client::core_t * core) noexcept {
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
-		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http1_t::writeCallback, this, _1, _2, _3, _4);
+		const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http1_t::writeEvent, this, _1, _2, _3, _4);
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
@@ -1510,7 +1510,7 @@ awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const 
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
 	this->_http.on <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", &http1_t::headers, this, _1, _2, _3, _4);
 	// Устанавливаем функцию записи данных
-	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http1_t::writeCallback, this, _1, _2, _3, _4);
+	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http1_t::writeEvent, this, _1, _2, _3, _4);
 }
 /**
  * ~Http1 Деструктор

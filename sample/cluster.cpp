@@ -73,14 +73,18 @@ class Executor {
 		 * @param buffer буфер данных сообщения
 		 * @param size   размер полученных данных
 		 */
-		void message(const cluster_t::family_t worker, const pid_t pid, const char * buffer, const size_t size){
+		void message(const cluster_t::family_t worker, const pid_t pid, const char * buffer, const size_t size, cluster::core_t * core){
 			// Определяем тип воркера
 			switch(static_cast <uint8_t> (worker)){
 				// Если событие пришло от родительского процесса
-				case static_cast <uint8_t> (cluster_t::family_t::MASTER):
+				case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
+					// Формируем новое ответное сообщение
+					const string message = "ANYKS!!!";
+					// Отправляем проиветствие родительскому процессу
+					core->send(pid, message.data(), message.size());
 					// Выводим полученное сообщение в лог
 					this->_log->print("Message from children [%u]: %s", log_t::flag_t::INFO, pid, string(buffer, size).c_str());
-				break;
+				} break;
 				// Если событие пришло от дочернего процесса
 				case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
 					// Выводим полученное сообщение в лог
@@ -136,14 +140,18 @@ int32_t main(int32_t argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Выделяем для кластера все доступные ядра
 	core.size();
+	// Устанавливаем название кластера
+	core.name("ANYKS");
 	// Разрешаем выполнять автоматический перезапуск упавшего процесса
 	core.autoRestart(true);
+	// Переключаем режим передачи данных
+	// core.transfer(cluster_t::transfer_t::IPC);
 	// Устанавливаем функцию обратного вызова на запуск системы
 	core.on <void (const awh::core_t::status_t)> ("status", &Executor::status, &executor, _1);
 	// Устанавливаем функцию обратного вызова при получении событий
 	core.on <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", &Executor::events, &executor, _1, _2, _3, &core);
 	// Устанавливаем функцию обработки входящих сообщений
-	core.on <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", &Executor::message, &executor, _1, _2, _3, _4);
+	core.on <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", &Executor::message, &executor, _1, _2, _3, _4, &core);
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

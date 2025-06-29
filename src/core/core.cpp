@@ -480,7 +480,7 @@ void awh::Core::launching([[maybe_unused]] const bool mode, const bool status) n
 			// Выполняем запуск функции в основном потоке
 			this->_callback.call <void (const status_t)> ("status", this->_status);
 		// Если разрешено выводить информацию в лог
-		if(this->_verb)
+		if(this->_info)
 			// Выводим в консоль информацию
 			this->_log->print("[+] Start service: PID=%u", log_t::flag_t::INFO, ::getpid());
 	}
@@ -502,7 +502,7 @@ void awh::Core::closedown([[maybe_unused]] const bool mode, const bool status) n
 			// Выполняем запуск функции в основном потоке
 			this->_callback.call <void (const status_t)> ("status", this->_status);
 		// Если разрешено выводить информацию в лог
-		if(this->_verb)
+		if(this->_info)
 			// Выводим в консоль информацию
 			this->_log->print("[-] Stop service: PID=%u", log_t::flag_t::INFO, ::getpid());
 	}
@@ -571,7 +571,7 @@ void awh::Core::verbose(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем флаг запрета вывода информационных сообщений
-	this->_verb = mode;
+	this->_info = mode;
 }
 /**
  * frequency Метод установки частоты обновления базы событий
@@ -660,7 +660,7 @@ uint64_t awh::Core::emplaceUpstream(function <void (const uint64_t)> callback) n
  * @param log объект для работы с логами
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _mode(false), _verb(true),
+ _pid(::getpid()), _mode(false), _info(true),
  _dispatch(fmk, log), _callback(log), _sig(fmk, log),
  _status(status_t::STOP), _type(engine_t::type_t::NONE),
  _signals(scheme_t::mode_t::DISABLED), _fmk(fmk), _log(log) {

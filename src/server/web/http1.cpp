@@ -489,9 +489,9 @@ void awh::server::Http1::writeEvents(const char * buffer, const size_t size, con
  * callbackEvents Метод отлавливания событий контейнера функций обратного вызова
  * @param event событие контейнера функций обратного вызова
  * @param fid   идентификатор функции обратного вызова
- * @param dump  дамп данных функции обратного вызова
+ * @param fn    функция обратного вызова в чистом виде
  */
-void awh::server::Http1::callbackEvents(const callback_t::event_t event, const uint64_t fid, const callback_t::type_t & dump) noexcept {
+void awh::server::Http1::callbackEvents(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept {
 	// Определяем входящее событие контейнера функций обратного вызова
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
@@ -501,7 +501,7 @@ void awh::server::Http1::callbackEvents(const callback_t::event_t event, const u
 				// Создаём локальный контейнер функций обратного вызова
 				callback_t callback(this->_log);
 				// Выполняем установку функции обратного вызова
-				callback.set(fid, dump);
+				callback.set(fid, fn);
 				// Если функции обратного вызова установлены
 				if(!callback.empty())
 					// Выполняем установку функций обратного вызова для Websocket-сервера
@@ -765,11 +765,11 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Выполняем очистку буфера данных
 					options->buffer.payload.clear();
 					// Выполняем очистку фрагментированных сообщений
-					options->buffer.fragmes.clear();
+					options->buffer.fragments.clear();
 					// Если размер выделенной памяти выше максимального размера буфера
-					if(options->buffer.fragmes.capacity() > AWH_BUFFER_SIZE)
+					if(options->buffer.fragments.capacity() > AWH_BUFFER_SIZE)
 						// Выполняем очистку временного буфера данных
-						vector <char> ().swap(options->buffer.fragmes);
+						vector <char> ().swap(options->buffer.fragments);
 					// Завершаем работу
 					return;
 				}
