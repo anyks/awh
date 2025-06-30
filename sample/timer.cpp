@@ -131,7 +131,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
-	dynamic_cast <awh::core_t &> (timer).on <void (const awh::core_t::status_t, core_t *)> ("status", &Executor::status, &executor, _1, &timer);
+	dynamic_cast <awh::core_t &> (timer).on <void (const awh::core_t::status_t)> ("status", &Executor::status, &executor, _1, &timer);
 	// Выполняем запуск таймера
 	timer.start();
 	// Выводим результат

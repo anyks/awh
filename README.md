@@ -1229,7 +1229,8 @@ int32_t main(int32_t argc, char * argv[]){
 	log.name("Timer");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	timer.on <void (const awh::core_t::status_t)> ("status", &Executor::launched, &executor, _1, &timer);
+	dynamic_cast <awh::core_t &> (timer).on <void (const awh::core_t::status_t)> ("status", &Executor::launched, &executor, _1, &timer);
+
 	timer.start();
 
 	return EXIT_SUCCESS;
@@ -2347,6 +2348,12 @@ int32_t main(int32_t argc, char * argv[]){
 
 	core.size();
 	core.autoRestart(true);
+
+	// Setting the cluster name
+	core.name("ANYKS");
+
+	// Activating the mode of exchanging messages between processes via a unix socket
+	// core.transfer(cluster_t::transfer_t::IPC);
 
 	core.on <void (const awh::core_t::status_t)> ("status", &Executor::launched, &executor, _1);
 	core.on <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", &Executor::events, &executor, _1, _2, _3, &core);
