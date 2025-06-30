@@ -753,18 +753,18 @@ bool awh::Cluster::connect() noexcept {
  * @param fd  файловый дескриптор (сокет)
  */
 void awh::Cluster::accept(const uint16_t wid, const SOCKET fd, const base_t::event_type_t) noexcept {
-	// Выполняем поиск воркера
-	auto i = this->_workers.find(wid);
-	// Если воркер найден
-	if(i != this->_workers.end()){
-		// Выполняем инициализацию нового клиента
-		unique_ptr <client_t> client = make_unique <client_t> (this->_fmk, this->_log);
-		// Заполняем структуру клиента нулями
-		::memset(&client->peer.addr, 0, sizeof(client->peer.addr));
-		/**
-		 * Для операционной системы не являющейся OS Windows
-		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * Для операционной системы не являющейся OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем поиск воркера
+		auto i = this->_workers.find(wid);
+		// Если воркер найден
+		if(i != this->_workers.end()){
+			// Выполняем инициализацию нового клиента
+			unique_ptr <client_t> client = make_unique <client_t> (this->_fmk, this->_log);
+			// Заполняем структуру клиента нулями
+			::memset(&client->peer.addr, 0, sizeof(client->peer.addr));
 			// Создаём объект подключения для клиента
 			struct sockaddr_un addr;
 			// Очищаем всю структуру для клиента
@@ -775,40 +775,40 @@ void awh::Cluster::accept(const uint16_t wid, const SOCKET fd, const base_t::eve
 			client->peer.size = sizeof(addr);
 			// Выполняем копирование объект подключения клиента в сторейдж
 			::memcpy(&client->peer.addr, &addr, sizeof(addr));
-		#endif
-		// Определяем разрешено ли подключение к прокси серверу
-		client->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client->peer.addr), &client->peer.size);
-		// Если сокет не создан тогда выходим
-		if((client->fd == INVALID_SOCKET) || (client->fd >= AWH_MAX_SOCKETS))
-			// Выходим из функции
-			return;
-		// Выполняем игнорирование сигнала неверной инструкции процессора
-		this->_server.socket.noSigILL();
-		// Отключаем сигнал записи в оборванное подключение
-		this->_server.socket.noSigPIPE(client->fd);
-		// Устанавливаем разрешение на повторное использование сокета
-		this->_server.socket.reuseable(client->fd);
-		// Переводим сокет в не блокирующий режим
-		this->_server.socket.blocking(client->fd, socket_t::mode_t::DISABLED);
-		// Выполняем добавление клиента в список новых клиентов
-		auto ret = this->_clients.emplace(client->fd, ::move(client));
-		// Устанавливаем базу событий для чтения
-		ret.first->second->read = this->_core->eventBase();
-		// Устанавливаем сокет для чтения
-		ret.first->second->read = ret.first->second->fd;
-		// Устанавливаем событие на чтение данных от дочернего процесса
-		ret.first->second->read = std::bind(&worker_t::message, i->second.get(), _1, _2);
-		// Выполняем запуск работы чтения данных с дочерних процессов
-		ret.first->second->read.start();
-		// Выполняем активацию работы чтения данных с дочерних процессов
-		ret.first->second->read.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
-		// Выполняем активацию работы события закрытия подключения
-		ret.first->second->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-		// Устанавливаем размер буфера на чтение
-		this->_server.socket.bufferSize(ret.first->second->fd, this->_bandwidth.read, socket_t::mode_t::READ);
-		// Устанавливаем размер буфера на запись
-		this->_server.socket.bufferSize(ret.first->second->fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
-	}
+			// Определяем разрешено ли подключение к прокси серверу
+			client->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client->peer.addr), &client->peer.size);
+			// Если сокет не создан тогда выходим
+			if((client->fd == INVALID_SOCKET) || (client->fd >= AWH_MAX_SOCKETS))
+				// Выходим из функции
+				return;
+			// Выполняем игнорирование сигнала неверной инструкции процессора
+			this->_server.socket.noSigILL();
+			// Отключаем сигнал записи в оборванное подключение
+			this->_server.socket.noSigPIPE(client->fd);
+			// Устанавливаем разрешение на повторное использование сокета
+			this->_server.socket.reuseable(client->fd);
+			// Переводим сокет в не блокирующий режим
+			this->_server.socket.blocking(client->fd, socket_t::mode_t::DISABLED);
+			// Выполняем добавление клиента в список новых клиентов
+			auto ret = this->_clients.emplace(client->fd, ::move(client));
+			// Устанавливаем базу событий для чтения
+			ret.first->second->read = this->_core->eventBase();
+			// Устанавливаем сокет для чтения
+			ret.first->second->read = ret.first->second->fd;
+			// Устанавливаем событие на чтение данных от дочернего процесса
+			ret.first->second->read = std::bind(&worker_t::message, i->second.get(), _1, _2);
+			// Выполняем запуск работы чтения данных с дочерних процессов
+			ret.first->second->read.start();
+			// Выполняем активацию работы чтения данных с дочерних процессов
+			ret.first->second->read.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+			// Выполняем активацию работы события закрытия подключения
+			ret.first->second->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+			// Устанавливаем размер буфера на чтение
+			this->_server.socket.bufferSize(ret.first->second->fd, this->_bandwidth.read, socket_t::mode_t::READ);
+			// Устанавливаем размер буфера на запись
+			this->_server.socket.bufferSize(ret.first->second->fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
+		}
+	#endif
 }
 /**
  * write Метод записи буфера данных в сокет
