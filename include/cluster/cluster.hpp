@@ -41,7 +41,6 @@
 /**
  * Наши модули
  */
-
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/callback.hpp>
