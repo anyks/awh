@@ -584,8 +584,9 @@ namespace awh {
 			 * _set Метод установки функции из одного хранилища в текущее
 			 * @param fid     идентификатор копируемой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			void _set(const uint64_t fid, const Callback & storage) noexcept {
+			auto _set(const uint64_t fid, const Callback & storage) noexcept -> uint64_t {
 				// Если указанная функция существует
 				if(!storage._callbacks.empty() && storage.is(fid)){
 					/**
@@ -610,6 +611,8 @@ namespace awh {
 								if(this->_callback != nullptr)
 									// Выполняем функцию обратного вызова
 									apply(this->_callback, make_tuple(event_t::SET, fid, j->second));
+								// Выводим идентификатор обратной функции
+								return i->first;
 							// Если функция ещё не существует
 							} else {
 								// Выполняем блокировку потока
@@ -622,6 +625,8 @@ namespace awh {
 								if(this->_callback != nullptr)
 									// Выполняем функцию обратного вызова
 									apply(this->_callback, make_tuple(event_t::SET, fid, ret.first->second));
+								// Выводим идентификатор обратной функции
+								return ret.first->first;
 							}
 						}
 					/**
@@ -643,29 +648,37 @@ namespace awh {
 						#endif
 					}
 				}
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		public:
 			/**
 			 * set Метод установки функции из одного хранилища в текущее
 			 * @param name    название первой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			void set(const char * name, const Callback & storage) noexcept {
+			auto set(const char * name, const Callback & storage) noexcept -> uint64_t {
 				// Если название функции обратного вызова передано
 				if((name != nullptr) && !storage.empty())
 					// Выполняем установку функции обратного вызова
-					this->_set(this->fid(name), storage);
+					return this->_set(this->fid(name), storage);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 			/**
 			 * set Метод установки функции из одного хранилища в текущее
 			 * @param name    название первой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			void set(const string & name, const Callback & storage) noexcept {
+			auto set(const string & name, const Callback & storage) noexcept -> uint64_t {
 				// Если название функции обратного вызова передано
 				if(!name.empty() && !storage.empty())
 					// Выполняем установку функции обратного вызова
-					this->_set(this->fid(name), storage);
+					return this->_set(this->fid(name), storage);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 			/**
 			 * @tparam Шаблон метода установки функции из одного хранилища в текущее
@@ -676,12 +689,15 @@ namespace awh {
 			 * set Метод установки функции из одного хранилища в текущее
 			 * @param fid     идентификатор копируемой функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			void set(const T fid, const Callback & storage) noexcept {
+			auto set(const T fid, const Callback & storage) noexcept -> uint64_t {
 				// Если мы получили на вход число
 				if(!storage.empty() && (is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>))
 					// Выполняем установку функции обратного вызова
-					this->_set(static_cast <uint64_t> (fid), storage);
+					return this->_set(static_cast <uint64_t> (fid), storage);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		private:
 			/**
@@ -689,8 +705,9 @@ namespace awh {
 			 * @param fid1    идентификатор копируемой функции
 			 * @param fid2    новый идентификатор полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			void _set(const uint64_t fid1, const uint64_t fid2, const Callback & storage) noexcept {
+			auto _set(const uint64_t fid1, const uint64_t fid2, const Callback & storage) noexcept -> uint64_t {
 				// Если указанная функция существует
 				if(!storage._callbacks.empty() && storage.is(fid1)){
 					/**
@@ -715,6 +732,8 @@ namespace awh {
 								if(this->_callback != nullptr)
 									// Выполняем функцию обратного вызова
 									apply(this->_callback, make_tuple(event_t::SET, fid2, j->second));
+								// Выводим идентификатор обратной функции
+								return i->first;
 							// Если функция ещё не существует
 							} else {
 								// Выполняем блокировку потока
@@ -727,6 +746,8 @@ namespace awh {
 								if(this->_callback != nullptr)
 									// Выполняем функцию обратного вызова
 									apply(this->_callback, make_tuple(event_t::SET, fid2, ret.first->second));
+								// Выводим идентификатор обратной функции
+								return ret.first->first;
 							}
 						}
 					/**
@@ -748,6 +769,8 @@ namespace awh {
 						#endif
 					}
 				}
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		public:
 			/**
@@ -755,24 +778,30 @@ namespace awh {
 			 * @param name1   название копируемой функции
 			 * @param name2   новое название полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			void set(const char * name1, const char * name2, Callback & storage) noexcept {
+			auto set(const char * name1, const char * name2, Callback & storage) noexcept -> uint64_t {
 				// Если названия переданы
 				if((name1 != nullptr) && (name2 != nullptr) && !storage.empty())
 					// Выполняем установку функции обратного вызова
-					this->_set(this->fid(name1), this->fid(name2), storage);
+					return this->_set(this->fid(name1), this->fid(name2), storage);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 			/**
 			 * set Метод установки функции из одного хранилища в текущее
 			 * @param name1   название копируемой функции
 			 * @param name2   новое название полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			void set(const string & name1, const string & name2, Callback & storage) noexcept {
+			auto set(const string & name1, const string & name2, Callback & storage) noexcept -> uint64_t {
 				// Если названия переданы
 				if(!name1.empty() && !name2.empty() && !storage.empty())
 					// Выполняем установку функции обратного вызова
-					this->_set(this->fid(name1), this->fid(name2), storage);
+					return this->_set(this->fid(name1), this->fid(name2), storage);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 			/**
 			 * @tparam Шаблон метода установки функции из одного хранилища в текущее
@@ -784,20 +813,24 @@ namespace awh {
 			 * @param fid1    идентификатор копируемой функции
 			 * @param fid2    новый идентификатор полученной функции
 			 * @param storage хранилище функций откуда нужно получить функцию
+			 * @return        идентификатор добавленной функции обратного вызова
 			 */
-			void set(const T fid1, const T fid2, const Callback & storage) noexcept {
+			auto set(const T fid1, const T fid2, const Callback & storage) noexcept -> uint64_t {
 				// Если мы получили на вход число
 				if(!storage.empty() && (is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>))
 					// Выполняем установку функции обратного вызова
-					this->_set(static_cast <uint64_t> (fid1), static_cast <uint64_t> (fid2), storage);
+					return this->_set(static_cast <uint64_t> (fid1), static_cast <uint64_t> (fid2), storage);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		private:
 			/**
 			 * _set Метод установки функции обратного вызова в чистом виде
 			 * @param fid      идентификатор устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
+			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			void _set(const uint64_t fid, const fn_t & callback) noexcept {
+			auto _set(const uint64_t fid, const fn_t & callback) noexcept -> uint64_t {
 				// Если параметры функции обратного вызова переданы
 				if((fid > 0) && (callback != nullptr)){
 					/**
@@ -871,29 +904,37 @@ namespace awh {
 						#endif
 					}
 				}
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		public:
 			/**
 			 * set Метод установки функции обратного вызова в чистом виде
 			 * @param name     название устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
+			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			void set(const char * name, const fn_t & callback) noexcept {
+			auto set(const char * name, const fn_t & callback) noexcept -> uint64_t {
 				// Если название функции обратного вызова передано
 				if((name != nullptr) && (callback != nullptr))
 					// Выполняем установку функции обратного вызова
-					this->_set(this->fid(name), callback);
+					return this->_set(this->fid(name), callback);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 			/**
 			 * set Метод установки функции обратного вызова в чистом виде
 			 * @param name     название устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
+			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			void set(const string & name, const fn_t & callback) noexcept {
+			auto set(const string & name, const fn_t & callback) noexcept -> uint64_t {
 				// Если название функции обратного вызова передано
 				if(!name.empty() && (callback != nullptr))
 					// Выполняем установку функции обратного вызова
-					this->_set(this->fid(name), callback);
+					return this->_set(this->fid(name), callback);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 			/**
 			 * @tparam Шаблон метода установки функции обратного вызова в чистом виде
@@ -904,12 +945,15 @@ namespace awh {
 			 * set Метод установки функции обратного вызова в чистом виде
 			 * @param fid      идентификатор устанавливаемой функции
 			 * @param callback устанавливаемая функция обратного вызова
+			 * @return         идентификатор добавленной функции обратного вызова
 			 */
-			void set(const T fid, const fn_t & callback) noexcept {
+			auto set(const T fid, const fn_t & callback) noexcept -> uint64_t {
 				// Если мы получили на вход число
 				if((callback != nullptr) && (is_integral_v <T> || is_enum_v <T> || is_floating_point_v <T>))
 					// Выполняем установку функции обратного вызова
-					this->_set(static_cast <uint64_t> (fid), callback);
+					return this->_set(static_cast <uint64_t> (fid), callback);
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		private:
 			/**
@@ -1237,6 +1281,8 @@ namespace awh {
 						#endif
 					}
 				}
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		public:
 			/**
@@ -1423,6 +1469,8 @@ namespace awh {
 						#endif
 					}
 				}
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		public:
 			/**
@@ -1616,6 +1664,8 @@ namespace awh {
 						#endif
 					}
 				}
+				// Выводим результат по умолчанию
+				return 0;
 			}
 		public:
 			/**
