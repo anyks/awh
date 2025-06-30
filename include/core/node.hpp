@@ -139,7 +139,7 @@ namespace awh {
 				engine_t::proto_t proto;
 				// Тип сокета подключения (TCP / UDP)
 				scheme_t::sonet_t sonet;
-				// Тип протокола интернета (IPV4 / IPV6 / NIX)
+				// Тип протокола интернета (IPV4 / IPV6 / IPC)
 				scheme_t::family_t family;
 				// Адрес файла unix-сокета
 				string sockname;
@@ -313,12 +313,12 @@ namespace awh {
 		public:
 			/**
 			 * family Метод извлечения типа протокола интернета
-			 * @return тип протокола интернета (IPV4 / IPV6 / NIX)
+			 * @return тип протокола интернета (IPV4 / IPV6 / IPC)
 			 */
 			scheme_t::family_t family() const noexcept;
 			/**
 			 * family Метод установки типа протокола интернета
-			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
 			 */
 			void family(const scheme_t::family_t family) noexcept;
 		public:
@@ -404,7 +404,7 @@ namespace awh {
 			/**
 			 * network Метод установки параметров сети
 			 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
-			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
 			 * @param sonet  тип сокета подключения (TCP / UDP)
 			 */
 			void network(const vector <string> & ips = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
@@ -421,7 +421,7 @@ namespace awh {
 			operator scheme_t::sonet_t() const noexcept;
 			/**
 			 * operator Оператор извлечения типа протокола интернета
-			 * @return тип протокола интернета (IPV4 / IPV6 / NIX)
+			 * @return тип протокола интернета (IPV4 / IPV6 / IPC)
 			 */
 			operator scheme_t::family_t() const noexcept;
 		public:
@@ -452,7 +452,7 @@ namespace awh {
 			Node & operator = (const scheme_t::sonet_t sonet) noexcept;
 			/**
 			 * Оператор [=] установки типа протокола интернета
-			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
 			 * @return       текущий объект
 			 */
 			Node & operator = (const scheme_t::family_t family) noexcept;

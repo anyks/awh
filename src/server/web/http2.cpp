@@ -37,12 +37,8 @@ void awh::server::Http2::connectEvents(const uint64_t bid, const uint16_t sid) n
 	if((bid > 0) && (sid > 0)){
 		// Создаём брокера
 		this->_scheme.set(bid);
-		// Выполняем активацию HTTP/2 протокола
-		web2_t::connectEvents(bid, sid);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
-		auto i = this->_sessions.find(bid);
-		// Если протокол HTTP/2 для клиента не инициализирован
-		if(i == this->_sessions.end()){
+		if(!this->session(bid, sid)){
 			// Выполняем установку сетевого ядра
 			this->_http1._core = this->_core;
 			// Устанавливаем метод компрессии поддерживаемый сервером
@@ -148,6 +144,8 @@ void awh::server::Http2::readEvents(const char * buffer, const size_t size, cons
 							switch(static_cast <uint8_t> (i->second)){
 								// Если протокол соответствует HTTP-протоколу
 								case static_cast <uint8_t> (agent_t::HTTP): {
+									// Устанавливаем метку поиска сессии HTTP/2
+									Session:
 									// Выполняем поиск брокера в списке активных сессий
 									auto i = this->_sessions.find(bid);
 									// Если активная сессия найдена
@@ -159,6 +157,14 @@ void awh::server::Http2::readEvents(const char * buffer, const size_t size, cons
 											// Выходим из функции
 											return;
 										}
+									// Если активная сессия не найдена
+									} else {
+										// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
+										if(this->session(bid, sid))
+											// Выполняем переход к чтению полученных данных
+											goto Session;
+										// Сообщаем что HTTP/2 сессия не найдена
+										else this->_log->print("HTTP/2 session is not found, something went wrong, this is a serious error", log_t::flag_t::CRITICAL);
 									}
 								} break;
 								// Если протокол соответствует протоколу Websocket

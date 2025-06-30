@@ -670,7 +670,7 @@ void awh::client::Sample::proxy(const client::scheme_t::work_t work) noexcept {
 /**
  * proxy Метод установки прокси-сервера
  * @param uri    параметры прокси-сервера
- * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
 void awh::client::Sample::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Если URI параметры переданы

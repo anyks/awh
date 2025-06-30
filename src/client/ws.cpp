@@ -291,7 +291,7 @@ void awh::client::Websocket::proxy(const client::scheme_t::work_t work) noexcept
 /**
  * proxy Метод установки прокси-сервера
  * @param uri    параметры прокси-сервера
- * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
 void awh::client::Websocket::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Выполняем установку прокси-сервера
@@ -433,7 +433,7 @@ void awh::client::Websocket::waitTimeDetect(const uint16_t read, const uint16_t 
  * network Метод установки параметров сети
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::client::Websocket::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family) noexcept {
 	// Если список IP-адресов передан

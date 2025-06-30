@@ -536,7 +536,7 @@ void awh::server::ProxySocks5::init(const string & socket) noexcept {
 		// Выполняем установку unix-сокет
 		this->_core.sockname(socket);
 		// Устанавливаем тип сокета unix-сокет
-		this->_core.family(scheme_t::family_t::NIX);
+		this->_core.family(scheme_t::family_t::IPC);
 	#endif
 }
 /**
@@ -752,7 +752,7 @@ void awh::server::ProxySocks5::sonet(const scheme_t::sonet_t sonet) noexcept {
 }
 /**
  * family Метод установки типа протокола интернета
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::server::ProxySocks5::family(const scheme_t::family_t family) noexcept {
 	// Устанавливаем тип протокола интернета
@@ -786,7 +786,7 @@ void awh::server::ProxySocks5::bandwidth(const uint64_t bid, const string & read
  * network Метод установки параметров сети
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 void awh::server::ProxySocks5::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {

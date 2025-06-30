@@ -37,12 +37,8 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 	if((bid > 0) && (sid > 0)){
 		// Создаём брокера
 		this->_scheme.set(bid);
-		// Выполняем активацию HTTP/2 протокола
-		web2_t::connectEvents(bid, sid);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
-		auto i = this->_sessions.find(bid);
-		// Если проктокол интернета HTTP/2 инициализирован для клиента
-		if(i != this->_sessions.end()){
+		if(this->session(bid, sid)){
 			// Получаем параметры активного клиента
 			scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
@@ -210,6 +206,8 @@ void awh::server::Websocket2::readEvents(const char * buffer, const size_t size,
 					if(!options->allow.receive)
 						// Выходим из функции
 						return;
+					// Устанавливаем метку поиска сессии HTTP/2
+					Session:
 					// Выполняем поиск брокера в списке активных сессий
 					auto i = this->_sessions.find(bid);
 					// Если активная сессия найдена
@@ -221,6 +219,87 @@ void awh::server::Websocket2::readEvents(const char * buffer, const size_t size,
 							// Выходим из функции
 							return;
 						}
+					// Если активная сессия не найдена
+					} else {
+						// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
+						if(this->session(bid, sid)){
+							// Получаем параметры активного клиента
+							scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
+							// Если параметры активного клиента получены
+							if(options != nullptr){
+								// Выполняем установку идентификатора объекта
+								options->http.id(bid);
+								// Устанавливаем размер чанка
+								options->http.chunk(this->_chunkSize);
+								// Устанавливаем флаг шифрования
+								options->http.encryption(this->_encryption.mode);
+								// Устанавливаем флаг перехвата контекста компрессии
+								options->server.takeover = this->_server.takeover;
+								// Устанавливаем флаг перехвата контекста декомпрессии
+								options->client.takeover = this->_client.takeover;
+								// Устанавливаем список компрессоров поддерживаемый сервером
+								options->http.compressors(this->_scheme.compressors);
+								// Разрешаем перехватывать контекст компрессии
+								options->hash.takeoverCompress(this->_server.takeover);
+								// Разрешаем перехватывать контекст декомпрессии
+								options->hash.takeoverDecompress(this->_client.takeover);
+								// Разрешаем перехватывать контекст для клиента
+								options->http.takeover(awh::web_t::hid_t::CLIENT, this->_client.takeover);
+								// Разрешаем перехватывать контекст для сервера
+								options->http.takeover(awh::web_t::hid_t::SERVER, this->_server.takeover);
+								// Устанавливаем данные сервиса
+								options->http.ident(this->_ident.id, this->_ident.name, this->_ident.ver);
+								// Если функция обратного вызова на на вывод ошибок установлена
+								if(this->_callback.is("error"))
+									// Устанавливаем функцию обратного вызова для вывода ошибок
+									options->http.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"));
+								// Если сабпротоколы установлены
+								if(!this->_subprotocols.empty())
+									// Устанавливаем поддерживаемые сабпротоколы
+									options->http.subprotocols(this->_subprotocols);
+								// Если список расширений установлены
+								if(!this->_extensions.empty())
+									// Устанавливаем список поддерживаемых расширений
+									options->http.extensions(this->_extensions);
+								// Если размер фрейма установлен
+								if(this->_frameSize > 0)
+									// Выполняем установку размера фрейма
+									options->frame.size = this->_frameSize;
+								// Устанавливаем размер сегментов фрейма
+								else options->frame.size = static_cast <size_t> (http2_t::MAX_FRAME_SIZE_MIN);
+								// Если сервер требует авторизацию
+								if(this->_service.type != auth_t::type_t::NONE){
+									// Определяем тип авторизации
+									switch(static_cast <uint8_t> (this->_service.type)){
+										// Если тип авторизации Basic
+										case static_cast <uint8_t> (auth_t::type_t::BASIC): {
+											// Устанавливаем параметры авторизации
+											options->http.authType(this->_service.type);
+											// Если функция обратного вызова для обработки чанков установлена
+											if(this->_callback.is("checkPassword"))
+												// Устанавливаем функцию проверки авторизации
+												options->http.authCallback(std::bind(this->_callback.get <bool (const uint64_t, const string &, const string &)> ("checkPassword"), bid, _1, _2));
+										} break;
+										// Если тип авторизации Digest
+										case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
+											// Устанавливаем название сервера
+											options->http.realm(this->_service.realm);
+											// Устанавливаем временный ключ сессии сервера
+											options->http.opaque(this->_service.opaque);
+											// Устанавливаем параметры авторизации
+											options->http.authType(this->_service.type, this->_service.hash);
+											// Если функция обратного вызова для обработки чанков установлена
+											if(this->_callback.is("extractPassword"))
+												// Устанавливаем функцию извлечения пароля
+												options->http.extractPassCallback(std::bind(this->_callback.get <string (const uint64_t, const string &)> ("extractPassword"), bid, _1));
+										} break;
+									}
+								}
+								// Выполняем переход к чтению полученных данных
+								goto Session;
+							}
+						// Сообщаем что HTTP/2 сессия не найдена
+						} else this->_log->print("HTTP/2 session is not found, something went wrong, this is a serious error", log_t::flag_t::CRITICAL);
 					}
 				// Если активирован режим работы с HTTP/1.1 протоколом, выполняем переброс вызова чтения на клиент Websocket
 				} else this->_ws1.readEvents(buffer, size, bid, sid);

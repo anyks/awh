@@ -109,13 +109,13 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	// proxy.mode({client::sample_t::flag_t::NOT_INFO});
 	// Отключаем валидацию сертификата
-	ssl.verify = true;
+	ssl.verify = false;
 	// Устанавливаем адрес сертификата
 	ssl.ca = "./certs/ca.pem";
 	// Выполняем установку параметров SSL-шифрования
 	proxy.ssl(ssl);
 	// Устанавливаем тип сокета unix-сокет
-	// proxy.family(awh::scheme_t::family_t::NIX);
+	// proxy.family(awh::scheme_t::family_t::IPC);
 	// Устанавливаем тип сокета UDP TLS
 	// proxy.sonet(awh::scheme_t::sonet_t::DTLS);
 	// proxy.sonet(awh::scheme_t::sonet_t::TLS);

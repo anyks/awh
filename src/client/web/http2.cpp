@@ -2116,7 +2116,7 @@ void awh::client::Http2::proxy(const client::scheme_t::work_t work) noexcept {
 /**
  * proxy Метод установки прокси-сервера
  * @param uri    параметры прокси-сервера
- * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
 void awh::client::Http2::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Выполняем установку параметры прокси-сервера

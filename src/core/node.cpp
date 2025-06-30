@@ -580,7 +580,7 @@ void awh::Node::sonet(const scheme_t::sonet_t sonet) noexcept {
 }
 /**
  * family Метод извлечения типа протокола интернета
- * @return тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @return тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 awh::scheme_t::family_t awh::Node::family() const noexcept {
 	// Выполняем вывод тип протокола интернета
@@ -588,7 +588,7 @@ awh::scheme_t::family_t awh::Node::family() const noexcept {
 }
 /**
  * family Метод установки типа протокола интернета
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::Node::family(const scheme_t::family_t family) noexcept {
 	// Выполняем блокировку потока
@@ -598,7 +598,7 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 	// Выполняем разблокировку потока
 	this->_mtx.main.unlock();
 	// Если тип сокета подключения соответствует unix-сокету
-	if(this->_settings.family == scheme_t::family_t::NIX){
+	if(this->_settings.family == scheme_t::family_t::IPC){
 		// Если название unix-сокета ещё не инициализированно
 		if(this->_settings.sockname.empty())
 			// Выполняем установку названия unix-сокета
@@ -606,7 +606,7 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 	// Если тип сокета подключения соответствует хосту и порту
 	} else if(!this->_settings.sockname.empty() &&
 			 (this->_type == engine_t::type_t::SERVER) &&
-			 (this->_settings.family != scheme_t::family_t::NIX)) {
+			 (this->_settings.family != scheme_t::family_t::IPC)) {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
@@ -879,7 +879,7 @@ void awh::Node::events(const uint64_t bid, const awh::scheme_t::mode_t mode, con
 /**
  * network Метод установки параметров сети
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 void awh::Node::network(const vector <string> & ips, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
@@ -892,7 +892,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 	// Выполняем разблокировку потока
 	this->_mtx.main.unlock();
 	// Если тип сокета подключения - unix-сокет
-	if(this->_settings.family == scheme_t::family_t::NIX){
+	if(this->_settings.family == scheme_t::family_t::IPC){
 		// Если название unix-сокета ещё не инициализированно
 		if(this->_settings.sockname.empty())
 			// Выполняем установку названия unix-сокета
@@ -900,7 +900,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 	// Если тип сокета подключения соответствует хосту и порту
 	} else if(!this->_settings.sockname.empty() &&
 			 (this->_type == engine_t::type_t::SERVER) &&
-			 (this->_settings.family != scheme_t::family_t::NIX)) {
+			 (this->_settings.family != scheme_t::family_t::IPC)) {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
@@ -985,7 +985,7 @@ awh::Node::operator awh::scheme_t::sonet_t() const noexcept {
 }
 /**
  * operator Оператор извлечения типа протокола интернета
- * @return тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @return тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 awh::Node::operator awh::scheme_t::family_t() const noexcept {
 	// Выполняем вывод тип протокола интернета
@@ -1037,7 +1037,7 @@ awh::Node & awh::Node::operator = (const scheme_t::sonet_t sonet) noexcept {
 }
 /**
  * Оператор [=] установки типа протокола интернета
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  * @return       текущий объект
  */
 awh::Node & awh::Node::operator = (const scheme_t::family_t family) noexcept {
@@ -1057,7 +1057,7 @@ awh::Node::~Node() noexcept {
 	// Если требуется использовать unix-сокет и ядро является сервером
 	if(!this->_settings.sockname.empty() &&
 	  (this->_type == engine_t::type_t::SERVER) &&
-	  (this->_settings.family == scheme_t::family_t::NIX)){
+	  (this->_settings.family == scheme_t::family_t::IPC)){
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */

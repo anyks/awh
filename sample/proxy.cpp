@@ -162,7 +162,7 @@ int32_t main(int32_t argc, char * argv[]){
 	proxy.waitTimeDetect(server::proxy_t::broker_t::CLIENT, 10, 10, 5);
 	// proxy.waitTimeDetect(server::proxy_t::broker_t::SERVER, 60, 60);
 	// Устанавливаем тип сокета unix-сокет
-	// proxy.family(server::proxy_t::broker_t::SERVER, awh::scheme_t::family_t::NIX);
+	// proxy.family(server::proxy_t::broker_t::SERVER, awh::scheme_t::family_t::IPC);
 	// Устанавливаем тип авторизации
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::BASIC);
 	// proxy.authType(server::proxy_t::broker_t::SERVER, auth_t::type_t::DIGEST, auth_t::hash_t::SHA512);

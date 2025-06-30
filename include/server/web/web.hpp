@@ -566,16 +566,18 @@ namespace awh {
 				map <uint64_t, shared_ptr <http2_t>> _sessions;
 			protected:
 				/**
+				 * session Метод инициализации сессии
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
+				 * @return    результат инициализации сессии
+				 */
+				bool session(const uint64_t bid, const uint16_t sid) noexcept;
+			protected:
+				/**
 				 * statusEvents Метод обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 */
 				void statusEvents(const awh::core_t::status_t status) noexcept;
-				/**
-				 * connectEvents Метод обратного вызова при подключении к серверу
-				 * @param bid идентификатор брокера
-				 * @param sid идентификатор схемы сети
-				 */
-				virtual void connectEvents(const uint64_t bid, const uint16_t sid) noexcept;
 			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2

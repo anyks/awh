@@ -580,7 +580,7 @@ void awh::client::Web::errors([[maybe_unused]] const uint64_t bid, const log_t::
  */
 void awh::client::Web::init(const string & dest, const vector <awh::http_t::compressor_t> & compressors) noexcept {
 	// Если unix-сокет установлен
-	if((this->_core != nullptr) && (this->_core->family() == scheme_t::family_t::NIX)){
+	if((this->_core != nullptr) && (this->_core->family() == scheme_t::family_t::IPC)){
 		// Выполняем очистку схемы сети
 		this->_scheme.clear();
 		// Устанавливаем unix-сокет адрес в файловой системе
@@ -821,7 +821,7 @@ void awh::client::Web::proxy(const client::scheme_t::work_t work) noexcept {
 /**
  * proxy Метод установки прокси-сервера
  * @param uri    параметры прокси-сервера
- * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
 void awh::client::Web::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Если URI параметры переданы

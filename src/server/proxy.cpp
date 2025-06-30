@@ -1225,7 +1225,7 @@ string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vect
 			result.append(", ");
 		} 
 		// Если unix-сокет активирован
-		if(this->_core.family() == scheme_t::family_t::NIX)
+		if(this->_core.family() == scheme_t::family_t::IPC)
 			// Выполняем формирование заголовка
 			result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 		// Если активирован хост и порт
@@ -1309,14 +1309,14 @@ void awh::server::Proxy::init(const string & socket, const http_t::compressor_t 
 	// Устанавливаем компрессор для рекомпрессии пересылаемых данных
 	this->_compressor = compressor;
 	// Выполняем установку типа протокола интернета
-	this->_core.family(scheme_t::family_t::NIX);
+	this->_core.family(scheme_t::family_t::IPC);
 }
 /**
  * init Метод инициализации PROXY-сервера
  * @param port       порт сервера
  * @param host       хост сервера
  * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
- * @param family     тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family     тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::server::Proxy::init(const uint32_t port, const string & host, const http_t::compressor_t compressor, const scheme_t::family_t family) noexcept {
 	// Выполняем инициализацию PROXY-сервера
@@ -1816,14 +1816,14 @@ void awh::server::Proxy::sonet(const broker_t broker, const scheme_t::sonet_t so
 /**
  * family Метод установки типа протокола интернета
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::server::Proxy::family(const broker_t broker, const scheme_t::family_t family) noexcept {
 	// Определяем переданного брокера
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT):
-			// Устанавливаем тип протокола интернета (IPV4 / IPV6 / NIX)
+			// Устанавливаем тип протокола интернета (IPV4 / IPV6 / IPC)
 			this->_settings.family = family;
 		break;
 		// Если брокером является сервер
@@ -1838,7 +1838,7 @@ void awh::server::Proxy::family(const broker_t broker, const scheme_t::family_t 
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
- * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 void awh::server::Proxy::network(const broker_t broker, const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
@@ -1848,7 +1848,7 @@ void awh::server::Proxy::network(const broker_t broker, const vector <string> & 
 		case static_cast <uint8_t> (broker_t::CLIENT): {
 			// Устанавливаем тип сокета подключения (TCP / UDP)
 			this->_settings.sonet = sonet;
-			// Устанавливаем тип протокола интернета (IPV4 / IPV6 / NIX)
+			// Устанавливаем тип протокола интернета (IPV4 / IPV6 / IPC)
 			this->_settings.family = family;
 			// Если список серверов имён, через которые необходимо производить резолвинг доменов передан
 			if(!ns.empty())
@@ -1917,7 +1917,7 @@ void awh::server::Proxy::proxy(const client::scheme_t::work_t work) noexcept {
 /**
  * proxy Метод установки прокси-сервера
  * @param uri    параметры прокси-сервера
- * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
 void awh::server::Proxy::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Если параметры прокси-сервера переданы

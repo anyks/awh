@@ -220,6 +220,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.keepAlive(100, 30, 10);
 	// Отключаем таймер ожидания входящих данных
 	// awh.waitTimeDetect(0, 0, CONNECT_TIMEOUT);
+
 	// Устанавливаем данные прокси-сервера
 	// awh.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
 	// awh.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
@@ -227,9 +228,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.proxy("socks5://user:password@127.0.0.1:2222");
 	// awh.proxy("http://user:password@127.0.0.1:2222");
 	// awh.proxy("http://127.0.0.1:2222");
-	// awh.proxy("socks5://user:password@anyks", awh::scheme_t::family_t::NIX);
-	// awh.proxy("http://anyks", awh::scheme_t::family_t::NIX);
-	// awh.proxy("http://user:password@anyks", awh::scheme_t::family_t::NIX);
+	// awh.proxy("socks5://user:password@anyks", awh::scheme_t::family_t::IPC);
+	// awh.proxy("http://anyks", awh::scheme_t::family_t::IPC);
+	// awh.proxy("http://user:password@anyks", awh::scheme_t::family_t::IPC);
 	// awh.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// awh.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
 	// awh.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
@@ -240,6 +241,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.proxy("socks5://user:password@anyks.net:2222");
 	// Активируем работу прокси-сервера
 	// awh.proxy(client::scheme_t::work_t::ALLOW);
+
 	/*
 	// Устанавливаем тип компрессии
 	awh.compressors({

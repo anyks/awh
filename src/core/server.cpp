@@ -98,7 +98,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 							// Устанавливаем параметры сокета
 							broker->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::NIX){
+							if(this->_settings.family == scheme_t::family_t::IPC){
 								// Если название unix-сокета ещё не инициализированно
 								if(this->_settings.sockname.empty())
 									// Выполняем установку названия unix-сокета
@@ -283,7 +283,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 										// Определяем тип протокола подключения
 										switch(static_cast <uint8_t> (this->_settings.family)){
 											// Если тип протокола подключения unix-сокет
-											case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+											case static_cast <uint8_t> (scheme_t::family_t::IPC): {
 												// Выводим сообщение об ошибке
 												this->_log->print(
 													"Access to server [%s] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
@@ -354,7 +354,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 										// Определяем тип протокола подключения
 										switch(static_cast <uint8_t> (this->_settings.family)){
 											// Если тип протокола подключения unix-сокет
-											case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+											case static_cast <uint8_t> (scheme_t::family_t::IPC): {
 												// Выводим сообщение об ошибке
 												this->_log->print(
 													"Access to server [%s] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
@@ -472,7 +472,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 										// Определяем тип протокола подключения
 										switch(static_cast <uint8_t> (this->_settings.family)){
 											// Если тип протокола подключения unix-сокет
-											case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+											case static_cast <uint8_t> (scheme_t::family_t::IPC): {
 												// Выводим в консоль информацию
 												this->_log->print(
 													"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s] PID=%d",
@@ -508,7 +508,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 										// Определяем тип протокола подключения
 										switch(static_cast <uint8_t> (this->_settings.family)){
 											// Если тип протокола подключения unix-сокет
-											case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+											case static_cast <uint8_t> (scheme_t::family_t::IPC): {
 												// Выводим в консоль информацию
 												this->_log->print(
 													"Connected client [%s] MAC=%s, SOCKET=%d to server [%s] PID=%d",
@@ -675,7 +675,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 									// Определяем тип протокола подключения
 									switch(static_cast <uint8_t> (this->_settings.family)){
 										// Если тип протокола подключения unix-сокет
-										case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+										case static_cast <uint8_t> (scheme_t::family_t::IPC): {
 											// Выводим сообщение об ошибке
 											this->_log->print(
 												"Access to server [%s] PID=%d is denied for client [%s:%d] MAC=%s, SOCKET=%d",
@@ -746,7 +746,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 									// Определяем тип протокола подключения
 									switch(static_cast <uint8_t> (this->_settings.family)){
 										// Если тип протокола подключения unix-сокет
-										case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+										case static_cast <uint8_t> (scheme_t::family_t::IPC): {
 											// Выводим сообщение об ошибке
 											this->_log->print(
 												"Access to server [%s] PID=%d is denied for client [%s] MAC=%s, SOCKET=%d",
@@ -814,8 +814,8 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 								// Выходим
 								return;
 							}
-							// Переводим сокет в блокирующий режим
-							broker->ectx.blocking(engine_t::mode_t::ENABLED);
+							// Переводим сокет в неблокирующий режим
+							broker->ectx.blocking(engine_t::mode_t::DISABLED);
 							// Если вывод информационных данных не запрещён
 							if(this->_info){
 								// Если порт установлен
@@ -823,7 +823,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 									// Определяем тип протокола подключения
 									switch(static_cast <uint8_t> (this->_settings.family)){
 										// Если тип протокола подключения unix-сокет
-										case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+										case static_cast <uint8_t> (scheme_t::family_t::IPC): {
 											// Выводим в консоль информацию
 											this->_log->print(
 												"Connected client [%s:%d] MAC=%s, SOCKET=%d to server [%s] PID=%d",
@@ -859,7 +859,7 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 									// Определяем тип протокола подключения
 									switch(static_cast <uint8_t> (this->_settings.family)){
 										// Если тип протокола подключения unix-сокет
-										case static_cast <uint8_t> (scheme_t::family_t::NIX): {
+										case static_cast <uint8_t> (scheme_t::family_t::IPC): {
 											// Выводим в консоль информацию
 											this->_log->print(
 												"Connected client [%s], MAC=%s, SOCKET=%d to server [%s] PID=%d",
@@ -1826,7 +1826,7 @@ void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 						// Если сокет не создан, выводим в консоль информацию
 						else {
 							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::NIX){
+							if(this->_settings.family == scheme_t::family_t::IPC){
 								// Выводим информацию об незапущенном сервере на unix-сокете
 								this->_log->print("Server [%s/%s.sock] cannot be started", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
@@ -1883,7 +1883,7 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 				// Определяем тип протокола подключения
 				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет
-					case static_cast <uint8_t> (scheme_t::family_t::NIX):
+					case static_cast <uint8_t> (scheme_t::family_t::IPC):
 					// Если тип протокола подключения IPv4
 					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 						// Обновляем хост сервера
@@ -1972,7 +1972,7 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 							// Определяем тип протокола подключения
 							switch(static_cast <uint8_t> (this->_settings.family)){
 								// Если тип протокола подключения unix-сокет
-								case static_cast <uint8_t> (scheme_t::family_t::NIX):
+								case static_cast <uint8_t> (scheme_t::family_t::IPC):
 								// Если тип протокола подключения IPv4
 								case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 									// Выполняем резолвинг домена
@@ -2070,7 +2070,7 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 					shm->_addr.sonet(SOCK_STREAM, IPPROTO_TCP);
 			}
 			// Если unix-сокет используется
-			if(this->_settings.family == scheme_t::family_t::NIX){
+			if(this->_settings.family == scheme_t::family_t::IPC){
 				// Если название unix-сокета ещё не инициализированно
 				if(this->_settings.sockname.empty())
 					// Выполняем установку названия unix-сокета
@@ -2097,7 +2097,7 @@ string awh::server::Core::host(const uint16_t sid) const noexcept {
 	// Определяем тип протокола подключения
 	switch(static_cast <uint8_t> (this->_settings.family)){
 		// Если тип протокола подключения unix-сокет
-		case static_cast <uint8_t> (scheme_t::family_t::NIX):
+		case static_cast <uint8_t> (scheme_t::family_t::IPC):
 			// Выводим название unix-сокета
 			return this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 		// Если адрес хоста принадлежит другому типу
@@ -2372,6 +2372,25 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 			if(i != this->_schemes.end()){
 				// Выполняем отключение приёма данных на этот сокет
 				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
+				// Определяем тип сокета
+				switch(static_cast <uint8_t> (this->_settings.sonet)){
+					// Если тип сокета установлен как TCP/IP
+					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+					// Если тип сокета установлен как TCP/IP TLS
+					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+					// Если тип сокета установлен как SCTP
+					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+						// Переводим сокет в неблокирующий режим
+						broker->ectx.blocking(engine_t::mode_t::DISABLED);
+					break;
+					// Если тип сокета установлен как UDP
+					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+					// Если тип сокета установлен как DTLS
+					case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+						// Переводим сокет в блокирующий режим
+						broker->ectx.blocking(engine_t::mode_t::ENABLED);
+					break;
+				}
 				/**
 				 * Выполняем чтение данных с сокета
 				 */
@@ -2425,6 +2444,16 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				} while(this->has(bid));
 				// Если подключение ещё не разорванно
 				if(this->has(bid)){
+					// Определяем тип сокета
+					switch(static_cast <uint8_t> (this->_settings.sonet)){
+						// Если тип сокета установлен как UDP
+						case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+						// Если тип сокета установлен как DTLS
+						case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+							// Переводим сокет в неблокирующий режим
+							broker->ectx.blocking(engine_t::mode_t::DISABLED);
+						break;
+					}
 					// Если время ожиданий входящих сообщений установлено
 					if((broker->timeouts.wait > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
 						// Выполняем создание таймаута ожидания получения данных
@@ -2510,41 +2539,45 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
 			if(i != this->_schemes.end()){
-				// Определяем правило передачи данных
-				switch(static_cast <uint8_t> (this->_transfer)){
-					// Если передавать данные необходимо синхронно
-					case static_cast <uint8_t> (transfer_t::SYNC): {
-						// Определяем тип сокета
-						switch(static_cast <uint8_t> (this->_settings.sonet)){
-							// Если тип сокета установлен как UDP
-							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-							// Если тип сокета установлен как TCP/IP
-							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-							// Если тип сокета установлен как TCP/IP TLS
-							case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-							// Если тип сокета установлен как SCTP
-							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-								// Переводим сокет в блокирующий режим
-								broker->ectx.blocking(engine_t::mode_t::ENABLED);
-							break;
-						}
-					} break;
-					// Если передавать данные необходимо асинхронно
-					case static_cast <uint8_t> (transfer_t::ASYNC): {
-						// Определяем тип сокета
-						switch(static_cast <uint8_t> (this->_settings.sonet)){
-							// Если тип сокета установлен как UDP
-							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-								// Переводим сокет в блокирующий режим
-								broker->ectx.blocking(engine_t::mode_t::ENABLED);
-							break;
-						}
-					} break;
-				}
 				// Получаем максимальный размер буфера
 				const int32_t max = broker->ectx.buffer(engine_t::method_t::WRITE);
 				// Если в буфере нет места
 				if(max > 0){
+					// Определяем правило передачи данных
+					switch(static_cast <uint8_t> (this->_transfer)){
+						// Если передавать данные необходимо синхронно
+						case static_cast <uint8_t> (transfer_t::SYNC): {
+							// Определяем тип сокета
+							switch(static_cast <uint8_t> (this->_settings.sonet)){
+								// Если тип сокета установлен как UDP
+								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Если тип сокета установлен как TCP/IP
+								case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+								// Если тип сокета установлен как TCP/IP TLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+								// Если тип сокета установлен как SCTP
+								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+								// Если тип сокета установлен как DTLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+									// Переводим сокет в блокирующий режим
+									broker->ectx.blocking(engine_t::mode_t::ENABLED);
+								break;
+							}
+						} break;
+						// Если передавать данные необходимо асинхронно
+						case static_cast <uint8_t> (transfer_t::ASYNC): {
+							// Определяем тип сокета
+							switch(static_cast <uint8_t> (this->_settings.sonet)){
+								// Если тип сокета установлен как UDP
+								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+								// Если тип сокета установлен как DTLS
+								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
+									// Переводим сокет в блокирующий режим
+									broker->ectx.blocking(engine_t::mode_t::ENABLED);
+								break;
+							}
+						} break;
+					}
 					// Определяем тип сокета
 					switch(static_cast <uint8_t> (this->_settings.sonet)){
 						// Если тип сокета установлен как TCP/IP
@@ -2585,6 +2618,8 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 									case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 									// Если тип сокета установлен как SCTP
 									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+									// Если тип сокета установлен как DTLS
+									case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 										// Переводим сокет в неблокирующий режим
 										broker->ectx.blocking(engine_t::mode_t::DISABLED);
 									break;
@@ -2596,6 +2631,8 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 								switch(static_cast <uint8_t> (this->_settings.sonet)){
 									// Если тип сокета установлен как UDP
 									case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+									// Если тип сокета установлен как DTLS
+									case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 										// Переводим сокет в неблокирующий режим
 										broker->ectx.blocking(engine_t::mode_t::DISABLED);
 									break;
@@ -2659,7 +2696,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 						// Если разрешено выводить информационные сообщения
 						if(this->_info){
 							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::NIX)
+							if(this->_settings.family == scheme_t::family_t::IPC)
 								// Выводим информацию о запущенном сервере на unix-сокете
 								this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
@@ -2680,7 +2717,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("launched")){
 							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::NIX)
+							if(this->_settings.family == scheme_t::family_t::IPC)
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const string &, const uint32_t)> ("launched", this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), 0);
 							// Выполняем функцию обратного вызова
@@ -2698,7 +2735,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если разрешено выводить информационные сообщения
 							if(this->_info){
 								// Если unix-сокет используется
-								if(this->_settings.family == scheme_t::family_t::NIX)
+								if(this->_settings.family == scheme_t::family_t::IPC)
 									// Выводим информацию о запущенном сервере на unix-сокете
 									this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
@@ -2719,7 +2756,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("launched")){
 								// Если unix-сокет используется
-								if(this->_settings.family == scheme_t::family_t::NIX)
+								if(this->_settings.family == scheme_t::family_t::IPC)
 									// Выполняем функцию обратного вызова
 									this->_callback.call <void (const string &, const uint32_t)> ("launched", this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), 0);
 								// Выполняем функцию обратного вызова
@@ -2732,7 +2769,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 						// Если сокет не создан, выводим в консоль информацию
 						} else {
 							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::NIX){
+							if(this->_settings.family == scheme_t::family_t::IPC){
 								// Выводим информацию об незапущенном сервере на unix-сокете
 								this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
@@ -2757,7 +2794,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если разрешено выводить информационные сообщения
 							if(this->_info){
 								// Если unix-сокет используется
-								if(this->_settings.family == scheme_t::family_t::NIX)
+								if(this->_settings.family == scheme_t::family_t::IPC)
 									// Выводим информацию о запущенном сервере на unix-сокете
 									this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
@@ -2766,7 +2803,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("launched")){
 								// Если unix-сокет используется
-								if(this->_settings.family == scheme_t::family_t::NIX)
+								if(this->_settings.family == scheme_t::family_t::IPC)
 									// Выполняем функцию обратного вызова
 									this->_callback.call <void (const string &, const uint32_t)> ("launched", this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), 0);
 								// Выполняем функцию обратного вызова
@@ -2860,7 +2897,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 						// Если сокет не создан, выводим в консоль информацию
 						} else {
 							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::NIX){
+							if(this->_settings.family == scheme_t::family_t::IPC){
 								// Выводим информацию об незапущенном сервере на unix-сокете
 								this->_log->print("Server [%s/%s.sock] has been started successfully", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 								// Если функция обратного вызова установлена
@@ -2882,11 +2919,11 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 			// Если IP-адрес сервера не получен
 			} else {
 				// Выводим в консоль информацию
-				this->_log->print("Broken host server %s", log_t::flag_t::CRITICAL, shm->_host.c_str());
+				this->_log->print("Broken server host %s", log_t::flag_t::CRITICAL, shm->_host.c_str());
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("error"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Broken host server %s", shm->_host.c_str()));
+					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::START, this->_fmk->format("Broken server host %s", shm->_host.c_str()));
 			}
 			// Останавливаем работу сервера
 			this->stop();
@@ -3220,7 +3257,7 @@ void awh::server::Core::init(const uint16_t sid, const uint32_t port, const stri
 				// Определяем тип протокола подключения
 				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет
-					case static_cast <uint8_t> (scheme_t::family_t::NIX):
+					case static_cast <uint8_t> (scheme_t::family_t::IPC):
 					// Если тип протокола подключения IPv4
 					case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 						// Обновляем хост сервера

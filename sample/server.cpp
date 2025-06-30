@@ -130,7 +130,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем установку параметров SSL-шифрования
 	core.ssl(ssl);
 	// Устанавливаем тип сокета unix-сокет
-	// core.family(awh::scheme_t::family_t::NIX);
+	// core.family(awh::scheme_t::family_t::IPC);
 	// Устанавливаем тип сокета
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
 	// core.sonet(awh::scheme_t::sonet_t::TLS);
@@ -148,7 +148,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Запрещаем перехват сигналов
 	core.signalInterception(scheme_t::mode_t::DISABLED);
 	// Активируем правило асинхронной работы передачи данных
-	// core.transferRule(server::core_t::transfer_t::ASYNC);
+	core.transferRule(server::core_t::transfer_t::ASYNC);
 	// Устанавливаем функцию обратного вызова для выполнения события запуска сервера
 	sample.on <void (const string &, const uint32_t)> ("launched", &Server::launched, &executor, _1, _2);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

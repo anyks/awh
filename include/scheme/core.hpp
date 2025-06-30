@@ -95,7 +95,7 @@ namespace awh {
 			enum class family_t : uint8_t {
 				IPV4 = 0x01, // Протокол IPv4
 				IPV6 = 0x02, // Протокол IPv6
-				NIX  = 0x03  // Протокол unix-сокет
+				IPC  = 0x03  // Протокол IPC (unix-сокет)
 			};
 			/**
 			 * Тип сокета подключения

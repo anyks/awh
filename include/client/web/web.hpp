@@ -531,7 +531,7 @@ namespace awh {
 				/**
 				 * proxy Метод установки прокси-сервера
 				 * @param uri    параметры прокси-сервера
-				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
 				 */
 				virtual void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:

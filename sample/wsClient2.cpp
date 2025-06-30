@@ -430,8 +430,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// awh.proxy("socks5://test1:test@127.0.0.1:2222");
 	// awh.proxy("http://test1:password@127.0.0.1:2222");
 	// awh.proxy("http://127.0.0.1:2222");
-	// awh.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
-	// awh.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
+	// awh.proxy("socks5://unix:anyks", awh::scheme_t::family_t::IPC);
+	// awh.proxy("http://unix:anyks", awh::scheme_t::family_t::IPC);
 
 	// awh.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// awh.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");

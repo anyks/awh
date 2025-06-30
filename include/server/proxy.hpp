@@ -160,7 +160,7 @@ namespace awh {
 				typedef struct ProxyClient {
 					string uri;                    // Параметры запроса на прокси-сервер
 					auth_t auth;                   // Параметры авторизации на прокси-сервере
-					scheme_t::family_t family;     // Cемейстово интернет протоколов (IPV4 / IPV6 / NIX)
+					scheme_t::family_t family;     // Cемейстово интернет протоколов (IPV4 / IPV6 / IPC)
 					client::scheme_t::work_t work; // Флаг активации-деактивации прокси-клиента
 					/**
 					 * ProxyClient Конструктор
@@ -231,7 +231,7 @@ namespace awh {
 					size_t chunk;                              // Размер передаваемых чанков
 					uint8_t attempts;                          // Количество попыток выполнения редиректов
 					scheme_t::sonet_t sonet;                   // Тип сокета подключения (TCP / UDP)
-					scheme_t::family_t family;                 // Cемейстово интернет протоколов (IPV4 / IPV6 / NIX)
+					scheme_t::family_t family;                 // Cемейстово интернет протоколов (IPV4 / IPV6 / IPC)
 					proxy_t proxy;                             // Параметры прокси-клиента для подключения к прокси-серверу
 					string login;                              // Логин пользователя для авторизации на сервере
 					string password;                           // Пароль пользователя для авторизации на сервере
@@ -498,7 +498,7 @@ namespace awh {
 				 * @param port       порт сервера
 				 * @param host       хост сервера
 				 * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
-				 * @param family     тип протокола интернета (IPV4 / IPV6 / NIX)
+				 * @param family     тип протокола интернета (IPV4 / IPV6 / IPC)
 				 */
 				void init(const uint32_t port = SERVER_PROXY_PORT, const string & host = "", const http_t::compressor_t compressor = http_t::compressor_t::NONE, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
@@ -811,7 +811,7 @@ namespace awh {
 				/**
 				 * family Метод установки типа протокола интернета
 				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
-				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+				 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
 				 */
 				void family(const broker_t broker, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 				/**
@@ -819,7 +819,7 @@ namespace awh {
 				 * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
 				 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
 				 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
-				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+				 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
 				 * @param sonet  тип сокета подключения (TCP / UDP)
 				 */
 				void network(const broker_t broker, const vector <string> & ips = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
@@ -851,7 +851,7 @@ namespace awh {
 				/**
 				 * proxy Метод установки прокси-сервера
 				 * @param uri    параметры прокси-сервера
-				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
 				 */
 				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:

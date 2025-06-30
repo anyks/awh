@@ -583,9 +583,12 @@ namespace awh {
 			 */
 			auto on(const char * name, Args... args) noexcept -> uint64_t {
 				// Если мы получили название функции обратного вызова
-				if(name != nullptr)
+				if(name != nullptr){
+					// Устанавливаем функцию обратного вызова в дочерний модуль
+					this->_web.on <T> (name, args...);
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <T> (name, args...);
+				}
 				// Выводим результат по умолчанию
 				return 0;
 			}
@@ -603,9 +606,12 @@ namespace awh {
 			 */
 			auto on(const string & name, Args... args) noexcept -> uint64_t {
 				// Если мы получили название функции обратного вызова
-				if(!name.empty())
+				if(!name.empty()){
+					// Устанавливаем функцию обратного вызова в дочерний модуль
+					this->_web.on <T> (name, args...);
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <T> (name, args...);
+				}
 				// Выводим результат по умолчанию
 				return 0;
 			}
@@ -623,9 +629,12 @@ namespace awh {
 			 */
 			auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
 				// Если мы получили название функции обратного вызова
-				if(fid > 0)
+				if(fid > 0){
+					// Устанавливаем функцию обратного вызова в дочерний модуль
+					this->_web.on <T> (fid, args...);
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <T> (fid, args...);
+				}
 				// Выводим результат по умолчанию
 				return 0;
 			}
@@ -644,9 +653,12 @@ namespace awh {
 			 */
 			auto on(const A fid, Args... args) noexcept -> uint64_t {
 				// Если мы получили на вход число
-				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>)
+				if(is_integral_v <A> || is_enum_v <A> || is_floating_point_v <A>){
+					// Устанавливаем функцию обратного вызова в дочерний модуль
+					this->_web.on <B> (static_cast <uint64_t> (fid), args...);
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <B> (static_cast <uint64_t> (fid), args...);
+				}
 				// Выводим результат по умолчанию
 				return 0;
 			}

@@ -28,6 +28,69 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * session Метод инициализации сессии
+ * @param bid идентификатор брокера
+ * @param sid идентификатор схемы сети
+ * @return    результат инициализации сессии
+ */
+bool awh::server::Web2::session(const uint64_t bid, const uint16_t sid) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если данные переданы верные
+	if((bid > 0) && (sid > 0)){
+		// Если флаг инициализации сессии HTTP/2 не активирован
+		if(!(result = (this->_sessions.find(bid) != this->_sessions.end()))){
+			// Если список параметров настроек не пустой и протокол HTTP/2 поддерживается сервером
+			if(!this->_settings.empty() && (this->_core->proto(bid) == engine_t::proto_t::HTTP2)){
+				/**
+				 * Я не знаю что за хуйня, но каким-то образом изначально эта проверка не работает и приходится проверять второй раз
+				 */
+				if(this->_core->proto(bid) != engine_t::proto_t::HTTP2)
+					// Выходим из функции
+					return false;
+				// Создаём локальный контейнер функций обратного вызова
+				callback_t callback(this->_log);
+				// Выполняем установку функции обратного вызова начала открытии потока
+				callback.on <int32_t (const int32_t)> ("begin", &web2_t::beginSignal, this, _1, bid);
+				// Выполняем установку функции обратного вызова при отправки сообщения на сервер
+				callback.on <void (const uint8_t *, const size_t)> ("send", &web2_t::sendSignal, this, bid, _1, _2);
+				// Выполняем установку функции обратного вызова при закрытии потока
+				callback.on <int32_t (const int32_t, const http2_t::error_t)> ("close", &web2_t::closedSignal, this, _1, bid, _2);
+				// Выполняем установку функции обратного вызова при получении чанка с сервера
+				callback.on <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", &web2_t::chunkSignal, this, _1, bid, _2, _3);
+				// Выполняем установку функции обратного вызова при получении данных заголовка
+				callback.on <int32_t (const int32_t, const string &, const string &)> ("header", &web2_t::headerSignal, this, _1, bid, _2, _3);
+				// Выполняем установку функции обратного вызова получения фрейма
+				callback.on <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", &web2_t::frameSignal, this, _1, bid, _2, _3, _4);
+				// Если функция обратного вызова на на вывод ошибок установлена
+				if(this->_callback.is("error"))
+					// Устанавливаем функцию обработки вызова на событие получения ошибок
+					callback.on <void (const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3);
+				// Выполняем создание нового объекта сессии HTTP/2
+				auto ret = this->_sessions.emplace(bid, make_unique <http2_t> (this->_fmk, this->_log));
+				// Выполняем установку функции обратного вызова
+				ret.first->second->callback(callback);
+				// Если инициализация модуля NgHttp2 не выполнена
+				if(!ret.first->second->init(http2_t::mode_t::SERVER, this->_settings))
+					// Выполняем удаление созданного ранее объекта
+					this->_sessions.erase(ret.first);
+				// Если список разрешённых источников установлен
+				if(!this->_origins.empty())
+					// Устанавливаем список разрешённых источников
+					ret.first->second->origin(this->_origins);
+				// Если список альтернативных сервисов установлен
+				if(!this->_altsvc.empty())
+					// Устанавливаем список альтернативных сервисов
+					ret.first->second->altsvc(this->_altsvc);
+				// Выполняем установку результата
+				result = ret.second;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * statusEvents Метод обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  */
@@ -41,59 +104,6 @@ void awh::server::Web2::statusEvents(const awh::core_t::status_t status) noexcep
 	}
 	// Выполняем переадресацию выполняемого события в родительский модуль
 	web_t::statusEvents(status);
-}
-/**
- * connectEvents Метод обратного вызова при подключении к серверу
- * @param bid идентификатор брокера
- * @param sid идентификатор схемы сети
- */
-void awh::server::Web2::connectEvents(const uint64_t bid, const uint16_t sid) noexcept {
-	// Если флаг инициализации сессии HTTP/2 не активирован
-	if(this->_sessions.find(bid) == this->_sessions.end()){
-		// Если список параметров настроек не пустой и протокол HTTP/2 поддерживается сервером
-		if(!this->_settings.empty() && (this->_core->proto(bid) == engine_t::proto_t::HTTP2)){
-			/**
-			 * Я не знаю что за хуйня, но каким-то образом изначально эта проверка не работает и приходится проверять второй раз
-			 */
-			if(this->_core->proto(bid) != engine_t::proto_t::HTTP2)
-				// Выходим из функции
-				return;
-			// Создаём локальный контейнер функций обратного вызова
-			callback_t callback(this->_log);
-			// Выполняем установку функции обратного вызова начала открытии потока
-			callback.on <int32_t (const int32_t)> ("begin", &web2_t::beginSignal, this, _1, bid);
-			// Выполняем установку функции обратного вызова при отправки сообщения на сервер
-			callback.on <void (const uint8_t *, const size_t)> ("send", &web2_t::sendSignal, this, bid, _1, _2);
-			// Выполняем установку функции обратного вызова при закрытии потока
-			callback.on <int32_t (const int32_t, const http2_t::error_t)> ("close", &web2_t::closedSignal, this, _1, bid, _2);
-			// Выполняем установку функции обратного вызова при получении чанка с сервера
-			callback.on <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", &web2_t::chunkSignal, this, _1, bid, _2, _3);
-			// Выполняем установку функции обратного вызова при получении данных заголовка
-			callback.on <int32_t (const int32_t, const string &, const string &)> ("header", &web2_t::headerSignal, this, _1, bid, _2, _3);
-			// Выполняем установку функции обратного вызова получения фрейма
-			callback.on <int32_t (const int32_t, const http2_t::direct_t, const http2_t::frame_t, const set <http2_t::flag_t> &)> ("frame", &web2_t::frameSignal, this, _1, bid, _2, _3, _4);
-			// Если функция обратного вызова на на вывод ошибок установлена
-			if(this->_callback.is("error"))
-				// Устанавливаем функцию обработки вызова на событие получения ошибок
-				callback.on <void (const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), bid, _1, _2, _3);
-			// Выполняем создание нового объекта сессии HTTP/2
-			auto ret = this->_sessions.emplace(bid, make_unique <http2_t> (this->_fmk, this->_log));
-			// Выполняем установку функции обратного вызова
-			ret.first->second->callback(callback);
-			// Если инициализация модуля NgHttp2 не выполнена
-			if(!ret.first->second->init(http2_t::mode_t::SERVER, this->_settings))
-				// Выполняем удаление созданного ранее объекта
-				this->_sessions.erase(ret.first);
-			// Если список разрешённых источников установлен
-			if(!this->_origins.empty())
-				// Устанавливаем список разрешённых источников
-				ret.first->second->origin(this->_origins);
-			// Если список альтернативных сервисов установлен
-			if(!this->_altsvc.empty())
-				// Устанавливаем список альтернативных сервисов
-				ret.first->second->altsvc(this->_altsvc);
-		}
-	}
 }
 /**
  * sendSignal Метод обратного вызова при отправки данных HTTP/2

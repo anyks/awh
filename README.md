@@ -2067,7 +2067,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 	
 	core.sonet(awh::scheme_t::sonet_t::TCP);
-	core.family(awh::scheme_t::family_t::NIX);
+	core.family(awh::scheme_t::family_t::IPC);
 
 	sample.init("anyks");
 
@@ -2132,7 +2132,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
-	core.family(awh::scheme_t::family_t::NIX);
+	core.family(awh::scheme_t::family_t::IPC);
 	core.cluster(awh::scheme_t::mode_t::ENABLED);
 
 	sample.init("anyks");
@@ -2199,7 +2199,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// sample.mode({client::sample_t::flag_t::NOT_INFO});
 	
 	core.sonet(awh::scheme_t::sonet_t::UDP);
-	core.family(awh::scheme_t::family_t::NIX);
+	core.family(awh::scheme_t::family_t::IPC);
 
 	sample.init("anyks");
 
@@ -2264,7 +2264,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::UDP);
-	core.family(awh::scheme_t::family_t::NIX);
+	core.family(awh::scheme_t::family_t::IPC);
 
 	sample.init("anyks");
 

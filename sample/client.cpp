@@ -123,9 +123,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// sample.proxy("socks5://user:password@127.0.0.1:2222");
 	// sample.proxy("http://user:password@127.0.0.1:2222");
 	// sample.proxy("http://127.0.0.1:2222");
-	// sample.proxy("socks5://user:password@anyks", awh::scheme_t::family_t::NIX);
-	// sample.proxy("http://anyks", awh::scheme_t::family_t::NIX);
-	// sample.proxy("http://user:password@anyks", awh::scheme_t::family_t::NIX);
+	// sample.proxy("socks5://user:password@anyks", awh::scheme_t::family_t::IPC);
+	// sample.proxy("http://anyks", awh::scheme_t::family_t::IPC);
+	// sample.proxy("http://user:password@anyks", awh::scheme_t::family_t::IPC);
 	// sample.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// sample.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
 	// sample.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
@@ -139,13 +139,15 @@ int32_t main(int32_t argc, char * argv[]){
 	// sample.authTypeProxy(auth_t::type_t::BASIC);
 	// sample.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Устанавливаем тип сокета unix-сокет
-	// core.family(awh::scheme_t::family_t::NIX);
+	// core.family(awh::scheme_t::family_t::IPC);
 	// Устанавливаем тип сокета
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
 	// core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
+	// Активируем правило асинхронной работы передачи данных
+	core.transferRule(client::core_t::transfer_t::ASYNC);
 	// Устанавливаем длительное подключение
 	// sample.keepAlive(100, 30, 10);
 	// Устанавливаем таймеры ожидания по одной секунде на чтение и запись

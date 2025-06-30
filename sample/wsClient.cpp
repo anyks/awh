@@ -232,7 +232,7 @@ int32_t main(int32_t argc, char * argv[]){
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
-	// core.family(awh::scheme_t::family_t::NIX);
+	// core.family(awh::scheme_t::family_t::IPC);
 	// Устанавливаем тип сокета DTLS
 	// core.sonet(awh::scheme_t::sonet_t::DTLS);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
@@ -249,6 +249,7 @@ int32_t main(int32_t argc, char * argv[]){
 	ws.user("user", "password");
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
+
 	// Устанавливаем данные прокси-сервера
 	// ws.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
 	// ws.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
@@ -257,26 +258,24 @@ int32_t main(int32_t argc, char * argv[]){
 	// ws.proxy("socks5://test1:password@127.0.0.1:2222");
 	// ws.proxy("http://127.0.0.1:2222");
 	// ws.proxy("http://test1:password@127.0.0.1:2222");
-	// ws.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
-	// ws.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
-
+	// ws.proxy("socks5://anyks", awh::scheme_t::family_t::IPC);
+	// ws.proxy("http://anyks", awh::scheme_t::family_t::IPC);
+	// ws.proxy("http://test1:password@anyks", awh::scheme_t::family_t::IPC);
 	// ws.proxy("http://3pvhoe:U8QFWd@193.56.188.250:8000");
 	// ws.proxy("http://tARdXT:uWoRp1@217.29.62.214:13699");
-
 	// ws.proxy("socks5://2faD0Q:mm9mw4@193.56.188.192:8000");
 	// ws.proxy("socks5://kLV5jZ:ypKUKp@217.29.62.214:13700");
-
 	// ws.proxy("http://user:password@anyks.net:2222");
 	// ws.proxy("https://user:password@anyks.net:2222");
 	// ws.proxy("socks5://user:password@anyks.net:2222");
-
+	
 	// Активируем работу прокси-сервера
 	// ws.proxy(client::scheme_t::work_t::ALLOW);
-
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
+
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(awh::auth_t::type_t::BASIC);
 	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);

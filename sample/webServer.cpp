@@ -369,7 +369,7 @@ int32_t main(int32_t argc, char * argv[]){
 	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем тип сокета unix-сокет
-	// core.family(awh::scheme_t::family_t::NIX);
+	// core.family(awh::scheme_t::family_t::IPC);
 	// Устанавливаем тип сокета UDP TLS
 	// core.sonet(awh::scheme_t::sonet_t::DTLS);
 	core.sonet(awh::scheme_t::sonet_t::TLS);

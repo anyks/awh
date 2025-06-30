@@ -511,9 +511,20 @@ namespace awh {
 			 */
 			auto on(const uint64_t fid, Args... args) noexcept -> uint64_t {
 				// Если мы получили название функции обратного вызова
-				if(fid > 0)
+				if(fid > 0){
+					// Если установлена триггерная функция
+					if(fid == 1){
+						// Если активное событие не установлено
+						if(this->_event == event_t::NONE){
+							// Выполняем функцию обратного вызова
+							std::apply(std::bind(args...), make_tuple());
+							// Выходим из функции
+							return;
+						}
+					}
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <T> (fid, args...);
+				}
 				// Выводим результат по умолчанию
 				return 0;
 			}
