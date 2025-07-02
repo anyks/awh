@@ -37,7 +37,7 @@ using namespace placeholders;
 	 * @param event произошедшее событие
 	 */
 	void awh::Cluster::Worker::message(SOCKET fd, const base_t::event_type_t event) noexcept {
-		// Если процесс является родительским
+		// Если процесс является родительским, выполняем чтение сообщений полученных от дочернего процесса
 		if(this->_ctx->_pid == static_cast <pid_t> (::getpid())){
 			// Определяем тип события
 			switch(static_cast <uint8_t> (event)){
@@ -220,9 +220,9 @@ using namespace placeholders;
 													// Если буфер данных получен
 													if((message.data != nullptr) && (message.size > 0))
 														// Выполняем функцию обратного вызова
-														this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, i->first, reinterpret_cast <const char *> (message.data), message.size);
+														this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, i->second, reinterpret_cast <const char *> (message.data), message.size);
 													// Выводим значение по умолчанию
-													else this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, i->first, nullptr, 0);
+													else this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, i->second, nullptr, 0);
 												} break;
 											}
 											// Выполняем удаление указанной записи
@@ -275,83 +275,83 @@ using namespace placeholders;
 								}
 								// Добавляем полученный идентификатор процесса в список активных сокетов
 								const_cast <cluster_t *> (this->_ctx)->_sockets.emplace(fd, pid);
-								// Если функция обратного вызова установлена
-								if(this->_ctx->_callback.is("message")){
-									// Выполняем поиск объекта работы с протоколом передачи данных
-									auto i = this->_decoders.find(pid);
-									// Если объект работы с протоколом передачи данных найден
-									if(i != this->_decoders.end()){
-										// Выполняем добавление бинарных данных в протокол
-										i->second->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
-										// Выполняем извлечение записей
-										while(!i->second->empty()){
-											// Получаем буфер входящего сообщения
-											const auto & message = i->second->get();
-											// Определяем тип входящего сообщения
-											switch(message.mid){
-												// Если сообщение соответствует рукопожатию
-												case static_cast <uint8_t> (message_t::HELLO): {
-													// Если буфер данных получен
-													if((message.data != nullptr) && (message.size > 0)){
-														// Выполняем поиск текущего брокера
-														auto j = this->_ctx->_brokers.find(this->_wid);
-														// Если текущий брокер найден
-														if(j != this->_ctx->_brokers.end()){
-															// Переходим по всему списку брокеров
-															for(auto & broker : j->second){
-																// Если мы нашли нужный нам процесс
-																if(broker->pid == pid){
-																	// Устанавливаем файловый дескриптор
-																	broker->mfds[0] = fd;
-																	broker->cfds[1] = fd;
-																	// Выполняем поиск нужного нам клиента
-																	auto k = this->_ctx->_clients.find(fd);
-																	// Если идентификатор найден
-																	if(k != this->_ctx->_clients.end()){
-																		// Устанавливаем базу событий для записи
-																		k->second->write = this->_ctx->_core->eventBase();
-																		// Устанавливаем сокет для записи
-																		k->second->write = fd;
-																		// Устанавливаем событие на запись данных дочернему процессу
-																		k->second->write = std::bind(&cluster_t::sending, const_cast <cluster_t *> (this->_ctx), this->_wid, pid, _1, _2);
-																		// Выполняем запуск работы записи данных дочернему процессу
-																		k->second->write.start();
-																		// Выполняем поиск энкодера
-																		auto j = this->_ctx->_encoders.find(pid);
-																		// Если энкодер найден удачно
-																		if(j != this->_ctx->_encoders.end())
-																			// Устанавливаем размер блока энкодера по размеру буфера данных сокета
-																			j->second->chunkSize(this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::WRITE));
-																		// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-																		i->second->chunkSize(this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::READ));
-																	}
-																	// Выходим из цикла
-																	break;
+								// Выполняем поиск объекта работы с протоколом передачи данных
+								auto i = this->_decoders.find(pid);
+								// Если объект работы с протоколом передачи данных найден
+								if(i != this->_decoders.end()){
+									// Выполняем добавление бинарных данных в протокол
+									i->second->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+									// Выполняем извлечение записей
+									while(!i->second->empty()){
+										// Получаем буфер входящего сообщения
+										const auto & message = i->second->get();
+										// Определяем тип входящего сообщения
+										switch(message.mid){
+											// Если сообщение соответствует рукопожатию
+											case static_cast <uint8_t> (message_t::HELLO): {
+												// Если буфер данных получен
+												if((message.data != nullptr) && (message.size > 0)){
+													// Выполняем поиск текущего брокера
+													auto j = this->_ctx->_brokers.find(this->_wid);
+													// Если текущий брокер найден
+													if(j != this->_ctx->_brokers.end()){
+														// Переходим по всему списку брокеров
+														for(auto & broker : j->second){
+															// Если мы нашли нужный нам процесс
+															if(broker->pid == pid){
+																// Устанавливаем файловый дескриптор
+																broker->mfds[0] = fd;
+																broker->cfds[1] = fd;
+																// Выполняем поиск нужного нам клиента
+																auto k = this->_ctx->_clients.find(fd);
+																// Если идентификатор найден
+																if(k != this->_ctx->_clients.end()){
+																	// Устанавливаем базу событий для записи
+																	k->second->write = this->_ctx->_core->eventBase();
+																	// Устанавливаем сокет для записи
+																	k->second->write = fd;
+																	// Устанавливаем событие на запись данных дочернему процессу
+																	k->second->write = std::bind(&cluster_t::sending, const_cast <cluster_t *> (this->_ctx), this->_wid, pid, _1, _2);
+																	// Выполняем запуск работы записи данных дочернему процессу
+																	k->second->write.start();
+																	// Выполняем поиск энкодера
+																	auto j = this->_ctx->_encoders.find(pid);
+																	// Если энкодер найден удачно
+																	if(j != this->_ctx->_encoders.end())
+																		// Устанавливаем размер блока энкодера по размеру буфера данных сокета
+																		j->second->chunkSize(this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::WRITE));
+																	// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+																	i->second->chunkSize(this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::READ));
 																}
+																// Выходим из цикла
+																break;
 															}
 														}
 													}
-												} break;
-												// Если сообщение соответствует общему формату данных
-												case static_cast <uint8_t> (message_t::GENERAL): {
+												}
+											} break;
+											// Если сообщение соответствует общему формату данных
+											case static_cast <uint8_t> (message_t::GENERAL): {
+												// Если функция обратного вызова установлена
+												if(this->_ctx->_callback.is("message")){
 													// Если буфер данных получен
 													if((message.data != nullptr) && (message.size > 0))
 														// Выполняем функцию обратного вызова
 														this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, reinterpret_cast <const char *> (message.data), message.size);
 													// Выводим значение по умолчанию
 													else this->_ctx->_callback.call <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", this->_wid, pid, nullptr, 0);
-												} break;
-											}
-											// Выполняем удаление указанной записи
-											i->second->pop();
+												}
+											} break;
 										}
-									// Если идентификатор не найден
-									} else {
-										// Выполняем закрытие файлового дескриптора
-										::close(fd);
-										// Выходим из функции
-										return;
+										// Выполняем удаление указанной записи
+										i->second->pop();
 									}
+								// Если идентификатор не найден
+								} else {
+									// Выполняем закрытие файлового дескриптора
+									::close(fd);
+									// Выходим из функции
+									return;
 								}
 							}
 						}
@@ -364,7 +364,7 @@ using namespace placeholders;
 					}
 				} break;
 			}
-		// Если процесс является дочерним
+		// Если процесс является дочерним, выполняем чтение сообщений полученных от мастера
 		} else if(this->_ctx->_pid == static_cast <pid_t> (::getppid())) {
 			// Определяем тип события
 			switch(static_cast <uint8_t> (event)){
