@@ -1491,7 +1491,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 													k->events |= POLLIN;
 													// Выполняем активацию таймера на указанное время
-													this->_evtimer.set(i->second.timer, i->second.delay);
+													this->_evtimer.add(i->second.timer, i->second.delay);
 												} break;
 												// Если нужно деактивировать событие работы таймера
 												case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -1574,7 +1574,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													#endif
 												// Выполняем активацию таймера на указанное время
-												} else this->_evtimer.set(i->second.timer, i->second.delay);
+												} else this->_evtimer.add(i->second.timer, i->second.delay);
 											} break;
 											// Если нужно деактивировать событие таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -1770,7 +1770,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													// Выполняем смену режима работы отлова события
 													EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
 													// Выполняем активацию таймера на указанное время
-													this->_evtimer.set(i->second.timer, i->second.delay);
+													this->_evtimer.add(i->second.timer, i->second.delay);
 												} break;
 												// Если нужно деактивировать событие работы таймера
 												case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -2285,7 +2285,7 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем активацию таймера на указанное время
-																	this->_evtimer.set(j->second.timer, j->second.delay);
+																	this->_evtimer.add(j->second.timer, j->second.delay);
 															}
 														}
 													// Выполняем закрытие подключения
@@ -2491,7 +2491,7 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем активацию таймера на указанное время
-																	this->_evtimer.set(j->second.timer, j->second.delay);
+																	this->_evtimer.add(j->second.timer, j->second.delay);
 															}
 														}
 													// Выполняем закрытие подключения
@@ -2699,7 +2699,7 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем активацию таймера на указанное время
-																	this->_evtimer.set(j->second.timer, j->second.delay);
+																	this->_evtimer.add(j->second.timer, j->second.delay);
 															}
 														}
 													// Выполняем закрытие подключения

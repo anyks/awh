@@ -166,11 +166,11 @@ void awh::EventTimer::del(const SOCKET fd) noexcept {
 	}
 }
 /**
- * set Метод установки таймера
+ * add Метод добавления таймера
  * @param fd    файловый дескриптор таймера
  * @param delay задержка времени в миллисекундах
  */
-void awh::EventTimer::set(const SOCKET fd, const uint32_t delay) noexcept {
+void awh::EventTimer::add(const SOCKET fd, const uint32_t delay) noexcept {
 	// Создаём объект даты для передачи
 	data_t data;
 	// Устанавливаем файловый дескриптор

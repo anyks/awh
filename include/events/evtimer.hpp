@@ -97,11 +97,11 @@ namespace awh {
 			 */
 			void del(const SOCKET fd) noexcept;
 			/**
-			 * set Метод установки таймера
+			 * add Метод добавления таймера
 			 * @param fd    файловый дескриптор таймера
 			 * @param delay задержка времени в миллисекундах
 			 */
-			void set(const SOCKET fd, const uint32_t delay) noexcept;
+			void add(const SOCKET fd, const uint32_t delay) noexcept;
 		public:
 			/**
 			 * EventTimer Конструктор

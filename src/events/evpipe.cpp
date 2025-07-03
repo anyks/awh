@@ -152,7 +152,7 @@ array <SOCKET, 2> awh::EventPIPE::create() noexcept {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем инициализацию таймера
-		if(::dumb_socketpair(result.data()) == INVALID_SOCKET){
+		if(::socketpair(result.data()) == INVALID_SOCKET){
 			/**
 			 * Если включён режим отладки
 			 */
