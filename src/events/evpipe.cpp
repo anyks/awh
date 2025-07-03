@@ -23,12 +23,17 @@
 using namespace std;
 
 /**
+ * Общий порт всех таймеров
+ */
+static uint32_t port = 0;
+
+/**
  * port Метод получения активного порта
  * @return номер порта сервера
  */
 uint32_t awh::EventPipe::port() const noexcept {
 	// Выводим номер активного порта сервера
-	return this->_port;
+	return ::port;
 }
 /**
  * type Метод установки типа пайпа
@@ -108,20 +113,23 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 		} break;
 		// Если тип пайпа соответствует UDP-серверу
 		case static_cast <uint8_t> (type_t::NETWORK): {
-			/**
-			 * Выполняем генерацию порта
-			 */
-			do {
-				// Подключаем устройство генератора
-				mt19937 generator(this->_randev());
-				// Выполняем генерирование случайного числа
-				uniform_int_distribution <mt19937::result_type> dist6(0xC000, 0xFFFF);
-				// Выполняем получение порта
-				this->_port = dist6(generator);
-			// Если такой порт уже был ранее сгенерирован, пробуем ещё раз
-			} while(!this->_socket.isBind(AF_INET, SOCK_DGRAM, this->_port));
+			// Если порт не установлен
+			if(::port == 0){
+				/**
+				 * Выполняем генерацию порта
+				 */
+				do {
+					// Подключаем устройство генератора
+					mt19937 generator(this->_randev());
+					// Выполняем генерирование случайного числа
+					uniform_int_distribution <mt19937::result_type> dist6(0xC000, 0xFFFF);
+					// Выполняем получение порта
+					::port = dist6(generator);
+				// Если такой порт уже был ранее сгенерирован, пробуем ещё раз
+				} while(!this->_socket.isBind(AF_INET, SOCK_DGRAM, ::port));
+			}
 			// Если сокет не создан выводим сообщение об ошибке
-			if((result[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET){
+			if((result[0] = ::socket(PF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -142,12 +150,16 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 			this->_socket.reuseable(result[0]);
 			// Переводим сокет в не блокирующий режим
 			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
+			// Устанавливаем размер буфера на чтение
+			this->_socket.bufferSize(result[0], 8, socket_t::mode_t::READ);
+			// Устанавливаем размер буфера на запись
+			this->_socket.bufferSize(result[0], 8, socket_t::mode_t::WRITE);
 			// Зануляем объект сервера
 			::memset(&this->_peer.server, 0, sizeof(this->_peer.server));
 			// Устанавливаем протокол интернета
 			this->_peer.server.sin_family = AF_INET;
 			// Устанавливаем порт для локального подключения
-			this->_peer.server.sin_port = htons(this->_port);
+			this->_peer.server.sin_port = htons(::port);
 			// Устанавливаем адрес для удаленного подключения
 			this->_peer.server.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 			// Выполняем бинд на сокет
