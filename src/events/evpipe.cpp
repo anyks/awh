@@ -23,9 +23,76 @@
 using namespace std;
 
 /**
- * Общий порт всех таймеров
+ * Для операционной системы OS Windows
  */
-static uint32_t port = 0;
+#if defined(_WIN32) || defined(_WIN64)
+	int dumb_socketpair(SOCKET socks[2], int make_overlapped){
+		union {
+			struct sockaddr_in inaddr;
+			struct sockaddr addr;
+		} a;
+		SOCKET listener;
+		int e;
+		socklen_t addrlen = sizeof(a.inaddr);
+		DWORD flags = (make_overlapped ? WSA_FLAG_OVERLAPPED : 0);
+		int reuse = 1;
+
+		if (socks == 0) {
+			WSASetLastError(WSAEINVAL);
+			return SOCKET_ERROR;
+		}
+		socks[0] = socks[1] = -1;
+
+		listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (listener == -1)
+			return SOCKET_ERROR;
+
+		memset(&a, 0, sizeof(a));
+		a.inaddr.sin_family = AF_INET;
+		a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		a.inaddr.sin_port = 0;
+
+		for (;;) {
+			if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR,
+				(char*) &reuse, (socklen_t) sizeof(reuse)) == -1)
+				break;
+			if  (bind(listener, &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
+				break;
+
+			memset(&a, 0, sizeof(a));
+			if  (getsockname(listener, &a.addr, &addrlen) == SOCKET_ERROR)
+				break;
+			// win32 getsockname may only set the port number, p=0.0005.
+			// ( http://msdn.microsoft.com/library/ms738543.aspx ):
+			a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			a.inaddr.sin_family = AF_INET;
+
+			if (listen(listener, 1) == SOCKET_ERROR)
+				break;
+
+			socks[0] = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
+			if (socks[0] == -1)
+				break;
+			if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
+				break;
+
+			socks[1] = accept(listener, NULL, NULL);
+			if (socks[1] == -1)
+				break;
+
+			closesocket(listener);
+			return 0;
+		}
+
+		e = WSAGetLastError();
+		closesocket(listener);
+		closesocket(socks[0]);
+		closesocket(socks[1]);
+		WSASetLastError(e);
+		socks[0] = socks[1] = -1;
+		return SOCKET_ERROR;
+	}
+#endif
 
 /**
  * port Метод получения активного порта
@@ -33,7 +100,7 @@ static uint32_t port = 0;
  */
 uint32_t awh::EventPipe::port() const noexcept {
 	// Выводим номер активного порта сервера
-	return ::port;
+	return this->_port;
 }
 /**
  * type Метод установки типа пайпа
@@ -64,7 +131,7 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 				// Создаём объект файловых дескрипторов
 				int32_t fds[2];
 				// Выполняем инициализацию таймера
-				if(::_pipe(fds, sizeof(uint64_t), O_BINARY) == INVALID_SOCKET){
+				if(::dumb_socketpair(fds, 0) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -113,23 +180,20 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 		} break;
 		// Если тип пайпа соответствует UDP-серверу
 		case static_cast <uint8_t> (type_t::NETWORK): {
-			// Если порт не установлен
-			if(::port == 0){
-				/**
-				 * Выполняем генерацию порта
-				 */
-				do {
-					// Подключаем устройство генератора
-					mt19937 generator(this->_randev());
-					// Выполняем генерирование случайного числа
-					uniform_int_distribution <mt19937::result_type> dist6(0xC000, 0xFFFF);
-					// Выполняем получение порта
-					::port = dist6(generator);
-				// Если такой порт уже был ранее сгенерирован, пробуем ещё раз
-				} while(!this->_socket.isBind(AF_INET, SOCK_DGRAM, ::port));
-			}
+			/**
+			 * Выполняем генерацию порта
+			 */
+			do {
+				// Подключаем устройство генератора
+				mt19937 generator(this->_randev());
+				// Выполняем генерирование случайного числа
+				uniform_int_distribution <mt19937::result_type> dist6(0xC000, 0xFFFF);
+				// Выполняем получение порта
+				this->_port = dist6(generator);
+			// Если такой порт уже был ранее сгенерирован, пробуем ещё раз
+			} while(!this->_socket.isBind(AF_INET, SOCK_DGRAM, this->_port));
 			// Если сокет не создан выводим сообщение об ошибке
-			if((result[0] = ::socket(PF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET){
+			if((result[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -150,16 +214,12 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 			this->_socket.reuseable(result[0]);
 			// Переводим сокет в не блокирующий режим
 			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
-			// Устанавливаем размер буфера на чтение
-			this->_socket.bufferSize(result[0], 8, socket_t::mode_t::READ);
-			// Устанавливаем размер буфера на запись
-			this->_socket.bufferSize(result[0], 8, socket_t::mode_t::WRITE);
 			// Зануляем объект сервера
 			::memset(&this->_peer.server, 0, sizeof(this->_peer.server));
 			// Устанавливаем протокол интернета
 			this->_peer.server.sin_family = AF_INET;
 			// Устанавливаем порт для локального подключения
-			this->_peer.server.sin_port = htons(::port);
+			this->_peer.server.sin_port = htons(this->_port);
 			// Устанавливаем адрес для удаленного подключения
 			this->_peer.server.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 			// Выполняем бинд на сокет
@@ -204,7 +264,7 @@ int64_t awh::EventPipe::read(const SOCKET fd, void * buffer, const size_t size) 
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Выполняем чтение из сокета данных
-					return static_cast <int64_t> (::_read(fd, buffer, size));
+					return static_cast <int64_t> (::recv(fd, buffer, size, 0));
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
@@ -247,7 +307,7 @@ int64_t awh::EventPipe::write(const SOCKET fd, const void * buffer, const size_t
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Выполняем запись в сокет данных
-					return static_cast <int64_t> (::_write(fd, buffer, size));
+					return static_cast <int64_t> (::send(fd, buffer, size, 0));
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */

@@ -259,9 +259,11 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						// Если событие является таймером
 						if(j->second.delay > 0){
 							// Выполняем удаление таймера
-							this->_evtimer.del(i->fd);
+							this->_evtimer.del(i->timer);
 							// Выполняем закрытие подключения
-							::_close(i->fd);
+							::closesocket(i->fd);
+							// Выполняем закрытие таймера
+							::closesocket(i->timer);
 						// Выполняем закрытие подключения
 						} else ::closesocket(i->fd);
 					// Выполняем закрытие подключения
@@ -465,9 +467,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 						// Если событие является таймером
 						if(i->second.delay > 0){
 							// Выполняем удаление таймера
-							this->_evtimer.del(j->fd);
+							this->_evtimer.del(j->timer);
 							// Выполняем закрытие подключения
-							::_close(j->fd);
+							::closesocket(j->fd);
+							// Выполняем закрытие таймера
+							::closesocket(j->timer);
 						// Выполняем закрытие подключения
 						} else ::closesocket(j->fd);
 						// Выполняем сброс файлового дескриптора
@@ -706,9 +710,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Выполняем удаление таймера
-										this->_evtimer.del(k->fd);
+										this->_evtimer.del(k->timer);
 										// Выполняем закрытие подключения
-										::_close(k->fd);
+										::closesocket(k->fd);
+										// Выполняем закрытие таймера
+										::closesocket(k->timer);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -1159,19 +1165,25 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							// Создаём объект пайпа
 							auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
 							// Устанавливаем тип пайпа
-							pipe->type(evpipe_t::type_t::NETWORK);
+							pipe->type(evpipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
 							auto fds = pipe->create();
 							// Выполняем инициализацию таймера
-							if(fds[0] == INVALID_SOCKET)
+							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
+							// Делаем сокет неблокирующим
+							this->_socket.blocking(fd, socket_t::mode_t::DISABLED);
+							// Выполняем добавление таймера в список таймеров
+							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_items.emplace(fd, item_t());
 							// Выполняем установку объекта пайпа
 							ret.first->second.pipe = pipe;
+							// Выполняем установку файлового дескриптора таймера
+							ret.first->second.timer = fds[1];
 							// Выполняем установку задержки времени таймера
 							ret.first->second.delay = delay;
 							// Выполняем установку флага серийной работы таймера
@@ -1470,14 +1482,14 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 													k->events |= POLLIN;
 													// Выполняем активацию таймера на указанное время
-													this->_evtimer.set(i->second.fd, i->second.delay, i->second.pipe->port());
+													this->_evtimer.set(i->second.timer, i->second.delay);
 												} break;
 												// Если нужно деактивировать событие работы таймера
 												case static_cast <uint8_t> (event_mode_t::DISABLED): {
 													// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 													k->events ^= POLLIN;
 													// Выполняем деактивацию таймера
-													this->_evtimer.del(i->second.fd);
+													this->_evtimer.del(i->second.timer);
 												} break;
 											}
 										} break;
@@ -1866,9 +1878,11 @@ void awh::Base::clear() noexcept {
 					// Если событие является таймером
 					if(j->second.delay > 0){
 						// Выполняем удаление таймера
-						this->_evtimer.del(i->fd);
+						this->_evtimer.del(i->timer);
 						// Выполняем закрытие подключения
-						::_close(i->fd);
+						::closesocket(i->fd);
+						// Выполняем закрытие таймера
+						::closesocket(i->timer);
 					// Выполняем закрытие подключения
 					} else ::closesocket(i->fd);
 				// Выполняем закрытие подключения
