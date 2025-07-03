@@ -259,11 +259,11 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						// Если событие является таймером
 						if(j->second.delay > 0){
 							// Выполняем удаление таймера
-							this->_evtimer.del(i->timer);
+							this->_evtimer.del(j->second.timer);
 							// Выполняем закрытие подключения
-							::closesocket(i->fd);
+							::closesocket(j->second.fd);
 							// Выполняем закрытие таймера
-							::closesocket(i->timer);
+							::closesocket(j->second.timer);
 						// Выполняем закрытие подключения
 						} else ::closesocket(i->fd);
 					// Выполняем закрытие подключения
@@ -467,11 +467,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 						// Если событие является таймером
 						if(i->second.delay > 0){
 							// Выполняем удаление таймера
-							this->_evtimer.del(j->timer);
+							this->_evtimer.del(i->second.timer);
 							// Выполняем закрытие подключения
-							::closesocket(j->fd);
+							::closesocket(i->second.fd);
 							// Выполняем закрытие таймера
-							::closesocket(j->timer);
+							::closesocket(i->second.timer);
 						// Выполняем закрытие подключения
 						} else ::closesocket(j->fd);
 						// Выполняем сброс файлового дескриптора
@@ -710,11 +710,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Выполняем удаление таймера
-										this->_evtimer.del(k->timer);
+										this->_evtimer.del(i->second.timer);
 										// Выполняем закрытие подключения
-										::closesocket(k->fd);
+										::closesocket(i->second.fd);
 										// Выполняем закрытие таймера
-										::closesocket(k->timer);
+										::closesocket(i->second.timer);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -1878,11 +1878,11 @@ void awh::Base::clear() noexcept {
 					// Если событие является таймером
 					if(j->second.delay > 0){
 						// Выполняем удаление таймера
-						this->_evtimer.del(i->timer);
+						this->_evtimer.del(j->second.timer);
 						// Выполняем закрытие подключения
-						::closesocket(i->fd);
+						::closesocket(j->second.fd);
 						// Выполняем закрытие таймера
-						::closesocket(i->timer);
+						::closesocket(j->second.timer);
 					// Выполняем закрытие подключения
 					} else ::closesocket(i->fd);
 				// Выполняем закрытие подключения
