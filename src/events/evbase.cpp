@@ -1262,8 +1262,6 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 								return result;
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
-							// Делаем сокет неблокирующим
-							this->_socket.blocking(fd, socket_t::mode_t::DISABLED);
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
@@ -1357,8 +1355,6 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 								return result;
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
-							// Делаем сокет неблокирующим
-							this->_socket.blocking(fd, socket_t::mode_t::DISABLED);
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
@@ -3020,59 +3016,26 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 	else {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
-		/**
-		 * Для операционной системы OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Создаём объект пайпа
-			auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
-			// Устанавливаем тип пайпа
-			pipe->type(evpipe_t::type_t::NETWORK);
-			// Выполняем создание сокетов
-			auto fds = pipe->create();
-			// Выполняем инициализацию таймера
-			if(fds[0] == INVALID_SOCKET)
-				// Выходим из функции
-				return result;
-			// Выполняем генерацию идентификатора верхнеуровневого потока
-			result = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
-			// Выполняем добавление в список верхнеуровневых потоков, новый поток
-			auto ret = this->_upstreams.emplace(result, upstream_t());
-			// Выполняем установку объекта пайпа
-			ret.first->second.pipe = pipe;
-			// Выполняем установку файлового дескриптора на чтение
-			ret.first->second.read = fds[0];
-			// Выполняем установку файлового дескриптора на запись
-			ret.first->second.write = fds[0];
-			// Выполняем установку функции обратного вызова
-			ret.first->second.callback = callback;
-		/**
-		 * Для операционной системы не являющейся OS Windows
-		 */
-		#else
-			// Создаём объект пайпа
-			auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
-			// Выполняем создание сокетов
-			auto fds = pipe->create();
-			// Выполняем инициализацию таймера
-			if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
-				// Выходим из функции
-				return result;
-			// Делаем сокет неблокирующим
-			this->_socket.blocking(fds[0], socket_t::mode_t::DISABLED);
-			// Выполняем генерацию идентификатора верхнеуровневого потока
-			result = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
-			// Выполняем добавление в список верхнеуровневых потоков, новый поток
-			auto ret = this->_upstreams.emplace(result, upstream_t());
-			// Выполняем установку объекта пайпа
-			ret.first->second.pipe = pipe;
-			// Выполняем установку файлового дескриптора на чтение
-			ret.first->second.read = fds[0];
-			// Выполняем установку файлового дескриптора на запись
-			ret.first->second.write = fds[1];
-			// Выполняем установку функции обратного вызова
-			ret.first->second.callback = callback;
-		#endif
+		// Создаём объект пайпа
+		auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
+		// Выполняем создание сокетов
+		auto fds = pipe->create();
+		// Выполняем инициализацию таймера
+		if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
+			// Выходим из функции
+			return result;
+		// Выполняем генерацию идентификатора верхнеуровневого потока
+		result = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
+		// Выполняем добавление в список верхнеуровневых потоков, новый поток
+		auto ret = this->_upstreams.emplace(result, upstream_t());
+		// Выполняем установку объекта пайпа
+		ret.first->second.pipe = pipe;
+		// Выполняем установку файлового дескриптора на чтение
+		ret.first->second.read = fds[0];
+		// Выполняем установку файлового дескриптора на запись
+		ret.first->second.write = fds[1];
+		// Выполняем установку функции обратного вызова
+		ret.first->second.callback = callback;
 		// Выполняем добавление события в базу событий
 		if(!this->add(result, ret.first->second.read, std::bind(&base_t::upstream, this, result, _1, _2)))
 			// Выводим сообщение что событие не вышло активировать
