@@ -59,15 +59,15 @@ namespace awh {
 			evpipe_t _evpipe;
 		private:
 			// Мютекс для блокировки потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
 			// Объект экрана для работы в дочернем потоке
 			screen_t <data_t> _screen;
 		private:
 			// Список существующих файловых дескрипторов
-			set <SOCKET> _fds;
+			std::set <SOCKET> _fds;
 			// Список активных таймеров
-			multimap <uint64_t, SOCKET> _timers;
+			std::multimap <uint64_t, SOCKET> _timers;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
