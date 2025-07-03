@@ -85,7 +85,7 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 			 */
 			#else
 				// Выполняем инициализацию таймера
-				if(::pipe(result.data()) == INVALID_SOCKET){
+				if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, result.data()) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -101,7 +101,7 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 					#endif
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
-				}
+				}	
 			#endif
 			// Делаем сокет неблокирующим
 			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);

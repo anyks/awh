@@ -289,8 +289,8 @@ using namespace placeholders;
 										switch(message.mid){
 											// Если сообщение соответствует рукопожатию
 											case static_cast <uint8_t> (message_t::HELLO): {
-												// Если буфер данных получен
-												if((message.data != nullptr) && (message.size > 0)){
+												// Если мы передаём данные через unix-сокеты и буфер данных получен
+												if((this->_ctx->_transfer == transfer_t::IPC) && (message.data != nullptr) && (message.size > 0)){
 													// Выполняем поиск текущего брокера
 													auto j = this->_ctx->_brokers.find(this->_wid);
 													// Если текущий брокер найден
@@ -1061,7 +1061,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 					// Если мы передаём данные через Shared memory
 					if(this->_transfer == transfer_t::PIPE){
 						// Выполняем подписку на основной канал передачи данных
-						if(::pipe(broker->mfds) != 0){
+						if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->mfds) != 0){
 							// Выводим в лог сообщение
 							this->_log->print("Cluster [%s] fork child: %s", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_server.socket.message(AWH_ERROR()).c_str());
 							// Выполняем остановку работы
@@ -1070,7 +1070,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 							::exit(EXIT_FAILURE);
 						}
 						// Выполняем подписку на дочерний канал передачи данных
-						if(::pipe(broker->cfds) != 0){
+						if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->cfds) != 0){
 							// Выводим в лог сообщение
 							this->_log->print("Cluster [%s] fork child: %s", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_server.socket.message(AWH_ERROR()).c_str());
 							// Выполняем остановку работы
@@ -1203,10 +1203,25 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										broker->read.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 										// Выполняем активацию работы события закрытия подключения
 										broker->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-										// Создаём новый объект энкодеров для передачи данных
-										this->_encoders.emplace(this->_pid, make_unique <cmp::encoder_t> (this->_log));
-										// Создаём новый объект декодеров для получения данных
-										i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
+										{
+											// Устанавливаем размер буфера на запись
+											this->_server.socket.bufferSize(broker->mfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
+											// Создаём новый объект энкодеров для передачи данных
+											auto ret = this->_encoders.emplace(this->_pid, make_unique <cmp::encoder_t> (this->_log));
+											// Устанавливаем размер блока энкодера по размеру буфера данных сокета
+											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[1], socket_t::mode_t::WRITE));
+											// Выполняем добавление буфера данных в протокол
+											ret.first->second->push(static_cast <uint8_t> (message_t::HELLO), reinterpret_cast <const uint8_t *> (&pid), sizeof(pid));
+										}{
+											// Устанавливаем размер буфера на чтение
+											this->_server.socket.bufferSize(broker->cfds[0], this->_bandwidth.read, socket_t::mode_t::READ);
+											// Создаём новый объект декодеров для получения данных
+											auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
+											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
+										}
+										// Выполняем отправку сообщения мастер-процессу
+										this->write(i->first, this->_pid, broker->mfds[1]);
 									} break;
 								}
 								// Если функция обратного вызова установлена
@@ -1284,10 +1299,17 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								broker->write.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
 								// Выполняем активацию работы события закрытия подключения
 								broker->write.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-								// Создаём новый объект энкодеров для передачи данных
-								this->_encoders.emplace(pid, make_unique <cmp::encoder_t> (this->_log));
-								// Создаём новый объект декодеров для получения данных
-								i->second->_decoders.emplace(pid, make_unique <cmp::decoder_t> (this->_log));
+								{
+									// Создаём новый объект энкодеров для передачи данных
+									auto ret = this->_encoders.emplace(pid, make_unique <cmp::encoder_t> (this->_log));
+									// Устанавливаем размер блока энкодера по размеру буфера данных сокета
+									ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[1], socket_t::mode_t::WRITE));
+								}{
+									// Создаём новый объект декодеров для получения данных
+									auto ret = i->second->_decoders.emplace(pid, make_unique <cmp::decoder_t> (this->_log));
+									// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+									ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[0], socket_t::mode_t::READ));
+								}
 							} break;
 						}
 						// Если функция обратного вызова установлена
@@ -1359,7 +1381,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							// Если мы передаём данные через Shared memory
 							if(this->_transfer == transfer_t::PIPE){
 								// Выполняем подписку на основной канал передачи данных
-								if(::pipe(broker->mfds) != 0){
+								if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->mfds) != 0){
 									// Выводим в лог сообщение
 									this->_log->print("Cluster [%s] fork child: %s", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_server.socket.message(AWH_ERROR()).c_str());
 									// Выполняем остановку работы
@@ -1368,7 +1390,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									::exit(EXIT_FAILURE);
 								}
 								// Выполняем подписку на дочерний канал передачи данных
-								if(::pipe(broker->cfds) != 0){
+								if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->cfds) != 0){
 									// Выводим в лог сообщение
 									this->_log->print("Cluster [%s] fork child: %s", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_server.socket.message(AWH_ERROR()).c_str());
 									// Выполняем остановку работы
@@ -1388,7 +1410,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 						// Если мы передаём данные через Shared memory
 						if(this->_transfer == transfer_t::PIPE){
 							// Выполняем подписку на основной канал передачи данных
-							if(::pipe(broker->mfds) != 0){
+							if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->mfds) != 0){
 								// Выводим в лог сообщение
 								this->_log->print("Cluster [%s] fork: %s", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_server.socket.message(AWH_ERROR()).c_str());
 								// Выполняем поиск завершившегося процесса
@@ -1404,7 +1426,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 								::exit(EXIT_FAILURE);
 							}
 							// Выполняем подписку на дочерний канал передачи данных
-							if(::pipe(broker->cfds) != 0){
+							if(::socketpair(AF_UNIX, SOCK_STREAM, 0, broker->cfds) != 0){
 								// Выводим в лог сообщение
 								this->_log->print("Cluster [%s] fork: %s", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_server.socket.message(AWH_ERROR()).c_str());
 								// Выполняем поиск завершившегося процесса
@@ -1537,10 +1559,25 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											broker->read.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 											// Выполняем активацию работы события закрытия подключения
 											broker->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-											// Создаём новый объект энкодеров для передачи данных
-											this->_encoders.emplace(this->_pid, make_unique <cmp::encoder_t> (this->_log));
-											// Создаём новый объект декодеров для получения данных
-											i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
+											{
+												// Устанавливаем размер буфера на запись
+												this->_server.socket.bufferSize(broker->mfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
+												// Создаём новый объект энкодеров для передачи данных
+												auto ret = this->_encoders.emplace(this->_pid, make_unique <cmp::encoder_t> (this->_log));
+												// Устанавливаем размер блока энкодера по размеру буфера данных сокета
+												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[1], socket_t::mode_t::WRITE));
+												// Выполняем добавление буфера данных в протокол
+												ret.first->second->push(static_cast <uint8_t> (message_t::HELLO), reinterpret_cast <const uint8_t *> (&pid), sizeof(pid));
+											}{
+												// Устанавливаем размер буфера на чтение
+												this->_server.socket.bufferSize(broker->cfds[0], this->_bandwidth.read, socket_t::mode_t::READ);
+												// Создаём новый объект декодеров для получения данных
+												auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
+												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
+											}
+											// Выполняем отправку сообщения мастер-процессу
+											this->write(i->first, this->_pid, broker->mfds[1]);
 										} break;
 									}
 									// Если функция обратного вызова установлена
@@ -1646,10 +1683,17 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 								} break;
 								// Если мы передаём данные через Shared memory
 								case static_cast <uint8_t> (transfer_t::PIPE): {
-									// Создаём новый объект энкодеров для передачи данных
-									this->_encoders.emplace(broker->pid, make_unique <cmp::encoder_t> (this->_log));
-									// Создаём новый объект декодеров для получения данных
-									i->second->_decoders.emplace(broker->pid, make_unique <cmp::decoder_t> (this->_log));
+									{
+										// Создаём новый объект энкодеров для передачи данных
+										auto ret = this->_encoders.emplace(broker->pid, make_unique <cmp::encoder_t> (this->_log));
+										// Устанавливаем размер блока энкодера по размеру буфера данных сокета
+										ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[1], socket_t::mode_t::WRITE));
+									}{
+										// Создаём новый объект декодеров для получения данных
+										auto ret = i->second->_decoders.emplace(broker->pid, make_unique <cmp::decoder_t> (this->_log));
+										// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+										ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[0], socket_t::mode_t::READ));
+									}
 									// Выполняем активацию работы чтения данных с дочерних процессов
 									broker->read.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 									// Выполняем активацию работы события закрытия подключения
