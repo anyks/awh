@@ -260,7 +260,7 @@ int64_t awh::EventPipe::read(const SOCKET fd, void * buffer, const size_t size) 
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Выполняем чтение из сокета данных
-					return static_cast <int64_t> (::recv(fd, buffer, size, 0));
+					return static_cast <int64_t> (::recv(fd, reinterpret_cast <char *> (buffer), size, 0));
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
@@ -303,7 +303,7 @@ int64_t awh::EventPipe::write(const SOCKET fd, const void * buffer, const size_t
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Выполняем запись в сокет данных
-					return static_cast <int64_t> (::send(fd, buffer, size, 0));
+					return static_cast <int64_t> (::send(fd, reinterpret_cast <const char *> (buffer), size, 0));
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
