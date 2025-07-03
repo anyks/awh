@@ -2272,7 +2272,7 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем активацию таймера на указанное время
-																	this->_evtimer.set(j->second.fd, j->second.delay, j->second.pipe->port());
+																	this->_evtimer.set(j->second.timer, j->second.delay);
 															}
 														}
 													// Выполняем закрытие подключения
