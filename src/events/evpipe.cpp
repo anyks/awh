@@ -128,10 +128,8 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
-				// Создаём объект файловых дескрипторов
-				int32_t fds[2];
 				// Выполняем инициализацию таймера
-				if(::dumb_socketpair(fds, 0) == INVALID_SOCKET){
+				if(::dumb_socketpair(result.data(), 0) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -148,10 +146,8 @@ array <SOCKET, 2> awh::EventPipe::create() noexcept {
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				}
-				// Выполняем установку сокета на чтение
-				result[0] = static_cast <SOCKET> (fds[0]);
-				// Выполняем установку сокета на запись
-				result[1] = static_cast <SOCKET> (fds[1]);
+				// Делаем сокет неблокирующим
+				this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
