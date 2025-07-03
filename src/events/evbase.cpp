@@ -261,13 +261,13 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 							// Выполняем удаление таймера
 							this->_evtimer.del(j->second.timer);
 							// Выполняем закрытие подключения
-							::closesocket(j->second.fd);
+							// ::closesocket(j->second.fd);
 							// Выполняем закрытие таймера
-							::closesocket(j->second.timer);
+							// ::closesocket(j->second.timer);
 						// Выполняем закрытие подключения
-						} else ::closesocket(i->fd);
+						}//  else ::closesocket(i->fd);
 					// Выполняем закрытие подключения
-					} else ::closesocket(i->fd);
+					}// else ::closesocket(i->fd);
 					// Выполняем сброс файлового дескриптора
 					i->fd = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
@@ -469,11 +469,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 							// Выполняем удаление таймера
 							this->_evtimer.del(i->second.timer);
 							// Выполняем закрытие подключения
-							::closesocket(i->second.fd);
+							// ::closesocket(i->second.fd);
 							// Выполняем закрытие таймера
-							::closesocket(i->second.timer);
+							// ::closesocket(i->second.timer);
 						// Выполняем закрытие подключения
-						} else ::closesocket(j->fd);
+						}// else ::closesocket(j->fd);
 						// Выполняем сброс файлового дескриптора
 						j->fd = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
@@ -712,9 +712,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 										// Выполняем удаление таймера
 										this->_evtimer.del(i->second.timer);
 										// Выполняем закрытие подключения
-										::closesocket(i->second.fd);
+										// ::closesocket(i->second.fd);
 										// Выполняем закрытие таймера
-										::closesocket(i->second.timer);
+										// ::closesocket(i->second.timer);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -1880,13 +1880,13 @@ void awh::Base::clear() noexcept {
 						// Выполняем удаление таймера
 						this->_evtimer.del(j->second.timer);
 						// Выполняем закрытие подключения
-						::closesocket(j->second.fd);
+						// ::closesocket(j->second.fd);
 						// Выполняем закрытие таймера
-						::closesocket(j->second.timer);
+						// ::closesocket(j->second.timer);
 					// Выполняем закрытие подключения
-					} else ::closesocket(i->fd);
+					}// else ::closesocket(i->fd);
 				// Выполняем закрытие подключения
-				} else ::closesocket(i->fd);
+				}// else ::closesocket(i->fd);
 				// Выполняем сброс файлового дескриптора
 				i->fd = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
