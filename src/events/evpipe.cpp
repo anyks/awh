@@ -26,309 +26,222 @@ using namespace std;
  * Для операционной системы OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
-	int dumb_socketpair(SOCKET socks[2], int make_overlapped){
+	/**
+	 * socketpair Метод создания пары сокетов
+	 * @param socks      список сокетов которые будут инициализированы
+	 * @param overlapped флаг установки использования перекрывающихся операций ввода-вывода
+	 * @return           результат выполнения операции
+	 */
+	static int32_t socketpair(SOCKET & socks[2], const bool overlapped = true) noexcept {
+		/**
+		 * Объединение сетевых интерфейсов
+		 */
 		union {
-			struct sockaddr_in inaddr;
-			struct sockaddr addr;
+			struct sockaddr_in inaddr; // Объект слушателя
+			struct sockaddr addr;      // Объект подключения
 		} a;
-		SOCKET listener;
-		int e;
+		// Получаем размер структуры слушателя
 		socklen_t addrlen = sizeof(a.inaddr);
-		DWORD flags = (make_overlapped ? WSA_FLAG_OVERLAPPED : 0);
-		int reuse = 1;
-
-		if (socks == 0) {
+		// Получаем флаги инициализации сокета
+		DWORD flags = (overlapped ? WSA_FLAG_OVERLAPPED : 0);
+		// Если сокеты пустые
+		if(socks == 0){
+			// Выполняем формирование ошибки
 			WSASetLastError(WSAEINVAL);
+			// Выводим ошибку
 			return SOCKET_ERROR;
 		}
+		// Выполняем изначальную инициализацию структуры сокетов
 		socks[0] = socks[1] = -1;
-
-		listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (listener == -1)
+		// Создаём сокет слушателя
+		const SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		// Если сокет слушателя не создан
+		if(listener == -1)
+			// Выводим ошибку
 			return SOCKET_ERROR;
-
-		memset(&a, 0, sizeof(a));
-		a.inaddr.sin_family = AF_INET;
-		a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		// Выполняем инициализацию всех сетевых интерфейсов
+		::memset(&a, 0, sizeof(a));
+		// Устанавливаем нулевой порт так-как он нам не нужен
 		a.inaddr.sin_port = 0;
-
-		for (;;) {
-			if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR,
-				(char*) &reuse, (socklen_t) sizeof(reuse)) == -1)
+		// Устанавливаем семейство сокетов
+		a.inaddr.sin_family = AF_INET;
+		// Устанавливаем петлевой сетевой интерфейс (127.0.0.1)
+		a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		// Формируем флаг разрешающий переиспользовать данные сокеты
+		const int32_t reuse = 1;
+		/**
+		 * Выполняем инициализацию сокетов на чтение и запись
+		 */
+		for(;;){
+			// Устанавливаем флаг разрешающий переиспользование сокетов
+			if(::setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&reuse), (socklen_t) sizeof(reuse)) == -1)
+				// Выходим из цикла
 				break;
-			if  (bind(listener, &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
+			// Выполняем биндинг полученного сокета
+			if(::bind(listener, &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
+				// Выходим из цикла
 				break;
-
-			memset(&a, 0, sizeof(a));
-			if  (getsockname(listener, &a.addr, &addrlen) == SOCKET_ERROR)
+			// Обнуляем все сетевые интерфейсы
+			::memset(&a, 0, sizeof(a));
+			// Извлекаем имя указанного слушателя сокета
+			if(::getsockname(listener, &a.addr, &addrlen) == SOCKET_ERROR)
+				// Выходим из цикла
 				break;
-			// win32 getsockname may only set the port number, p=0.0005.
-			// ( http://msdn.microsoft.com/library/ms738543.aspx ):
-			a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			/**
+			 * Win32 GetockName может установить только номер порта, p = 0,0005.
+			 * ( http://msdn.microsoft.com/library/ms738543.aspx )
+			 */
+			// Устанавливаем семейство IPv4-адресов 
 			a.inaddr.sin_family = AF_INET;
-
-			if (listen(listener, 1) == SOCKET_ERROR)
+			// Устанавливаем петлевой сетевой интерфейс (127.0.0.1)
+			a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			// Запускаем прослушивание порта
+			if(::listen(listener, 1) == SOCKET_ERROR)
+				// Выходим из цикла
 				break;
-
-			socks[0] = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
-			if (socks[0] == -1)
+			// Создаём сокет для чтения данных
+			socks[0] = WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, flags);
+			// Если сокет не создан
+			if(socks[0] == -1)
+				// Выходим из цикла
 				break;
-			if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
+			// Выполняем подключение к сокету на чтение данных
+			if(::connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
+				// Выходим из цикла
 				break;
-
-			socks[1] = accept(listener, NULL, NULL);
-			if (socks[1] == -1)
+			// Выполняем разрешение подключения к сокету и это у нас будет сокет на запись
+			socks[1] = ::accept(listener, nullptr, nullptr);
+			// Если сокет не создан
+			if(socks[1] == -1)
+				// Выходим из цикла
 				break;
-
-			closesocket(listener);
+			// Закрываем сокет слушателя
+			::closesocket(listener);
+			// Выходим из функции и сообщаем, что все сокеты созданы удачно
 			return 0;
 		}
-
-		e = WSAGetLastError();
-		closesocket(listener);
-		closesocket(socks[0]);
-		closesocket(socks[1]);
-		WSASetLastError(e);
+		// Получаем ошибки сгенерированные системой
+		const int32_t error = WSAGetLastError();
+		// Закрываем сокет слушателя
+		::closesocket(listener);
+		// Закрываем сокет чтение данных
+		::closesocket(socks[0]);
+		// Закрываем сокет для записи данных
+		::closesocket(socks[1]);
+		// Выполняем регистрацию ошибки
+		WSASetLastError(error);
+		// Выполняем сброс значения сокетов
 		socks[0] = socks[1] = -1;
+		// Выводим ошибку
 		return SOCKET_ERROR;
 	}
 #endif
 
 /**
- * port Метод получения активного порта
- * @return номер порта сервера
- */
-uint32_t awh::EventPipe::port() const noexcept {
-	// Выводим номер активного порта сервера
-	return this->_port;
-}
-/**
- * type Метод установки типа пайпа
- * @param type тип пайпа для установки
- */
-void awh::EventPipe::type(const type_t type) noexcept {
-	// Выполняем установку типа пайпа
-	this->_type = type;
-}
-/**
  * create Метод создания файловых дескрипторов
  * @return файловые дескрипторы для обмена данными
  */
-array <SOCKET, 2> awh::EventPipe::create() noexcept {
+array <SOCKET, 2> awh::EventPIPE::create() noexcept {
 	// Результат работы функции
 	array <SOCKET, 2> result = {
 		INVALID_SOCKET,
 		INVALID_SOCKET
 	};
-	// Определяем тип пайпа
-	switch(static_cast <uint8_t> (this->_type)){
-		// Если тип пайпа соответствует нативному
-		case static_cast <uint8_t> (type_t::NATIVE): {
+	/**
+	 * Для операционной системы OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем инициализацию таймера
+		if(::dumb_socketpair(result.data()) == INVALID_SOCKET){
 			/**
-			 * Для операционной системы OS Windows
+			 * Если включён режим отладки
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Выполняем инициализацию таймера
-				if(::dumb_socketpair(result.data(), 1) == INVALID_SOCKET){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-					#endif
-					// Выходим из приложения
-					::exit(EXIT_FAILURE);
-				}
-				// Делаем сокет неблокирующим
-				this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 			/**
-			 * Для операционной системы не являющейся OS Windows
-			 */
+			* Если режим отладки не включён
+			*/
 			#else
-				// Выполняем инициализацию таймера
-				if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, result.data()) == INVALID_SOCKET){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-					#endif
-					// Выходим из приложения
-					::exit(EXIT_FAILURE);
-				}	
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 			#endif
-			// Делаем сокет неблокирующим
-			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
-		} break;
-		// Если тип пайпа соответствует UDP-серверу
-		case static_cast <uint8_t> (type_t::NETWORK): {
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	/**
+	 * Для операционной системы не являющейся OS Windows
+	 */
+	#else
+		// Выполняем инициализацию таймера
+		if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, result.data()) == INVALID_SOCKET){
 			/**
-			 * Выполняем генерацию порта
+			 * Если включён режим отладки
 			 */
-			do {
-				// Подключаем устройство генератора
-				mt19937 generator(this->_randev());
-				// Выполняем генерирование случайного числа
-				uniform_int_distribution <mt19937::result_type> dist6(0xC000, 0xFFFF);
-				// Выполняем получение порта
-				this->_port = dist6(generator);
-			// Если такой порт уже был ранее сгенерирован, пробуем ещё раз
-			} while(!this->_socket.isBind(AF_INET, SOCK_DGRAM, this->_port));
-			// Если сокет не создан выводим сообщение об ошибке
-			if((result[0] = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-				#endif
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			}
-			// Устанавливаем разрешение на повторное использование сокета
-			this->_socket.reuseable(result[0]);
-			// Переводим сокет в не блокирующий режим
-			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
-			// Зануляем объект сервера
-			::memset(&this->_peer.server, 0, sizeof(this->_peer.server));
-			// Устанавливаем протокол интернета
-			this->_peer.server.sin_family = AF_INET;
-			// Устанавливаем порт для локального подключения
-			this->_peer.server.sin_port = htons(this->_port);
-			// Устанавливаем адрес для удаленного подключения
-			this->_peer.server.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-			// Выполняем бинд на сокет
-			if(::bind(result[0], reinterpret_cast <struct sockaddr *> (&this->_peer.server), sizeof(this->_peer.server)) == INVALID_SOCKET){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
-				#endif
-				// Выходим из приложения
-				::exit(EXIT_FAILURE);
-			}
-		} break;
-	}
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}	
+	#endif
+	// Делаем сокет неблокирующим
+	this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
+	// Делаем блокирующим сокет на запись
+	this->_socket.blocking(result[1], socket_t::mode_t::ENABLED);
+	// Устанавливаем размер буфера на чтение
+	this->_socket.bufferSize(result[0], 32, socket_t::mode_t::READ);
+	// Устанавливаем размер буфера на запись
+	this->_socket.bufferSize(result[1], 32, socket_t::mode_t::WRITE);
 	// Выводим результат
 	return result;
 }
 /**
  * read Метод чтения из файлового дескриптора в буфер данных
- * @param fd     файловый дескриптор (сокет) для чтения
- * @param buffer бинарный буфер данных куда производится чтение
- * @param size   размер бинарного буфера для чтения
- * @return       размер прочитанных байт
+ * @param fd        файловый дескриптор (сокет) для чтения
+ * @param timestamp время прошедшее с момента запуска таймера
+ * @return          размер прочитанных байт
  */
-int64_t awh::EventPipe::read(const SOCKET fd, void * buffer, const size_t size) noexcept {
-	// Если буфер данных не нулевой
-	if((buffer != nullptr) && (size > 0)){
-		// Определяем тип пайпа
-		switch(static_cast <uint8_t> (this->_type)){
-			// Если тип пайпа соответствует нативному
-			case static_cast <uint8_t> (type_t::NATIVE): {
-				/**
-				 * Для операционной системы OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Выполняем чтение из сокета данных
-					return static_cast <int64_t> (::recv(fd, reinterpret_cast <char *> (buffer), size, 0));
-				/**
-				 * Для операционной системы не являющейся OS Windows
-				 */
-				#else
-					// Выполняем чтение из сокета данных
-					return static_cast <int64_t> (::read(fd, buffer, size));
-				#endif
-			}
-			// Если тип пайпа соответствует UDP-серверу
-			case static_cast <uint8_t> (type_t::NETWORK): {
-				// Получаем размер структуры клиента
-				socklen_t length = sizeof(struct sockaddr);
-				// Очищаем всю структуру для клиента
-				::memset(&this->_peer.client, 0, sizeof(this->_peer.client));
-				// Выполняем чтение из сокета данных
-				return static_cast <int64_t> (::recvfrom(fd, reinterpret_cast <char *> (buffer), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.client), &length));
-			}
-		}
-	}
-	// Выводим результат
-	return INVALID_SOCKET;
+int8_t awh::EventPIPE::read(const SOCKET fd, uint64_t & timestamp) noexcept {
+	/**
+	 * Для операционной системы OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем чтение из сокета данных
+		return static_cast <int8_t> (::recv(fd, reinterpret_cast <char *> (&timestamp), sizeof(timestamp), 0));
+	/**
+	 * Для операционной системы не являющейся OS Windows
+	 */
+	#else
+		// Выполняем чтение из сокета данных
+		return static_cast <int8_t> (::read(fd, reinterpret_cast <char *> (&timestamp), sizeof(timestamp)));
+	#endif
 }
 /**
- * write Метод записи в файловый дескриптор из буфера данных
- * @param fd     файловый дескриптор (сокет) для чтения
- * @param buffer бинарный буфер данных откуда производится запись
- * @param size   размер бинарного буфера для записи
- * @param port   порт сервера на который нужно отправить ответ
- * @return       размер записанных байт
+ * send Метод отправки файловому дескриптору сообщения
+ * @param fd        файловый дескриптор (сокет) для чтения
+ * @param timestamp время прошедшее с момента запуска таймера
+ * @return          размер записанных байт
  */
-int64_t awh::EventPipe::write(const SOCKET fd, const void * buffer, const size_t size, const uint32_t port) noexcept {
-	// Если буфер данных передан не пустой
-	if((buffer != nullptr) && (size > 0)){
-		// Определяем тип пайпа
-		switch(static_cast <uint8_t> (this->_type)){
-			// Если тип пайпа соответствует нативному
-			case static_cast <uint8_t> (type_t::NATIVE): {
-				/**
-				 * Для операционной системы OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Выполняем запись в сокет данных
-					return static_cast <int64_t> (::send(fd, reinterpret_cast <const char *> (buffer), size, 0));
-				/**
-				 * Для операционной системы не являющейся OS Windows
-				 */
-				#else
-					// Выполняем запись в сокет данных
-					return static_cast <int64_t> (::write(fd, buffer, size));
-				#endif
-			}
-			// Если тип пайпа соответствует UDP-серверу
-			case static_cast <uint8_t> (type_t::NETWORK): {
-				// Получаем размер структуры сервера
-				const socklen_t length = sizeof(struct sockaddr);
-				// Очищаем всю структуру для сервера
-				::memset(&this->_peer.client, 0, sizeof(this->_peer.client));
-				// Устанавливаем протокол интернета
-				this->_peer.client.sin_family = AF_INET;
-				// Устанавливаем порт для локального подключения
-				this->_peer.client.sin_port = htons(port);
-				// Устанавливаем адрес для удаленного подключения
-				this->_peer.client.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-				// Выполняем отправку буфера данных клиенту
-				return static_cast <int64_t> (::sendto(fd, reinterpret_cast <const char *> (buffer), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.client), length));
-			}
-		}
-	}
-	// Выводим результат
-	return INVALID_SOCKET;
+int8_t awh::EventPIPE::send(const SOCKET fd, const uint64_t timestamp) noexcept {
+	/**
+	 * Для операционной системы OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем запись в сокет данных
+		return static_cast <int8_t> (::send(fd, reinterpret_cast <const char *> (&timestamp), sizeof(timestamp), 0));
+	/**
+	 * Для операционной системы не являющейся OS Windows
+	 */
+	#else
+		// Выполняем запись в сокет данных
+		return static_cast <int8_t> (::write(fd, reinterpret_cast <const char *> (&timestamp), sizeof(timestamp)));
+	#endif
 }

@@ -209,7 +209,7 @@ void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t
 				// Трансферный идентификатор
 				uint64_t tid = 0;
 				// Если чтение выполнено удачно
-				if(i->second.pipe->read(i->second.read, reinterpret_cast <char *> (&tid), sizeof(tid)) == sizeof(tid)){
+				if(i->second.pipe->read(i->second.read, tid) == sizeof(tid)){
 					// Если функция обратного вызова существует
 					if(i->second.callback != nullptr)
 						// Выполняем функцию обратного вызова
@@ -260,14 +260,18 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						if(j->second.delay > 0){
 							// Выполняем удаление таймера
 							this->_evtimer.del(j->second.timer);
-							// Выполняем закрытие подключения
-							// ::closesocket(j->second.fd);
 							// Выполняем закрытие таймера
-							// ::closesocket(j->second.timer);
-						// Выполняем закрытие подключения
-						}//  else ::closesocket(i->fd);
+							::closesocket(j->second.timer);
+							// Выполняем поиск таймера в списке таймеров
+							auto k = this->_timers.find(j->second.timer);
+							// Если таймер в списке таймеров найден, удаляем его
+							if(k != this->_timers.end())
+								// Выполняем удаление таймера
+								this->_timers.erase(k);
+						}
+					}
 					// Выполняем закрытие подключения
-					}// else ::closesocket(i->fd);
+					::closesocket(i->fd);
 					// Выполняем сброс файлового дескриптора
 					i->fd = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
@@ -468,12 +472,17 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 						if(i->second.delay > 0){
 							// Выполняем удаление таймера
 							this->_evtimer.del(i->second.timer);
-							// Выполняем закрытие подключения
-							// ::closesocket(i->second.fd);
 							// Выполняем закрытие таймера
-							// ::closesocket(i->second.timer);
+							::closesocket(i->second.timer);
+							// Выполняем поиск таймера в списке таймеров
+							auto j = this->_timers.find(i->second.timer);
+							// Если таймер в списке таймеров найден, удаляем его
+							if(j != this->_timers.end())
+								// Выполняем удаление таймера
+								this->_timers.erase(j);
+						}
 						// Выполняем закрытие подключения
-						}// else ::closesocket(j->fd);
+						::closesocket(j->fd);
 						// Выполняем сброс файлового дескриптора
 						j->fd = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
@@ -709,12 +718,20 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 									if((erased = (k->fd == fd))){
 										// Очищаем полученное событие
 										k->revents = 0;
+										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
+										k->events ^= POLLIN;
 										// Выполняем удаление таймера
 										this->_evtimer.del(i->second.timer);
 										// Выполняем закрытие подключения
-										// ::closesocket(i->second.fd);
+										::closesocket(i->second.fd);
 										// Выполняем закрытие таймера
-										// ::closesocket(i->second.timer);
+										::closesocket(i->second.timer);
+										// Выполняем поиск таймера в списке таймеров
+										auto l = this->_timers.find(i->second.timer);
+										// Если таймер в списке таймеров найден, удаляем его
+										if(l != this->_timers.end())
+											// Выполняем удаление таймера
+											this->_timers.erase(l);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -1164,8 +1181,6 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						if(delay > 0){
 							// Создаём объект пайпа
 							auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
-							// Устанавливаем тип пайпа
-							pipe->type(evpipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
 							auto fds = pipe->create();
 							// Выполняем инициализацию таймера
@@ -1174,8 +1189,6 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 								return result;
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
-							// Делаем сокет неблокирующим
-							this->_socket.blocking(fd, socket_t::mode_t::DISABLED);
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
@@ -1241,8 +1254,6 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						if(delay > 0){
 							// Создаём объект пайпа
 							auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
-							// Устанавливаем тип пайпа
-							pipe->type(evpipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
 							auto fds = pipe->create();
 							// Выполняем инициализацию таймера
@@ -1338,8 +1349,6 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						if(delay > 0){
 							// Создаём объект пайпа
 							auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
-							// Устанавливаем тип пайпа
-							pipe->type(evpipe_t::type_t::NATIVE);
 							// Выполняем создание сокетов
 							auto fds = pipe->create();
 							// Выполняем инициализацию таймера
@@ -1879,14 +1888,18 @@ void awh::Base::clear() noexcept {
 					if(j->second.delay > 0){
 						// Выполняем удаление таймера
 						this->_evtimer.del(j->second.timer);
-						// Выполняем закрытие подключения
-						// ::closesocket(j->second.fd);
 						// Выполняем закрытие таймера
-						// ::closesocket(j->second.timer);
-					// Выполняем закрытие подключения
-					}// else ::closesocket(i->fd);
+						::closesocket(j->second.timer);
+						// Выполняем поиск таймера в списке таймеров
+						auto j = this->_timers.find(j->second.timer);
+						// Если таймер в списке таймеров найден, удаляем его
+						if(j != this->_timers.end())
+							// Выполняем удаление таймера
+							this->_timers.erase(j);
+					}
+				}
 				// Выполняем закрытие подключения
-				}// else ::closesocket(i->fd);
+				::closesocket(i->fd);
 				// Выполняем сброс файлового дескриптора
 				i->fd = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
@@ -2251,7 +2264,7 @@ void awh::Base::start() noexcept {
 													// Фремя погрешности работы таймера
 													uint64_t infelicity = 0;
 													// Если чтение выполнено удачно
-													if((bytes = j->second.pipe->read(fd, &infelicity, sizeof(infelicity))) > 0){
+													if((bytes = j->second.pipe->read(fd, infelicity)) > 0){
 														// Если функция обратного вызова установлена
 														if(j->second.callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -2360,8 +2373,10 @@ void awh::Base::start() noexcept {
 													// Удаляем файловый дескриптор из базы событий
 													this->del(j->second.id, fd);
 												}
-											// Выполняем удаление фантомного файлового дескриптора
-											} else this->del(fd);
+											// Если файловый дескриптор не принадлежит таймерам
+											} else if(this->_timers.find(fd) == this->_timers.end())
+												// Выполняем удаление фантомного файлового дескриптора
+												this->del(fd);
 										}
 									// Выходим из цикла
 									} else break;
@@ -2455,7 +2470,7 @@ void awh::Base::start() noexcept {
 													// Фремя погрешности работы таймера
 													uint64_t infelicity = 0;
 													// Если чтение выполнено удачно
-													if((bytes = item->pipe->read(item->fd, &infelicity, sizeof(infelicity))) > 0){
+													if((bytes = item->pipe->read(item->fd, infelicity)) > 0){
 														// Если функция обратного вызова установлена
 														if(item->callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -2663,7 +2678,7 @@ void awh::Base::start() noexcept {
 													// Фремя погрешности работы таймера
 													uint64_t infelicity = 0;
 													// Если чтение выполнено удачно
-													if((bytes = item->pipe->read(item->fd, &infelicity, sizeof(infelicity))) > 0){
+													if((bytes = item->pipe->read(item->fd, infelicity)) > 0){
 														// Если функция обратного вызова установлена
 														if(item->callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -2977,14 +2992,14 @@ void awh::Base::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept 
 			 * Для операционной системы OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
-				// Выполняем запись в сокет данных
-				i->second.pipe->write(i->second.write, reinterpret_cast <const char *> (&tid), sizeof(tid), i->second.pipe->port());
+				// Выполняем отправку сообщения верхнеуровневому потоку
+				i->second.pipe->send(i->second.write, tid);
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
 			#else
-				// Выполняем запись в сокет данных
-				i->second.pipe->write(i->second.write, reinterpret_cast <const char *> (&tid), sizeof(tid));
+				// Выполняем отправку сообщения верхнеуровневому потоку
+				i->second.pipe->send(i->second.write, tid);
 			#endif
 		}
 	}
@@ -3037,8 +3052,6 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 		#else
 			// Создаём объект пайпа
 			auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
-			// Устанавливаем тип пайпа
-			pipe->type(evpipe_t::type_t::NATIVE);
 			// Выполняем создание сокетов
 			auto fds = pipe->create();
 			// Выполняем инициализацию таймера

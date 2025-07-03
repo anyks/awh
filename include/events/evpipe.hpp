@@ -12,16 +12,14 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_EVENT_TIMER_PIPE__
-#define __AWH_EVENT_TIMER_PIPE__
+#ifndef __AWH_EVENT_PIPE__
+#define __AWH_EVENT_PIPE__
 
 /**
  * Стандартные модули
  */
 #include <array>
-#include <vector>
 #include <string>
-#include <random>
 #include <cstring>
 #include <algorithm>
 
@@ -39,60 +37,15 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * EventPipe Класс передачи данных между процессами
+	 * EventPIPE Класс передачи данных между процессами
 	 */
-	typedef class AWHSHARED_EXPORT EventPipe {
-		public:
-			/**
-			 * Тип пайпа с которым производится работа
-			 */
-			enum class type_t : uint8_t {
-				NONE    = 0x00, // Тип пайпа не установлен
-				NATIVE  = 0x01, // Тип пайпа нативный
-				NETWORK = 0x02  // Тип пайпа сетевой
-			};
-		private:
-			/**
-			 * Peer Структура подключения
-			 */
-			typedef struct Peer {
-				struct sockaddr_in client; // Параметры подключения клиента
-				struct sockaddr_in server; // Параметры подключения сервера
-				/**
-				 * Peer Конструктор
-				 */
-				Peer() noexcept : client{}, server{} {}
-			} peer_t;
-		private:
-			// Объект пира
-			peer_t _peer;
-		private:
-			// Тип пайпа
-			type_t _type;
-		private:
-			// Порт прослушивающего сервера
-			uint32_t _port;
+	typedef class AWHSHARED_EXPORT EventPIPE {
 		private:
 			// Объект работы с сокетами
 			socket_t _socket;
 		private:
-			// Выполняем инициализацию генератора
-			random_device _randev;
-		private:
 			// Объект работы с логами
 			const log_t * _log;
-		public:
-			/**
-			 * port Метод получения активного порта
-			 * @return номер порта сервера
-			 */
-			uint32_t port() const noexcept;
-		public:
-			/**
-			 * type Метод установки типа пайпа
-			 * @param type тип пайпа для установки
-			 */
-			void type(const type_t type) noexcept;
 		public:
 			/**
 			 * create Метод создания файловых дескрипторов
@@ -102,34 +55,30 @@ namespace awh {
 		public:
 			/**
 			 * read Метод чтения из файлового дескриптора в буфер данных
-			 * @param fd     файловый дескриптор (сокет) для чтения
-			 * @param buffer бинарный буфер данных куда производится чтение
-			 * @param size   размер бинарного буфера для чтения
-			 * @return       размер прочитанных байт
+			 * @param fd        файловый дескриптор (сокет) для чтения
+			 * @param timestamp время прошедшее с момента запуска таймера
+			 * @return          размер прочитанных байт
 			 */
-			int64_t read(const SOCKET fd, void * buffer, const size_t size) noexcept;
+			int8_t read(const SOCKET fd, uint64_t & timestamp) noexcept;
 			/**
-			 * write Метод записи в файловый дескриптор из буфера данных
-			 * @param fd     файловый дескриптор (сокет) для чтения
-			 * @param buffer бинарный буфер данных откуда производится запись
-			 * @param size   размер бинарного буфера для записи
-			 * @param port   порт сервера на который нужно отправить ответ
-			 * @return       размер записанных байт
+			 * send Метод отправки файловому дескриптору сообщения
+			 * @param fd        файловый дескриптор (сокет) для чтения
+			 * @param timestamp время прошедшее с момента запуска таймера
+			 * @return          размер записанных байт
 			 */
-			int64_t write(const SOCKET fd, const void * buffer, const size_t size, const uint32_t port = 0) noexcept;
+			int8_t send(const SOCKET fd, const uint64_t timestamp) noexcept;
 		public:
 			/**
-			 * EventPipe Конструктор
+			 * EventPIPE Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			EventPipe(const fmk_t * fmk, const log_t * log) noexcept :
-			 _type(type_t::NONE), _port(0), _socket(fmk, log), _log(log) {}
+			EventPIPE(const fmk_t * fmk, const log_t * log) noexcept : _socket(fmk, log), _log(log) {}
 			/**
-			 * ~EventPipe Деструктор
+			 * ~EventPIPE Деструктор
 			 */
-			~EventPipe() noexcept {}
+			~EventPIPE() noexcept {}
 	} evpipe_t;
 };
 
-#endif // __AWH_EVENT_TIMER_PIPE__
+#endif // __AWH_EVENT_PIPE__

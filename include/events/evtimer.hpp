@@ -18,6 +18,7 @@
 /**
  * Стандартные модули
  */
+#include <set>
 #include <map>
 #include <mutex>
 
@@ -46,14 +47,12 @@ namespace awh {
 			typedef struct Data {
 				// Файловый дескрипторв (сокет)
 				SOCKET fd;
-				// Порт на который нужно отправить
-				uint32_t port;
 				// Время задержки работы таймера
 				uint64_t delay;
 				/**
 				 * Data Конструктор
 				 */
-				Data() noexcept : fd(INVALID_SOCKET), port(0), delay(0) {}
+				Data() noexcept : fd(INVALID_SOCKET), delay(0) {}
 			} __attribute__((packed)) data_t;
 		private:
 			// Объект работы с пайпом
@@ -66,7 +65,7 @@ namespace awh {
 			screen_t <data_t> _screen;
 		private:
 			// Список существующих файловых дескрипторов
-			map <SOCKET, uint32_t> _fds;
+			set <SOCKET> _fds;
 			// Список активных таймеров
 			multimap <uint64_t, SOCKET> _timers;
 		private:
@@ -101,9 +100,8 @@ namespace awh {
 			 * set Метод установки таймера
 			 * @param fd    файловый дескриптор таймера
 			 * @param delay задержка времени в миллисекундах
-			 * @param port  порт сервера на который нужно отправить ответ
 			 */
-			void set(const SOCKET fd, const uint32_t delay, const uint32_t port = 0) noexcept;
+			void set(const SOCKET fd, const uint32_t delay) noexcept;
 		public:
 			/**
 			 * EventTimer Конструктор

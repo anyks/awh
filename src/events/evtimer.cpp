@@ -53,8 +53,8 @@ void awh::EventTimer::trigger() noexcept {
 				auto j = this->_fds.find(fd);
 				// Если файловый дескриптор найден в списке
 				if(j != this->_fds.end()){
-					// Выполняем запись в сокет данных
-					this->_evpipe.write(fd, &infelicity, sizeof(infelicity), j->second);
+					// Выполняем отправку сообщения
+					this->_evpipe.send(fd, infelicity);
 					// Выполняем удаление идентификатора таймера
 					this->_fds.erase(j);
 				}
@@ -101,8 +101,8 @@ void awh::EventTimer::process(const data_t data) noexcept {
 				auto j = this->_fds.find(fd);
 				// Если файловый дескриптор найден в списке
 				if(j != this->_fds.end()){
-					// Выполняем запись в сокет данных
-					this->_evpipe.write(fd, &infelicity, sizeof(infelicity), j->second);
+					// Выполняем отправку сообщения
+					this->_evpipe.send(fd, infelicity);
 					// Выполняем удаление идентификатора таймера
 					this->_fds.erase(j);
 				}
@@ -113,7 +113,7 @@ void awh::EventTimer::process(const data_t data) noexcept {
 	// Если сокет таймера ещё не добавлен
 	if(this->_fds.find(data.fd) == this->_fds.end()){
 		// Выполняем добавление файлового дескриптора в список
-		this->_fds.emplace(data.fd, data.port);
+		this->_fds.emplace(data.fd);
 		// Выполняем добавления нового таймера
 		this->_timers.emplace(data.delay + date, data.fd);
 	}
@@ -169,15 +169,12 @@ void awh::EventTimer::del(const SOCKET fd) noexcept {
  * set Метод установки таймера
  * @param fd    файловый дескриптор таймера
  * @param delay задержка времени в миллисекундах
- * @param port  порт сервера на который нужно отправить ответ
  */
-void awh::EventTimer::set(const SOCKET fd, const uint32_t delay, const uint32_t port) noexcept {
+void awh::EventTimer::set(const SOCKET fd, const uint32_t delay) noexcept {
 	// Создаём объект даты для передачи
 	data_t data;
 	// Устанавливаем файловый дескриптор
 	data.fd = fd;
-	// Выполняем установку порта
-	data.port = port;
 	// Устанавливаем задержку времени в наносекундах
 	data.delay = (static_cast <uint64_t> (delay) * 1000000);
 	// Выполняем отправку события экрану
@@ -190,19 +187,6 @@ void awh::EventTimer::set(const SOCKET fd, const uint32_t delay, const uint32_t 
  */
 awh::EventTimer::EventTimer(const fmk_t * fmk, const log_t * log) noexcept :
  _evpipe(fmk, log), _screen(screen_t <data_t>::health_t::DEAD), _fmk(fmk) {
-	/**
-	 * Для операционной системы OS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Устанавливаем тип пайпа
-		this->_evpipe.type(evpipe_t::type_t::NETWORK);
-	/**
-	 * Для операционной системы не являющейся OS Windows
-	 */
-	#else
-		// Устанавливаем тип пайпа
-		this->_evpipe.type(evpipe_t::type_t::NATIVE);
-	#endif
 	// Выполняем добавление функции обратного вызова триггера
 	this->_screen = static_cast <function <void (void)>> (std::bind(&evtimer_t::trigger, this));
 	// Выполняем добавление функции обратного вызова процесса обработки
