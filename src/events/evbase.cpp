@@ -1887,11 +1887,11 @@ void awh::Base::clear() noexcept {
 						// Выполняем закрытие таймера
 						::closesocket(j->second.timer);
 						// Выполняем поиск таймера в списке таймеров
-						auto j = this->_timers.find(j->second.timer);
+						auto k = this->_timers.find(j->second.timer);
 						// Если таймер в списке таймеров найден, удаляем его
-						if(j != this->_timers.end())
+						if(k != this->_timers.end())
 							// Выполняем удаление таймера
-							this->_timers.erase(j);
+							this->_timers.erase(k);
 					}
 				}
 				// Выполняем закрытие подключения
