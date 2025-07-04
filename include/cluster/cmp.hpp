@@ -258,6 +258,13 @@ namespace awh {
 				void push(const void * buffer, const size_t size) noexcept;
 			private:
 				/**
+				 * process Метод извлечения данных из полученного буфера
+				 * @param buffer буфер данных для препарирования
+				 * @param size   размер буфера данных для препарирования
+				 * @return       количество обработанных байт
+				 */
+				size_t process(const void * buffer, const size_t size) noexcept;
+				/**
 				 * prepare Метод препарирования полученных данных
 				 * @param buffer буфер данных для препарирования
 				 * @param size   размер буфера данных для препарирования

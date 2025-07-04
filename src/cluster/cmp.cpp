@@ -463,12 +463,12 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 	}
 }
 /**
- * prepare Метод препарирования полученных данных
+ * process Метод извлечения данных из полученного буфера
  * @param buffer буфер данных для препарирования
  * @param size   размер буфера данных для препарирования
  * @return       количество обработанных байт
  */
-size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexcept {
+size_t awh::cmp::Decoder::process(const void * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если данные для добавления переданы
@@ -579,12 +579,89 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 					result += static_cast <size_t> (this->_header.bytes);
 					// Выполняем сброс объекта заголовка
 					this->_header = header_t();
-					// Если мы извлекли не все данные из буфера
-					if((size > result) && ((size - result) >= HEADER_SIZE))
-						// Выполняем извлечение слещующей порции данных
-						result += this->prepare(reinterpret_cast <const char *> (buffer) + result, size - result);
 				}
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const bad_alloc &) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	// Выводим сообщение об ошибке
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, "Non-existent data was sent to the decoder");
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * prepare Метод препарирования полученных данных
+ * @param buffer буфер данных для препарирования
+ * @param size   размер буфера данных для препарирования
+ * @return       количество обработанных байт
+ */
+size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	// Если данные для добавления переданы
+	if((buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем обработку ошибки
+		 */
+		try {
+			// Количество извлечённых байт
+			size_t bytes = 0;
+			/**
+			 * Нам приходится так делать, так-как рекурсивная функция забивает стэк
+			 */
+			do
+				// Выполняем извлечение данных из полученного буфера
+				result += bytes = this->process(reinterpret_cast <const uint8_t *> (buffer) + result, size - result);
+			// Если в буфере есть ещё данные продолжаем дальше
+			while((bytes > 0) && (size > result) && ((size - result) >= HEADER_SIZE));
 		/**
 		 * Если возникает ошибка
 		 */
