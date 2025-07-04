@@ -321,7 +321,7 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем установку флага автоматического перезапуска убитых дочерних процессов
-		this->_cluster.restart(0, mode);
+		this->_cluster.autoRestart(0, mode);
 	/**
 	 * Для операционной системы OS Windows
 	 */

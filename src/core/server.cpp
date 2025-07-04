@@ -1867,7 +1867,7 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 				// Если кластер необходимо активировать
 				case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
 					// Устанавливаем флаг автоматического перезапуска упавших процессов
-					this->_cluster.restart(sid, this->_clusterAutoRestart);
+					this->_cluster.autoRestart(sid, this->_clusterAutoRestart);
 					// Если количество процессов установленно
 					if(this->_clusterSize >= 0)
 						// Выполняем инициализацию кластера

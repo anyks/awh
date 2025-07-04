@@ -45,9 +45,18 @@ namespace awh {
 	 */
 	namespace cmp {
 		/**
+		 * Максимальный размер одного буфера данных
+		 */
+		static constexpr size_t CHUNK_SIZE = 0x1000;
+		/**
+		 * Контрольная сумма заголовка запроса
+		 */
+		static constexpr size_t HEADER_CRC = 0x485741;
+		/**
 		 * Режим передачи буфера данных
 		 */
 		enum class mode_t : uint8_t {
+			NONE    = 0x00, // Режим буфера данных не установлен
 			END     = 0x01, // Режим буфера данных конец передачи
 			CONTINE = 0x02  // Режим буфера данных продолжение передачи
 		};
@@ -59,19 +68,17 @@ namespace awh {
 			uint8_t mid;    // Идентификатор сообщения
 			pid_t pid;      // Идентификатор процесса
 			uint32_t id;    // Идентификатор сообщения
+			uint32_t crc;   // Контрольная сумма
 			uint16_t bytes; // Размер текущего чанка
 			/**
 			 * Header Конструктор
 			 * @param id идентификатор записи
 			 */
 			Header(const uint32_t id = 0) noexcept :
-			 mode(mode_t::END), mid(0),
-			 pid(::getpid()), id(id), bytes(0) {}
+			 mode(mode_t::NONE), mid(0),
+			 pid(::getpid()), id(id),
+			 crc(HEADER_CRC), bytes(0) {}
 		} __attribute__((packed)) header_t;
-		/**
-		 * Устанавливаем максимальный размер одного буфера данных
-		 */
-		static constexpr size_t CHUNK_SIZE = 0x1000;
 		/**
 		 * Encoder Класс для работы с протоколом передачи данных
 		 */
@@ -121,10 +128,15 @@ namespace awh {
 				void erase(const size_t size) noexcept;
 			public:
 				/**
+				 * chunkSize Метод извлечения размера установленного чанка
+				 * @return размер установленного чанка
+				 */
+				size_t chunkSize() const noexcept;
+				/**
 				 * chunkSize Метод установки максимального размера одного блока
 				 * @param size размер блока данных
 				 */
-				void chunkSize(const size_t size = CHUNK_SIZE) noexcept;
+				void chunkSize(const size_t size) noexcept;
 			public:
 				/**
 				 * push Метод добавления новой записи в протокол
@@ -193,6 +205,8 @@ namespace awh {
 			private:
 				// Набор собранных данных
 				queue_t _queue;
+				// Заголовок полученного сообщения
+				header_t _header;
 				// Объект буфера данных
 				buffer_t _buffer;
 			private:
@@ -202,8 +216,8 @@ namespace awh {
 				// Временный буфер для вставки в очередь
 				vector <queue_t::buffer_t> _arbitrary;
 			private:
-				// Набор временных буферов данных
-				map <uint32_t, unique_ptr <buffer_t>> _temp;
+				// Набор временных закэшированных данных
+				map <uint32_t, unique_ptr <buffer_t>> _cache;
 			private:
 				// Объект работы с логами
 				const log_t * _log;
@@ -252,10 +266,15 @@ namespace awh {
 				size_t prepare(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
+				 * chunkSize Метод извлечения размера установленного чанка
+				 * @return размер установленного чанка
+				 */
+				size_t chunkSize() const noexcept;
+				/**
 				 * chunkSize Метод установки максимального размера одного блока
 				 * @param size размер блока данных
 				 */
-				void chunkSize(const size_t size = CHUNK_SIZE) noexcept;
+				void chunkSize(const size_t size) noexcept;
 			public:
 				/**
 				 * Оператор проверки на доступность данных в контейнере
@@ -280,9 +299,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Decoder(const log_t * log) noexcept :
-				 _queue(log), _buffer(log),
-				 _chunkSize(CHUNK_SIZE),
-				 _arbitrary(3), _log(log) {}
+				 _queue(log), _buffer(log), _chunkSize(CHUNK_SIZE), _arbitrary(3), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */

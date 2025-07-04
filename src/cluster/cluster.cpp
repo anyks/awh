@@ -37,7 +37,7 @@ using namespace placeholders;
 	 * @param event произошедшее событие
 	 */
 	void awh::Cluster::Worker::message(SOCKET fd, const base_t::event_type_t event) noexcept {
-		// Если процесс является родительским, выполняем чтение сообщений полученных от дочернего процесса
+		// Если процесс является родительским
 		if(this->_ctx->_pid == static_cast <pid_t> (::getpid())){
 			// Определяем тип события
 			switch(static_cast <uint8_t> (event)){
@@ -70,10 +70,8 @@ using namespace placeholders;
 								auto j = this->_ctx->_clients.find(fd);
 								// Если клиент найден удачно
 								if(j != this->_ctx->_clients.end()){
-									// Выполняем остановку чтение сообщений
-									j->second->read.stop();
-									// Выполняем остановку отправки сообщений
-									j->second->write.stop();
+									// Выполняем остановку получения событий
+									j->second->ev.stop();
 									// Выполняем закрытие файловых дескрипторов
 									::close(j->second->fd);
 									// Удаляем клиента из списка
@@ -139,10 +137,8 @@ using namespace placeholders;
 								auto j = this->_ctx->_clients.find(fd);
 								// Если сокет есть в списке подключений
 								if(j != this->_ctx->_clients.end()){
-									// Выполняем остановку чтение сообщений
-									j->second->read.stop();
-									// Выполняем остановку отправки сообщений
-									j->second->write.stop();
+									// Выполняем остановку получения событий
+									j->second->ev.stop();
 									// Выполняем закрытие файловых дескрипторов
 									::close(j->second->fd);
 									// Выполняем удаление клиента
@@ -181,7 +177,7 @@ using namespace placeholders;
 						this->_log->print("[%u] Data from child process [%u] is closed", log_t::flag_t::CRITICAL, this->_ctx->_pid, pid);
 					}
 					// Если установлен флаг аннигиляции
-					if(!this->_restart){
+					if(!this->_autoRestart){
 						// Выполняем остановку работы
 						const_cast <cluster_t *> (this->_ctx)->clear();
 						// Выходим из приложения
@@ -189,10 +185,26 @@ using namespace placeholders;
 					// Выходим из функции
 					} else return;
 				} break;
+				// Если выполняется событие готовности сокета на запись
+				case static_cast <uint8_t> (base_t::event_type_t::WRITE): {
+					// Выполняем поиск активного процесса
+					auto i = this->_ctx->_sockets.find(fd);
+					// Если активный процесс привязанный к сокету найден
+					if(i != this->_ctx->_sockets.end())
+						// Выполняем запуск функции обратного вызова
+						const_cast <cluster_t *> (this->_ctx)->sending(this->_wid, i->second, fd);
+				} break;
 				// Если выполняется событие чтения данных с сокета
 				case static_cast <uint8_t> (base_t::event_type_t::READ): {
+					// Если буфер данных её не инициализирован
+					if(this->_buffer.size == 0){
+						// Извлекаем размер сформированного буфера
+						this->_buffer.size = this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::READ);
+						// Выполняем инициализацию буфера
+						this->_buffer.data = unique_ptr <uint8_t []> (new uint8_t [this->_buffer.size]);
+					}
 					// Размер входящих сообщений
-					const ssize_t bytes = ::read(fd, this->_buffer, sizeof(this->_buffer));
+					const ssize_t bytes = ::recv(fd, this->_buffer.data.get(), this->_buffer.size, 0);
 					// Если сообщение получено полностью
 					if(bytes != 0){
 						// Если мы получили данные
@@ -208,7 +220,7 @@ using namespace placeholders;
 									// Если объект работы с протоколом передачи данных найден
 									if(j != this->_decoders.end()){
 										// Выполняем добавление бинарных данных в протокол
-										j->second->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+										j->second->push(reinterpret_cast <char *> (this->_buffer.data.get()), static_cast <size_t> (bytes));
 										// Выполняем извлечение записей
 										while(!j->second->empty()){
 											// Получаем буфер входящего сообщения
@@ -243,7 +255,7 @@ using namespace placeholders;
 								// Если данные прочитанны правильно
 								if(bytes >= (sizeof(pid) + sizeof(uint8_t)))
 									// Извлекаем идентификатор процесса
-									::memcpy(&pid, reinterpret_cast <char *> (this->_buffer) + (sizeof(uint8_t) * 2), sizeof(pid));
+									::memcpy(&pid, reinterpret_cast <char *> (this->_buffer.data.get()) + (sizeof(uint8_t) * 2), sizeof(pid));
 								// Если данные пришли непонятные
 								else {
 									// Выполняем поиск текущего брокера
@@ -275,16 +287,42 @@ using namespace placeholders;
 								}
 								// Добавляем полученный идентификатор процесса в список активных сокетов
 								const_cast <cluster_t *> (this->_ctx)->_sockets.emplace(fd, pid);
-								// Выполняем поиск объекта работы с протоколом передачи данных
-								auto i = this->_decoders.find(pid);
-								// Если объект работы с протоколом передачи данных найден
-								if(i != this->_decoders.end()){
+								// Создаём новый объект энкодеров для передачи данных
+								auto ret = const_cast <cluster_t *> (this->_ctx)->_encoders.emplace(pid, make_unique <cmp::encoder_t> (this->_log));
+								// Определяем принцип передачи данных
+								switch(static_cast <uint8_t> (this->_ctx->_transfer)){
+									// Если мы передаём данные через unix-сокет
+									case static_cast <uint8_t> (transfer_t::IPC):
+										// Устанавливаем размер блока энкодера по размеру буфера данных сокета
+										ret.first->second->chunkSize(this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::WRITE));
+									break;
+									// Если мы передаём данные через Shared memory
+									case static_cast <uint8_t> (transfer_t::PIPE): {
+										// Выполняем поиск текущего брокера
+										auto i = this->_ctx->_brokers.find(this->_wid);
+										// Если текущий брокер найден
+										if(i != this->_ctx->_brokers.end()){
+											// Выполняем поиск идентификатор процесса
+											auto j = this->_ctx->_pids.find(pid);
+											// Если идентификатор процесса найден
+											if(j != this->_ctx->_pids.end())
+												// Устанавливаем размер блока энкодера по размеру буфера данных сокета
+												ret.first->second->chunkSize(this->_ctx->_server.socket.bufferSize(i->second.at(j->second)->cfds[1], socket_t::mode_t::WRITE));
+										}
+									} break;
+								}
+								// Если энкодер добавлен удачно
+								if(ret.second){
+									// Создаём новый объект декодеров для получения данных
+									auto ret = this->_decoders.emplace(pid, make_unique <cmp::decoder_t> (this->_log));
+									// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+									ret.first->second->chunkSize(this->_buffer.size);
 									// Выполняем добавление бинарных данных в протокол
-									i->second->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+									ret.first->second->push(reinterpret_cast <char *> (this->_buffer.data.get()), static_cast <size_t> (bytes));
 									// Выполняем извлечение записей
-									while(!i->second->empty()){
+									while(!ret.first->second->empty()){
 										// Получаем буфер входящего сообщения
-										const auto & message = i->second->get();
+										const auto & message = ret.first->second->get();
 										// Определяем тип входящего сообщения
 										switch(message.mid){
 											// Если сообщение соответствует рукопожатию
@@ -299,30 +337,10 @@ using namespace placeholders;
 														for(auto & broker : j->second){
 															// Если мы нашли нужный нам процесс
 															if(broker->pid == pid){
-																// Устанавливаем файловый дескриптор
+																// Устанавливаем файловый дескриптор на чтение данных
 																broker->mfds[0] = fd;
+																// Устанавливаем файловый дескриптор на запись данных
 																broker->cfds[1] = fd;
-																// Выполняем поиск нужного нам клиента
-																auto k = this->_ctx->_clients.find(fd);
-																// Если идентификатор найден
-																if(k != this->_ctx->_clients.end()){
-																	// Устанавливаем базу событий для записи
-																	k->second->write = this->_ctx->_core->eventBase();
-																	// Устанавливаем сокет для записи
-																	k->second->write = fd;
-																	// Устанавливаем событие на запись данных дочернему процессу
-																	k->second->write = std::bind(&cluster_t::sending, const_cast <cluster_t *> (this->_ctx), this->_wid, pid, _1, _2);
-																	// Выполняем запуск работы записи данных дочернему процессу
-																	k->second->write.start();
-																	// Выполняем поиск энкодера
-																	auto j = this->_ctx->_encoders.find(pid);
-																	// Если энкодер найден удачно
-																	if(j != this->_ctx->_encoders.end())
-																		// Устанавливаем размер блока энкодера по размеру буфера данных сокета
-																		j->second->chunkSize(this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::WRITE));
-																	// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-																	i->second->chunkSize(this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::READ));
-																}
 																// Выходим из цикла
 																break;
 															}
@@ -344,14 +362,8 @@ using namespace placeholders;
 											} break;
 										}
 										// Выполняем удаление указанной записи
-										i->second->pop();
+										ret.first->second->pop();
 									}
-								// Если идентификатор не найден
-								} else {
-									// Выполняем закрытие файлового дескриптора
-									::close(fd);
-									// Выходим из функции
-									return;
 								}
 							}
 						}
@@ -364,7 +376,7 @@ using namespace placeholders;
 					}
 				} break;
 			}
-		// Если процесс является дочерним, выполняем чтение сообщений полученных от мастера
+		// Если процесс является дочерним
 		} else if(this->_ctx->_pid == static_cast <pid_t> (::getppid())) {
 			// Определяем тип события
 			switch(static_cast <uint8_t> (event)){
@@ -384,10 +396,8 @@ using namespace placeholders;
 							auto j = this->_ctx->_clients.find(fd);
 							// Если сокет есть в списке подключений
 							if(j != this->_ctx->_clients.end()){
-								// Выполняем остановку чтение сообщений
-								j->second->read.stop();
-								// Выполняем остановку отправки сообщений
-								j->second->write.stop();
+								// Выполняем остановку получения событий
+								j->second->ev.stop();
 								// Выполняем закрытие файловых дескрипторов
 								::close(j->second->fd);
 								// Выполняем удаление клиента
@@ -455,8 +465,15 @@ using namespace placeholders;
 							// Выходим из функции
 							return;
 						}
+						// Если буфер данных её не инициализирован
+						if(this->_buffer.size == 0){
+							// Извлекаем размер сформированного буфера
+							this->_buffer.size = this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::READ);
+							// Выполняем инициализацию буфера
+							this->_buffer.data = unique_ptr <uint8_t []> (new uint8_t [this->_buffer.size]);
+						}
 						// Размер входящих сообщений
-						const int32_t bytes = ::read(fd, this->_buffer, sizeof(this->_buffer));
+						const int32_t bytes = ::recv(fd, this->_buffer.data.get(), this->_buffer.size, 0);
 						// Если сообщение получено полностью
 						if(bytes != 0){
 							// Если данные прочитанны правильно
@@ -468,7 +485,7 @@ using namespace placeholders;
 									// Если объект работы с протоколом передачи данных найден
 									if(i != this->_decoders.end()){
 										// Выполняем добавление бинарных данных в протокол
-										i->second->push(reinterpret_cast <char *> (this->_buffer), static_cast <size_t> (bytes));
+										i->second->push(reinterpret_cast <char *> (this->_buffer.data.get()), static_cast <size_t> (bytes));
 										// Выполняем извлечение записей
 										while(!i->second->empty()){
 											// Получаем буфер входящего сообщения
@@ -630,7 +647,7 @@ using namespace placeholders;
 			// Выполняем поиск завершившегося процесса
 			for(auto & broker : item.second){
 				// Если процесс найден
-				if((broker->end = (broker->pid == pid))){
+				if((broker->stop = (broker->pid == pid))){
 					// Выполняем остановку чтение сообщений
 					broker->read.stop();
 					// Выполняем остановку отправки сообщений
@@ -664,7 +681,7 @@ using namespace placeholders;
 					// Выполняем поиск воркера
 					auto i = this->_workers.find(item.first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
-					if((i != this->_workers.end()) && i->second->_restart){
+					if((i != this->_workers.end()) && i->second->_autoRestart){
 						// Удаляем процесс из списка процессов
 						this->_pids.erase(broker->pid);
 						// Если процесс завершился не сам, перезапускаем его
@@ -789,24 +806,26 @@ void awh::Cluster::accept(const uint16_t wid, const SOCKET fd, const base_t::eve
 			this->_server.socket.reuseable(client->fd);
 			// Переводим сокет в не блокирующий режим
 			this->_server.socket.blocking(client->fd, socket_t::mode_t::DISABLED);
+			// Устанавливаем размер буфера на чтение
+			this->_server.socket.bufferSize(client->fd, this->_bandwidth.read, socket_t::mode_t::READ);
+			// Устанавливаем размер буфера на запись
+			this->_server.socket.bufferSize(client->fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
 			// Выполняем добавление клиента в список новых клиентов
 			auto ret = this->_clients.emplace(client->fd, ::move(client));
 			// Устанавливаем базу событий для чтения
-			ret.first->second->read = this->_core->eventBase();
+			ret.first->second->ev = this->_core->eventBase();
 			// Устанавливаем сокет для чтения
-			ret.first->second->read = ret.first->second->fd;
+			ret.first->second->ev = ret.first->second->fd;
 			// Устанавливаем событие на чтение данных от дочернего процесса
-			ret.first->second->read = std::bind(&worker_t::message, i->second.get(), _1, _2);
+			ret.first->second->ev = std::bind(&worker_t::message, i->second.get(), _1, _2);
 			// Выполняем запуск работы чтения данных с дочерних процессов
-			ret.first->second->read.start();
+			ret.first->second->ev.start();
 			// Выполняем активацию работы чтения данных с дочерних процессов
-			ret.first->second->read.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+			ret.first->second->ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 			// Выполняем активацию работы события закрытия подключения
-			ret.first->second->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-			// Устанавливаем размер буфера на чтение
-			this->_server.socket.bufferSize(ret.first->second->fd, this->_bandwidth.read, socket_t::mode_t::READ);
-			// Устанавливаем размер буфера на запись
-			this->_server.socket.bufferSize(ret.first->second->fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
+			ret.first->second->ev.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
+			// Выполняем деактивацию работы события готовности на запись сокета
+			ret.first->second->ev.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
 		}
 	#endif
 }
@@ -829,6 +848,8 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) n
 			auto i = this->_encoders.find(pid);
 			// Если объект энкодера найден
 			if(i != this->_encoders.end()){
+				// Получаем размер размер буфера данных
+				const size_t max = i->second->chunkSize();
 				// Выполняем перебор всех чанков протокола
 				while(!i->second->empty()){
 					// Получаем бинарный буфер данных
@@ -843,7 +864,7 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) n
 					// Если процесс является родительским
 					if(this->_pid == static_cast <pid_t> (::getpid())){
 						// Выполняем запись в сокет
-						const ssize_t bytes = ::write(fd, reinterpret_cast <const char *> (buffer), i->second->size());
+						const ssize_t bytes = ::send(fd, reinterpret_cast <const char *> (buffer), (i->second->size() > max ? max : i->second->size()), 0);
 						// Если данные доставлены успешно
 						if(bytes > 0)
 							// Удаляем чанк из объекта протокола
@@ -859,7 +880,7 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) n
 									// Если нужный нам клиент найден
 									if(i != this->_clients.end())
 										// Выполняем активацию ожидания готовности сокета на запись
-										i->second->write.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
+										i->second->ev.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::ENABLED);
 								} break;
 								// Если мы передаём данные через Shared memory
 								case static_cast <uint8_t> (transfer_t::PIPE): {
@@ -892,7 +913,7 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) n
 						// Устанавливаем метку отправки данных
 						Send:
 						// Выполняем запись в сокет
-						const ssize_t bytes = ::write(fd, reinterpret_cast <const char *> (buffer), i->second->size());
+						const ssize_t bytes = ::send(fd, reinterpret_cast <const char *> (buffer), (i->second->size() > max ? max : i->second->size()), 0);
 						// Если данные доставлены успешно
 						if(bytes > 0)
 							// Удаляем чанк из объекта протокола
@@ -944,12 +965,11 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) n
 }
 /**
  * sending Метод обратного вызова получении сообщений готовности сокета на запись
- * @param wid   идентификатор воркера
- * @param pid   идентификатор процесса для отправки сообщения
- * @param fd    файловый дескриптор (сокет)
- * @param event произошедшее событие
+ * @param wid идентификатор воркера
+ * @param pid идентификатор процесса для отправки сообщения
+ * @param fd  файловый дескриптор (сокет)
  */
-void awh::Cluster::sending(const uint16_t wid, const pid_t pid, const SOCKET fd, const base_t::event_type_t event) noexcept {
+void awh::Cluster::sending(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
@@ -958,59 +978,37 @@ void awh::Cluster::sending(const uint16_t wid, const pid_t pid, const SOCKET fd,
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип полученного события
-			switch(static_cast <uint8_t> (event)){
-				// Если пришло событие на запись
-				case static_cast <uint8_t> (base_t::event_type_t::WRITE): {
-					// Определяем принцип передачи данных
-					switch(static_cast <uint8_t> (this->_transfer)){
-						// Если мы передаём данные через unix-сокет
-						case static_cast <uint8_t> (transfer_t::IPC): {
-							// Выполняем поиск активного клиента
-							auto i = this->_clients.find(fd);
-							// Если активный клиент найден
-							if(i != this->_clients.end()){
-								// Выполняем деаактивацию работы события готовности сокета на запись
-								i->second->write.mode(event, base_t::event_mode_t::DISABLED);
-								// Выполняем отправку сообщения дочернему-процессу
-								this->write(wid, pid, fd);
-							}
-						} break;
-						// Если мы передаём данные через Shared memory
-						case static_cast <uint8_t> (transfer_t::PIPE): {
-							// Выполняем поиск брокеров
-							auto i = this->_brokers.find(wid);
-							// Если брокер найден
-							if(i != this->_brokers.end()){
-								// Выполняем поиск нужного нам идентификатора процесса
-								auto j = this->_pids.find(pid);
-								// Если идентификатор процесса найден
-								if(j != this->_pids.end()){
-									// Выполняем деаактивацию работы события готовности сокета на запись
-									i->second.at(j->second)->write.mode(event, base_t::event_mode_t::DISABLED);
-									// Выполняем отправку сообщения дочернему-процессу
-									this->write(i->first, j->first, fd);
-								}
-							}
-						} break;
+			// Определяем принцип передачи данных
+			switch(static_cast <uint8_t> (this->_transfer)){
+				// Если мы передаём данные через unix-сокет
+				case static_cast <uint8_t> (transfer_t::IPC): {
+					// Выполняем поиск активного клиента
+					auto i = this->_clients.find(fd);
+					// Если активный клиент найден
+					if(i != this->_clients.end()){
+						// Выполняем деаактивацию работы события готовности сокета на запись
+						i->second->ev.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
+						// Выполняем отправку сообщения дочернему-процессу
+						this->write(wid, pid, fd);
 					}
 				} break;
-				// Если мы получили другое сообщение
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение об ошибке
-						this->_log->debug("Invalid socket event received", __PRETTY_FUNCTION__, make_tuple(wid, pid, fd, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Invalid socket event received", log_t::flag_t::CRITICAL);
-					#endif
-				}
+				// Если мы передаём данные через Shared memory
+				case static_cast <uint8_t> (transfer_t::PIPE): {
+					// Выполняем поиск брокеров
+					auto i = this->_brokers.find(wid);
+					// Если брокер найден
+					if(i != this->_brokers.end()){
+						// Выполняем поиск нужного нам идентификатора процесса
+						auto j = this->_pids.find(pid);
+						// Если идентификатор процесса найден
+						if(j != this->_pids.end()){
+							// Выполняем деаактивацию работы события готовности сокета на запись
+							i->second.at(j->second)->write.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
+							// Выполняем отправку сообщения дочернему-процессу
+							this->write(i->first, j->first, fd);
+						}
+					}
+				} break;
 			}
 		/**
 		 * Если возникает ошибка
@@ -1021,7 +1019,7 @@ void awh::Cluster::sending(const uint16_t wid, const pid_t pid, const SOCKET fd,
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, pid, fd, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, pid, fd), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1143,6 +1141,13 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										// Выполняем активацию работы события закрытия подключения
 										broker->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 										{
+											// Устанавливаем размер буфера на чтение
+											this->_server.socket.bufferSize(this->_server.fd, this->_bandwidth.read, socket_t::mode_t::READ);
+											// Создаём новый объект декодеров для получения данных
+											auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
+											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+											ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::READ));
+										}{
 											// Устанавливаем размер буфера на запись
 											this->_server.socket.bufferSize(this->_server.fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
 											// Создаём новый объект энкодеров для передачи данных
@@ -1151,13 +1156,6 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::WRITE));
 											// Выполняем добавление буфера данных в протокол
 											ret.first->second->push(static_cast <uint8_t> (message_t::HELLO), reinterpret_cast <const uint8_t *> (&pid), sizeof(pid));
-										}{
-											// Устанавливаем размер буфера на чтение
-											this->_server.socket.bufferSize(this->_server.fd, this->_bandwidth.read, socket_t::mode_t::READ);
-											// Создаём новый объект декодеров для получения данных
-											auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
-											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-											ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::READ));
 										}
 										// Выполняем отправку сообщения мастер-процессу
 										this->write(i->first, this->_pid, this->_server.fd);
@@ -1204,6 +1202,13 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										// Выполняем активацию работы события закрытия подключения
 										broker->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 										{
+											// Устанавливаем размер буфера на чтение
+											this->_server.socket.bufferSize(broker->cfds[0], this->_bandwidth.read, socket_t::mode_t::READ);
+											// Создаём новый объект декодеров для получения данных
+											auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
+											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
+										}{
 											// Устанавливаем размер буфера на запись
 											this->_server.socket.bufferSize(broker->mfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 											// Создаём новый объект энкодеров для передачи данных
@@ -1212,13 +1217,6 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[1], socket_t::mode_t::WRITE));
 											// Выполняем добавление буфера данных в протокол
 											ret.first->second->push(static_cast <uint8_t> (message_t::HELLO), reinterpret_cast <const uint8_t *> (&pid), sizeof(pid));
-										}{
-											// Устанавливаем размер буфера на чтение
-											this->_server.socket.bufferSize(broker->cfds[0], this->_bandwidth.read, socket_t::mode_t::READ);
-											// Создаём новый объект декодеров для получения данных
-											auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
-											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
 										}
 										// Выполняем отправку сообщения мастер-процессу
 										this->write(i->first, this->_pid, broker->mfds[1]);
@@ -1251,20 +1249,6 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						broker->date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 						// Определяем принцип передачи данных
 						switch(static_cast <uint8_t> (this->_transfer)){
-							// Если мы передаём данные через unix-сокет
-							case static_cast <uint8_t> (transfer_t::IPC): {
-								{
-									// Создаём новый объект энкодеров для передачи данных
-									auto ret = this->_encoders.emplace(pid, make_unique <cmp::encoder_t> (this->_log));
-									// Устанавливаем размер блока энкодера по размеру буфера данных сокета
-									ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::WRITE));
-								}{
-									// Создаём новый объект декодеров для получения данных
-									auto ret = i->second->_decoders.emplace(pid, make_unique <cmp::decoder_t> (this->_log));
-									// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-									ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::READ));
-								}
-							} break;
 							// Если мы передаём данные через Shared memory
 							case static_cast <uint8_t> (transfer_t::PIPE): {
 								// Закрываем файловый дескриптор на запись в основной процесс
@@ -1292,24 +1276,13 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// Устанавливаем сокет для записи
 								broker->write = broker->cfds[1];
 								// Устанавливаем событие на запись данных дочернему процессу
-								broker->write = std::bind(&cluster_t::sending, this, i->first, pid, _1, _2);
+								broker->write = std::bind(&cluster_t::sending, this, i->first, pid, _1);
 								// Выполняем запуск работы записи данных дочернему процессу
 								broker->write.start();
 								// Выполняем деактивацию работы записи данных в дочерний процесс
 								broker->write.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
 								// Выполняем активацию работы события закрытия подключения
 								broker->write.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-								{
-									// Создаём новый объект энкодеров для передачи данных
-									auto ret = this->_encoders.emplace(pid, make_unique <cmp::encoder_t> (this->_log));
-									// Устанавливаем размер блока энкодера по размеру буфера данных сокета
-									ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[1], socket_t::mode_t::WRITE));
-								}{
-									// Создаём новый объект декодеров для получения данных
-									auto ret = i->second->_decoders.emplace(pid, make_unique <cmp::decoder_t> (this->_log));
-									// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-									ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[0], socket_t::mode_t::READ));
-								}
 							} break;
 						}
 						// Если функция обратного вызова установлена
@@ -1404,7 +1377,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 						}
 					}
 					// Если процесс завершил свою работу
-					if(j->second.at(index)->end){
+					if(j->second.at(index)->stop){
 						// Создаём объект брокера
 						unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 						// Если мы передаём данные через Shared memory
@@ -1506,6 +1479,13 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											// Выполняем активацию работы события закрытия подключения
 											broker->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 											{
+												// Устанавливаем размер буфера на чтение
+												this->_server.socket.bufferSize(this->_server.fd, this->_bandwidth.read, socket_t::mode_t::READ);
+												// Создаём новый объект декодеров для получения данных
+												auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
+												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+												ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::READ));
+											}{
 												// Устанавливаем размер буфера на запись
 												this->_server.socket.bufferSize(this->_server.fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
 												// Создаём новый объект энкодеров для передачи данных
@@ -1514,13 +1494,6 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::WRITE));
 												// Выполняем добавление буфера данных в протокол
 												ret.first->second->push(static_cast <uint8_t> (message_t::HELLO), reinterpret_cast <const uint8_t *> (&pid), sizeof(pid));
-											}{
-												// Устанавливаем размер буфера на чтение
-												this->_server.socket.bufferSize(this->_server.fd, this->_bandwidth.read, socket_t::mode_t::READ);
-												// Создаём новый объект декодеров для получения данных
-												auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
-												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-												ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::READ));
 											}
 											// Выполняем отправку сообщения мастер-процессу
 											this->write(i->first, this->_pid, this->_server.fd);
@@ -1560,6 +1533,13 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											// Выполняем активацию работы события закрытия подключения
 											broker->read.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
 											{
+												// Устанавливаем размер буфера на чтение
+												this->_server.socket.bufferSize(broker->cfds[0], this->_bandwidth.read, socket_t::mode_t::READ);
+												// Создаём новый объект декодеров для получения данных
+												auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
+												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
+												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
+											}{
 												// Устанавливаем размер буфера на запись
 												this->_server.socket.bufferSize(broker->mfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 												// Создаём новый объект энкодеров для передачи данных
@@ -1568,13 +1548,6 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[1], socket_t::mode_t::WRITE));
 												// Выполняем добавление буфера данных в протокол
 												ret.first->second->push(static_cast <uint8_t> (message_t::HELLO), reinterpret_cast <const uint8_t *> (&pid), sizeof(pid));
-											}{
-												// Устанавливаем размер буфера на чтение
-												this->_server.socket.bufferSize(broker->cfds[0], this->_bandwidth.read, socket_t::mode_t::READ);
-												// Создаём новый объект декодеров для получения данных
-												auto ret = i->second->_decoders.emplace(this->_pid, make_unique <cmp::decoder_t> (this->_log));
-												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
 											}
 											// Выполняем отправку сообщения мастер-процессу
 											this->write(i->first, this->_pid, broker->mfds[1]);
@@ -1630,7 +1603,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Устанавливаем сокет для записи
 									broker->write = broker->cfds[1];
 									// Устанавливаем событие на запись данных дочернему процессу
-									broker->write = std::bind(&cluster_t::sending, this, i->first, pid, _1, _2);
+									broker->write = std::bind(&cluster_t::sending, this, i->first, pid, _1);
 									// Выполняем запуск работы записи данных дочернему процессу
 									broker->write.start();
 								} break;
@@ -1645,55 +1618,34 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 					auto j = this->_brokers.find(i->first);
 					// Если идентификатор воркера получен
 					if((i->second->_working = (j != this->_brokers.end()))){
-						// Если мы передаём данные через unix-сокет
-						if(this->_transfer == transfer_t::IPC){
-							// Выполняем инициализацию unix-сокета
-							this->ipc(family_t::MASTER);
-							// Выполняем прослушивание порта
-							if(this->list()){
-								// Устанавливаем базу событий для чтения
-								this->_server.ev = this->_core->eventBase();
-								// Устанавливаем сокет для чтения
-								this->_server.ev = this->_server.fd;
-								// Устанавливаем событие на чтение данных от дочернего процесса
-								this->_server.ev = std::bind(&cluster_t::accept, this, i->first, _1, _2);
-								// Выполняем запуск работы чтения данных с дочерних процессов
-								this->_server.ev.start();
-								// Активируем получение данных с клиента
-								this->_server.ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
-							}
-						}
-						// Выполняем перебор всех доступных брокеров
-						for(auto & broker : j->second){
-							// Определяем принцип передачи данных
-							switch(static_cast <uint8_t> (this->_transfer)){
-								// Если мы передаём данные через unix-сокет
-								case static_cast <uint8_t> (transfer_t::IPC): {
-									{
-										// Создаём новый объект энкодеров для передачи данных
-										auto ret = this->_encoders.emplace(broker->pid, make_unique <cmp::encoder_t> (this->_log));
-										// Устанавливаем размер блока энкодера по размеру буфера данных сокета
-										ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::WRITE));
-									}{
-										// Создаём новый объект декодеров для получения данных
-										auto ret = i->second->_decoders.emplace(broker->pid, make_unique <cmp::decoder_t> (this->_log));
-										// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-										ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::READ));
-									}
-								} break;
-								// Если мы передаём данные через Shared memory
-								case static_cast <uint8_t> (transfer_t::PIPE): {
-									{
-										// Создаём новый объект энкодеров для передачи данных
-										auto ret = this->_encoders.emplace(broker->pid, make_unique <cmp::encoder_t> (this->_log));
-										// Устанавливаем размер блока энкодера по размеру буфера данных сокета
-										ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[1], socket_t::mode_t::WRITE));
-									}{
-										// Создаём новый объект декодеров для получения данных
-										auto ret = i->second->_decoders.emplace(broker->pid, make_unique <cmp::decoder_t> (this->_log));
-										// Устанавливаем размер блока декодерва по размеру буфера данных сокета
-										ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[0], socket_t::mode_t::READ));
-									}
+						// Определяем принцип передачи данных
+						switch(static_cast <uint8_t> (this->_transfer)){
+							// Если мы передаём данные через unix-сокет
+							case static_cast <uint8_t> (transfer_t::IPC): {
+								// Выполняем инициализацию unix-сокета
+								this->ipc(family_t::MASTER);
+								// Выполняем прослушивание порта
+								if(this->list()){
+									// Устанавливаем базу событий для чтения
+									this->_server.ev = this->_core->eventBase();
+									// Устанавливаем сокет для чтения
+									this->_server.ev = this->_server.fd;
+									// Устанавливаем событие на чтение данных от дочернего процесса
+									this->_server.ev = std::bind(&cluster_t::accept, this, i->first, _1, _2);
+									// Выполняем запуск работы чтения данных с дочерних процессов
+									this->_server.ev.start();
+									// Активируем получение данных с клиента
+									this->_server.ev.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+								}
+							} break;
+							// Если мы передаём данные через Shared memory
+							case static_cast <uint8_t> (transfer_t::PIPE): {
+								// Выполняем перебор всех доступных брокеров
+								for(auto & broker : j->second){
+									// Устанавливаем размер буфера на чтение
+									this->_server.socket.bufferSize(broker->mfds[0], this->_bandwidth.read, socket_t::mode_t::READ);
+									// Устанавливаем размер буфера на запись
+									this->_server.socket.bufferSize(broker->cfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 									// Выполняем активацию работы чтения данных с дочерних процессов
 									broker->read.mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
 									// Выполняем активацию работы события закрытия подключения
@@ -1702,8 +1654,8 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									broker->write.mode(base_t::event_type_t::WRITE, base_t::event_mode_t::DISABLED);
 									// Выполняем активацию работы события закрытия подключения
 									broker->write.mode(base_t::event_type_t::CLOSE, base_t::event_mode_t::ENABLED);
-								} break;
-							}
+								}
+							} break;
 						}
 						// Если мы передаём данные через PIPE
 						if(this->_transfer == transfer_t::PIPE)
@@ -1830,11 +1782,12 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 					// Выполняем поиск объектов энкодеров для отправки сообщения
 					auto k = this->_encoders.find(this->_pid);
 					// Если протокол кластера найден
-					if(k != this->_encoders.end())
+					if(k != this->_encoders.end()){
 						// Выполняем добавление буфера данных в протокол
 						k->second->push(static_cast <uint8_t> (message_t::GENERAL), buffer, size);
-					// Выполняем отправку сообщения мастер-процессу
-					this->write(i->first, this->_pid, i->second.at(j->second)->mfds[1]);
+						// Выполняем отправку сообщения мастер-процессу
+						this->write(i->first, this->_pid, i->second.at(j->second)->mfds[1]);
+					}
 				}
 			}
 		}
@@ -1882,11 +1835,16 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 					// Выполняем поиск объектов энкодеров для отправки сообщения
 					auto k = this->_encoders.find(j->first);
 					// Если протокол кластера найден
-					if(k != this->_encoders.end())
+					if(k != this->_encoders.end()){
+						// Определяем есть ли в буфере данные
+						const bool empty = k->second->empty();
 						// Выполняем добавление буфера данных в протокол
 						k->second->push(static_cast <uint8_t> (message_t::GENERAL), buffer, size);
-					// Выполняем отправку сообщения дочернему-процессу
-					this->write(i->first, j->first, i->second.at(j->second)->cfds[1]);
+						// Если в буфере данных нету
+						if(empty)
+							// Выполняем отправку сообщения дочернему-процессу
+							this->write(i->first, j->first, i->second.at(j->second)->cfds[1]);
+					}
 				}
 			}
 		// Если процесс превратился в зомби
@@ -1940,11 +1898,16 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 						// Выполняем поиск объектов энкодеров для отправки сообщения
 						auto j = this->_encoders.find(broker->pid);
 						// Если протокол кластера найден
-						if(j != this->_encoders.end())
+						if(j != this->_encoders.end()){
+							// Определяем есть ли в буфере данные
+							const bool empty = j->second->empty();
 							// Выполняем добавление буфера данных в протокол
 							j->second->push(static_cast <uint8_t> (message_t::GENERAL), buffer, size);
-						// Выполняем отправку сообщения дочернему-процессу
-						this->write(i->first, broker->pid, broker->cfds[1]);
+							// Если в буфере данных нету
+							if(empty)
+								// Выполняем отправку сообщения дочернему-процессу
+								this->write(i->first, broker->pid, broker->cfds[1]);
+						}
 					}
 				}
 			}
@@ -1979,10 +1942,8 @@ void awh::Cluster::clear() noexcept {
 			case static_cast <uint8_t> (transfer_t::IPC): {
 				// Переходим по всему списку клиентов
 				for(auto i = this->_clients.begin(); i != this->_clients.end();){
-					// Выполняем остановку работы события
-					i->second->read.stop();
-					// Выполняем остановку работы события
-					i->second->write.stop();
+					// Выполняем остановку получения событий
+					i->second->ev.stop();
 					// Закрываем сокет подключения
 					::close(i->second->fd);
 					// Выполняем поиск активного сокета
@@ -2041,10 +2002,8 @@ void awh::Cluster::close() noexcept {
 				case static_cast <uint8_t> (transfer_t::IPC): {
 					// Переходим по всему списку клиентов
 					for(auto i = this->_clients.begin(); i != this->_clients.end();){
-						// Выполняем остановку работы события
-						i->second->read.stop();
-						// Выполняем остановку работы события
-						i->second->write.stop();
+						// Выполняем остановку получения событий
+						i->second->ev.stop();
 						// Закрываем сокет подключения
 						::close(i->second->fd);
 						// Выполняем поиск активного сокета
@@ -2140,10 +2099,8 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 						auto i = this->_clients.find(broker->mfds[0]);
 						// Если активный клиент найден
 						if(i != this->_clients.end()){
-							// Выполняем остановку работы события
-							i->second->read.stop();
-							// Выполняем остановку работы события
-							i->second->write.stop();
+							// Выполняем остановку получения событий
+							i->second->ev.stop();
 							// Закрываем сокет подключения
 							::close(i->second->fd);
 							// Выполняем поиск активного сокета
@@ -2222,13 +2179,13 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 		// Если процесс является родительским
 		if(this->_pid == static_cast <pid_t> (::getpid())){
 			// Флаг перезапуска
-			bool restart = false;
+			bool autoRestart = false;
 			// Если воркер найден, получаем флаг перезапуска
 			if(i != this->_workers.end()){
 				// Получаем флаг перезапуска
-				restart = i->second->_restart;
+				autoRestart = i->second->_autoRestart;
 				// Снимаем флаг перезапуска процесса
-				i->second->_restart = false;
+				i->second->_autoRestart = false;
 			}
 			/**
 			 * Для операционной системы не являющейся OS Windows
@@ -2238,9 +2195,12 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				this->close(wid);
 			#endif
 			// Если воркер найден, возвращаем флаг перезапуска
-			if(i != this->_workers.end())
+			if(i != this->_workers.end()){
+				// Очищаем буфер получения данных
+				i->second->_buffer = buffer_t();
 				// Возвращаем значение флага автоматического перезапуска процесса
-				i->second->_restart = restart;
+				i->second->_autoRestart = autoRestart;
+			}
 		// Если процесс является дочерним
 		} else if(this->_pid == static_cast <pid_t> (::getppid()))
 			// Выполняем закрытие подключения передачи сообщений
@@ -2279,41 +2239,6 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
 			if((i != this->_workers.end()) && !i->second->_working)
 				// Выполняем запуск процесса
 				this->create(i->first);
-		// Если процесс превратился в зомби
-		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
-			// Процесс превратился в зомби, самоликвидируем его
-			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-			// Выполняем остановку работы
-			this->stop(wid);
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-		// Выводим предупредительное сообщение в лог
-		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
-	#endif
-}
-/**
- * restart Метод установки флага перезапуска процессов
- * @param wid  идентификатор воркера
- * @param mode флаг перезапуска процессов
- */
-void awh::Cluster::restart(const uint16_t wid, const bool mode) noexcept {
-	/**
-	 * Для операционной системы не являющейся OS Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если процесс является родительским
-		if(this->_pid == static_cast <pid_t> (::getpid())){
-			// Выполняем поиск идентификатора воркера
-			auto i = this->_workers.find(wid);
-			// Если вокер найден
-			if(i != this->_workers.end())
-				// Устанавливаем флаг автоматического перезапуска процесса
-				i->second->_restart = mode;
 		// Если процесс превратился в зомби
 		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
 			// Процесс превратился в зомби, самоликвидируем его
@@ -2447,10 +2372,8 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 							auto i = this->_clients.find(broker->mfds[0]);
 							// Если активный клиент найден
 							if(i != this->_clients.end()){
-								// Выполняем остановку работы события
-								i->second->read.stop();
-								// Выполняем остановку работы события
-								i->second->write.stop();
+								// Выполняем остановку получения событий
+								i->second->ev.stop();
 								// Закрываем сокет подключения
 								::close(i->second->fd);
 							}
@@ -2527,6 +2450,41 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 			// Устанавливаем один рабочий процесс
 			i->second->_count = 1;
 	}
+}
+/**
+ * autoRestart Метод установки флага перезапуска процессов
+ * @param wid  идентификатор воркера
+ * @param mode флаг перезапуска процессов
+ */
+void awh::Cluster::autoRestart(const uint16_t wid, const bool mode) noexcept {
+	/**
+	 * Для операционной системы не являющейся OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если процесс является родительским
+		if(this->_pid == static_cast <pid_t> (::getpid())){
+			// Выполняем поиск идентификатора воркера
+			auto i = this->_workers.find(wid);
+			// Если вокер найден
+			if(i != this->_workers.end())
+				// Устанавливаем флаг автоматического перезапуска процесса
+				i->second->_autoRestart = mode;
+		// Если процесс превратился в зомби
+		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+			// Выполняем остановку работы
+			this->stop(wid);
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
 }
 /**
  * init Метод инициализации воркера

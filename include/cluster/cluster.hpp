@@ -61,11 +61,6 @@ namespace awh {
 	 * Cluster Класс работы с кластером
 	 */
 	typedef class AWHSHARED_EXPORT Cluster {
-		private:
-			// Максимальный размер отправляемой полезной нагрузки
-			static constexpr size_t MAX_PAYLOAD = 0xFF2;
-			// Максимальный размер одного сообщения
-			static constexpr size_t MAX_MESSAGE = 0x3B9ACA00;
 		public:
 			/**
 			 * Режим обмена сообщениям
@@ -101,6 +96,19 @@ namespace awh {
 			};
 		public:
 			/**
+			 * Buffer Структура буфера
+			 */
+			typedef struct Buffer {
+				// Размер бинарного буфера данных
+				size_t size;
+				// Бинарный буфер полученных данных
+				unique_ptr <uint8_t []> data;
+				/**
+				 * Buffer Конструктор
+				 */
+				Buffer() noexcept : size(0), data(nullptr) {}
+			} buffer_t;
+			/**
 			 * Worker Класс воркера
 			 */
 			typedef class AWHSHARED_EXPORT Worker {
@@ -111,7 +119,7 @@ namespace awh {
 					// Флаг запуска работы
 					bool _working;
 					// Флаг автоматического перезапуска
-					bool _restart;
+					bool _autoRestart;
 				private:
 					// Идентификатор воркера
 					uint16_t _wid;
@@ -120,7 +128,7 @@ namespace awh {
 					uint16_t _count;
 				private:
 					// Бинарный буфер полученных данных
-					uint8_t _buffer[4096];
+					buffer_t _buffer;
 				private:
 					// Список декодеров для декодирования сообщений мастера
 					map <pid_t, unique_ptr <cmp::decoder_t>> _decoders;
@@ -149,8 +157,8 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Worker(const uint16_t wid, const Cluster * ctx, const log_t * log) noexcept :
-					 _working(false), _restart(false), _wid(wid),
-					 _count(1), _buffer{0}, _log(log), _ctx(ctx) {}
+					 _working(false), _autoRestart(false),
+					 _wid(wid), _count(1), _log(log), _ctx(ctx) {}
 					/**
 					 * ~Worker Деструктор
 					 */
@@ -193,19 +201,15 @@ namespace awh {
 				SOCKET fd;
 				// Объект подключения
 				peer_t peer;
-				// Объект события на получения сообщений
-				awh::event_t read;
-				// Объект события на запись сообщений
-				awh::event_t write;
+				// Объект события
+				awh::event_t ev;
 				/**
 				 * Client Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Client(const fmk_t * fmk, const log_t * log) noexcept :
-				 fd(INVALID_SOCKET),
-				 read(awh::event_t::type_t::EVENT, fmk, log),
-				 write(awh::event_t::type_t::EVENT, fmk, log) {}
+				 fd(INVALID_SOCKET), ev(awh::event_t::type_t::EVENT, fmk, log) {}
 			} client_t;
 			/**
 			 * Server Структура сервера
@@ -241,7 +245,7 @@ namespace awh {
 				 * Broker Структура брокера
 				 */
 				typedef struct Broker {
-					bool end;           // Флаг завершения работы процессом
+					bool stop;          // Флаг завершения работы процессом
 					pid_t pid;          // Идентификатор активного процесса
 					uint64_t date;      // Время начала жизни процесса
 					SOCKET mfds[2];     // Список файловых дескрипторов родительского процесса
@@ -254,7 +258,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Broker(const fmk_t * fmk, const log_t * log) noexcept :
-					 end(false), pid(::getpid()), date(0),
+					 stop(false), pid(::getpid()), date(0),
 					 mfds{INVALID_SOCKET, INVALID_SOCKET},
 					 cfds{INVALID_SOCKET, INVALID_SOCKET},
 					 read(awh::event_t::type_t::EVENT, fmk, log),
@@ -379,12 +383,11 @@ namespace awh {
 		private:
 			/**
 			 * sending Метод обратного вызова получении сообщений готовности сокета на запись
-			 * @param wid   идентификатор воркера
-			 * @param pid   идентификатор процесса для отправки сообщения
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param event произошедшее событие
+			 * @param wid идентификатор воркера
+			 * @param pid идентификатор процесса для отправки сообщения
+			 * @param fd  файловый дескриптор (сокет)
 			 */
-			void sending(const uint16_t wid, const pid_t pid, const SOCKET fd, const base_t::event_type_t event) noexcept;
+			void sending(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept;
 		private:
 			/**
 			 * emplace Метод размещения нового дочернего процесса
@@ -535,6 +538,13 @@ namespace awh {
 			 * @param count максимальное количество процессов
 			 */
 			void count(const uint16_t wid, const uint16_t count) noexcept;
+		public:
+			/**
+			 * autoRestart Метод установки флага разрешения перезапуска процессов
+			 * @param wid  идентификатор воркера
+			 * @param mode флаг перезапуска процессов
+			 */
+			void autoRestart(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
 			 * init Метод инициализации воркера
