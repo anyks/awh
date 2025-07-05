@@ -36,6 +36,17 @@ class Executor {
 		log_t * _log;
 	public:
 		/**
+		 * ready Метод готовности дочерних процессов к работе
+		 * @param pid  идентификатор процесса
+		 * @param core объект сетевого ядра
+		 */
+		void ready(const pid_t pid, cluster::core_t * core){
+			// Формируем сообщение приветствия
+			const string message = "Hi!";
+			// Выполняем отправку текста
+			core->send(pid, message.data(), message.size());
+		}
+		/**
 		 * events Метод вывода события активации процесса
 		 * @param worker тип активного процесса
 		 * @param pid    идентификатор процесса
@@ -48,14 +59,10 @@ class Executor {
 				// Определяем тип воркера
 				switch(static_cast <uint8_t> (worker)){
 					// Если событие пришло от родительского процесса
-					case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
-						// Формируем сообщение приветствия
-						const string message = "Hi!";
-						// Отправляем проиветствие всем дочерним процессам
-						core->broadcast(message.data(), message.size());
+					case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 						// Выполняем создание нового процесса
 						core->emplace();
-					} break;
+					break;
 					// Если событие пришло от дочернего процесса
 					case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
 						// Формируем сообщение приветствия
@@ -146,6 +153,14 @@ int32_t main(int32_t argc, char * argv[]){
 	core.autoRestart(true);
 	// Переключаем режим передачи данных
 	// core.transfer(cluster_t::transfer_t::IPC);
+	// Устанавливаем пароль шифрования
+	core.password("Password");
+	// Устанавливаем размера шифрования
+	core.cipher(hash_t::cipher_t::AES256);
+	// Устанавливаем компрессора сообщений
+	core.compressor(hash_t::method_t::ZSTD);
+	// Устанавливаем функцию обратного вызова готовность дочерних процессов
+	core.on <void (const pid_t)> ("ready", &Executor::ready, &executor, _1, &core);
 	// Устанавливаем функцию обратного вызова на запуск системы
 	core.on <void (const awh::core_t::status_t)> ("status", &Executor::status, &executor, _1);
 	// Устанавливаем функцию обратного вызова при получении событий

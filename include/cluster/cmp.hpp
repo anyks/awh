@@ -29,6 +29,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/hash.hpp>
 #include <sys/queue.hpp>
 #include <sys/buffer.hpp>
 
@@ -49,35 +50,25 @@ namespace awh {
 		 */
 		static constexpr size_t CHUNK_SIZE = 0x1000;
 		/**
-		 * Контрольная сумма заголовка запроса
-		 */
-		static constexpr size_t HEADER_CRC = 0x485741;
-		/**
-		 * Режим передачи буфера данных
-		 */
-		enum class mode_t : uint8_t {
-			NONE    = 0x00, // Режим буфера данных не установлен
-			END     = 0x01, // Режим буфера данных конец передачи
-			CONTINE = 0x02  // Режим буфера данных продолжение передачи
-		};
-		/**
 		 * Header Структура работы с заголовком буфера данных
 		 */
-		typedef struct Header {
-			mode_t mode;    // Режим работы буфера данных
-			uint8_t mid;    // Идентификатор сообщения
-			pid_t pid;      // Идентификатор процесса
-			uint32_t id;    // Идентификатор сообщения
-			uint32_t crc;   // Контрольная сумма
-			uint16_t bytes; // Размер текущего чанка
+		typedef struct AWHSHARED_EXPORT Header {
+			// Идентификатор процесса
+			pid_t pid;
+			// Идентификатор сообщения
+			uint8_t mid;
+			// Размер текущего чанка
+			size_t size;
+			// Контрольная сумма
+			uint8_t sign[3];
+			// Размер шифрования
+			hash_t::cipher_t cipher;
+			// Метод компрессии
+			hash_t::method_t method;
 			/**
 			 * Header Конструктор
-			 * @param id идентификатор записи
 			 */
-			Header(const uint32_t id = 0) noexcept :
-			 mode(mode_t::NONE), mid(0),
-			 pid(::getpid()), id(id),
-			 crc(HEADER_CRC), bytes(0) {}
+			Header() noexcept;
 		} __attribute__((packed)) header_t;
 		/**
 		 * Encoder Класс для работы с протоколом передачи данных
@@ -87,16 +78,30 @@ namespace awh {
 				// Мютекс для блокировки потока
 				mutex _mtx;
 			private:
-				// Количество записей
-				uint32_t _count;
 				// Размер одного блока данных
 				size_t _chunkSize;
 			private:
+				// Объект работы с хэшированием
+				hash_t _hash;
+				// Заголовок полученного сообщения
+				header_t _header;
 				// Объект буфера данных
 				buffer_t _buffer;
 			private:
+				// Размер шифрования
+				hash_t::cipher_t _cipher;
+				// Метод компрессии
+				hash_t::method_t _method;
+			private:
 				// Объект работы с логами
 				const log_t * _log;
+			private:
+				/**
+				 * work Метод формирования новой записи
+				 * @param buffer буфер данных для добавления
+				 * @param size   размер буфера данных
+				 */
+				void work(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * empty Метод проверки на пустоту контейнера
@@ -139,6 +144,28 @@ namespace awh {
 				void chunkSize(const size_t size) noexcept;
 			public:
 				/**
+				 * salt Метод установки соли шифрования
+				 * @param salt соль для шифрования
+				 */
+				void salt(const string & salt) noexcept;
+				/**
+				 * password Метод установки пароля шифрования
+				 * @param password пароль шифрования
+				 */
+				void password(const string & password) noexcept;
+			public:
+				/**
+				 * cipher Метод установки размера шифрования
+				 * @param cipher размер шифрования
+				 */
+				void cipher(const hash_t::cipher_t cipher) noexcept;
+				/**
+				 * method Метод установки метода компрессии
+				 * @param method метод компрессии для установки
+				 */
+				void method(const hash_t::method_t method) noexcept;
+			public:
+				/**
 				 * push Метод добавления новой записи в протокол
 				 * @param mid    идентификатор сообщения
 				 * @param buffer буфер данных для добавления
@@ -174,7 +201,10 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Encoder(const log_t * log) noexcept :
-				 _count(0), _chunkSize(CHUNK_SIZE), _buffer(log), _log(log) {}
+				 _chunkSize(CHUNK_SIZE),
+				 _hash(log), _buffer(log),
+				 _cipher(hash_t::cipher_t::NONE),
+				 _method(hash_t::method_t::NONE), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */
@@ -186,24 +216,25 @@ namespace awh {
 		typedef class AWHSHARED_EXPORT Decoder {
 			public:
 				/**
-				 * Record Структура записи
+				 * Message Структура сообщения
 				 */
-				typedef struct Record {
-					uint8_t mid;       // Идентификатор сообщения
-					pid_t pid;         // Идентификатор процесса
-					size_t size;       // Размер извлекаемого сообщения
-					const char * data; // данные сообщения
+				typedef struct Message {
+					uint8_t mid;         // Идентификатор сообщения
+					size_t size;         // Размер извлекаемого сообщения
+					const char * buffer; // данные сообщения
 					/**
-					 * Record Конструктор
+					 * Message Конструктор
 					 */
-					Record() noexcept :
-					 mid(0), pid(0), size(0), data(nullptr) {}
-				} __attribute__((packed)) record_t;
+					Message() noexcept :
+					 mid(0), size(0), buffer(nullptr) {}
+				} __attribute__((packed)) message_t;
 			private:
-				// Мютекс для блокировки потока
-				mutex _mtx;
+				// Идентификатор процесса который прислал сообщение
+				pid_t _pid;
 			private:
-				// Набор собранных данных
+				// Объект работы с хэшированием
+				hash_t _hash;
+				// Очередь полученных сообщений
 				queue_t _queue;
 				// Заголовок полученного сообщения
 				header_t _header;
@@ -213,14 +244,30 @@ namespace awh {
 				// Размер одного блока данных
 				size_t _chunkSize;
 			private:
-				// Временный буфер для вставки в очередь
-				vector <queue_t::buffer_t> _arbitrary;
+				// Мютекс для блокировки потока
+				mutable mutex _mtx;
 			private:
-				// Набор временных закэшированных данных
-				map <uint32_t, unique_ptr <buffer_t>> _cache;
+				// Временный буфер для вставки в очередь
+				vector <queue_t::buffer_t> _tmp;
 			private:
 				// Объект работы с логами
 				const log_t * _log;
+			public:
+				/**
+				 * pop Метод удаления первой записи протокола
+				 */
+				void pop() noexcept;
+			public:
+				/**
+				 * clear Метод очистки данных
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * pid Метод извлечения идентификатора процесса от которого пришло сообщение
+				 * @return идентификатор процесса
+				 */
+				pid_t pid() const noexcept;
 			public:
 				/**
 				 * empty Метод проверки на пустоту контейнера
@@ -235,20 +282,10 @@ namespace awh {
 				size_t size() const noexcept;
 			public:
 				/**
-				 * clear Метод очистки данных
+				 * get Метод получения сообщения
+				 * @return объект данных сообщения
 				 */
-				void clear() noexcept;
-			public:
-				/**
-				 * get Метод получения записи протокола
-				 * @return объект данных записи
-				 */
-				record_t get() const noexcept;
-			public:
-				/**
-				 * pop Метод удаления первой записи протокола
-				 */
-				void pop() noexcept;
+				message_t get() const noexcept;
 			public:
 				/**
 				 * push Метод добавления новой записи в протокол
@@ -284,6 +321,17 @@ namespace awh {
 				void chunkSize(const size_t size) noexcept;
 			public:
 				/**
+				 * salt Метод установки соли шифрования
+				 * @param salt соль для шифрования
+				 */
+				void salt(const string & salt) noexcept;
+				/**
+				 * password Метод установки пароля шифрования
+				 * @param password пароль шифрования
+				 */
+				void password(const string & password) noexcept;
+			public:
+				/**
 				 * Оператор проверки на доступность данных в контейнере
 				 * @return результат проверки
 				 */
@@ -306,7 +354,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Decoder(const log_t * log) noexcept :
-				 _queue(log), _buffer(log), _chunkSize(CHUNK_SIZE), _arbitrary(3), _log(log) {}
+				 _pid(0), _hash(log), _queue(log), _buffer(log),
+				 _chunkSize(CHUNK_SIZE), _tmp(2), _log(log) {}
 				/**
 				 * ~Encoder Деструктор
 				 */

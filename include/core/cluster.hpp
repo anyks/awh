@@ -70,6 +70,12 @@ namespace awh {
 				void active(const status_t status) noexcept;
 			private:
 				/**
+				 * ready Метод получения события подключения дочерних процессов
+				 * @param wid  идентификатор воркера
+				 * @param pid идентификатор процесса
+				 */
+				void ready(const uint16_t wid, const pid_t pid) noexcept;
+				/**
 				 * rebase Метод события пересоздании процесса
 				 * @param wid  идентификатор воркера
 				 * @param pid  идентификатор процесса
@@ -194,6 +200,28 @@ namespace awh {
 				 * @param mode флаг перезапуска процессов
 				 */
 				void autoRestart(const bool mode) noexcept;
+			public:
+				/**
+				 * salt Метод установки соли шифрования
+				 * @param salt соль для шифрования
+				 */
+				void salt(const string & salt) noexcept;
+				/**
+				 * password Метод установки пароля шифрования
+				 * @param password пароль шифрования
+				 */
+				void password(const string & password) noexcept;
+			public:
+				/**
+				 * cipher Метод установки размера шифрования
+				 * @param cipher размер шифрования
+				 */
+				void cipher(const hash_t::cipher_t cipher) noexcept;
+				/**
+				 * compressor Метод установки метода компрессии
+				 * @param compressor метод компрессии для установки
+				 */
+				void compressor(const hash_t::method_t compressor) noexcept;
 			public:
 				/**
 				 * transfer Метод установки режима передачи данных

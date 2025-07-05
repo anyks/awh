@@ -160,6 +160,12 @@ namespace awh {
 				void createTimeout(const uint16_t sid, const uint64_t bid, const uint32_t msec, const mode_t mode) noexcept;
 			private:
 				/**
+				 * ready Метод получения события подключения дочерних процессов
+				 * @param sid идентификатор схемы сети
+				 * @param pid идентификатор процесса
+				 */
+				void ready(const uint16_t sid, const pid_t pid) noexcept;
+				/**
 				 * rebase Метод события пересоздании процесса
 				 * @param sid  идентификатор схемы сети
 				 * @param pid  идентификатор процесса
@@ -384,6 +390,28 @@ namespace awh {
 				 * @param mode флаг перезапуска процессов
 				 */
 				void clusterAutoRestart(const bool mode) noexcept;
+			public:
+				/**
+				 * clusterSalt Метод установки соли шифрования
+				 * @param salt соль для шифрования
+				 */
+				void clusterSalt(const string & salt) noexcept;
+				/**
+				 * clusterPassword Метод установки пароля шифрования
+				 * @param password пароль шифрования
+				 */
+				void clusterPassword(const string & password) noexcept;
+			public:
+				/**
+				 * clusterCipher Метод установки размера шифрования
+				 * @param cipher размер шифрования
+				 */
+				void clusterCipher(const hash_t::cipher_t cipher) noexcept;
+				/**
+				 * clusterCompressor Метод установки метода компрессии
+				 * @param compressor метод компрессии для установки
+				 */
+				void clusterCompressor(const hash_t::method_t compressor) noexcept;
 			public:
 				/**
 				 * clusterTransfer Метод установки режима передачи данных

@@ -2302,18 +2302,20 @@ class Executor {
 		log_t * _log;
 	public:
 
+		void ready(const pid_t pid, cluster::core_t * core){
+			const string message = "Hi!";
+			core->send(pid, message.c_str(), message.size());
+		}
+
 		void events(const cluster_t::family_t worker, [[maybe_unused]] const pid_t pid, const cluster_t::event_t event, cluster::core_t * core){
 			if(event == cluster_t::event_t::START){
 				switch(static_cast <uint8_t> (worker)){
-					case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
-						const char * message = "Hi!";
-
-						core->broadcast(message, strlen(message));
-					} break;
+					case static_cast <uint8_t> (cluster_t::family_t::MASTER):
+						core->emplace();
+					break;
 					case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
-						const char * message = "Hello";
-
-						core->send(message, strlen(message));
+						const string message = "Hello";
+						core->send(message.c_str(), message.size());
 					} break;
 				}
 			}
@@ -2363,6 +2365,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Activating the mode of exchanging messages between processes via a unix socket
 	// core.transfer(cluster_t::transfer_t::IPC);
 
+	core.password("Password");
+	core.cipher(hash_t::cipher_t::AES256);
+	core.compressor(hash_t::method_t::ZSTD);
+
+	core.on <void (const pid_t)> ("ready", &Executor::ready, &executor, _1, &core);
 	core.on <void (const awh::core_t::status_t)> ("status", &Executor::launched, &executor, _1);
 	core.on <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", &Executor::events, &executor, _1, _2, _3, &core);
 	core.on <void (const cluster_t::family_t, const pid_t, const char *, const size_t)> ("message", &Executor::message, &executor, _1, _2, _3, _4);

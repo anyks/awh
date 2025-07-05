@@ -51,16 +51,27 @@ void awh::cluster::Core::active(const status_t status) noexcept {
 	}
 }
 /**
+ * ready Метод получения события подключения дочерних процессов
+ * @param wid  идентификатор воркера
+ * @param pid идентификатор процесса
+ */
+void awh::cluster::Core::ready([[maybe_unused]] const uint16_t wid, const pid_t pid) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("ready"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const pid_t)> ("ready", pid);
+}
+/**
  * rebase Метод события пересоздании процесса
  * @param wid  идентификатор воркера
  * @param pid  идентификатор процесса
  * @param opid идентификатор старого процесса
  */
-void awh::cluster::Core::rebase(const uint16_t wid, const pid_t pid, const pid_t opid) const noexcept {
+void awh::cluster::Core::rebase([[maybe_unused]] const uint16_t wid, const pid_t pid, const pid_t opid) const noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("rebase"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const uint16_t, const pid_t, const pid_t)> ("rebase", wid, pid, opid);
+		this->_callback.call <void (const pid_t, const pid_t)> ("rebase", pid, opid);
 }
 /**
  * exit Метод события завершения работы процесса
@@ -68,11 +79,11 @@ void awh::cluster::Core::rebase(const uint16_t wid, const pid_t pid, const pid_t
  * @param pid    идентификатор процесса
  * @param status статус остановки работы процесса
  */
-void awh::cluster::Core::exit(const uint16_t wid, const pid_t pid, const int32_t status) const noexcept {
+void awh::cluster::Core::exit([[maybe_unused]] const uint16_t wid, const pid_t pid, const int32_t status) const noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("exit"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", wid, pid, status);
+		this->_callback.call <void (const pid_t, const int32_t)> ("exit", pid, status);
 }
 /**
  * cluster Метод информирования о статусе кластера
@@ -80,7 +91,7 @@ void awh::cluster::Core::exit(const uint16_t wid, const pid_t pid, const int32_t
  * @param pid   идентификатор процесса
  * @param event идентификатор события
  */
-void awh::cluster::Core::cluster(const uint16_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept {
+void awh::cluster::Core::cluster([[maybe_unused]] const uint16_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("events")){
 		// Определяем производится ли инициализация кластера
@@ -102,7 +113,7 @@ void awh::cluster::Core::cluster(const uint16_t wid, const pid_t pid, const clus
  * @param buffer буфер бинарных данных
  * @param size   размер буфера бинарных данных
  */
-void awh::cluster::Core::message(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept {
+void awh::cluster::Core::message([[maybe_unused]] const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("message")){
 		// Определяем производится ли инициализация кластера
@@ -279,6 +290,8 @@ void awh::cluster::Core::callback(const callback_t & callback) noexcept {
 	awh::core_t::callback(callback);
 	// Выполняем установку функции обратного вызова при завершении работы процесса
 	this->_callback.set("exit", callback);
+	// Выполняем установку функции обратного вызова при подключения дочерних процессов
+	this->_callback.set("ready", callback);
 	// Выполняем установку функции обратного вызова при пересоздании процесса
 	this->_callback.set("rebase", callback);
 	// Выполняем установку функции обратного вызова при получении события
@@ -335,6 +348,38 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 	#endif
 }
 /**
+ * salt Метод установки соли шифрования
+ * @param salt соль для шифрования
+ */
+void awh::cluster::Core::salt(const string & salt) noexcept {
+	// Выполняем установку соли для шифрования
+	this->_cluster.salt(salt);
+}
+/**
+ * password Метод установки пароля шифрования
+ * @param password пароль шифрования
+ */
+void awh::cluster::Core::password(const string & password) noexcept {
+	// Выполняем установку пароля для шифрования
+	this->_cluster.password(password);
+}
+/**
+ * cipher Метод установки размера шифрования
+ * @param cipher размер шифрования
+ */
+void awh::cluster::Core::cipher(const hash_t::cipher_t cipher) noexcept {
+	// Выполняем установку размера шифрования
+	this->_cluster.cipher(cipher);
+}
+/**
+ * compressor Метод установки метода компрессии
+ * @param compressor метод компрессии для установки
+ */
+void awh::cluster::Core::compressor(const hash_t::method_t compressor) noexcept {
+	// Выполняем установку метода компрессии
+	this->_cluster.compressor(compressor);
+}
+/**
  * transfer Метод установки режима передачи данных
  * @param transfer режим передачи данных
  */
@@ -361,6 +406,8 @@ awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::c
 	this->_type = engine_t::type_t::SERVER;
 	// Выполняем инициализацию кластера
 	this->_cluster.init(0, this->_size);
+	// Устанавливаем функцию получения события подключения дочерних процессов
+	this->_cluster.on <void (const uint16_t, const pid_t)> ("ready", &core_t::ready, this, _1, _2);
 	// Устанавливаем функцию получения события завершения работы процесса
 	this->_cluster.on <void (const uint16_t, const pid_t, const int32_t)> ("exit", &core_t::exit, this, _1, _2, _3);
 	// Устанавливаем функцию получения события пересоздании процесса

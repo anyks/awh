@@ -130,8 +130,8 @@ namespace awh {
 					// Бинарный буфер полученных данных
 					buffer_t _buffer;
 				private:
-					// Список декодеров для декодирования сообщений мастера
-					map <pid_t, unique_ptr <cmp::decoder_t>> _decoders;
+					// Список декодеров для декодирования сообщений
+					map <SOCKET, unique_ptr <cmp::decoder_t>> _decoders;
 				private:
 					// Объект для работы с логами
 					const log_t * _log;
@@ -199,6 +199,8 @@ namespace awh {
 			typedef struct Client {
 				// Файловый дескриптор
 				SOCKET fd;
+				// Идентификатор воркера
+				uint16_t wid;
 				// Объект подключения
 				peer_t peer;
 				// Объект события
@@ -209,7 +211,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Client(const fmk_t * fmk, const log_t * log) noexcept :
-				 fd(INVALID_SOCKET), ev(awh::event_t::type_t::EVENT, fmk, log) {}
+				 fd(INVALID_SOCKET), wid(0), ev(awh::event_t::type_t::EVENT, fmk, log) {}
 			} client_t;
 			/**
 			 * Server Структура сервера
@@ -291,6 +293,11 @@ namespace awh {
 			// Название кластера
 			string _name;
 		private:
+			// Соль шифрования сообщений
+			string _salt;
+			// Пароль шифрования сообщений
+			string _pass;
+		private:
 			// Объект параметров сервера
 			server_t _server;
 		private:
@@ -302,6 +309,11 @@ namespace awh {
 		private:
 			// Параметры пропускной способности
 			bandwidth_t _bandwidth;
+		private:
+			// Размер шифрования
+			hash_t::cipher_t _cipher;
+			// Метод компрессии
+			hash_t::method_t _method;
 		private:
 			/**
 			 * Для операционной системы не являющейся OS Windows
@@ -477,6 +489,13 @@ namespace awh {
 			 * @param wid идентификатор воркера
 			 */
 			void close(const uint16_t wid) noexcept;
+		private:
+			/**
+			 * close Метод закрытия файлового дескриптора
+			 * @param wid идентификатор воркера
+			 * @param fd  файловый дескриптор для закрытия
+			 */
+			void close(const uint16_t wid, const SOCKET fd) noexcept;
 		public:
 			/**
 			 * stop Метод остановки кластера
@@ -513,6 +532,28 @@ namespace awh {
 			 * @param transfer режим передачи данных
 			 */
 			void transfer(const transfer_t transfer) noexcept;
+		public:
+			/**
+			 * salt Метод установки соли шифрования
+			 * @param salt соль для шифрования
+			 */
+			void salt(const string & salt) noexcept;
+			/**
+			 * password Метод установки пароля шифрования
+			 * @param password пароль шифрования
+			 */
+			void password(const string & password) noexcept;
+		public:
+			/**
+			 * cipher Метод установки размера шифрования
+			 * @param cipher размер шифрования
+			 */
+			void cipher(const hash_t::cipher_t cipher) noexcept;
+			/**
+			 * compressor Метод установки метода компрессии
+			 * @param compressor метод компрессии для установки
+			 */
+			void compressor(const hash_t::method_t compressor) noexcept;
 		public:
 			/**
 			 * emplace Метод размещения нового дочернего процесса
