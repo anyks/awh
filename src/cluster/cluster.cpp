@@ -2601,7 +2601,7 @@ void awh::Cluster::callback(const callback_t & callback) noexcept {
  * @param log объект для работы с логами
  */
 awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _name{""}, _salt{""}, _pass{""}, _callback(log), _server(fmk, log),
+ _pid(::getpid()), _name{""}, _salt{""}, _pass{""}, _server(fmk, log), _callback(log),
  _transfer(transfer_t::PIPE), _cipher(hash_t::cipher_t::NONE), _method(hash_t::method_t::NONE),
  _core(nullptr), _fmk(fmk), _log(log) {
 	/**
@@ -2631,7 +2631,7 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(::getpid()), _name{""}, _salt{""}, _pass{""}, _callback(log), _server(fmk, log),
+ _pid(::getpid()), _name{""}, _salt{""}, _pass{""}, _server(fmk, log), _callback(log),
  _transfer(transfer_t::PIPE), _cipher(hash_t::cipher_t::NONE), _method(hash_t::method_t::NONE),
  _core(core), _fmk(fmk), _log(log) {
 	/**
