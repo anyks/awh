@@ -36,6 +36,10 @@ void awh::server::ProxySocks5::openEvents(const uint16_t sid) noexcept {
 	if(sid > 0){
 		// Устанавливаем хост сервера
 		this->_core.init(sid, this->_port, this->_host);
+		// Если хост передан пустой
+		if(this->_host.empty())
+			// Выполняем компенсацию хоста
+			this->_host = this->_core.host(sid);
 		// Выполняем запуск сервера
 		this->_core.launch(sid);
 	}
