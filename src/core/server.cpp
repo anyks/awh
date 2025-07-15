@@ -140,8 +140,8 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
 								// Выполняем блокировку потока
 								this->_mtx.accept.unlock();
-								// Переводим сокет в неблокирующий режим
-								ret.first->second->ectx.blocking(engine_t::mode_t::DISABLED);
+								// Переводим сокет в блокирующий режим
+								ret.first->second->ectx.blocking(engine_t::mode_t::ENABLED);
 								// Выполняем установку функции обратного вызова на получении сообщений
 								ret.first->second->on <void (const uint64_t)> ("read", &core_t::read, this, _1);
 								// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
@@ -814,8 +814,8 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 								// Выходим
 								return;
 							}
-							// Переводим сокет в неблокирующий режим
-							broker->ectx.blocking(engine_t::mode_t::DISABLED);
+							// Переводим сокет в блокирующий режим
+							broker->ectx.blocking(engine_t::mode_t::ENABLED);
 							// Если вывод информационных данных не запрещён
 							if(this->_info){
 								// Если порт установлен
@@ -2383,25 +2383,6 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 			if(i != this->_schemes.end()){
 				// Выполняем отключение приёма данных на этот сокет
 				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
-				// Определяем тип сокета
-				switch(static_cast <uint8_t> (this->_settings.sonet)){
-					// Если тип сокета установлен как TCP/IP
-					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-					// Если тип сокета установлен как TCP/IP TLS
-					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-					// Если тип сокета установлен как SCTP
-					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-						// Переводим сокет в неблокирующий режим
-						broker->ectx.blocking(engine_t::mode_t::DISABLED);
-					break;
-					// Если тип сокета установлен как UDP
-					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-					// Если тип сокета установлен как DTLS
-					case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-						// Переводим сокет в блокирующий режим
-						broker->ectx.blocking(engine_t::mode_t::ENABLED);
-					break;
-				}
 				/**
 				 * Выполняем чтение данных с сокета
 				 */
@@ -2455,16 +2436,6 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				} while(this->has(bid));
 				// Если подключение ещё не разорванно
 				if(this->has(bid)){
-					// Определяем тип сокета
-					switch(static_cast <uint8_t> (this->_settings.sonet)){
-						// Если тип сокета установлен как UDP
-						case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-						// Если тип сокета установлен как DTLS
-						case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-							// Переводим сокет в неблокирующий режим
-							broker->ectx.blocking(engine_t::mode_t::DISABLED);
-						break;
-					}
 					// Если время ожиданий входящих сообщений установлено
 					if((broker->timeouts.wait > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
 						// Выполняем создание таймаута ожидания получения данных
@@ -2560,29 +2531,12 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 						case static_cast <uint8_t> (transfer_t::SYNC): {
 							// Определяем тип сокета
 							switch(static_cast <uint8_t> (this->_settings.sonet)){
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 								// Если тип сокета установлен как TCP/IP
 								case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 								// Если тип сокета установлен как TCP/IP TLS
 								case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 								// Если тип сокета установлен как SCTP
 								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-								// Если тип сокета установлен как DTLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-									// Переводим сокет в блокирующий режим
-									broker->ectx.blocking(engine_t::mode_t::ENABLED);
-								break;
-							}
-						} break;
-						// Если передавать данные необходимо асинхронно
-						case static_cast <uint8_t> (transfer_t::ASYNC): {
-							// Определяем тип сокета
-							switch(static_cast <uint8_t> (this->_settings.sonet)){
-								// Если тип сокета установлен как UDP
-								case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-								// Если тип сокета установлен как DTLS
-								case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 									// Переводим сокет в блокирующий режим
 									broker->ectx.blocking(engine_t::mode_t::ENABLED);
 								break;
@@ -2621,29 +2575,12 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 							case static_cast <uint8_t> (transfer_t::SYNC): {
 								// Определяем тип сокета
 								switch(static_cast <uint8_t> (this->_settings.sonet)){
-									// Если тип сокета установлен как UDP
-									case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 									// Если тип сокета установлен как TCP/IP
 									case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 									// Если тип сокета установлен как TCP/IP TLS
 									case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 									// Если тип сокета установлен как SCTP
 									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-									// Если тип сокета установлен как DTLS
-									case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-										// Переводим сокет в неблокирующий режим
-										broker->ectx.blocking(engine_t::mode_t::DISABLED);
-									break;
-								}
-							} break;
-							// Если передавать данные необходимо асинхронно
-							case static_cast <uint8_t> (transfer_t::ASYNC): {
-								// Определяем тип сокета
-								switch(static_cast <uint8_t> (this->_settings.sonet)){
-									// Если тип сокета установлен как UDP
-									case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-									// Если тип сокета установлен как DTLS
-									case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 										// Переводим сокет в неблокирующий режим
 										broker->ectx.blocking(engine_t::mode_t::DISABLED);
 									break;
