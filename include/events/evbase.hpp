@@ -102,7 +102,7 @@ namespace awh {
 				// Файловые дескрипторы для чтения и записи
 				SOCKET read, write;
 				// Объект работы с пайпом
-				shared_ptr <evpipe_t> pipe;
+				std::shared_ptr <evpipe_t> pipe;
 				// Функция обратного вызова
 				function <void (const uint64_t)> callback;
 				/**
@@ -130,9 +130,9 @@ namespace awh {
 				// Функция обратного вызова
 				callback_t callback;
 				// Объект работы с пайпом
-				shared_ptr <evpipe_t> pipe;
+				std::shared_ptr <evpipe_t> pipe;
 				// Список соответствия типов событий режиму работы
-				map <event_type_t, event_mode_t> mode;
+				std::map <event_type_t, event_mode_t> mode;
 				/**
 				 * Item Конструктор
 				 */
@@ -198,14 +198,14 @@ namespace awh {
 			evtimer_t _evtimer;
 		private:
 			// Мютекс для блокировки потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
 			// Список существующих таймеров
-			set <SOCKET> _timers;
+			std::set <SOCKET> _timers;
 			// Список отслеживаемых участников
-			map <SOCKET, item_t> _items;
+			std::map <SOCKET, item_t> _items;
 			// Спиоск активных верхнеуровневых потоков
-			map <uint64_t, upstream_t> _upstreams;
+			std::map <uint64_t, upstream_t> _upstreams;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -389,7 +389,7 @@ namespace awh {
 			uint32_t _delay;
 		private:
 			// Мютекс для блокировки потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
 			// Функция обратного вызова
 			base_t::callback_t _callback;

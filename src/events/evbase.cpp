@@ -197,7 +197,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
  */
 void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t type) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем поиск указанного верхнеуровневого потока
 	auto i = this->_upstreams.find(sid);
 	// Если верхнеуровневый поток обнаружен
@@ -239,7 +239,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		/**
 		 * Для операционной системы OS Windows
 		 */
@@ -451,7 +451,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		/**
 		 * Для операционной системы OS Windows
 		 */
@@ -677,7 +677,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			/**
 			 * Для операционной системы OS Windows
 			 */
@@ -1156,7 +1156,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Если количество добавленных файловых дескрипторов для отслеживания не достигло предела
 			if(this->_items.size() < static_cast <size_t> (this->_maxCount)){
 				// Выполняем блокировку чтения базы событий
@@ -1453,7 +1453,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_items.find(fd);
 			// Если файловый дескриптор есть в базе событий
@@ -1865,7 +1865,7 @@ void awh::Base::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выполняем блокировку чтения базы событий
 		this->_locker = true;
 		/**
@@ -2044,7 +2044,7 @@ void awh::Base::kick() noexcept {
 			// Выполняем активацию блокировки
 			this->_locker = this->_started;
 			// Запоминаем список активных событий
-			map <SOCKET, item_t> items = this->_items;
+			std::map <SOCKET, item_t> items = this->_items;
 			// Выполняем разблокировку потока
 			this->_mtx.unlock();
 			// Выполняем очистку всех параметров
@@ -2216,7 +2216,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Выполняем блокировку потока
-								const lock_guard <recursive_mutex> lock(this->_mtx);
+								const lock_guard <std::recursive_mutex> lock(this->_mtx);
 								// Получаем количество файловых дескрипторов для проверки
 								count = this->_fds.size();
 								// Идентификатор события
@@ -2428,7 +2428,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Выполняем блокировку потока
-								const lock_guard <recursive_mutex> lock(this->_mtx);
+								const lock_guard <std::recursive_mutex> lock(this->_mtx);
 								// Идентификатор события
 								uint64_t id = 0;
 								// Файловый дескриптор события
@@ -2630,7 +2630,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Выполняем блокировку потока
-								const lock_guard <recursive_mutex> lock(this->_mtx);
+								const lock_guard <std::recursive_mutex> lock(this->_mtx);
 								// Идентификатор события
 								uint64_t id = 0;
 								// Код ошибки полученный от ядра
@@ -2858,7 +2858,7 @@ void awh::Base::rebase() noexcept {
 				// Выполняем разблокировку потока
 				this->_mtx.unlock();
 				// Запоминаем список активных событий
-				map <SOCKET, item_t> items = this->_items;
+				std::map <SOCKET, item_t> items = this->_items;
 				// Выполняем остановку работы базы событий
 				this->stop();
 				// Если список активных событий не пустой
@@ -2908,7 +2908,7 @@ void awh::Base::rebase() noexcept {
  */
 void awh::Base::freeze(const bool mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем активацию блокировки
 	this->_locker = mode;
 }
@@ -2918,7 +2918,7 @@ void awh::Base::freeze(const bool mode) noexcept {
  */
 void awh::Base::easily(const bool mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем установку флага активации простого режима чтения базы событий
 	this->_easily = mode;
 	// Если активирован простой режим работы чтения базы событий
@@ -2932,7 +2932,7 @@ void awh::Base::easily(const bool mode) noexcept {
  */
 void awh::Base::frequency(const uint32_t msec) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если количество секунд передано верно
 	if(msec > 0)
 		// Выполняем установку времени ожидания
@@ -2946,7 +2946,7 @@ void awh::Base::frequency(const uint32_t msec) noexcept {
  */
 void awh::Base::eraseUpstream(const uint64_t sid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем поиск указанного верхнеуровневого потока
 	auto i = this->_upstreams.find(sid);
 	// Если верхнеуровневый поток обнаружен
@@ -2979,7 +2979,7 @@ void awh::Base::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept 
 	// Если запуск производится в основном потоке
 	else {
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выполняем поиск указанного верхнеуровневого потока
 		auto i = this->_upstreams.find(sid);
 		// Если верхнеуровневый поток обнаружен
@@ -3015,7 +3015,7 @@ uint64_t awh::Base::emplaceUpstream(function <void (const uint64_t)> callback) n
 	// Если запуск производится в основном потоке
 	else {
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Создаём объект пайпа
 		auto pipe = make_shared <evpipe_t> (this->_fmk, this->_log);
 		// Выполняем создание сокетов
@@ -3089,7 +3089,7 @@ awh::Event::type_t awh::Event::type() const noexcept {
  */
 void awh::Event::set(base_t * base) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Устанавливаем базу данных событий
 	this->_base = base;
 }
@@ -3132,7 +3132,7 @@ void awh::Event::set(const SOCKET fd) noexcept {
  */
 void awh::Event::set(base_t::callback_t callback) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Устанавливаем функцию обратного вызова
 	this->_callback = callback;
 }
@@ -3142,7 +3142,7 @@ void awh::Event::set(base_t::callback_t callback) noexcept {
  */
 void awh::Event::del(const base_t::event_type_t type) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если работа события запущена
 	if((this->_base != nullptr) && this->_mode){
 		// Если событие является стандартным
@@ -3160,7 +3160,7 @@ void awh::Event::del(const base_t::event_type_t type) noexcept {
  */
 void awh::Event::timeout(const uint32_t delay, const bool series) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Определяем тип установленного события
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием
@@ -3185,7 +3185,7 @@ void awh::Event::timeout(const uint32_t delay, const bool series) noexcept {
  */
 bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если работа базы событий активированна
 	if((this->_base != nullptr) && ((this->_fd != INVALID_SOCKET) || (this->_delay > 0)))
 		// Выполняем установку режима работы модуля
@@ -3198,7 +3198,7 @@ bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_
  */
 void awh::Event::stop() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если работа события запущена
 	if((this->_base != nullptr) && this->_mode){
 		// Если событие является стандартным
@@ -3216,7 +3216,7 @@ void awh::Event::stop() noexcept {
  */
 void awh::Event::start() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если работа события ещё не запущена
 	if(!this->_mode && (this->_base != nullptr)){
 		// Если событие является стандартным
@@ -3275,7 +3275,7 @@ awh::Event & awh::Event::operator = (const SOCKET fd) noexcept {
  */
 awh::Event & awh::Event::operator = (const uint32_t delay) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Определяем тип установленного события
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием
