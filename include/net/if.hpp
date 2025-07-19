@@ -135,11 +135,11 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT IfNet {
 		private:
 			// Список сетевых интерфейсов
-			unordered_map <string, string> _ifs;
+			std::unordered_map <string, string> _ifs;
 			// Список интернет-адресов
-			unordered_map <string, string> _ips;
+			std::unordered_map <string, string> _ips;
 			// Список интернет-адресов
-			unordered_map <string, string> _ips6;
+			std::unordered_map <string, string> _ips6;
 		private:
 			// Максимальная длина сетевого интерфейса
 			static constexpr uint16_t MAX_ADDRS = 32;
@@ -181,7 +181,7 @@ namespace awh {
 			 * Метод вывода списка MAC-адресов
 			 * @return список MAC-адресов
 			 */
-			const unordered_map <string, string> & hws() const noexcept;
+			const std::unordered_map <string, string> & hws() const noexcept;
 		public:
 			/**
 			 * name Метод запроса названия сетевого интерфейса

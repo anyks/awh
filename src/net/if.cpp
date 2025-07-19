@@ -529,7 +529,7 @@ void awh::IfNet::clear() noexcept {
  * Метод вывода списка MAC-адресов
  * @return список MAC-адресов
  */
-const unordered_map <string, string> & awh::IfNet::hws() const noexcept {
+const std::unordered_map <string, string> & awh::IfNet::hws() const noexcept {
 	// Выводим список сетевых интерфейсов
 	return this->_ifs;
 }

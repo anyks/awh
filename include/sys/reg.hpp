@@ -118,7 +118,7 @@ namespace awh {
 			mutable mtx_t _mtx;
 		public:
 			// Кэш собранных регулярных выражений
-			mutable map <pair <int32_t, string>, exp_weak_t> _cache;
+			mutable std::map <pair <int32_t, string>, exp_weak_t> _cache;
 		public:
 			/**
 			 * error Метод извлечения текста ошибки регулярного выражения
