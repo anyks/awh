@@ -92,6 +92,7 @@
 		 * Стандартные библиотеки
 		 */
 		#include <netdb.h>
+		#include <ifaddrs.h>
 		#include <net/if_dl.h>
 		#include <netinet/if_ether.h>
 		#include <sys/sockio.h>
