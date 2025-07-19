@@ -51,7 +51,7 @@
 /**
  * Реализация под Sun Solaris
  */
-#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
+#elif __sun__
 	#include <fstream>
 	#include <sstream>
 	#include <procfs.h>

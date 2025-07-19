@@ -201,7 +201,7 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 		/**
 		 * Реализация под Sun Solaris
 		 */
-		#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
+		#elif __sun__
 			// Строковый поток названия файла
 			stringstream ss;
 			// Формируем название файла

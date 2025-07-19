@@ -108,7 +108,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 	/**
 	 * Если операционной системой является Linux или Sun Solaris
 	 */
-	#elif defined(__linux__) || (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
+	#elif __linux__ || __sun__
 		// Структура параметров сетевого интерфейса
 		struct ifconf ifc;
 		// Структура сетевого интерфейса
@@ -285,8 +285,6 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 	#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Структура параметров сетевого интерфейса
 		struct ifconf ifc;
-		// Временный буфер MAC-адреса
-		char temp[80];
 		// Создаём буфер для извлечения сетевых данных
 		char buffer[IF_BUFFER_SIZE];
 		// Заполняем нуляем наши буферы
@@ -313,6 +311,8 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			// Выходим из функции
 			return;
 		}
+		// Временный буфер MAC-адреса
+		char temp[80];
 		// Выполняем смещение в буфере
 		char * cplim = (buffer + ifc.ifc_len);
 		// Выполняем перебор всех сетевых интерфейсов
@@ -349,8 +349,6 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		struct ifconf ifc;
 		// Структура сетевого интерфейса
 		struct ifreq ifrc;
-		// Временный буфер MAC-адреса
-		char hardware[18];
 		// Создаём буфер для извлечения сетевых данных
 		char buffer[IF_BUFFER_SIZE];
 		// Заполняем нуляем наши буферы
@@ -377,6 +375,8 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			// Выходим из функции
 			return;
 		}
+		// Временный буфер MAC-адреса
+		char hardware[18];
 		// Получаем текущее значение итератора
 		struct ifreq * i = ifc.ifc_req;
 		// Получаем конечное значение итератора
@@ -397,6 +397,73 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 						::memset(hardware, 0, sizeof(hardware));
 						// Выполняем копирование MAC-адреса
 						::memcpy(mac, ifrc.ifr_hwaddr.sa_data, 6);
+						// Выполняем получение MAC-адреса
+						::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+						// Добавляем MAC-адрес в список сетевых интерфейсов
+						this->_ifs.emplace(i->ifr_name, hardware);
+					}
+				}
+			// Если подключение к сокету не удалось, выводим сообщение об ошибке
+			} else this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
+		}
+		// Закрываем сетевой сокет
+		this->close(fd);
+	/**
+	 * Если операционной системой является Sun Solaris
+	 */
+	#elif __sun__
+		// Структура параметров сетевого интерфейса
+		struct ifconf ifc;
+		// Структура сетевого интерфейса
+		struct ifreq ifrc;
+		// Создаём буфер для извлечения сетевых данных
+		char buffer[IF_BUFFER_SIZE];
+		// Заполняем нуляем наши буферы
+		::memset(buffer, 0, sizeof(buffer));
+		// Выделяем сокет для подключения
+		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		// Если файловый дескриптор не создан, выходим
+		if(fd == INVALID_SOCKET){
+			// Выводим сообщение об ошибке
+			this->_log->print("Socket failed", log_t::flag_t::WARNING);
+			// Выходим из функции
+			return;
+		}
+		// Устанавливаем буфер для получения параметров сетевого интерфейса
+		ifc.ifc_buf = buffer;
+		// Устанавливаем максимальный размер буфера
+		ifc.ifc_len = IF_BUFFER_SIZE;
+		// Выполняем получение сетевых параметров
+		if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
+			// Закрываем сетевой сокет
+			this->close(fd);
+			// Выводим сообщение об ошибке
+			this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
+			// Выходим из функции
+			return;
+		}
+		// Временный буфер MAC-адреса
+		char hardware[18];
+		// Получаем текущее значение итератора
+		struct ifreq * i = ifc.ifc_req;
+		// Получаем конечное значение итератора
+		const struct ifreq * const end = (i + (ifc.ifc_len / sizeof(struct ifreq)));
+		// Переходим по всем сетевым интерфейсам
+		for(; i != end; ++i){
+			// Копируем название сетевого интерфейса
+			strcpy(ifrc.ifr_name, i->ifr_name);
+			// Выполняем подключение к сокету
+			if(::ioctl(fd, SIOCGIFFLAGS, &ifrc) == 0){
+				// Проверяем сетевой интерфейс (не loopback)
+				if(!(ifrc.ifr_flags & IFF_LOOPBACK)){
+					// Извлекаем аппаратный адрес сетевого интерфейса
+					if(::ioctl(fd, SIOCGIFHWADDR, &ifrc) == 0){
+						// Создаём буфер MAC-адреса
+						uint8_t mac[6];
+						// Заполняем нуляем наши буферы
+						::memset(hardware, 0, sizeof(hardware));
+						// Выполняем копирование MAC-адреса
+						::memcpy(mac, ifrc.ifr_addr.sa_data, 6);
 						// Выполняем получение MAC-адреса
 						::sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 						// Добавляем MAC-адрес в список сетевых интерфейсов

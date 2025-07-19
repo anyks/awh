@@ -76,11 +76,24 @@ void awh::OS::boost() const noexcept {
 	/**
 	 * Для операционной системы OS Windows
 	 */
-	#if defined(_WIN32) || defined(_WIN64)
+	#if _WIN32 || _WIN64
 		// Vista/7 также включает «Compound TCP (CTCP)», который похож на CUBIC в Linux
 		this->exec("netsh interface tcp set global congestionprovider=ctcp");
 		// Если вам вообще нужно включить автонастройку, вот команды
 		this->exec("netsh interface tcp set global autotuninglevel=normal");
+	/**
+	 * Реализация под Sun Solaris
+	 */
+	#elif __sun__
+		// Если эффективный идентификатор пользователя принадлежит ROOT
+		if(::geteuid() == 0){
+			// Эмпирическое правило: max_buf = 2 x cwnd_max (окно перегрузки)
+			this->exec("ndd -set /dev/tcp tcp_max_buf 4194304");
+			this->exec("ndd -set /dev/tcp tcp_cwnd_max 2097152");
+			// Увеличиваем размер окна TCP по умолчанию
+			this->exec("ndd -set /dev/tcp tcp_xmit_hiwat 65536");
+			this->exec("ndd -set /dev/tcp tcp_recv_hiwat 65536");
+		}
 	/**
 	 * Для операционной системы MacOS X
 	 */
@@ -203,19 +216,6 @@ void awh::OS::boost() const noexcept {
 				// Активируем выбранный нами алгоритм
 				this->sysctl("net.inet.tcp.cc.algorithm", algorithm);
 		}
-	/**
-	 * Реализация под Sun Solaris
-	 */
-	#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
-		// Если эффективный идентификатор пользователя принадлежит ROOT
-		if(::geteuid() == 0){
-			// Эмпирическое правило: max_buf = 2 x cwnd_max (окно перегрузки)
-			this->exec("ndd -set /dev/tcp tcp_max_buf 4194304");
-			this->exec("ndd -set /dev/tcp tcp_cwnd_max 2097152");
-			// Увеличиваем размер окна TCP по умолчанию
-			this->exec("ndd -set /dev/tcp tcp_xmit_hiwat 65536");
-			this->exec("ndd -set /dev/tcp tcp_recv_hiwat 65536");
-		}
 	#endif
 }
 /**
@@ -270,7 +270,7 @@ awh::OS::type_t awh::OS::type() const noexcept {
 	/**
 	 * Реализация под Sun Solaris
 	 */
-	#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
+	#elif __sun__
 		// Заполняем структуру
 		result = type_t::SOLARIS;
 	/**
