@@ -199,6 +199,27 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 				}
 			}
 		/**
+		 * Реализация под Sun Solaris
+		 */
+		#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
+			// Строковый поток названия файла
+			stringstream ss;
+			// Формируем название файла
+			ss << "/proc/" << pid << "/psinfo";
+			// Выполняем чтение файла
+			ifstream file(ss.str());
+			// Если файл прочитан удачно
+			if(file.is_open()){
+				// Создаём объект информационных данных процесса
+				psinfo_t info;
+				// Выполняем чтение структуры данных процесса
+				file.read(reinterpret_cast <char *> (&info), sizeof(info));
+				// Закрываем файл
+				file.close();
+				// Выполняем извлечение названия процесса
+				result = info.pr_fname;
+			}
+		/**
 		 * Для операционной системы Windows
 		 */
 		#elif _WIN32 || _WIN64

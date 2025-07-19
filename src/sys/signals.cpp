@@ -42,23 +42,20 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Self Структура глобального объекта
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+static struct Self {
+	// Объект фреймворка
+	const awh::fmk_t * fmk;
+	// Объект для работы с логами
+	const awh::log_t * log;
+	// Функция обратного вызова при получении сигнала
+	function <void (const int32_t)> callback;
 	/**
-	 * Объект фреймворка
+	 * Self Конструктор
 	 */
-	const static awh::fmk_t * awhFmk = nullptr;
-	/**
-	 * Объект для работы с логами
-	 */
-	const static awh::log_t * awhLog = nullptr;
-#endif
-
-/**
- * Функция обратного вызова при получении сигнала
- */
-static function <void (const int32_t)> callbackFn = nullptr;
+	Self() noexcept : fmk(nullptr), log(nullptr), callback(nullptr) {}
+} __attribute__((packed)) self;
 
 /**
  * Для операционной системы не являющейся OS Windows
@@ -72,7 +69,7 @@ static function <void (const int32_t)> callbackFn = nullptr;
 	 */
 	static void signalHandler(int32_t signal, siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
 		// Если функция обратного вызова установлена, выводим её
-		if(callbackFn != nullptr){
+		if(self.callback != nullptr){
 			// Если произошло убийство приложения
 			if((info != nullptr) && (signal == SIGTERM)){
 				// Создаём объект дознавателя
@@ -92,21 +89,21 @@ static function <void (const int32_t)> callbackFn = nullptr;
 					// Если название пользователя получено
 					if(user != nullptr)
 						// Выводим сообщение в лог
-						awhLog->print("Killer detected APP=%s, USER=%s", awh::log_t::flag_t::WARNING, app.c_str(), user);
+						self.log->print("Killer detected APP=%s, USER=%s", awh::log_t::flag_t::WARNING, app.c_str(), user);
 					// Если имя пользователя не получено
-					else awhLog->print("Killer detected APP=%s, UID=%u", awh::log_t::flag_t::WARNING, app.c_str(), info->si_uid);
+					else self.log->print("Killer detected APP=%s, UID=%u", awh::log_t::flag_t::WARNING, app.c_str(), info->si_uid);
 				// Если название приложения не получено
 				} else {
 					// Если название пользователя получено
 					if(user != nullptr)
 						// Выводим сообщение в лог
-						awhLog->print("Killer detected PID=%u, USER=%s", awh::log_t::flag_t::WARNING, info->si_pid, user);
+						self.log->print("Killer detected PID=%u, USER=%s", awh::log_t::flag_t::WARNING, info->si_pid, user);
 					// Если имя пользователя не получено
-					else awhLog->print("Killer detected PID=%u, UID=%u", awh::log_t::flag_t::WARNING, info->si_pid, info->si_uid);
+					else self.log->print("Killer detected PID=%u, UID=%u", awh::log_t::flag_t::WARNING, info->si_pid, info->si_uid);
 				}
 			}
 			// Выполняем функцию обратного вызова
-			std::thread(callbackFn, signal).detach();
+			std::thread(self.callback, signal).detach();
 		}
 	}
 /**
@@ -119,9 +116,9 @@ static function <void (const int32_t)> callbackFn = nullptr;
 	 */
 	static void signalHandler(int32_t signal) noexcept {
 		// Если функция обратного вызова установлена, выводим её
-		if(callbackFn != nullptr)
+		if(self.callback != nullptr)
 			// Выполняем функцию обратного вызова
-			std::thread(callbackFn, signal).detach();
+			std::thread(self.callback, signal).detach();
 	}
 #endif
 
@@ -267,23 +264,18 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 	// Выполняем установку функцию обратного вызова
 	this->_callback = callback;
 	// Выполняем установки функции обратного вызова
-	callbackFn = std::bind(&sig_t::callback, this, _1);
+	self.callback = std::bind(&sig_t::callback, this, _1);
 }
 /**
  * Signals Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Signals::Signals([[maybe_unused]] const fmk_t * fmk, [[maybe_unused]] const log_t * log) noexcept : _mode(false), _callback(nullptr) {
-	/**
-	 * Для операционной системы не являющейся OS Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Запоминаем объект фреймворка
-		awhFmk = fmk;
-		// Запоминаем объект для работы с логами
-		awhLog = log;
-	#endif
+awh::Signals::Signals(const fmk_t * fmk, const log_t * log) noexcept : _mode(false), _callback(nullptr) {
+	// Запоминаем объект фреймворка
+	self.fmk = fmk;
+	// Запоминаем объект для работы с логами
+	self.log = log;
 }
 /**
  * ~Signals Деструктор
