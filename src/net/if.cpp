@@ -106,9 +106,9 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 		// Закрываем сетевой сокет
 		this->close(fd);
 	/**
-	 * Если операционной системой является Linux
+	 * Если операционной системой является Linux или Sun Solaris
 	 */
-	#elif __linux__
+	#elif defined(__linux__) || (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
 		// Структура параметров сетевого интерфейса
 		struct ifconf ifc;
 		// Структура сетевого интерфейса

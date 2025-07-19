@@ -84,6 +84,21 @@
 		#include <ifaddrs.h>
 		#include <stdbool.h>
 		#include <net/if_arp.h>
+	/**
+	 * Реализация под Sun Solaris
+	 */
+	#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
+		/**
+		 * Стандартные библиотеки
+		 */
+		#include <netdb.h>
+		#include <net/if_dl.h>
+		#include <netinet/if_ether.h>
+		#include <sys/sockio.h>
+		#include <net/route.h>
+		// Создаём функцию округления
+		#define ROUNDUP(a) \
+			((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 	#endif
 /**
  * Для операционной системы OS Windows
