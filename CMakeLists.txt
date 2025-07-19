@@ -77,7 +77,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
 # Если операционной системой является FreeBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     if (NOT OS_VERSION)
-        EXECUTE_PROCESS(COMMAND uname -a COMMAND awk '{print $3}' COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
+        EXECUTE_PROCESS(COMMAND uname -a COMMAND awk "{print $3}" COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
     message(STATUS "Detected OS: FreeBSD v${OS_VERSION}")
     SET(DEBUGGER "-ggdb3")
