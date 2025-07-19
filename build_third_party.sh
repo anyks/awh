@@ -110,6 +110,12 @@ mkdir -p "$PREFIX/bin"
 mkdir -p "$PREFIX/lib"
 mkdir -p "$PREFIX/include"
 
+# Если операционная система используется Solaris
+if [ $OS = "SunOS" ]; then
+	# Устанавливаем жёстко компилятор
+	export CC="gcc"
+fi
+
 # Если сборка производится в операционной системе MacOS X
 if [ $OS = "Darwin" ]; then
 	# Устанавливаем количество ядер системы
@@ -119,8 +125,8 @@ if [ $OS = "Darwin" ]; then
 		# Устанавливаем версию операционной системы
 		export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)
 	fi
-# Если сборка производится в операционной системе Windows или Linux
-elif [ $OS = "Windows" ] || [ $OS = "Linux" ]; then
+# Если сборка производится в операционной системе Windows, Linux или Solaris
+elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
 	# Устанавливаем количество ядер системы
 	numproc=$(nproc)
 # Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
@@ -136,8 +142,8 @@ fi
 # Если сборка производится в операционной системе MacOS X
 if [ $OS = "Darwin" ]; then
 	INSTALL_CMD="ditto -v"
-# Если сборка производится в операционной системе Windows или Linux
-elif [ $OS = "Windows" ] || [ $OS = "Linux" ]; then
+# Если сборка производится в операционной системе Windows, Linux или Solaris
+elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
 	INSTALL_CMD="install -D -m 0644"
 # Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
 elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
@@ -256,8 +262,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -Wl,-rpath,"$PREFIX/lib" || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
+
 	# Выполняем установку проекта без документации
 	make install_sw || exit 1
 	make install_ssldirs || exit 1
@@ -322,8 +336,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 --static || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
+
 	# Выполняем установку проекта
 	make install || exit 1
 
@@ -403,8 +425,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
+
 	# Выполняем установку проекта
 	make install || exit 1
 
@@ -479,8 +509,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
+
 	# Выполняем установку проекта
 	make install || exit 1
 
@@ -557,8 +595,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
+
 	# Выполняем установку проекта
 	make install || exit 1
 
@@ -639,8 +685,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
+
 	# Выполняем установку проекта
 	make install || exit 1
 
@@ -727,8 +781,15 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
 
 	# Производим установку библиотеки по нужному пути
 	echo "Install \"$src/${build}/libbrotlicommon.a\" to \"$PREFIX/lib/libbrotlicommon.a\""
@@ -974,6 +1035,11 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			 --oldincludedir="$PREFIX/include/iconv" \
 			 --libdir="$PREFIX/lib"
 
+			# Удаляем неправильную конфигурацию
+			sed -e '2088d' "$src/Makefile" > "$src/Makefile.tmp"
+			# Восстанавливаем правила сборки
+			mv "$src/Makefile.tmp" "$src/Makefile"
+
 			# Выполняем сборку проекта
 			make || exit 1
 			# Выполняем установку проекта
@@ -1066,8 +1132,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 		.. || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
+
 	# Выполняем установку проекта
 	make install || exit 1
 
@@ -1390,8 +1464,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 		.. || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
+
 	# Выполняем установку проекта
 	make install || exit 1
 
@@ -1461,8 +1543,15 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Выполняем сборку на всех логических ядрах
-	make -j"$numproc" || exit 1
+	# Если операционная система используется Solaris
+	if [ $OS = "SunOS" ]; then
+		# Выполняем сборку на всех логических ядрах
+		make || exit 1
+	# Для всех остальных операционных систем
+	else
+		# Выполняем сборку на всех логических ядрах
+		make -j"$numproc" || exit 1
+	fi
 	
 	# Создаём каталог GPerfTools
 	mkdir "$PREFIX/include/gperftools"
