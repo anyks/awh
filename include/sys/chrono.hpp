@@ -396,9 +396,9 @@ namespace awh {
 			mutable mtx_t _mtx;
 		private:
 			// Список скомпилированных регулярных выражений
-			map <format_t, regex_t> _expressions;
+			std::map <format_t, regex_t> _expressions;
 			// Список внутренних временных зон
-			unordered_map <string, int32_t> _timeZones;
+			std::unordered_map <string, int32_t> _timeZones;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -753,7 +753,7 @@ namespace awh {
 			 * setTimeZones Метод установки своего списка временных зон
 			 * @param zones список временных зон для установки
 			 */
-			void setTimeZones(const unordered_map <string, int32_t> & zones) noexcept;
+			void setTimeZones(const std::unordered_map <string, int32_t> & zones) noexcept;
 		public:
 			/**
 			 * timestamp Метод установки штампа времени в указанных единицах измерения

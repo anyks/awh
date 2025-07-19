@@ -411,19 +411,19 @@ static struct RomanNumerals {
 static class Symbols {
 	private:
 		// Контейнер римских чисел
-		map <char, uint16_t> _romes;
+		std::map <char, uint16_t> _romes;
 		// Контейнер арабских чисел
-		map <char, uint8_t> _arabics;
+		std::map <char, uint8_t> _arabics;
 	private:
 		// Контейнер римских чисел для UTF-8
-		map <wchar_t, uint16_t> _wideRomes;
+		std::map <wchar_t, uint16_t> _wideRomes;
 		// Контейнер арабских чисел для UTF-8
-		map <wchar_t, uint8_t> _wideArabics;
+		std::map <wchar_t, uint8_t> _wideArabics;
 	private:
 		// Контейнер латинских символов
-		map <char, wchar_t> _letters;
+		std::map <char, wchar_t> _letters;
 		// Контейнер латинских символов для UTF-8
-		map <wchar_t, char> _wideLetters;
+		std::map <wchar_t, char> _wideLetters;
 	public:
 		/**
 		 * isRome Метод проверки соответствия римской цифре
@@ -3869,9 +3869,9 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-unordered_map <string, string> awh::Framework::kv(const string & text, const string & delim, const string & separator, const vector <string> & escaping) const noexcept {
+std::unordered_map <string, string> awh::Framework::kv(const string & text, const string & delim, const string & separator, const vector <string> & escaping) const noexcept {
 	// Результат работы функции
-	unordered_map <string, string> result;
+	std::unordered_map <string, string> result;
 	// Если данные для обработки текста передан
 	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
@@ -4004,9 +4004,9 @@ unordered_map <string, string> awh::Framework::kv(const string & text, const str
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const wstring & delim, const wstring & separator, const vector <wstring> & escaping) const noexcept {
+std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, const wstring & delim, const wstring & separator, const vector <wstring> & escaping) const noexcept {
 	// Результат работы функции
-	unordered_map <wstring, wstring> result;
+	std::unordered_map <wstring, wstring> result;
 	// Если данные для обработки текста передан
 	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
@@ -4225,9 +4225,9 @@ void awh::Framework::setLocale(const string & locale) noexcept {
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
  */
-map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
+std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
 	// Результат работы функции
-	map <size_t, size_t> result;
+	std::map <size_t, size_t> result;
 	// Если текст передан
 	if(!text.empty()){
 		/**

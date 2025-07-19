@@ -696,7 +696,7 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 */
-			unordered_map <string, string> kv(const string & text, const string & delim, const string & separator = "=", const vector <string> & escaping = {string{"\""}}) const noexcept;
+			std::unordered_map <string, string> kv(const string & text, const string & delim, const string & separator = "=", const vector <string> & escaping = {string{"\""}}) const noexcept;
 			/**
 			 * kv Метод извлечения ключей и значений из текста
 			 * @param text      текст из которого извлекаются записи
@@ -705,7 +705,7 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 */
-			unordered_map <wstring, wstring> kv(const wstring & text, const wstring & delim, const wstring & separator = L"=", const vector <wstring> & escaping = {wstring{L"\""}}) const noexcept;
+			std::unordered_map <wstring, wstring> kv(const wstring & text, const wstring & delim, const wstring & separator = L"=", const vector <wstring> & escaping = {wstring{L"\""}}) const noexcept;
 		public:
 			/**
 			 * domainZone Метод установки пользовательской зоны
@@ -734,7 +734,7 @@ namespace awh {
 			 * @param text текст для извлечения url адресов
 			 * @return     список координат с url адресами
 			 */
-			map <size_t, size_t> urls(const string & text) const noexcept;
+			std::map <size_t, size_t> urls(const string & text) const noexcept;
 		public:
 			/**
 			 * icon Метод получения иконки
