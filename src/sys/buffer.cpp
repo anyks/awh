@@ -31,7 +31,7 @@ void awh::Buffer::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Если размер выделенной памяти выше максимального размера буфера
@@ -103,7 +103,7 @@ void awh::Buffer::erase(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Если мы не дошли до конца
 		if(!this->_buffer.empty())
 			// Выполняем удаление указанного количества байт вначале буфера
@@ -141,7 +141,7 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выделяем нужное количество памяти буферу данных
 		this->_buffer.reserve(size);
 	/**
@@ -176,7 +176,7 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Добавляем новые данные в буфер
 			this->_buffer.insert(this->_buffer.end(), reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
 		/**
@@ -228,9 +228,9 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока для текущего объекта
-			const lock_guard <mutex> lock1(this->_mtx);
+			const lock_guard <std::mutex> lock1(this->_mtx);
 			// Выполняем блокировку потока для перемещаемого объекта
-			const lock_guard <mutex> lock2(buffer._mtx);
+			const lock_guard <std::mutex> lock2(buffer._mtx);
 			// Выполняем перемещения данных буфера
 			this->_buffer = std::move(buffer._buffer);
 		/**
@@ -268,7 +268,7 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выполняем перемещения данных буфера
 			this->_buffer.assign(buffer._buffer.begin(), buffer._buffer.end());
 		/**
@@ -330,9 +330,9 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока для текущего объекта
-			const lock_guard <mutex> lock1(this->_mtx);
+			const lock_guard <std::mutex> lock1(this->_mtx);
 			// Выполняем блокировку потока для перемещаемого объекта
-			const lock_guard <mutex> lock2(buffer._mtx);
+			const lock_guard <std::mutex> lock2(buffer._mtx);
 			// Выполняем перемещения данных буфера
 			this->_buffer = std::move(buffer._buffer);
 		/**
@@ -367,7 +367,7 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выполняем перемещения данных буфера
 			this->_buffer.assign(buffer._buffer.begin(), buffer._buffer.end());
 		/**

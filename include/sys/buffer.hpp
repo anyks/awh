@@ -57,7 +57,7 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Buffer {
 		private:
 			// Мютекс для блокировки потока
-			mutex _mtx;
+			std::mutex _mtx;
 		private:
 			// Объект буфера данных
 			vector <uint8_t> _buffer;
