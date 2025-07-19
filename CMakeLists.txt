@@ -35,8 +35,7 @@ message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
-# Проверка версии OS
-string(REGEX MATCH "Linux" PROJECT_OS_LINUX ${CMAKE_SYSTEM_NAME})
+# Если операционной системой является Linux
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
     SET(DEBUGGER "-ggdb3")
@@ -53,22 +52,44 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     endif()
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    if (NOT MACOS_VERSION)
-        EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE MACOS_VERSION)
+# Если операционной системой является Solaris
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+    if (NOT OS_VERSION)
+        EXECUTE_PROCESS(COMMAND uname -a COMMAND awk '{print $4}' COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
-    message(STATUS "Detected OS: MacOS X v${MACOS_VERSION}")
-    SET(DEBUGGER "-glldb")    
-    SET(CMAKE_OSX_DEPLOYMENT_TARGET ${MACOS_VERSION})
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
-    message(STATUS "Detected OS: FreeBSD")
+    message(STATUS "Detected OS: Solaris v${OS_VERSION}")
     SET(DEBUGGER "-ggdb3")
+     # Используем Clang
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+     # Используем GCC
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
+    endif()
+# Если операционной системой является MacOS X
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    if (NOT OS_VERSION)
+        EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
+    endif()
+    message(STATUS "Detected OS: MacOS X v${OS_VERSION}")
+    SET(DEBUGGER "-glldb")    
+    SET(CMAKE_OSX_DEPLOYMENT_TARGET ${OS_VERSION})
+# Если операционной системой является FreeBSD
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+    if (NOT OS_VERSION)
+        EXECUTE_PROCESS(COMMAND uname -a COMMAND awk '{print $3}' COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
+    endif()
+    message(STATUS "Detected OS: FreeBSD v${OS_VERSION}")
+    SET(DEBUGGER "-ggdb3")
+# Если операционной системой является NetBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD")
     message(STATUS "Detected OS: NetBSD")
     SET(DEBUGGER "-ggdb3")
+# Если операционной системой является OpenBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     message(STATUS "Detected OS: OpenBSD")
     SET(DEBUGGER "-ggdb3")
+# Если операционная система не определена
 else()
     SET(DEBUGGER "")
 endif()
@@ -110,14 +131,16 @@ string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 # Опции компилятора
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+# Устанавливаем параметры игнорирования ошибок для MacOS X
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     SET(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+# Устанавливаем параметры игнорирования ошибок для Windows, Linux и Solaris
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR ${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
+# Устанавливаем параметры игнорирования ошибок для FreeBSD, NetBSD и OpenBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     SET(AWH_PARAMS "-lutil -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+# Если операционная система не определена
 else()
     SET(AWH_PARAMS "-Wno-unknown-attributes")
 endif()
@@ -370,7 +393,7 @@ endif (CMAKE_SHARED_BUILD_LIB)
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
     add_executable(${INVESTIGATOR_APP_NAME} sample/investigator.cpp ${RES_FILES})
-# Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
+# Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
 else()
     # Выполняем создание демонстрационных приложений
     add_executable(${IP_APP_NAME} sample/ip.cpp)
@@ -541,7 +564,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
+    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
     elseif (CMAKE_BUILD_IDN)
 
         # Выполняем сборку динамической библиотеки
@@ -681,7 +704,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-    # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
+    # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
     else()
 
         # Выполняем сборку динамической библиотеки
@@ -960,7 +983,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
+    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
     elseif (CMAKE_BUILD_IDN)
 
         # Выполняем сборку приложения работы с IP-адресами
@@ -1107,7 +1130,7 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${AWH_IDN}
         )
 
-    # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X
+    # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
     else()
 
         # Выполняем сборку приложения работы с IP-адресами
