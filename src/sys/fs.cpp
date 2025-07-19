@@ -2043,7 +2043,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 										// Выполняем компенсацию размера строки
 										length++;
 									// Если длина слова получена, выводим полученную строку
-									callback(string(reinterpret_cast <char *> (buffer) + offset, length));
+									apply(callback, make_tuple(string(reinterpret_cast <char *> (buffer) + offset, length)));
 									// Выполняем смещение
 									offset = (i + 1);
 								}
@@ -2053,7 +2053,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 							// Если данные не все прочитаны, выводим как есть
 							if((offset == 0) && (size > 0))
 								// Выводим полученную строку
-								callback(string(reinterpret_cast <char *> (buffer), size));
+								apply(callback, make_tuple(string(reinterpret_cast <char *> (buffer), size)));
 						}
 						// Выполняем удаление сопоставления для указанного диапазона адресов
 						::munmap(buffer, (length + offset - paOffset));
@@ -2146,7 +2146,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 								// Выполняем компенсацию размера строки
 								length++;
 							// Если длина слова получена, выводим полученную строку
-							callback(string(data + offset, length));
+							apply(callback, make_tuple(string(data + offset, length)));
 							// Выполняем смещение
 							offset = (i + 1);
 						}
@@ -2156,7 +2156,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 					// Если данные не все прочитаны, выводим как есть
 					if((offset == 0) && (size > 0))
 						// Выводим полученную строку
-						callback(string(data, size));
+						apply(callback, make_tuple(string(data, size)));
 					// Очищаем буфер данных
 					buffer.clear();
 					// Освобождаем выделенную память
@@ -2287,7 +2287,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 						// Выполняем чтение данных из потока
 						while(getline(file, result))
 							// Выводим полученный результат
-							callback(result);
+							apply(callback, make_tuple(result));
 						// Закрываем файл
 						file.close();
 					}
@@ -2304,7 +2304,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 						// Выполняем чтение данных из потока
 						while(getline(file, result))
 							// Выводим полученный результат
-							callback(result);
+							apply(callback, make_tuple(result));
 						// Закрываем файл
 						file.close();
 					}
@@ -2454,7 +2454,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 												// Выполняем функцию обратного вызова
 												readFn(address, ext, rec);
 											// Выводим данные каталога как он есть
-											else callback(this->realPath(address, actual));
+											else apply(callback, make_tuple(this->realPath(address, actual)));
 										// Если дочерний элемент является файлом и расширение файла указано то выводим его
 										} else if(!ext.empty()) {
 											// Получаем расширение файла
@@ -2466,10 +2466,10 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 												// Если расширение файла найдено
 												if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 													// Выводим полный путь файла
-													callback(this->realPath(address, actual));
+													apply(callback, make_tuple(this->realPath(address, actual)));
 											}
 										// Если дочерний элемент является файлом то выводим его
-										} else callback(this->realPath(address, actual));
+										} else apply(callback, make_tuple(this->realPath(address, actual)));
 									// Если статистика не извлечена
 									} else {
 										/**
@@ -2489,10 +2489,10 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 														// Если расширение файла найдено
 														if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 															// Выводим полный путь файла
-															callback(this->realPath(address, actual));
+															apply(callback, make_tuple(this->realPath(address, actual)));
 													}
 												// Если дочерний элемент является файлом то выводим его
-												} else callback(this->realPath(address, actual));
+												} else apply(callback, make_tuple(this->realPath(address, actual)));
 											}
 										#endif
 									}
@@ -2578,7 +2578,7 @@ void awh::FS::readPath(const string & path, const string & ext, const bool rec, 
 					// Если текст получен
 					if(!text.empty())
 						// Выводим функцию обратного вызова
-						callback(text, filename);
+						apply(callback, make_tuple(text, filename));
 				});
 			}, actual);
 	// Выводим сообщение об ошибке

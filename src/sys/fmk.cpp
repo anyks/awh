@@ -1625,7 +1625,10 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 						// Если результат не помещается в буфер данных
 						else {
 							// Получаем размер множителя
-							const uint64_t rate = static_cast <uint64_t> (::pow(10, ::floor(::log10(result))) / ::pow(10, ::floor(::log10(length))));
+							const uint64_t rate = static_cast <uint64_t> (
+								::pow(10, ::floor(::log10(static_cast <double> (result)))) /
+								::pow(10, ::floor(::log10(static_cast <double> (length))))
+							);
 							// Получаем итоговый результат для вывода
 							const uint8_t data = static_cast <uint8_t> ((result - (result % rate)) / rate);
 							// Выполняем копирование результата в буфер данных
@@ -1643,7 +1646,10 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 						// Если результат не помещается в буфер данных
 						else {
 							// Получаем размер множителя
-							const uint64_t rate = static_cast <uint64_t> (::pow(10, ::floor(::log10(result))) / ::pow(10, ::floor(::log10(length))));
+							const uint64_t rate = static_cast <uint64_t> (
+								::pow(10, ::floor(::log10(static_cast <double> (result)))) /
+								::pow(10, ::floor(::log10(static_cast <double> (length))))
+							);
 							// Получаем итоговый результат для вывода
 							const uint16_t data = static_cast <uint16_t> ((result - (result % rate)) / rate);
 							// Выполняем копирование результата в буфер данных
@@ -1661,7 +1667,10 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 						// Если результат не помещается в буфер данных
 						else {
 							// Получаем размер множителя
-							const uint64_t rate = static_cast <uint64_t> (::pow(10, ::floor(::log10(result))) / ::pow(10, ::floor(::log10(length))));
+							const uint64_t rate = static_cast <uint64_t> (
+								::pow(10, ::floor(::log10(static_cast <double> (result)))) /
+								::pow(10, ::floor(::log10(static_cast <double> (length))))
+							);
 							// Получаем итоговый результат для вывода
 							const uint32_t data = static_cast <uint32_t> ((result - (result % rate)) / rate);
 							// Выполняем копирование результата в буфер данных
