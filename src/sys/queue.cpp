@@ -42,7 +42,7 @@ void awh::Queue::alignment(const size_t size) noexcept {
 				// Если очередь не пустая
 				else {
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Перемещаем текущие позиции данных наверх
 					::memcpy(this->_data, this->_data + this->_begin, (this->_end - this->_begin) * sizeof(uint64_t));
 					// Перемещаем текущие позиции размеров наверх
@@ -56,7 +56,7 @@ void awh::Queue::alignment(const size_t size) noexcept {
 			// Если нужно выделить новую порцию данных
 			if(size > 0 ? (size > (this->_size - this->_end)) : (this->_batch > this->_size)){
 				// Выполняем блокировку потока
-				const lock_guard <mutex> lock(this->_mtx);
+				const lock_guard <std::mutex> lock(this->_mtx);
 				// Получаем размер шага следующей порции данных
 				const size_t step = (size > 0 ? (this->_size + this->_batch) : this->_batch);
 				// Устанавличаем новый размер записей
@@ -115,7 +115,7 @@ void awh::Queue::clear() noexcept {
 		// Если данные есть в списке
 		if(this->_end > 0){
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выполняем удаление всех добавленных данных в очередь
 			for(size_t i = this->_begin; i < this->_end; i++){
 				// Выполняем получение указателя на данные
@@ -162,7 +162,7 @@ void awh::Queue::reset() noexcept {
 		// Если данные есть в списке
 		if(this->_end > 0){
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выполняем удаление всех добавленных данных в очередь
 			for(size_t i = this->_begin; i < this->_end; i++){
 				// Выполняем получение указателя на данные
@@ -247,7 +247,7 @@ size_t awh::Queue::count() const noexcept {
 void awh::Queue::reserve(const size_t count) noexcept {
 	{
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Если размер батча увеличен
 		if(count > 0)
 			// Выполняем установку нового значения батча
@@ -274,7 +274,7 @@ void awh::Queue::pop(const pos_t pos) noexcept {
 				// Если нам есть чего удалять
 				if(this->_end > 0){
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполняем уменьшение общего размера данных
 					this->_bytes -= this->_sizes[this->_end - 1];
 					// Выполняем получение указателя на данные
@@ -290,7 +290,7 @@ void awh::Queue::pop(const pos_t pos) noexcept {
 				// Если нам есть еще куда смещать
 				if(this->_begin < this->_end){
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполняем уменьшение общего размера данных
 					this->_bytes -= this->_sizes[this->_begin];
 					// Выполняем получение указателя на данные
@@ -439,7 +439,7 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 			// Выполняем выравнивание памяти
 			this->alignment(size);
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выделяем память для добавления данных
 			uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
 			// Если память не выделенна
@@ -509,7 +509,7 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 			// Выполняем выравнивание памяти
 			this->alignment(size);
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выделяем память для добавления данных
 			uint8_t * data = reinterpret_cast <uint8_t *> (::malloc(size * sizeof(uint8_t)));
 			// Если память не выделенна
