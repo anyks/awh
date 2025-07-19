@@ -267,7 +267,7 @@ namespace awh {
 			 * @param uri строка URI для сплита
 			 * @return    список полученных частей URI
 			 */
-			map <flag_t, string> split(const string & uri) const noexcept;
+			std::map <flag_t, string> split(const string & uri) const noexcept;
 			/**
 			 * splitParams Метод выполнения сплита параметров URI
 			 * @param uri строка URI для сплита

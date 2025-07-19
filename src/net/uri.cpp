@@ -1342,9 +1342,9 @@ awh::URI::URL awh::URI::concat(const url_t & dest, const url_t & src) const noex
  * @param uri строка URI для сплита
  * @return    список полученных частей URI
  */
-map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcept {
+std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcept {
 	// Результат работы функции
-	map <flag_t, string> result;
+	std::map <flag_t, string> result;
 	// Если URI передан
 	if(!uri.empty()){
 		/**
