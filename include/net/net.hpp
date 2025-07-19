@@ -110,8 +110,10 @@ namespace awh {
 			 * Mutex структура рабочих мютексов
 			 */
 			typedef struct Mutex {
-				mutex main;  // Мютекс контроля основной работы
-				mutex match; // Мютекс контроля матчинга хоста
+				// Мютекс контроля основной работы
+				std::mutex main;
+				// Мютекс контроля матчинга хоста
+				std::mutex match;
 			} mtx_t;
 			/**
 			 * LocalNet Структура локального адреса

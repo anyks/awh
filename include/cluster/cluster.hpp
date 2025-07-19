@@ -19,7 +19,6 @@
  * Стандартные библиотеки
  */
 #include <map>
-#include <mutex>
 #include <vector>
 #include <thread>
 #include <string>
