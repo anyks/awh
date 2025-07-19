@@ -2605,7 +2605,7 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 						// Если символ найден
 						if((pos = digits.find(number.at(i))) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += (pos * ::pow(radix, count - i - 1));
+							result += static_cast <uint8_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -2621,7 +2621,7 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 						// Если символ найден
 						if((pos = digits.find(number.at(i))) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += (pos * ::pow(radix, count - i - 1));
+							result += static_cast <uint16_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -2637,7 +2637,7 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 						// Если символ найден
 						if((pos = digits.find(number.at(i))) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += (pos * ::pow(radix, count - i - 1));
+							result += static_cast <uint32_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -2653,7 +2653,7 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 						// Если символ найден
 						if((pos = digits.find(number.at(i))) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += (pos * ::pow(radix, count - i - 1));
+							result += static_cast <uint64_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -2950,7 +2950,7 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 	 */
 	try {
 		// Выполняем получение разрядности числа
-		const double mult = ::pow(10, n);
+		const double mult = ::pow(10., static_cast <int32_t> (n));
 		// Выполняем приведение числа к указанной разрядности
 		return (::floor(x * mult) / mult);
 	/**
