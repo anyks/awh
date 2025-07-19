@@ -88,10 +88,10 @@ namespace awh {
 			typedef shared_ptr <Function> fn_t;
 		private:
 			// Мютекс для блокировки основного потока
-			mutex _mtx;
+			std::mutex _mtx;
 		private:
 			// Хранилище распределения по названиям
-			map <uint64_t, fn_t> _callbacks;
+			std::map <uint64_t, fn_t> _callbacks;
 		private:
 			/**
 			 * Функция обратного вызова при получении события установки или удаления функции
@@ -204,11 +204,11 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполняем очистку списка функций обратного вызова
 					this->_callbacks.clear();
 					// Выполняем очистку выделенной памяти для списка функций обратного вызова
-					map <uint64_t, fn_t> ().swap(this->_callbacks);
+					std::map <uint64_t, fn_t> ().swap(this->_callbacks);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -296,7 +296,7 @@ namespace awh {
 						// Если функция существует
 						if(i != this->_callbacks.end()){
 							// Выполняем блокировку потока
-							const lock_guard <mutex> lock(this->_mtx);
+							const lock_guard <std::mutex> lock(this->_mtx);
 							// Удаляем функцию обратного вызова
 							this->_callbacks.erase(i);
 						}
@@ -371,9 +371,9 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока основным мютексом
-					const lock_guard <mutex> lock1(this->_mtx);
+					const lock_guard <std::mutex> lock1(this->_mtx);
 					// Выполняем блокировку потока сторонним мютексом
-					const lock_guard <mutex> lock2(storage._mtx);
+					const lock_guard <std::mutex> lock2(storage._mtx);
 					// Выполняем обмен функций названий
 					this->_callbacks.swap(storage._callbacks);
 				/**
@@ -413,7 +413,7 @@ namespace awh {
 						// Если функция получена
 						if(i != this->_callbacks.end()){
 							// Выполняем блокировку потока
-							const lock_guard <mutex> lock(this->_mtx);
+							const lock_guard <std::mutex> lock(this->_mtx);
 							// Получаем первую функцию обратного вызова
 							auto callback = std::move(i->second);
 							// Выполняем поиск второй функции
@@ -504,7 +504,7 @@ namespace awh {
 						// Если функция получена
 						if(i != this->_callbacks.end()){
 							// Выполняем блокировку потока
-							const lock_guard <mutex> lock(this->_mtx);
+							const lock_guard <std::mutex> lock(this->_mtx);
 							// Получаем первую функцию обратного вызова
 							auto callback = std::move(i->second);
 							// Выполняем поиск второй функции
@@ -1760,7 +1760,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполняем установку функции обратного вызова
 					this->_callback = callback;
 				/**
@@ -2144,7 +2144,7 @@ namespace awh {
 				// Если функции обратного вызова установлены
 				if(!storage._callbacks.empty()){
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполням установку функций обратного вызова
 					this->_callbacks = storage._callbacks;
 				}
