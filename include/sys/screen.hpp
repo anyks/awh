@@ -76,13 +76,13 @@ namespace awh {
 			health_t _health;
 		private:
 			// Мютекс ожидания данных
-			mutex _locker;
+			std::mutex _locker;
 			// Объект дочернего потока
 			std::thread _thr;
 			// Мютекс для блокировки потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 			// Условная переменная, ожидания поступления данных
-			condition_variable _cv;
+			std::condition_variable _cv;
 		private:
 			// Очередь полезной нагрузки
 			queue <T> _payload;
@@ -164,7 +164,7 @@ namespace awh {
 					 */
 					try {
 						// Выполняем блокировку уникальным мютексом
-						unique_lock <mutex> lock(this->_locker);
+						unique_lock <std::mutex> lock(this->_locker);
 						// Выполняем ожидание на поступление новых заданий
 						this->_cv.wait_for(lock, this->_delay, std::bind(&Screen::check, this));
 						// Выполняем запуск обработки поступившей задачи
@@ -236,7 +236,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_trigger = callback;
 				/**
@@ -268,7 +268,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_callback = callback;
 				/**
@@ -300,7 +300,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_state = callback;
 				/**
@@ -333,7 +333,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Выполняем установку задержки времени
 					this->_delay = chrono::nanoseconds(static_cast <uint64_t> (delay) * 1000000);
 				/**
@@ -365,7 +365,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Выполняем установку задержки времени
 					this->_delay = chrono::nanoseconds(delay);
 				/**

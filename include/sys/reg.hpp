@@ -51,8 +51,10 @@ namespace awh {
 			 * Mutex структура рабочих мютексов
 			 */
 			typedef struct Mutex {
-				mutex match; // Мютекс контроля матчинга
-				mutex cache; // Мютекс контроля записи в кэш
+				// Мютекс контроля матчинга
+				std::mutex match;
+				// Мютекс контроля записи в кэш
+				std::mutex cache;
 			} mtx_t;
 		public:
 			/**
