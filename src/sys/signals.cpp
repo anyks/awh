@@ -55,7 +55,7 @@ static struct Self {
 	 * Self Конструктор
 	 */
 	Self() noexcept : fmk(nullptr), log(nullptr), callback(nullptr) {}
-} __attribute__((packed)) self;
+} self;
 
 /**
  * Для операционной системы не являющейся OS Windows

@@ -85,9 +85,9 @@ namespace awh {
 			std::condition_variable _cv;
 		private:
 			// Очередь полезной нагрузки
-			queue <T> _payload;
+			std::queue <T> _payload;
 			// Таймаут ожидания блокировки базы событий
-			chrono::nanoseconds _delay;
+			std::chrono::nanoseconds _delay;
 		private:
 			// Таймаут блокировки времени по умолчанию (100ms)
 			static constexpr const uint64_t TIMEOUT = 0x5F5E100;
@@ -335,7 +335,7 @@ namespace awh {
 					// Выполняем блокировку потока
 					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Выполняем установку задержки времени
-					this->_delay = chrono::nanoseconds(static_cast <uint64_t> (delay) * 1000000);
+					this->_delay = std::chrono::nanoseconds(static_cast <uint64_t> (delay) * 1000000);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -367,7 +367,7 @@ namespace awh {
 					// Выполняем блокировку потока
 					const lock_guard <std::recursive_mutex> lock(this->_mtx);
 					// Выполняем установку задержки времени
-					this->_delay = chrono::nanoseconds(delay);
+					this->_delay = std::chrono::nanoseconds(delay);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -641,7 +641,7 @@ namespace awh {
 			 */
 			Screen() noexcept :
 			 _stop(true), _id(0), _health(health_t::ALIVE),
-			 _delay(chrono::nanoseconds(TIMEOUT)),
+			 _delay(std::chrono::nanoseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
 				// Выполняем запуск модуля
 				this->start();
@@ -652,7 +652,7 @@ namespace awh {
 			 */
 			Screen(const health_t health) noexcept :
 			 _stop(true), _id(0), _health(health),
-			 _delay(chrono::nanoseconds(TIMEOUT)),
+			 _delay(std::chrono::nanoseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
 				// Если статус здоровья установлен как живой
 				if(health == health_t::ALIVE)
