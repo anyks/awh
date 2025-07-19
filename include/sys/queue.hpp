@@ -74,7 +74,7 @@ namespace awh {
 			static constexpr uint16_t BATCH = 0x3E8;
 		private:
 			// Мютекс для блокировки потока
-			mutex _mtx;
+			std::mutex _mtx;
 		private:
 			// Последний элемент в очереди
 			size_t _end;
