@@ -88,7 +88,7 @@ void awh::Chrono::clear() noexcept {
 		// Выполняем очистку списка временных зон
 		this->clearTimeZones();
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx.date);
+		const lock_guard <std::mutex> lock(this->_mtx.date);
 		// Выполняем сброс локального объекта даты и времени
 		this->_dt = dt_t();
 		// Получаем текущий штамп времени
@@ -400,7 +400,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 		// Если регулярное выражение получено
 		if(i != this->_expressions.end()){
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx.parse);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx.parse);
 			// Создаём объект матчинга
 			regmatch_t match[i->second.re_nsub + 1];
 			// Выполняем разбор регулярного выражения
@@ -1458,9 +1458,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
 										// Получаем значение текущего года
@@ -1493,9 +1493,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество оставшихся наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
 										// Получаем значение текущего года
@@ -1811,9 +1811,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
 										// Получаем значение текущего года
@@ -1869,9 +1869,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество оставшихся наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
 										// Получаем значение текущего года
@@ -2279,9 +2279,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
 										// Получаем значение текущего года
@@ -2308,9 +2308,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество прошедших наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
 										// Получаем значение текущего года
@@ -2589,9 +2589,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
 										// Получаем значение текущего года
@@ -2643,9 +2643,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество прошедших наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
 										// Получаем значение текущего года
@@ -3084,9 +3084,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало микросекунды
 						case static_cast <uint8_t> (type_t::MICROSECONDS): {
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 							// Если текущее значение даты передано в микросекундах
 							if(current == (actual + 3))
 								// Увеличиваем значение даты на указанное количество микросекунд
@@ -3104,9 +3104,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало наносекунды
 						case static_cast <uint8_t> (type_t::NANOSECONDS): {
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 							// Если текущее значение даты передано в наносекундах
 							if(current == static_cast <uint8_t> (actual + 6))
 								// Увеличиваем значение даты на указанное количество наносекунд
@@ -3250,9 +3250,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало микросекунды
 						case static_cast <uint8_t> (type_t::MICROSECONDS): {
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 							// Если текущее значение даты передано в микросекундах
 							if(current == (actual + 3))
 								// Уменьшаем значение даты на указанное количество микросекунд
@@ -3270,9 +3270,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало наносекунды
 						case static_cast <uint8_t> (type_t::NANOSECONDS): {
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(date)));
+							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 							// Если текущее значение даты передано в наносекундах
 							if(current == (actual + 6))
 								// Уменьшаем значение даты на указанное количество наносекунд
@@ -3434,7 +3434,7 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard <recursive_mutex> lock(this->_mtx.parse);
+				const lock_guard <std::recursive_mutex> lock(this->_mtx.parse);
 				// Создаём объект матчинга
 				regmatch_t match[i->second.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
@@ -3885,7 +3885,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 		 */
 		try {
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx.date);
+			const lock_guard <std::mutex> lock(this->_mtx.date);
 			// Определяем элементы устанавливаемых данных
 			switch(static_cast <uint8_t> (unit)){
 				// Если требуется установить номер текущего дня недели от 1 до 7
@@ -4189,9 +4189,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Количество наносекунд для установки
 						const uint64_t nanoseconds = static_cast <uint64_t> (::stoull(* reinterpret_cast <const string *> (buffer)));
 						// Получаем текущее значение размерности даты
-						const uint8_t current = static_cast <uint8_t> (::floor(::log10(nanoseconds)));
+						const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (nanoseconds))));
 						// Получаем размерность актуальной размерности даты
-						const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+						const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 						// Если текущее значение даты передано в наносекундах
 						if(current >= (actual + 6))
 							// Устанавливаем количество наносекунд
@@ -4207,9 +4207,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Выполняем получение наносекунд
 							::memcpy(&nanoseconds, buffer, sizeof(nanoseconds));
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(nanoseconds)));
+							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (nanoseconds))));
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 							// Если текущее значение даты передано в наносекундах
 							if(current >= (actual + 6))
 								// Устанавливаем количество наносекунд
@@ -4226,9 +4226,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Количество микросекунд для установки
 						const uint64_t microseconds = static_cast <uint64_t> (::stoull(* reinterpret_cast <const string *> (buffer)));
 						// Получаем текущее значение размерности даты
-						const uint8_t current = static_cast <uint8_t> (::floor(::log10(microseconds)));
+						const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (microseconds))));
 						// Получаем размерность актуальной размерности даты
-						const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+						const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 						// Если текущее значение даты передано в микросекундах
 						if(current >= (actual + 3))
 							// Устанавливаем количество микросекунд
@@ -4244,9 +4244,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Выполняем получение микросекунд
 							::memcpy(&microseconds, buffer, sizeof(microseconds));
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(microseconds)));
+							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (microseconds))));
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(this->timestamp(type_t::MILLISECONDS))));
+							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
 							// Если текущее значение даты передано в микросекундах
 							if(current >= (actual + 3))
 								// Устанавливаем количество микросекунд
@@ -5343,7 +5343,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
  */
 void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx.date);
+	const lock_guard <std::mutex> lock(this->_mtx.date);
 	// Устанавливаем временную зону в секундах
 	this->_dt.offset = zone;
 	// Устанавливаем идентификатор временной зоны
@@ -5357,7 +5357,7 @@ void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
  */
 void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx.date);
+	const lock_guard <std::mutex> lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = zone;
 	// Устанавливаем временную зону в секундах
@@ -5371,7 +5371,7 @@ void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
  */
 void awh::Chrono::setTimeZone(const string & zone) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx.date);
+	const lock_guard <std::mutex> lock(this->_mtx.date);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = this->matchTimeZone(zone);
 	// Устанавливаем временную зону в секундах
@@ -5398,7 +5398,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard <recursive_mutex> lock(this->_mtx.parse);
+				const lock_guard <std::recursive_mutex> lock(this->_mtx.parse);
 				// Создаём объект матчинга
 				regmatch_t match[i->second.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
@@ -6734,7 +6734,7 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 			// Если регулярное выражение получено
 			if(i != this->_expressions.end()){
 				// Выполняем блокировку потока
-				const lock_guard <recursive_mutex> lock(this->_mtx.parse);
+				const lock_guard <std::recursive_mutex> lock(this->_mtx.parse);
 				// Создаём объект матчинга
 				regmatch_t match[i->second.re_nsub + 1];
 				// Выполняем разбор регулярного выражения
@@ -7745,7 +7745,7 @@ void awh::Chrono::clearTimeZones() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx.tz);
+		const lock_guard <std::mutex> lock(this->_mtx.tz);
 		// Выполняем очистку списка временных зон
 		this->_timeZones.clear();
 		// Выполняем освобождение выделенной памяти
@@ -7780,7 +7780,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx.tz);
+		const lock_guard <std::mutex> lock(this->_mtx.tz);
 		// Выполняем добавление временной зоны в список временных зон
 		this->_timeZones.emplace(this->_fmk->transform(name, fmk_t::transform_t::LOWER), offset);
 	/**
@@ -7808,7 +7808,7 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
  */
 void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx.tz);
+	const lock_guard <std::mutex> lock(this->_mtx.tz);
 	// Название временной зоны
 	string name = "";
 	// Выполняем перебор всего списка временных зон
@@ -7891,7 +7891,7 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 				} break;
 			}
 			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx.date);
+			const lock_guard <std::mutex> lock(this->_mtx.date);
 			// Устанавливаем количество миллисекунд
 			this->makeDate(stamp, this->_dt);
 		/**
@@ -8167,7 +8167,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Выполняем блокировку потока
-				const lock_guard <mutex> lock(this->_mtx.date);
+				const lock_guard <std::mutex> lock(this->_mtx.date);
 				// Выполняем сброс временной зоны
 				this->_dt.offset = 0;
 				// Выполняем сброс количества наносекунд
@@ -8272,7 +8272,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Выполняем блокировку потока
-								const lock_guard <mutex> lock(this->_mtx.date);
+								const lock_guard <std::mutex> lock(this->_mtx.date);
 								// Определяем символ парсинга
 								switch(letter){
 									// Если мы нашли переменную (y)
@@ -8691,7 +8691,7 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				// Выполняем блокировку потока
-				const lock_guard <mutex> lock(this->_mtx.date);
+				const lock_guard <std::mutex> lock(this->_mtx.date);
 				// Если флаг смещения временной зоны не передан
 				if(!flags[0]){
 					// Устанавливаем идентификатор временной зоны

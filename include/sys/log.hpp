@@ -189,13 +189,13 @@ namespace awh {
 			string _filename;
 		private:
 			// Список доступных флагов
-			set <mode_t> _mode;
+			std::set <mode_t> _mode;
 		private:
 			// Список проинициализированных процессов
-			mutable set <pid_t> _initialized;
+			mutable std::set <pid_t> _initialized;
 		private:
 			// Мютекс для блокировки потока
-			mutable recursive_mutex _mtx;
+			mutable std::recursive_mutex _mtx;
 		private:
 			// Объект работы с дочерними потоками
 			mutable screen_t <payload_t> _screen;
