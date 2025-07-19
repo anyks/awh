@@ -33,6 +33,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <functional>
+#include <fcntl.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/file.h>
