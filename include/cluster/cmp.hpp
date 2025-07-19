@@ -76,7 +76,7 @@ namespace awh {
 		typedef class AWHSHARED_EXPORT Encoder {
 			private:
 				// Мютекс для блокировки потока
-				mutex _mtx;
+				std::mutex _mtx;
 			private:
 				// Размер одного блока данных
 				size_t _chunkSize;
@@ -245,7 +245,7 @@ namespace awh {
 				size_t _chunkSize;
 			private:
 				// Мютекс для блокировки потока
-				mutable mutex _mtx;
+				mutable std::mutex _mtx;
 			private:
 				// Временный буфер для вставки в очередь
 				vector <queue_t::buffer_t> _tmp;
