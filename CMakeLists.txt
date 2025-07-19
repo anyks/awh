@@ -55,7 +55,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 # Если операционной системой является Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     if (NOT OS_VERSION)
-        EXECUTE_PROCESS(COMMAND uname -a COMMAND awk '{print $4}' COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
+        EXECUTE_PROCESS(COMMAND uname -a COMMAND gawk "{print $4}" COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
     message(STATUS "Detected OS: Solaris v${OS_VERSION}")
     SET(DEBUGGER "-ggdb3")
