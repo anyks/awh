@@ -108,22 +108,23 @@ namespace awh {
 			 */
 			enum class type_t : uint8_t {
 				NONE    = 0x00, // Операционная система не определена
-				UNIX    = 0x01, // Операционная система принадлежит к Unix
-				LINUX   = 0x02, // Операционная система является Linux
-				WIND32  = 0x03, // Операционная система является Windows 32bit
-				WIND64  = 0x04, // Операционная система является Windows 64bit
-				MACOSX  = 0x05, // Операционная система является MacOS X
-				FREEBSD = 0x06, // Операционная система является FreeBSD
-				NETBSD  = 0x07, // Операционная система является NetBSD
-				OPENBSD = 0x08  // Операционная система является OpenBSD
+				UNIX    = 0x01, // Операционная система Unix
+				LINUX   = 0x02, // Операционная система Linux
+				WIND32  = 0x03, // Операционная система Windows 32bit
+				WIND64  = 0x04, // Операционная система Windows 64bit
+				MACOSX  = 0x05, // Операционная система MacOS X
+				SOLARIS = 0x06, // Операционная система Sun Solaris
+				FREEBSD = 0x07, // Операционная система FreeBSD
+				NETBSD  = 0x08, // Операционная система NetBSD
+				OPENBSD = 0x09  // Операционная система OpenBSD
 			};
 		private:
 			/**
-			 * data Функция получения строкового типа метаданных
+			 * metadata Функция получения строкового типа метаданных
 			 * @param buffer буфер бинарных данных
 			 * @param result результат работф функции
 			 */
-			static void data(const vector <char> & buffer, string & result) noexcept {
+			static void metadata(const vector <char> & buffer, string & result) noexcept {
 				// Если буфер данных передан
 				if(!buffer.empty())
 					// Выполняем формирование строки
@@ -134,11 +135,11 @@ namespace awh {
 			 */
 			template <typename T>
 			/**
-			 * data Функция получения бинарного буфера метаданных
+			 * metadata Функция получения бинарного буфера метаданных
 			 * @param buffer буфер бинарных данных
 			 * @param result результат работф функции
 			 */
-			static void data(const vector <char> & buffer, vector <T> & result) noexcept {
+			static void metadata(const vector <char> & buffer, vector <T> & result) noexcept {
 				// Если буфер данных передан
 				if(!buffer.empty()){
 					// Выделяем память для результирующего буфера данных
@@ -152,11 +153,11 @@ namespace awh {
 			 */
 			template <typename T>
 			/**
-			 * data Функция получения основных типов метаданных
+			 * metadata Функция получения основных типов метаданных
 			 * @param buffer буфер бинарных данных
 			 * @param result результат работф функции
 			 */
-			static void data(const vector <char> & buffer, T & result) noexcept {
+			static void metadata(const vector <char> & buffer, T & result) noexcept {
 				// Если данные являются основными
 				if(!buffer.empty())
 					// Выполняем копирование полученных данных
@@ -263,7 +264,7 @@ namespace awh {
 						// Если данные являются основными
 						if(is_class <T>::value || is_integral <T>::value || is_floating_point <T>::value)
 							// Выполняем получение данных
-							data(buffer, result);
+							this->metadata(buffer, result);
 					}
 				}
 				// Выводим результат
@@ -274,9 +275,10 @@ namespace awh {
 			 * sysctl Метод установки настроек ядра операционной системы
 			 * @param name   название записи для установки настроек
 			 * @param buffer буфер бинарных данных записи для установки настроек
+			 * @param size   размер буфера данных
 			 * @return       результат выполнения установки
 			 */
-			bool sysctl(const string & name, const vector <uint8_t> & buffer) const noexcept;
+			bool sysctl(const string & name, const void * buffer, const size_t size) const noexcept;
 		public:
 			/**
 			 * @tparam Шаблон метода установки настроек ядра операционной системы
@@ -298,7 +300,7 @@ namespace awh {
 						// Выполняем преобразование числа в строку
 						const string param = std::to_string(value);
 						// Выполняем установку буфера бинарных данных
-						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));
+						return this->sysctl(name, param.c_str(), param.size());
 					/**
 					 * Если это другая операционная система
 					 */
@@ -308,7 +310,7 @@ namespace awh {
 						// Выполняем установку результата по умолчанию
 						::memcpy(buffer.data(), &value, sizeof(value));
 						// Выполняем установку буфера бинарных данных
-						return this->sysctl(name, buffer);
+						return this->sysctl(name, buffer.data(), buffer.size());
 					#endif
 				}
 				// Сообщаем, что ничего не установленно
@@ -321,10 +323,10 @@ namespace awh {
 			/**
 			 * sysctl Метод установки настроек ядра операционной системы
 			 * @param name  название записи для установки настроек
-			 * @param value значение записи для установки настроек
+			 * @param items значение записи для установки настроек
 			 * @return      результат выполнения установки
 			 */
-			bool sysctl(const string & name, const vector <T> & value) const noexcept {
+			bool sysctl(const string & name, const vector <T> & items) const noexcept {
 				// Если название записи для установки настроек передано
 				if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
 					/**
@@ -334,7 +336,7 @@ namespace awh {
 						// Выполняем преобразование числа в строку
 						string param = "";
 						// Выполняем перебор всего списка параметров
-						for(auto & item : value){
+						for(auto & item : items){
 							// Если строка уже сформированна
 							if(!param.empty())
 								// Выполняем добавление пробела
@@ -343,7 +345,7 @@ namespace awh {
 							param.append(std::to_string(item));
 						}
 						// Выполняем установку буфера бинарных данных
-						return this->sysctl(name, vector <uint8_t> (param.begin(), param.end()));
+						return this->sysctl(name, param.c_str(), param.size());
 					/**
 					 * Если это другая операционная система
 					 */
@@ -351,16 +353,16 @@ namespace awh {
 						// Смещение в бинарном буфере
 						size_t offset = 0;
 						// Буфер результата по умолчанию
-						vector <uint8_t> buffer(value.size() * sizeof(T), 0);
+						vector <uint8_t> buffer(items.size() * sizeof(T), 0);
 						// Выполняем перебор всего списка параметров
-						for(auto & item : value){
+						for(auto & item : items){
 							// Выполняем установку результата по умолчанию
 							::memcpy(buffer.data() + offset, &item, sizeof(item));
 							// Выполняем увеличение смещения в буфере
 							offset += sizeof(item);
 						}
 						// Выполняем установку буфера бинарных данных
-						return this->sysctl(name, buffer);
+						return this->sysctl(name, buffer.data(), buffer.size());
 					#endif
 				}
 				// Сообщаем, что ничего не установленно
@@ -376,7 +378,7 @@ namespace awh {
 				// Если название записи для установки настроек передано
 				if(!name.empty())
 					// Выполняем установку буфера бинарных данных
-					return this->sysctl(name, vector <uint8_t> (value.begin(), value.end()));
+					return this->sysctl(name, value.c_str(), value.size());
 				// Сообщаем, что ничего не установленно
 				return false;
 			}

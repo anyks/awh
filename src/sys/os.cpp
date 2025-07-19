@@ -121,17 +121,29 @@ void awh::OS::boost() const noexcept {
 				this->sysctl("kernel.core_uses_pid", 1);
 				this->sysctl("kernel.core_pattern", string{"/tmp/%e-%p.core"});
 			#endif
+			// Разрешаем выборочные подтверждения (Selective Acknowledgements, SACK)
+			this->sysctl("net.ipv4.tcp_sack", 1);
 			// Активируем параметр помогающий в борье за ресурсы
 			this->sysctl("net.ipv4.tcp_tw_reuse", 1);
+			// Разрешаем использование временных меток (timestamps) в протоколах TCP
+			this->sysctl("net.ipv4.tcp_timestamps", 1);
 			// Устанавливаем максимальное количество подключений
 			this->sysctl("net.core.somaxconn", 49152);
 			// Увеличиваем максимальный размер буферов для чтения
-			this->sysctl("net.core.rmem_max", 134217728);
+			this->sysctl("net.core.rmem_max", 16777216);
 			// Увеличиваем максимальный размер буферов для отправки
-			this->sysctl("net.core.wmem_max", 134217728);
+			this->sysctl("net.core.wmem_max", 16777216);
+			// Разрешаем масштабирование TCP-окна
+			this->sysctl("net.ipv4.tcp_window_scaling", 1);
+			// Запрещаем сохранять результаты измерений TCP-соединения в кэше при его закрытии
+			this->sysctl("net.ipv4.tcp_no_metrics_save", 1);
+			// Включаем автоматическую настройку размера приёмного буфера TCP
+			this->sysctl("net.ipv4.tcp_moderate_rcvbuf", 1);
+			// Определяем максимальное количество входящих пакетов
+			this->sysctl("net.core.netdev_max_backlog", 2500);
 			// Увеличиваем лимит автонастройки TCP-буфера Linux до 64 МБ
-			this->sysctl("net.ipv4.tcp_rmem", string{"\"4096 87380 33554432\""});
-			this->sysctl("net.ipv4.tcp_wmem", string{"\"4096 65536 33554432\""});
+			this->sysctl("net.ipv4.tcp_rmem", string{"\"4096 87380 16777216\""});
+			this->sysctl("net.ipv4.tcp_wmem", string{"\"4096 65536 16777216\""});
 			// Рекомендуется для хостов с включенными большими фреймами
 			this->sysctl("net.ipv4.tcp_mtu_probing", 1);
 			// Рекомендуется для хостов CentOS 7/Debian 8
@@ -155,21 +167,25 @@ void awh::OS::boost() const noexcept {
 			/**
 			 * Данные оптимизаций операционной системы берет от сюда: http://fasterdata.es.net/host-tuning/freebsd
 			 */
+			// Активируем контроль работы временной марки и масштабируемого окна
+			this->sysctl("net.inet.tcp.rfc1323", 1);
 			// Устанавливаем максимальное количество подключений
 			this->sysctl("kern.ipc.somaxconn", 49152);
 			// Активируем автоматическую отправку и получение
 			this->sysctl("net.inet.tcp.sendbuf_auto", 1);
 			this->sysctl("net.inet.tcp.recvbuf_auto", 1);
 			// Увеличиваем размер шага автонастройки
-			this->sysctl("net.inet.tcp.sendbuf_inc", 16384);
-			this->sysctl("net.inet.tcp.recvbuf_inc", 524288);
+			this->sysctl("net.inet.tcp.sendbuf_inc", 8192);
+			this->sysctl("net.inet.tcp.recvbuf_inc", 16384);
+			// Активируем нормальное нормальное TCP Reno
+			this->sysctl("net.inet.tcp.inflight.enable", 0);
 			// Активируем на хостах тестирования/измерений
 			this->sysctl("net.inet.tcp.hostcache.expire", 1);
 			/**
 			 * Для хостов 10G было бы неплохо увеличить это значение,
 			 * т.к. 4G, похоже, является пределом для некоторых установок FreeBSD
 			 */
-			this->sysctl("kern.ipc.maxsockbuf", 6291456);
+			this->sysctl("kern.ipc.maxsockbuf", 16777216);
 			// Увеличиваем максимальный размер буферов для отправки
 			this->sysctl("net.inet.tcp.sendspace", 1042560);
 			// Увеличиваем максимальный размер буферов для чтения
@@ -188,14 +204,14 @@ void awh::OS::boost() const noexcept {
 				this->sysctl("net.inet.tcp.cc.algorithm", algorithm);
 		}
 	/**
-	 * Для операционной системы Unix
+	 * Реализация под Sun Solaris
 	 */
-	#elif __unix || __unix__
+	#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
 		// Если эффективный идентификатор пользователя принадлежит ROOT
 		if(::geteuid() == 0){
 			// Эмпирическое правило: max_buf = 2 x cwnd_max (окно перегрузки)
-			this->exec("ndd -set /dev/tcp tcp_max_buf 33554432");
-			this->exec("ndd -set /dev/tcp tcp_cwnd_max 16777216");
+			this->exec("ndd -set /dev/tcp tcp_max_buf 4194304");
+			this->exec("ndd -set /dev/tcp tcp_cwnd_max 2097152");
 			// Увеличиваем размер окна TCP по умолчанию
 			this->exec("ndd -set /dev/tcp tcp_xmit_hiwat 65536");
 			this->exec("ndd -set /dev/tcp tcp_recv_hiwat 65536");
@@ -251,6 +267,12 @@ awh::OS::type_t awh::OS::type() const noexcept {
 	#elif __OpenBSD__
 		// Заполняем структуру
 		result = type_t::OPENBSD;
+	/**
+	 * Реализация под Sun Solaris
+	 */
+	#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
+		// Заполняем структуру
+		result = type_t::SOLARIS;
 	/**
 	 * Операционной системой является Unix
 	 */
@@ -609,17 +631,18 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
  * sysctl Метод установки настроек ядра операционной системы
  * @param name   название записи для установки настроек
  * @param buffer буфер бинарных данных записи для установки настроек
+ * @param size   размер буфера данных
  * @return       результат выполнения установки
  */
-bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const noexcept {
+bool awh::OS::sysctl(const string & name, const void * buffer, const size_t size) const noexcept {
 	// Если название параметра передано
-	if(!name.empty()){
+	if(!name.empty() && (buffer != nullptr) && (size > 0)){
 		/**
 		 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
 		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 			// Устанавливаем новые параметры настройки ядра
-			return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (buffer.data()), buffer.size()) == 0);
+			return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer)), size) == 0);
 		/**
 		 * Операционной системой является Linux
 		 */
@@ -633,7 +656,7 @@ bool awh::OS::sysctl(const string & name, const vector <uint8_t> & buffer) const
 			// Добавляем разделитель
 			command.append(1, '=');
 			// Добавляем параметр для установки
-			command.append(string(buffer.begin(), buffer.end()));
+			command.append(reinterpret_cast <const char *> (buffer), size);
 			// Выполняем установку параметров ядра
 			return !this->exec(command, false).empty();
 		#endif
