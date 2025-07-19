@@ -2705,28 +2705,28 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших дней
-									result = static_cast <uint64_t> (::floor(date - begin) / 86400000.L);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 86400000.L);
 								} break;
 								// Если нам нужно получить количество прошедших часов
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших часов
-									result = static_cast <uint64_t> (::floor(date - begin) / 3600000.L);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 3600000.L);
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(date - begin) / 60000.);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 60000.);
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(date - begin) / 1000.);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 1000.);
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2760,21 +2760,21 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших часов
-									result = static_cast <uint64_t> (::floor(date - begin) / 3600000.L);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 3600000.L);
 								} break;
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(date - begin) / 60000.);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 60000.);
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(date - begin) / 1000.);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 1000.);
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2808,14 +2808,14 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших минут
-									result = static_cast <uint64_t> (::floor(date - begin) / 60000.);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 60000.);
 								} break;
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(date - begin) / 1000.);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 1000.);
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2849,7 +2849,7 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 									// Получаем начало дня недели
 									const uint64_t begin = this->begin(date, type);
 									// Определяем количество прошедших секунд
-									result = static_cast <uint64_t> (::floor(date - begin) / 1000.);
+									result = static_cast <uint64_t> (::floor(static_cast <long double> (date - begin)) / 1000.);
 								} break;
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
