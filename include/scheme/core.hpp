@@ -128,8 +128,8 @@ namespace awh {
 			 * Buffer Структура буфера полезной нагрузки
 			 */
 			typedef struct Buffer {
-				size_t size;               // Размер буфера
-				unique_ptr <char []> data; // Данные буфера
+				size_t size;                    // Размер буфера
+				std::unique_ptr <char []> data; // Данные буфера
 				/**
 				 * Buffer Конструктор
 				 */
@@ -178,7 +178,7 @@ namespace awh {
 					engine_t::addr_t addr;
 				private:
 					// Мютекс для блокировки потока
-					recursive_mutex _mtx;
+					std::recursive_mutex _mtx;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
@@ -395,7 +395,7 @@ namespace awh {
 			engine_t::alive_t keepAlive;
 		protected:
 			// Список подключённых брокеров
-			map <uint64_t, unique_ptr <broker_t>> _brokers;
+			std::map <uint64_t, std::unique_ptr <broker_t>> _brokers;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;

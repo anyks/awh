@@ -135,7 +135,7 @@ using namespace placeholders;
 						// Извлекаем размер сформированного буфера
 						this->_buffer.size = this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::READ);
 						// Выполняем инициализацию буфера
-						this->_buffer.data = unique_ptr <uint8_t []> (new uint8_t [this->_buffer.size]);
+						this->_buffer.data = std::unique_ptr <uint8_t []> (new uint8_t [this->_buffer.size]);
 					}
 					// Размер входящих сообщений
 					const ssize_t bytes = ::recv(fd, this->_buffer.data.get(), this->_buffer.size, 0);
@@ -341,7 +341,7 @@ using namespace placeholders;
 							// Извлекаем размер сформированного буфера
 							this->_buffer.size = this->_ctx->_server.socket.bufferSize(fd, socket_t::mode_t::READ);
 							// Выполняем инициализацию буфера
-							this->_buffer.data = unique_ptr <uint8_t []> (new uint8_t [this->_buffer.size]);
+							this->_buffer.data = std::unique_ptr <uint8_t []> (new uint8_t [this->_buffer.size]);
 						}
 						// Размер входящих сообщений
 						const int32_t bytes = ::recv(fd, this->_buffer.data.get(), this->_buffer.size, 0);
@@ -650,7 +650,7 @@ void awh::Cluster::accept(const uint16_t wid, const SOCKET fd, const base_t::eve
 		// Если воркер найден
 		if(i != this->_workers.end()){
 			// Выполняем инициализацию нового клиента
-			unique_ptr <client_t> client = make_unique <client_t> (this->_fmk, this->_log);
+			std::unique_ptr <client_t> client = make_unique <client_t> (this->_fmk, this->_log);
 			// Заполняем структуру клиента нулями
 			::memset(&client->peer.addr, 0, sizeof(client->peer.addr));
 			// Создаём объект подключения для клиента
@@ -944,7 +944,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 				// Если список брокеров ещё пустой
 				if(j != this->_brokers.end()){
 					// Создаём объект брокера
-					unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+					std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 					// Если мы передаём данные через Shared memory
 					if(this->_transfer == transfer_t::PIPE){
 						// Выполняем подписку на основной канал передачи данных
@@ -1297,14 +1297,14 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 						// Если список брокеров еще не инициализирован
 						if(j == this->_brokers.end()){
 							// Выполняем инициализацию списка брокеров
-							this->_brokers.emplace(i->first, vector <unique_ptr <broker_t>> ());
+							this->_brokers.emplace(i->first, vector <std::unique_ptr <broker_t>> ());
 							// Выполняем поиск брокера
 							j = this->_brokers.find(i->first);
 						}
 						// Выполняем создание указанное количество брокеров
 						for(size_t index = 0; index < i->second->_count; index++){
 							// Создаём объект брокера
-							unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+							std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 							// Если мы передаём данные через Shared memory
 							if(this->_transfer == transfer_t::PIPE){
 								// Выполняем подписку на основной канал передачи данных
@@ -1333,7 +1333,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 					// Если процесс завершил свою работу
 					if(j->second.at(index)->stop){
 						// Создаём объект брокера
-						unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
+						std::unique_ptr <broker_t> broker(new broker_t(this->_fmk, this->_log));
 						// Если мы передаём данные через Shared memory
 						if(this->_transfer == transfer_t::PIPE){
 							// Выполняем подписку на основной канал передачи данных
@@ -1980,7 +1980,7 @@ void awh::Cluster::clear() noexcept {
 		// Выполняем очистку списка брокеров
 		this->_brokers.clear();
 		// Выполняем освобождение выделенной памяти брокеров подключения
-		map <uint16_t, vector <unique_ptr <broker_t>>> ().swap(this->_brokers);
+		std::map <uint16_t, vector <std::unique_ptr <broker_t>>> ().swap(this->_brokers);
 	}
 	// Выполняем очистку списка воркеров
 	this->_workers.clear();
@@ -1989,11 +1989,11 @@ void awh::Cluster::clear() noexcept {
 	// Выполняем очистку списка объектов энкодеров для отправки сообщений
 	this->_encoders.clear();
 	// Выполняем освобождение памяти активных клиентов
-	map <SOCKET, unique_ptr <client_t>> ().swap(this->_clients);
+	std::map <SOCKET, std::unique_ptr <client_t>> ().swap(this->_clients);
 	// Выполняем освобождение выделенной памяти
-	map <uint16_t, unique_ptr <worker_t>> ().swap(this->_workers);
+	std::map <uint16_t, std::unique_ptr <worker_t>> ().swap(this->_workers);
 	// Выполняем освобождение памяти энкодера
-	map <pid_t, unique_ptr <cmp::encoder_t>> ().swap(this->_encoders);
+	std::map <pid_t, std::unique_ptr <cmp::encoder_t>> ().swap(this->_encoders);
 }
 /**
  * close Метод закрытия всех подключений

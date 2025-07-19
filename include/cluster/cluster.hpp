@@ -101,7 +101,7 @@ namespace awh {
 				// Размер бинарного буфера данных
 				size_t size;
 				// Бинарный буфер полученных данных
-				unique_ptr <uint8_t []> data;
+				std::unique_ptr <uint8_t []> data;
 				/**
 				 * Buffer Конструктор
 				 */
@@ -130,7 +130,7 @@ namespace awh {
 					buffer_t _buffer;
 				private:
 					// Список декодеров для декодирования сообщений
-					map <SOCKET, unique_ptr <cmp::decoder_t>> _decoders;
+					std::map <SOCKET, std::unique_ptr <cmp::decoder_t>> _decoders;
 				private:
 					// Объект для работы с логами
 					const log_t * _log;
@@ -323,17 +323,17 @@ namespace awh {
 			#endif
 		private:
 			// Список активных дочерних процессов
-			map <pid_t, uint16_t> _pids;
+			std::map <pid_t, uint16_t> _pids;
 			// Список активных сокетов привязанных к процессам
-			map <SOCKET, pid_t> _sockets;
+			std::map <SOCKET, pid_t> _sockets;
 			// Список активных клиентов дочерних процессов
-			map <SOCKET, unique_ptr <client_t>> _clients;
+			std::map <SOCKET, std::unique_ptr <client_t>> _clients;
 			// Список активных воркеров
-			map <uint16_t, unique_ptr <worker_t>> _workers;
+			std::map <uint16_t, std::unique_ptr <worker_t>> _workers;
 			// Список энкодеров для кодирования сообщений
-			map <pid_t, unique_ptr <cmp::encoder_t>> _encoders;
+			std::map <pid_t, std::unique_ptr <cmp::encoder_t>> _encoders;
 			// Список дочерних брокеров
-			map <uint16_t, vector <unique_ptr <broker_t>>> _brokers;
+			std::map <uint16_t, vector <std::unique_ptr <broker_t>>> _brokers;
 		private:
 			// Объект сетевого ядра
 			core_t * _core;
