@@ -53,7 +53,7 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Socks5 {
 		private:
 			// Список ответов сервера
-			map <uint8_t, string> _responses;
+			std::map <uint8_t, string> _responses;
 		public:
 			/**
 			 * Коды ответа socks5 сервера
