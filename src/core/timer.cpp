@@ -136,7 +136,7 @@ void awh::Timer::clear() noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Если список брокеров не пустой
 		if(!this->_brokers.empty()){
 			// Выполняем перебор всех активных брокеров
@@ -182,7 +182,7 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 	 */
 	try {
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выполняем поиск активного брокера
 		auto i = this->_brokers.find(tid);
 		// Если активный брокер найден

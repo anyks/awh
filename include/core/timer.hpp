@@ -58,12 +58,12 @@ namespace awh {
 			} broker_t;
 		private:
 			// Мютекс для блокировки основного потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
-			// Список активных брокеров
-			map <uint16_t, unique_ptr <broker_t>> _brokers;
 			// Хранилище функций обратного вызова
-			map <uint16_t, function <void (void)>> _callback;
+			std::map <uint16_t, function <void (void)>> _callback;
+			// Список активных брокеров
+			std::map <uint16_t, std::unique_ptr <broker_t>> _brokers;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -118,7 +118,7 @@ namespace awh {
 						// Если активный таймер найден
 						if(i != this->_brokers.end()){
 							// Выполняем блокировку потока
-							const lock_guard <recursive_mutex> lock(this->_mtx);
+							const lock_guard <std::recursive_mutex> lock(this->_mtx);
 							// Выполняем поиск функции обратного вызова
 							auto j = this->_callback.find(tid);
 							// Если функция найдена в списке
