@@ -136,7 +136,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     SET(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 # Устанавливаем параметры игнорирования ошибок для Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-    SET(AWH_PARAMS "-lsocket -lnsl -lresolv -lc -Wno-cpp -Wno-deprecated")
+    SET(AWH_PARAMS "-lsocket -lnsl -lc -Wno-cpp -Wno-deprecated")
 # Устанавливаем параметры игнорирования ошибок для Windows и Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")

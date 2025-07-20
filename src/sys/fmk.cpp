@@ -4204,6 +4204,10 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
+			// Если локаль не дефолтная
+			if(locale.compare("C") != 0)
+				// Устанавливаем локаль повторно
+				this->setLocale("C");
 			/**
 			 * Если включён режим отладки
 			 */
