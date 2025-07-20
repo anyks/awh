@@ -2559,7 +2559,7 @@ string awh::Http::date(const uint64_t date) const noexcept {
 		// Если текущий размер выше актуального
 		if(current > actual)
 			// Переводим указанные единицы в секунды
-			value /= ::pow(10, current - actual);
+			value /= static_cast <time_t> (::pow(static_cast <long double> (10), static_cast <long double> (current - actual)));
 		// Формируем локальное время
 		gmtime_r(&value, &tm);
 		// Выполняем извлечение даты
