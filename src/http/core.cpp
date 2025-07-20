@@ -36,7 +36,7 @@ using namespace placeholders;
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	/**
 	 * Заменяем функцию gmtime_r на gmtime_s
 	 */
@@ -98,7 +98,7 @@ void awh::Http::encrypt() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -154,7 +154,7 @@ void awh::Http::decrypt() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -352,7 +352,7 @@ void awh::Http::compress() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -562,7 +562,7 @@ void awh::Http::decompress() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -1137,7 +1137,7 @@ void awh::Http::commit() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -1385,7 +1385,7 @@ const vector <char> awh::Http::payload() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 		/**
@@ -1531,7 +1531,7 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key, val), log_t::flag_t::WARNING, error.what());
 			/**
@@ -1810,7 +1810,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key, val), log_t::flag_t::WARNING, error.what());
 		/**
@@ -1921,7 +1921,7 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) con
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::WARNING, error.what());
 		/**
@@ -1992,7 +1992,7 @@ void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -2104,7 +2104,7 @@ vector <char> awh::Http::dump() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 		/**
@@ -2298,7 +2298,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data.data(), data.size()), log_t::flag_t::WARNING, error.what());
 			/**
@@ -2433,7 +2433,7 @@ bool awh::Http::is(const state_t state) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (state)), log_t::flag_t::WARNING, error.what());
 		/**
@@ -2553,9 +2553,9 @@ string awh::Http::date(const uint64_t date) const noexcept {
 			// Формируем время по умолчанию
 			value = ::time(nullptr);
 		// Получаем текущее значение размерности даты
-		const uint8_t current = static_cast <uint8_t> (::floor(::log10(value)));
+		const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (value))));
 		// Получаем размерность актуальной размерности даты
-		const uint8_t actual = static_cast <uint8_t> (::floor(::log10(::time(nullptr))));
+		const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (::time(nullptr)))));
 		// Если текущий размер выше актуального
 		if(current > actual)
 			// Переводим указанные единицы в секунды
@@ -2573,7 +2573,7 @@ string awh::Http::date(const uint64_t date) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::WARNING, error.what());
 		/**
@@ -2711,7 +2711,7 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::WARNING, error.what());
 		/**
@@ -2766,7 +2766,7 @@ vector <char> awh::Http::trailer() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -2815,7 +2815,7 @@ vector <pair <string, string>> awh::Http::trailers2() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -2873,7 +2873,7 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -3014,7 +3014,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 		/**
@@ -3116,7 +3116,7 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 		/**
@@ -3480,6 +3480,8 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										case static_cast <uint8_t> (os_t::type_t::NETBSD): os = "NetBSD"; break;
 										// Если операционной системой является OpenBSD
 										case static_cast <uint8_t> (os_t::type_t::OPENBSD): os = "OpenBSD"; break;
+										// Если операционной системой является Sun Solaris
+										case static_cast <uint8_t> (os_t::type_t::SOLARIS): os = "Solaris"; break;
 									}
 									// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 									this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
@@ -4174,7 +4176,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::WARNING, error.what());
 		/**
@@ -4489,6 +4491,8 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										case static_cast <uint8_t> (os_t::type_t::NETBSD): os = "NetBSD"; break;
 										// Если операционной системой является OpenBSD
 										case static_cast <uint8_t> (os_t::type_t::OPENBSD): os = "OpenBSD"; break;
+										// Если операционной системой является Sun Solaris
+										case static_cast <uint8_t> (os_t::type_t::SOLARIS): os = "Solaris"; break;
 									}
 									// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 									this->_userAgent = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
@@ -5022,7 +5026,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (flag)), log_t::flag_t::WARNING, error.what());
 		/**
@@ -5131,6 +5135,8 @@ string awh::Http::ident(const process_t flag) const noexcept {
 				case static_cast <uint8_t> (os_t::type_t::NETBSD): os = "NetBSD"; break;
 				// Если операционной системой является OpenBSD
 				case static_cast <uint8_t> (os_t::type_t::OPENBSD): os = "OpenBSD"; break;
+				// Если операционной системой является Sun Solaris
+				case static_cast <uint8_t> (os_t::type_t::SOLARIS): os = "Solaris"; break;
 			}
 			// Выполняем генерацию Юзер-агента клиента выполняющего HTTP-запрос
 			result = this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str());
