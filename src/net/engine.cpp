@@ -39,7 +39,7 @@ bool awh::Engine::Address::close() noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Если тип сокета не диграммы
 			if(this->_type != SOCK_DGRAM)
 				// Запрещаем работу с сокетом
@@ -135,7 +135,7 @@ bool awh::Engine::Address::list() noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				/**
@@ -151,7 +151,7 @@ bool awh::Engine::Address::list() noexcept {
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
-			#if defined(__linux__) || defined(__FreeBSD__)
+			#if __linux__ || __FreeBSD__
 				// Если протокол интернета установлен как SCTP
 				if(this->_protocol == IPPROTO_SCTP){
 					// Выполняем инициализацию SCTP протокола
@@ -167,7 +167,7 @@ bool awh::Engine::Address::list() noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 						/**
@@ -250,7 +250,7 @@ bool awh::Engine::Address::connect() noexcept {
 		/**
 		 * Для операционной системы Linux или FreeBSD
 		 */
-		#if defined(__linux__) || defined(__FreeBSD__)
+		#if __linux__ || __FreeBSD__
 			// Если протокол интернета установлен как SCTP
 			if(this->_protocol == IPPROTO_SCTP)
 				// Выполняем инициализацию SCTP протокола
@@ -322,7 +322,7 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
 			/**
@@ -386,7 +386,7 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client), log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
 		/**
@@ -509,7 +509,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int32_t family) noexcep
 					/**
 					 * Для операционной системы Linux или FreeBSD
 					 */
-					#if defined(__linux__) || defined(__FreeBSD__)
+					#if __linux__ || __FreeBSD__
 						// Если протокол интернета установлен как SCTP
 						if(this->_protocol != IPPROTO_SCTP)
 							// Активируем KeepAlive
@@ -596,7 +596,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				/**
@@ -707,7 +707,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type), clientName), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 								/**
@@ -731,7 +731,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 					/**
@@ -885,7 +885,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				/**
@@ -919,7 +919,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 					/**
 					 * Для операционной системы Linux или FreeBSD
 					 */
-					#if defined(__linux__) || defined(__FreeBSD__)
+					#if __linux__ || __FreeBSD__
 						// Если протокол интернета установлен как SCTP
 						if(this->_protocol != IPPROTO_SCTP)
 							// Активируем KeepAlive
@@ -962,7 +962,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						/**
@@ -983,7 +983,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						/**
@@ -1261,7 +1261,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Если подробная информация ещё не выведена
 						if(!this->_verb){
 							// Запоминаем, что подробная информация уже была выведена
@@ -1325,7 +1325,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Если нужно попытаться ещё раз получить сообщение
 						if((result < 0) && (AWH_ERROR() == WSAEWOULDBLOCK))
 							// Повторяем попытку получить ещё раз
@@ -1472,7 +1472,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Если защищённый режим работы запрещён
 						} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
 							// Выполняем пропуск попытки
@@ -1499,7 +1499,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			/**
 			 * Если операционной системой является Linux или FreeBSD и включён режим отладки
 			 */
-			#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
+			#if (__linux__ || __FreeBSD__) && DEBUG_MODE
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
 					// Создаём объект получения информационных событий
@@ -1540,7 +1540,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					/**
 					 * Для операционной системы Linux или FreeBSD
 					 */
-					#if defined(__linux__) || defined(__FreeBSD__)
+					#if __linux__ || __FreeBSD__
 						// Если протокол интернета установлен как SCTP
 						if((this->_addr->_protocol == IPPROTO_SCTP) && (this->_addr->status == addr_t::status_t::CONNECTED)){
 							// Создаём объект получения информационных событий
@@ -1554,7 +1554,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Если подробная информация ещё не выведена
 						if(!this->_verb){
 							// Запоминаем, что подробная информация уже была выведена
@@ -1637,7 +1637,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Если нужно попытаться ещё раз отправить сообщение
 					if((result < 0) && (AWH_ERROR() == WSAEWOULDBLOCK))
 						// Повторяем попытку отправить ещё раз
@@ -1783,7 +1783,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Если защищённый режим работы запрещён
 						} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
 							// Выполняем пропуск попытки
@@ -1810,7 +1810,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			/**
 			 * Если операционной системой является Linux или FreeBSD и включён режим отладки
 			 */
-			#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
+			#if (__linux__ || __FreeBSD__) && DEBUG_MODE
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (::SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
 					// Определяем тип подключения
@@ -1924,7 +1924,7 @@ bool awh::Engine::Context::cork(const mode_t mode) noexcept {
 				/**
 				 * Для операционной системы Linux или FreeBSD
 				 */
-				#if defined(__linux__) || defined(__FreeBSD__)
+				#if __linux__ || __FreeBSD__
 					// Если протокол интернета установлен как SCTP
 					allow = (this->_addr->_protocol != IPPROTO_SCTP);
 				#endif
@@ -1977,7 +1977,7 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 				/**
 				 * Для операционной системы Linux или FreeBSD
 				 */
-				#if defined(__linux__) || defined(__FreeBSD__)
+				#if __linux__ || __FreeBSD__
 					// Если протокол интернета установлен как SCTP
 					allow = (this->_addr->_protocol != IPPROTO_SCTP);
 				#endif
@@ -2301,7 +2301,7 @@ bool awh::Engine::certHostcheck(const string & host, const string & patt) const 
 /**
  * Для операционной системы Linux или FreeBSD
  */
-#if defined(__linux__) || defined(__FreeBSD__)
+#if __linux__ || __FreeBSD__
 	/**
 	 * notificationsSCTP Функция обработки нотификации SCTP
 	 * @param bio    объект подключения BIO
@@ -2500,7 +2500,7 @@ int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим в лог сообщение
 				verify->engine->_log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, verify->host.c_str(), buffer);
 			#endif
@@ -2943,7 +2943,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Выполняем сплит адреса
 						const auto & params = this->_uri->split(dir);
 						// Если путь и хост получен
@@ -3015,7 +3015,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				/**
 				 * addCertToStoreFn Функция проверки параметров сертификата
 				 * @param store стор с сертификатами для работы
@@ -3471,7 +3471,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
-			#if defined(__linux__) || defined(__FreeBSD__)
+			#if __linux__ || __FreeBSD__
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -3670,7 +3670,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
-			#if defined(__linux__) || defined(__FreeBSD__)
+			#if __linux__ || __FreeBSD__
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -3705,7 +3705,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				/**
 				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
 				 */
-				#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
+				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
 					// Если протокол интернета установлен как SCTP
 					if(target._addr->_protocol == IPPROTO_SCTP)
 						// Устанавливаем функцию нотификации
@@ -4085,7 +4085,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
-			#if defined(__linux__) || defined(__FreeBSD__)
+			#if __linux__ || __FreeBSD__
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -4282,7 +4282,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
-			#if defined(__linux__) || defined(__FreeBSD__)
+			#if __linux__ || __FreeBSD__
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -4317,7 +4317,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 				/**
 				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
 				 */
-				#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
+				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
 					// Если протокол интернета установлен как SCTP
 					if(target._addr->_protocol == IPPROTO_SCTP)
 						// Устанавливаем функцию нотификации
@@ -4481,7 +4481,7 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 	/**
 	 * Если версия OPENSSL ниже версии 1.1.0
 	 */
-	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && (LIBRESSL_VERSION_NUMBER < 0x20700000L))
+	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (LIBRESSL_VERSION_NUMBER && (LIBRESSL_VERSION_NUMBER < 0x20700000L))
 		// Выполняем конфигурацию OpenSSL
 		OPENSSL_config(nullptr);
 		// Выполняем инициализацию OpenSSL
@@ -4518,7 +4518,7 @@ awh::Engine::~Engine() noexcept {
 	/**
 	 * Если версия OPENSSL ниже версии 1.1.0
 	 */
-	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
+	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (LIBRESSL_VERSION_NUMBER && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 		// Выполняем освобождение памяти
 		::EVP_cleanup();
 		::ERR_free_strings();

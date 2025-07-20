@@ -47,7 +47,7 @@
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <getopt.h>
@@ -74,8 +74,13 @@
 /**
  * Если операционной системой является Linux или FreeBSD
  */
-#if defined(__linux__) || defined(__FreeBSD__)
+#if __linux__ || __FreeBSD__
 	#include <netinet/sctp.h>
+/**
+ * Для операционной системы Sun Solaris
+ */
+#elif __sun__
+	#include <sys/termios.h>
 #endif
 
 /**
