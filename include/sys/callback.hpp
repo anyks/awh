@@ -85,7 +85,7 @@ namespace awh {
 			/**
 			 * Создаём тип данных функции обратного вызова
 			 */
-			typedef shared_ptr <Function> fn_t;
+			typedef std::shared_ptr <Function> fn_t;
 		private:
 			// Мютекс для блокировки основного потока
 			std::mutex _mtx;
@@ -157,7 +157,7 @@ namespace awh {
 			 * dump Метод получения дампа функций обратного вызова
 			 * @return выводим созданный блок дампа контейнера
 			 */
-			const map <uint64_t, fn_t> & dump() const noexcept {
+			const std::map <uint64_t, fn_t> & dump() const noexcept {
 				// Выводим дамп функций обратного вызова
 				return this->_callbacks;
 			}
@@ -165,7 +165,7 @@ namespace awh {
 			 * dump Метод установки дампа функций обратного вызова
 			 * @param callbacks дамп данных функций обратного вызова
 			 */
-			void dump(const map <uint64_t, fn_t> & callbacks) noexcept {
+			void dump(const std::map <uint64_t, fn_t> & callbacks) noexcept {
 				// Если данные функций обратного вызова переданы
 				if(!callbacks.empty()){
 					/**
@@ -1202,7 +1202,7 @@ namespace awh {
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Выполняем замену функции обратного вызова
-							i->second = unique_ptr <Function> (new BasicFunction <T> (fn));
+							i->second = std::unique_ptr <Function> (new BasicFunction <T> (fn));
 							// Выполняем блокировку потока
 							this->_mtx.unlock();
 							// Если функция обратного вызова установлена
@@ -1216,7 +1216,7 @@ namespace awh {
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Выполняем установку функции обратного вызова
-							auto ret = this->_callbacks.emplace(fid, unique_ptr <Function> (new BasicFunction <T> (fn)));
+							auto ret = this->_callbacks.emplace(fid, std::unique_ptr <Function> (new BasicFunction <T> (fn)));
 							// Выполняем блокировку потока
 							this->_mtx.unlock();
 							// Если функция обратного вызова установлена
@@ -1390,7 +1390,7 @@ namespace awh {
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Выполняем замену функции обратного вызова
-							i->second = unique_ptr <Function> (new BasicFunction <T> (std::bind(fn, args...)));
+							i->second = std::unique_ptr <Function> (new BasicFunction <T> (std::bind(fn, args...)));
 							// Выполняем блокировку потока
 							this->_mtx.unlock();
 							// Если функция обратного вызова установлена
@@ -1404,7 +1404,7 @@ namespace awh {
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Выполняем установку функции обратного вызова
-							auto ret = this->_callbacks.emplace(fid, unique_ptr <Function> (new BasicFunction <T> (std::bind(fn, args...))));
+							auto ret = this->_callbacks.emplace(fid, std::unique_ptr <Function> (new BasicFunction <T> (std::bind(fn, args...))));
 							// Выполняем блокировку потока
 							this->_mtx.unlock();
 							// Если функция обратного вызова установлена
@@ -1585,7 +1585,7 @@ namespace awh {
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Выполняем замену функции обратного вызова
-							i->second = unique_ptr <Function> (new BasicFunction <T> (std::bind(args...)));
+							i->second = std::unique_ptr <Function> (new BasicFunction <T> (std::bind(args...)));
 							// Выполняем блокировку потока
 							this->_mtx.unlock();
 							// Если функция обратного вызова установлена
@@ -1599,7 +1599,7 @@ namespace awh {
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Выполняем установку функции обратного вызова
-							auto ret = this->_callbacks.emplace(fid, unique_ptr <Function> (new BasicFunction <T> (std::bind(args...))));
+							auto ret = this->_callbacks.emplace(fid, std::unique_ptr <Function> (new BasicFunction <T> (std::bind(args...))));
 							// Выполняем блокировку потока
 							this->_mtx.unlock();
 							// Если функция обратного вызова установлена
