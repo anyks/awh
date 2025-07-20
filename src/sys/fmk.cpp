@@ -4213,13 +4213,13 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s for %s\n", __PRETTY_FUNCTION__, error.what(), locale.c_str());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s for %s\n", error.what(), locale.c_str());
 			#endif
 		}
 	}

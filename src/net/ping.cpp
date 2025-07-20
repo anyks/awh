@@ -610,8 +610,11 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 			} else if(this->_mode) {
 				// Индекс текущей итерации
 				uint64_t index = 0;
-				// Устанавливаем разрешение на повторное использование сокета
-				this->_socket.reuseable(this->_fd);
+				// Если операционная система не принадлежит к Sun Solaris
+				#if !defined(__sun__)
+					// Устанавливаем разрешение на повторное использование сокета
+					this->_socket.reuseable(this->_fd);
+				#endif
 				// Устанавливаем разрешение на закрытие сокета при неиспользовании
 				this->_socket.closeOnExec(this->_fd);
 				// Устанавливаем размер буфера передачи данных на чтение
@@ -973,8 +976,11 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 				return result;
 			// Если сокет создан удачно и работа резолвера не остановлена
 			} else if(this->_mode) {
-				// Устанавливаем разрешение на повторное использование сокета
-				this->_socket.reuseable(this->_fd);
+				// Если операционная система не принадлежит к Sun Solaris
+				#if !defined(__sun__)
+					// Устанавливаем разрешение на повторное использование сокета
+					this->_socket.reuseable(this->_fd);
+				#endif
 				// Устанавливаем разрешение на закрытие сокета при неиспользовании
 				this->_socket.closeOnExec(this->_fd);
 				// Устанавливаем размер буфера передачи данных на чтение
