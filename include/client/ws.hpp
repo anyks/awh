@@ -266,7 +266,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <web_t::flag_t> & flags) noexcept;
+				void mode(const std::set <web_t::flag_t> & flags) noexcept;
 				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере
@@ -297,7 +297,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * userAgent Метод установки User-Agent для HTTP-запроса
