@@ -1588,7 +1588,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					// Выполняем создание нового списка записей для потока
 					else {
 						// Выполняем создание нового списка записей для потока
-						auto ret = this->_records.emplace(id, queue <pair <size_t, flag_t>> ());
+						auto ret = this->_records.emplace(id, std::queue <pair <size_t, flag_t>> ());
 						// Выполняем добавление новой записи
 						ret.first->second.push(make_pair(size, flag));
 					}
@@ -2056,7 +2056,7 @@ void awh::Http2::origin(const vector <string> & origins) noexcept {
  * altsvc Метод установки списка альтернативных сервисов
  * @param origins список альтернативных сервисов
  */
-void awh::Http2::altsvc(const unordered_multimap <string, string> & origins) noexcept {
+void awh::Http2::altsvc(const std::unordered_multimap <string, string> & origins) noexcept {
 	// Выполняем установку списка альтернативных сервисов
 	this->_altsvc = origins;
 }
@@ -2066,7 +2066,7 @@ void awh::Http2::altsvc(const unordered_multimap <string, string> & origins) noe
  * @param settings параметры настроек сессии
  * @return         результат выполнения инициализации
  */
-bool awh::Http2::init(const mode_t mode, const map <settings_t, uint32_t> & settings) noexcept {
+bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> & settings) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если параметры настроек переданы

@@ -360,11 +360,11 @@ namespace awh {
 			vector <char> _body;
 		private:
 			// Загруженные трейлеры
-			unordered_set <string> _trailers;
+			std::unordered_set <string> _trailers;
 			// Полученные HTTP заголовки
-			unordered_multimap <string, string> _headers;
+			std::unordered_multimap <string, string> _headers;
 			// Список стандартных заголовков
-			unordered_map <string, set <proto_t>> _standardHeaders;
+			std::unordered_map <string, std::set <proto_t>> _standardHeaders;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -514,7 +514,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    список протоколов
 			 */
-			set <proto_t> proto(const string & key) const noexcept;
+			std::set <proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
 			 * delHeader Метод удаления заголовка
@@ -538,12 +538,12 @@ namespace awh {
 			 * headers Метод получения списка заголовков
 			 * @return список существующих заголовков
 			 */
-			const unordered_multimap <string, string> & headers() const noexcept;
+			const std::unordered_multimap <string, string> & headers() const noexcept;
 			/**
 			 * headers Метод установки списка заголовков
 			 * @param headers список заголовков для установки
 			 */
-			void headers(const unordered_multimap <string, string> & headers) noexcept;
+			void headers(const std::unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
 			 * id Метод получения идентификатора объекта

@@ -144,9 +144,12 @@ namespace awh {
 			 * Compressor Структура параметров компрессора
 			 */
 			typedef struct Compressor {
-				compressor_t current;               // Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
-				compressor_t selected;              // Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
-				map <float, compressor_t> supports; // Список поддерживаемых компрессоров
+				// Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
+				compressor_t current;
+				// Выбранный компрессор которым необходимо выполнить сжатие данных полезной нагрузки
+				compressor_t selected;
+				// Список поддерживаемых компрессоров
+				std::map <float, compressor_t> supports;
 				/**
 				 * Compressor Конструктор
 				 */
@@ -219,13 +222,13 @@ namespace awh {
 			mutable string _userAgent;
 		private:
 			// Список HTTP-ответов
-			map <uint16_t, string> _responses;
+			std::map <uint16_t, string> _responses;
 		protected:
 			// Список отправляемых трейлеров
-			unordered_map <string, string> _trailers;
+			std::unordered_map <string, string> _trailers;
 		protected:
 			// Чёрный список заголовков
-			mutable unordered_set <string> _blacklist;
+			mutable std::unordered_set <string> _blacklist;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -302,7 +305,7 @@ namespace awh {
 			 * @param key ключ заголовка
 			 * @return    список протоколов
 			 */
-			set <web_t::proto_t> proto(const string & key) const noexcept;
+			std::set <web_t::proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
 			 * payload Метод чтения чанка полезной нагрузки

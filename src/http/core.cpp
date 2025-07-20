@@ -1237,7 +1237,7 @@ size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
  * @param key ключ заголовка
  * @return    список протоколов
  */
-set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexcept {
+std::set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexcept {
 	// Выполняем извлечение списка протоколов к которому принадлежит заголовок
 	return this->_web.proto(key);
 }
@@ -3232,7 +3232,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Устанавливаем параметры REST-запроса
 							this->_auth.client.uri(this->_uri.url(req.url));
 							// Список системных заголовков
-							unordered_set <string> systemHeaders;
+							std::unordered_set <string> systemHeaders;
 							// Переходим по всему списку заголовков
 							for(auto & header : this->_web.headers()){
 								// Если заголовок не находится в чёрном списке и не является системным
@@ -3839,7 +3839,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							// Устанавливаем парарметры ответа
 							this->_web.response(res);
 							// Список системных заголовков
-							unordered_set <string> systemHeaders;
+							std::unordered_set <string> systemHeaders;
 							// Переходим по всему списку заголовков
 							for(auto & header : this->_web.headers()){
 								// Если заголовок не находится в чёрном списке и не является системным
@@ -4305,7 +4305,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Устанавливаем параметры REST-запроса
 							this->_auth.client.uri(this->_uri.url(req.url));
 							// Список системных заголовков
-							unordered_set <string> systemHeaders;
+							std::unordered_set <string> systemHeaders;
 							// Переходим по всему списку заголовков
 							for(auto & header : this->_web.headers()){
 								// Если заголовок не является системным
@@ -4789,7 +4789,7 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Устанавливаем параметры ответа
 							this->_web.response(res);
 							// Список системных заголовков
-							unordered_set <string> systemHeaders;
+							std::unordered_set <string> systemHeaders;
 							// Переходим по всему списку заголовков
 							for(auto & header : this->_web.headers()){
 								// Если заголовок не находится в чёрном списке и не является системным

@@ -198,12 +198,12 @@ namespace awh {
 			vector <string> _origins;
 		private:
 			// Список отправляемых альтернативных сервисов
-			unordered_multimap <string, string> _altsvc;
+			std::unordered_multimap <string, string> _altsvc;
 		private:
 			// Буферы отправляемой полезной нагрузки
-			map <int32_t, unique_ptr <buffer_t>> _payloads;
+			std::map <int32_t, std::unique_ptr <buffer_t>> _payloads;
 			// Список подготовленных для отправки записей
-			map <int32_t, queue <pair <size_t, flag_t>>> _records;
+			std::map <int32_t, std::queue <pair <size_t, flag_t>>> _records;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
@@ -560,7 +560,7 @@ namespace awh {
 			 * altsvc Метод установки списка альтернативных сервисов
 			 * @param origins список альтернативных сервисов
 			 */
-			void altsvc(const unordered_multimap <string, string> & origins) noexcept;
+			void altsvc(const std::unordered_multimap <string, string> & origins) noexcept;
 		public:
 			/**
 			 * init Метод инициализации
@@ -568,7 +568,7 @@ namespace awh {
 			 * @param settings параметры настроек сессии
 			 * @return         результат выполнения инициализации
 			 */
-			bool init(const mode_t mode, const map <settings_t, uint32_t> & settings) noexcept;
+			bool init(const mode_t mode, const std::map <settings_t, uint32_t> & settings) noexcept;
 		public:
 			/**
 			 * Оператор [=] зануления фрейма Http2
