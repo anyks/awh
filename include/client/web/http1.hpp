@@ -67,7 +67,7 @@ namespace awh {
 				callback_t _callback;
 			private:
 				// Список активых запросов
-				map <int32_t, request_t> _requests;
+				std::map <int32_t, request_t> _requests;
 			private:
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
@@ -144,7 +144,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param headers заголовки ответа сервера
 				 */
-				void headers(const uint64_t bid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+				void headers(const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -238,7 +238,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * pause Метод установки на паузу клиента

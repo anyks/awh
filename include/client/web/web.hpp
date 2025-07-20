@@ -106,7 +106,7 @@ namespace awh {
 						web_t::method_t method;                           // Метод запроса
 						vector <char> entity;                             // Тело запроса
 						vector <http_t::compressor_t> compressors;        // Список поддерживаемых компрессоров
-						unordered_multimap <string, string> headers; // Заголовки клиента
+						std::unordered_multimap <string, string> headers; // Заголовки клиента
 					public:
 						/**
 						 * Оператор [=] перемещения параметров запроса
@@ -247,7 +247,7 @@ namespace awh {
 				awh::timer_t _timer;
 			protected:
 				// Список рабочих событий
-				stack <event_t> _events;
+				std::stack <event_t> _events;
 			protected:
 				// Список поддерживаемых компрессоров
 				vector <http_t::compressor_t> _compressors;
@@ -668,7 +668,7 @@ namespace awh {
 				size_t _chunkSize;
 			protected:
 				// Список параметров настроек протокола HTTP/2
-				map <http2_t::settings_t, uint32_t> _settings;
+				std::map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				/**
 				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
@@ -845,7 +845,7 @@ namespace awh {
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				virtual void settings(const map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				virtual void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * chunk Метод установки размера чанка

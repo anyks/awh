@@ -562,13 +562,13 @@ int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::d
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(web2_t::_callback.is("headers"))
 								// Выполняем функцию обратного вызова
-								web2_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", sid, this->_rid, response.code, response.message, this->_http.headers());
+								web2_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", sid, this->_rid, response.code, response.message, this->_http.headers());
 							// Если мы получили флаг завершения потока
 							if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 								// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 								if(web2_t::_callback.is("complete"))
 									// Выполняем функцию обратного вызова
-									web2_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
+									web2_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 								// Очищаем буфер собранных данных
 								this->_buffer.clear();
 								// Если установлена функция отлова завершения запроса
@@ -1026,7 +1026,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 					if(web2_t::_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
+						this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 					// Завершаем работу
 					return status_t::NEXT;
 				// Сообщаем, что рукопожатие не выполнено
@@ -1049,7 +1049,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 					if(web2_t::_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
+						this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 				}
 			} break;
 			// Если запрос неудачный
@@ -1071,7 +1071,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(web2_t::_callback.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
+					this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, this->_rid, response.code, response.message, this->_http.body(), this->_http.headers());
 			} break;
 		}
 		// Завершаем работу
@@ -1871,7 +1871,7 @@ void awh::client::Websocket2::user(const string & login, const string & password
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::client::Websocket2::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::Websocket2::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку HTTP-заголовков для отправки на сервер
 	this->_headers = headers;
 }

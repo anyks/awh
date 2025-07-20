@@ -88,7 +88,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 					if(web_t::_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
+						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
 					// Если установлена функция отлова завершения запроса
 					if(web_t::_callback.is("end"))
 						// Выполняем функцию обратного вызова
@@ -121,7 +121,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 					if(web_t::_callback.is("headers"))
 						// Выполняем функцию обратного вызова
-						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
+						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", sid, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 					// Если мы получили флаг завершения потока
 					if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 						// Выполняем коммит полученного результата
@@ -555,7 +555,7 @@ int32_t awh::client::Web2::send(const int32_t sid, const vector <pair <string, s
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::client::Web2::settings(const map <http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::client::Web2::settings(const std::map <http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Если список настроек протокола HTTP/2 передан
 	if(!settings.empty())
 		// Выполняем установку списка настроек

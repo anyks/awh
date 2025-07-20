@@ -96,12 +96,12 @@ namespace awh {
 				int16_t _threads;
 			private:
 				// Список активных маршрутов запросов
-				unordered_map <string, string> _route;
+				std::unordered_map <string, string> _route;
 			private:
 				// Список активных воркеров
-				map <int32_t, unique_ptr <worker_t>> _workers;
+				std::map <int32_t, std::unique_ptr <worker_t>> _workers;
 				// Список активых запросов
-				map <int32_t, unique_ptr <request_t>> _requests;
+				std::map <int32_t, std::unique_ptr <request_t>> _requests;
 			private:
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
@@ -306,7 +306,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * send2 Метод HTTP/2 отправки сообщения на сервер

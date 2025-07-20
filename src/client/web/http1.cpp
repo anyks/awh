@@ -493,13 +493,13 @@ void awh::client::Http1::header([[maybe_unused]] const uint64_t bid, const strin
  * @param message сообщение ответа сервера
  * @param headers заголовки ответа сервера
  */
-void awh::client::Http1::headers([[maybe_unused]] const uint64_t bid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::Http1::headers([[maybe_unused]] const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 	if(!this->_requests.empty() && web_t::_callback.is("headers")){
 		// Выполняем получение первого запроса
 		auto i = this->_requests.begin();
 		// Выполняем функцию обратного вызова
-		web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", i->first, i->second.id, code, message, headers);
+		web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", i->first, i->second.id, code, message, headers);
 	}
 }
 /**
@@ -713,7 +713,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(web_t::_callback.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", web_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+					this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", web_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 				// Устанавливаем размер стопбайт
@@ -748,7 +748,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(web_t::_callback.is("complete"))
 					// Выполняем функцию обратного вызова
-					this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", web_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+					this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", web_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 				// Выполняем завершение запроса
 				this->result(sid);
 			}
@@ -769,7 +769,7 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 		// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 		if(web_t::_callback.is("complete"))
 			// Выполняем функцию обратного вызова
-			this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", web_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
+			this->_callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", web_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, i->second.id, response.code, response.message, this->_http.body(), this->_http.headers());
 		// Выполняем завершение запроса
 		this->result(sid);
 	}
@@ -1075,7 +1075,7 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::method_t method, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
@@ -1487,7 +1487,7 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", &http1_t::errors, this, _1, _2, _3, _4);
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
-	this->_http.on <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", &http1_t::headers, this, _1, _2, _3, _4);
+	this->_http.on <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", &http1_t::headers, this, _1, _2, _3, _4);
 }
 /**
  * Http1 Конструктор
@@ -1508,7 +1508,7 @@ awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const 
 	// Устанавливаем функцию обработки вызова на событие получения ошибок
 	this->_http.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", &http1_t::errors, this, _1, _2, _3, _4);
 	// Устанавливаем функцию обработки вызова для вывода полученных заголовков с сервера
-	this->_http.on <void (const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headersResponse", &http1_t::headers, this, _1, _2, _3, _4);
+	this->_http.on <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", &http1_t::headers, this, _1, _2, _3, _4);
 	// Устанавливаем функцию записи данных
 	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http1_t::writeEvent, this, _1, _2, _3, _4);
 }

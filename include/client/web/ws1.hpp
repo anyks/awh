@@ -158,7 +158,7 @@ namespace awh {
 				// Данные фрагметрированного сообщения
 				vector <char> _fragments;
 				// Полученные HTTP заголовки
-				unordered_multimap <string, string> _headers;
+				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectEvent Метод обратного вызова при подключении к серверу
@@ -224,7 +224,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param headers заголовки ответа сервера
 				 */
-				void headers(const uint64_t bid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+				void headers(const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -396,7 +396,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * userAgent Метод установки User-Agent для HTTP-запроса

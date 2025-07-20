@@ -499,7 +499,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
+								this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", 1, 0, response.code, response.message, this->_scheme.proxy.http.headers());
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 								// Выполняем функцию обратного вызова
@@ -507,7 +507,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 							if(this->_callback.is("complete"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", 1, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
+								this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", 1, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
 							// Завершаем работу
 							const_cast <client::core_t *> (this->_core)->close(bid);
 							// Завершаем работу

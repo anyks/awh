@@ -152,7 +152,7 @@ namespace awh {
 				// Данные фрагметрированного сообщения
 				vector <char> _fragments;
 				// Полученные HTTP заголовки
-				unordered_multimap <string, string> _headers;
+				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * send Метод отправки запроса на удалённый сервер
@@ -416,7 +416,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * userAgent Метод установки User-Agent для HTTP-запроса
