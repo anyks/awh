@@ -29,11 +29,11 @@ void awh::server::scheme::WEB2::clear() noexcept {
 	// Очищаем данные вокера
 	scheme_t::clear();
 	// Очищаем список параметров активных клиентов
-	this->_options.clear();
+	this->_clients.clear();
 	// Очищаем доступный список доступных компрессоров
 	this->compressors.clear();
 	// Освобождаем выделенную память
-	map <uint64_t, unique_ptr <options_t>> ().swap(this->_options);
+	clients_t().swap(this->_clients);
 }
 /**
  * set Метод создания параметров активного клиента
@@ -41,9 +41,9 @@ void awh::server::scheme::WEB2::clear() noexcept {
  */
 void awh::server::scheme::WEB2::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && (this->_options.count(bid) < 1)){
+	if((bid > 0) && (this->_clients.count(bid) < 1)){
 		// Создаём объект параметров активного клиента
-		auto ret = this->_options.emplace(bid, make_unique <options_t> (this->_fmk, this->_log));
+		auto ret = this->_clients.emplace(bid, std::make_unique <options_t> (this->_fmk, this->_log));
 		// Устанавливаем контрольную точку
 		ret.first->second->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 	}
@@ -54,14 +54,22 @@ void awh::server::scheme::WEB2::set(const uint64_t bid) noexcept {
  */
 void awh::server::scheme::WEB2::rm(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && !this->_options.empty()){
+	if((bid > 0) && !this->_clients.empty()){
 		// Выполняем поиск брокера
-		auto i = this->_options.find(bid);
+		auto i = this->_clients.find(bid);
 		// Если брокер найден, удаляем его
-		if(i != this->_options.end())
+		if(i != this->_clients.end())
 			// Выполняем удаление брокеров
-			this->_options.erase(i);
+			this->_clients.erase(i);
 	}
+}
+/**
+ * get Метод извлечения списка параметров активных клиентов
+ * @return список параметров активных клиентов
+ */
+const awh::server::scheme::WEB2::clients_t & awh::server::scheme::WEB2::get() const noexcept {
+	// Выводим результат
+	return this->_clients;
 }
 /**
  * get Метод получения параметров активного клиента
@@ -70,24 +78,16 @@ void awh::server::scheme::WEB2::rm(const uint64_t bid) noexcept {
  */
 const awh::server::scheme::WEB2::options_t * awh::server::scheme::WEB2::get(const uint64_t bid) const noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && !this->_options.empty()){
+	if((bid > 0) && !this->_clients.empty()){
 		// Выполняем поиск брокера
-		auto i = this->_options.find(bid);
+		auto i = this->_clients.find(bid);
 		// Если брокер найден, выводим его параметры
-		if(i != this->_options.end())
+		if(i != this->_clients.end())
 			// Выводим параметры подключения брокера
 			return i->second.get();
 	}
 	// Выводим результат
 	return nullptr;
-}
-/**
- * get Метод извлечения списка параметров активных клиентов
- * @return список параметров активных клиентов
- */
-const map <uint64_t, unique_ptr <awh::server::scheme::WEB2::options_t>> & awh::server::scheme::WEB2::get() const noexcept {
-	// Выводим результат
-	return this->_options;
 }
 /**
  * openStream Метод открытия потока
@@ -96,11 +96,11 @@ const map <uint64_t, unique_ptr <awh::server::scheme::WEB2::options_t>> & awh::s
  */
 void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && (sid > -1) && !this->_options.empty()){
+	if((bid > 0) && (sid > -1) && !this->_clients.empty()){
 		// Выполняем поиск брокера
-		auto i = this->_options.find(bid);
+		auto i = this->_clients.find(bid);
 		// Если брокер найден, выводим его параметры
-		if(i != this->_options.end()){
+		if(i != this->_clients.end()){
 			// Создаём объект параметров активного клиента
 			auto ret = i->second->streams.emplace(sid, make_unique <stream_t> (i->second->fmk, i->second->log));
 			// Устанавливаем идентификатор потока
@@ -117,11 +117,11 @@ void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid
  */
 void awh::server::scheme::WEB2::closeStream(const int32_t sid, const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && (sid > -1) && !this->_options.empty()){
+	if((bid > 0) && (sid > -1) && !this->_clients.empty()){
 		// Выполняем поиск брокера
-		auto i = this->_options.find(bid);
+		auto i = this->_clients.find(bid);
 		// Если брокер найден, выводим его параметры
-		if((i != this->_options.end()) && !i->second->streams.empty()){
+		if((i != this->_clients.end()) && !i->second->streams.empty()){
 			// Выполняем поиск указанного потока
 			auto j = i->second->streams.find(sid);
 			// Если поток найден
@@ -139,11 +139,11 @@ void awh::server::scheme::WEB2::closeStream(const int32_t sid, const uint64_t bi
  */
 const awh::server::scheme::WEB2::stream_t * awh::server::scheme::WEB2::getStream(const int32_t sid, const uint64_t bid) const noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && (sid > -1) && !this->_options.empty()){
+	if((bid > 0) && (sid > -1) && !this->_clients.empty()){
 		// Выполняем поиск брокера
-		auto i = this->_options.find(bid);
+		auto i = this->_clients.find(bid);
 		// Если брокер найден, выводим его параметры
-		if((i != this->_options.end()) && !i->second->streams.empty()){
+		if((i != this->_clients.end()) && !i->second->streams.empty()){
 			// Выполняем поиск указанного потока
 			auto j = i->second->streams.find(sid);
 			// Если поток найден

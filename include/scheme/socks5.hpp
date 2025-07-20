@@ -53,8 +53,8 @@ namespace awh {
 					 * Locker Структура локера
 					 */
 					typedef struct Locker {
-						bool mode;           // Флаг блокировки
-						recursive_mutex mtx; // Мютекс для блокировки потока
+						bool mode;                // Флаг блокировки
+						std::recursive_mutex mtx; // Мютекс для блокировки потока
 						/**
 						 * Locker Конструктор
 						 */
@@ -97,9 +97,14 @@ namespace awh {
 						 */
 						~Options() noexcept {}
 					} options_t;
+				public:
+					/**
+					 * Тип данных для хранения опций активных клиентов
+					 */
+					typedef std::map <uint64_t, std::unique_ptr <options_t>> clients_t;
 				private:
 					// Список параметров активных клиентов
-					map <uint64_t, unique_ptr <options_t>> _options;
+					clients_t _clients;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;

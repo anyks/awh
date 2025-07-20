@@ -85,11 +85,16 @@ namespace awh {
 						~Options() noexcept {}
 					} options_t;
 				public:
-					// Список доступных компрессоров
-					vector <awh::http_t::compressor_t> compressors;
+					/**
+					 * Тип данных для хранения опций активных клиентов
+					 */
+					typedef std::map <uint64_t, std::unique_ptr <options_t>> clients_t;
 				private:
 					// Список параметров активных клиентов
-					map <uint64_t, unique_ptr <options_t>> _options;
+					clients_t _clients;
+				public:
+					// Список доступных компрессоров
+					vector <awh::http_t::compressor_t> compressors;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
@@ -113,16 +118,16 @@ namespace awh {
 					void rm(const uint64_t bid) noexcept;
 				public:
 					/**
+					 * get Метод извлечения списка параметров активных клиентов
+					 * @return список параметров активных клиентов
+					 */
+					const clients_t & get() const noexcept;
+					/**
 					 * get Метод получения параметров активного клиента
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
 					const options_t * get(const uint64_t bid) const noexcept;
-					/**
-					 * get Метод извлечения списка параметров активных клиентов
-					 * @return список параметров активных клиентов
-					 */
-					const map <uint64_t, unique_ptr <options_t>> & get() const noexcept;
 				public:
 					/**
 					 * WEB Конструктор

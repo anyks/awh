@@ -29,9 +29,9 @@ void awh::server::scheme::Socks5::clear() noexcept {
 	// Очищаем данные вокера
 	scheme_t::clear();
 	// Очищаем список параметров активных клиентов
-	this->_options.clear();
+	this->_clients.clear();
 	// Освобождаем выделенную память
-	map <uint64_t, unique_ptr <options_t>> ().swap(this->_options);
+	clients_t().swap(this->_clients);
 }
 /**
  * set Метод создания параметров активного клиента
@@ -39,9 +39,9 @@ void awh::server::scheme::Socks5::clear() noexcept {
  */
 void awh::server::scheme::Socks5::set(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && (this->_options.count(bid) < 1))
+	if((bid > 0) && (this->_clients.count(bid) < 1))
 		// Создаём объект параметров активного клиента
-		this->_options.emplace(bid, make_unique <options_t> (this->_fmk, this->_log));
+		this->_clients.emplace(bid, std::make_unique <options_t> (this->_fmk, this->_log));
 }
 /**
  * rm Метод удаления параметров активного клиента
@@ -49,13 +49,13 @@ void awh::server::scheme::Socks5::set(const uint64_t bid) noexcept {
  */
 void awh::server::scheme::Socks5::rm(const uint64_t bid) noexcept {
 	// Если идентификатор брокера передан
-	if((bid > 0) && !this->_options.empty()){
+	if((bid > 0) && !this->_clients.empty()){
 		// Выполняем поиск брокера
-		auto i = this->_options.find(bid);
+		auto i = this->_clients.find(bid);
 		// Если брокер найден, удаляем его
-		if(i != this->_options.end())
+		if(i != this->_clients.end())
 			// Выполняем удаление брокеров
-			this->_options.erase(i);
+			this->_clients.erase(i);
 	}
 }
 /**
@@ -67,11 +67,11 @@ const awh::server::scheme::Socks5::options_t * awh::server::scheme::Socks5::get(
 	// Результат работы функции
 	options_t * result = nullptr;
 	// Если идентификатор брокера передан
-	if((bid > 0) && !this->_options.empty()){
+	if((bid > 0) && !this->_clients.empty()){
 		// Выполняем поиск брокера
-		auto i = this->_options.find(bid);
+		auto i = this->_clients.find(bid);
 		// Если брокер найден, выводим его параметры
-		if(i != this->_options.end())
+		if(i != this->_clients.end())
 			// Выводим параметры подключения брокера
 			result = i->second.get();
 	}
