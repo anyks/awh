@@ -61,10 +61,10 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     SET(DEBUGGER "-ggdb3")
      # Используем Clang
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lc")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
      # Используем GCC
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl -lc")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
     endif()
 # Если операционной системой является MacOS X
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
@@ -134,8 +134,11 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 # Устанавливаем параметры игнорирования ошибок для MacOS X
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     SET(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
-# Устанавливаем параметры игнорирования ошибок для Windows, Linux и Solaris
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR ${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+# Устанавливаем параметры игнорирования ошибок для Solaris
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+    SET(AWH_PARAMS "-lnsl -lsocket -lc -Wno-cpp -Wno-deprecated")
+# Устанавливаем параметры игнорирования ошибок для Windows и Linux
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
 # Устанавливаем параметры игнорирования ошибок для FreeBSD, NetBSD и OpenBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
@@ -575,7 +578,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${TCMALLOC_LIBRARIES}
             ${AWH_IDN}
         )
-        
+
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
@@ -714,7 +717,7 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
         )
-        
+
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
@@ -1268,7 +1271,7 @@ endif (CMAKE_SHARED_BUILD_LIB)
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
         SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
-        
+
         add_custom_command(TARGET "${IP_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${IP_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${IP_APP_NAME}\" to enable core dump on MacOS X"
@@ -1322,19 +1325,19 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             COMMENT "Sign target \"${PROXY_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
-        
+
         add_custom_command(TARGET "${SOCKS5_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${SOCKS5_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${SOCKS5_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
-        
+
         add_custom_command(TARGET "${CLIENT_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${CLIENT_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
-            
+
         add_custom_command(TARGET "${SERVER_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${SERVER_APP_NAME}\" to enable core dump on MacOS X"
@@ -1346,13 +1349,13 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             COMMENT "Sign target \"${WEB_CLIENT_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
-        
+
         add_custom_command(TARGET "${WEB_SERVER_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${WEB_SERVER_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${WEB_SERVER_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
-        
+
         add_custom_command(TARGET "${CLUSTER_APP_NAME}" POST_BUILD
             COMMAND bash "${CMAKE_SOURCE_DIR}/core_dump.sh" "$<TARGET_FILE:${CLUSTER_APP_NAME}>" "${entitlements_file}"
             COMMENT "Sign target \"${CLUSTER_APP_NAME}\" to enable core dump on MacOS X"
