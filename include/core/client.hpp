@@ -50,23 +50,22 @@ namespace awh {
 				 * Коды ошибок клиента
 				 */
 				enum class error_t : uint8_t {
-					NONE      = 0x00, // Ошибка не установлена
-					START     = 0x01, // Ошибка запуска приложения
-					CONNECT   = 0x02, // Ошибка подключения
-					PROTOCOL  = 0x03, // Ошибка активации протокола
-					OS_BROKEN = 0x04  // Ошибка неподдерживаемой ОС
+					NONE     = 0x00, // Ошибка не установлена
+					START    = 0x01, // Ошибка запуска приложения
+					CONNECT  = 0x02, // Ошибка подключения
+					PROTOCOL = 0x03  // Ошибка активации протокола
 				};
 			private:
 				/**
 				 * Mutex Структура основных мютексов
 				 */
 				typedef struct Mutex {
-					recursive_mutex close;   // Для закрытия подключения
-					recursive_mutex reset;   // Для сброса параметров таймаута
-					recursive_mutex proxy;   // Для работы с прокси-сервером
-					recursive_mutex connect; // Для выполнения подключения
-					recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
-					recursive_mutex timeout; // Для создания нового таймаута
+					std::recursive_mutex close;   // Для закрытия подключения
+					std::recursive_mutex reset;   // Для сброса параметров таймаута
+					std::recursive_mutex proxy;   // Для работы с прокси-сервером
+					std::recursive_mutex connect; // Для выполнения подключения
+					std::recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
+					std::recursive_mutex timeout; // Для создания нового таймаута
 				} mtx_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -79,9 +78,9 @@ namespace awh {
 				transfer_t _transfer;
 			private:
 				// Список таймаутов на получение данных
-				map <uint64_t, uint16_t> _receive;
+				std::map <uint64_t, uint16_t> _receive;
 				// Список активных таймаутов
-				map <uint16_t, uint16_t> _timeouts;
+				std::map <uint16_t, uint16_t> _timeouts;
 			private:
 				/**
 				 * connect Метод создания подключения к удаленному серверу

@@ -60,11 +60,11 @@ namespace awh {
 			 */
 			typedef struct Mutex {
 				// Для работы с параметрами модуля
-				recursive_mutex main;
+				std::recursive_mutex main;
 				// Для работы с биндингом сетевых ядер
-				recursive_mutex bind;
+				std::recursive_mutex bind;
 				// Для контроля запуска модуля
-				recursive_mutex status;
+				std::recursive_mutex status;
 			} mtx_t;
 		private:
 			/**
@@ -83,7 +83,7 @@ namespace awh {
 					bool _virt;
 				private:
 					// Мютекс для блокировки потока
-					recursive_mutex _mtx;
+					std::recursive_mutex _mtx;
 				private:
 					// Функция обратного вызова при запуске модуля
 					function <void (const bool, const bool)> _launching;

@@ -285,7 +285,7 @@ void awh::cluster::Core::name(const string & name) noexcept {
  */
 void awh::cluster::Core::callback(const callback_t & callback) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функций обратного вызова
 	awh::core_t::callback(callback);
 	// Выполняем установку функции обратного вызова при завершении работы процесса
@@ -321,7 +321,7 @@ void awh::cluster::Core::size(const uint16_t size) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -344,7 +344,7 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**

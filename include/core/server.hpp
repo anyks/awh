@@ -51,12 +51,12 @@ namespace awh {
 				 * Коды ошибок клиента
 				 */
 				enum class error_t : uint8_t {
-					NONE      = 0x00, // Ошибка не установлена
-					START     = 0x01, // Ошибка запуска приложения
-					ACCEPT    = 0x02, // Ошибка разрешения подключения
-					CLUSTER   = 0x03, // Ошибка работы кластера
-					PROTOCOL  = 0x04, // Ошибка активации протокола
-					OS_BROKEN = 0x05  // Ошибка неподдерживаемой ОС
+					NONE     = 0x00, // Ошибка не установлена
+					START    = 0x01, // Ошибка запуска приложения
+					ACCEPT   = 0x02, // Ошибка разрешения подключения
+					CLUSTER  = 0x03, // Ошибка работы кластера
+					PROTOCOL = 0x04, // Ошибка активации протокола
+					OSBROKEN = 0x05  // Ошибка неподдерживаемой ОС
 				};
 			private:
 				/**
@@ -73,11 +73,11 @@ namespace awh {
 				 * Mutex Объект основных мютексов
 				 */
 				typedef struct Mutex {
-					recursive_mutex main;    // Для установки системных параметров
-					recursive_mutex close;   // Для закрытия подключения
-					recursive_mutex accept;  // Для одобрения подключения
-					recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
-					recursive_mutex timeout; // Для создания нового таймаута
+					std::recursive_mutex main;    // Для установки системных параметров
+					std::recursive_mutex close;   // Для закрытия подключения
+					std::recursive_mutex accept;  // Для одобрения подключения
+					std::recursive_mutex receive; // Для работы с таймаутами ожидания получения данных
+					std::recursive_mutex timeout; // Для создания нового таймаута
 				} mtx_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -100,18 +100,18 @@ namespace awh {
 				awh::scheme_t::mode_t _clusterMode;
 			private:
 				// Таймер для работы DTLS
-				unique_ptr <timer_t> _timer;
+				std::unique_ptr <timer_t> _timer;
 			private:
 				// Список активных дочерних процессов
-				multimap <uint16_t, pid_t> _workers;
+				std::multimap <uint16_t, pid_t> _workers;
 			private:
 				// Список таймаутов на получение данных
-				map <uint64_t, uint16_t> _receive;
+				std::map <uint64_t, uint16_t> _receive;
 				// Список активных таймаутов
-				map <uint16_t, uint16_t> _timeouts;
+				std::map <uint16_t, uint16_t> _timeouts;
 			private:
 				// Список подключённых брокеров
-				map <uint16_t, unique_ptr <awh::scheme_t::broker_t>> _brokers;
+				std::map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;
 			private:
 				/**
 				 * accept Метод вызова при подключении к серверу

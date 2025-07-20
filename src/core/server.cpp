@@ -62,7 +62,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						// Выполняем остановку работы получения запроса на подключение
 						} else {
 							// Создаём бъект активного брокера подключения
-							unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
+							std::unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
 							/**
 							 * !!!!!! ВНИМАНИЕ !!!!!!
 							 * Нельзя устанавливать таймаут на чтение и запись, так-как по истечению таймаута будет закрыт сокет сервера а не клиента
@@ -135,7 +135,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Выполняем установку базы событий
 								broker->base(this->eventBase());
 								// Добавляем созданного брокера в список брокеров
-								auto ret = shm->_brokers.emplace(broker->id(), std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
+								auto ret = shm->_brokers.emplace(broker->id(), std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
 								// Добавляем брокера в список подключений
 								node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
 								// Выполняем блокировку потока
@@ -228,7 +228,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 							break;
 						}
 						// Создаём бъект активного брокера подключения
-						unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
+						std::unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
 						// Устанавливаем время жизни подключения
 						broker->addr.alive = shm->keepAlive;
 						// Выполняем установку времени ожидания входящих сообщений
@@ -458,7 +458,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 								// Выполняем установку базы событий
 								broker->base(this->eventBase());
 								// Добавляем созданного брокера в список брокеров
-								auto ret = shm->_brokers.emplace(broker->id(), std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
+								auto ret = shm->_brokers.emplace(broker->id(), std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
 								// Добавляем брокера в список подключений
 								node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
 								// Выполняем блокировку потока
@@ -972,7 +972,7 @@ void awh::server::Core::closedown(const bool mode, const bool status) noexcept {
  */
 void awh::server::Core::clearTimeout(const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
 	// Выполняем поиск активных таймаутов
 	auto i = this->_receive.find(bid);
 	// Если таймаут найден
@@ -991,7 +991,7 @@ void awh::server::Core::clearTimeout(const uint64_t bid) noexcept {
  */
 void awh::server::Core::clearTimeout(const uint16_t sid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.timeout);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
 	// Выполняем поиск активных таймаутов
 	auto i = this->_timeouts.find(sid);
 	// Если таймаут найден
@@ -1017,9 +1017,9 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 		// Если таймер не инициализирован
 		if(this->_timer == nullptr){
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock1(this->_mtx.receive);
+			const lock_guard <std::recursive_mutex> lock1(this->_mtx.receive);
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock2(this->_mtx.timeout);
+			const lock_guard <std::recursive_mutex> lock2(this->_mtx.timeout);
 			// Выполняем инициализацию нового таймера
 			this->_timer = make_unique <timer_t> (this->_fmk, this->_log);
 			// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -1046,7 +1046,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 					// Если таймаут ещё не создан
 					} else {
 						// Выполняем блокировку потока
-						const lock_guard <recursive_mutex> lock(this->_mtx.timeout);
+						const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
 						// Выполняем создание нового таймаута
 						this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
 					}
@@ -1071,7 +1071,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 					// Если таймаут ещё не создан
 					} else {
 						// Выполняем блокировку потока
-						const lock_guard <recursive_mutex> lock(this->_mtx.timeout);
+						const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
 						// Выполняем создание нового таймаута
 						this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
 					}
@@ -1096,7 +1096,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 					// Если таймаут ещё не создан
 					} else {
 						// Выполняем блокировку потока
-						const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+						const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
 						// Выполняем создание нового таймаута
 						this->_receive.emplace(bid, (tid = this->_timer->timeout(msec)));
 					}
@@ -1329,7 +1329,7 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 				// Получаем объект схемы сети
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Создаём бъект активного брокера подключения
-				unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
+				std::unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
 				// Получаем идентификатор брокера подключения
 				const uint64_t bid = broker->id();
 				// Выполняем установку желаемого протокола подключения
@@ -1349,7 +1349,7 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 				// Выполняем установку базы событий
 				broker->base(this->eventBase());
 				// Добавляем созданного брокера в список брокеров
-				auto ret = shm->_brokers.emplace(bid, std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
+				auto ret = shm->_brokers.emplace(bid, std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
 				// Добавляем брокера в список подключений
 				node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
 				// Выполняем разблокировку потока
@@ -1451,10 +1451,10 @@ void awh::server::Core::close() noexcept {
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock1(this->_mtx.close);
+		const lock_guard <std::recursive_mutex> lock1(this->_mtx.close);
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock2(node_t::_mtx.main);
-		const lock_guard <recursive_mutex> lock3(node_t::_mtx.send);
+		const lock_guard <std::recursive_mutex> lock2(node_t::_mtx.main);
+		const lock_guard <std::recursive_mutex> lock3(node_t::_mtx.send);
 		// Объект работы с функциями обратного вызова
 		callback_t callback(this->_log);
 		// Переходим по всему списку схем сети
@@ -1521,10 +1521,10 @@ void awh::server::Core::remove() noexcept {
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock1(this->_mtx.close);
+		const lock_guard <std::recursive_mutex> lock1(this->_mtx.close);
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock2(node_t::_mtx.main);
-		const lock_guard <recursive_mutex> lock3(node_t::_mtx.send);
+		const lock_guard <std::recursive_mutex> lock2(node_t::_mtx.main);
+		const lock_guard <std::recursive_mutex> lock3(node_t::_mtx.send);
 		// Если таймер инициализирован удачно
 		if(this->_timer != nullptr){
 			// Выполняем удаление всех таймеров
@@ -1608,7 +1608,7 @@ void awh::server::Core::remove() noexcept {
  */
 void awh::server::Core::close(const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.close);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
 	// Выполняем удаление таймера ожидания получения данных
 	this->clearTimeout(bid);
 	// Определяем тип сокета
@@ -1676,10 +1676,10 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 	// Если идентификатор схемы сети существует
 	if(this->has(sid)){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock1(this->_mtx.close);
+		const lock_guard <std::recursive_mutex> lock1(this->_mtx.close);
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock2(node_t::_mtx.main);
-		const lock_guard <recursive_mutex> lock3(node_t::_mtx.send);
+		const lock_guard <std::recursive_mutex> lock2(node_t::_mtx.main);
+		const lock_guard <std::recursive_mutex> lock3(node_t::_mtx.send);
 		// Выполняем поиск идентификатора схемы сети
 		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
@@ -1757,7 +1757,7 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
  */
 void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.close);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
 	// Выполняем удаление таймера ожидания получения данных
 	this->clearTimeout(bid);
 	// Определяем тип сокета
@@ -2892,7 +2892,7 @@ void awh::server::Core::ipV6only(const bool mode) noexcept {
  */
 void awh::server::Core::callback(const callback_t & callback) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функций обратного вызова
 	awh::core_t::callback(callback);
 	// Выполняем установку функции обратного вызова при открытии подключения
@@ -2932,7 +2932,7 @@ void awh::server::Core::callback(const callback_t & callback) noexcept {
  */
 void awh::server::Core::transferRule(const transfer_t transfer) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку правила передачи данных
 	this->_transfer = transfer;
 }
@@ -2945,7 +2945,7 @@ void awh::server::Core::total(const uint16_t sid, const uint16_t total) noexcept
 	// Если идентификатор схемы сети передан
 	if(this->has(sid)){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем поиск идентификатора схемы сети
 		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
@@ -2964,7 +2964,7 @@ void awh::server::Core::clusterName(const string & name) noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку названия кластера
 		this->_cluster.name(name);
 	/**
@@ -2976,7 +2976,7 @@ void awh::server::Core::clusterName(const string & name) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -2989,7 +2989,7 @@ void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Разрешаем автоматический перезапуск упавших процессов
 		this->_clusterAutoRestart = mode;
 	/**
@@ -3001,7 +3001,7 @@ void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -3014,7 +3014,7 @@ void awh::server::Core::clusterSalt(const string & salt) noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку соли шифрования
 		this->_cluster.salt(salt);
 	/**
@@ -3026,7 +3026,7 @@ void awh::server::Core::clusterSalt(const string & salt) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -3039,7 +3039,7 @@ void awh::server::Core::clusterPassword(const string & password) noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку пароля шифрования
 		this->_cluster.password(password);
 	/**
@@ -3051,7 +3051,7 @@ void awh::server::Core::clusterPassword(const string & password) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -3064,7 +3064,7 @@ void awh::server::Core::clusterCipher(const hash_t::cipher_t cipher) noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку размера шифрования
 		this->_cluster.cipher(cipher);
 	/**
@@ -3076,7 +3076,7 @@ void awh::server::Core::clusterCipher(const hash_t::cipher_t cipher) noexcept {
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -3089,7 +3089,7 @@ void awh::server::Core::clusterCompressor(const hash_t::method_t compressor) noe
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку метода компрессии
 		this->_cluster.compressor(compressor);
 	/**
@@ -3101,7 +3101,7 @@ void awh::server::Core::clusterCompressor(const hash_t::method_t compressor) noe
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -3114,7 +3114,7 @@ void awh::server::Core::clusterTransfer(const cluster_t::transfer_t transfer) no
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку режима передачи данных
 		this->_cluster.transfer(transfer);
 	/**
@@ -3126,7 +3126,7 @@ void awh::server::Core::clusterTransfer(const cluster_t::transfer_t transfer) no
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -3140,7 +3140,7 @@ void awh::server::Core::clusterBandwidth(const string & read, const string & wri
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку пропускной способности сети кластера
 		this->_cluster.bandwidth(read, write);
 	/**
@@ -3152,7 +3152,7 @@ void awh::server::Core::clusterBandwidth(const string & read, const string & wri
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -3174,7 +3174,7 @@ void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t 
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Активируем режим работы кластера
 		this->_clusterMode = mode;
 		// Определяем режим активации кластера
@@ -3209,7 +3209,7 @@ void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t 
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OS_BROKEN, "MS Windows OS, does not support cluster mode");
+			this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::OSBROKEN, "MS Windows OS, does not support cluster mode");
 	#endif
 }
 /**
@@ -3226,7 +3226,7 @@ void awh::server::Core::init(const uint16_t sid, const uint32_t port, const stri
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 		if(i != this->_schemes.end()){
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->_mtx.main);
+			const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Если порт передан, устанавливаем
@@ -3378,7 +3378,7 @@ void awh::server::Core::waitMessage(const uint64_t bid, const uint16_t sec) noex
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
 		// Выполняем удаление таймаута
 		this->clearTimeout(bid);
 		// Создаём бъект активного брокера подключения
@@ -3400,7 +3400,7 @@ void awh::server::Core::waitTimeDetect(const uint64_t bid, const uint16_t read, 
 	// Если идентификатор брокера подключения передан
 	if(bid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.receive);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
 		// Выполняем удаление таймаута
 		this->clearTimeout(bid);
 		// Создаём бъект активного брокера подключения
