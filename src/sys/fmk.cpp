@@ -4554,7 +4554,7 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 /**
  * Framework Конструктор
  */
-awh::Framework::Framework() noexcept : _locale(AWH_LOCALE) {
+awh::Framework::Framework() noexcept {
 	// Устанавливаем локализацию системы
 	this->setLocale();
 	// Устанавливаем регулярное выражение для парсинга буферов данных

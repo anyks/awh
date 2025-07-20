@@ -61,10 +61,10 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     SET(DEBUGGER "-ggdb3")
      # Используем Clang
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lc")
      # Используем GCC
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl -lc")
     endif()
 # Если операционной системой является MacOS X
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
