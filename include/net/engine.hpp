@@ -216,7 +216,7 @@ namespace awh {
 					socket_t _socket;
 				private:
 					// Выполняем инициализацию генератора
-					random_device _randev;
+					std::random_device _randev;
 				public:
 					// Список сетевых интерфейсов
 					vector <string> network;
@@ -395,7 +395,7 @@ namespace awh {
 					vector <uint8_t> protocols;
 				private:
 					// Параметры валидации домена
-					unique_ptr <verify_t> _verify;
+					std::unique_ptr <verify_t> _verify;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;

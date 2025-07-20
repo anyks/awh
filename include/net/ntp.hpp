@@ -279,21 +279,21 @@ namespace awh {
 			uint8_t _timeout;
 		private:
 			// Мютекс для блокировки потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
 			// Выполняем инициализацию генератора
-			random_device _randev;
+			std::random_device _randev;
 		private:
 			// Статус работы NTP-клиента
-			stack <status_t> _status;
+			std::stack <status_t> _status;
 		private:
 			// Список используемых адресов
-			unordered_set <string> _using;
+			std::unordered_set <string> _using;
 		private:
 			// Создаём воркер для IPv4
-			unique_ptr <worker_t> _workerIPv4;
+			std::unique_ptr <worker_t> _workerIPv4;
 			// Создаём воркер для IPv6
-			unique_ptr <worker_t> _workerIPv6;
+			std::unique_ptr <worker_t> _workerIPv6;
 		private:
 			// Адреса серверов имён NTP для IPv4
 			vector <server_t <1>> _serversIPv4;

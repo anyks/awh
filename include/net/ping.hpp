@@ -166,13 +166,13 @@ namespace awh {
 			chrono_t _chrono;
 		private:
 			// Мютекс для блокировки потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
 			// Выполняем инициализацию генератора
-			random_device _randev;
+			std::random_device _randev;
 		private:
 			// Статус работы PING-клиента
-			stack <status_t> _status;
+			std::stack <status_t> _status;
 		private:
 			// Сдвиг по времени для выполнения пинга
 			uint64_t _shifting;
