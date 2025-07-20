@@ -73,14 +73,14 @@ namespace awh {
 				// Объект партнёра сервера
 				scheme::ws_t::partner_t _server;
 			private:
-				// Поддерживаемые сабпротоколы
-				unordered_set <string> _subprotocols;
-			private:
 				// Список поддверживаемых расширений
 				vector <vector <string>> _extensions;
 			private:
+				// Поддерживаемые сабпротоколы
+				std::unordered_set <string> _subprotocols;
+			private:
 				// Полученные HTTP заголовки
-				unordered_multimap <string, string> _headers;
+				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
@@ -162,7 +162,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * error Метод вывода сообщений об ошибках работы брокера
@@ -378,13 +378,13 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения
@@ -402,7 +402,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений

@@ -498,7 +498,7 @@ int32_t awh::server::Websocket2::chunkSignal(const int32_t sid, const uint64_t b
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept {
+int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
@@ -720,7 +720,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 							// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 							if(this->_callback.is("headers"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", options->sid, bid, request.method, request.url, options->http.headers());
+								this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headers", options->sid, bid, request.method, request.url, options->http.headers());
 							// Если рукопожатие не выполнено
 							if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
 								// Ответ клиенту по умолчанию успешный
@@ -848,7 +848,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 												// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 												if(this->_callback.is("complete"))
 													// Выполняем функцию обратного вызова
-													this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
+													this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
 												// Если мы получили флаг завершения потока
 												if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 													// Если установлена функция отлова завершения запроса
@@ -1860,7 +1860,7 @@ void awh::server::Websocket2::keepAlive(const int32_t cnt, const int32_t idle, c
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Websocket2::mode(const set <flag_t> & flags) noexcept {
+void awh::server::Websocket2::mode(const std::set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Активируем выполнение пинга
@@ -1882,7 +1882,7 @@ void awh::server::Websocket2::mode(const set <flag_t> & flags) noexcept {
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Websocket2::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Websocket2::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку основных настроек протокола HTTP/2
 	web2_t::settings(settings);
 	// Если метод CONNECT не установлен, разрешаем его по умолчанию
@@ -1948,7 +1948,7 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::server::Websocket2::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Websocket2::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку заголовков которые нужно передать клиенту
 	this->_headers = headers;
 }

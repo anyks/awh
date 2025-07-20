@@ -262,7 +262,7 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame")){
 		// Выполняем создание флага по умолчанию
-		set <flag_t> flags;
+		std::set <flag_t> flags;
 		// Выполняем создание идентификатора фрейма по умолчанию
 		frame_t type = frame_t::NONE;
 		// Идентификатор активного потока
@@ -405,7 +405,7 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		return self->_callback.call <int32_t (const int32_t, const direct_t, const frame_t, const set <flag_t> &)> ("frame", sid, direct_t::RECV, type, flags);
+		return self->_callback.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", sid, direct_t::RECV, type, flags);
 	}
 	// Выводим результат
 	return 0;
@@ -423,7 +423,7 @@ int32_t awh::Http2::frameSend([[maybe_unused]] nghttp2_session * session, const 
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("frame")){
 		// Выполняем создание флага по умолчанию
-		set <flag_t> flags;
+		std::set <flag_t> flags;
 		// Выполняем создание идентификатора фрейма по умолчанию
 		frame_t type = frame_t::NONE;
 		// Если мы получили флаг PADDED
@@ -511,7 +511,7 @@ int32_t awh::Http2::frameSend([[maybe_unused]] nghttp2_session * session, const 
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		return self->_callback.call <int32_t (const int32_t, const direct_t, const frame_t, const set <flag_t> &)> ("frame", frame->hd.stream_id, direct_t::SEND, type, flags);
+		return self->_callback.call <int32_t (const int32_t, const direct_t, const frame_t, const std::set <flag_t> &)> ("frame", frame->hd.stream_id, direct_t::SEND, type, flags);
 	}
 	// Выводим результат
 	return 0;

@@ -1612,7 +1612,7 @@ void awh::server::Http1::keepAlive(const int32_t cnt, const int32_t idle, const 
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Http1::mode(const set <flag_t> & flags) noexcept {
+void awh::server::Http1::mode(const std::set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws1.mode(flags);
 	// Активируем выполнение пинга

@@ -456,7 +456,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <web_t::flag_t> & flags) noexcept;
+				void mode(const std::set <web_t::flag_t> & flags) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

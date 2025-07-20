@@ -62,17 +62,17 @@ namespace awh {
 				// Объект партнёра сервера
 				scheme::ws_t::partner_t _server;
 			private:
-				// Список активных агентов
-				map <uint64_t, agent_t> _agents;
-			private:
-				// Поддерживаемые сабпротоколы
-				unordered_set <string> _subprotocols;
-			private:
 				// Список поддверживаемых расширений
 				vector <vector <string>> _extensions;
 			private:
+				// Список активных агентов
+				std::map <uint64_t, agent_t> _agents;
+			private:
+				// Поддерживаемые сабпротоколы
+				std::unordered_set <string> _subprotocols;
+			private:
 				// Полученные HTTP заголовки
-				unordered_multimap <string, string> _headers;
+				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
@@ -154,7 +154,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept;
+				int32_t frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::set <awh::http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
 				 * prepare Метод выполнения препарирования полученных данных
@@ -286,7 +286,7 @@ namespace awh {
 				 * @param end     размер сообщения в байтах
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept;
+				int32_t send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения брокеру
@@ -298,7 +298,7 @@ namespace awh {
 				 * @param size    размер данных полезной нагрузки (размер тела сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const unordered_multimap <string, string> & headers) noexcept;
+				void send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept;
 				/**
 				 * send Метод отправки сообщения брокеру
 				 * @param sid     идентификатор потока HTTP
@@ -308,7 +308,7 @@ namespace awh {
 				 * @param entity  данные полезной нагрузки (тело сообщения)
 				 * @param headers HTTP заголовки сообщения
 				 */
-				void send(const int32_t sid, const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
+				void send(const int32_t sid, const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
 				 * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
@@ -441,13 +441,13 @@ namespace awh {
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const unordered_set <string> & subprotocols) noexcept;
+				void subprotocols(const std::unordered_set <string> & subprotocols) noexcept;
 				/**
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
-				const unordered_set <string> & subprotocols(const uint64_t bid) const noexcept;
+				const std::unordered_set <string> & subprotocols(const uint64_t bid) const noexcept;
 			public:
 				/**
 				 * extensions Метод установки списка расширений
@@ -495,7 +495,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения

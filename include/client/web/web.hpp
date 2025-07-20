@@ -562,7 +562,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const set <flag_t> & flags) noexcept = 0;
+				virtual void mode(const std::set <flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * chunk Метод установки размера чанка
@@ -685,7 +685,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				int32_t frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept;
+				int32_t frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept;
 				/**
 				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
 				 * @param sid    идентификатор потока
@@ -694,7 +694,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
+				virtual int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept = 0;
 			protected:
 				/**
 				 * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
@@ -839,7 +839,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const set <flag_t> & flags) noexcept;
+				virtual void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2

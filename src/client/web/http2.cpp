@@ -268,7 +268,7 @@ int32_t awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffe
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept {
+int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::set <awh::http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
@@ -1989,20 +1989,6 @@ void awh::client::Http2::segmentSize(const size_t size) noexcept {
 		this->_ws2.segmentSize(size);
 }
 /**
- * mode Метод установки флагов настроек модуля
- * @param flags список флагов настроек модуля для установки
- */
-void awh::client::Http2::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаги настроек модуля для Websocket-клиента
-	this->_ws2.mode(flags);
-	// Устанавливаем флаги настроек модуля для HTTP/2 клиента
-	this->_http1.mode(flags);
-	// Выполняем установку флагов настроек модуля
-	web2_t::mode(flags);
-	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
-	this->_webSocket = (flags.find(flag_t::WEBSOCKET_ENABLE) != flags.end());
-}
-/**
  * core Метод установки сетевого ядра
  * @param core объект сетевого ядра
  */
@@ -2034,6 +2020,20 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
 	}
+}
+/**
+ * mode Метод установки флагов настроек модуля
+ * @param flags список флагов настроек модуля для установки
+ */
+void awh::client::Http2::mode(const std::set <flag_t> & flags) noexcept {
+	// Устанавливаем флаги настроек модуля для Websocket-клиента
+	this->_ws2.mode(flags);
+	// Устанавливаем флаги настроек модуля для HTTP/2 клиента
+	this->_http1.mode(flags);
+	// Выполняем установку флагов настроек модуля
+	web2_t::mode(flags);
+	// Устанавливаем флаг разрешающий выполнять подключение к протоколу Websocket
+	this->_webSocket = (flags.find(flag_t::WEBSOCKET_ENABLE) != flags.end());
 }
 /**
  * user Метод установки параметров авторизации

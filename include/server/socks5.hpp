@@ -115,9 +115,9 @@ namespace awh {
 				size_t _brokerAvailableSize;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				map <uint64_t, unique_ptr <queue_t>> _payloads;
+				std::map <uint64_t, std::unique_ptr <queue_t>> _payloads;
 				// Список активных клиентов
-				map <uint64_t, unique_ptr <client::core_t>> _clients;
+				std::map <uint64_t, std::unique_ptr <client::core_t>> _clients;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -408,7 +408,7 @@ namespace awh {
 				 * mode Метод установки флагов модуля
 				 * @param flags список флагов модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * ipV6only Метод установки флага использования только сети IPv6

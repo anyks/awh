@@ -66,7 +66,7 @@ namespace awh {
 				scheme::web_t _scheme;
 			private:
 				// Список активных агентов
-				map <uint64_t, agent_t> _agents;
+				std::map <uint64_t, agent_t> _agents;
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
@@ -354,7 +354,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения

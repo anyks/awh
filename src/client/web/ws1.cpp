@@ -1405,34 +1405,6 @@ void awh::client::Websocket1::segmentSize(const size_t size) noexcept {
 	else this->_frame.size = AWH_CHUNK_SIZE;
 }
 /**
- * mode Метод установки флагов настроек модуля
- * @param flags список флагов настроек модуля для установки
- */
-void awh::client::Websocket1::mode(const set <flag_t> & flags) noexcept {
-	// Устанавливаем флаг разрешающий вывод информационных сообщений
-	this->_verb = (flags.find(flag_t::NOT_INFO) == flags.end());
-	// Активируем выполнение пинга
-	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
-	// Если установлен флаг запрещающий переключение контекста SSL
-	this->_nossl = (flags.find(flag_t::NO_INIT_SSL) != flags.end());
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
-	// Устанавливаем флаг разрешающий выполнять редиректы
-	this->_redirects = (flags.find(flag_t::REDIRECTS) != flags.end());
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
-	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_client.takeover = (flags.find(flag_t::TAKEOVER_CLIENT) != flags.end());
-	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_server.takeover = (flags.find(flag_t::TAKEOVER_SERVER) != flags.end());
-	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
-	this->_proxy.connect = (flags.find(flag_t::CONNECT_METHOD_ENABLE) != flags.end());
-	// Если сетевое ядро установлено
-	if(this->_core != nullptr)
-		// Устанавливаем флаг запрещающий вывод информационных сообщений
-		const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
-}
-/**
  * core Метод установки сетевого ядра
  * @param core объект сетевого ядра
  */
@@ -1459,6 +1431,34 @@ void awh::client::Websocket1::core(const client::core_t * core) noexcept {
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
 	}
+}
+/**
+ * mode Метод установки флагов настроек модуля
+ * @param flags список флагов настроек модуля для установки
+ */
+void awh::client::Websocket1::mode(const std::set <flag_t> & flags) noexcept {
+	// Устанавливаем флаг разрешающий вывод информационных сообщений
+	this->_verb = (flags.find(flag_t::NOT_INFO) == flags.end());
+	// Активируем выполнение пинга
+	this->_pinging = (flags.find(flag_t::NOT_PING) == flags.end());
+	// Если установлен флаг запрещающий переключение контекста SSL
+	this->_nossl = (flags.find(flag_t::NO_INIT_SSL) != flags.end());
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
+	this->_complete = (flags.find(flag_t::NOT_STOP) == flags.end());
+	// Устанавливаем флаг разрешающий выполнять редиректы
+	this->_redirects = (flags.find(flag_t::REDIRECTS) != flags.end());
+	// Устанавливаем флаг поддержания автоматического подключения
+	this->_scheme.alive = (flags.find(flag_t::ALIVE) != flags.end());
+	// Устанавливаем флаг перехвата контекста компрессии для клиента
+	this->_client.takeover = (flags.find(flag_t::TAKEOVER_CLIENT) != flags.end());
+	// Устанавливаем флаг перехвата контекста компрессии для сервера
+	this->_server.takeover = (flags.find(flag_t::TAKEOVER_SERVER) != flags.end());
+	// Устанавливаем флаг разрешающий выполнять метод CONNECT для прокси-клиента
+	this->_proxy.connect = (flags.find(flag_t::CONNECT_METHOD_ENABLE) != flags.end());
+	// Если сетевое ядро установлено
+	if(this->_core != nullptr)
+		// Устанавливаем флаг запрещающий вывод информационных сообщений
+		const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
  * user Метод установки параметров авторизации

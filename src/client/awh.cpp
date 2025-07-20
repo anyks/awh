@@ -1083,7 +1083,7 @@ void awh::client::AWH::bandwidth(const string & read, const string & write) noex
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::AWH::mode(const set <web_t::flag_t> & flags) noexcept {
+void awh::client::AWH::mode(const std::set <web_t::flag_t> & flags) noexcept {
 	// Выполняем установку флагов настроек модуля
 	this->_http.mode(flags);
 }

@@ -164,7 +164,7 @@ namespace awh {
 				uint32_t _pingInterval;
 			protected:
 				// Список мусорных брокеров
-				map <uint64_t, uint64_t> _disconected;
+				std::map <uint64_t, uint64_t> _disconected;
 			protected:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -453,7 +453,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				virtual void mode(const set <flag_t> & flags) noexcept = 0;
+				virtual void mode(const std::set <flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений
@@ -557,13 +557,13 @@ namespace awh {
 				vector <string> _origins;
 			protected:
 				// Список отправляемых альтернативных сервисов HTTP/2
-				unordered_multimap <string, string> _altsvc;
+				std::unordered_multimap <string, string> _altsvc;
 			protected:
 				// Список параметров настроек протокола HTTP/2
-				map <http2_t::settings_t, uint32_t> _settings;
+				std::map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				// Список активных сессий HTTP/2
-				map <uint64_t, shared_ptr <http2_t>> _sessions;
+				std::map <uint64_t, shared_ptr <http2_t>> _sessions;
 			protected:
 				/**
 				 * session Метод инициализации сессии
@@ -629,7 +629,7 @@ namespace awh {
 				 * @param flags  флаги полученного фрейма
 				 * @return       статус полученных данных
 				 */
-				virtual int32_t frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const set <http2_t::flag_t> & flags) noexcept = 0;
+				virtual int32_t frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept = 0;
 			public:
 				/**
 				 * close Метод выполнения закрытия подключения
@@ -731,13 +731,13 @@ namespace awh {
 				 * setAltSvc Метод установки списка альтернативных сервисов
 				 * @param origins список альтернативных сервисов
 				 */
-				void setAltSvc(const unordered_multimap <string, string> & origins) noexcept;
+				void setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * Web2 Конструктор

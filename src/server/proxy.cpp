@@ -395,7 +395,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("push"))
 				// Выполняем установку функции обратного вызова при получении PUSH уведомлений
-				ret.first->second->awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", &server::proxy_t::pushClient, this, _1, bid, _2, _3, _4, _5);
+				ret.first->second->awh.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("push", &server::proxy_t::pushClient, this, _1, bid, _2, _3, _4, _5);
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("error"))
 				// Выполняем установку функции обратного вызова получения ошибок клиента
@@ -631,7 +631,7 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
  * @param url     URL-адрес параметров запроса
  * @param headers заголовки HTTP-запроса
  */
-void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем поиск объекта клиента
 	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
@@ -705,7 +705,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("headersServer"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, unordered_multimap <string, string> *)> ("headersServer", sid, bid, method, url, &i->second->request.headers);
+				this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, std::unordered_multimap <string, string> *)> ("headersServer", sid, bid, method, url, &i->second->request.headers);
 		}
 	}
 }
@@ -718,7 +718,7 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
  * @param message сообщение ответа сервера
  * @param headers заголовки HTTP-ответа
  */
-void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем поиск объекта клиента
 	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
@@ -805,7 +805,7 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("headersClient"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const int32_t, const uint64_t, const uint64_t, const uint32_t, const string &, unordered_multimap <string, string> *)> ("headersClient", sid, bid, rid, code, message, &i->second->response.headers);
+					this->_callback.call <void (const int32_t, const uint64_t, const uint64_t, const uint32_t, const string &, std::unordered_multimap <string, string> *)> ("headersClient", sid, bid, rid, code, message, &i->second->response.headers);
 				// Если производится активация Websocket
 				if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
 					// Флаг удачно-выполненного подключения
@@ -852,11 +852,11 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
  * @param url     URL-адрес параметров запроса
  * @param headers заголовки HTTP-запроса
  */
-void awh::server::Proxy::pushClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Proxy::pushClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const awh::web_t::method_t method, const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("push"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const int32_t, const uint64_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("push", sid, bid, rid, method, url, headers);
+		this->_callback.call <void (const int32_t, const uint64_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("push", sid, bid, rid, method, url, headers);
 }
 /**
  * handshake Метод получения удачного запроса
@@ -886,7 +886,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							// Помечаем, что сервер занят
 							i->second->busy = !i->second->busy;
 							// Создаём список флагов клиента
-							set <client::web_t::flag_t> flags = {
+							std::set <client::web_t::flag_t> flags = {
 								client::web_t::flag_t::NOT_STOP,
 								client::web_t::flag_t::NOT_INFO,
 								client::web_t::flag_t::WEBSOCKET_ENABLE
@@ -910,7 +910,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
 								i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", &server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5);
 								// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-								i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5);
+								i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5);
 							// Если метод CONNECT не разрешён для запроса
 							} else if(this->_flags.find(flag_t::CONNECT_METHOD_SERVER_ENABLE) == this->_flags.end()) {
 								// Формируем сообщение ответа
@@ -987,7 +987,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Помечаем, что сервер занят
 									i->second->busy = !i->second->busy;
 									// Создаём список флагов клиента
-									set <client::web_t::flag_t> flags = {
+									std::set <client::web_t::flag_t> flags = {
 										client::web_t::flag_t::NOT_STOP,
 										client::web_t::flag_t::NOT_INFO,
 										client::web_t::flag_t::WEBSOCKET_ENABLE
@@ -1013,7 +1013,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
 									i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", &server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5);
 									// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-									i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5);
+									i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5);
 									// Устанавливаем флаги настроек модуля
 									i->second->awh.mode(flags);
 									// Выполняем инициализацию подключения
@@ -1092,7 +1092,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 										return;
 									}
 									// Создаём список флагов клиента
-									set <client::web_t::flag_t> flags = {
+									std::set <client::web_t::flag_t> flags = {
 										client::web_t::flag_t::NOT_STOP,
 										client::web_t::flag_t::NOT_INFO,
 										client::web_t::flag_t::WEBSOCKET_ENABLE
@@ -1127,7 +1127,7 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									// Устанавливаем функцию обратного вызова при получении HTTP-тела ответа с сервера клиенту
 									i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entity", &server::proxy_t::entityClient, this, _1, bid, _2, _3, _4, _5);
 									// Устанавливаем функцию обратного вызова при получении HTTP-заголовков ответа с сервера клиенту
-									i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5);
+									i->second->awh.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersClient, this, _1, bid, _2, _3, _4, _5);
 									// Выполняем подключение клиента к сетевому ядру
 									this->_core.bind(&i->second->core);
 									// Выполняем установку подключения
@@ -1275,7 +1275,7 @@ void awh::server::Proxy::completed(const int32_t sid, const uint64_t bid) noexce
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("completed"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("completed", sid, bid, i->second->response.params.code, i->second->response.params.message, i->second->response.entity, i->second->response.headers);
+				this->_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("completed", sid, bid, i->second->response.params.code, i->second->response.params.message, i->second->response.entity, i->second->response.headers);
 		}
 	}
 }
@@ -1480,11 +1480,11 @@ void awh::server::Proxy::total(const uint16_t total) noexcept {
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Proxy::mode(const set <flag_t> & flags) noexcept {
+void awh::server::Proxy::mode(const std::set <flag_t> & flags) noexcept {
 	// Выполняем установку флагов приложения
 	this->_flags = flags;
 	// Создаём список флагов сервера
-	set <server::web_t::flag_t> server;
+	std::set <server::web_t::flag_t> server;
 	// Если флаг запрета выполнения пингов установлен
 	if(flags.find(flag_t::NOT_PING) != flags.end())
 		// Устанавливаем флаг запрета выполнения пингов
@@ -1537,7 +1537,7 @@ void awh::server::Proxy::addAltSvc(const string & origin, const string & field) 
  * setAltSvc Метод установки списка разрешённых источников
  * @param origins список альтернативных сервисов
  */
-void awh::server::Proxy::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
+void awh::server::Proxy::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
 	// Выполняем установку списка разрешённых источников
 	this->_server.setAltSvc(origins);
 }
@@ -1545,7 +1545,7 @@ void awh::server::Proxy::setAltSvc(const unordered_multimap <string, string> & o
  * settings Модуль установки настроек протокола HTTP/2
  * @param settings список настроек протокола HTTP/2
  */
-void awh::server::Proxy::settings(const map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
+void awh::server::Proxy::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку настроек протокола HTTP/2
 	this->_server.settings(settings);
 }
@@ -2203,5 +2203,5 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем функцию обратного вызова при получении тела запроса с клиента
 	this->_server.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", &server::proxy_t::entityServer, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию обратного вызова при получении HTTP-заголовков запроса с клиента
-	this->_server.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersServer, this, _1, _2, _3, _4, _5);
+	this->_server.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersServer, this, _1, _2, _3, _4, _5);
 }

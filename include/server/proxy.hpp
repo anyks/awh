@@ -74,17 +74,17 @@ namespace awh {
 				 * Request Объект параметров запроса
 				 */
 				typedef struct Request {
-					awh::web_t::req_t params;                    // Параметры запроса
-					vector <char> entity;                        // Тело запроса
-					unordered_multimap <string, string> headers; // Заголовки запроса
+					awh::web_t::req_t params;                         // Параметры запроса
+					vector <char> entity;                             // Тело запроса
+					std::unordered_multimap <string, string> headers; // Заголовки запроса
 				} request_t;
 				/**
 				 * Response Объект параметров ответа
 				 */
 				typedef struct Response {
-					awh::web_t::res_t params;                    // Параметры ответа
-					vector <char> entity;                        // Тело ответа
-					unordered_multimap <string, string> headers; // Заголовки ответа
+					awh::web_t::res_t params;                         // Параметры ответа
+					vector <char> entity;                             // Тело ответа
+					std::unordered_multimap <string, string> headers; // Заголовки ответа
 				} response_t;
 				/**
 				 * KeepAlive Структура параметров жизни подключения
@@ -102,10 +102,10 @@ namespace awh {
 				 * DNS Структура параметров DNS-резолвера
 				 */
 				typedef struct DNS {
-					uint8_t timeout;                               // Время ожидания выполнения запроса
-					string hosts;                                  // Адрес файла с локальными хостами
-					string prefix;                                 // Префикс переменной окружения для извлечения серверов имён
-					unordered_multimap <string, string> blacklist; // Чёрный список доменных имён
+					uint8_t timeout;                                    // Время ожидания выполнения запроса
+					string hosts;                                       // Адрес файла с локальными хостами
+					string prefix;                                      // Префикс переменной окружения для извлечения серверов имён
+					std::unordered_multimap <string, string> blacklist; // Чёрный список доменных имён
 					/**
 					 * DNS Конструктор
 					 */
@@ -209,7 +209,7 @@ namespace awh {
 					// Объект активного клиента
 					client::awh_t awh;
 					// Список доступных потоков
-					map <uint64_t, int32_t> streams;
+					std::map <uint64_t, int32_t> streams;
 					/**
 					 * Client Конструктор
 					 * @param fmk объект фреймворка
@@ -281,12 +281,12 @@ namespace awh {
 				http_t::compressor_t _compressor;
 			private:
 				// Список флагов приложения
-				set <flag_t> _flags;
+				std::set <flag_t> _flags;
 			private:
 				// Буферы отправляемой полезной нагрузки
-				map <uint64_t, unique_ptr <queue_t>> _payloads;
+				std::map <uint64_t, std::unique_ptr <queue_t>> _payloads;
 				// Список активных клиентов
-				map <uint64_t, unique_ptr <client_t>> _clients;
+				std::map <uint64_t, std::unique_ptr <client_t>> _clients;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -415,7 +415,7 @@ namespace awh {
 				 * @param url     URL-адрес параметров запроса
 				 * @param headers заголовки HTTP-запроса
 				 */
-				void headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept;
+				void headersServer(const int32_t sid, const uint64_t bid, const awh::web_t::method_t method, const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept;
 				/**
 				 * headersClient Метод получения заголовков ответа с сервера клиенту
 				 * @param sid     идентификатор потока
@@ -425,7 +425,7 @@ namespace awh {
 				 * @param message сообщение ответа сервера
 				 * @param headers заголовки HTTP-ответа
 				 */
-				void headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message, const unordered_multimap <string, string> & headers) noexcept;
+				void headersClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * pushClient Метод получения заголовков выполненного запроса (PUSH HTTP/2)
@@ -436,7 +436,7 @@ namespace awh {
 				 * @param url     URL-адрес параметров запроса
 				 * @param headers заголовки HTTP-запроса
 				 */
-				void pushClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const awh::web_t::method_t method, const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept;
+				void pushClient(const int32_t sid, const uint64_t bid, const uint64_t rid, const awh::web_t::method_t method, const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
 				 * handshake Метод получения удачного запроса (для сервера)
@@ -657,7 +657,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * addOrigin Метод добавления разрешённого источника
@@ -680,13 +680,13 @@ namespace awh {
 				 * setAltSvc Метод установки списка разрешённых источников
 				 * @param origins список альтернативных сервисов
 				 */
-				void setAltSvc(const unordered_multimap <string, string> & origins) noexcept;
+				void setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept;
 			public:
 				/**
 				 * settings Модуль установки настроек протокола HTTP/2
 				 * @param settings список настроек протокола HTTP/2
 				 */
-				void settings(const map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				void settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера

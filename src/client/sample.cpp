@@ -527,7 +527,7 @@ void awh::client::Sample::callback(const callback_t & callback) noexcept {
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::client::Sample::mode(const set <flag_t> & flags) noexcept {
+void awh::client::Sample::mode(const std::set <flag_t> & flags) noexcept {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Устанавливаем флаг анбиндинга ядра сетевого модуля

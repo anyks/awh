@@ -458,7 +458,7 @@ int32_t awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, c
  * @param flags  флаги полученного фрейма
  * @return       статус полученных данных
  */
-int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const set <awh::http2_t::flag_t> & flags) noexcept {
+int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::set <awh::http2_t::flag_t> & flags) noexcept {
 	// Определяем направление передачи фрейма
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
@@ -576,7 +576,7 @@ int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, c
 											// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
 											if(this->_callback.is("headers"))
 												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const unordered_multimap <string, string> &)> ("headers", sid, bid, request.method, request.url, const_cast <scheme::web2_t::stream_t *> (stream)->http.headers());
+												this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headers", sid, bid, request.method, request.url, const_cast <scheme::web2_t::stream_t *> (stream)->http.headers());
 											// Если мы получили неустановленный флаг или флаг завершения потока
 											if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 												// Выполняем обработку полученных данных
@@ -787,7 +787,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 					// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 					if(this->_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
+						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
 				} break;
 				// Если запрос неудачный
 				case static_cast <uint8_t> (http_t::status_t::FAULT): {
@@ -1093,7 +1093,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 						if(this->_callback.is("complete"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
+							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
 						// Завершаем работу
 						return;
 					// Формируем ответ, что произошла внутренняя ошибка сервера
@@ -1198,7 +1198,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 					// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 					if(this->_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
+						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, bid, request.method, request.url, stream->http.body(), stream->http.headers());
 					// Если функция обратного вызова на на вывод ошибок установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
@@ -1958,7 +1958,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
  * @param end     размер сообщения в байтах
  * @return        идентификатор нового запроса
  */
-int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const unordered_multimap <string, string> & headers, const bool end) noexcept {
+int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const std::unordered_multimap <string, string> & headers, const bool end) noexcept {
 	// Если заголовки запроса переданы
 	if((this->_core != nullptr) && this->_core->working() && !headers.empty()){
 		// Получаем параметры активного клиента
@@ -2057,7 +2057,7 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const ui
  * @param size    размер данных полезной нагрузки (размер тела сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const char * buffer, const size_t size, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Получаем параметры активного клиента
@@ -2214,7 +2214,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const vector <char> & entity, const std::unordered_multimap <string, string> & headers) noexcept {
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Если тело сообщения передано
@@ -2724,7 +2724,7 @@ void awh::server::Http2::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::Http2::subprotocols(const unordered_set <string> & subprotocols) noexcept {
+void awh::server::Http2::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Выполняем установку списка поддерживаемых сабпротоколов для Websocket-модуля
 	this->_ws2.subprotocols(subprotocols);
 	// Выполняем установку списка поддерживаемых сабпротоколов для HTTP-модуля
@@ -2735,9 +2735,9 @@ void awh::server::Http2::subprotocols(const unordered_set <string> & subprotocol
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const unordered_set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const noexcept {
+const std::unordered_set <string> & awh::server::Http2::subprotocols(const uint64_t bid) const noexcept {
 	// Результат работы функции
-	static const unordered_set <string> result;
+	static const std::unordered_set <string> result;
 	// Получаем параметры активного клиента
 	scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены
@@ -2910,7 +2910,7 @@ void awh::server::Http2::keepAlive(const int32_t cnt, const int32_t idle, const 
  * mode Метод установки флагов настроек модуля
  * @param flags список флагов настроек модуля для установки
  */
-void awh::server::Http2::mode(const set <flag_t> & flags) noexcept {
+void awh::server::Http2::mode(const std::set <flag_t> & flags) noexcept {
 	// Устанавливаем флаги настроек модуля для Websocket-сервера
 	this->_ws2.mode(flags);
 	// Устанавливаем флаги настроек модуля для HTTP-сервера

@@ -734,7 +734,7 @@ void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const u
  * mode Метод установки флагов модуля
  * @param flags список флагов модуля для установки
  */
-void awh::server::ProxySocks5::mode(const set <flag_t> & flags) noexcept {
+void awh::server::ProxySocks5::mode(const std::set <flag_t> & flags) noexcept {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_core.verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }

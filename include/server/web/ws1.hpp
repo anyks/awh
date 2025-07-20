@@ -83,14 +83,14 @@ namespace awh {
 				// Объект партнёра сервера
 				scheme::ws_t::partner_t _server;
 			private:
-				// Поддерживаемые сабпротоколы
-				unordered_set <string> _subprotocols;
-			private:
 				// Список поддверживаемых расширений
 				vector <vector <string>> _extensions;
 			private:
+				// Поддерживаемые сабпротоколы
+				std::unordered_set <string> _subprotocols;
+			private:
 				// Полученные HTTP заголовки
-				unordered_multimap <string, string> _headers;
+				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
 				 * connectEvents Метод обратного вызова при подключении к серверу
@@ -331,7 +331,7 @@ namespace awh {
 				 * mode Метод установки флагов настроек модуля
 				 * @param flags список флагов настроек модуля для установки
 				 */
-				void mode(const set <flag_t> & flags) noexcept;
+				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
 				 * alive Метод установки долгоживущего подключения
@@ -349,7 +349,7 @@ namespace awh {
 				 * setHeaders Метод установки списка заголовков
 				 * @param headers список заголовков для установки
 				 */
-				void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * waitMessage Метод ожидания входящих сообщений
