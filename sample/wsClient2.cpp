@@ -38,7 +38,7 @@ class WebClient {
 		const log_t * _log;
 	private:
 		// Буферы отправляемой полезной нагрузки
-		std::map <uint64_t, queue <vector <char>>> _payloads;
+		std::map <uint64_t, std::queue <vector <char>>> _payloads;
 	public:
 		/**
 		 * status Метод статуса запуска/остановки сервера
@@ -95,7 +95,7 @@ class WebClient {
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, queue <vector <char>> ());
+				auto ret = this->_payloads.emplace(bid, std::queue <vector <char>> ());
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 				ret.first->second.push(vector <char> (buffer, buffer + size));
 			}
