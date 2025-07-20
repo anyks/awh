@@ -258,7 +258,7 @@ void awh::client::Websocket::multiThreads(const uint16_t count, const bool mode)
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::client::Websocket::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+void awh::client::Websocket::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку заголовков необходимых при передаче на сервер во время рукопожатия
 	this->_ws.setHeaders(headers);
 }

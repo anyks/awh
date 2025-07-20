@@ -114,7 +114,7 @@ namespace awh {
 				callback_t _callback;
 			private:
 				// Список рабочих событий
-				stack <event_t> _events;
+				std::stack <event_t> _events;
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
