@@ -125,9 +125,9 @@ namespace awh {
 			 */
 			typedef struct Mutex {
 				// Для работы с параметрами модуля
-				recursive_mutex main;
+				std::recursive_mutex main;
 				// Для отправки сообщений
-				recursive_mutex send;
+				std::recursive_mutex send;
 			} mtx_t;
 			/**
 			 * Settings Структура текущих параметров сети
@@ -184,15 +184,15 @@ namespace awh {
 			size_t _brokerAvailableSize;
 		protected:
 			// Список занятых процессов брокера
-			set <uint64_t> _busy;
+			std::set <uint64_t> _busy;
 			// Список свободной памяти хранения полезной нагрузки
-			map <uint64_t, size_t> _available;
+			std::map <uint64_t, size_t> _available;
 			// Список активных схем сети
-			map <uint16_t, const scheme_t *> _schemes;
-			// Буферы отправляемой полезной нагрузки
-			map <uint64_t, unique_ptr <buffer_t>> _payloads;
+			std::map <uint16_t, const scheme_t *> _schemes;
 			// Список брокеров подключения
-			map <uint64_t, const scheme_t::broker_t *> _brokers;
+			std::map <uint64_t, const scheme_t::broker_t *> _brokers;
+			// Буферы отправляемой полезной нагрузки
+			std::map <uint64_t, std::unique_ptr <buffer_t>> _payloads;
 		protected:
 			// Объект DNS-резолвера
 			const dns_t * _dns;
