@@ -44,7 +44,7 @@ class WebServer {
 		awh::web_t::method_t _method;
 	private:
 		// Буферы отправляемой полезной нагрузки
-		map <uint64_t, queue <vector <char>>> _payloads;
+		std::map <uint64_t, queue <vector <char>>> _payloads;
 	public:
 		/**
 		 * crash Метод обработки вызова крашей в приложении

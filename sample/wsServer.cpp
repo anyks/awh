@@ -38,7 +38,7 @@ class Executor {
 		const log_t * _log;
 	private:
 		// Буферы отправляемой полезной нагрузки
-		map <uint64_t, queue <vector <char>>> _payloads;
+		std::map <uint64_t, queue <vector <char>>> _payloads;
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)

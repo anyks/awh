@@ -154,6 +154,16 @@ else
 	exit 1
 fi
 
+# Если сборка производится в операционной системе FreeBSD, NetBSD, OpenBSD или Solaris
+if [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ] || [ $OS = "SunOS" ]; then
+	# Устанавливаем сборщик
+	MAKE="gmake"
+# Если сборка производится в другой операционной системе
+else
+	# Устанавливаем сборщик
+	MAKE="make"
+fi
+
 # Функция применения патча
 apply_patch(){
 	PATCH="$ROOT/patches/$1/$2"
@@ -281,19 +291,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -Wl,-rpath,"$PREFIX/lib" || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 
 	# Выполняем установку проекта без документации
-	make install_sw || exit 1
-	make install_ssldirs || exit 1
+	$MAKE install_sw || exit 1
+	$MAKE install_ssldirs || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -355,18 +358,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 --static || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
-
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	make install || exit 1
+	$MAKE install || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -444,18 +439,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
-
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	make install || exit 1
+	$MAKE install || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -528,18 +515,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
-
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	make install || exit 1
+	$MAKE install || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -614,18 +593,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
-
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	make install || exit 1
+	$MAKE install || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -704,18 +675,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
-
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	make install || exit 1
+	$MAKE install || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -800,15 +763,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 
 	# Производим установку библиотеки по нужному пути
 	echo "Install \"$src/${build}/libbrotlicommon.a\" to \"$PREFIX/lib/libbrotlicommon.a\""
@@ -986,9 +942,9 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			fi
 
 			# Выполняем сборку проекта
-			make || exit 1
+			$MAKE -j"$numproc" || exit 1
 			# Выполняем установку проекта
-			make install || exit 1
+			$MAKE install || exit 1
 
 			# Выполняем компенсацию каталогов
 			restorelibs $PREFIX
@@ -1060,9 +1016,9 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			mv "$src/Makefile.tmp" "$src/Makefile"
 
 			# Выполняем сборку проекта
-			make || exit 1
+			$MAKE -j"$numproc" || exit 1
 			# Выполняем установку проекта
-			make install || exit 1
+			$MAKE install || exit 1
 
 			# Выполняем компенсацию каталогов
 			restorelibs $PREFIX
@@ -1151,18 +1107,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 		.. || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
-
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	make install || exit 1
+	$MAKE install || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -1483,18 +1431,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 		.. || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
-
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	make install || exit 1
+	$MAKE install || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -1562,16 +1502,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	fi
 
-	# Если операционная система используется Solaris
-	if [ $OS = "SunOS" ]; then
-		# Выполняем сборку на всех логических ядрах
-		make || exit 1
-	# Для всех остальных операционных систем
-	else
-		# Выполняем сборку на всех логических ядрах
-		make -j"$numproc" || exit 1
-	fi
-	
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
+
 	# Создаём каталог GPerfTools
 	mkdir "$PREFIX/include/gperftools"
 
