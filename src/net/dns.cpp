@@ -1360,8 +1360,6 @@ string awh::DNS::decode(const string & domain) const noexcept {
 bool awh::DNS::clear() noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
@@ -1387,12 +1385,12 @@ bool awh::DNS::clear() noexcept {
 bool awh::DNS::flush() noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if((result = hold.access({status_t::CLEAR}, status_t::FLUSH))){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выполняем сброс кэша полученных IPv4-адресов
 		this->_cacheIPv4.clear();
 		// Выполняем сброс кэша полученных IPv6-адресов
@@ -1407,7 +1405,7 @@ bool awh::DNS::flush() noexcept {
  */
 void awh::DNS::cancel(const int32_t family) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Определяем тип протокола подключения
 	switch(family){
 		// Если тип протокола подключения IPv4
@@ -1427,12 +1425,12 @@ void awh::DNS::cancel(const int32_t family) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
 void awh::DNS::shuffle(const int32_t family) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выбираем стаднарт рандомайзера
 		mt19937 generator(this->_randev());
 		// Определяем тип протокола подключения
@@ -1473,7 +1471,7 @@ void awh::DNS::shuffle(const int32_t family) noexcept {
  */
 void awh::DNS::timeout(const uint8_t sec) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Выполняем установку таймаута ожидания выполнения запроса
 	this->_timeout = sec;
 }
@@ -1517,7 +1515,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 							// Если время жизни кэша уже вышло
 							} else {
 								// Выполняем блокировку потока
-								const lock_guard <recursive_mutex> lock(this->_mtx);
+								const lock_guard <std::recursive_mutex> lock(this->_mtx);
 								// Выполняем удаление записи из кэша
 								i = this->_cacheIPv4.erase(i);
 							}
@@ -1549,7 +1547,7 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 							// Если время жизни кэша уже вышло
 							} else {
 								// Выполняем блокировку потока
-								const lock_guard <recursive_mutex> lock(this->_mtx);
+								const lock_guard <std::recursive_mutex> lock(this->_mtx);
 								// Выполняем удаление записи из кэша
 								i = this->_cacheIPv6.erase(i);
 							}
@@ -1615,10 +1613,10 @@ void awh::DNS::clearCache(const string & domain) noexcept {
  * @param domain доменное имя для которого выполняется очистка кэша
  */
 void awh::DNS::clearCache(const int32_t family, const string & domain) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя передано
 	if(!domain.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
@@ -1671,7 +1669,7 @@ void awh::DNS::clearCache(const bool localhost) noexcept {
  */
 void awh::DNS::clearCache(const int32_t family, const bool localhost) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
+	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Определяем тип протокола подключения
 	switch(family){
 		// Если тип протокола подключения IPv4
@@ -1708,8 +1706,6 @@ void awh::DNS::clearCache(const int32_t family, const bool localhost) noexcept {
  * @param localhost флаг обозначающий добавление локального адреса
  */
 void awh::DNS::setToCache(const string & domain, const string & ip, const uint32_t ttl, const bool localhost) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty() && (ttl > 0)){
 		// Определяем тип передаваемого IP-адреса
@@ -1736,12 +1732,12 @@ void awh::DNS::setToCache(const string & domain, const string & ip, const uint32
  * @param localhost флаг обозначающий добавление локального адреса
  */
 void awh::DNS::setToCache(const int32_t family, const string & domain, const string & ip, const uint32_t ttl, const bool localhost) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty() && (ttl > 0)){
 		// Результат проверки наличия IP-адреса в кэше
 		bool result = false;
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
@@ -1834,10 +1830,10 @@ void awh::DNS::clearBlackList(const string & domain) noexcept {
  * @param domain доменное имя для которого очищается чёрный список
  */
 void awh::DNS::clearBlackList(const int32_t family, const string & domain) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя передано
 	if(!domain.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
@@ -1875,8 +1871,6 @@ void awh::DNS::clearBlackList(const int32_t family, const string & domain) noexc
  * @param ip     адрес для удаления из чёрного списка
  */
 void awh::DNS::delInBlackList(const string & domain, const string & ip) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
 		// Определяем тип передаваемого IP-адреса
@@ -1901,10 +1895,10 @@ void awh::DNS::delInBlackList(const string & domain, const string & ip) noexcept
  * @param ip     адрес для удаления из чёрного списка
  */
 void awh::DNS::delInBlackList(const int32_t family, const string & domain, const string & ip) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
@@ -1956,8 +1950,6 @@ void awh::DNS::delInBlackList(const int32_t family, const string & domain, const
  * @param ip     адрес для добавления в чёрный список
  */
 void awh::DNS::setToBlackList(const string & domain, const string & ip) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
 		// Определяем тип передаваемого IP-адреса
@@ -1982,10 +1974,10 @@ void awh::DNS::setToBlackList(const string & domain, const string & ip) noexcept
  * @param ip     адрес для добавления в чёрный список
  */
 void awh::DNS::setToBlackList(const int32_t family, const string & domain, const string & ip) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Переводим доменное имя в нижний регистр
 		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
@@ -2160,14 +2152,14 @@ bool awh::DNS::isInBlackList(const int32_t family, const string & domain, const 
  * @return       запрошенный сервер имён
  */
 string awh::DNS::server(const int32_t family) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Результат работы функции
 	string result = "";
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Подключаем устройство генератора
 		mt19937 generator(this->_randev());
 		// Определяем тип протокола подключения
@@ -2237,8 +2229,6 @@ string awh::DNS::server(const int32_t family) noexcept {
  * @param server адрес DNS-сервера
  */
 void awh::DNS::server(const string & server) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если адрес сервера передан
 	if(!server.empty()){
 		// Определяем тип передаваемого IP-адреса
@@ -2262,8 +2252,6 @@ void awh::DNS::server(const string & server) noexcept {
  * @param server адрес DNS-сервера
  */
 void awh::DNS::server(const int32_t family, const string & server) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
@@ -2274,6 +2262,8 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 			string host = "";
 			// Порт переданного сервера
 			uint32_t port = 53;
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Определяем тип передаваемого сервера
 			switch(static_cast <uint8_t> (this->_net.host(server))){
 				// Если домен является адресом в файловой системе
@@ -2466,14 +2456,14 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
  * @param servers адреса DNS-серверов
  */
 void awh::DNS::servers(const vector <string> & servers) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Создаём объект холдирования
 		hold_t <status_t> hold(this->_status);
 		// Если статус работы DNS-резолвера соответствует
 		if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Переходим по всем нейм серверам и добавляем их
 			for(auto & server : servers){
 				// Определяем тип передаваемого IP-адреса
@@ -2514,8 +2504,6 @@ void awh::DNS::servers(const vector <string> & servers) noexcept {
  * @param servers адреса DNS-серверов
  */
 void awh::DNS::servers(const int32_t family, const vector <string> & servers) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Создаём объект холдирования
@@ -2534,14 +2522,14 @@ void awh::DNS::servers(const int32_t family, const vector <string> & servers) no
  * @param servers адреса DNS-серверов
  */
 void awh::DNS::replace(const vector <string> & servers) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
 		// Список серверов IPv4
 		vector <string> ipv4, ipv6;
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : servers){
 			// Определяем тип передаваемого IP-адреса
@@ -2585,12 +2573,12 @@ void awh::DNS::replace(const vector <string> & servers) noexcept {
  * @param servers адреса DNS-серверов
  */
 void awh::DNS::replace(const int32_t family, const vector <string> & servers) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({status_t::RESOLVE, status_t::NSS_REP}, status_t::NSS_REP)){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Определяем тип подключения
 		switch(family){
 			// Для протокола IPv4
@@ -2635,14 +2623,14 @@ void awh::DNS::replace(const int32_t family, const vector <string> & servers) no
  * @param network IP-адреса сетевых плат
  */
 void awh::DNS::network(const vector <string> & network) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы установки параметров сети соответствует
 	if(hold.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
 				// Определяем к какому адресу относится полученный хост
@@ -2696,14 +2684,14 @@ void awh::DNS::network(const vector <string> & network) noexcept {
  * @param network IP-адреса сетевых плат
  */
 void awh::DNS::network(const int32_t family, const vector <string> & network) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы установки параметров сети соответствует
 	if(hold.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
 		if(!network.empty()){
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
 				// Определяем тип передаваемого IP-адреса
@@ -2736,10 +2724,10 @@ void awh::DNS::prefix(const string & prefix) noexcept {
  * @param filename адрес файла для загрузки
  */
 void awh::DNS::hosts(const string & filename) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если адрес файла получен
 	if(!filename.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Создаём объект для работы с файловой системой
 		fs_t fs(this->_fmk, this->_log);
 		// Выполняем установку адреса файла hosts
@@ -2821,8 +2809,6 @@ void awh::DNS::hosts(const string & filename) noexcept {
  * @return     полученный IP-адрес
  */
 string awh::DNS::host(const string & name) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем получение IP-адреса для IPv6
 	const string & result = this->host(AF_INET6, name);
 	// Если результат не получен, выполняем запрос для IPv4
@@ -2841,8 +2827,6 @@ string awh::DNS::host(const string & name) noexcept {
 string awh::DNS::host(const int32_t family, const string & name) noexcept {
 	// Результат работы функции
 	string result = "";
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
@@ -2851,6 +2835,8 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 		if(!name.empty()){
 			// Если доменное имя является локальным
 			if(this->_fmk->is(name, fmk_t::check_t::LATIAN)){
+				// Выполняем блокировку потока
+				const lock_guard <std::recursive_mutex> lock(this->_mtx);
 				// Переводим доменное имя в нижний регистр
 				this->_fmk->transform(name, fmk_t::transform_t::LOWER);
 				/**
@@ -3005,8 +2991,6 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
  * @return     полученный IP-адрес
  */
 string awh::DNS::resolve(const string & host) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем получение IP-адреса для IPv6
 	const string & result = this->resolve(AF_INET6, host);
 	// Если результат не получен, выполняем запрос для IPv4
@@ -3025,8 +3009,6 @@ string awh::DNS::resolve(const string & host) noexcept {
 string awh::DNS::resolve(const int32_t family, const string & host) noexcept {
 	// Результат работы функции
 	string result = "";
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует

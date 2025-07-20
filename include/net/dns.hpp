@@ -404,21 +404,21 @@ namespace awh {
 			buffer_t _buffer;
 		private:
 			// Мютекс для блокировки потока
-			recursive_mutex _mtx;
+			std::recursive_mutex _mtx;
 		private:
 			// Выполняем инициализацию генератора
-			random_device _randev;
+			std::random_device _randev;
 		private:
 			// Статус работы DNS-резолвера
-			stack <status_t> _status;
+			std::stack <status_t> _status;
 		private:
 			// Список используемых адресов
-			unordered_set <string> _using;
+			std::unordered_set <string> _using;
 		private:
 			// Создаём воркер для IPv4
-			unique_ptr <worker_t> _workerIPv4;
+			std::unique_ptr <worker_t> _workerIPv4;
 			// Создаём воркер для IPv6
-			unique_ptr <worker_t> _workerIPv6;
+			std::unique_ptr <worker_t> _workerIPv6;
 		private:
 			// Адреса серверов имён DNS для IPv4
 			vector <server_t <1>> _serversIPv4;
@@ -426,9 +426,9 @@ namespace awh {
 			vector <server_t <4>> _serversIPv6;
 		private:
 			// Список кэша полученных IPv4-адресов
-			unordered_multimap <string, cache_t <1>> _cacheIPv4;
+			std::unordered_multimap <string, cache_t <1>> _cacheIPv4;
 			// Список кэша полученных IPv6-адресов
-			unordered_multimap <string, cache_t <4>> _cacheIPv6;
+			std::unordered_multimap <string, cache_t <4>> _cacheIPv6;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

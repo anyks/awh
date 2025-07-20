@@ -49,10 +49,10 @@ namespace awh {
 			bool _flag;
 		private:
 			// Мютекс для блокировки потока
-			mutex _mtx;
+			std::mutex _mtx;
 		private:
 			// Объект статуса работы DNS-резолвера
-			stack <T> & _status;
+			std::stack <T> & _status;
 		public:
 			/**
 			 * access Метод проверки на разрешение выполнения операции
@@ -61,7 +61,7 @@ namespace awh {
 			 * @param equal флаг эквивалентности
 			 * @return      результат проверки
 			 */
-			bool access(const set <T> & comp, const T hold, const bool equal = true) noexcept {
+			bool access(const std::set <T> & comp, const T hold, const bool equal = true) noexcept {
 				// Определяем есть ли фиксированные статусы
 				this->_flag = this->_status.empty();
 				// Если результат не получен
@@ -71,7 +71,7 @@ namespace awh {
 				// Если результат получен, выполняем холд
 				if(this->_flag){
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполняем установку холда
 					this->_status.push(hold);
 				}
@@ -83,7 +83,7 @@ namespace awh {
 			 * Holder Конструктор
 			 * @param status объект статуса работы DNS-резолвера
 			 */
-			Holder(stack <T> & status) noexcept : _flag(false), _status(status) {}
+			Holder(std::stack <T> & status) noexcept : _flag(false), _status(status) {}
 			/**
 			 * ~Holder Деструктор
 			 */
@@ -91,7 +91,7 @@ namespace awh {
 				// Если холдирование выполнено
 				if(this->_flag){
 					// Выполняем блокировку потока
-					const lock_guard <mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполняем снятие холда
 					this->_status.pop();
 				}
