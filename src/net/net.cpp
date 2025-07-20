@@ -1230,7 +1230,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 					// Если префикс укладывается в диапазон адреса
 					if(prefix <= 32){
 						// Определяем номер октета
-						const uint8_t num = ::ceil(prefix / 8);
+						const uint8_t num = static_cast <uint8_t> (::ceil(static_cast <double> (prefix / 8)));
 						// Определяем тип получаемого адреса
 						switch(static_cast <uint8_t> (addr)){
 							// Если мы хотим получить адрес хоста
@@ -1289,7 +1289,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 					// Если префикс укладывается в диапазон адреса
 					if(prefix <= 128){
 						// Определяем номер хексета
-						const uint8_t num = ::ceil(prefix / 16);
+						const uint8_t num = static_cast <uint8_t> (::ceil(static_cast <double> (prefix / 16)));
 						// Определяем тип получаемого адреса
 						switch(static_cast <uint8_t> (addr)){
 							// Если мы хотим получить адрес хоста

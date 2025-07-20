@@ -1469,9 +1469,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 		// Имя сетевого интерфейса
 		string ifrName = "";
 		// Выполняем обновление списка IP-адресов
-		const_cast <awh::IfNet *> (this)->getIPAddresses(family);
+		const_cast <ifnet_t *> (this)->getIPAddresses(family);
 		// Выполняем обновление списка MAC-адресов
-		const_cast <awh::IfNet *> (this)->getHWAddresses(family);
+		const_cast <ifnet_t *> (this)->getHWAddresses(family);
 		// Определяем тип протокола интернета
 		switch(family){
 			// Если протокол интернета IPv4
