@@ -84,14 +84,14 @@ void awh::Engine::Address::client() noexcept {
 					// Получаем порт клиента
 					this->port = ntohs(reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_port);
 					// Получаем IP адрес
-					this->ip = inet_ntop(AF_INET, &(reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_addr), buffer, sizeof(buffer));
+					this->ip = ::inet_ntop(AF_INET, &(reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_addr), buffer, sizeof(buffer));
 				} break;
 				// Если протокол интернета IPv6
 				case AF_INET6: {
 					// Получаем порт клиента
 					this->port = ntohs(reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_port);
 					// Получаем IP адрес
-					this->ip = inet_ntop(AF_INET6, &(reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_addr), buffer, sizeof(buffer));
+					this->ip = ::inet_ntop(AF_INET6, &(reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_addr), buffer, sizeof(buffer));
 				} break;
 			}
 			// Получаем данные подключившегося клиента
@@ -833,8 +833,8 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 							// Устанавливаем произвольный порт для локального подключения
 							client.sin6_port = htons(0);
 							// Указываем адрес IPv6 для клиента
-							inet_pton(family, host.c_str(), &client.sin6_addr);
-							// inet_ntop(family, &client.sin6_addr, hostClient, sizeof(hostClient));
+							::inet_pton(family, host.c_str(), &client.sin6_addr);
+							// ::inet_ntop(family, &client.sin6_addr, hostClient, sizeof(hostClient));
 							// Запоминаем размер структуры
 							this->_peer.size = sizeof(client);
 							// Выполняем копирование объекта подключения клиента
@@ -861,8 +861,8 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 					// Устанавливаем порт для локального подключения
 					server.sin6_port = htons(port);
 					// Указываем адрес IPv6 для сервера
-					inet_pton(family, ip.c_str(), &server.sin6_addr);
-					// inet_ntop(family, &server.sin6_addr, hostServer, sizeof(hostServer));
+					::inet_pton(family, ip.c_str(), &server.sin6_addr);
+					// ::inet_ntop(family, &server.sin6_addr, hostServer, sizeof(hostServer));
 					// Если приложение является сервером
 					if(type == type_t::SERVER)
 						// Запоминаем размер структуры

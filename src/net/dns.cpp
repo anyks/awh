@@ -2839,144 +2839,101 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 				const lock_guard <std::recursive_mutex> lock(this->_mtx);
 				// Переводим доменное имя в нижний регистр
 				this->_fmk->transform(name, fmk_t::transform_t::LOWER);
-				/**
-				 * Для операционной системы OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Выполняем резолвинг доменного имени
-					struct hostent * domain = ::gethostbyname(name.c_str());
-					// Если хост мы не получили
-					if(domain == nullptr){
-						// Выполняем извлечение текста ошибки
-						DWORD error = AWH_ERROR();
-						// Если текст ошибки мы получили
-						if(error != 0){
-							// Если хост мы не нашли
-							if(error == WSAHOST_NOT_FOUND)
-								// Выводим сообщение об ошибке
-								this->_log->print("Host \"%s\" is not found", log_t::flag_t::WARNING, name.c_str());
-							// Если в записи записи хоста в DNS-сервере обнаружено
-							else if(error == WSANO_DATA)
-								// Выводим сообщение об ошибке
-								this->_log->print("No data record found for %s", log_t::flag_t::WARNING, name.c_str());
-							// Выводим сообщение об ошибке
-							else this->_log->print("An error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
-						}
+				{
+					// Создаём структуру запроса
+					struct addrinfo hints;
+					// Выполняем зануление структуры запроса
+					::memset(&hints, 0, sizeof(hints));
+					// Устанавливаем семейстов IP-адресов
+					hints.ai_family = family;
+					// Устанавливаем тип сокета
+					hints.ai_socktype = SOCK_STREAM;
+					// Создаём объект результата
+					struct addrinfo * response = nullptr;
+					// Выполняем резолвинг доменного имени или хоста
+					const int32_t status = ::getaddrinfo(name.c_str(), nullptr, &hints, &response);
+					// Если запрос не выполнен
+					if(status != 0){
+						// Выводим сообщение об ошибке
+						this->_log->print("%s for %s", log_t::flag_t::WARNING, ::gai_strerror(status), name.c_str());
 						// Выходим из функции
 						return result;
-					}
-				/**
-				 * Для операционной системы не являющейся OS Windows
-				 */
-				#else
-					// Переменная получения ошибки
-					h_errno = 0;
-					// Выполняем резолвинг доменного имени
-					struct hostent * domain = ::gethostbyname2(name.c_str(), family);
-					// Если хост мы не получили
-					if(domain == nullptr){
-						// Определяем тип ошибки
-						switch(h_errno){
-							// Если DNS-сервер в данный момент не доступен
-							case TRY_AGAIN:
-								// Выводим сообщение об ошибке
-								this->_log->print("Unable to obtain an answer from a DNS-server for %s", log_t::flag_t::WARNING, name.c_str());
-							break;
-							// Если адрес не найден
-							case NO_ADDRESS:
-								// Выводим сообщение об ошибке
-								this->_log->print("%s is valid, but lacks a corresponding IP-address", log_t::flag_t::WARNING, name.c_str());
-							break;
-							// Если доменное имя не найдено
-							case HOST_NOT_FOUND:
-								// Выводим сообщение об ошибке
-								this->_log->print("Host \"%s\" is not found", log_t::flag_t::WARNING, name.c_str());
-							break;
-							// Выводим сообщение по умолчанию
-							default: this->_log->print("An error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
+					// Если запрос выполнен удачно
+					} else {
+						// Список полученных IP-адресов
+						vector <string> ips;
+						// Создаём объект пира
+						struct addrinfo * peer = nullptr;
+						// Определяем тип передаваемого IP-адреса
+						switch(family){
+							// Если IP-адрес является IPv4 адресом
+							case static_cast <int32_t> (AF_INET): {
+								// Выполняем перебор всех полученных IP-адресов
+								for(peer = response; peer != nullptr; peer = peer->ai_next) {
+									// Выполняем извлечение IP-адреса
+									struct sockaddr_in * ip = reinterpret_cast <struct sockaddr_in *> (peer->ai_addr);
+									// Извлекаем значение адреса
+									void * addr = &(ip->sin_addr);
+									// Выполняем очистку буфера данных
+									this->_buffer.clear(buffer_t::type_t::ADDR, family);
+									// Получаем размер буфера данных
+									const size_t size = this->_buffer.size(buffer_t::type_t::ADDR, family);
+									// Копируем полученные данные IP-адреса
+									ips.push_back(::inet_ntop(family, addr, reinterpret_cast <char *> (this->_buffer.get(buffer_t::type_t::ADDR)), size));
+								}
+							} break;
+							// Если IP-адрес является IPv6 адресом
+							case static_cast <int32_t> (AF_INET6): {
+								// Выполняем перебор всех полученных IP-адресов
+								for(peer = response; peer != nullptr; peer = peer->ai_next) {
+									// Выполняем извлечение IP-адреса
+									struct sockaddr_in6 * ip = reinterpret_cast <struct sockaddr_in6 *> (peer->ai_addr);
+									// Извлекаем значение адреса
+									void * addr = &(ip->sin6_addr);
+									// Выполняем очистку буфера данных
+									this->_buffer.clear(buffer_t::type_t::ADDR, family);
+									// Получаем размер буфера данных
+									const size_t size = this->_buffer.size(buffer_t::type_t::ADDR, family);
+									// Копируем полученные данные IP-адреса
+									ips.push_back(::inet_ntop(family, addr, reinterpret_cast <char *> (this->_buffer.get(buffer_t::type_t::ADDR)), size));
+								}
+							} break;
 						}
-						// Выходим из функции
-						return result;
-					}
-				#endif
-				// Индекс полученного IP-адреса
-				size_t index = 0;
-				// Список полученных IP-адресов
-				vector <string> ips;
-				// Определяем тип протокола подключения
-				switch(family){
-					// Если тип протокола подключения IPv4
-					case static_cast <int32_t> (AF_INET): {
-						// Создаём объект сервера
-						struct sockaddr_in server;
-						// Выполняем перебор всего списка полученных IP-адресов
-						while(domain->h_addr_list[index] != 0){
-							// Очищаем всю структуру для сервера
-							::memset(&server, 0, sizeof(server));
-							// Устанавливаем протокол интернета
-							server.sin_family = family;
-							// Выполняем копирование данных типа подключения
-							::memcpy(&server.sin_addr.s_addr, domain->h_addr_list[index++], domain->h_length);
-							// Выполняем очистку буфера данных
-							this->_buffer.clear(buffer_t::type_t::ADDR, family);
-							// Получаем размер буфера данных
-							const size_t size = this->_buffer.size(buffer_t::type_t::ADDR, family);
-							// Копируем полученные данные IP-адреса
-							ips.push_back(::inet_ntop(family, &server.sin_addr, reinterpret_cast <char *> (this->_buffer.get(buffer_t::type_t::ADDR)), size));
+						// Очищаем объект запроса
+						::freeaddrinfo(response);
+						// Если список IP-адресов получен
+						if(!ips.empty()){
+							/**
+							 * Выполняем отлов ошибок
+							 */
+							try {
+								// Подключаем устройство генератора
+								mt19937 generator(this->_randev());
+								// Выполняем генерирование случайного числа
+								uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
+								// Выполняем получение результата
+								result = ::move(ips.at(::move(dist6(generator))));
+							/**
+							 * Если возникает ошибка
+							 */
+							} catch(const runtime_error & error) {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family, name), log_t::flag_t::WARNING, error.what());
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+								#endif
+								// Выполняем извлечение первого адреса из списка
+								result = ips.front();
+							}
 						}
-					} break;
-					// Если тип протокола подключения IPv6
-					case static_cast <int32_t> (AF_INET6): {
-						// Создаём объект сервера
-						struct sockaddr_in6 server;
-						// Выполняем перебор всего списка полученных IP-адресов
-						while(domain->h_addr_list[index] != 0){
-							// Очищаем всю структуру для сервера
-							::memset(&server, 0, sizeof(server));
-							// Устанавливаем протокол интернета
-							server.sin6_family = family;
-							// Выполняем копирование данных типа подключения
-							::memcpy(&server.sin6_addr.s6_addr, domain->h_addr_list[index++], domain->h_length);
-							// Выполняем очистку буфера данных
-							this->_buffer.clear(buffer_t::type_t::ADDR, family);
-							// Получаем размер буфера данных
-							const size_t size = this->_buffer.size(buffer_t::type_t::ADDR, family);
-							// Копируем полученные данные IP-адреса
-							ips.push_back(::inet_ntop(family, &server.sin6_addr, reinterpret_cast <char *> (this->_buffer.get(buffer_t::type_t::ADDR)), size));
-						}
-					} break;
-				}
-				// Если список IP-адресов получен
-				if(!ips.empty()){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Подключаем устройство генератора
-						mt19937 generator(this->_randev());
-						// Выполняем генерирование случайного числа
-						uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
-						// Выполняем получение результата
-						result = ::move(ips.at(::move(dist6(generator))));
-					/**
-					 * Если возникает ошибка
-					 */
-					} catch(const runtime_error & error) {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family, name), log_t::flag_t::WARNING, error.what());
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::WARNING, error.what());
-						#endif
-						// Выполняем извлечение первого адреса из списка
-						result = ips.front();
 					}
 				}
 			}
