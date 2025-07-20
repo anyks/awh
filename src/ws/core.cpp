@@ -75,7 +75,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 						// Переходим по всему списку поддерживаемых сабпротоколов
 						for(auto & subprotocol : this->_supportedProtocols)
 							// Добавляем полученный заголовок
-							const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
+							const_cast <std::unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 					}
 				}
 				// Выполняем применение расширений
@@ -228,7 +228,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 						// Переходим по всему списку выбранных сабпротоколов
 						for(auto & subprotocol : this->_selectedProtocols)
 							// Добавляем полученный заголовок
-							const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
+							const_cast <std::unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", subprotocol}});
 					}
 				}
 			} break;
@@ -1793,7 +1793,7 @@ void awh::WCore::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const unordered_set <string> & awh::WCore::subprotocols() const noexcept {
+const std::unordered_set <string> & awh::WCore::subprotocols() const noexcept {
 	// Выводим список выбранных сабпротоколов
 	return this->_selectedProtocols;
 }
@@ -1801,7 +1801,7 @@ const unordered_set <string> & awh::WCore::subprotocols() const noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::WCore::subprotocols(const unordered_set <string> & subprotocols) noexcept {
+void awh::WCore::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
 	if(!subprotocols.empty())
 		// Выполняем установку списка поддерживаемых сабпротоколов
