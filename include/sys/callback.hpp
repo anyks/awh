@@ -129,9 +129,9 @@ namespace awh {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 					/**
 					* Если режим отладки не включён
 					*/
@@ -181,7 +181,7 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 						/**
@@ -216,7 +216,7 @@ namespace awh {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
@@ -303,7 +303,7 @@ namespace awh {
 						// Если функция обратного вызова установлена
 						if(this->_callback != nullptr)
 							// Выполняем функцию обратного вызова
-							apply(this->_callback, make_tuple(event_t::DEL, fid, nullptr));
+							std::apply(this->_callback, std::make_tuple(event_t::DEL, fid, nullptr));
 					/**
 					 * Если возникает ошибка
 					 */
@@ -311,9 +311,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -383,7 +383,7 @@ namespace awh {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
@@ -433,9 +433,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -524,9 +524,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -610,7 +610,7 @@ namespace awh {
 								// Если функция обратного вызова установлена
 								if(this->_callback != nullptr)
 									// Выполняем функцию обратного вызова
-									apply(this->_callback, make_tuple(event_t::SET, fid, j->second));
+									std::apply(this->_callback, std::make_tuple(event_t::SET, fid, j->second));
 								// Выводим идентификатор обратной функции
 								return i->first;
 							// Если функция ещё не существует
@@ -624,7 +624,7 @@ namespace awh {
 								// Если функция обратного вызова установлена
 								if(this->_callback != nullptr)
 									// Выполняем функцию обратного вызова
-									apply(this->_callback, make_tuple(event_t::SET, fid, ret.first->second));
+									std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
 								// Выводим идентификатор обратной функции
 								return ret.first->first;
 							}
@@ -636,9 +636,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -731,7 +731,7 @@ namespace awh {
 								// Если функция обратного вызова установлена
 								if(this->_callback != nullptr)
 									// Выполняем функцию обратного вызова
-									apply(this->_callback, make_tuple(event_t::SET, fid2, j->second));
+									std::apply(this->_callback, std::make_tuple(event_t::SET, fid2, j->second));
 								// Выводим идентификатор обратной функции
 								return i->first;
 							// Если функция ещё не существует
@@ -745,7 +745,7 @@ namespace awh {
 								// Если функция обратного вызова установлена
 								if(this->_callback != nullptr)
 									// Выполняем функцию обратного вызова
-									apply(this->_callback, make_tuple(event_t::SET, fid2, ret.first->second));
+									std::apply(this->_callback, std::make_tuple(event_t::SET, fid2, ret.first->second));
 								// Выводим идентификатор обратной функции
 								return ret.first->first;
 							}
@@ -757,9 +757,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid1, fid2), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -850,7 +850,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::SET, fid, i->second));
+								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, i->second));
 							// Выводим идентификатор обратной функции
 							return i->first;
 						// Если функция не найдена
@@ -864,7 +864,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::SET, fid, ret.first->second));
+								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
 							// Выводим идентификатор обратной функции
 							return ret.first->first;
 						}
@@ -875,9 +875,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -892,9 +892,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -981,9 +981,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -998,9 +998,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1086,9 +1086,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1103,9 +1103,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1208,7 +1208,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::SET, fid, i->second));
+								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, i->second));
 							// Выводим идентификатор обратной функции
 							return i->first;
 						// Если функция не найдена
@@ -1222,7 +1222,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::SET, fid, ret.first->second));
+								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
 							// Выводим идентификатор обратной функции
 							return ret.first->first;
 						}
@@ -1233,9 +1233,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1252,9 +1252,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1269,9 +1269,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1396,7 +1396,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::SET, fid, i->second));
+								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, i->second));
 							// Выводим идентификатор обратной функции
 							return i->first;
 						// Если функция не найдена
@@ -1410,7 +1410,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::SET, fid, ret.first->second));
+								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
 							// Выводим идентификатор обратной функции
 							return ret.first->first;
 						}
@@ -1421,9 +1421,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1440,9 +1440,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1457,9 +1457,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1591,7 +1591,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::SET, fid, i->second));
+								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, i->second));
 							// Выводим идентификатор обратной функции
 							return i->first;
 						// Если функция не найдена
@@ -1605,7 +1605,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::SET, fid, ret.first->second));
+								std::apply(this->_callback, std::make_tuple(event_t::SET, fid, ret.first->second));
 							// Выводим идентификатор обратной функции
 							return ret.first->first;
 						}
@@ -1616,9 +1616,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1635,9 +1635,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1652,9 +1652,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1770,7 +1770,7 @@ namespace awh {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
@@ -1798,9 +1798,9 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::RUN, callback.first, callback.second));
+								std::apply(this->_callback, std::make_tuple(event_t::RUN, callback.first, callback.second));
 							// Выполняем функцию обратного вызова
-							std::apply(static_cast <const BasicFunction <void (void)> &> (* callback.second.get()).fn, make_tuple());
+							std::apply(static_cast <const BasicFunction <void (void)> &> (* callback.second.get()).fn, std::make_tuple());
 						}
 					/**
 					 * Если возникает ошибка
@@ -1809,7 +1809,7 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 						/**
@@ -1826,7 +1826,7 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 						/**
@@ -1861,9 +1861,9 @@ namespace awh {
 					// Если функция обратного вызова установлена
 					if(this->_callback != nullptr)
 						// Выполняем функцию обратного вызова
-						apply(this->_callback, make_tuple(event_t::RUN, fid, callback));
+						std::apply(this->_callback, std::make_tuple(event_t::RUN, fid, callback));
 					// Выполняем функцию обратного вызова
-					return (typename function <T>::result_type) std::apply(static_cast <const BasicFunction <T> &> (* callback.get()).fn, make_tuple(args...));
+					return (typename function <T>::result_type) std::apply(static_cast <const BasicFunction <T> &> (* callback.get()).fn, std::make_tuple(args...));
 				/**
 				 * Если возникает ошибка
 				 */
@@ -1871,7 +1871,7 @@ namespace awh {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
@@ -1888,7 +1888,7 @@ namespace awh {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
@@ -2019,9 +2019,9 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_callback != nullptr)
 								// Выполняем функцию обратного вызова
-								apply(this->_callback, make_tuple(event_t::RUN, fid, i->second));
+								std::apply(this->_callback, std::make_tuple(event_t::RUN, fid, i->second));
 							// Выполняем функцию обратного вызова
-							return (typename function <T>::result_type) std::apply(static_cast <const BasicFunction <T> &> (* i->second.get()).fn, make_tuple(args...));
+							return (typename function <T>::result_type) std::apply(static_cast <const BasicFunction <T> &> (* i->second.get()).fn, std::make_tuple(args...));
 						}
 						// Выводим результат по умолчанию
 						return (typename function <T>::result_type) typename function <T>::result_type();
@@ -2032,9 +2032,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -2049,9 +2049,9 @@ namespace awh {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/

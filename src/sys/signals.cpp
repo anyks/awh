@@ -15,7 +15,7 @@
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * Стандартные модули
 	 */
@@ -60,7 +60,7 @@ static struct Self {
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * signalHandler Функция фильтр перехватчика сигналов
 	 * @param signal номер сигнала полученного системой
@@ -145,7 +145,7 @@ void awh::Signals::stop() noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Устанавливаем функцию перехвадчика событий
 			this->_ev.sigInt.sa_handler  = SIG_DFL;
 			this->_ev.sigFpe.sa_handler  = SIG_DFL;
@@ -192,7 +192,7 @@ void awh::Signals::start() noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Выполняем игнорирование сигналов SIGPIPE
 			::signal(SIGPIPE, SIG_IGN);
 			// Выполняем зануление структур перехватчиков событий

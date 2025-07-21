@@ -119,10 +119,10 @@ namespace awh {
 			 * LocalNet Структура локального адреса
 			 */
 			typedef struct LocalNet {
-				bool reserved;          // Адрес является зарезервированным
-				uint8_t prefix;         // Префикс сети
-				unique_ptr <Net> end;   // Конечный диапазон адреса
-				unique_ptr <Net> begin; // Начальный IP-адрес
+				bool reserved;               // Адрес является зарезервированным
+				uint8_t prefix;              // Префикс сети
+				std::unique_ptr <Net> end;   // Конечный диапазон адреса
+				std::unique_ptr <Net> begin; // Начальный IP-адрес
 				/**
 				 * LocalNet Конструктор
 				 * @param exp регулярное выражение для установки
@@ -149,7 +149,7 @@ namespace awh {
 			vector <uint8_t> _buffer;
 		private:
 			// Список локальных адресов
-			multimap <type_t, localNet_t> _localsNet;
+			std::multimap <type_t, localNet_t> _localsNet;
 		private:
 			// Объект для работы с логами
 			const log_t * _log;

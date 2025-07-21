@@ -175,7 +175,7 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 						// Выводим функцию обратного вызова
 						this->_callback.call <void (const uint64_t, const mode_t)> ("active", bid1, mode_t::CONNECT);
 					// Выполняем создание нового подключённого клиента
-					auto ret = this->_clients.emplace(bid1, make_unique <client::core_t> (&this->_dns, this->_fmk, this->_log));
+					auto ret = this->_clients.emplace(bid1, std::make_unique <client::core_t> (&this->_dns, this->_fmk, this->_log));
 					// Выполняем отключение информационных сообщений сетевого ядра клиента
 					ret.first->second->verbose(false);
 					// Устанавливаем параметры SSL-шифрвоания
@@ -470,7 +470,7 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, make_unique <queue_t> (this->_log));
+				auto ret = this->_payloads.emplace(bid, std::make_unique <queue_t> (this->_log));
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 				ret.first->second->push(buffer, size);
 			}
@@ -481,9 +481,9 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (broker), bid, buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (broker), bid, buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -534,7 +534,7 @@ void awh::server::ProxySocks5::init(const string & socket) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Устанавливаем unix-сокет сервера
 		this->_socket = socket;
 		// Выполняем установку unix-сокет
@@ -556,7 +556,7 @@ void awh::server::ProxySocks5::init(const uint32_t port, const string & host) no
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Удаляем unix-сокет сервера
 		this->_socket.clear();
 	#endif

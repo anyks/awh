@@ -122,15 +122,15 @@ bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -170,7 +170,7 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 		 */
 		try {
 			// Создаём объект матчинга
-			unique_ptr <regmatch_t []> match(new regmatch_t [exp->reg.re_nsub + 1]);
+			std::unique_ptr <regmatch_t []> match(new regmatch_t [exp->reg.re_nsub + 1]);
 			// Выполняем разбор регулярного выражения
 			const int32_t error = ::pcre2_regexec(&exp->reg, text, exp->reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
 			// Если возникла ошибка
@@ -204,7 +204,7 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 			/**
@@ -223,15 +223,15 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -271,7 +271,7 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const size_
 		 */
 		try {
 			// Создаём объект матчинга
-			unique_ptr <regmatch_t []> match(new regmatch_t [exp->reg.re_nsub + 1]);
+			std::unique_ptr <regmatch_t []> match(new regmatch_t [exp->reg.re_nsub + 1]);
 			// Выполняем разбор регулярного выражения
 			const int32_t error = ::pcre2_regexec(&exp->reg, text, exp->reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
 			// Если возникла ошибка
@@ -295,9 +295,9 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const size_
 					// Если результат получен
 					if((match[i].rm_eo > 0) && (static_cast <size_t> (match[i].rm_eo) <= size) && (match[i].rm_so >= 0))
 						// Добавляем полученный результат в список результатов
-						result.at(i) = make_pair(static_cast <size_t> (match[i].rm_so), static_cast <size_t> (match[i].rm_eo - match[i].rm_so));
+						result.at(i) = std::make_pair(static_cast <size_t> (match[i].rm_so), static_cast <size_t> (match[i].rm_eo - match[i].rm_so));
 					// Добавляем пустое значение
-					else result.at(i) = make_pair(static_cast <size_t> (0), static_cast <size_t> (0));
+					else result.at(i) = std::make_pair(static_cast <size_t> (0), static_cast <size_t> (0));
 				}
 			}
 		/**
@@ -307,7 +307,7 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const size_
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 			/**
@@ -326,15 +326,15 @@ vector <pair <size_t, size_t>> awh::RegExp::match(const char * text, const size_
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -403,7 +403,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 				}
 			}
 			// Создаём ключ регулярного выражения
-			const auto & key = make_pair(option, pattern);
+			const auto & key = std::make_pair(option, pattern);
 			// Выполняем поиск уже ранее созданного регулярного выражения
 			auto i = this->_cache.find(key);
 			// Если регулярное выражение уже созданно
@@ -455,7 +455,7 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 			/**
@@ -474,15 +474,15 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}

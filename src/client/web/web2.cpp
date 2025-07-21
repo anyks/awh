@@ -60,7 +60,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						{
 							// Если тело ответа существует
 							if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY))
@@ -102,7 +102,7 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						{
 							// Получаем данные ответа
 							const auto & response = this->_scheme.proxy.http.process(http_t::process_t::RESPONSE, this->_scheme.proxy.http.response());
@@ -260,7 +260,7 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Выводим заголовок запроса
 									std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 									// Получаем бинарные данные HTTP-запроса

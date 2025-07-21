@@ -175,9 +175,9 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd, sid), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd, sid), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -194,9 +194,9 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd, sid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd, sid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -244,7 +244,7 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 							/**
 							 * Если операционной системой является Linux или FreeBSD
 							 */
-							#if defined(__linux__) || defined(__FreeBSD__)
+							#if __linux__ || __FreeBSD__
 								// Если тип сокета установлен как SCTP
 								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 									// Устанавливаем параметры сокета
@@ -585,9 +585,9 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd, sid), log_t::flag_t::CRITICAL, "Memory allocation error");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd, sid), log_t::flag_t::CRITICAL, "Memory allocation error");
 						/**
 						* Если режим отладки не включён
 						*/
@@ -604,9 +604,9 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd, sid), log_t::flag_t::CRITICAL, error.what());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd, sid), log_t::flag_t::CRITICAL, error.what());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1021,7 +1021,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 			// Выполняем блокировку потока
 			const lock_guard <std::recursive_mutex> lock2(this->_mtx.timeout);
 			// Выполняем инициализацию нового таймера
-			this->_timer = make_unique <timer_t> (this->_fmk, this->_log);
+			this->_timer = std::make_unique <timer_t> (this->_fmk, this->_log);
 			// Устанавливаем флаг запрещающий вывод информационных сообщений
 			this->_timer->verbose(false);
 			// Выполняем биндинг сетевого ядра таймера
@@ -1211,7 +1211,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 										// Выполняем блокировку потока
 										this->_mtx.accept.lock();
 										// Выполняем создание брокера подключения
-										auto ret = this->_brokers.emplace(sid, make_unique <awh::scheme_t::broker_t> (sid, this->_fmk, this->_log));
+										auto ret = this->_brokers.emplace(sid, std::make_unique <awh::scheme_t::broker_t> (sid, this->_fmk, this->_log));
 										// Выполняем блокировку потока
 										this->_mtx.accept.unlock();
 										// Устанавливаем активный сокет сервера
@@ -1231,9 +1231,9 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, pid, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, "Memory allocation error");
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid, pid, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, "Memory allocation error");
 										/**
 										* Если режим отладки не включён
 										*/
@@ -1250,9 +1250,9 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, pid, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid, pid, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
 										/**
 										* Если режим отладки не включён
 										*/
@@ -1367,9 +1367,9 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				* Если режим отладки не включён
 				*/
@@ -1386,9 +1386,9 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -2068,7 +2068,7 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 				/**
 				 * Если операционной системой является Linux или FreeBSD
 				 */
-				#if defined(__linux__) || defined(__FreeBSD__)
+				#if __linux__ || __FreeBSD__
 					// Если тип сокета установлен как SCTP
 					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 						// Устанавливаем параметры сокета
@@ -2150,9 +2150,9 @@ uint32_t awh::server::Core::port(const uint16_t sid) const noexcept {
  * @param sid идентификатор схемы сети
  * @return    список доступных воркеров
  */
-set <pid_t> awh::server::Core::workers(const uint16_t sid) const noexcept {
+std::set <pid_t> awh::server::Core::workers(const uint16_t sid) const noexcept {
 	// Результат работы функции
-	set <pid_t> result;
+	std::set <pid_t> result;
 	// Если список дочерних воркеров получен
 	if(!this->_workers.empty()){
 		// Выполняем перебор списка дочерних воркеров
@@ -2787,7 +2787,7 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 											// Выполняем блокировку потока
 											this->_mtx.accept.lock();
 											// Выполняем создание брокера подключения
-											auto ret = this->_brokers.emplace(sid, make_unique <awh::scheme_t::broker_t> (sid, this->_fmk, this->_log));
+											auto ret = this->_brokers.emplace(sid, std::make_unique <awh::scheme_t::broker_t> (sid, this->_fmk, this->_log));
 											// Выполняем блокировку потока
 											this->_mtx.accept.unlock();
 											// Устанавливаем активный сокет сервера
@@ -2807,9 +2807,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 											/**
 											 * Если включён режим отладки
 											 */
-											#if defined(DEBUG_MODE)
+											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, ip, family), log_t::flag_t::CRITICAL, "Memory allocation error");
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid, ip, family), log_t::flag_t::CRITICAL, "Memory allocation error");
 											/**
 											* Если режим отладки не включён
 											*/
@@ -2826,9 +2826,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 											/**
 											 * Если включён режим отладки
 											 */
-											#if defined(DEBUG_MODE)
+											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, ip, family), log_t::flag_t::CRITICAL, error.what());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid, ip, family), log_t::flag_t::CRITICAL, error.what());
 											/**
 											* Если режим отладки не включён
 											*/
@@ -2962,7 +2962,7 @@ void awh::server::Core::clusterName(const string & name) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку названия кластера
@@ -2987,7 +2987,7 @@ void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Разрешаем автоматический перезапуск упавших процессов
@@ -3012,7 +3012,7 @@ void awh::server::Core::clusterSalt(const string & salt) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку соли шифрования
@@ -3037,7 +3037,7 @@ void awh::server::Core::clusterPassword(const string & password) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку пароля шифрования
@@ -3062,7 +3062,7 @@ void awh::server::Core::clusterCipher(const hash_t::cipher_t cipher) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку размера шифрования
@@ -3087,7 +3087,7 @@ void awh::server::Core::clusterCompressor(const hash_t::method_t compressor) noe
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку метода компрессии
@@ -3112,7 +3112,7 @@ void awh::server::Core::clusterTransfer(const cluster_t::transfer_t transfer) no
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку режима передачи данных
@@ -3138,7 +3138,7 @@ void awh::server::Core::clusterBandwidth(const string & read, const string & wri
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Выполняем установку пропускной способности сети кластера
@@ -3172,7 +3172,7 @@ void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t 
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Активируем режим работы кластера

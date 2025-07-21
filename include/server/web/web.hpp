@@ -563,7 +563,7 @@ namespace awh {
 				std::map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				// Список активных сессий HTTP/2
-				std::map <uint64_t, shared_ptr <http2_t>> _sessions;
+				std::map <uint64_t, std::shared_ptr <http2_t>> _sessions;
 			protected:
 				/**
 				 * session Метод инициализации сессии

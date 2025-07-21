@@ -119,7 +119,7 @@ void awh::client::WS::commit() noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 							/**
@@ -188,7 +188,7 @@ void awh::client::WS::commit() noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
 								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 							/**
@@ -248,7 +248,7 @@ void awh::client::WS::commit() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
@@ -325,7 +325,7 @@ awh::Http::status_t awh::client::WS::status() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**

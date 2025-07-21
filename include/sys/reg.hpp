@@ -107,9 +107,9 @@ namespace awh {
 			};
 		public:
 			// Создаём новый тип данных регулярного выражения
-			using exp_t = shared_ptr <Expression>;
+			using exp_t = std::shared_ptr <Expression>;
 			// Создаём новый тип данных для статического хранения регулярных выражений
-			using exp_weak_t = weak_ptr <Expression>;
+			using exp_weak_t = std::weak_ptr <Expression>;
 		private:
 			// Текст ошибки
 			string _error;

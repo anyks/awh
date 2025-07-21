@@ -102,7 +102,7 @@ void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid
 		// Если брокер найден, выводим его параметры
 		if(i != this->_clients.end()){
 			// Создаём объект параметров активного клиента
-			auto ret = i->second->streams.emplace(sid, make_unique <stream_t> (i->second->fmk, i->second->log));
+			auto ret = i->second->streams.emplace(sid, std::make_unique <stream_t> (i->second->fmk, i->second->log));
 			// Устанавливаем идентификатор потока
 			ret.first->second->sid = sid;
 			// Устанавливаем список доступных компрессоров

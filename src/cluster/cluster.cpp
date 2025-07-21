@@ -30,7 +30,7 @@ using namespace placeholders;
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * message Метод обратного вызова получении сообщений
 	 * @param fd    файловый дескриптор (сокет)
@@ -160,7 +160,7 @@ using namespace placeholders;
 											// Добавляем полученный идентификатор процесса в список активных сокетов
 											const_cast <cluster_t *> (this->_ctx)->_sockets.emplace(fd, i->second->pid());
 											// Создаём новый объект энкодеров для передачи данных
-											auto ret = const_cast <cluster_t *> (this->_ctx)->_encoders.emplace(i->second->pid(), make_unique <cmp::encoder_t> (this->_log));
+											auto ret = const_cast <cluster_t *> (this->_ctx)->_encoders.emplace(i->second->pid(), std::make_unique <cmp::encoder_t> (this->_log));
 											// Если метод компрессии сообщений установлен
 											if(this->_ctx->_method != hash_t::method_t::NONE)
 												// Выполняем установку метода компрессии
@@ -408,7 +408,7 @@ using namespace placeholders;
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * Глобальный объект воркера
 	 */
@@ -430,7 +430,7 @@ using namespace placeholders;
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Создаем сокет подключения
 				this->_server.fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
 				// Если сокет не создан то выходим
@@ -438,9 +438,9 @@ using namespace placeholders;
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->_server.ipc, static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, this->_server.socket.message(AWH_ERROR()).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_server.ipc, static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, this->_server.socket.message(AWH_ERROR()).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
@@ -488,9 +488,9 @@ using namespace placeholders;
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->_server.ipc, static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, this->_server.socket.message(AWH_ERROR()).c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_server.ipc, static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, this->_server.socket.message(AWH_ERROR()).c_str());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -601,7 +601,7 @@ bool awh::Cluster::list() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_server.socket.message(AWH_ERROR()).c_str());
 		/**
@@ -623,7 +623,7 @@ bool awh::Cluster::connect() noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Получаем размер объекта сокета
 		this->_server.peer.size = (
 			offsetof(struct sockaddr_un, sun_path) +
@@ -644,13 +644,13 @@ void awh::Cluster::accept(const uint16_t wid, const SOCKET fd, const base_t::eve
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем поиск воркера
 		auto i = this->_workers.find(wid);
 		// Если воркер найден
 		if(i != this->_workers.end()){
 			// Выполняем инициализацию нового клиента
-			std::unique_ptr <client_t> client = make_unique <client_t> (this->_fmk, this->_log);
+			std::unique_ptr <client_t> client = std::make_unique <client_t> (this->_fmk, this->_log);
 			// Заполняем структуру клиента нулями
 			::memset(&client->peer.addr, 0, sizeof(client->peer.addr));
 			// Создаём объект подключения для клиента
@@ -683,7 +683,7 @@ void awh::Cluster::accept(const uint16_t wid, const SOCKET fd, const base_t::eve
 			this->_server.socket.bufferSize(client->fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
 			{
 				// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-				auto ret = i->second->_decoders.emplace(client->fd, make_unique <cmp::decoder_t> (this->_log));
+				auto ret = i->second->_decoders.emplace(client->fd, std::make_unique <cmp::decoder_t> (this->_log));
 				// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 				ret.first->second->chunkSize(this->_server.socket.bufferSize(client->fd, socket_t::mode_t::READ));
 				// Если размер шифрования и пароль установлены
@@ -728,7 +728,7 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) n
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -839,9 +839,9 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET fd) n
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, fd), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, fd), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -862,7 +862,7 @@ void awh::Cluster::sending(const uint16_t wid, const pid_t pid, const SOCKET fd)
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -906,9 +906,9 @@ void awh::Cluster::sending(const uint16_t wid, const pid_t pid, const SOCKET fd)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, pid, fd), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, pid, fd), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -928,7 +928,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		/**
 		 * Выполняем обработку ошибки
 		 */
@@ -1035,7 +1035,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										this->_server.socket.bufferSize(this->_server.fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
 										{
 											// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-											auto ret = i->second->_decoders.emplace(this->_server.fd, make_unique <cmp::decoder_t> (this->_log));
+											auto ret = i->second->_decoders.emplace(this->_server.fd, std::make_unique <cmp::decoder_t> (this->_log));
 											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::READ));
 											// Если размер шифрования и пароль установлены
@@ -1049,7 +1049,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 											}
 										}{
 											// Создаём новый объект энкодеров для передачи данных
-											auto ret = this->_encoders.emplace(this->_pid, make_unique <cmp::encoder_t> (this->_log));
+											auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_log));
 											// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::WRITE));
 											// Выполняем добавление буфера данных в протокол
@@ -1120,7 +1120,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										this->_server.socket.bufferSize(broker->mfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 										{
 											// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-											auto ret = i->second->_decoders.emplace(broker->cfds[0], make_unique <cmp::decoder_t> (this->_log));
+											auto ret = i->second->_decoders.emplace(broker->cfds[0], std::make_unique <cmp::decoder_t> (this->_log));
 											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
 											// Если размер шифрования и пароль установлены
@@ -1134,7 +1134,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 											}
 										}{
 											// Создаём новый объект энкодеров для передачи данных
-											auto ret = this->_encoders.emplace(this->_pid, make_unique <cmp::encoder_t> (this->_log));
+											auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_log));
 											// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[1], socket_t::mode_t::WRITE));
 											// Выполняем добавление буфера данных в протокол
@@ -1217,7 +1217,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// Устанавливаем размер буфера на запись
 								this->_server.socket.bufferSize(broker->cfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 								// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-								auto ret = i->second->_decoders.emplace(broker->mfds[0], make_unique <cmp::decoder_t> (this->_log));
+								auto ret = i->second->_decoders.emplace(broker->mfds[0], std::make_unique <cmp::decoder_t> (this->_log));
 								// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 								ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[0], socket_t::mode_t::READ));
 								// Если размер шифрования и пароль установлены
@@ -1253,9 +1253,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, pid), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, pid), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1277,7 +1277,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		/**
 		 * Выполняем обработку ошибки
 		 */
@@ -1438,7 +1438,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											this->_server.socket.bufferSize(this->_server.fd, this->_bandwidth.write, socket_t::mode_t::WRITE);
 											{
 												// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-												auto ret = i->second->_decoders.emplace(this->_server.fd, make_unique <cmp::decoder_t> (this->_log));
+												auto ret = i->second->_decoders.emplace(this->_server.fd, std::make_unique <cmp::decoder_t> (this->_log));
 												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::READ));
 												// Если размер шифрования и пароль установлены
@@ -1452,7 +1452,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 												}
 											}{
 												// Создаём новый объект энкодеров для передачи данных
-												auto ret = this->_encoders.emplace(this->_pid, make_unique <cmp::encoder_t> (this->_log));
+												auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_log));
 												// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.fd, socket_t::mode_t::WRITE));
 												// Выполняем добавление буфера данных в протокол
@@ -1516,7 +1516,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											this->_server.socket.bufferSize(broker->mfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 											{
 												// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-												auto ret = i->second->_decoders.emplace(broker->cfds[0], make_unique <cmp::decoder_t> (this->_log));
+												auto ret = i->second->_decoders.emplace(broker->cfds[0], std::make_unique <cmp::decoder_t> (this->_log));
 												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
 												// Если размер шифрования и пароль установлены
@@ -1530,7 +1530,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 												}
 											}{
 												// Создаём новый объект энкодеров для передачи данных
-												auto ret = this->_encoders.emplace(this->_pid, make_unique <cmp::encoder_t> (this->_log));
+												auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_log));
 												// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[1], socket_t::mode_t::WRITE));
 												// Выполняем добавление буфера данных в протокол
@@ -1649,7 +1649,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Устанавливаем размер буфера на запись
 									this->_server.socket.bufferSize(broker->cfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 									// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-									auto ret = i->second->_decoders.emplace(broker->mfds[0], make_unique <cmp::decoder_t> (this->_log));
+									auto ret = i->second->_decoders.emplace(broker->mfds[0], std::make_unique <cmp::decoder_t> (this->_log));
 									// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 									ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[0], socket_t::mode_t::READ));
 									// Если размер шифрования и пароль установлены
@@ -1690,9 +1690,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, index), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, index), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1733,9 +1733,9 @@ bool awh::Cluster::working(const uint16_t wid) const noexcept {
  * @param wid идентификатор воркера
  * @return    список дочерних процессов
  */
-set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
+std::set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Результат работы функции
-	set <pid_t> result;
+	std::set <pid_t> result;
 	// Выполняем поиск брокеров
 	auto i = this->_brokers.find(wid);
 	// Если брокер найден
@@ -1743,7 +1743,7 @@ set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Переходим по всему списку брокеров
 			for(auto & broker : i->second)
 				// Выполняем формирование списка процессов
@@ -1773,7 +1773,7 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Получаем идентификатор текущего процесса
 		const pid_t pid = ::getpid();
 		// Если процесс превратился в зомби
@@ -1836,7 +1836,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск брокеров
@@ -1899,7 +1899,7 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (::getpid())) && (size > 0)){
 			// Выполняем поиск брокеров
@@ -2004,7 +2004,7 @@ void awh::Cluster::close() noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Определяем принцип передачи данных
 			switch(static_cast <uint8_t> (this->_transfer)){
 				// Если мы передаём данные через unix-сокет
@@ -2075,7 +2075,7 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Определяем принцип передачи данных
 			switch(static_cast <uint8_t> (this->_transfer)){
 				// Если мы передаём данные через unix-сокет
@@ -2140,7 +2140,7 @@ void awh::Cluster::close(const uint16_t wid, const SOCKET fd) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Закрываем сокет подключения
 		::close(fd);
 		// Выполняем поиск воркера
@@ -2187,7 +2187,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Выполняем закрытие подключения передачи сообщений
 				this->close(wid);
 			#endif
@@ -2229,7 +2229,7 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if(this->_pid == static_cast <pid_t> (::getpid())){
 			// Выполняем поиск идентификатора воркера
@@ -2352,7 +2352,7 @@ void awh::Cluster::emplace(const uint16_t wid) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if(this->_pid == static_cast <pid_t> (::getpid())){
 			// Выполняем поиск идентификатора воркера
@@ -2390,7 +2390,7 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if(this->_pid == static_cast <pid_t> (::getpid())){
 			// Выполняем поиск брокеров
@@ -2499,7 +2499,7 @@ void awh::Cluster::autoRestart(const uint16_t wid, const bool mode) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if(this->_pid == static_cast <pid_t> (::getpid())){
 			// Выполняем поиск идентификатора воркера
@@ -2540,7 +2540,7 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 		// Если воркер не найден
 		if(i == this->_workers.end())
 			// Добавляем воркер в список воркеров
-			this->_workers.emplace(wid, make_unique <worker_t> (wid, this, this->_log));
+			this->_workers.emplace(wid, std::make_unique <worker_t> (wid, this, this->_log));
 		// Выполняем установку максимально-возможного количества процессов
 		this->count(wid, count);
 	/**
@@ -2550,9 +2550,9 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(wid, count), log_t::flag_t::CRITICAL, "Memory allocation error");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(wid, count), log_t::flag_t::CRITICAL, "Memory allocation error");
 		/**
 		* Если режим отладки не включён
 		*/
@@ -2607,7 +2607,7 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем установку объекта кластера
 		cluster = this;
 		// Выполняем зануление структур перехватчиков событий
@@ -2637,7 +2637,7 @@ awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexc
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем установку объекта кластера
 		cluster = this;
 		// Выполняем зануление структур перехватчиков событий

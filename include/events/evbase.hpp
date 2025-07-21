@@ -162,7 +162,7 @@ namespace awh {
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Объект данных запроса
 				WSADATA _wsaData;
 				// Флаг инициализации WinSocksAPI

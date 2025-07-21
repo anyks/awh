@@ -381,12 +381,12 @@ namespace awh {
 			 * headers Метод получения списка заголовков
 			 * @return список существующих заголовков
 			 */
-			const unordered_multimap <string, string> & headers() const noexcept;
+			const std::unordered_multimap <string, string> & headers() const noexcept;
 			/**
 			 * headers Метод установки списка заголовков
 			 * @param headers список заголовков для установки
 			 */
-			void headers(const unordered_multimap <string, string> & headers) noexcept;
+			void headers(const std::unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
 			 * header2 Метод добавления заголовка в формате HTTP/2

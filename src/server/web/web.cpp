@@ -239,7 +239,7 @@ void awh::server::Web::init([[maybe_unused]] const string & socket, [[maybe_unus
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если объект сетевого ядра создан
 		if(this->_core != nullptr)
 			// Выполняем установку unix-сокет

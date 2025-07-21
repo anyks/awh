@@ -32,7 +32,7 @@
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	#define SOCKET int32_t
 	#define INVALID_SOCKET -1
 #endif
@@ -40,7 +40,7 @@
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 /**

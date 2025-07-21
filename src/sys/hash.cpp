@@ -913,7 +913,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 						// Выполняем удаление потока
 						::ZSTD_freeCStream(ctx);
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n", ::ZSTD_getErrorName(status));
+						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -924,7 +924,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					// Получаем длину итогового буфера данных
 					const size_t length = ::ZSTD_CStreamOutSize();
 					// Выполняем инициализацию итогового буфера данных
-					const auto data = make_unique <char []> (length);
+					const auto data = std::make_unique <char []> (length);
 					// Выполняем создание буфера исходящих данных
 					ZSTD_outBuffer output = {data.get(), length, 0};
 					// Выполняем обработку всех входящих данных
@@ -944,7 +944,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 								// Выполняем удаление потока
 								::ZSTD_freeCStream(ctx);
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "Zstandard: %s\n", ::ZSTD_getErrorName(status));
+								::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 								// Выполняем очистку результата
 								result.clear();
 								// Выходим из функции
@@ -965,7 +965,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 						// Выполняем удаление потока
 						::ZSTD_freeCStream(ctx);
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n", ::ZSTD_getErrorName(status));
+						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -992,7 +992,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					// Если мы получили ошибку
 					if(::ZSTD_isError(actual)){
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n", ::ZSTD_getErrorName(actual));
+						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(actual));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -1020,7 +1020,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 						// Выполняем удаление потока
 						::ZSTD_freeDStream(ctx);
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n", ::ZSTD_getErrorName(status));
+						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -1031,7 +1031,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					// Получаем длину итогового буфера данных
 					const size_t length = ::ZSTD_DStreamOutSize();
 					// Выполняем инициализацию итогового буфера данных
-					const auto data = make_unique <char []> (length);
+					const auto data = std::make_unique <char []> (length);
 					// Выполняем создание буфера исходящих данных
 					ZSTD_outBuffer output = {data.get(), length, 0};
 					// Выполняем обработку всех входящих данных
@@ -1051,7 +1051,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 								// Выполняем удаление потока
 								::ZSTD_freeDStream(ctx);
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "Zstandard: %s\n", ::ZSTD_getErrorName(status));
+								::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 								// Выполняем очистку результата
 								result.clear();
 								// Выходим из функции
@@ -1079,7 +1079,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					// Если мы получили ошибку
 					if(::ZSTD_isError(actual)){
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n", ::ZSTD_getErrorName(actual));
+						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(actual));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -2156,7 +2156,7 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Выходим из приложения
 				::raise(SIGINT);
 			/**
@@ -2197,7 +2197,7 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Выходим из приложения
 				::raise(SIGINT);
 			/**

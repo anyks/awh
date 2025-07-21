@@ -96,7 +96,7 @@ void awh::Log::rotate() const noexcept {
 	/**
 	 * Для операционной системы OS Windows
 	 */
-	#if defined(_WIN32) || defined(_WIN64)
+	#if _WIN32 || _WIN64
 		// Размер файла лога
 		uintmax_t size = 0;
 		// Получаем адрес файла для записи
@@ -125,7 +125,7 @@ void awh::Log::rotate() const noexcept {
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Буфер данных для чтения
 					vector <char> buffer(size, 0);
 					// Выполняем чтение из файла в буфер данные
@@ -149,7 +149,7 @@ void awh::Log::rotate() const noexcept {
 							// Выполняем формирование текста ошибки
 							FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, WSAGetLastError(), 0, message, 256, 0);
 							// Выводим текст полученной ошибки
-							::fprintf(stderr, "Log rotate: %s\n", this->_fmk->convert(message).c_str());
+							::fprintf(stderr, "Log rotate: %s\n\n", this->_fmk->convert(message).c_str());
 						}
 					}
 				/**
@@ -177,7 +177,7 @@ void awh::Log::rotate() const noexcept {
 								// Закрываем сжатый файл
 								::gzclose(gz);
 							// Если произошла ошибка
-							} else ::fprintf(stderr, "Log rotate: %s\n", ::strerror(errno));
+							} else ::fprintf(stderr, "Log rotate: %s\n\n", ::strerror(errno));
 						}
 						// Закрываем файл
 						file.close();
@@ -190,7 +190,7 @@ void awh::Log::rotate() const noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем закрытие файла
 			CloseHandle(file);
 			// Если размер файла лога, превышает максимально-установленный
@@ -321,7 +321,7 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем открытие файла на запись
 			HANDLE file = CreateFileW(this->_fmk->convert(this->_filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 			// Если открыть файл открыт нормально
@@ -425,7 +425,7 @@ pair <string, string> awh::Log::components(const string & filename) const noexce
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
+				#if !_WIN32 && !_WIN64
 					// Устанавливаем адрес файла где хранится файл
 					result.first.append("./");
 				#endif
@@ -595,7 +595,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
  * mode Метод получения установленных режимов вывода логов
  * @return список режимов вывода логов
  */
-const set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
+const std::set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
 	// Выводим список режимов вывода логов
 	return this->_mode;
 }
@@ -603,7 +603,7 @@ const set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
  * mode Метод добавления режимов вывода логов
  * @param mode список режимов вывода логов
  */
-void awh::Log::mode(const set <mode_t> & mode) noexcept {
+void awh::Log::mode(const std::set <mode_t> & mode) noexcept {
 	// Выполняем установку списка режимов вывода логов
 	this->_mode = mode;
 }

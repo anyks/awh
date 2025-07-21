@@ -148,7 +148,7 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 									/**
 									 * Если включён режим отладки
 									 */
-									#if defined(DEBUG_MODE)
+									#if DEBUG_MODE
 										{
 											// Получаем данные ответа
 											const auto & response = this->_http.process(http_t::process_t::RESPONSE, this->_http.response());
@@ -868,7 +868,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим заголовок запроса
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры запроса
@@ -885,7 +885,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение о выводе чанка тела
 						std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 					#endif
@@ -1053,7 +1053,7 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение о выводе чанка тела
 					std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 				#endif
@@ -1118,7 +1118,7 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим заголовок запроса
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры запроса
@@ -1221,7 +1221,7 @@ void awh::client::Http1::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const unordered_set <string> & awh::client::Http1::subprotocols() const noexcept {
+const std::unordered_set <string> & awh::client::Http1::subprotocols() const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
 	return this->_ws1.subprotocols();
 }
@@ -1229,7 +1229,7 @@ const unordered_set <string> & awh::client::Http1::subprotocols() const noexcept
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Http1::subprotocols(const unordered_set <string> & subprotocols) noexcept {
+void awh::client::Http1::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Выполняем установку поддерживаемых сабпротоколов
 	this->_ws1.subprotocols(subprotocols);
 }

@@ -29,7 +29,7 @@
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	#define SOCKET int32_t
 	#define INVALID_SOCKET -1
 #endif
@@ -37,7 +37,7 @@
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * Стандартные библиотеки
 	 */
@@ -97,9 +97,6 @@
 		#include <netinet/if_ether.h>
 		#include <sys/sockio.h>
 		#include <net/route.h>
-		// Создаём функцию округления
-		#define ROUNDUP(a) \
-			((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 	#endif
 /**
  * Для операционной системы OS Windows

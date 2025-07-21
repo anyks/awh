@@ -92,7 +92,7 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим заголовок ответа
 						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ PUSH ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Выводим информацию об ошибке
@@ -115,7 +115,7 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим заголовок ответа
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим информацию об ошибке
@@ -132,7 +132,7 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим заголовок ответа
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим информацию об ошибке
@@ -530,7 +530,7 @@ int32_t awh::Http2::close(nghttp2_session * session, const int32_t sid, const ui
 	/**
 	 * Если включён режим отладки
 	 */
-	#if defined(DEBUG_MODE)
+	#if DEBUG_MODE
 		// Выводим заголовок ответа
 		std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE STREAM HTTP2 ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 		// Если ошибка не была получена
@@ -1574,7 +1574,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					// Если буфер полезной нагрузки не существует
 					else {
 						// Выполняем создание буфера полезной нагрузки
-						auto ret = this->_payloads.emplace(id, make_unique <buffer_t> (this->_log));
+						auto ret = this->_payloads.emplace(id, std::make_unique <buffer_t> (this->_log));
 						// Выполняем добавление в буфер данных полезной нагрузки
 						ret.first->second->push(buffer, size);
 					}
@@ -1584,13 +1584,13 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					// Если список записей для потока получен
 					if(i != this->_records.end())
 						// Выполняем добавление новой записи
-						i->second.push(make_pair(size, flag));
+						i->second.push(std::make_pair(size, flag));
 					// Выполняем создание нового списка записей для потока
 					else {
 						// Выполняем создание нового списка записей для потока
 						auto ret = this->_records.emplace(id, std::queue <pair <size_t, flag_t>> ());
 						// Выполняем добавление новой записи
-						ret.first->second.push(make_pair(size, flag));
+						ret.first->second.push(std::make_pair(size, flag));
 					}
 				}
 				// Если библиотека не готова отдать или принять данные, тогда закрываем подключение
@@ -1624,9 +1624,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				* Если режим отладки не включён
 				*/
@@ -1643,9 +1643,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -2076,7 +2076,7 @@ bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> &
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выполняем установку функции для вывода отладочной информации
 			nghttp2_set_debug_vprintf_callback(&http2_t::debug);
 		#endif

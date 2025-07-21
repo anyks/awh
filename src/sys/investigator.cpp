@@ -25,7 +25,7 @@ using namespace std;
 /**
  * Для операционной системы NetBSD или OpenBSD
  */
-#if defined(__NetBSD__) || defined(__OpenBSD__)
+#if __NetBSD__ || __OpenBSD__
 	/**
 	 * readData Функция извлечения данных записи
 	 * @param filename адрес файла для извлечения
@@ -66,15 +66,15 @@ using namespace std;
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 		// Выводим результат

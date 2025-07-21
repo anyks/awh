@@ -42,7 +42,7 @@ bool awh::Socket::noSigILL() const noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Создаем структуру активации сигнала
 		struct sigaction act;
 		// Зануляем структуру
@@ -198,7 +198,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 		/**
 		 * Если операционная система не является Linux
 		 */
-		#if !defined(__linux__)
+		#if !__linux__
 			// Разрешаем повторно использовать тот же host:port после отключения
 			if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&on), sizeof(on))))){
 				/**
@@ -225,7 +225,7 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Флаги файлового дескриптора
 		int32_t flags = 0;
 		// Получаем флаги файлового дескриптора 
@@ -268,7 +268,7 @@ bool awh::Socket::blocking(const SOCKET fd) const noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Флаги файлового дескриптора
 		int32_t flags = 0;
 		// Получаем флаги файлового дескриптора

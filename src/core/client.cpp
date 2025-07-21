@@ -80,7 +80,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					}
 				}
 				// Создаём бъект активного брокера подключения
-				unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
+				std::unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
 				// Устанавливаем время жизни подключения
 				broker->addr.alive = shm->keepAlive;
 				// Выполняем установку времени ожидания входящих сообщений
@@ -126,7 +126,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					/**
 					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#if defined(__linux__) || defined(__FreeBSD__)
+					#if __linux__ || __FreeBSD__
 						// Если тип сокета установлен как SCTP
 						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 							// Устанавливаем параметры сокета
@@ -270,7 +270,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Выполняем установку базы событий
 					broker->base(this->eventBase());
 					// Добавляем созданного брокера в список брокеров
-					auto ret = shm->_brokers.emplace(broker->id(), std::forward <unique_ptr <awh::scheme_t::broker_t>> (broker));
+					auto ret = shm->_brokers.emplace(broker->id(), std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
 					// Добавляем брокера в список подключений
 					this->_brokers.emplace(ret.first->first, ret.first->second.get());
 					// Выполняем блокировку потока
@@ -443,9 +443,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				* Если режим отладки не включён
 				*/
@@ -462,9 +462,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/

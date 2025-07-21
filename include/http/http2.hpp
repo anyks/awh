@@ -28,7 +28,7 @@
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	// Подключаем библиотеку асинхронного ввода-вывода
 	#include <io.h>
 	// Подключаем вспомогательную библиотеку
@@ -517,7 +517,7 @@ namespace awh {
 						// Если активное событие не установлено
 						if(this->_event == event_t::NONE){
 							// Выполняем функцию обратного вызова
-							std::apply(std::bind(args...), make_tuple());
+							std::apply(std::bind(args...), std::make_tuple());
 							// Выходим из функции
 							return 0;
 						}

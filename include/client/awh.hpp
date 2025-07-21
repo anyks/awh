@@ -223,7 +223,7 @@ namespace awh {
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
-				vector <char> POST(const uri_t::url_t & url, const char * entity, const size_t size, const unordered_multimap <string, string> & headers = {}) noexcept;
+				vector <char> POST(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
 				 * POST Метод запроса в формате HTTP методом POST
 				 * @param url     адрес запроса
@@ -427,12 +427,12 @@ namespace awh {
 				 * subprotocol Метод получения списка выбранных сабпротоколов
 				 * @return список выбранных сабпротоколов
 				 */
-				const unordered_set <string> & subprotocols() const noexcept;
+				const std::unordered_set <string> & subprotocols() const noexcept;
 				/**
 				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
 				 * @param subprotocols сабпротоколы для установки
 				 */
-				void subprotocols(const unordered_set <string> & subprotocols) noexcept;
+				void subprotocols(const std::unordered_set <string> & subprotocols) noexcept;
 			public:
 				/**
 				 * extensions Метод извлечения списка расширений Websocket

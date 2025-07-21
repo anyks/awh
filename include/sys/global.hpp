@@ -15,18 +15,33 @@
 #ifndef __AWH_GLOBAL__
 #define __AWH_GLOBAL__
 
-#if defined(_MSC_VER) || defined(WIN64) || defined(_WIN64) || defined(__WIN64__) || defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+/**
+ * Для операционной системы OS Windows
+ */
+#if _MSC_VER || WIN64 || _WIN64 || __WIN64__ || WIN32 || _WIN32 || __WIN32__ || __NT__
 	#define DECL_EXPORT __declspec(dllexport)
 	#define DECL_IMPORT __declspec(dllimport)
+/**
+ * Для операционной системы не являющейся OS Windows
+ */
 #else
 	#define DECL_EXPORT __attribute__((visibility("default")))
 	#define DECL_IMPORT __attribute__((visibility("default")))
 #endif
 
-#if defined(AWH_SHARED_LIBRARY_EXPORT)
+/**
+ * Если активирован экспорт динамической библиотеки
+ */
+#if AWH_SHARED_LIBRARY_EXPORT
 	#define AWHSHARED_EXPORT DECL_EXPORT
-#elif defined(AWH_SHARED_LIBRARY_IMPORT)
+/**
+ * Если активирован импорт динамической библиотеки
+ */
+#elif AWH_SHARED_LIBRARY_IMPORT
 	#define AWHSHARED_EXPORT DECL_IMPORT
+/**
+ * Если мы работаем со статической библиотекой
+ */
 #else
 	#define AWHSHARED_EXPORT
 #endif

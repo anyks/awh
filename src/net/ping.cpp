@@ -81,9 +81,9 @@ string awh::Ping::host(const int32_t family) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -209,7 +209,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 						/**
 						 * Для операционной системы не являющейся OS Windows
 						 */
-						#if !defined(_WIN32) && !defined(_WIN64)
+						#if !_WIN32 && !_WIN64
 							// Если произведена неудачная запись в PIPE
 							case EPIPE: {
 								// Если разрешено выводить информацию в лог
@@ -259,7 +259,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 					/**
 					 * Для операционной системы не являющейся OS Windows
 					 */
-					#if !defined(_WIN32) && !defined(_WIN64)
+					#if !_WIN32 && !_WIN64
 						// Если произведена неудачная запись в PIPE
 						case EPIPE: {
 							// Если разрешено выводить информацию в лог
@@ -305,9 +305,9 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family, index), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family, index), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -330,7 +330,7 @@ void awh::Ping::close() noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
 			closesocket(this->_fd);
 		/**
@@ -534,7 +534,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Создаём сокет подключения
 						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					/**
@@ -580,7 +580,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Создаём сокет подключения  (IPPROTO_ICMP6)
 						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					/**
@@ -611,7 +611,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 				// Индекс текущей итерации
 				uint64_t index = 0;
 				// Если операционная система не принадлежит к Sun Solaris
-				#if !defined(__sun__)
+				#if !__sun__
 					// Устанавливаем разрешение на повторное использование сокета
 					this->_socket.reuseable(this->_fd);
 				#endif
@@ -904,7 +904,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Создаём сокет подключения
 						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					/**
@@ -950,7 +950,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Создаём сокет подключения (IPPROTO_ICMP6)
 						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					/**
@@ -977,7 +977,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 			// Если сокет создан удачно и работа резолвера не остановлена
 			} else if(this->_mode) {
 				// Если операционная система не принадлежит к Sun Solaris
-				#if !defined(__sun__)
+				#if !__sun__
 					// Устанавливаем разрешение на повторное использование сокета
 					this->_socket.reuseable(this->_fd);
 				#endif

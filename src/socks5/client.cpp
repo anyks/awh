@@ -242,7 +242,7 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											// Заменяем порт сервера
 											server.port = ntohs(server.port);
 											// Если включён режим отладки
-											#if defined(DEBUG_MODE)
+											#if DEBUG_MODE
 												// Если порт установлен
 												if(server.port > 0)
 													// Выводим сообщение о данных сервера
@@ -270,7 +270,7 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											// Заменяем порт сервера
 											server.port = ntohs(server.port);
 											// Если включён режим отладки
-											#if defined(DEBUG_MODE)
+											#if DEBUG_MODE
 												// Если порт установлен
 												if(server.port > 0)
 													// Выводим сообщение о данных сервера
@@ -300,7 +300,7 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											// Заменяем порт сервера
 											port = ntohs(port);
 											// Если включён режим отладки
-											#if defined(DEBUG_MODE)
+											#if DEBUG_MODE
 												// Если порт установлен
 												if(port > 0)
 													// Выводим сообщение о данных сервера

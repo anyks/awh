@@ -108,7 +108,7 @@ void awh::Engine::Address::client() noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Для протокола unix-сокета
 			case AF_UNIX: {
 				// Устанавливаем адрес сервера
@@ -236,7 +236,7 @@ bool awh::Engine::Address::connect() noexcept {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Для протокола unix-сокета
 				case AF_UNIX:
 					// Получаем размер объекта сокета
@@ -324,7 +324,7 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -388,7 +388,7 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client), log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client), log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -464,7 +464,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int32_t family) noexcep
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
+				#if !_WIN32 && !_WIN64
 					// Для протокола unix-сокета
 					case AF_UNIX: {
 						// Создаём объект подключения для клиента
@@ -499,7 +499,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int32_t family) noexcep
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Выполняем игнорирование сигнала неверной инструкции процессора
 				this->_socket.noSigILL();
 				// Если сокет установлен TCP/IP
@@ -542,7 +542,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int32_t family) noexcep
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Для протокола unix-сокета
 			case AF_UNIX: {
 				// Выполняем игнорирование сигнала неверной инструкции процессора
@@ -588,7 +588,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Создаем сокет подключения
 			this->fd = ::socket(AF_UNIX, this->_type, 0);
 			// Если сокет не создан то выходим
@@ -598,7 +598,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -709,7 +709,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type), clientName), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unixsocket, static_cast <uint16_t> (type), clientName), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 								/**
 								* Если режим отладки не включён
 								*/
@@ -733,7 +733,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unixsocket, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
@@ -887,7 +887,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -901,7 +901,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Выполняем игнорирование сигнала неверной инструкции процессора
 				this->_socket.noSigILL();
 				// Если сокет установлен TCP/IP
@@ -964,7 +964,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -985,7 +985,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host, ip, port, family, static_cast <uint16_t> (type), onlyV6), log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 						/**
 						* Если режим отладки не включён
 						*/
@@ -1090,7 +1090,7 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Если произведена неудачная запись в PIPE
 				case EPIPE:
 				// Если произведён сброс подключения
@@ -1358,7 +1358,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
+				#if !_WIN32 && !_WIN64
 					// Если сработало событие таймаута
 					case ETIME:
 					// Если ошибка протокола
@@ -1602,7 +1602,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						/**
 						 * Для операционной системы не являющейся OS Windows
 						 */
-						#if !defined(_WIN32) && !defined(_WIN64)
+						#if !_WIN32 && !_WIN64
 							// Для протокола unix-сокета
 							if(this->_addr->_peer.server.ss_family == AF_UNIX)
 								// Получаем размер объекта сокета
@@ -1619,7 +1619,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						/**
 						 * Для операционной системы не являющейся OS Windows
 						 */
-						#if !defined(_WIN32) && !defined(_WIN64)
+						#if !_WIN32 && !_WIN64
 							// Для протокола unix-сокета
 							if(this->_addr->_peer.client.ss_family == AF_UNIX)
 								// Получаем размер объекта сокета
@@ -1669,7 +1669,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
+				#if !_WIN32 && !_WIN64
 					// Если сработало событие таймаута
 					case ETIME:
 					// Если ошибка протокола
@@ -4227,7 +4227,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			// Если нужно произвести проверку
 			if(this->_verify){
 				// Создаём объект проверки домена
-				target._verify = make_unique <verify_t> (host, this);
+				target._verify = std::make_unique <verify_t> (host, this);
 				// Выполняем проверку сертификата
 				::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 				// Выполняем проверку всех дочерних сертификатов
@@ -4422,7 +4422,7 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем игнорирование сигналов SIGPIPE
 		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 			// Выводим в лог сообщение

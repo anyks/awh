@@ -198,9 +198,9 @@ static void head(frame_t::head_t & head, const void * buffer, const size_t size,
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -267,7 +267,7 @@ static void frame(T & payload, const void * buffer, const size_t size, const boo
 			// Если нужно выполнить маскировку сообщения
 			if(mask){
 				// Получаем генератор случайных чисел
-				random_device randev;
+				std::random_device randev;
 				// Бинарные данные маски
 				vector <uint8_t> mask(4);
 				// Подключаем генератор к двигателю
@@ -275,7 +275,7 @@ static void frame(T & payload, const void * buffer, const size_t size, const boo
 				// Устанавливаем диапазон генератора случайных чисел
 				uniform_int_distribution <uint8_t> dist {0, 255};
 				// Выполняем заполнение маски случайными числами
-				generate(mask.begin(), mask.end(), [&dist, &engine]() noexcept -> uint8_t {
+				std::generate(mask.begin(), mask.end(), [&dist, &engine]() noexcept -> uint8_t {
 					// Выполняем генерирование случайного числа
 					return dist(engine);
 				});
@@ -297,9 +297,9 @@ static void frame(T & payload, const void * buffer, const size_t size, const boo
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, mask), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, mask), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -366,7 +366,7 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
@@ -420,7 +420,7 @@ awh::ws::mess_t awh::ws::Frame::message(const void * buffer, const size_t size) 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 				/**
@@ -628,9 +628,9 @@ vector <char> awh::ws::Frame::get(head_t & head, const void * buffer, const size
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/

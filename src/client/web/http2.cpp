@@ -318,7 +318,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									{
 										// Получаем данные запроса
 										const auto & request = i->second->http.process(http_t::process_t::REQUEST, query);
@@ -353,7 +353,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											{
 												// Если тело ответа существует
 												if(!i->second->http.empty(awh::http_t::suite_t::BODY))
@@ -458,7 +458,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											{
 												// Получаем данные ответа
 												const auto & response = i->second->http.process(http_t::process_t::RESPONSE, i->second->http.response());
@@ -698,7 +698,7 @@ void awh::client::Http2::redirect(const int32_t from, const int32_t to) noexcept
 	// Если воркер для предыдущего потока найден
 	if(i != this->_workers.end()){
 		// Выполняем установку объекта воркера
-		auto ret = this->_workers.emplace(to, make_unique <worker_t> (this->_fmk, this->_log));
+		auto ret = this->_workers.emplace(to, std::make_unique <worker_t> (this->_fmk, this->_log));
 		// Выполняем очистку параметров HTTP-запроса
 		ret.first->second->http.clear();
 		// Выполняем сброс состояния HTTP-парсера
@@ -1230,7 +1230,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 				// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 				if(web2_t::_callback.is("complete"))
 					// Выполняем функцию обратного вызова
-					i->second->callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const unordered_multimap <string, string> &)> ("complete"), sid, i->second->id, response.code, response.message, i->second->http.body(), i->second->http.headers());
+					i->second->callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, i->second->id, response.code, response.message, i->second->http.body(), i->second->http.headers());
 				// Завершаем обработку
 				return status_t::NEXT;
 			} break;
@@ -1242,7 +1242,7 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 		// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 		if(web2_t::_callback.is("complete"))
 			// Выполняем функцию обратного вызова
-			i->second->callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, i->second->id, response.code, response.message, i->second->http.body(), i->second->http.headers());
+			i->second->callback.on <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", web2_t::_callback.get <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>, const std::unordered_multimap <string, string> &)> ("complete"), sid, i->second->id, response.code, response.message, i->second->http.body(), i->second->http.headers());
 		// Выполняем закрытие подключения
 		web2_t::close(bid);
 	}
@@ -1394,7 +1394,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим заголовок запроса
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Получаем бинарные данные HTTP-запроса
@@ -1429,7 +1429,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if defined(DEBUG_MODE)
+									#if DEBUG_MODE
 										// Выводим сообщение о выводе чанка тела
 										std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 									#endif
@@ -1554,7 +1554,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 			if(result > 0){
 				{
 					// Добавляем полученный запрос в список запросов
-					auto ret = this->_requests.emplace(result, make_unique <request_t> ());
+					auto ret = this->_requests.emplace(result, std::make_unique <request_t> ());
 					// Выполняем установку идентификатора запроса
 					ret.first->second->id = request.id;
 					// Выполняем копирование URL-адреса
@@ -1571,7 +1571,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						ret.first->second->entity.assign(request.entity.begin(), request.entity.end());
 				}{
 					// Выполняем установку объекта воркера
-					auto ret = this->_workers.emplace(result, make_unique <worker_t> (this->_fmk, this->_log));
+					auto ret = this->_workers.emplace(result, std::make_unique <worker_t> (this->_fmk, this->_log));
 					// Выполняем установку идентификатора запроса
 					ret.first->second->id = request.id;
 					// Выполняем установку типа агента
@@ -1686,7 +1686,7 @@ bool awh::client::Http2::send(const int32_t sid, const char * buffer, const size
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение о выводе чанка тела
 						std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 					#endif
@@ -1752,7 +1752,7 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим заголовок запроса
 						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Получаем бинарные данные HTTP-запроса
@@ -1936,7 +1936,7 @@ void awh::client::Http2::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const unordered_set <string> & awh::client::Http2::subprotocols() const noexcept {
+const std::unordered_set <string> & awh::client::Http2::subprotocols() const noexcept {
 	// Выполняем извлечение списка выбранных сабпротоколов
 	return this->_ws2.subprotocols();
 }
@@ -1944,7 +1944,7 @@ const unordered_set <string> & awh::client::Http2::subprotocols() const noexcept
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Http2::subprotocols(const unordered_set <string> & subprotocols) noexcept {
+void awh::client::Http2::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Выполняем установку поддерживаемых сабпротоколов
 	this->_ws2.subprotocols(subprotocols);
 }

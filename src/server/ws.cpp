@@ -167,7 +167,7 @@ void awh::server::Websocket::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::Websocket::subprotocols(const unordered_set <string> & subprotocols) noexcept {
+void awh::server::Websocket::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Выполняем установку списка сабпротоколов поддерживаемых сервером
 	this->_ws.subprotocols(subprotocols);
 }
@@ -176,7 +176,7 @@ void awh::server::Websocket::subprotocols(const unordered_set <string> & subprot
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const unordered_set <string> & awh::server::Websocket::subprotocols(const uint64_t bid) const noexcept {
+const std::unordered_set <string> & awh::server::Websocket::subprotocols(const uint64_t bid) const noexcept {
 	// Выводим извлечение списка выбранных сабпротоколов
 	return this->_ws.subprotocols(bid);
 }
@@ -294,7 +294,7 @@ void awh::server::Websocket::alive(const bool mode) noexcept {
  * setHeaders Метод установки списка заголовков
  * @param headers список заголовков для установки
  */
-void awh::server::Websocket::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+void awh::server::Websocket::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
 	// Выполняем установку списка заголовков
 	this->_ws.setHeaders(headers);
 }
@@ -344,7 +344,7 @@ void awh::server::Websocket::addAltSvc(const string & origin, const string & fie
  * setAltSvc Метод установки списка разрешённых источников
  * @param origins список альтернативных сервисов
  */
-void awh::server::Websocket::setAltSvc(const unordered_multimap <string, string> & origins) noexcept {
+void awh::server::Websocket::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
 	// Выполняем установку списка разрешённых источников
 	this->_ws.setAltSvc(origins);
 }

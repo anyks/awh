@@ -76,7 +76,7 @@ static uint8_t decimalPlaces(double number) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -94,11 +94,11 @@ static uint8_t decimalPlaces(double number) noexcept {
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * Если используется модуль IDN
 	 */
-	#if defined(AWH_IDN)
+	#if AWH_IDN
 		/**
 		 * convertEncoding Функция конвертирования из одной кодировки в другую
 		 * @param data данные для конвертирования
@@ -158,7 +158,7 @@ static uint8_t decimalPlaces(double number) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
@@ -215,7 +215,7 @@ static T & split(const string & str, const string & delim, T & container) noexce
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -271,7 +271,7 @@ static T & split(const string & str, const string & delim, T & container) noexce
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -324,7 +324,7 @@ static T & split(const wstring & str, const wstring & delim, T & container) noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -380,7 +380,7 @@ static T & split(const wstring & str, const wstring & delim, T & container) noex
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -704,7 +704,7 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -779,7 +779,7 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -1092,7 +1092,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -1405,7 +1405,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -1691,7 +1691,7 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -1722,7 +1722,7 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Определяем кодировку в которую нам нужно сконвертировать текст
 				switch(static_cast <uint8_t> (codepage)){
 					// Если требуется выполнить кодировку в автоматическом режиме
@@ -1798,7 +1798,7 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 				/**
 				 * Если используется модуль IDN
 				 */
-				#if defined(AWH_IDN)
+				#if AWH_IDN
 					// Определяем кодировку в которую нам нужно сконвертировать текст
 					switch(static_cast <uint8_t> (codepage)){
 						// Если требуется выполнить кодировку в автоматическом режиме
@@ -1836,7 +1836,7 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -1969,7 +1969,7 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -2056,7 +2056,7 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -2197,7 +2197,7 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -2214,7 +2214,7 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -2264,7 +2264,7 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -2281,7 +2281,7 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -2334,7 +2334,7 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -2392,7 +2392,7 @@ bool awh::Framework::greater(const void * value1, const void * value2, const siz
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -2526,7 +2526,7 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Binary data buffer cannot be cast to a number");
 						/**
@@ -2548,7 +2548,7 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -2701,7 +2701,7 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Only binary number can be converted to binary buffer");
 						/**
@@ -2723,7 +2723,7 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -2788,7 +2788,7 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -2885,7 +2885,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -2924,7 +2924,7 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -2960,7 +2960,7 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -3099,7 +3099,7 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3239,7 +3239,7 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3291,7 +3291,7 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3331,7 +3331,7 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3371,7 +3371,7 @@ wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3408,7 +3408,7 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
@@ -3453,7 +3453,7 @@ size_t awh::Framework::countLetter(const wstring & word, const wchar_t letter) c
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3536,7 +3536,7 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3595,7 +3595,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
 					::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
@@ -3630,7 +3630,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3680,7 +3680,7 @@ bool awh::Framework::exists(const string & word, const string & text) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3730,7 +3730,7 @@ bool awh::Framework::exists(const wstring & word, const wstring & text) const no
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3777,7 +3777,7 @@ string & awh::Framework::replace(string & text, const string & word, const strin
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3824,7 +3824,7 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -3981,7 +3981,7 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -4116,7 +4116,7 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -4145,7 +4145,7 @@ void awh::Framework::domainZone(const string & zone) noexcept {
  * domainZones Метод установки списка пользовательских зон
  * @param zones список доменных зон интернета
  */
-void awh::Framework::domainZones(const set <string> & zones) noexcept {
+void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
 	if(!zones.empty())
 		// Устанавливаем список пользовательских зон
@@ -4155,7 +4155,7 @@ void awh::Framework::domainZones(const set <string> & zones) noexcept {
  * domainZones Метод извлечения списка пользовательских зон интернета
  * @return список доменных зон
  */
-const set <string> & awh::Framework::domainZones() const noexcept {
+const std::set <string> & awh::Framework::domainZones() const noexcept {
 	// Выводим список доменных зон интернета
 	return this->_nwt.zones();
 }
@@ -4181,7 +4181,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Параметры устанавливаемого шрифта
 				CONSOLE_FONT_INFOEX lpConsoleCurrentFontEx;
 				// Формируем параметры шрифта
@@ -4211,7 +4211,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s (%s)\n\n", __PRETTY_FUNCTION__, error.what(), locale.c_str());
 			/**
@@ -4273,7 +4273,7 @@ std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexce
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -4382,7 +4382,7 @@ double awh::Framework::bytes(const string & str) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -4458,7 +4458,7 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
@@ -4540,7 +4540,7 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**

@@ -182,7 +182,7 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, make_unique <queue_t> (this->_log));
+				auto ret = this->_payloads.emplace(bid, std::make_unique <queue_t> (this->_log));
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 				ret.first->second->push(buffer, size);
 			}
@@ -193,9 +193,9 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (broker), bid, buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (broker), bid, buffer, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -287,7 +287,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Устанавливаем постоянное подключение для клиента
 			this->_server.alive(bid, true);
 			// Выполняем создание клиента
-			auto ret = this->_clients.emplace(bid, make_unique <client_t> (this->_fmk, this->_log));
+			auto ret = this->_clients.emplace(bid, std::make_unique <client_t> (this->_fmk, this->_log));
 			// Активируем правило асинхронной работы передачи данных
 			ret.first->second->core.transferRule(client::core_t::transfer_t::ASYNC);
 			// Выполняем установку размера памяти для хранения полезной нагрузки всех брокеров

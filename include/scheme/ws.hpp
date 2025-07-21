@@ -123,9 +123,9 @@ namespace awh {
 						partner_t client;                // Объект партнёра клиента
 						partner_t server;                // Объект партнёра сервера
 						server::ws_t http;               // Объект для работы с HTTP
-						recursive_mutex mtx;             // Мютекс для блокировки потока
 						hash_t::cipher_t cipher;         // Формат шифрования
 						engine_t::proto_t proto;         // Активный прототип интернета
+						std::recursive_mutex mtx;        // Мютекс для блокировки потока
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
 						 * Options Конструктор

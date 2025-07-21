@@ -30,7 +30,7 @@ using namespace placeholders;
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	/**
 	 * winsockInitialized Метод проверки на инициализацию WinSocksAPI
 	 * @return результат проверки
@@ -78,7 +78,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Если WinSocksAPI ещё не инициализирована
 				if(!(this->_winSockInit = winsockInitialized())){
 					// Идентификатор ошибки
@@ -88,7 +88,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
 						/**
@@ -122,7 +122,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 					/**
@@ -146,7 +146,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 					/**
@@ -168,7 +168,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Если WinSocksAPI была инициализированна в этой базе событий
 				if(!this->_winSockInit)
 					// Очищаем сетевой контекст
@@ -213,7 +213,7 @@ void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t
 					// Если функция обратного вызова существует
 					if(i->second.callback != nullptr)
 						// Выполняем функцию обратного вызова
-						apply(i->second.callback, make_tuple(tid));
+						std::apply(i->second.callback, std::make_tuple(tid));
 				}
 			} break;
 			// Если событие является закрытием подключения
@@ -243,7 +243,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
 			// Выполняем поиск файлового дескриптора из списка событий
@@ -423,9 +423,9 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -455,7 +455,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_items.find(fd);
 			// Если файловый дескриптор есть в базе событий
@@ -646,9 +646,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -681,7 +681,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Выполняем поиск файлового дескриптора в базе событий
 				auto i = this->_items.find(fd);
 				// Если файловый дескриптор есть в базе событий
@@ -1122,9 +1122,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1164,7 +1164,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Выполняем поиск файлового дескриптора в базе событий
 					auto i = this->_items.find(fd);
 					// Если файловый дескриптор есть в базе событий
@@ -1314,9 +1314,9 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 								/**
 								* Если режим отладки не включён
 								*/
@@ -1420,9 +1420,9 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1467,7 +1467,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Если тип установлен как не закрытие подключения
 						if(type != event_type_t::CLOSE){
 							// Выполняем поиск файлового дескриптора из списка событий
@@ -1559,9 +1559,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1581,9 +1581,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1609,9 +1609,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1630,9 +1630,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1657,9 +1657,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1678,9 +1678,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1705,9 +1705,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1726,9 +1726,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -1833,9 +1833,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1871,7 +1871,7 @@ void awh::Base::clear() noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_fds.begin(); i != this->_fds.end();){
 				// Очищаем полученное событие
@@ -2017,7 +2017,7 @@ void awh::Base::clear() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
@@ -2083,7 +2083,7 @@ void awh::Base::kick() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
@@ -2130,7 +2130,7 @@ void awh::Base::stop() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
@@ -2161,7 +2161,7 @@ void awh::Base::start() noexcept {
 		/**
 		 * Если это FreeBSD, NetBSD, OpenBSD или MacOS X
 		 */
-		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Создаём объект временного таймаута
 			struct timespec baseDelay = {0, 0};
 			// Если установлен конкретный таймаут
@@ -2187,7 +2187,7 @@ void awh::Base::start() noexcept {
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Если опрос базы событий не заблокирован
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса
@@ -2199,7 +2199,7 @@ void awh::Base::start() noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
 									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 								/**
@@ -2268,7 +2268,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																apply(j->second.callback, make_tuple(fd, event_type_t::TIMER));
+																std::apply(j->second.callback, std::make_tuple(fd, event_type_t::TIMER));
 														}
 														// Выполняем поиск указанной записи
 														j = this->_items.find(fd);
@@ -2297,7 +2297,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															apply(j->second.callback, make_tuple(fd, event_type_t::READ));
+															std::apply(j->second.callback, std::make_tuple(fd, event_type_t::READ));
 													}
 												}
 											// Если файловый дескриптор не нулевой
@@ -2320,7 +2320,7 @@ void awh::Base::start() noexcept {
 													// Если событие найдено и оно активированно
 													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
-														apply(j->second.callback, make_tuple(fd, event_type_t::WRITE));
+														std::apply(j->second.callback, std::make_tuple(fd, event_type_t::WRITE));
 												}
 											}
 										}
@@ -2331,9 +2331,9 @@ void awh::Base::start() noexcept {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if defined(DEBUG_MODE)
+												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 												/**
 												* Если режим отладки не включён
 												*/
@@ -2361,7 +2361,7 @@ void awh::Base::start() noexcept {
 															// Удаляем файловый дескриптор из базы событий
 															this->del(j->second.id, fd);
 															// Выполняем функцию обратного вызова
-															apply(callback, make_tuple());
+															std::apply(callback, std::make_tuple());
 															// Продолжаем обход дальше
 															continue;
 														}
@@ -2411,7 +2411,7 @@ void awh::Base::start() noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
 									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 								/**
@@ -2474,7 +2474,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																apply(item->callback, make_tuple(item->fd, event_type_t::TIMER));
+																std::apply(item->callback, std::make_tuple(item->fd, event_type_t::TIMER));
 														}
 														// Выполняем поиск файлового дескриптора в базе событий
 														auto j = this->_items.find(fd);
@@ -2503,7 +2503,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															apply(item->callback, make_tuple(item->fd, event_type_t::READ));
+															std::apply(item->callback, std::make_tuple(item->fd, event_type_t::READ));
 													}
 												}
 											}
@@ -2520,7 +2520,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															apply(i->second.callback, make_tuple(i->second.fd, event_type_t::WRITE));
+															std::apply(i->second.callback, std::make_tuple(i->second.fd, event_type_t::WRITE));
 													}
 												}
 											}
@@ -2531,9 +2531,9 @@ void awh::Base::start() noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -2559,7 +2559,7 @@ void awh::Base::start() noexcept {
 																// Удаляем файловый дескриптор из базы событий
 																this->del(i->second.id, i->second.fd);
 																// Выполняем функцию обратного вызова
-																apply(callback, make_tuple());
+																std::apply(callback, std::make_tuple());
 																// Продолжаем обход дальше
 																continue;
 															}
@@ -2613,7 +2613,7 @@ void awh::Base::start() noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
 									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 								/**
@@ -2682,7 +2682,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																apply(item->callback, make_tuple(item->fd, event_type_t::TIMER));
+																std::apply(item->callback, std::make_tuple(item->fd, event_type_t::TIMER));
 														}
 														// Выполняем поиск файлового дескриптора в базе событий
 														j = this->_items.find(fd);
@@ -2711,7 +2711,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															apply(item->callback, make_tuple(fd, event_type_t::READ));
+															std::apply(item->callback, std::make_tuple(fd, event_type_t::READ));
 													}
 												}
 											}
@@ -2728,7 +2728,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															apply(j->second.callback, make_tuple(j->second.fd, event_type_t::WRITE));
+															std::apply(j->second.callback, std::make_tuple(j->second.fd, event_type_t::WRITE));
 													}
 												}
 											}
@@ -2739,9 +2739,9 @@ void awh::Base::start() noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message(code).c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message(code).c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -2767,7 +2767,7 @@ void awh::Base::start() noexcept {
 																// Удаляем файловый дескриптор из базы событий
 																this->del(j->second.id, j->second.fd);
 																// Выполняем функцию обратного вызова
-																apply(callback, make_tuple());
+																std::apply(callback, std::make_tuple());
 																// Продолжаем обход дальше
 																continue;
 															}
@@ -2821,7 +2821,7 @@ void awh::Base::start() noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 				/**
@@ -2889,7 +2889,7 @@ void awh::Base::rebase() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
@@ -2958,7 +2958,7 @@ void awh::Base::eraseUpstream(const uint64_t sid) noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Выполняем закрытие открытого сокета на запись
 			::close(i->second.write);
 		#endif
@@ -2987,7 +2987,7 @@ void awh::Base::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept 
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Выполняем отправку сообщения верхнеуровневому потоку
 				i->second.pipe->send(i->second.write, tid);
 			/**

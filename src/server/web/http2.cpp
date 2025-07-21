@@ -643,7 +643,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				{
 					// Получаем объект работы с HTTP-запросами
 					const http_t & http = reinterpret_cast <http_t &> (stream->http);
@@ -686,7 +686,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									{
 										// Выводим заголовок ответа
 										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
@@ -719,7 +719,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											// Выводим сообщение о выводе чанка тела
 											std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 										#endif
@@ -739,7 +739,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											// Название выводимого заголовка
 											string name = "";
 											// Выводим заголовок трейлеров
@@ -819,7 +819,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							{
 								// Выводим заголовок ответа
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
@@ -852,7 +852,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Выводим сообщение о выводе чанка тела
 									std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 								#endif
@@ -872,7 +872,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Название выводимого заголовка
 									string name = "";
 									// Выводим заголовок трейлеров
@@ -1045,7 +1045,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							{
 								// Выводим заголовок ответа
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
@@ -1066,7 +1066,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 						// Если активная сессия найдена
 						if(i != this->_sessions.end()){
 							// Выполняем создание нового объекта сессии HTTP/2
-							auto ret = this->_ws2._sessions.emplace(bid, make_unique <awh::http2_t> (this->_fmk, this->_log));
+							auto ret = this->_ws2._sessions.emplace(bid, std::make_unique <awh::http2_t> (this->_fmk, this->_log));
 							// Выполняем копирование контекста сессии HTTP/2
 							ret.first->second = i->second;
 						}
@@ -1113,7 +1113,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						{
 							// Выводим заголовок ответа
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
@@ -1146,7 +1146,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим сообщение о выводе чанка тела
 								std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 							#endif
@@ -1166,7 +1166,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Название выводимого заголовка
 								string name = "";
 								// Выводим заголовок трейлеров
@@ -1897,7 +1897,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											// Выводим сообщение о выводе чанка тела
 											std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 										#endif
@@ -1915,7 +1915,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											// Название выводимого заголовка
 											string name = "";
 											// Выводим заголовок трейлеров
@@ -2015,7 +2015,7 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const ui
 										/**
 										 * Если включён режим отладки
 										 */
-										#if defined(DEBUG_MODE)
+										#if DEBUG_MODE
 											{
 												// Выводим заголовок ответа
 												std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
@@ -2120,7 +2120,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 											/**
 											 * Если включён режим отладки
 											 */
-											#if defined(DEBUG_MODE)
+											#if DEBUG_MODE
 												{
 													// Выводим заголовок ответа
 													std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
@@ -2151,7 +2151,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Выводим сообщение о выводе чанка тела
 														std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 													#endif
@@ -2171,7 +2171,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 													/**
 													 * Если включён режим отладки
 													 */
-													#if defined(DEBUG_MODE)
+													#if DEBUG_MODE
 														// Название выводимого заголовка
 														string name = "";
 														// Выводим заголовок трейлеров
@@ -2460,7 +2460,7 @@ int32_t awh::server::Http2::push2(const int32_t sid, const uint64_t bid, const v
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								{
 									// Выполняем инициализацию объекта HTTP-парсера
 									http_t http(this->_fmk, this->_log);

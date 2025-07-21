@@ -35,7 +35,7 @@ string awh::FS::message(const int32_t code) const noexcept {
 	/**
 	 * Для операционной системы OS Windows
 	 */
-	#if defined(_WIN32) || defined(_WIN64)
+	#if _WIN32 || _WIN64
 		// Создаём буфер сообщения ошибки
 		wchar_t message[256] = {0};
 		// Выполняем формирование текста ошибки
@@ -104,7 +104,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Структура проверка статистики
 				struct _stat info;
 				// Выполняем извлечение актуального значения адреса
@@ -145,7 +145,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
+				#if !_WIN32 && !_WIN64
 					// Если это сокет
 					else if(S_ISSOCK(info.st_mode))
 						// Получаем тип файловой системы
@@ -194,7 +194,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
+				#if !_WIN32 && !_WIN64
 					// Если тип определён
 					if(::lstat(addr.c_str(), &info) == 0){
 						// Если это символьная ссылка
@@ -243,9 +243,9 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -260,9 +260,9 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -291,7 +291,7 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Создаём буфер для полного адреса
 			wchar_t buffer[_MAX_PATH];
 			// Заполняем буфер нулями
@@ -492,9 +492,9 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -509,9 +509,9 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, actual), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -549,7 +549,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 						/**
 						 * Для операционной системы OS Windows
 						 */
-						#if defined(_WIN32) || defined(_WIN64)
+						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
 							_WDIR * dir = _wopendir(this->_fmk->convert(address).c_str());
 						/**
@@ -566,7 +566,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Структура проверка статистики
 									struct _stat info;
 									// Создаем указатель на содержимое каталога
@@ -589,7 +589,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 										/**
 										 * Для операционной системы OS Windows
 										 */
-										#if defined(_WIN32) || defined(_WIN64)
+										#if _WIN32 || _WIN64
 											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 											if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 												// Выполняем пропуск каталога
@@ -610,7 +610,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 										/**
 										 * Для операционной системы OS Windows
 										 */
-										#if defined(_WIN32) || defined(_WIN64)
+										#if _WIN32 || _WIN64
 											// Если статистика извлечена
 											if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
 												// Если дочерний элемент является дирректорией
@@ -646,7 +646,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Закрываем открытый каталог
 									_wclosedir(dir);
 								/**
@@ -662,7 +662,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Получаем количество дочерних элементов
 									result = _wrmdir(this->_fmk->convert(address).c_str());
 								/**
@@ -681,7 +681,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 						/**
 						 * Для операционной системы OS Windows
 						 */
-						#if defined(_WIN32) || defined(_WIN64)
+						#if _WIN32 || _WIN64
 							// Выполняем удаление переданного пути
 							result = _wunlink(this->_fmk->convert(address).c_str());
 						/**
@@ -699,7 +699,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Выполняем извлечение актуального значения адреса
 					const string & address = this->realPath(path, false);
 					// Если адрес получен правильный
@@ -721,9 +721,9 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -738,9 +738,9 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -768,7 +768,7 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Выполняем создание символьной ссылки
 				::symlink(this->realPath(addr1).c_str(), this->realPath(addr2).c_str());
 			/**
@@ -849,9 +849,9 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -866,9 +866,9 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -894,7 +894,7 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Если адрес на который нужно создать ссылку существует
 				if(this->type(addr1) != type_t::NONE)
 					// Выполняем создание символьной ссылки
@@ -915,9 +915,9 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -932,9 +932,9 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr1, addr2), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -965,7 +965,7 @@ void awh::FS::makePath(const string & path) const noexcept {
 				// Получаем сепаратор
 				const char sep = FS_SEPARATOR[0];
 				// Создаём буфер входящих данных
-				unique_ptr <char []> buffer(new char [address.size() + 1]);
+				std::unique_ptr <char []> buffer(new char [address.size() + 1]);
 				// Копируем переданный адрес в буфер
 				::snprintf(buffer.get(), address.size() + 1, "%s", address.c_str());
 				// Если последний символ является сепаратором тогда удаляем его
@@ -981,7 +981,7 @@ void awh::FS::makePath(const string & path) const noexcept {
 						/**
 						 * Для операционной системы не являющейся OS Windows
 						 */
-						#if !defined(_WIN32) && !defined(_WIN64)
+						#if !_WIN32 && !_WIN64
 							// Создаем каталог
 							::mkdir(buffer.get(), S_IRWXU);
 						/**
@@ -998,7 +998,7 @@ void awh::FS::makePath(const string & path) const noexcept {
 				/**
 				 * Для операционной системы не являющейся OS Windows
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
+				#if !_WIN32 && !_WIN64
 					// Создаем последний каталог
 					::mkdir(buffer.get(), S_IRWXU);
 				/**
@@ -1016,9 +1016,9 @@ void awh::FS::makePath(const string & path) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, "Memory allocation error");
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1035,9 +1035,9 @@ void awh::FS::makePath(const string & path) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1052,9 +1052,9 @@ void awh::FS::makePath(const string & path) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1082,7 +1082,7 @@ bool awh::FS::makeDir(const string & path, [[maybe_unused]] const string & user,
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Устанавливаем права на каталог
 			this->chown(path, user, group);
 		#endif
@@ -1139,9 +1139,9 @@ pair <string, string> awh::FS::components(const string & addr, const bool actual
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1156,9 +1156,9 @@ pair <string, string> awh::FS::components(const string & addr, const bool actual
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, actual, before), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1183,7 +1183,7 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем извлечение актуального значения адреса
 			const string & address = this->realPath(path);
 			// Если адрес получен правильный
@@ -1221,7 +1221,7 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем извлечение актуального значения адреса
 			const string & address = this->realPath(path);
 			// Если адрес получен правильный
@@ -1244,7 +1244,7 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * chown Метод установки владельца на файл или каталог
 	 * @param path  путь к файлу или каталогу для установки владельца
@@ -1325,7 +1325,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 						/**
 						 * Для операционной системы OS Windows
 						 */
-						#if defined(_WIN32) || defined(_WIN64)
+						#if _WIN32 || _WIN64
 							// Создаём объект работы с файлом
 							HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 							// Если открыть файл открыт нормально
@@ -1370,7 +1370,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 						/**
 						 * Для операционной системы OS Windows
 						 */
-						#if defined(_WIN32) || defined(_WIN64)
+						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
 							_WDIR * dir = _wopendir(this->_fmk->convert(address).c_str());
 						/**
@@ -1385,7 +1385,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Структура проверка статистики
 									struct _stat info;
 									// Создаем указатель на содержимое каталога
@@ -1406,7 +1406,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 										/**
 										 * Для операционной системы OS Windows
 										 */
-										#if defined(_WIN32) || defined(_WIN64)
+										#if _WIN32 || _WIN64
 											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 											if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 												// Выполняем пропуск каталога
@@ -1427,7 +1427,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 										/**
 										 * Для операционной системы OS Windows
 										 */
-										#if defined(_WIN32) || defined(_WIN64)
+										#if _WIN32 || _WIN64
 											// Если статистика извлечена
 											if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
 										/**
@@ -1461,7 +1461,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Закрываем открытый каталог
 									_wclosedir(dir);
 								/**
@@ -1482,9 +1482,9 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1499,9 +1499,9 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1537,7 +1537,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Открываем указанный каталог
 					_WDIR * dir = _wopendir(this->_fmk->convert(address).c_str());
 				/**
@@ -1552,7 +1552,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 						/**
 						 * Для операционной системы OS Windows
 						 */
-						#if defined(_WIN32) || defined(_WIN64)
+						#if _WIN32 || _WIN64
 							// Структура проверка статистики
 							struct _stat info;
 							// Создаем указатель на содержимое каталога
@@ -1573,7 +1573,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 									if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 										// Выполняем пропуск каталога
@@ -1594,7 +1594,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Если статистика извлечена
 									if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
 								/**
@@ -1628,7 +1628,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 						/**
 						 * Для операционной системы OS Windows
 						 */
-						#if defined(_WIN32) || defined(_WIN64)
+						#if _WIN32 || _WIN64
 							// Закрываем открытый каталог
 							_wclosedir(dir);
 						/**
@@ -1647,9 +1647,9 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1664,9 +1664,9 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1701,7 +1701,7 @@ vector <char> awh::FS::read(const string & filename) const noexcept {
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
 					HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если открыть файл открыт нормально
@@ -1763,9 +1763,9 @@ vector <char> awh::FS::read(const string & filename) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1780,9 +1780,9 @@ vector <char> awh::FS::read(const string & filename) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1815,7 +1815,7 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Выполняем открытие файла на запись
 					HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если открыть файл открыт нормально
@@ -1847,9 +1847,9 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1864,9 +1864,9 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1897,7 +1897,7 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Выполняем открытие файла на добавление
 					HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если открыть файл открыт нормально
@@ -1929,9 +1929,9 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1946,9 +1946,9 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1972,7 +1972,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Вызываем метод рекурсивного получения всех строк файла, старым способом
 			this->readFile2(filename, callback);
 		/**
@@ -2043,7 +2043,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 										// Выполняем компенсацию размера строки
 										length++;
 									// Если длина слова получена, выводим полученную строку
-									apply(callback, make_tuple(string(reinterpret_cast <char *> (buffer) + offset, length)));
+									std::apply(callback, std::make_tuple(string(reinterpret_cast <char *> (buffer) + offset, length)));
 									// Выполняем смещение
 									offset = (i + 1);
 								}
@@ -2053,7 +2053,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 							// Если данные не все прочитаны, выводим как есть
 							if((offset == 0) && (size > 0))
 								// Выводим полученную строку
-								apply(callback, make_tuple(string(reinterpret_cast <char *> (buffer), size)));
+								std::apply(callback, std::make_tuple(string(reinterpret_cast <char *> (buffer), size)));
 						}
 						// Выполняем удаление сопоставления для указанного диапазона адресов
 						::munmap(buffer, (length + offset - paOffset));
@@ -2073,9 +2073,9 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -2090,9 +2090,9 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -2146,7 +2146,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 								// Выполняем компенсацию размера строки
 								length++;
 							// Если длина слова получена, выводим полученную строку
-							apply(callback, make_tuple(string(data + offset, length)));
+							std::apply(callback, std::make_tuple(string(data + offset, length)));
 							// Выполняем смещение
 							offset = (i + 1);
 						}
@@ -2156,7 +2156,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 					// Если данные не все прочитаны, выводим как есть
 					if((offset == 0) && (size > 0))
 						// Выводим полученную строку
-						apply(callback, make_tuple(string(data, size)));
+						std::apply(callback, std::make_tuple(string(data, size)));
 					// Очищаем буфер данных
 					buffer.clear();
 					// Освобождаем выделенную память
@@ -2170,7 +2170,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
 					HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если открыть файл открыт нормально
@@ -2227,9 +2227,9 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2244,9 +2244,9 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2277,7 +2277,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Открываем файл на чтение
 					ifstream file(this->_fmk->convert(address).c_str(), ios::in | ios::binary);
 					// Если файл открыт
@@ -2287,7 +2287,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 						// Выполняем чтение данных из потока
 						while(getline(file, result))
 							// Выводим полученный результат
-							apply(callback, make_tuple(result));
+							std::apply(callback, std::make_tuple(result));
 						// Закрываем файл
 						file.close();
 					}
@@ -2304,7 +2304,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 						// Выполняем чтение данных из потока
 						while(getline(file, result))
 							// Выводим полученный результат
-							apply(callback, make_tuple(result));
+							std::apply(callback, std::make_tuple(result));
 						// Закрываем файл
 						file.close();
 					}
@@ -2317,9 +2317,9 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2334,9 +2334,9 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2380,7 +2380,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Открываем указанный каталог
 					_WDIR * dir = _wopendir(this->_fmk->convert(path).c_str());
 				/**
@@ -2395,7 +2395,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 						/**
 						 * Для операционной системы OS Windows
 						 */
-						#if defined(_WIN32) || defined(_WIN64)
+						#if _WIN32 || _WIN64
 							// Структура проверка статистики
 							struct _stat info;
 							// Создаем указатель на содержимое каталога
@@ -2416,7 +2416,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 									if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 										// Выполняем пропуск каталога
@@ -2437,7 +2437,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 								/**
 								 * Для операционной системы OS Windows
 								 */
-								#if defined(_WIN32) || defined(_WIN64)
+								#if _WIN32 || _WIN64
 									// Если статистика извлечена
 									if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
 								/**
@@ -2454,7 +2454,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 												// Выполняем функцию обратного вызова
 												readFn(address, ext, rec);
 											// Выводим данные каталога как он есть
-											else apply(callback, make_tuple(this->realPath(address, actual)));
+											else std::apply(callback, std::make_tuple(this->realPath(address, actual)));
 										// Если дочерний элемент является файлом и расширение файла указано то выводим его
 										} else if(!ext.empty()) {
 											// Получаем расширение файла
@@ -2466,10 +2466,10 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 												// Если расширение файла найдено
 												if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 													// Выводим полный путь файла
-													apply(callback, make_tuple(this->realPath(address, actual)));
+													std::apply(callback, std::make_tuple(this->realPath(address, actual)));
 											}
 										// Если дочерний элемент является файлом то выводим его
-										} else apply(callback, make_tuple(this->realPath(address, actual)));
+										} else std::apply(callback, std::make_tuple(this->realPath(address, actual)));
 									// Если статистика не извлечена
 									} else {
 										/**
@@ -2489,10 +2489,10 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 														// Если расширение файла найдено
 														if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 															// Выводим полный путь файла
-															apply(callback, make_tuple(this->realPath(address, actual)));
+															std::apply(callback, std::make_tuple(this->realPath(address, actual)));
 													}
 												// Если дочерний элемент является файлом то выводим его
-												} else apply(callback, make_tuple(this->realPath(address, actual)));
+												} else std::apply(callback, std::make_tuple(this->realPath(address, actual)));
 											}
 										#endif
 									}
@@ -2500,7 +2500,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 						/**
 						 * Для операционной системы OS Windows
 						 */
-						#if defined(_WIN32) || defined(_WIN64)
+						#if _WIN32 || _WIN64
 							// Закрываем открытый каталог
 							_wclosedir(dir);
 						/**
@@ -2518,9 +2518,9 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -2535,9 +2535,9 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, rec), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -2578,7 +2578,7 @@ void awh::FS::readPath(const string & path, const string & ext, const bool rec, 
 					// Если текст получен
 					if(!text.empty())
 						// Выводим функцию обратного вызова
-						apply(callback, make_tuple(text, filename));
+						std::apply(callback, std::make_tuple(text, filename));
 				});
 			}, actual);
 	// Выводим сообщение об ошибке

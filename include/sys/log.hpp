@@ -18,7 +18,7 @@
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	// Формируем переносы строк лога
 	#define AWH_STRING_BREAK "\r\n"
 	#define AWH_STRING_BREAKS AWH_STRING_BREAK""AWH_STRING_BREAK
@@ -385,12 +385,12 @@ namespace awh {
 			 * mode Метод получения установленных режимов вывода логов
 			 * @return список режимов вывода логов
 			 */
-			const set <mode_t> & mode() const noexcept;
+			const std::set <mode_t> & mode() const noexcept;
 			/**
 			 * mode Метод добавления режимов вывода логов
 			 * @param mode список режимов вывода логов
 			 */
-			void mode(const set <mode_t> & mode) noexcept;
+			void mode(const std::set <mode_t> & mode) noexcept;
 		public:
 			/**
 			 * format Метод извлечения установленного формата лога

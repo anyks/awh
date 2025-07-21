@@ -68,7 +68,7 @@ void awh::client::Websocket2::send(const uint64_t bid) noexcept {
 	/**
 	 * Если включён режим отладки
 	 */
-	#if defined(DEBUG_MODE)
+	#if DEBUG_MODE
 		// Выводим заголовок запроса
 		std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 		// Получаем бинарные данные REST запроса
@@ -413,7 +413,7 @@ int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::d
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									{
 										// Получаем объект работы с HTTP-запросами
 										const http_t & http = reinterpret_cast <http_t &> (this->_http);
@@ -483,7 +483,7 @@ int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::d
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								{
 									// Выполняем создание объекта для вывода HTTP-ответа
 									http_t http(this->_fmk, this->_log);
@@ -1377,7 +1377,7 @@ void awh::client::Websocket2::sendError(const ws::mess_t & mess) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим заголовок ответа
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим отправляемое сообщение
@@ -1434,7 +1434,7 @@ bool awh::client::Websocket2::sendMessage(const char * message, const size_t siz
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим заголовок ответа
 						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Если отправляемое сообщение является текстом
@@ -1724,7 +1724,7 @@ void awh::client::Websocket2::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const unordered_set <string> & awh::client::Websocket2::subprotocols() const noexcept {
+const std::unordered_set <string> & awh::client::Websocket2::subprotocols() const noexcept {
 	// Если переключение протокола на HTTP/2 не выполнено
 	if(this->_proto != engine_t::proto_t::HTTP2)
 		// Выводим список выбранных сабпротоколов
@@ -1738,7 +1738,7 @@ const unordered_set <string> & awh::client::Websocket2::subprotocols() const noe
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Websocket2::subprotocols(const unordered_set <string> & subprotocols) noexcept {
+void awh::client::Websocket2::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Если список поддерживаемых сабпротоколов получен
 	if(!subprotocols.empty()){
 		// Устанавливаем список поддерживаемых сабсабпротоколов для Websocket-клиента

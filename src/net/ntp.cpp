@@ -57,7 +57,7 @@ string awh::NTP::Worker::host() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_self->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -93,7 +93,7 @@ void awh::NTP::Worker::close() noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
 			closesocket(this->_fd);
 		/**
@@ -297,7 +297,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 							/**
 							 * Для операционной системы не являющейся OS Windows
 							 */
-							#if !defined(_WIN32) && !defined(_WIN64)
+							#if !_WIN32 && !_WIN64
 								// Если произведена неудачная запись в PIPE
 								case EPIPE:
 									// Выводим в лог сообщение
@@ -366,7 +366,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 						/**
 						 *  Для операционной системы не являющейся OS Windows
 						 */
-						#if !defined(_WIN32) && !defined(_WIN64)
+						#if !_WIN32 && !_WIN64
 							// Если произведена неудачная запись в PIPE
 							case EPIPE:
 								// Выводим в лог сообщение
@@ -483,9 +483,9 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -578,9 +578,9 @@ string awh::NTP::server(const int32_t family) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -777,7 +777,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим заголовок запроса
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
@@ -803,7 +803,7 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим заголовок запроса
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
@@ -1141,9 +1141,9 @@ awh::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept :
  _net(log), _dns(fmk, log), _timeout(5),
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
-	this->_workerIPv4 = make_unique <worker_t> (AF_INET, this);
+	this->_workerIPv4 = std::make_unique <worker_t> (AF_INET, this);
 	// Выполняем создание воркера для IPv6
-	this->_workerIPv6 = make_unique <worker_t> (AF_INET6, this);
+	this->_workerIPv6 = std::make_unique <worker_t> (AF_INET6, this);
 }
 /**
  * ~NTP Деструктор

@@ -202,7 +202,7 @@ void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t s
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим заголовок запроса
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим параметры запроса
@@ -273,7 +273,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Если заголовки получены
 									if(!message.empty()){
 										// Данные WEB ответа
@@ -305,7 +305,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								{
 									// Получаем данные ответа
 									const auto & response = this->_scheme.proxy.http.process(http_t::process_t::RESPONSE, this->_scheme.proxy.http.response());
@@ -469,7 +469,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Выполняем установку unix-сокет
 			const_cast <client::core_t *> (this->_core)->sockname(socket);
 		#endif
@@ -577,7 +577,7 @@ void awh::client::Sample::send(const char * buffer, const size_t size) noexcept 
 		// Если подключение выполнено
 		if((this->_core != nullptr) && this->_core->working()){
 			// Если включён режим отладки
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим заголовок ответа
 				std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 				// Выводим параметры ответа

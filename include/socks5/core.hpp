@@ -24,10 +24,14 @@
 #include <cstring>
 #include <cstdlib>
 
-// Если - это Windows
-#if defined(_WIN32) || defined(_WIN64)
+/**
+ * Для операционной системы OS Windows
+ */
+#if _WIN32 || _WIN64
 	#include <ws2tcpip.h>
-// Если - это Unix
+/**
+ * Для операционной системы не являющейся OS Windows
+ */
 #else
 	#include <arpa/inet.h>
 #endif

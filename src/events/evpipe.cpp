@@ -25,7 +25,7 @@ using namespace std;
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	/**
 	 * socketpair Метод создания пары сокетов
 	 * @param socks      список сокетов которые будут инициализированы
@@ -150,13 +150,13 @@ array <SOCKET, 2> awh::EventPIPE::create() noexcept {
 	/**
 	 * Для операционной системы OS Windows
 	 */
-	#if defined(_WIN32) || defined(_WIN64)
+	#if _WIN32 || _WIN64
 		// Выполняем инициализацию таймера
 		if(::socketpair(result.data()) == INVALID_SOCKET){
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 			/**
@@ -178,7 +178,7 @@ array <SOCKET, 2> awh::EventPIPE::create() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message(AWH_ERROR()).c_str());
 			/**
@@ -213,7 +213,7 @@ int8_t awh::EventPIPE::read(const SOCKET fd, uint64_t & timestamp) noexcept {
 	/**
 	 * Для операционной системы OS Windows
 	 */
-	#if defined(_WIN32) || defined(_WIN64)
+	#if _WIN32 || _WIN64
 		// Выполняем чтение из сокета данных
 		return static_cast <int8_t> (::recv(fd, reinterpret_cast <char *> (&timestamp), sizeof(timestamp), 0));
 	/**
@@ -234,7 +234,7 @@ int8_t awh::EventPIPE::send(const SOCKET fd, const uint64_t timestamp) noexcept 
 	/**
 	 * Для операционной системы OS Windows
 	 */
-	#if defined(_WIN32) || defined(_WIN64)
+	#if _WIN32 || _WIN64
 		// Выполняем запись в сокет данных
 		return static_cast <int8_t> (::send(fd, reinterpret_cast <const char *> (&timestamp), sizeof(timestamp), 0));
 	/**

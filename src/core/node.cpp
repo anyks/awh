@@ -301,9 +301,9 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(bid), log_t::flag_t::CRITICAL, "Memory allocation error");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bid), log_t::flag_t::CRITICAL, "Memory allocation error");
 					/**
 					* Если режим отладки не включён
 					*/
@@ -320,9 +320,9 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(bid), log_t::flag_t::CRITICAL, error.what());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bid), log_t::flag_t::CRITICAL, error.what());
 					/**
 					* Если режим отладки не включён
 					*/
@@ -455,7 +455,7 @@ bool awh::Node::sockname(const string & name) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если название unix-сокета передано
 		if(!name.empty())
 			// Устанавливаем название unix-сокета
@@ -490,7 +490,7 @@ bool awh::Node::sockpath(const string & path) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если адрес каталога в файловой системе где хранится unix-сокет передан
 		if(!path.empty())
 			// Устанавливаем адрес каталога в файловой системе где хранится unix-сокет
@@ -568,7 +568,7 @@ void awh::Node::sonet(const scheme_t::sonet_t sonet) noexcept {
 	/**
 	 * Если операционной системой не является Linux или FreeBSD
 	 */
-	#if !defined(__linux__) && !defined(__FreeBSD__)
+	#if !__linux__ && !__FreeBSD__
 		// Если установлен протокол SCTP
 		if(this->_settings.sonet == scheme_t::sonet_t::SCTP){
 			// Выводим в лог сообщение
@@ -610,7 +610,7 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Выполняем блокировку потока
 			const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 			// Получаем адрес файла unix-сокет
@@ -776,7 +776,7 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 				// Если для потока почередь полезной нагрузки ещё не сформированна
 				else {
 					// Создаём новую очередь полезной нагрузки
-					auto ret = this->_payloads.emplace(bid, make_unique <buffer_t> (this->_log));
+					auto ret = this->_payloads.emplace(bid, std::make_unique <buffer_t> (this->_log));
 					// Выполняем добавление полезной нагрузки
 					ret.first->second->push(buffer, size);
 				}
@@ -806,9 +806,9 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, bid), log_t::flag_t::CRITICAL, "Memory allocation error");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, bid), log_t::flag_t::CRITICAL, "Memory allocation error");
 		/**
 		* Если режим отладки не включён
 		*/
@@ -825,9 +825,9 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, bid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, bid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -904,7 +904,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Выполняем блокировку потока
 			const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 			// Получаем адрес файла unix-сокет
@@ -1061,7 +1061,7 @@ awh::Node::~Node() noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Получаем адрес файла unix-сокет
 			const string & filename = this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str());
 			// Если сокет в файловой системе уже существует, удаляем его

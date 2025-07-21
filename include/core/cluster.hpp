@@ -118,7 +118,7 @@ namespace awh {
 				 * pids Метод получения списка дочерних процессов
 				 * @return список дочерних процессов
 				 */
-				set <pid_t> pids() const noexcept;
+				std::set <pid_t> pids() const noexcept;
 			public:
 				/**
 				 * emplace Метод размещения нового воркера

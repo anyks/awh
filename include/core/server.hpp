@@ -274,7 +274,7 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 * @return    список доступных воркеров
 				 */
-				set <pid_t> workers(const uint16_t sid) const noexcept;
+				std::set <pid_t> workers(const uint16_t sid) const noexcept;
 			public:
 				/**
 				 * send Метод асинхронной отправки буфера данных в сокет

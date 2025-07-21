@@ -97,7 +97,7 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим заголовок запроса
 				std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 				// Выводим параметры запроса
@@ -201,7 +201,7 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							{
 								// Выполняем создание объекта для вывода HTTP-ответа
 								http_t http(this->_fmk, this->_log);
@@ -1064,7 +1064,7 @@ void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим заголовок ответа
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим отправляемое сообщение
@@ -1113,7 +1113,7 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим заголовок ответа
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Если отправляемое сообщение является текстом
@@ -1354,7 +1354,7 @@ void awh::client::Websocket1::subprotocol(const string & subprotocol) noexcept {
  * subprotocol Метод получения списка выбранных сабпротоколов
  * @return список выбранных сабпротоколов
  */
-const unordered_set <string> & awh::client::Websocket1::subprotocols() const noexcept {
+const std::unordered_set <string> & awh::client::Websocket1::subprotocols() const noexcept {
 	// Выводим список выбранных сабпротоколов
 	return this->_http.subprotocols();
 }
@@ -1362,7 +1362,7 @@ const unordered_set <string> & awh::client::Websocket1::subprotocols() const noe
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::client::Websocket1::subprotocols(const unordered_set <string> & subprotocols) noexcept {
+void awh::client::Websocket1::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Если список поддерживаемых сабпротоколов получен
 	if(!subprotocols.empty())
 		// Устанавливаем список поддерживаемых сабпротоколов

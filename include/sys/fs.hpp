@@ -18,7 +18,7 @@
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	#include <windows.h>
 	#include <objbase.h>
 	#include <shlobj.h>
@@ -43,14 +43,14 @@
 /**
  * Если это clang v10 или выше
  */
-#if defined(__AWH_EXPERIMENTAL__)
+#if __AWH_EXPERIMENTAL__
 	#include <filesystem>
 #endif
 
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	#include <conio.h>
 	#include <direct.h>
 /**
@@ -77,7 +77,7 @@
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	#include <tchar.h>
 	#include <strsafe.h>
 #endif
@@ -228,7 +228,7 @@ namespace awh {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				/**
 				 * chown Метод установки владельца на файл или каталог
 				 * @param path  путь к файлу или каталогу для установки владельца

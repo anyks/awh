@@ -188,7 +188,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 	/**
 	 * Устанавливаем настройки для OS Windows
 	 */
-	#elif defined(_WIN32) || defined(_WIN64)
+	#elif _WIN32 || _WIN64
 		// Получаем размер буфера данных
 		ULONG size = sizeof(IP_ADAPTER_ADDRESSES);
 		// Выделяем память под буфер данных
@@ -478,7 +478,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 	/**
 	 * Устанавливаем настройки для OS Windows
 	 */
-	#elif defined(_WIN32) || defined(_WIN64)
+	#elif _WIN32 || _WIN64
 		// Получаем размер буфера данных
 		ULONG size = sizeof(IP_ADAPTER_ADDRESSES);
 		// Выделяем память под буфер данных
@@ -554,7 +554,7 @@ void awh::IfNet::close(const int32_t fd) const noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
 			::closesocket(fd);
 		/**
@@ -613,7 +613,7 @@ string awh::IfNet::name(const string & eth) const noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Получаем размер буфера данных
 			ULONG size = sizeof(IP_ADAPTER_INFO);
 			// Выделяем память под буфер данных

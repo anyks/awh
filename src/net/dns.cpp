@@ -128,7 +128,7 @@ string awh::DNS::Worker::host() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
 				this->_self->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.what());
 			/**
@@ -313,7 +313,7 @@ void awh::DNS::Worker::close() noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
 			closesocket(this->_fd);
 		/**
@@ -579,7 +579,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							/**
 							 * Для операционной системы не являющейся OS Windows
 							 */
-							#if !defined(_WIN32) && !defined(_WIN64)
+							#if !_WIN32 && !_WIN64
 								// Если произведена неудачная запись в PIPE
 								case EPIPE:
 									// Выводим в лог сообщение
@@ -805,7 +805,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим начальный разделитель
 								std::cout << "------------------------------------------------------------" << std::endl << std::endl << std::flush;
 								// Выводим заголовок
@@ -1213,7 +1213,7 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 						/**
 						 * Для операционной системы не являющейся OS Windows
 						 */
-						#if !defined(_WIN32) && !defined(_WIN64)
+						#if !_WIN32 && !_WIN64
 							// Если произведена неудачная запись в PIPE
 							case EPIPE:
 								// Выводим в лог сообщение
@@ -1264,13 +1264,13 @@ string awh::DNS::encode(const string & domain) const noexcept {
 	/**
 	 * Если используется модуль IDN
 	 */
-	#if defined(AWH_IDN)
+	#if AWH_IDN
 		// Если доменное имя передано
 		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Результирующий буфер данных
 				wchar_t buffer[_MAX_PATH];
 				// Выполняем кодирования доменного имени
@@ -1314,13 +1314,13 @@ string awh::DNS::decode(const string & domain) const noexcept {
 	/**
 	 * Если используется модуль IDN
 	 */
-	#if defined(AWH_IDN)
+	#if AWH_IDN
 		// Если доменное имя передано
 		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
 			/**
 			 * Для операционной системы OS Windows
 			 */
-			#if defined(_WIN32) || defined(_WIN64)
+			#if _WIN32 || _WIN64
 				// Результирующий буфер данных
 				wchar_t buffer[_MAX_PATH];
 				// Выполняем кодирования доменного имени
@@ -1453,9 +1453,9 @@ void awh::DNS::shuffle(const int32_t family) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -1576,9 +1576,9 @@ string awh::DNS::cache(const int32_t family, const string & domain) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if defined(DEBUG_MODE)
+				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family, domain), log_t::flag_t::WARNING, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family, domain), log_t::flag_t::WARNING, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -2210,9 +2210,9 @@ string awh::DNS::server(const int32_t family) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family), log_t::flag_t::WARNING, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family), log_t::flag_t::WARNING, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -2411,7 +2411,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим заголовок запроса
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD DNS SERVER ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
@@ -2437,7 +2437,7 @@ void awh::DNS::server(const int32_t family, const string & server) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if defined(DEBUG_MODE)
+							#if DEBUG_MODE
 								// Выводим заголовок запроса
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD DNS SERVER ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
@@ -2920,9 +2920,9 @@ string awh::DNS::host(const int32_t family, const string & name) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(family, name), log_t::flag_t::WARNING, error.what());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(family, name), log_t::flag_t::WARNING, error.what());
 								/**
 								* Если режим отладки не включён
 								*/
@@ -3012,7 +3012,7 @@ string awh::DNS::resolve(const int32_t family, const string & host) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим заголовок запроса
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ DOMAIN RESOLVE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим параметры запроса
@@ -3111,7 +3111,7 @@ string awh::DNS::resolve(const int32_t family, const string & host) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим заголовок запроса
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ DOMAIN RESOLVE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим параметры запроса
@@ -3262,9 +3262,9 @@ awh::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
  _net(log), _timeout(5), _prefix{AWH_SHORT_NAME},
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
-	this->_workerIPv4 = make_unique <worker_t> (AF_INET, this);
+	this->_workerIPv4 = std::make_unique <worker_t> (AF_INET, this);
 	// Выполняем создание воркера для IPv6
-	this->_workerIPv6 = make_unique <worker_t> (AF_INET6, this);
+	this->_workerIPv6 = std::make_unique <worker_t> (AF_INET6, this);
 }
 /**
  * ~DNS Деструктор

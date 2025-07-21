@@ -16,15 +16,21 @@
 #define __AWH_BUFFER__
 
 /**
- * Подстраиваемся под операционную систему
+ * Если используется компилятор Borland C++
  */
-#if defined(__BORLANDC__)
+#if __BORLANDC__
 	typedef unsigned char uint8_t;
 	typedef __int64 int64_t;
 	typedef unsigned long uintptr_t;
-#elif defined(_MSC_VER)
+/**
+ * Если используется компилятор Microsoft Visual Studio
+ */
+#elif _MSC_VER
 	typedef unsigned char uint8_t;
 	typedef __int64 int64_t;
+/**
+ * Если используется компилятор GNU GCC или Clang
+ */
 #else
 	#include <stdint.h>
 #endif

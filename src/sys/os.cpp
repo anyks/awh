@@ -31,7 +31,7 @@
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * Стандартные модули
 	 */
@@ -51,7 +51,7 @@
 /**
  * Если операционной системой является MacOS X, FreeBSD, NetBSD, OpenBSD
  */
-#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 	/**
 	 * Стандартные модули
 	 */
@@ -129,7 +129,7 @@ void awh::OS::boost() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Для отладки активируем создание дампов ядра
 				this->sysctl("kernel.core_uses_pid", 1);
 				this->sysctl("kernel.core_pattern", string{"/tmp/%e-%p.core"});
@@ -291,11 +291,11 @@ bool awh::OS::enableCoreDumps() const noexcept {
 	/**
 	 * Если включён режим отладки
 	 */
-	#if defined(DEBUG_MODE)
+	#if DEBUG_MODE
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Структура лимитов дампов
 			struct rlimit limit;
 			// Устанавливаем текущий лимит равный бесконечности
@@ -320,7 +320,7 @@ uid_t awh::OS::uid(const string & name) const noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Получаем идентификатор имени пользователя
@@ -347,7 +347,7 @@ gid_t awh::OS::gid(const string & name) const noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Получаем идентификатор группы пользователя
@@ -395,7 +395,7 @@ bool awh::OS::limitFDs(const uint32_t cur, const uint32_t max) const noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Структура для установки лимитов
 		struct rlimit limit;
 		// зададим текущий лимит на кол-во открытых дискриптеров
@@ -422,7 +422,7 @@ bool awh::OS::chown(const uid_t uid, const gid_t gid) const noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Результат работы функции
 		bool result = true;
 		// Если идентификатор пользвоателя передан
@@ -453,7 +453,7 @@ bool awh::OS::chown(const string & user, const string & group) const noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Результат работы функции
 		bool result = true;
 		// Если название пользователя передано
@@ -501,7 +501,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 		/**
 		 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
-		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Получаем размер буфера
 			size_t length = 0;
 			// Если размеры удачно получены
@@ -532,7 +532,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			// Если результат получен
 			if(!result.empty()){
 				// Очередь собранных данных
-				queue <pair <string, bool>> data;
+				std::queue <pair <string, bool>> data;
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
@@ -542,7 +542,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							// Если запись является числом
 							if(data.back().second){
 								// Выполняем создание блока данных
-								pair <string, bool> record = make_pair("", true);
+								pair <string, bool> record = std::make_pair("", true);
 								// Выполняем добавление записи в очередь
 								data.push(::move(record));
 							// Если запись является строкой, добавляем полученный символ в запись
@@ -553,7 +553,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
-							pair <string, bool> record = make_pair(string(1, item), true);
+							pair <string, bool> record = std::make_pair(string(1, item), true);
 							// Выполняем добавление записи в очередь
 							data.push(::move(record));
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
@@ -563,7 +563,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
-							pair <string, bool> record = make_pair(string(1, item), false);
+							pair <string, bool> record = std::make_pair(string(1, item), false);
 							// Выполняем добавление записи в очередь
 							data.push(::move(record));
 						// Если данные в очереди уже есть
@@ -640,7 +640,7 @@ bool awh::OS::sysctl(const string & name, const void * buffer, const size_t size
 		/**
 		 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
-		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Устанавливаем новые параметры настройки ядра
 			return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer)), size) == 0);
 		/**
@@ -677,7 +677,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
+		#if !_WIN32 && !_WIN64
 			// Создаем буфер для чтения результата
 			char buffer[128];
 			// Создаем пайп для чтения результата работы OS

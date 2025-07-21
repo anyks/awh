@@ -30,7 +30,7 @@
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * Стандартные библиотеки
 	 */
@@ -140,7 +140,7 @@ namespace awh {
 					/**
 					 * Для операционной системы не являющейся OS Windows
 					 */
-					#if !defined(_WIN32) && !defined(_WIN64)
+					#if !_WIN32 && !_WIN64
 						/**
 						 * message Метод обратного вызова получении сообщений
 						 * @param fd    файловый дескриптор (сокет)
@@ -241,7 +241,7 @@ namespace awh {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				/**
 				 * Broker Структура брокера
 				 */
@@ -317,7 +317,7 @@ namespace awh {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				// Объект перехвата сигнала
 				struct sigaction _sa;
 			#endif
@@ -346,7 +346,7 @@ namespace awh {
 			/**
 			 * Для операционной системы не являющейся OS Windows
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			#if !_WIN32 && !_WIN64
 				/**
 				 * ipc Метод инициализации unix-сокета для обмены данными
 				 * @param family семейстов кластера
@@ -431,7 +431,7 @@ namespace awh {
 			 * @param wid идентификатор воркера
 			 * @return    список дочерних процессов
 			 */
-			set <pid_t> pids(const uint16_t wid) const noexcept;
+			std::set <pid_t> pids(const uint16_t wid) const noexcept;
 		public:
 			/**
 			 * send Метод отправки сообщения родительскому процессу

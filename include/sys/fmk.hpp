@@ -51,11 +51,11 @@
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	/**
 	 * Если используется модуль IDN
 	 */
-	#if defined(AWH_IDN)
+	#if AWH_IDN
 		/**
 		 * Модуль iconv
 		 */
@@ -716,12 +716,12 @@ namespace awh {
 			 * domainZones Метод установки списка пользовательских зон
 			 * @param zones список доменных зон интернета
 			 */
-			void domainZones(const set <string> & zones) noexcept;
+			void domainZones(const std::set <string> & zones) noexcept;
 			/**
 			 * domainZones Метод извлечения списка пользовательских зон интернета
 			 * @return список доменных зон
 			 */
-			const set <string> & domainZones() const noexcept;
+			const std::set <string> & domainZones() const noexcept;
 		public:
 			/**
 			 * setLocale Метод установки системной локали

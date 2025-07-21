@@ -41,14 +41,13 @@
 /**
  * Отключаем Deprecated для Apple
  */
-#if defined(__APPLE__) && defined(__clang__)
+#if __APPLE__ && __clang__
 	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
 /**
  * Стандартные модули
  */
-#include <set>
 #include <random>
 #include <thread>
 #include <cstdio>
@@ -62,7 +61,7 @@
 /**
  * Для операционной системы не являющейся OS Windows
  */
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !_WIN32 && !_WIN64
 	#include <sys/un.h>
 #endif
 
@@ -232,7 +231,7 @@ namespace awh {
 					/**
 					 * Для операционной системы OS Windows
 					 */
-					#if defined(_WIN32) || defined(_WIN64)
+					#if _WIN32 || _WIN64
 						// Объект данных запроса
 						WSADATA _wsaData;
 						// Флаг инициализации WinSocksAPI
@@ -608,7 +607,7 @@ namespace awh {
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
-			#if defined(__linux__) || defined(__FreeBSD__)
+			#if __linux__ || __FreeBSD__
 				/**
 				 * notificationsSCTP Функция обработки нотификации SCTP
 				 * @param bio    объект подключения BIO

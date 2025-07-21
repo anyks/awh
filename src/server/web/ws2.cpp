@@ -728,7 +728,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 								/**
 								 * Если включён режим отладки
 								 */
-								#if defined(DEBUG_MODE)
+								#if DEBUG_MODE
 									{
 										// Выполняем создание объекта для вывода HTTP-запроса
 										http_t http(this->_fmk, this->_log);
@@ -801,7 +801,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 												/**
 												 * Если включён режим отладки
 												 */
-												#if defined(DEBUG_MODE)
+												#if DEBUG_MODE
 													{
 														// Выполняем создание объекта для вывода HTTP-ответа
 														http_t http(this->_fmk, this->_log);
@@ -882,7 +882,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 									/**
 									 * Если включён режим отладки
 									 */
-									#if defined(DEBUG_MODE)
+									#if DEBUG_MODE
 										{
 											// Выполняем создание объекта для вывода HTTP-ответа
 											http_t http(this->_fmk, this->_log);
@@ -933,7 +933,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 											/**
 											 * Если включён режим отладки
 											 */
-											#if defined(DEBUG_MODE)
+											#if DEBUG_MODE
 												// Выводим сообщение о выводе чанка тела
 												std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
 											#endif
@@ -1038,7 +1038,7 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const vector <char>
 		// Если параметры активного клиента получены
 		if(options != nullptr){
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(options->mtx);
+			const lock_guard <std::recursive_mutex> lock(options->mtx);
 			// Декомпрессионные данные
 			vector <char> result(buffer.begin(), buffer.end());
 			// Если нужно производить дешифрование
@@ -1343,7 +1343,7 @@ void awh::server::Websocket2::sendError(const uint64_t bid, const ws::mess_t & m
 						/**
 						 * Если включён режим отладки
 						 */
-						#if defined(DEBUG_MODE)
+						#if DEBUG_MODE
 							// Выводим заголовок ответа
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND ERROR ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим отправляемое сообщение
@@ -1402,7 +1402,7 @@ bool awh::server::Websocket2::sendMessage(const uint64_t bid, const char * messa
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим заголовок ответа
 						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ SEND MESSAGE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Если отправляемое сообщение является текстом
@@ -1712,7 +1712,7 @@ void awh::server::Websocket2::subprotocol(const string & subprotocol) noexcept {
  * subprotocols Метод установки списка поддерживаемых сабпротоколов
  * @param subprotocols сабпротоколы для установки
  */
-void awh::server::Websocket2::subprotocols(const unordered_set <string> & subprotocols) noexcept {
+void awh::server::Websocket2::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
 	if(!subprotocols.empty())
 		// Выполняем установку сабпротоколов
@@ -1723,9 +1723,9 @@ void awh::server::Websocket2::subprotocols(const unordered_set <string> & subpro
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
-const unordered_set <string> & awh::server::Websocket2::subprotocols(const uint64_t bid) const noexcept {
+const std::unordered_set <string> & awh::server::Websocket2::subprotocols(const uint64_t bid) const noexcept {
 	// Результат работы функции
-	static const unordered_set <string> result;
+	static const std::unordered_set <string> result;
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены

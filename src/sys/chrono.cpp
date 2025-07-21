@@ -88,7 +88,7 @@ void awh::Chrono::clear() noexcept {
 		/**
 		 * Для операционной системы OS Windows
 		 */
-		#if defined(_WIN32) || defined(_WIN64)
+		#if _WIN32 || _WIN64
 			// Устанавливаем временную зону по умолчанию
 			_tzset();
 		/**
@@ -125,15 +125,15 @@ void awh::Chrono::clear() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 }
@@ -190,15 +190,15 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 		// Выполняем сброс результата
 		result = 0;
@@ -295,15 +295,15 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	// Выполняем сброс значения даты
@@ -338,7 +338,7 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 					/**
 					 * Если включён режим отладки
 					 */
-					#if defined(DEBUG_MODE)
+					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, string(buffer, size).c_str());
 					/**
@@ -905,33 +905,33 @@ pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t date
 			// Если число больше года
 			if(date >= 29030400000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::YEAR, static_cast <double> (date / 29030400000.L));
+				result = std::make_pair(type_t::YEAR, static_cast <double> (date / 29030400000.L));
 			// Если число больше месяца
 			else if(date >= 2419200000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::MONTH, static_cast <double> (date / 2419200000.L));
+				result = std::make_pair(type_t::MONTH, static_cast <double> (date / 2419200000.L));
 			// Если число больше недели
 			else if(date >= 604800000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::WEEK, static_cast <double> (date / 604800000.L));
+				result = std::make_pair(type_t::WEEK, static_cast <double> (date / 604800000.L));
 			// Если число больше дня
 			else if(date >= 86400000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::DAY, static_cast <double> (date / 86400000.L));
+				result = std::make_pair(type_t::DAY, static_cast <double> (date / 86400000.L));
 			// Если число больше часа
 			else if(date >= 3600000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::HOUR, static_cast <double> (date / 3600000.L));
+				result = std::make_pair(type_t::HOUR, static_cast <double> (date / 3600000.L));
 			// Если число больше минуты
 			else if(date >= 60000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::MINUTES, static_cast <double> (date / 60000.L));
+				result = std::make_pair(type_t::MINUTES, static_cast <double> (date / 60000.L));
 			// Если число ольше секунды
 			else if(date >= 1000)
 				// Выполняем формирование результата
-				result = ::make_pair(type_t::SECONDS, static_cast <double> (date / 1000.L));
+				result = std::make_pair(type_t::SECONDS, static_cast <double> (date / 1000.L));
 			// Иначе выводим как есть
-			else result = ::make_pair(type_t::MILLISECONDS, static_cast <double> (date));
+			else result = std::make_pair(type_t::MILLISECONDS, static_cast <double> (date));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -939,15 +939,15 @@ pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t date
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -1065,15 +1065,15 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -1243,15 +1243,15 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -2924,15 +2924,15 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3310,15 +3310,15 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3413,15 +3413,15 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3520,15 +3520,15 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3559,15 +3559,15 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3606,15 +3606,15 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3663,15 +3663,15 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3709,15 +3709,15 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3778,15 +3778,15 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3823,15 +3823,15 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3859,15 +3859,15 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -4296,15 +4296,15 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -4618,15 +4618,15 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -5337,15 +5337,15 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -6175,15 +6175,15 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 			// Результат работы функции
 			result = zone_t::NONE;
@@ -6224,15 +6224,15 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -7613,15 +7613,15 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 			// Результат работы функции
 			result = this->_dt.offset;
@@ -7660,15 +7660,15 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -7698,7 +7698,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 				/**
 				 * Для операционной системы OS Windows
 				 */
-				#if defined(_WIN32) || defined(_WIN64)
+				#if _WIN32 || _WIN64
 					// Устанавливаем временную зону по умолчанию
 					_tzset();
 					// Получаем глобальное значение временной зоны в секундах
@@ -7735,15 +7735,15 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -7770,15 +7770,15 @@ void awh::Chrono::clearTimeZones() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 }
@@ -7803,15 +7803,15 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 }
@@ -7914,15 +7914,15 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -8130,15 +8130,15 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -8831,15 +8831,15 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}
@@ -9687,15 +9687,15 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if defined(DEBUG_MODE)
+		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n", error.what());
+			::fprintf(stderr, "%s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -10593,15 +10593,15 @@ string awh::Chrono::strip(const string & date, const string & format1, const str
 			/**
 			 * Если включён режим отладки
 			 */
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", error.what());
+				::fprintf(stderr, "%s\n\n", error.what());
 			#endif
 		}
 	}

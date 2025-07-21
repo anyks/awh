@@ -33,7 +33,7 @@
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	// Локаль словаря по умолчанию
 	#define AWH_LOCALE "C"
 /**
@@ -168,7 +168,7 @@
 /**
  * Для операционной системы OS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "%ProgramFiles%\\OpenSSL-Win64\\bin\\PEM\\cert.pem"
 /**
@@ -176,7 +176,7 @@
  */
 #elif __APPLE__ || __MACH__
 	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE "/usr/local/etc/openssl/cert.pem"
+	#define SSL_CA_FILE "/usr/local/etc/ca-certificates/cert.pem"
 /**
  * Для операционной системы Linux
  */
@@ -201,6 +201,12 @@
 #elif __NetBSD__
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/usr/src/crypto/external/bsd/openssl/dist/apps/cert.pem"
+/**
+ * Для операционной системы Sun Solaris
+ */
+#elif __sun__
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE "/etc/certs/CA/certSIGN_ROOT_CA.pem"
 /**
  * Для всех остальных Unix-подобных операционных систем
  */

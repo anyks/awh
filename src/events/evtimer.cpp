@@ -150,7 +150,7 @@ void awh::EventTimer::del(const SOCKET fd) noexcept {
 	// Если список таймеров не пустой
 	if(!this->_timers.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выполняем перебор всего списка таймеров
 		for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
 			// Если таймер найден

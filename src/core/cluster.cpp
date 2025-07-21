@@ -136,7 +136,7 @@ bool awh::cluster::Core::master() const noexcept {
  * pids Метод получения списка дочерних процессов
  * @return список дочерних процессов
  */
-set <pid_t> awh::cluster::Core::pids() const noexcept {
+std::set <pid_t> awh::cluster::Core::pids() const noexcept {
 	// Выполняем извлечение списка доступных идентификаторов процессов
 	return this->_cluster.pids(0);
 }
@@ -307,7 +307,7 @@ void awh::cluster::Core::size(const uint16_t size) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Устанавливаем количество рабочих процессов кластера
 		this->_size = size;
 		// Выполняем инициализацию кластера
@@ -332,7 +332,7 @@ void awh::cluster::Core::autoRestart(const bool mode) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Выполняем установку флага автоматического перезапуска убитых дочерних процессов
 		this->_cluster.autoRestart(0, mode);
 	/**

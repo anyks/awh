@@ -248,7 +248,7 @@ void awh::server::Sample::init(const string & socket) noexcept {
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	#if !_WIN32 && !_WIN64
 		// Если объект сетевого ядра установлен
 		if(this->_core != nullptr)
 			// Выполняем установку unix-сокет
@@ -294,7 +294,7 @@ void awh::server::Sample::send(const uint64_t bid, const char * buffer, const si
 		// Если параметры активного клиента получены
 		if((options->stopped = (options != nullptr))){
 			// Если включён режим отладки
-			#if defined(DEBUG_MODE)
+			#if DEBUG_MODE
 				// Выводим заголовок ответа
 				std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 				// Выводим параметры ответа
