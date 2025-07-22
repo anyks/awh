@@ -351,7 +351,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 					// Если в списке ещё есть что отслеживать
 					if(!this->_fds.empty()){
 						// Выполняем добавление списка файловых дескрипторов для отслеживания
-						if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+						if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -625,7 +625,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 						// Если в списке ещё есть что отслеживать
 						if(!this->_fds.empty()){
 							// Выполняем добавление списка файловых дескрипторов для отслеживания
-							if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+							if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -1037,7 +1037,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 										// Если в списке ещё есть что отслеживать
 										if(!this->_fds.empty()){
 											// Выполняем добавление списка файловых дескрипторов для отслеживания
-											if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+											if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 												/**
 												 * Если включён режим отладки
 												 */
@@ -1090,7 +1090,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 											// Если в списке ещё есть что отслеживать
 											if(!this->_fds.empty()){
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -1144,7 +1144,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 											// Если в списке ещё есть что отслеживать
 											if(!this->_fds.empty()){
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2004,7 +2004,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2026,7 +2026,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2054,7 +2054,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLHUP;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2075,7 +2075,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Выполняем удаление флагов отслеживания закрытия подключения
 												k->events ^= POLLHUP;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2102,7 +2102,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2123,7 +2123,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2150,7 +2150,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг отслеживания записи данных в сокет
 												k->events |= POLLOUT;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2171,7 +2171,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Снимаем флаг ожидания готовности файлового дескриптора на запись
 												k->events ^= POLLOUT;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) != 0){
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -3095,12 +3095,12 @@ void awh::Base::start() noexcept {
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса
 						if(!this->_fds.empty()){
-							// Устанавливаем таймаут ожидания получения события
-							this->_dopoll.dp_timeout = (!this->_easily ? this->_baseDelay : -1);
 							// Устанавливаем список опрашиваемых сокетов
 							this->_dopoll.dp_fds = this->_fds.data();
 							// Устанавливаем количество сокетов для опроса
 							this->_dopoll.dp_nfds = this->_fds.size();
+							// Устанавливаем таймаут ожидания получения события
+							this->_dopoll.dp_timeout = (!this->_easily ? this->_baseDelay : -1);
 							// Выполняем опрос базы событий
 							poll = ::ioctl(this->_wfd, DP_POLL, &this->_dopoll);
 							// Если мы получили ошибку
