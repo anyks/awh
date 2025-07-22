@@ -948,7 +948,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 
 			cout << " --------- " << intvl << " == " << idle << endl;
 
-			const_cast <int32_t &> (idle) = 100;
+			const_cast <int32_t &> (idle) = 2;
 
 			// Время через которое происходит проверка подключения
 			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
