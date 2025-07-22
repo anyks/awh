@@ -1,9 +1,9 @@
-set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
+SET(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    set(CMAKE_FIND_LIBRARY_PREFIXES "lib")
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+    SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+    SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
 endif()
 
 # Поиск пути к заголовочным файлам
@@ -51,7 +51,7 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         FAIL_MESSAGE "Missing Dependence. Run ./build_third_party.sh first"
     )
     # Формируем список заголовочных файлов
-    set(DEPEND_INCLUDE_DIRS
+    SET(DEPEND_INCLUDE_DIRS
         ${LZ4_INCLUDE_DIR}
         ${BZ2_INCLUDE_DIR}
         ${ZSTD_INCLUDE_DIR}
@@ -86,7 +86,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         FAIL_MESSAGE "Missing Dependence. Run ./build_third_party.sh first"
     )
     # Формируем список заголовочных файлов
-    set(DEPEND_INCLUDE_DIRS
+    SET(DEPEND_INCLUDE_DIRS
         ${LZ4_INCLUDE_DIR}
         ${BZ2_INCLUDE_DIR}
         ${ZSTD_INCLUDE_DIR}
@@ -116,7 +116,7 @@ else()
         FAIL_MESSAGE "Missing Dependence. Run ./build_third_party.sh first"
     )
     # Формируем список заголовочных файлов
-    set(DEPEND_INCLUDE_DIRS
+    SET(DEPEND_INCLUDE_DIRS
         ${LZ4_INCLUDE_DIR}
         ${BZ2_INCLUDE_DIR}
         ${ZSTD_INCLUDE_DIR}
