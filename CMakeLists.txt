@@ -89,6 +89,10 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     message(STATUS "Detected OS: OpenBSD")
     SET(DEBUGGER "-ggdb3")
+# Если операционной системой является Windows
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    message(STATUS "Detected OS: Microsoft Windows")
+    SET(DEBUGGER "-ggdb3")
 # Если операционная система не определена
 else()
     SET(DEBUGGER "")

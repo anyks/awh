@@ -286,6 +286,17 @@ void awh::client::Websocket2::writeEvent(const char * buffer, const size_t size,
 		if(this->_proto != engine_t::proto_t::HTTP2)
 			// Выполняем переброс вызова записи на клиент Websocket
 			this->_ws1.writeEvent(buffer, size, bid, sid);
+		// Если необходимо выполнить закрыть подключение
+		else if(!this->_close && this->_stopped) {
+			// Устанавливаем флаг закрытия подключения
+			this->_close = !this->_close;
+			// Принудительно выполняем отключение лкиента
+			const_cast <client::core_t *> (this->_core)->close(bid);
+			// Если установлена функция отлова завершения запроса
+			if(web2_t::_callback.is("end"))
+				// Выполняем функцию обратного вызова
+				web2_t::_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, this->_rid, direct_t::SEND);
+		}
 	}
 }
 /**
@@ -843,9 +854,16 @@ void awh::client::Websocket2::pinging(const uint16_t tid) noexcept {
 						// Выполняем отправку сообщения об ошибке
 						this->sendError(this->_mess);
 					// Если время с предыдущего пинга прошло больше половины времени пинга
-					} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((date - this->_sendPing) > static_cast <uint64_t> (this->_pingInterval / 2)))
+					} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((date - this->_sendPing) > static_cast <uint64_t> (this->_pingInterval / 2))) {
+						/**
+						 * Создаём отдельную переменную для отправки,
+						 * так-как в профессе формирования фрейма она будет изменена,
+						 * нельзя отправлять идентификатор подключения в том виде, как он есть.
+						 */
+						const uint64_t message = this->_bid;
 						// Отправляем запрос брокеру
-						this->ping(&this->_bid, sizeof(this->_bid));
+						this->ping(&message, sizeof(message));
+					}
 				// Если рукопожатие уже выполнено и пинг не прошёл
 				} else if(!web2_t::ping())
 					// Выполняем закрытие подключения

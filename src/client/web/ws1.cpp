@@ -479,9 +479,16 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 				// Выполняем отправку сообщения об ошибке
 				this->sendError(this->_mess);
 			// Если время с предыдущего пинга прошло больше половины времени пинга
-			} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((date - this->_sendPing) > static_cast <uint64_t> (this->_pingInterval / 2)))
+			} else if((this->_waitPong > 0) && (this->_pingInterval > 0) && ((date - this->_sendPing) > static_cast <uint64_t> (this->_pingInterval / 2))) {
+				/**
+				 * Создаём отдельную переменную для отправки,
+				 * так-как в профессе формирования фрейма она будет изменена,
+				 * нельзя отправлять идентификатор подключения в том виде, как он есть.
+				 */
+				const uint64_t message = this->_bid;
 				// Отправляем запрос брокеру
-				this->ping(&this->_bid, sizeof(this->_bid));
+				this->ping(&message, sizeof(message));
+			}
 		}
 	}
 }
