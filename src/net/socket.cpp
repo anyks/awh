@@ -926,9 +926,9 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			return result;
 		}
 		/**
-		 * Если мы работаем в MacOS X
+		 * Если мы работаем в MacOS X или Sun Solaris
 		 */
-		#ifdef __APPLE__
+		#ifdef __APPLE__ || __sun__
 			// Время через которое происходит проверка подключения
 			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
 				/**
@@ -942,9 +942,9 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 				return result;
 			}
 		/**
-		 * Если мы работаем в Linux, FreeBSD, NetBSD, OpenBSD или Sun Solaris
+		 * Если мы работаем в Linux, FreeBSD, NetBSD, OpenBSD
 		 */
-		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __sun__
+		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Время через которое происходит проверка подключения
 			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
 				/**
