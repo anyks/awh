@@ -3104,7 +3104,7 @@ void awh::Base::start() noexcept {
 							// Выполняем опрос базы событий
 							poll = ::ioctl(this->_wfd, DP_POLL, &this->_dopoll);
 							// Если мы получили ошибку
-							if(poll == SOCKET_ERROR){
+							if(poll < 0){
 								/**
 								 * Если включён режим отладки
 								 */
