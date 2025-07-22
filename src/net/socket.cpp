@@ -841,6 +841,18 @@ bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_
 bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept {
 	// Результат работы функции
 	bool result = false;
+	// Если максимальное количество попыток передано неправильно
+	if(cnt < 0)
+		// Выполняем компенсацию
+		const_cast <int32_t &> (cnt) = 0;
+	// Если время через которое происходит проверка подключения передано неправильно
+	if(idle < 0)
+		// Выполняем компенсацию
+		const_cast <int32_t &> (idle) = 0;
+	// Если время между попытками передано неправильно
+	if(intvl < 0)
+		// Выполняем компенсацию
+		const_cast <int32_t &> (intvl) = 0;
 	/**
 	 * Для операционной системы OS Windows
 	 */
@@ -878,6 +890,8 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 				return result;
 			}
 		}{
+			// Количество возвращаемых байт
+			DWORD numBytesReturned = 0;
 			// Структура данных времени для установки
 			struct tcp_keepalive alive;
 			// Устанавливаем что включена поддержка TCP
@@ -886,8 +900,6 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			alive.keepalivetime = (idle * 1000);
 			// Устанавливаем интервал в миллисекундах между отправкой последовательных пакетов проверки активности, если подтверждение не получено
 			alive.keepaliveinterval = (intvl * 1000);
-			// Количество возвращаемых байт
-			DWORD numBytesReturned = 0;
 			// Устанавливаем оставшиеся параметры (время через которое происходит проверка подключения и время между попытками)
 			if(!(result = (WSAIoctl(fd, SIO_KEEPALIVE_VALS, &alive, sizeof(alive), nullptr, 0, reinterpret_cast <DWORD *> (&numBytesReturned), nullptr, nullptr) != SOCKET_ERROR))){
 				/**
@@ -917,18 +929,6 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			// Выходим из функции
 			return result;
 		}
-		// Если максимальное количество попыток передано неправильно
-		if(cnt < 0)
-			// Выполняем компенсацию
-			const_cast <int32_t &> (cnt) = 0;
-		// Если время через которое происходит проверка подключения передано неправильно
-		if(idle < 0)
-			// Выполняем компенсацию
-			const_cast <int32_t &> (idle) = 0;
-		// Если время между попытками передано неправильно
-		if(intvl < 0)
-			// Выполняем компенсацию
-			const_cast <int32_t &> (intvl) = 0;
 		// Максимальное количество попыток
 		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
 			/**
