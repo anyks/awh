@@ -115,9 +115,8 @@ namespace awh {
 				 * Upstream Конструктор
 				 */
 				Upstream() noexcept :
-				 read(INVALID_SOCKET),
-				 write(INVALID_SOCKET),
-				 callback(nullptr) {}
+				 read(INVALID_SOCKET), write(INVALID_SOCKET),
+				 pipe(nullptr), callback(nullptr) {}
 			} upstream_t;
 			/**
 			 * Peer Структура участника

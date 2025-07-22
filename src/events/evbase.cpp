@@ -1902,85 +1902,72 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 					 * Для операционной системы OS Windows
 					 */
 					#if _WIN32 || _WIN64
-						// Выполняем поиск файлового дескриптора из списка событий
-						for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
-							// Если файловый дескриптор найден
-							if(k->fd == fd){
-								// Очищаем полученное событие
-								k->revents = 0;
-								// Определяем тип события
-								switch(static_cast <uint8_t> (type)){
-									// Если событие установлено как таймер
-									case static_cast <uint8_t> (event_type_t::TIMER): {
-										// Определяем режим работы модуля
-										switch(static_cast <uint8_t> (mode)){
-											// Если нужно активировать событие работы таймера
-											case static_cast <uint8_t> (event_mode_t::ENABLED): {
-												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
-												k->events |= POLLIN;
-												// Выполняем активацию таймера на указанное время
-												this->_evtimer.add(i->second.timer, i->second.delay);
-											} break;
-											// Если нужно деактивировать событие работы таймера
-											case static_cast <uint8_t> (event_mode_t::DISABLED): {
-												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
-												k->events ^= POLLIN;
-												// Выполняем деактивацию таймера
-												this->_evtimer.del(i->second.timer);
-											} break;
-										}
-									} break;
-									// Если событие установлено как отслеживание закрытия подключения
-									case static_cast <uint8_t> (event_type_t::CLOSE): {
-										// Определяем режим работы модуля
-										switch(static_cast <uint8_t> (mode)){
-											// Если нужно активировать событие чтения из сокета
-											case static_cast <uint8_t> (event_mode_t::ENABLED):
-												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
-												k->events |= POLLHUP;
-											break;
-											// Если нужно деактивировать событие чтения из сокета
-											case static_cast <uint8_t> (event_mode_t::DISABLED):
-												// Выполняем удаление флагов отслеживания закрытия подключения
-												k->events ^= POLLHUP;
-											break;
-										}
-									} break;
-									// Если событие является чтением данных из сокета
-									case static_cast <uint8_t> (event_type_t::READ): {
-										// Определяем режим работы модуля
-										switch(static_cast <uint8_t> (mode)){
-											// Если нужно активировать событие чтения из сокета
-											case static_cast <uint8_t> (event_mode_t::ENABLED):
-												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
-												k->events |= POLLIN;
-											break;
-											// Если нужно деактивировать событие чтения из сокета
-											case static_cast <uint8_t> (event_mode_t::DISABLED):
-												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
-												k->events ^= POLLIN;
-											break;
-										}
-									} break;
-									// Если событие является записи данных в сокет
-									case static_cast <uint8_t> (event_type_t::WRITE): {
-										// Определяем режим работы модуля
-										switch(static_cast <uint8_t> (mode)){
-											// Если нужно активировать событие записи в сокет
-											case static_cast <uint8_t> (event_mode_t::ENABLED):
-												// Устанавливаем флаг отслеживания записи данных в сокет
-												k->events |= POLLOUT;
-											break;
-											// Если нужно деактивировать событие записи в сокет
-											case static_cast <uint8_t> (event_mode_t::DISABLED):
-												// Снимаем флаг ожидания готовности файлового дескриптора на запись
-												k->events ^= POLLOUT;
-											break;
-										}
-									} break;
+						// Если тип установлен как не закрытие подключения
+						if(type != event_type_t::CLOSE){
+							// Выполняем поиск файлового дескриптора из списка событий
+							for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								// Если файловый дескриптор найден
+								if(k->fd == fd){
+									// Очищаем полученное событие
+									k->revents = 0;
+									// Определяем тип события
+									switch(static_cast <uint8_t> (type)){
+										// Если событие установлено как таймер
+										case static_cast <uint8_t> (event_type_t::TIMER): {
+											// Определяем режим работы модуля
+											switch(static_cast <uint8_t> (mode)){
+												// Если нужно активировать событие работы таймера
+												case static_cast <uint8_t> (event_mode_t::ENABLED): {
+													// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
+													k->events |= POLLIN;
+													// Выполняем активацию таймера на указанное время
+													this->_evtimer.add(i->second.timer, i->second.delay);
+												} break;
+												// Если нужно деактивировать событие работы таймера
+												case static_cast <uint8_t> (event_mode_t::DISABLED): {
+													// Снимаем флаг ожидания готовности файлового дескриптора на чтение
+													k->events ^= POLLIN;
+													// Выполняем деактивацию таймера
+													this->_evtimer.del(i->second.timer);
+												} break;
+											}
+										} break;
+										// Если событие является чтением данных из сокета
+										case static_cast <uint8_t> (event_type_t::READ): {
+											// Определяем режим работы модуля
+											switch(static_cast <uint8_t> (mode)){
+												// Если нужно активировать событие чтения из сокета
+												case static_cast <uint8_t> (event_mode_t::ENABLED):
+													// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
+													k->events |= POLLIN;
+												break;
+												// Если нужно деактивировать событие чтения из сокета
+												case static_cast <uint8_t> (event_mode_t::DISABLED):
+													// Снимаем флаг ожидания готовности файлового дескриптора на чтение
+													k->events ^= POLLIN;
+												break;
+											}
+										} break;
+										// Если событие является записи данных в сокет
+										case static_cast <uint8_t> (event_type_t::WRITE): {
+											// Определяем режим работы модуля
+											switch(static_cast <uint8_t> (mode)){
+												// Если нужно активировать событие записи в сокет
+												case static_cast <uint8_t> (event_mode_t::ENABLED):
+													// Устанавливаем флаг отслеживания записи данных в сокет
+													k->events |= POLLOUT;
+												break;
+												// Если нужно деактивировать событие записи в сокет
+												case static_cast <uint8_t> (event_mode_t::DISABLED):
+													// Снимаем флаг ожидания готовности файлового дескриптора на запись
+													k->events ^= POLLOUT;
+												break;
+											}
+										} break;
+									}
+									// Выходим из цикла
+									break;
 								}
-								// Выходим из цикла
-								break;
 							}
 						}
 					/**
