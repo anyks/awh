@@ -926,9 +926,9 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			return result;
 		}
 		/**
-		 * Если мы работаем в MacOS X или Sun Solaris
+		 * Если мы работаем в MacOS X
 		 */
-		#if __APPLE__ || __sun__
+		#if __APPLE__
 			// Время через которое происходит проверка подключения
 			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
 				/**
@@ -942,7 +942,23 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 				return result;
 			}
 		/**
-		 * Если мы работаем в Linux, FreeBSD, NetBSD, OpenBSD
+		 * Если мы работаем в Sun Solaris
+		 */
+		#elif __sun__
+			// Время через которое происходит проверка подключения
+			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, &idle, sizeof(idle))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим в лог информацию
+					this->_log->print("Cannot set TCP_KEEPALIVE_THRESHOLD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				#endif
+				// Выходим из функции
+				return result;
+			}
+		/**
+		 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD
 		 */
 		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Время через которое происходит проверка подключения
