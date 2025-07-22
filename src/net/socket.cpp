@@ -946,6 +946,8 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 		 */
 		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __sun__
 
+			cout << " --------- " << intvl << " == " << idle << endl;
+
 			const_cast <int32_t &> (idle) = 100;
 
 			// Время через которое происходит проверка подключения
@@ -961,6 +963,9 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 				return result;
 			}
 		#endif
+
+
+
 		// Время между попытками
 		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl))))){
 			/**
