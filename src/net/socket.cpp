@@ -946,12 +946,14 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 		 */
 		#elif __sun__
 			
-			cout  << " ^^^^^^^^^^ " << idle << endl;
+			cout  << " ^^^^^^^^^^1 " << idle << endl;
 
 			const_cast <int32_t &> (idle) = 1000;
+
+			cout  << " ^^^^^^^^^^2 " << idle << endl;
 		
 			// Время через которое происходит проверка подключения
-			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, &idle, sizeof(idle))))){
+			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
 				/**
 				 * Если включён режим отладки
 				 */
