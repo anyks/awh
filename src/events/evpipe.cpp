@@ -197,9 +197,9 @@ array <SOCKET, 2> awh::EventPIPE::create() noexcept {
 	// Делаем блокирующим сокет на запись
 	this->_socket.blocking(result[1], socket_t::mode_t::ENABLED);
 	// Устанавливаем размер буфера на чтение
-	this->_socket.bufferSize(result[0], 32, socket_t::mode_t::READ);
+	this->_socket.bufferSize(result[0], 64, socket_t::mode_t::READ);
 	// Устанавливаем размер буфера на запись
-	this->_socket.bufferSize(result[1], 32, socket_t::mode_t::WRITE);
+	this->_socket.bufferSize(result[1], 64, socket_t::mode_t::WRITE);
 	// Выводим результат
 	return result;
 }
