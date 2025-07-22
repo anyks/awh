@@ -18,10 +18,10 @@
 /**
  * Наши модули
  */
-#include <ws/frame.hpp>
-#include <ws/client.hpp>
-#include <sys/threadpool.hpp>
-#include <client/web/web.hpp>
+#include "web.hpp"
+#include "../../ws/frame.hpp"
+#include "../../ws/client.hpp"
+#include "../../sys/threadpool.hpp"
 
 /**
  * awh пространство имён

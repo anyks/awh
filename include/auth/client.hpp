@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include <auth/core.hpp>
+#include "core.hpp"
 
 /**
  * awh пространство имён

@@ -24,10 +24,10 @@
 /**
  * Наши модули
  */
-#include <ws/frame.hpp>
-#include <ws/server.hpp>
-#include <sys/buffer.hpp>
-#include <scheme/server.hpp>
+#include "server.hpp"
+#include "../ws/frame.hpp"
+#include "../ws/server.hpp"
+#include "../sys/buffer.hpp"
 
 /**
  * awh пространство имён

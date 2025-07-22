@@ -16,19 +16,10 @@
 #define __AWH_CORE_CLUSTER__
 
 /**
- * Стандартные библиотеки
- */
-#include <set>
-
-/**
- * Модули AWH
- */
-#include <core/core.hpp>
-
-/**
  * Наши модули
  */
-#include <cluster/cluster.hpp>
+#include "core.hpp"
+#include "../cluster/cluster.hpp"
 
 /**
  * awh пространство имён

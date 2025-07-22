@@ -25,12 +25,12 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/buffer.hpp>
-#include <sys/callback.hpp>
-#include <net/engine.hpp>
-#include <events/evbase.hpp>
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../sys/buffer.hpp"
+#include "../sys/callback.hpp"
+#include "../net/engine.hpp"
+#include "../events/evbase.hpp"
 
 /**
  * awh пространство имён

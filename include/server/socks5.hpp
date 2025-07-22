@@ -18,11 +18,11 @@
 /**
  * Наши модули
  */
-#include <sys/queue.hpp>
-#include <sys/callback.hpp>
-#include <core/client.hpp>
-#include <core/server.hpp>
-#include <scheme/socks5.hpp>
+#include "../sys/queue.hpp"
+#include "../sys/callback.hpp"
+#include "../core/client.hpp"
+#include "../core/server.hpp"
+#include "../scheme/socks5.hpp"
 
 /**
  * awh пространство имён

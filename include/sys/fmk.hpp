@@ -45,8 +45,8 @@
 /**
  * Наши модули
  */
-#include <sys/os.hpp>
-#include <net/nwt.hpp>
+#include "os.hpp"
+#include "../net/nwt.hpp"
 
 /**
  * Для операционной системы не являющейся OS Windows

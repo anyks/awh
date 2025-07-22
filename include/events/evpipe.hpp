@@ -26,7 +26,7 @@
 /**
  * Наши модули
  */
-#include <net/socket.hpp>
+#include "../net/socket.hpp"
 
 /**
  * awh пространство имён

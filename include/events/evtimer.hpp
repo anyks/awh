@@ -25,8 +25,8 @@
 /**
  * Наши модули
  */
-#include <sys/screen.hpp>
-#include <events/evpipe.hpp>
+#include "evpipe.hpp"
+#include "../sys/screen.hpp"
 
 /**
  * awh пространство имён

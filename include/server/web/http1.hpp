@@ -18,9 +18,9 @@
 /**
  * Наши модули
  */
-#include <scheme/web.hpp>
-#include <server/web/web.hpp>
-#include <server/web/ws1.hpp>
+#include "web.hpp"
+#include "ws1.hpp"
+#include "../../scheme/web.hpp"
 
 /**
  * awh пространство имён

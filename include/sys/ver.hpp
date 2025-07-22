@@ -27,7 +27,7 @@
 /**
  * Разрешаем сборку под Windows
  */
-#include <sys/global.hpp>
+#include "global.hpp"
 
 /**
  * awh пространство имён

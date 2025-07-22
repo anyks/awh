@@ -1067,7 +1067,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 						// Устанавливаем время жизни сокета
 						// this->_socket.timeToLive(family, this->_fd, i + ((this->_shifting / 1000) * 2));
 						// Замораживаем поток на период времени в ${_shifting}
-						this_thread::sleep_for(chrono::milliseconds(this->_shifting));
+						std::this_thread::sleep_for(chrono::milliseconds(this->_shifting));
 					}
 				}
 				// Выполняем закрытие подключения

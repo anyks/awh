@@ -68,12 +68,12 @@
 /**
  * Наши модули
  */
-#include <sys/fs.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <net/if.hpp>
-#include <net/uri.hpp>
-#include <net/socket.hpp>
+#include "if.hpp"
+#include "uri.hpp"
+#include "socket.hpp"
+#include "../sys/fs.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
 
 /**
  * Подключаем OpenSSL

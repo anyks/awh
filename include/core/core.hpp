@@ -25,9 +25,9 @@
 /**
  * Наши модули
  */
-#include <scheme/core.hpp>
-#include <sys/signals.hpp>
-#include <sys/callback.hpp>
+#include "../scheme/core.hpp"
+#include "../sys/signals.hpp"
+#include "../sys/callback.hpp"
 
 /**
  * awh пространство имён

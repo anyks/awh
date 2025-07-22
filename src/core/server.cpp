@@ -3188,9 +3188,9 @@ void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t 
 					// Деактивируем режим работы кластера
 					this->_clusterMode = awh::scheme_t::mode_t::DISABLED;
 				// Если количество воркеров установленно больше чем разрешено
-				} else if(size > (static_cast <int16_t> (thread::hardware_concurrency()) * 2))
+				} else if(size > (static_cast <int16_t> (std::thread::hardware_concurrency()) * 2))
 					// Устанавливаем количество рабочих процессов кластера
-					this->_clusterSize = static_cast <int16_t> (thread::hardware_concurrency());
+					this->_clusterSize = static_cast <int16_t> (std::thread::hardware_concurrency());
 				// Устанавливаем количество рабочих процессов кластера
 				else this->_clusterSize = size;
 			} break;

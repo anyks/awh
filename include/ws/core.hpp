@@ -27,8 +27,8 @@
 /**
  * Наши модули
  */
-#include <sys/hash.hpp>
-#include <http/core.hpp>
+#include "../sys/hash.hpp"
+#include "../http/core.hpp"
 
 /**
  * awh пространство имён

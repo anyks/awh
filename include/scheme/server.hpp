@@ -18,8 +18,8 @@
 /**
  * Наши модули
  */
-#include <net/engine.hpp>
-#include <scheme/core.hpp>
+#include "core.hpp"
+#include "../net/engine.hpp"
 
 /**
  * awh пространство имён

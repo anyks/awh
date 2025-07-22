@@ -18,8 +18,8 @@
 /**
  * Наши модули
  */
-#include <http/core.hpp>
-#include <auth/client.hpp>
+#include "core.hpp"
+#include "../auth/client.hpp"
 
 /**
  * awh пространство имён

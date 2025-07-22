@@ -1010,7 +1010,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										// Если подключение выполнено
 										while(!this->connect())
 											// Погружаем поток в сон на 100мс
-											this_thread::sleep_for(100ms);
+											std::this_thread::sleep_for(100ms);
 										// Делаем сокет на чтение блокирующим
 										this->_server.socket.blocking(this->_server.fd, socket_t::mode_t::ENABLED);
 										// Выполняем установку нового сокета для чтения
@@ -1413,7 +1413,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											// Если подключение выполнено
 											while(!this->connect())
 												// Погружаем поток в сон на 100мс
-												this_thread::sleep_for(100ms);
+												std::this_thread::sleep_for(100ms);
 											// Делаем сокет на чтение блокирующим
 											this->_server.socket.blocking(this->_server.fd, socket_t::mode_t::ENABLED);
 											// Выполняем установку нового сокета для чтения
@@ -2481,7 +2481,7 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 		// Если количество процессов не передано
 		if(count == 0)
 			// Устанавливаем максимальное количество ядер доступных в системе
-			i->second->_count = (thread::hardware_concurrency() / 2);
+			i->second->_count = (std::thread::hardware_concurrency() / 2);
 		// Устанавливаем максимальное количество процессов
 		else i->second->_count = count;
 		// Если количество процессов не установлено

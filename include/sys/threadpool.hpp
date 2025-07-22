@@ -32,7 +32,7 @@
 /**
  * Разрешаем сборку под Windows
  */
-#include <sys/global.hpp>
+#include "global.hpp"
 
 /**
  * awh пространство имён
@@ -67,7 +67,7 @@ namespace awh {
 			std::condition_variable _cv;
 		private:
 			// Рабочие потоки для обработки задач
-			vector <thread> _workers;
+			vector <std::thread> _workers;
 		private:
 			/**
 			 * check Метод проверки завершения заморозки потока

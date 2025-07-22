@@ -23,7 +23,7 @@
 /**
  * Наши модули
  */
-#include <socks5/core.hpp>
+#include "core.hpp"
 
 /**
  * awh пространство имён

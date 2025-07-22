@@ -18,10 +18,10 @@
 /**
  * Наши модули
  */
-#include <core/node.hpp>
-#include <core/timer.hpp>
-#include <scheme/server.hpp>
-#include <cluster/cluster.hpp>
+#include "node.hpp"
+#include "timer.hpp"
+#include "../scheme/server.hpp"
+#include "../cluster/cluster.hpp"
 
 /**
  * awh пространство имён

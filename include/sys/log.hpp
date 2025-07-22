@@ -51,9 +51,9 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/chrono.hpp>
-#include <sys/screen.hpp>
+#include "fmk.hpp"
+#include "chrono.hpp"
+#include "screen.hpp"
 
 /**
  * awh пространство имён

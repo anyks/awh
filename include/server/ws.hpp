@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include <server/web/ws2.hpp>
+#include "web/ws2.hpp"
 
 /**
  * awh пространство имён

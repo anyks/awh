@@ -18,9 +18,9 @@
 /**
  * Наши модули
  */
-#include <core/server.hpp>
-#include <sys/callback.hpp>
-#include <scheme/sample.hpp>
+#include "../core/server.hpp"
+#include "../sys/callback.hpp"
+#include "../scheme/sample.hpp"
 
 /**
  * awh пространство имён

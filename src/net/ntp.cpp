@@ -327,7 +327,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 					// Если работа резолвера ещё не остановлена
 					if(this->_mode)
 						// Замораживаем поток на период времени в 10ms
-						this_thread::sleep_for(10ms);
+						std::this_thread::sleep_for(10ms);
 					// Выполняем попытку получить IP-адрес с другого сервера
 					return result;
 				// Если данные получены удачно

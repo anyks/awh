@@ -29,7 +29,7 @@
 /**
  * Наши модули
  */
-#include <sys/log.hpp>
+#include "log.hpp"
 #include <cityhash/city.h>
 
 /**

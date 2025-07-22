@@ -18,8 +18,8 @@
 /**
  * Наши модули
  */
-#include <auth/core.hpp>
-#include <sys/callback.hpp>
+#include "core.hpp"
+#include "../sys/callback.hpp"
 
 /**
  * awh пространство имён

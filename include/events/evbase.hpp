@@ -35,6 +35,12 @@
 	// Подключаем модуль EPoll
 	#include <sys/epoll.h>
 /**
+ * Для операционной системы Sun Solaris
+ */
+#elif __sun__
+	// Подключаем модуль /dev/poll
+	#include <sys/devpoll.h>
+/**
  * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
  */
 #elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
@@ -45,7 +51,7 @@
 /**
  * Наши модули
  */
-#include <events/evtimer.hpp>
+#include "evtimer.hpp"
 
 /**
  * awh пространство имён
@@ -114,9 +120,9 @@ namespace awh {
 				 callback(nullptr) {}
 			} upstream_t;
 			/**
-			 * Item Структура данных участника
+			 * Peer Структура участника
 			 */
-			typedef struct Item {
+			typedef struct Peer {
 				// Отслеживаемый файловый дескриптор
 				SOCKET fd;
 				// Файловые дескрипторы таймеров
@@ -134,12 +140,12 @@ namespace awh {
 				// Список соответствия типов событий режиму работы
 				std::map <event_type_t, event_mode_t> mode;
 				/**
-				 * Item Конструктор
+				 * Peer Конструктор
 				 */
-				Item() noexcept :
+				Peer() noexcept :
 				 fd(INVALID_SOCKET), timer(INVALID_SOCKET), id(0),
 				 series(false), delay(0), callback(nullptr), pipe(nullptr) {}
-			} item_t;
+			} peer_t;
 		private:
 			// Идентификатор модуля
 			uint64_t _id;
@@ -169,6 +175,16 @@ namespace awh {
 				bool _winSockInit;
 				// Список активных файловых дескрипторов
 				vector <WSAPOLLFD> _fds;
+			/**
+			 * Для операционной системы Sun Solaris
+			 */
+			#elif __sun__
+				// Идентификатор активного /dev/poll
+				int32_t _wfd;
+				// Список активных событий
+				struct dvpoll _dopoll;
+				// Список активных файловых дескрипторов
+				vector <struct pollfd> _fds;
 			/**
 			 * Для операционной системы Linux
 			 */
@@ -203,7 +219,7 @@ namespace awh {
 			// Список существующих таймеров
 			std::set <SOCKET> _timers;
 			// Список отслеживаемых участников
-			std::map <SOCKET, item_t> _items;
+			std::map <SOCKET, peer_t> _peers;
 			// Спиоск активных верхнеуровневых потоков
 			std::map <uint64_t, upstream_t> _upstreams;
 		private:

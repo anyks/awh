@@ -18,9 +18,9 @@
 /**
  * Наши модули
  */
-#include <core/node.hpp>
-#include <core/timer.hpp>
-#include <scheme/client.hpp>
+#include "node.hpp"
+#include "timer.hpp"
+#include "../scheme/client.hpp"
 
 /**
  * awh пространство имён

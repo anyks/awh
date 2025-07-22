@@ -39,9 +39,9 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <net/uri.hpp>
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../net/uri.hpp"
 
 /**
  * awh пространство имён

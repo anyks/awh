@@ -18,10 +18,10 @@
 /**
  * Наши модули
  */
-#include <scheme/web2.hpp>
-#include <server/web/web.hpp>
-#include <server/web/ws2.hpp>
-#include <server/web/http1.hpp>
+#include "web.hpp"
+#include "ws2.hpp"
+#include "http1.hpp"
+#include "../../scheme/web2.hpp"
 
 /**
  * awh пространство имён

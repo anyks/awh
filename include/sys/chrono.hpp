@@ -34,7 +34,7 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
+#include "fmk.hpp"
 
 /**
  * awh пространство имён

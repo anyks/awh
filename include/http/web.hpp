@@ -28,12 +28,12 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/callback.hpp>
-#include <net/uri.hpp>
-#include <net/net.hpp>
-#include <http/errors.hpp>
+#include "errors.hpp"
+#include "../net/uri.hpp"
+#include "../net/net.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../sys/callback.hpp"
 
 /**
  * awh пространство имён

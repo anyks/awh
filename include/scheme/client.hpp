@@ -18,9 +18,9 @@
 /**
  * Наши модули
  */
-#include <scheme/core.hpp>
-#include <http/client.hpp>
-#include <socks5/client.hpp>
+#include "core.hpp"
+#include "../http/client.hpp"
+#include "../socks5/client.hpp"
 
 /**
  * awh пространство имён

@@ -18,8 +18,8 @@
 /**
  * Наши модули
  */
-#include <client/web/web.hpp>
-#include <client/web/ws1.hpp>
+#include "web.hpp"
+#include "ws1.hpp"
 
 /**
  * awh пространство имён

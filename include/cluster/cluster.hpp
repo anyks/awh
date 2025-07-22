@@ -40,13 +40,13 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/callback.hpp>
-#include <net/socket.hpp>
-#include <core/core.hpp>
-#include <cluster/cmp.hpp>
-#include <events/evbase.hpp>
+#include "cmp.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../sys/callback.hpp"
+#include "../net/socket.hpp"
+#include "../core/core.hpp"
+#include "../events/evbase.hpp"
 
 /**
  * awh пространство имён

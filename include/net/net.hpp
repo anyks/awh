@@ -35,9 +35,9 @@
 /**
  * Наши модуля
  */
-#include <sys/os.hpp>
-#include <sys/reg.hpp>
-#include <sys/log.hpp>
+#include "../sys/os.hpp"
+#include "../sys/reg.hpp"
+#include "../sys/log.hpp"
 
 /**
  * awh пространство имён

@@ -28,12 +28,12 @@
 /**
  * Наши модули
  */
-#include <net/uri.hpp>
-#include <net/dns.hpp>
-#include <net/engine.hpp>
-#include <sys/buffer.hpp>
-#include <core/core.hpp>
-#include <scheme/core.hpp>
+#include "core.hpp"
+#include "../net/uri.hpp"
+#include "../net/dns.hpp"
+#include "../net/engine.hpp"
+#include "../sys/buffer.hpp"
+#include "../scheme/core.hpp"
 
 /**
  * awh пространство имён

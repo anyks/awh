@@ -68,12 +68,12 @@
 /**
  * Наши модули
  */
-#include <sys/fs.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/hold.hpp>
-#include <net/net.hpp>
-#include <net/socket.hpp>
+#include "net.hpp"
+#include "socket.hpp"
+#include "../sys/fs.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../sys/hold.hpp"
 
 /**
  * awh пространство имён

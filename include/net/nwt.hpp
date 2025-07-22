@@ -24,9 +24,9 @@
 /**
  * Наши модули
  */
-#include <sys/os.hpp>
-#include <sys/lib.hpp>
-#include <sys/reg.hpp>
+#include "../sys/os.hpp"
+#include "../sys/lib.hpp"
+#include "../sys/reg.hpp"
 
 /**
  * awh пространство имён

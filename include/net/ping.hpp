@@ -59,14 +59,14 @@
 /**
  * Наши модули
  */
-#include <sys/fs.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/hold.hpp>
-#include <sys/chrono.hpp>
-#include <net/net.hpp>
-#include <net/dns.hpp>
-#include <net/socket.hpp>
+#include "net.hpp"
+#include "dns.hpp"
+#include "socket.hpp"
+#include "../sys/fs.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../sys/hold.hpp"
+#include "../sys/chrono.hpp"
 
 /**
  * awh пространство имён

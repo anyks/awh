@@ -24,10 +24,10 @@
 /**
  * Наши модули
  */
-#include <sys/hold.hpp>
-#include <sys/buffer.hpp>
-#include <sys/callback.hpp>
-#include <core/client.hpp>
+#include "../sys/hold.hpp"
+#include "../sys/buffer.hpp"
+#include "../sys/callback.hpp"
+#include "../core/client.hpp"
 
 /**
  * awh пространство имён

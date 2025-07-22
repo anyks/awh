@@ -86,8 +86,8 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
 
 /**
  * awh пространство имён

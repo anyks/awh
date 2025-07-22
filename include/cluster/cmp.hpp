@@ -27,11 +27,11 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/hash.hpp>
-#include <sys/queue.hpp>
-#include <sys/buffer.hpp>
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../sys/hash.hpp"
+#include "../sys/queue.hpp"
+#include "../sys/buffer.hpp"
 
 /**
  * awh пространство имён

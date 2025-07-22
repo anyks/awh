@@ -27,9 +27,9 @@
 /**
  * Наши модули
  */
-#include <sys/queue.hpp>
-#include <client/awh.hpp>
-#include <server/awh.hpp>
+#include "awh.hpp"
+#include "../client/awh.hpp"
+#include "../sys/queue.hpp"
 
 /**
  * awh пространство имён

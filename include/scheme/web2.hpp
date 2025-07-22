@@ -24,8 +24,8 @@
 /**
  * Наши модули
  */
-#include <http/server.hpp>
-#include <scheme/server.hpp>
+#include "server.hpp"
+#include "../http/server.hpp"
 
 /**
  * awh пространство имён

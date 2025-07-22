@@ -26,12 +26,12 @@
 /**
  * Наши модули
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/hash.hpp>
-#include <http/web.hpp>
-#include <auth/client.hpp>
-#include <auth/server.hpp>
+#include "web.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../sys/hash.hpp"
+#include "../auth/client.hpp"
+#include "../auth/server.hpp"
 
 /**
  * awh пространство имён

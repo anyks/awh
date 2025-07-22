@@ -18,9 +18,9 @@
 /**
  * Наши модули
  */
-#include <client/web/web.hpp>
-#include <client/web/ws2.hpp>
-#include <client/web/http1.hpp>
+#include "web.hpp"
+#include "ws2.hpp"
+#include "http1.hpp"
 
 /**
  * awh пространство имён

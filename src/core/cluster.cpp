@@ -46,7 +46,7 @@ void awh::cluster::Core::active(const status_t status) noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("statusCluster"))
 				// Выводим результат в отдельном потоке
-				thread(this->_callback.get <void (const status_t)> ("statusCluster"), status_t::STOP).detach();
+				std::thread(this->_callback.get <void (const status_t)> ("statusCluster"), status_t::STOP).detach();
 		} break;
 	}
 }
@@ -99,7 +99,7 @@ void awh::cluster::Core::cluster([[maybe_unused]] const uint16_t wid, const pid_
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("statusCluster"))
 				// Выводим результат в отдельном потоке
-				thread(this->_callback.get <void (const status_t)> ("statusCluster"), status_t::START).detach();
+				std::thread(this->_callback.get <void (const status_t)> ("statusCluster"), status_t::START).detach();
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const cluster_t::family_t, const pid_t, const cluster_t::event_t)> ("events", cluster_t::family_t::MASTER, pid, event);
 		// Если производится запуск воркера, выполняем функцию обратного вызова

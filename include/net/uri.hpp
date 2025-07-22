@@ -45,10 +45,10 @@
 /**
  * Наши модули
  */
-#include <net/net.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/hash.hpp>
+#include "net.hpp"
+#include "../sys/fmk.hpp"
+#include "../sys/log.hpp"
+#include "../sys/hash.hpp"
 
 /**
  * awh пространство имён
