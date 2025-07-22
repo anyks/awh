@@ -942,32 +942,12 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 				return result;
 			}
 		/**
-		 * Если мы работаем в Sun Solaris
+		 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
 		 */
-		#elif __sun__
-			
-			cout  << " ^^^^^^^^^^1 " << idle << endl;
+		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __sun__
 
-			const_cast <int32_t &> (idle) = 1000;
+			const_cast <int32_t &> (idle) = 5;
 
-			cout  << " ^^^^^^^^^^2 " << idle << endl;
-		
-			// Время через которое происходит проверка подключения
-			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим в лог информацию
-					this->_log->print("Cannot set TCP_KEEPALIVE_THRESHOLD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
-				#endif
-				// Выходим из функции
-				return result;
-			} 
-		/**
-		 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD
-		 */
-		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Время через которое происходит проверка подключения
 			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
 				/**
