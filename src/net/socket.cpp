@@ -928,7 +928,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 		/**
 		 * Если мы работаем в MacOS X или Sun Solaris
 		 */
-		#ifdef __APPLE__ || __sun__
+		#if __APPLE__ || __sun__
 			// Время через которое происходит проверка подключения
 			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
 				/**
