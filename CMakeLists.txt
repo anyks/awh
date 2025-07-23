@@ -154,16 +154,16 @@ endif()
 
 # Если процессор архитектуры ARM
 if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
-    SET(CMAKE_CXX_FLAGS_RELEASE "-pipe -DNDEBUG")
+    SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
 # Если процессор архитектуры x86_64
 else()
-    SET(CMAKE_CXX_FLAGS_RELEASE "-pipe -mrdrnd -march=core2 -DNDEBUG")
+    SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -mrdrnd -march=core2 -DNDEBUG")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
 endif()
 
 # Устанавливаем параметр отладки
-SET(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG_MODE ${DEBUGGER}")
+SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
 
 # Если активирован режим отладки
 if (CMAKE_BUILD_TYPE MATCHES Debug)
