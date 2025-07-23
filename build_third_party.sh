@@ -978,8 +978,13 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			# Переходим в каталог сборки
 			cd "$src" || exit 1
 
+			# Если операционной системой является Solaris
+			if [[ $OS = "SunOS" ]]; then
+				# Выполняем патчинг библиотеки для дальнейшей сборки
+				gsed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_encode.c"
+				gsed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_decode.c"
 			# Если операционной системой является Linux или Windows
-			if [[ $OS = "Linux" ]] || [[ $OS = "Windows" ]]; then
+			elif [[ $OS = "Linux" ]] || [[ $OS = "Windows" ]]; then
 				# Выполняем патчинг библиотеки для дальнейшей сборки
 				sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_encode.c"
 				sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_decode.c"
