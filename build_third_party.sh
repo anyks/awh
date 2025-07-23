@@ -105,6 +105,9 @@ export CFLAGS="-I$PREFIX/include -fPIC"
 export LDFLAGS="-L$PREFIX/lib"
 export LD_LIBRARY_PATH="$PREFIX/lib"
 
+# Устанавливаем минимальную версию CMake
+export CMAKE_POLICY_VERSION_MINIMUM=3.5
+
 # Создаём каталоги
 mkdir -p "$PREFIX/bin"
 mkdir -p "$PREFIX/lib"
