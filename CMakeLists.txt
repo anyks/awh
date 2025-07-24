@@ -372,8 +372,8 @@ else (CMAKE_SHARED_BUILD_LIB)
     add_library(${AWH_LIB_NAME} STATIC ${SOURCE_FILES})
 endif (CMAKE_SHARED_BUILD_LIB)
 
- # Если операционной системой является Windows
- if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+# Если операционной системой является Windows
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
     # Устанавливаем необходимые зависимости для MS Windows
     SET(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
