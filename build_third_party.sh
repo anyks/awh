@@ -116,7 +116,7 @@ mkdir -p "$PREFIX/include"
 # Если операционная система используется Solaris
 if [ $OS = "SunOS" ]; then
 	# Устанавливаем жёстко компилятор
-	export CC="gcc"
+	export CC="gcc -m64"
 fi
 
 # Если сборка производится в операционной системе MacOS X

@@ -2978,10 +2978,7 @@ void awh::Base::start() noexcept {
 															std::apply(j->second.callback, std::make_tuple(fd, event_type_t::READ));
 													}
 												}
-											// Если файловый дескриптор не нулевой
-											} else if(fd > 0)
-												// Выводим сообщение об ошибке
-												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
+											}
 										}
 										// Если сокет доступен для записи
 										if(isWrite){
@@ -3194,10 +3191,7 @@ void awh::Base::start() noexcept {
 															std::apply(j->second.callback, std::make_tuple(fd, event_type_t::READ));
 													}
 												}
-											// Если файловый дескриптор не нулевой
-											} else if(fd > 0)
-												// Выводим сообщение об ошибке
-												this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, fd);
+											}
 										}
 										// Если сокет доступен для записи
 										if(isWrite){
@@ -3466,10 +3460,7 @@ void awh::Base::start() noexcept {
 													// Выполняем удаление фантомного файлового дескриптора
 													this->del(fd);
 											}
-										// Если файловый дескриптор не нулевой
-										} else if(event.data.fd > 0)
-											// Выводим сообщение об ошибке
-											this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, event.data.fd);
+										}
 									// Выходим из цикла
 									} else break;
 								}
@@ -3674,10 +3665,7 @@ void awh::Base::start() noexcept {
 													// Выполняем удаление фантомного файлового дескриптора
 													this->del(fd);
 											}
-										// Если файловый дескриптор не нулевой
-										} else if(event.ident > 0)
-											// Выводим сообщение об ошибке
-											this->_log->print("SOCKET=%d is not in the event list but is in the event database", log_t::flag_t::CRITICAL, event.ident);
+										}
 									// Выходим из цикла
 									} else break;
 								}
