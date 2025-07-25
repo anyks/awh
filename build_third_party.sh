@@ -100,9 +100,9 @@ export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 # Устанавливаем флаги глобального использования
 # export CPPFLAGS=""
 export CXXFLAGS="$CXXFLAGS -fPIC"
-export CFLAGS="-I$PREFIX/include -fPIC"
+export CFLAGS="$CFLAGS -I$PREFIX/include -fPIC"
 
-export LDFLAGS="-L$PREFIX/lib"
+export LDFLAGS="$LDFLAGS -L$PREFIX/lib"
 export LD_LIBRARY_PATH="$PREFIX/lib"
 
 # Устанавливаем минимальную версию CMake
@@ -116,7 +116,7 @@ mkdir -p "$PREFIX/include"
 # Если операционная система используется Solaris
 if [ $OS = "SunOS" ]; then
 	# Устанавливаем жёстко компилятор
-	export CC="gcc -m64"
+	export CC="gcc"
 fi
 
 # Если сборка производится в операционной системе MacOS X
