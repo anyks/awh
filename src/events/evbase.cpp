@@ -366,6 +366,12 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 								this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 							#endif
 						}
+					// Если в списке больше нет файловых дескрипторов
+					} else {
+						// Выполняем деинициализацию базы событий
+						this->init(event_mode_t::DISABLED);
+						// Выполняем инициализацию базы событий
+						this->init(event_mode_t::ENABLED);
 					}
 					// Выходим из цикла
 					break;
@@ -640,6 +646,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 								#endif
 							}
+						// Если в списке больше нет файловых дескрипторов
+						} else {
+							// Выполняем деинициализацию базы событий
+							this->init(event_mode_t::DISABLED);
+							// Выполняем инициализацию базы событий
+							this->init(event_mode_t::ENABLED);
 						}
 						// Выходим из цикла
 						break;
@@ -1052,6 +1064,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 													this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 												#endif
 											}
+										// Если в списке больше нет файловых дескрипторов
+										} else {
+											// Выполняем деинициализацию базы событий
+											this->init(event_mode_t::DISABLED);
+											// Выполняем инициализацию базы событий
+											this->init(event_mode_t::ENABLED);
 										}
 										// Выходим из цикла
 										break;
@@ -1105,6 +1123,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													#endif
 												}
+											// Если в списке больше нет файловых дескрипторов
+											} else {
+												// Выполняем деинициализацию базы событий
+												this->init(event_mode_t::DISABLED);
+												// Выполняем инициализацию базы событий
+												this->init(event_mode_t::ENABLED);
 											}
 										}
 										// Выходим из цикла
@@ -1159,6 +1183,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													#endif
 												}
+											// Если в списке больше нет файловых дескрипторов
+											} else {
+												// Выполняем деинициализацию базы событий
+												this->init(event_mode_t::DISABLED);
+												// Выполняем инициализацию базы событий
+												this->init(event_mode_t::ENABLED);
 											}
 										}
 										// Выходим из цикла
