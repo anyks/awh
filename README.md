@@ -44,6 +44,14 @@ $ git clone --recursive https://gitflic.ru/project/anyks/awh.git
 $ sudo kldload sctp
 ```
 
+#### Linux (ALT)
+
+```bash
+$ sudo apt-get install liblksctp-devel
+$ sudo modprobe sctp
+$ sudo sysctl -w net.sctp.auth_enable=1
+```
+
 #### Linux (Ubuntu)
 
 ```bash

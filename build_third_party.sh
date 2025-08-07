@@ -119,7 +119,7 @@ if [ $OS = "SunOS" ]; then
 	# Устанавливаем жёстко компилятор
 	export CC="gcc"
 # Если операционная система используется Linux
-elif [ $OS = "Linux" ]; then
+elif [ $OS = "Linux" ] && [ ! -n "$CC" ]; then
 	# Получаем адрес расположения компилятора
 	clang=$(whereis clang | awk '{print $2}')
 	# Если компилятор clang не установлен

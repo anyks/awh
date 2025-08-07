@@ -2341,7 +2341,8 @@ bool awh::Engine::certHostcheck(const string & host, const string & patt) const 
 					// Получаем данные изменившегося адреса
 					struct sctp_paddr_change * spc = &snp->sn_paddr_change;
 					// Устанавливаем новое значение подключения
-					peer.ss = spc->spc_aaddr;
+					// peer.ss = spc->spc_aaddr;
+					::memcpy(&peer.ss, &spc->spc_aaddr, sizeof(struct sockaddr_storage));
 					// Определяем семейство интернет-протокола
 					switch(peer.ss.ss_family){
 						// Если подключение производится по IPv4
