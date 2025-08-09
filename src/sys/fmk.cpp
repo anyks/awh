@@ -4173,6 +4173,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			// Создаём новую локаль
 			// ::locale loc(locale.c_str());
 			// Устанавливапм локализацию приложения
+			::setlocale(LC_ALL, locale.c_str());
 			::setlocale(LC_CTYPE, locale.c_str());
 			::setlocale(LC_COLLATE, locale.c_str());
 			// Устанавливаем локаль системы
