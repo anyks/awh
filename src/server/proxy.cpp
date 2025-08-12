@@ -28,6 +28,31 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * crash Метод обработки вызова крашей в приложении
+ * @param sig номер сигнала операционной системы
+ */
+void awh::server::Proxy::crash(const int32_t sig) noexcept {
+	// Если функция обратного вызова при получении крашей установлена
+	if(this->_callback.is("crash"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <void (const int32_t)> ("crash", sig);
+	// Если функция обратного вызова не установлена
+	else {
+		// Если мы получили сигнал завершения работы
+		if(sig == 2)
+			// Выводим сообщение о заверщении работы
+			this->_log->print("%s finishing work, goodbye!", log_t::flag_t::INFO, AWH_NAME);
+		// Выводим сообщение об ошибке
+		else this->_log->print("%s cannot be continued, signal: [%u]. Finishing work, goodbye!", log_t::flag_t::CRITICAL, AWH_NAME, sig);
+		// Выполняем отключение вывода лога
+		const_cast <awh::log_t *> (this->_log)->level(awh::log_t::level_t::NONE);
+		// Выполняем остановку работы сервера
+		this->stop();
+		// Завершаем работу приложения
+		::exit(sig);
+	}
+}
+/**
  * launchedEvents Метод получения события запуска сервера
  * @param host хост запущенного сервера
  * @param port порт запущенного сервера
@@ -1377,6 +1402,16 @@ void awh::server::Proxy::callback(const callback_t & callback) noexcept {
 	this->_callback.set("checkPassword", callback);
 	// Выполняем установку функции обратного вызова для извлечения пароля
 	this->_callback.set("extractPassword", callback);
+	// Выполняем установку функции обратного вызова для получения события завершения работы процесса
+	this->_callback.set("clusterExit", callback);
+	// Выполняем установку функции обратного вызова для получения события подключения дочерних процессов
+	this->_callback.set("clusterReady", callback);
+	// Выполняем установку функции обратного вызова для получения события пересоздании процесса
+	this->_callback.set("clusterRebase", callback);
+	// Выполняем установку функции обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера
+	this->_callback.set("clusterEvents", callback);
+	// Выполняем установку функции обратного вызова для получения сообщений от дочерних процессоров кластера
+	this->_callback.set("clusterMessage", callback);
 	// Если функция обратного вызова для получения событий запуска и остановки сетевого ядра передана
 	if(callback.is("status"))
 		// Выполняем установку функции обратного вызова для получения событий запуска и остановки сетевого ядра
@@ -1417,6 +1452,8 @@ const string & awh::server::Proxy::mac(const uint64_t bid) const noexcept {
  * stop Метод остановки сервера
  */
 void awh::server::Proxy::stop() noexcept {
+	// Запрещаем перехват сигналов
+	this->_core.signalInterception(awh::scheme_t::mode_t::DISABLED);
 	// Выполняем остановку сервера
 	this->_server.stop();
 }
@@ -1424,6 +1461,30 @@ void awh::server::Proxy::stop() noexcept {
  * start Метод запуска сервера
  */
 void awh::server::Proxy::start() noexcept {
+	// Разрешаем перехват сигналов
+	this->_core.signalInterception(awh::scheme_t::mode_t::ENABLED);
+	// Устанавливаем функцию обработки сигналов завершения работы приложения
+	this->_core.on <void (const int32_t)> ("crash", &server::proxy_t::crash, this, _1);
+	// Если функция обратного вызова для получения события подключения дочерних процессов
+	if(this->_callback.is("clusterReady"))
+		// Выполняем установку функции обратного вызова для получения события подключения дочерних процессов
+		this->_core.on <void (const uint16_t, const pid_t)> ("clusterReady", this->_callback.get <void (const uint16_t, const pid_t)> ("clusterReady"), _1, _2);
+	// Если функция обратного вызова для получения события завершения работы процесса установлена
+	if(this->_callback.is("clusterExit"))
+		// Выполняем установку функции обратного вызова для получения события завершения работы процесса
+		this->_core.on <void (const uint16_t, const pid_t, const int32_t)> ("clusterExit", this->_callback.get <void (const uint16_t, const pid_t, const int32_t)> ("clusterExit"), _1, _2, _3);
+	// Если функция обратного вызова для получения события пересоздании процесса
+	if(this->_callback.is("clusterRebase"))
+		// Выполняем установку функции обратного вызова для получения события пересоздании процесса
+		this->_core.on <void (const uint16_t, const pid_t, const pid_t)> ("clusterRebase", this->_callback.get <void (const uint16_t, const pid_t, const pid_t)> ("clusterRebase"), _1, _2, _3);
+	// Если функция обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера
+	if(this->_callback.is("clusterEvents"))
+		// Выполняем установку функции обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера
+		this->_core.on <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents", this->_callback.get <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents"), _1, _2, _3, _4);
+	// Если функция обратного вызова для получения сообщений от дочерних процессоров кластера
+	if(this->_callback.is("clusterMessage"))
+		// Выполняем установку функции обратного вызова для получения сообщений от дочерних процессоров кластера
+		this->_core.on <void (const cluster_t::family_t, const uint16_t, const pid_t, const char *, const size_t)> ("clusterMessage", this->_callback.get <void (const cluster_t::family_t, const uint16_t, const pid_t, const char *, const size_t)> ("clusterMessage"), _1, _2, _3, _4, _5);
 	// Выполняем запуск сервера
 	this->_server.start();
 }
@@ -1589,6 +1650,14 @@ void awh::server::Proxy::ssl(const node_t::ssl_t & ssl) noexcept {
 		// Устанавливаем активный протокол подключения
 		this->_core.proto(awh::engine_t::proto_t::HTTP2);
 	}
+}
+/**
+ * attempts Метод установки общего количества попыток
+ * @param attempts общее количество попыток
+ */
+void awh::server::Proxy::attempts(const uint8_t attempts) noexcept {
+	// Запоминаем общее количество попыток
+	this->_settings.attempts = attempts;
 }
 /**
  * alive Метод установки долгоживущего подключения
@@ -2204,4 +2273,13 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_server.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", &server::proxy_t::entityServer, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию обратного вызова при получении HTTP-заголовков запроса с клиента
 	this->_server.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersServer, this, _1, _2, _3, _4, _5);
+}
+/**
+ * ~Proxy Деструктор
+ */
+awh::server::Proxy::~Proxy() noexcept {
+	// Запрещаем перехват сигналов
+	this->_core.signalInterception(awh::scheme_t::mode_t::DISABLED);
+	// Выполняем остановку сервера
+	this->_server.stop();
 }

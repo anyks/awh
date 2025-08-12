@@ -39,6 +39,16 @@ class Proxy {
 		const log_t * _log;
 	public:
 		/**
+		 * clusterReady Метод готовности дочерних процессов к работе
+		 * @param sid идентификатор схемы сети
+		 * @param pid идентификатор процесса
+		 */
+		void clusterReady([[maybe_unused]] const uint16_t sid, const pid_t pid){
+			// Выводим информацию в лог
+			this->_log->print("PID is ready: %u", log_t::flag_t::INFO, pid);
+		}
+	public:
+		/**
 		 * auth Метод проверки авторизации пользователя (для авторизации методом Basic)
 		 * @param bid      идентификатор брокера (клиента)
 		 * @param login    логин пользователя (от клиента)
@@ -132,6 +142,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// proxy.init("anyks");
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
+	// Устанавливаем функцию получения готовности процессов
+	proxy.on <void (const uint16_t, const pid_t)> ("clusterReady", &Proxy::clusterReady, &executor, _1, _2);
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
 	proxy.on <void (const size_t, const proxy_socks5_t::mode_t)> ("active", &Proxy::active, &executor, _1, _2);
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере

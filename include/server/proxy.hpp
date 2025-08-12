@@ -294,6 +294,12 @@ namespace awh {
 				const log_t * _log;
 			private:
 				/**
+				 * crash Метод обработки вызова крашей в приложении
+				 * @param sig номер сигнала операционной системы
+				 */
+				void crash(const int32_t sig) noexcept;
+			private:
+				/**
 				 * launchedEvents Метод получения события запуска сервера
 				 * @param host хост запущенного сервера
 				 * @param port порт запущенного сервера
@@ -712,6 +718,12 @@ namespace awh {
 				void ssl(const node_t::ssl_t & ssl) noexcept;
 			public:
 				/**
+				 * attempts Метод установки общего количества попыток
+				 * @param attempts общее количество попыток
+				 */
+				void attempts(const uint8_t attempts) noexcept;
+			public:
+				/**
 				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
@@ -956,7 +968,7 @@ namespace awh {
 				/**
 				 * ~Proxy Деструктор
 				 */
-				~Proxy() noexcept {}
+				~Proxy() noexcept;
 		} proxy_t;
 	};
 };

@@ -28,6 +28,31 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * crash Метод обработки вызова крашей в приложении
+ * @param sig номер сигнала операционной системы
+ */
+void awh::server::ProxySocks5::crash(const int32_t sig) noexcept {
+	// Если функция обратного вызова при получении крашей установлена
+	if(this->_callback.is("crash"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <void (const int32_t)> ("crash", sig);
+	// Если функция обратного вызова не установлена
+	else {
+		// Если мы получили сигнал завершения работы
+		if(sig == 2)
+			// Выводим сообщение о заверщении работы
+			this->_log->print("%s finishing work, goodbye!", log_t::flag_t::INFO, AWH_NAME);
+		// Выводим сообщение об ошибке
+		else this->_log->print("%s cannot be continued, signal: [%u]. Finishing work, goodbye!", log_t::flag_t::CRITICAL, AWH_NAME, sig);
+		// Выполняем отключение вывода лога
+		const_cast <awh::log_t *> (this->_log)->level(awh::log_t::level_t::NONE);
+		// Выполняем остановку работы сервера
+		this->stop();
+		// Завершаем работу приложения
+		::exit(sig);
+	}
+}
+/**
  * openEvents Метод обратного вызова при запуске работы
  * @param sid идентификатор схемы сети
  */
@@ -580,6 +605,16 @@ void awh::server::ProxySocks5::callback(const callback_t & callback) noexcept {
 	this->_callback.set("unavailable", callback);
 	// Выполняем установку функции обратного вызова для обработки авторизации
 	this->_callback.set("checkPassword", callback);
+	// Выполняем установку функции обратного вызова для получения события завершения работы процесса
+	this->_callback.set("clusterExit", callback);
+	// Выполняем установку функции обратного вызова для получения события подключения дочерних процессов
+	this->_callback.set("clusterReady", callback);
+	// Выполняем установку функции обратного вызова для получения события пересоздании процесса
+	this->_callback.set("clusterRebase", callback);
+	// Выполняем установку функции обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера
+	this->_callback.set("clusterEvents", callback);
+	// Выполняем установку функции обратного вызова для получения сообщений от дочерних процессоров кластера
+	this->_callback.set("clusterMessage", callback);
 }
 /**
  * port Метод получения порта подключения брокера
@@ -613,18 +648,46 @@ const string & awh::server::ProxySocks5::mac(const uint64_t bid) const noexcept 
  */
 void awh::server::ProxySocks5::stop() noexcept {
 	// Если подключение выполнено
-	if(this->_core.working())
+	if(this->_core.working()){
+		// Запрещаем перехват сигналов
+		this->_core.signalInterception(awh::scheme_t::mode_t::DISABLED);
 		// Завершаем работу, если разрешено остановить
 		this->_core.stop();
+	}
 }
 /**
  * start Метод запуска сервера
  */
 void awh::server::ProxySocks5::start() noexcept {
 	// Если биндинг не запущен, выполняем запуск биндинга
-	if(!this->_core.working())
+	if(!this->_core.working()){
+		// Разрешаем перехват сигналов
+		this->_core.signalInterception(awh::scheme_t::mode_t::ENABLED);
+		// Устанавливаем функцию обработки сигналов завершения работы приложения
+		this->_core.on <void (const int32_t)> ("crash", &server::proxy_socks5_t::crash, this, _1);
+		// Если функция обратного вызова для получения события подключения дочерних процессов
+		if(this->_callback.is("clusterReady"))
+			// Выполняем установку функции обратного вызова для получения события подключения дочерних процессов
+			this->_core.on <void (const uint16_t, const pid_t)> ("clusterReady", this->_callback.get <void (const uint16_t, const pid_t)> ("clusterReady"), _1, _2);
+		// Если функция обратного вызова для получения события завершения работы процесса установлена
+		if(this->_callback.is("clusterExit"))
+			// Выполняем установку функции обратного вызова для получения события завершения работы процесса
+			this->_core.on <void (const uint16_t, const pid_t, const int32_t)> ("clusterExit", this->_callback.get <void (const uint16_t, const pid_t, const int32_t)> ("clusterExit"), _1, _2, _3);
+		// Если функция обратного вызова для получения события пересоздании процесса
+		if(this->_callback.is("clusterRebase"))
+			// Выполняем установку функции обратного вызова для получения события пересоздании процесса
+			this->_core.on <void (const uint16_t, const pid_t, const pid_t)> ("clusterRebase", this->_callback.get <void (const uint16_t, const pid_t, const pid_t)> ("clusterRebase"), _1, _2, _3);
+		// Если функция обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера
+		if(this->_callback.is("clusterEvents"))
+			// Выполняем установку функции обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера
+			this->_core.on <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents", this->_callback.get <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents"), _1, _2, _3, _4);
+		// Если функция обратного вызова для получения сообщений от дочерних процессоров кластера
+		if(this->_callback.is("clusterMessage"))
+			// Выполняем установку функции обратного вызова для получения сообщений от дочерних процессоров кластера
+			this->_core.on <void (const cluster_t::family_t, const uint16_t, const pid_t, const char *, const size_t)> ("clusterMessage", this->_callback.get <void (const cluster_t::family_t, const uint16_t, const pid_t, const char *, const size_t)> ("clusterMessage"), _1, _2, _3, _4, _5);
 		// Выполняем запуск биндинга
 		this->_core.start();
+	}
 }
 /**
  * bind Метод подключения модуля ядра к текущей базе событий
@@ -865,4 +928,16 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	this->_core.clusterAutoRestart(true);
 	// Выполняем биндинг сетевого ядра таймера
 	this->_core.bind(dynamic_cast <awh::core_t *> (&this->_timer));
+}
+/**
+ * ~ProxySocks5 Деструктор
+ */
+awh::server::ProxySocks5::~ProxySocks5() noexcept {
+	// Если подключение выполнено
+	if(this->_core.working()){
+		// Запрещаем перехват сигналов
+		this->_core.signalInterception(awh::scheme_t::mode_t::DISABLED);
+		// Завершаем работу, если разрешено остановить
+		this->_core.stop();
+	}
 }

@@ -125,6 +125,12 @@ namespace awh {
 				const log_t * _log;
 			private:
 				/**
+				 * crash Метод обработки вызова крашей в приложении
+				 * @param sig номер сигнала операционной системы
+				 */
+				void crash(const int32_t sig) noexcept;
+			private:
+				/**
 				 * openEvents Метод обратного вызова при запуске работы
 				 * @param sid идентификатор схемы сети
 				 */
@@ -469,7 +475,7 @@ namespace awh {
 				/**
 				 * ~ProxySocks5 Деструктор
 				 */
-				~ProxySocks5() noexcept {}
+				~ProxySocks5() noexcept;
 		} proxy_socks5_t;
 	};
 };

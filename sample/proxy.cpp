@@ -36,6 +36,16 @@ class Proxy {
 		log_t * _log;
 	public:
 		/**
+		 * clusterReady Метод готовности дочерних процессов к работе
+		 * @param sid идентификатор схемы сети
+		 * @param pid идентификатор процесса
+		 */
+		void clusterReady([[maybe_unused]] const uint16_t sid, const pid_t pid){
+			// Выводим информацию в лог
+			this->_log->print("PID is ready: %u", log_t::flag_t::INFO, pid);
+		}
+	public:
+		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
 		 * @param bid   идентификатор брокера
 		 * @param login логин пользователя
@@ -175,6 +185,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// proxy.keepAlive(100, 30, 10);
 	// Устанавливаем шифрование
 	// proxy.encryption(server::proxy_t::broker_t::SERVER, "PASS");
+	// Устанавливаем функцию получения готовности процессов
+	proxy.on <void (const uint16_t, const pid_t)> ("clusterReady", &Proxy::clusterReady, &executor, _1, _2);
 	// Устанавливаем функцию извлечения пароля
 	proxy.on <string (const uint64_t, const string &)> ("extractPassword", &Proxy::password, &executor, _1, _2);
 	// Устанавливаем функцию проверки авторизации
