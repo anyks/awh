@@ -1449,6 +1449,24 @@ const string & awh::server::Proxy::mac(const uint64_t bid) const noexcept {
 	return this->_server.mac(bid);
 }
 /**
+ * port Метод получения порта сервера
+ * @param sid идентификатор схемы сети
+ * @return    порт подключения сервера
+ */
+uint32_t awh::server::Proxy::port(const uint16_t sid) const noexcept {
+	// Выполняем получение порта сервера
+	return this->_core.port(sid);
+}
+/**
+ * host Метод получения хоста сервера
+ * @param sid идентификатор схемы сети
+ * @return    адрес интернет подключения сервера
+ */
+const string & awh::server::Proxy::host(const uint16_t sid) const noexcept {
+	// Выполняем получение хост сервера
+	return this->_core.host(sid);
+}
+/**
  * stop Метод остановки сервера
  */
 void awh::server::Proxy::stop() noexcept {
