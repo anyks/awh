@@ -1548,58 +1548,58 @@ void awh::server::Proxy::cluster(const awh::scheme_t::mode_t mode, const uint16_
 	this->_core.cluster(mode, size);
 }
 /**
- * sendToCluster Метод отправки сообщения родительскому процессу
+ * send Метод отправки сообщения родительскому процессу
  * @param sid идентификатор схемы сети
  */
-void awh::server::Proxy::sendToCluster(const uint16_t sid) noexcept {
+void awh::server::Proxy::send(const uint16_t sid) noexcept {
 	// Выполняем отправку сообщения родительскому процессу
 	this->_core.send(sid);
 }
 /**
- * sendToCluster Метод отправки сообщения родительскому процессу
+ * send Метод отправки сообщения родительскому процессу
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Proxy::sendToCluster(const uint16_t sid, const char * buffer, const size_t size) noexcept {
+void awh::server::Proxy::send(const uint16_t sid, const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения родительскому процессу
 	this->_core.send(sid, buffer, size);
 }
 /**
- * sendToCluster Метод отправки сообщения дочернему процессу
+ * send Метод отправки сообщения дочернему процессу
  * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса для получения сообщения
  */
-void awh::server::Proxy::sendToCluster(const uint16_t sid, const pid_t pid) noexcept {
+void awh::server::Proxy::send(const uint16_t sid, const pid_t pid) noexcept {
 	// Выполняем отправку сообщения дочернему процессу
 	this->_core.send(sid, pid);
 }
 /**
- * sendToCluster Метод отправки сообщения дочернему процессу
+ * send Метод отправки сообщения дочернему процессу
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Proxy::sendToCluster(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
+void awh::server::Proxy::send(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения дочернему процессу
 	this->_core.send(sid, pid, buffer, size);
 }
 /**
- * broadcastToCluster Метод отправки сообщения всем дочерним процессам
+ * broadcast Метод отправки сообщения всем дочерним процессам
  * @param sid идентификатор схемы сети
  */
-void awh::server::Proxy::broadcastToCluster(const uint16_t sid) noexcept {
+void awh::server::Proxy::broadcast(const uint16_t sid) noexcept {
 	// Выполняем отправку сообщения всем дочерним процессам
 	this->_core.broadcast(sid);
 }
 /**
- * broadcastToCluster Метод отправки сообщения всем дочерним процессам
+ * broadcast Метод отправки сообщения всем дочерним процессам
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Proxy::broadcastToCluster(const uint16_t sid, const char * buffer, const size_t size) noexcept {
+void awh::server::Proxy::broadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения всем дочерним процессам
 	this->_core.broadcast(sid, buffer, size);
 }
