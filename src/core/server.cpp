@@ -2222,9 +2222,9 @@ bool awh::server::Core::send(const char * buffer, const size_t size, const uint6
 }
 /**
  * send Метод отправки сообщения родительскому процессу
- * @param wid идентификатор воркера
+ * @param sid идентификатор схемы сети
  */
-void awh::server::Core::send(const uint16_t wid) noexcept {
+void awh::server::Core::send(const uint16_t sid) noexcept {
 	// Определяем члена семейства кластера
 	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
@@ -2239,17 +2239,17 @@ void awh::server::Core::send(const uint16_t wid) noexcept {
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
 			// Выполняем отправку сообщения родительскому процессу
-			this->_cluster.send(wid);
+			this->_cluster.send(sid);
 		break;
 	}
 }
 /**
  * send Метод отправки сообщения родительскому процессу
- * @param wid    идентификатор воркера
+ * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Core::send(const uint16_t wid, const char * buffer, const size_t size) noexcept {
+void awh::server::Core::send(const uint16_t sid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
 	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
@@ -2264,22 +2264,22 @@ void awh::server::Core::send(const uint16_t wid, const char * buffer, const size
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
 			// Выполняем отправку сообщения родительскому процессу
-			this->_cluster.send(wid, buffer, size);
+			this->_cluster.send(sid, buffer, size);
 		break;
 	}
 }
 /**
  * send Метод отправки сообщения дочернему процессу
- * @param wid идентификатор воркера
+ * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса для получения сообщения
  */
-void awh::server::Core::send(const uint16_t wid, const pid_t pid) noexcept {
+void awh::server::Core::send(const uint16_t sid, const pid_t pid) noexcept {
 	// Определяем члена семейства кластера
 	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения дочернему процессу
-			this->_cluster.send(wid, pid);
+			this->_cluster.send(sid, pid);
 		break;
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
@@ -2294,18 +2294,18 @@ void awh::server::Core::send(const uint16_t wid, const pid_t pid) noexcept {
 }
 /**
  * send Метод отправки сообщения дочернему процессу
- * @param wid    идентификатор воркера
+ * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Core::send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept {
+void awh::server::Core::send(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
 	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения дочернему процессу
-			this->_cluster.send(wid, pid, buffer, size);
+			this->_cluster.send(sid, pid, buffer, size);
 		break;
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
@@ -2320,15 +2320,15 @@ void awh::server::Core::send(const uint16_t wid, const pid_t pid, const char * b
 }
 /**
  * broadcast Метод отправки сообщения всем дочерним процессам
- * @param wid идентификатор воркера
+ * @param sid идентификатор схемы сети
  */
-void awh::server::Core::broadcast(const uint16_t wid) noexcept {
+void awh::server::Core::broadcast(const uint16_t sid) noexcept {
 	// Определяем члена семейства кластера
 	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения всем дочерним процессам
-			this->_cluster.broadcast(wid);
+			this->_cluster.broadcast(sid);
 		break;
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
@@ -2343,17 +2343,17 @@ void awh::server::Core::broadcast(const uint16_t wid) noexcept {
 }
 /**
  * broadcast Метод отправки сообщения всем дочерним процессам
- * @param wid    идентификатор воркера
+ * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Core::broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept {
+void awh::server::Core::broadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
 	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения всем дочерним процессам
-			this->_cluster.broadcast(wid, buffer, size);
+			this->_cluster.broadcast(sid, buffer, size);
 		break;
 		// Если процесс является дочерним
 		case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {

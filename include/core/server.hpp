@@ -287,44 +287,44 @@ namespace awh {
 			public:
 				/**
 				 * send Метод отправки сообщения родительскому процессу
-				 * @param wid идентификатор воркера
+				 * @param sid идентификатор схемы сети
 				 */
-				void send(const uint16_t wid) noexcept;
+				void send(const uint16_t sid) noexcept;
 				/**
 				 * send Метод отправки сообщения родительскому процессу
-				 * @param wid    идентификатор воркера
+				 * @param sid    идентификатор схемы сети
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void send(const uint16_t wid, const char * buffer, const size_t size) noexcept;
+				void send(const uint16_t sid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * send Метод отправки сообщения дочернему процессу
-				 * @param wid идентификатор воркера
+				 * @param sid идентификатор схемы сети
 				 * @param pid идентификатор процесса для получения сообщения
 				 */
-				void send(const uint16_t wid, const pid_t pid) noexcept;
+				void send(const uint16_t sid, const pid_t pid) noexcept;
 				/**
 				 * send Метод отправки сообщения дочернему процессу
-				 * @param wid    идентификатор воркера
+				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса для получения сообщения
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
+				void send(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * broadcast Метод отправки сообщения всем дочерним процессам
-				 * @param wid идентификатор воркера
+				 * @param sid идентификатор схемы сети
 				 */
-				void broadcast(const uint16_t wid) noexcept;
+				void broadcast(const uint16_t sid) noexcept;
 				/**
 				 * broadcast Метод отправки сообщения всем дочерним процессам
-				 * @param wid    идентификатор воркера
+				 * @param sid    идентификатор схемы сети
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept;
+				void broadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * read Метод чтения данных для брокера

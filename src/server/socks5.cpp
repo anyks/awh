@@ -812,6 +812,62 @@ void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const u
 	this->_core.cluster(mode, size);
 }
 /**
+ * clusterSend Метод отправки сообщения родительскому процессу
+ * @param sid идентификатор схемы сети
+ */
+void awh::server::ProxySocks5::clusterSend(const uint16_t sid) noexcept {
+	// Выполняем отправку сообщения родительскому процессу
+	this->_core.clusterSend(sid);
+}
+/**
+ * clusterSend Метод отправки сообщения родительскому процессу
+ * @param sid    идентификатор схемы сети
+ * @param buffer бинарный буфер для отправки сообщения
+ * @param size   размер бинарного буфера для отправки сообщения
+ */
+void awh::server::ProxySocks5::clusterSend(const uint16_t sid, const char * buffer, const size_t size) noexcept {
+	// Выполняем отправку сообщения родительскому процессу
+	this->_core.clusterSend(sid, buffer, size);
+}
+/**
+ * clusterSend Метод отправки сообщения дочернему процессу
+ * @param sid идентификатор схемы сети
+ * @param pid идентификатор процесса для получения сообщения
+ */
+void awh::server::ProxySocks5::clusterSend(const uint16_t sid, const pid_t pid) noexcept {
+	// Выполняем отправку сообщения дочернему процессу
+	this->_core.clusterSend(sid, pid);
+}
+/**
+ * clusterSend Метод отправки сообщения дочернему процессу
+ * @param sid    идентификатор схемы сети
+ * @param pid    идентификатор процесса для получения сообщения
+ * @param buffer бинарный буфер для отправки сообщения
+ * @param size   размер бинарного буфера для отправки сообщения
+ */
+void awh::server::ProxySocks5::clusterSend(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
+	// Выполняем отправку сообщения дочернему процессу
+	this->_core.clusterSend(sid, pid, buffer, size);
+}
+/**
+ * clusterBroadcast Метод отправки сообщения всем дочерним процессам
+ * @param sid идентификатор схемы сети
+ */
+void awh::server::ProxySocks5::clusterBroadcast(const uint16_t sid) noexcept {
+	// Выполняем отправку сообщения всем дочерним процессам
+	this->_core.clusterBroadcast(sid);
+}
+/**
+ * clusterBroadcast Метод отправки сообщения всем дочерним процессам
+ * @param sid    идентификатор схемы сети
+ * @param buffer бинарный буфер для отправки сообщения
+ * @param size   размер бинарного буфера для отправки сообщения
+ */
+void awh::server::ProxySocks5::clusterBroadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept {
+	// Выполняем отправку сообщения всем дочерним процессам
+	this->_core.clusterBroadcast(sid, buffer, size);
+}
+/**
  * mode Метод установки флагов модуля
  * @param flags список флагов модуля для установки
  */

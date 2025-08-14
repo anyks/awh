@@ -667,6 +667,47 @@ namespace awh {
 				void cluster(const awh::scheme_t::mode_t mode, const uint16_t size = 0) noexcept;
 			public:
 				/**
+				 * clusterSend Метод отправки сообщения родительскому процессу
+				 * @param sid идентификатор схемы сети
+				 */
+				void clusterSend(const uint16_t sid) noexcept;
+				/**
+				 * clusterSend Метод отправки сообщения родительскому процессу
+				 * @param sid    идентификатор схемы сети
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 */
+				void clusterSend(const uint16_t sid, const char * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * clusterSend Метод отправки сообщения дочернему процессу
+				 * @param sid идентификатор схемы сети
+				 * @param pid идентификатор процесса для получения сообщения
+				 */
+				void clusterSend(const uint16_t sid, const pid_t pid) noexcept;
+				/**
+				 * clusterSend Метод отправки сообщения дочернему процессу
+				 * @param sid    идентификатор схемы сети
+				 * @param pid    идентификатор процесса для получения сообщения
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 */
+				void clusterSend(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * clusterBroadcast Метод отправки сообщения всем дочерним процессам
+				 * @param sid идентификатор схемы сети
+				 */
+				void clusterBroadcast(const uint16_t sid) noexcept;
+				/**
+				 * clusterBroadcast Метод отправки сообщения всем дочерним процессам
+				 * @param sid    идентификатор схемы сети
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 */
+				void clusterBroadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept;
+			public:
+				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
