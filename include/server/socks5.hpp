@@ -471,6 +471,42 @@ namespace awh {
 				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
+				 * hosts Метод загрузки файла со списком хостов
+				 * @param filename адрес файла для загрузки
+				 */
+				void hosts(const string & filename) noexcept;
+			public:
+				/**
+				 * timeoutDNS Метод установки времени ожидания выполнения запроса
+				 * @param sec интервал времени выполнения запроса в секундах
+				 */
+				void timeoutDNS(const uint8_t sec) noexcept;
+			public:
+				/**
+				 * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
+				 * @param prefix префикс переменной окружения для установки
+				 */
+				void prefixDNS(const string & prefix) noexcept;
+			public:
+				/**
+				 * clearDNSBlackList Метод очистки чёрного списка
+				 * @param domain доменное имя для которого очищается чёрный список
+				 */
+				void clearDNSBlackList(const string & domain) noexcept;
+				/**
+				 * delInDNSBlackList Метод удаления IP-адреса из чёрного списока
+				 * @param domain доменное имя соответствующее IP-адресу
+				 * @param ip     адрес для удаления из чёрного списка
+				 */
+				void delInDNSBlackList(const string & domain, const string & ip) noexcept;
+				/**
+				 * setToDNSBlackList Метод добавления IP-адреса в чёрный список
+				 * @param domain доменное имя соответствующее IP-адресу
+				 * @param ip     адрес для добавления в чёрный список
+				 */
+				void setToDNSBlackList(const string & domain, const string & ip) noexcept;
+			public:
+				/**
 				 * ipV6only Метод установки флага использования только сети IPv6
 				 * @param mode флаг для установки
 				 */

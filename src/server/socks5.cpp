@@ -876,6 +876,64 @@ void awh::server::ProxySocks5::mode(const std::set <flag_t> & flags) noexcept {
 	this->_core.verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
+ * hosts Метод загрузки файла со списком хостов
+ * @param filename адрес файла для загрузки
+ */
+void awh::server::ProxySocks5::hosts(const string & filename) noexcept {
+	// Выполняем загрузку файла со списком хостов
+	this->_dns.hosts(filename);
+}
+/**
+ * timeoutDNS Метод установки времени ожидания выполнения запроса
+ * @param sec интервал времени выполнения запроса в секундах
+ */
+void awh::server::ProxySocks5::timeoutDNS(const uint8_t sec) noexcept {
+	// Выполняем установку времени ожидания выполнения запроса
+	this->_dns.timeout(sec);
+}
+/**
+ * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
+ * @param prefix префикс переменной окружения для установки
+ */
+void awh::server::ProxySocks5::prefixDNS(const string & prefix) noexcept {
+	// Если префикс переменной окружения для извлечения серверов имён передан
+	if(!prefix.empty())
+		// Выполняем установку префикса переменной окружения
+		this->_dns.prefix(prefix);
+}
+/**
+ * clearDNSBlackList Метод очистки чёрного списка
+ * @param domain доменное имя для которого очищается чёрный список
+ */
+void awh::server::ProxySocks5::clearDNSBlackList(const string & domain) noexcept {
+	// Если доменное имя передано
+	if(!domain.empty())
+		// Выполняем очистку чёрного списка
+		this->_dns.clearBlackList(domain);
+}
+/**
+ * delInDNSBlackList Метод удаления IP-адреса из чёрного списока
+ * @param domain доменное имя соответствующее IP-адресу
+ * @param ip     адрес для удаления из чёрного списка
+ */
+void awh::server::ProxySocks5::delInDNSBlackList(const string & domain, const string & ip) noexcept {
+	// Если доменное имя передано
+	if(!domain.empty() && !ip.empty())
+		// Выполняем удаление доменного имени
+		this->_dns.delInBlackList(domain, ip);
+}
+/**
+ * setToDNSBlackList Метод добавления IP-адреса в чёрный список
+ * @param domain доменное имя соответствующее IP-адресу
+ * @param ip     адрес для добавления в чёрный список
+ */
+void awh::server::ProxySocks5::setToDNSBlackList(const string & domain, const string & ip) noexcept {
+	// Если доменное имя передано
+	if(!domain.empty() && !ip.empty())
+		// Выполняем добавление IP-адреса в чёрный список
+		this->_dns.setToBlackList(domain, ip);
+}
+/**
  * ipV6only Метод установки флага использования только сети IPv6
  * @param mode флаг для установки
  */
