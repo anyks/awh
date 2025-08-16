@@ -333,17 +333,17 @@ namespace awh {
 				const string & mac(const uint64_t bid) const noexcept;
 			public:
 				/**
+				 * host Метод получения хоста сервера
+				 * @param sid идентификатор схемы сети
+				 * @return    адрес интернет подключения сервера
+				 */
+				string host(const uint16_t sid) const noexcept;
+				/**
 				 * port Метод получения порта сервера
 				 * @param sid идентификатор схемы сети
 				 * @return    порт подключения сервера
 				 */
 				uint32_t port(const uint16_t sid) const noexcept;
-				/**
-				 * host Метод получения хоста сервера
-				 * @param sid идентификатор схемы сети
-				 * @return    адрес интернет подключения сервера
-				 */
-				const string & host(const uint16_t sid) const noexcept;
 			public:
 				/**
 				 * stop Метод остановки сервера
