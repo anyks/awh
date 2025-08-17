@@ -112,7 +112,7 @@ namespace awh {
 						// Если функция обратного вызова триггера установлена
 						if(this->_trigger != nullptr)
 							// Выполняем функцию обратного вызова
-							this->_trigger();
+							std::apply(this->_trigger, std::make_tuple());
 						// Если данные в очереди существуют
 						if(!this->_payload.empty()){
 							// Извлекаем данные полезной нагрузки
@@ -120,7 +120,7 @@ namespace awh {
 							// Если функция подписки на логи установлена, выводим результат
 							if(this->_callback != nullptr)
 								// Выводим сообщение лога всем подписавшимся
-								this->_callback(payload);
+								std::apply(this->_callback, std::make_tuple(payload));
 							// Выполняем блокировку потока
 							this->_mtx.lock();
 							// Удаляем текущее задание
@@ -130,7 +130,7 @@ namespace awh {
 							// Если функция обратного вызова установлена
 							if(this->_state != nullptr)
 								// Выполняем функцию обратного вызова
-								this->_state(state_t::DECREMENT, this->_payload.size());
+								std::apply(this->_state, std::make_tuple(state_t::DECREMENT, this->_payload.size()));
 						}
 					/**
 					 * Если возникает ошибка
@@ -406,7 +406,7 @@ namespace awh {
 					// Если функция обратного вызова установлена
 					if(this->_state != nullptr)
 						// Выполняем функцию обратного вызова
-						this->_state(state_t::INCREMENT, this->_payload.size());
+						std::apply(this->_state, std::make_tuple(state_t::INCREMENT, this->_payload.size()));
 					// Отправляем сообщение, что данные записаны
 					this->_cv.notify_one();
 				/**
@@ -446,7 +446,7 @@ namespace awh {
 					// Если функция обратного вызова установлена
 					if(this->_state != nullptr)
 						// Выполняем функцию обратного вызова
-						this->_state(state_t::INCREMENT, this->_payload.size());
+						std::apply(this->_state, std::make_tuple(state_t::INCREMENT, this->_payload.size()));
 					// Отправляем сообщение, что данные записаны
 					this->_cv.notify_one();
 				/**
@@ -513,7 +513,7 @@ namespace awh {
 						// Снимаем флаг остановки работы модуля
 						this->_stop = !this->_stop;
 						// Создаём объект хэширования
-						hash <std::thread::id> hasher;
+						std::hash <std::thread::id> hasher;
 						// Создаём дочерний поток для формирования лога
 						this->_thr = std::thread(&Screen::receiving, this);
 						// Выполняем получение идентификатора потока
