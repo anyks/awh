@@ -240,8 +240,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.5.0
-	VER="3.5.0"
+	# Версия OpenSSL v3.5.2
+	VER="3.5.2"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*
@@ -1364,7 +1364,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgHttp2
-	VER="1.65.0"
+	VER="1.66.0"
 
 	# Переключаемся на master
 	git checkout master
@@ -1476,7 +1476,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия GPerfTools
-	VER="2.16.90"
+	VER="2.17.2"
 
 	# Закачиваем все изменения
 	git fetch --all

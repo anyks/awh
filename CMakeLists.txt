@@ -421,6 +421,12 @@ else()
     add_executable(${INVESTIGATOR_APP_NAME} sample/investigator.cpp)
 endif()
 
+# Если активирован режим отладки
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    # Удаляем библиотеку TCMalloc
+    SET(TCMALLOC_LIBRARIES "")
+endif()
+
 # Если нужно собрать и динамическую библиотеку
 if (CMAKE_SHARED_BUILD_LIB)
     # Если операционной системой является Windows
