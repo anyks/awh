@@ -79,7 +79,7 @@ void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET fd, con
 						// Выполняем разблокировку потока
 						this->_mtx.unlock();
 						// Выполняем поиск функции обратного вызова
-						auto j = this->_callback.find(i->first);
+						auto j = this->_callback.find(tid);
 						// Если функция обратного вызова найдена
 						if(j != this->_callback.end()){
 							// Выполняем извлечение функции обратного вызова
