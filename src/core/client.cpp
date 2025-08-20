@@ -1431,6 +1431,31 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
+					// Определяем тип сокета
+					switch(static_cast <uint8_t> (this->_settings.sonet)){
+						// Если тип сокета установлен как TCP/IP
+						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+						// Если тип сокета установлен как TCP/IP TLS
+						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+						// Если тип сокета установлен как SCTP
+						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
+							/**
+							 * Для операционной системы OS Windows
+							 */
+							#if _WIN32 || _WIN64
+								// Переводим сокет в неблокирующий режим
+								broker->ectx.blocking(engine_t::mode_t::DISABLED);
+							/**
+							 * Для операционной системы не являющейся OS Windows
+							 */
+							#else
+								// Если сокет находится в блокирующем режиме
+								if(broker->ectx.blocking())
+									// Переводим сокет в неблокирующий режим
+									broker->ectx.blocking(engine_t::mode_t::DISABLED);
+							#endif
+						} break;
+					}
 					// Выполняем отключение приёма данных на этот сокет
 					broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 					/**
@@ -1621,6 +1646,34 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 										// Переводим сокет в блокирующий режим
 										broker->ectx.blocking(engine_t::mode_t::ENABLED);
 									break;
+								}
+							} break;
+							// Если передавать данные необходимо асинхронно
+							case static_cast <uint8_t> (transfer_t::ASYNC): {
+								// Определяем тип сокета
+								switch(static_cast <uint8_t> (this->_settings.sonet)){
+									// Если тип сокета установлен как TCP/IP
+									case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
+									// Если тип сокета установлен как TCP/IP TLS
+									case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
+									// Если тип сокета установлен как SCTP
+									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
+										/**
+										 * Для операционной системы OS Windows
+										 */
+										#if _WIN32 || _WIN64
+											// Переводим сокет в неблокирующий режим
+											broker->ectx.blocking(engine_t::mode_t::DISABLED);
+										/**
+										 * Для операционной системы не являющейся OS Windows
+										 */
+										#else
+											// Если сокет находится в блокирующем режиме
+											if(broker->ectx.blocking())
+												// Переводим сокет в неблокирующий режим
+												broker->ectx.blocking(engine_t::mode_t::DISABLED);
+										#endif
+									} break;
 								}
 							} break;
 						}
