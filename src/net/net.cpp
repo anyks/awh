@@ -2104,7 +2104,7 @@ string awh::Net::arpa() const noexcept {
 					if(!result.empty())
 						// Добавляем разделитель
 						result.append(1, '.');
-					// Добавляем октет в версию
+					// Добавляем текущий октет в результат
 					result.append(std::to_string(this->_buffer[i]));
 				}
 				// Добавляем запись ARPA
@@ -2524,7 +2524,7 @@ string awh::Net::get(const format_t format) const noexcept {
 							if(!result.empty())
 								// Добавляем разделитель
 								result.append(1, '.');
-							// Добавляем октет в версию
+							// Добавляем текущий октет в результат
 							result.append(
 								(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
 								this->zerro(std::to_string(this->_buffer[i])) : std::to_string(this->_buffer[i])
@@ -2632,7 +2632,7 @@ string awh::Net::get(const format_t format) const noexcept {
 							if(i > 0)
 								// Добавляем разделитель
 								result.append(1, '.');
-							// Добавляем октет в версию
+							// Добавляем текущий октет в результат
 							result.append(
 								(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
 								this->zerro(std::to_string(this->_buffer[count + i])) : std::to_string(this->_buffer[count + i])

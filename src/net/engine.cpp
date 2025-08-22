@@ -73,7 +73,7 @@ void awh::Engine::Address::client() noexcept {
 		case AF_INET:
 		// Для протокола IPv6
 		case AF_INET6: {
-			// Буфер для получения IP адреса
+			// Буфер для получения IP-адреса
 			char buffer[INET6_ADDRSTRLEN];
 			// Выполняем зануление буфера данных
 			::memset(buffer, 0, sizeof(buffer));
@@ -83,22 +83,22 @@ void awh::Engine::Address::client() noexcept {
 				case AF_INET: {
 					// Получаем порт клиента
 					this->port = ntohs(reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_port);
-					// Получаем IP адрес
+					// Получаем IP-адрес
 					this->ip = ::inet_ntop(AF_INET, &(reinterpret_cast <struct sockaddr_in *> (&this->_peer.client)->sin_addr), buffer, sizeof(buffer));
 				} break;
 				// Если протокол интернета IPv6
 				case AF_INET6: {
 					// Получаем порт клиента
 					this->port = ntohs(reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_port);
-					// Получаем IP адрес
+					// Получаем IP-адрес
 					this->ip = ::inet_ntop(AF_INET6, &(reinterpret_cast <struct sockaddr_in6 *> (&this->_peer.client)->sin6_addr), buffer, sizeof(buffer));
 				} break;
 			}
 			// Получаем данные подключившегося клиента
 			string ip = this->_ifnet.ip(reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.client.ss_family);
-			// Если IP адрес получен пустой
+			// Если IP-адрес получен пустой
 			if((ip.compare("0.0.0.0") == 0) || (ip.compare("::") == 0)){
-				// Получаем IP адрес локального сервера
+				// Получаем IP-адрес локального сервера
 				ip = this->_ifnet.ip(this->_peer.client.ss_family);
 				// Получаем данные MAC адреса внутреннего клиента
 				this->mac = this->_ifnet.mac(ip, this->_peer.client.ss_family);
@@ -311,7 +311,7 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 				mt19937 random(const_cast <addr_t *> (this)->_randev());
 				// Выполняем генерирование случайного числа
 				uniform_int_distribution <mt19937::result_type> dist6(0, this->network.size() - 1);
-				// Получаем ip адрес
+				// Получаем IP-адрес
 				result = this->network.at(dist6(random));
 			// Выводим только первый элемент
 			} else result = this->network.front();
@@ -758,7 +758,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
  * @return       параметры подключения к серверу
  */
 void awh::Engine::Address::init(const string & ip, const uint32_t port, const int32_t family, const type_t type, const bool onlyV6) noexcept {
-	// Если IP адрес передан
+	// Если IP-адрес передан
 	if(!ip.empty() && (port <= AWH_MAX_PORT) && !this->network.empty()){
 		// Если список сетевых интерфейсов установлен
 		if((family == AF_INET) || (family == AF_INET6)){
@@ -2347,12 +2347,12 @@ bool awh::Engine::certHostcheck(const string & host, const string & patt) const 
 					switch(peer.ss.ss_family){
 						// Если подключение производится по IPv4
 						case AF_INET:
-							// Получаем IP адрес IPv4
+							// Получаем IP-адрес IPv4
 							ip = ::inet_ntop(AF_INET, &peer.s4.sin_addr, buffer, sizeof(buffer));
 						break;
 						// Если подключение производится по IPv6
 						case AF_INET6:
-							// Получаем IP адрес IPv6
+							// Получаем IP-адрес IPv6
 							ip = ::inet_ntop(AF_INET6, &peer.s6.sin6_addr, buffer, sizeof(buffer));
 						break;
 					}

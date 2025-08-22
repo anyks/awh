@@ -74,7 +74,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 				// Выполняем пропуск
 				continue;
 			// Если в имени сетевого интерфейса найден разделитель, пропускаем его
-			if((cptr = reinterpret_cast <char *> (strchr(ifr->ifr_name, ':'))) != nullptr) (* cptr) = 0;
+			if((cptr = reinterpret_cast <char *> (::strchr(ifr->ifr_name, ':'))) != nullptr) (* cptr) = 0;
 			// Запоминаем текущее значение указателя
 			ifrc = (* ifr);
 			// Считываем флаги для сетевого интерфейса
@@ -88,7 +88,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 				// Если мы обрабатываем IPv4
 				case AF_INET:
 					// Устанавливаем сетевой интерфейс в список
-					this->_ips.emplace(ifr->ifr_name, inet_ntoa(reinterpret_cast <struct sockaddr_in *> (&ifr->ifr_addr)->sin_addr));
+					this->_ips.emplace(ifr->ifr_name, ::inet_ntoa(reinterpret_cast <struct sockaddr_in *> (&ifr->ifr_addr)->sin_addr));
 				break;
 				// Если мы обрабатываем IPv6
 				case AF_INET6: {
@@ -97,7 +97,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 					// Заполняем нуляем наши буферы
 					::memset(buffer, 0, INET6_ADDRSTRLEN);
 					// Запрашиваем данные ip адреса
-					inet_ntop(AF_INET6, reinterpret_cast <void *> (&reinterpret_cast <struct sockaddr_in6 *> (&ifr->ifr_addr)->sin6_addr), buffer, INET6_ADDRSTRLEN);
+					::inet_ntop(AF_INET6, reinterpret_cast <void *> (&reinterpret_cast <struct sockaddr_in6 *> (&ifr->ifr_addr)->sin6_addr), buffer, INET6_ADDRSTRLEN);
 					// Устанавливаем сетевой интерфейс в список
 					this->_ips6.emplace(ifr->ifr_name, buffer);
 				} break;
@@ -152,7 +152,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 				// Выполняем пропуск
 				continue;
 			// Если в имени сетевого интерфейса найден разделитель, пропускаем его
-			if((cptr = reinterpret_cast <char *> (strchr(i->ifr_name, ':'))) != nullptr)
+			if((cptr = reinterpret_cast <char *> (::strchr(i->ifr_name, ':'))) != nullptr)
 				// Зануляем значение
 				(* cptr) = 0;
 			// Запоминаем текущее значение указателя
@@ -168,7 +168,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 				// Если мы обрабатываем IPv4
 				case AF_INET:
 					// Устанавливаем сетевой интерфейс в список
-					this->_ips.emplace(i->ifr_name, inet_ntoa(reinterpret_cast <struct sockaddr_in *> (&i->ifr_addr)->sin_addr));
+					this->_ips.emplace(i->ifr_name, ::inet_ntoa(reinterpret_cast <struct sockaddr_in *> (&i->ifr_addr)->sin_addr));
 				break;
 				// Если мы обрабатываем IPv6
 				case AF_INET6: {
@@ -177,7 +177,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 					// Заполняем нуляем наши буферы
 					::memset(buffer, 0, INET6_ADDRSTRLEN);
 					// Запрашиваем данные ip адреса
-					inet_ntop(AF_INET6, reinterpret_cast <void *> (&reinterpret_cast <struct sockaddr_in6 *> (&i->ifr_addr)->sin6_addr), buffer, INET6_ADDRSTRLEN);
+					::inet_ntop(AF_INET6, reinterpret_cast <void *> (&reinterpret_cast <struct sockaddr_in6 *> (&i->ifr_addr)->sin6_addr), buffer, INET6_ADDRSTRLEN);
 					// Устанавливаем сетевой интерфейс в список
 					this->_ips6.emplace(i->ifr_name, buffer);
 				} break;
@@ -230,7 +230,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 						// Получаем буфер IP-адреса
 						SOCKADDR_IN * sin = reinterpret_cast <SOCKADDR_IN *> (host->Address.lpSockaddr);
 						// Копируем данные IP-адреса в буфер
-						inet_ntop(AF_INET, &(sin->sin_addr), ipv4, INET_ADDRSTRLEN);
+						::inet_ntop(AF_INET, &(sin->sin_addr), ipv4, INET_ADDRSTRLEN);
 						// Устанавливаем сетевой интерфейс в список
 						this->_ips.emplace(adapter->AdapterName, ipv4);
 					} break;
@@ -241,7 +241,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 						// Получаем буфер IP-адреса
 						SOCKADDR_IN6 * sin = reinterpret_cast <SOCKADDR_IN6 *> (host->Address.lpSockaddr);
 						// Получаем буфер IP-адреса
-						inet_ntop(AF_INET6, &(sin->sin6_addr), ipv6, INET6_ADDRSTRLEN);
+						::inet_ntop(AF_INET6, &(sin->sin6_addr), ipv6, INET6_ADDRSTRLEN);
 						// Устанавливаем сетевой интерфейс в список
 						this->_ips6.emplace(adapter->AdapterName, ipv6);
 					} break;
@@ -384,7 +384,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Переходим по всем сетевым интерфейсам
 		for(; i != end; ++i){
 			// Копируем название сетевого интерфейса
-			strcpy(ifrc.ifr_name, i->ifr_name);
+			::strcpy(ifrc.ifr_name, i->ifr_name);
 			// Выполняем подключение к сокету
 			if(::ioctl(fd, SIOCGIFFLAGS, &ifrc) == 0){
 				// Проверяем сетевой интерфейс (не loopback)
@@ -451,7 +451,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Переходим по всем сетевым интерфейсам
 		for(; i != end; ++i){
 			// Копируем название сетевого интерфейса
-			strcpy(ifrc.ifr_name, i->ifr_name);
+			::strcpy(ifrc.ifr_name, i->ifr_name);
 			// Выполняем подключение к сокету
 			if(::ioctl(fd, SIOCGIFFLAGS, &ifrc) == 0){
 				// Проверяем сетевой интерфейс (не loopback)
@@ -733,7 +733,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Получаем конечное значение итератора
 					end = (buffer.data() + size);
 					// Получаем числовое значение IP-адреса
-					const uint32_t addr = inet_addr(ip.c_str());
+					const uint32_t addr = ::inet_addr(ip.c_str());
 					// Переходим по всем сетевым интерфейсам
 					for(i = buffer.data(); i < end; i += rtm->rtm_msglen){
 						// Получаем указатель сетевого интерфейса
@@ -803,7 +803,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Устанавливаем протокол интернета
 					addr.sin6_family = family;
 					// Указываем адрес IPv6 для сервера
-					inet_pton(family, ip.c_str(), &addr.sin6_addr);
+					::inet_pton(family, ip.c_str(), &addr.sin6_addr);
 					// Выполняем получение размера буфера
 					if(::sysctl(mib, 6, nullptr, &size, nullptr, 0) < 0){
 						// Выводим сообщение об ошибке
@@ -905,9 +905,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Устанавливаем протокол интернета
 					sin.sin_family = family;
 					// Устанавливаем IP-адрес
-					sin.sin_addr.s_addr = inet_addr(ip.c_str());
+					sin.sin_addr.s_addr = ::inet_addr(ip.c_str());
 					// Выполняем копирование IP-адреса
-					if(inet_pton(family, ip.c_str(), &sin.sin_addr) != 1){
+					if(::inet_pton(family, ip.c_str(), &sin.sin_addr) != 1){
 						// Выводим сообщение об ошибке
 						this->_log->print("Invalid IPv4 address", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -918,9 +918,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Объект работы с сетевой картой
 					struct ifaddrs * headIfa = nullptr;
 					// Считываем данные сетевой карты
-					if(getifaddrs(&headIfa) == -1){
+					if(::getifaddrs(&headIfa) == -1){
 						// Очищаем объект сетевой карты
-						freeifaddrs(headIfa);
+						::freeifaddrs(headIfa);
 						// Выводим сообщение об ошибке
 						this->_log->print("Invalid ifaddrs", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -940,11 +940,11 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Переходим по всем сетевым интерфейсам
 					for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 						// Пропускаем локальные сетевые интерфейсы
-						if(0 == strncmp(ifa->ifa_name, "lo", 2))
+						if(0 == ::strncmp(ifa->ifa_name, "lo", 2))
 							// Выполняем пропуск
 							continue;
 						// Пропускаем локальные сетевые интерфейсы
-						if(nullptr != strchr(ifa->ifa_name, ':'))
+						if(nullptr != ::strchr(ifa->ifa_name, ':'))
 							// Выполняем пропуск
 							continue;
 						// Если сетевой интерфейс не соответствует, пропускаем
@@ -962,7 +962,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 								// Структура сетевого интерфейса
 								struct ifreq ifreq;
 								// Копируем название сетевого интерфейса
-								strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+								::strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 								// Извлекаем аппаратный адрес сетевого интерфейса
 								if((found = (::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1)))
 									// Копируем данные MAC-адреса
@@ -977,7 +977,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 							// Устанавливаем искомый IP-адрес
 							::memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 							// Копируем название сетевого интерфейса
-							strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
+							::strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
 							// Подключаем сетевой интерфейс к сокету
 							if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
 								// Пропускаем если ошибка не значительная
@@ -997,7 +997,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						}
 					}
 					// Очищаем объект сетевой карты
-					freeifaddrs(headIfa);
+					::freeifaddrs(headIfa);
 					// Если MAC-адрес получен
 					if(found){
 						// Выделяем память для MAC-адреса
@@ -1023,7 +1023,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Устанавливаем протокол интернета
 					sin.sin6_family = family;
 					// Выполняем копирование IP-адреса
-					if(inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
+					if(::inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
 						// Выводим сообщение об ошибке
 						this->_log->print("Invalid IPv6 address", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1034,13 +1034,13 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Заполняем структуру нулями текущего адреса
 					::memset(target, 0, INET6_ADDRSTRLEN);
 					// Заполняем буфер данными текущего адреса IPv6
-					inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
+					::inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
 					// Объект работы с сетевой картой
 					struct ifaddrs * headIfa = nullptr;
 					// Считываем данные сетевой карты
-					if(getifaddrs(&headIfa) == -1){
+					if(::getifaddrs(&headIfa) == -1){
 						// Очищаем объект сетевой карты
-						freeifaddrs(headIfa);
+						::freeifaddrs(headIfa);
 						// Выводим сообщение об ошибке
 						this->_log->print("Invalid ifaddrs", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1062,11 +1062,11 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Переходим по всем сетевым интерфейсам
 					for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 						// Пропускаем локальные сетевые интерфейсы
-						if(0 == strncmp(ifa->ifa_name, "lo", 2))
+						if(0 == ::strncmp(ifa->ifa_name, "lo", 2))
 							// Выполняем пропуск
 							continue;
 						// Пропускаем локальные сетевые интерфейсы
-						if(nullptr != strchr(ifa->ifa_name, ':'))
+						if(nullptr != ::strchr(ifa->ifa_name, ':'))
 							// Выполняем пропуск
 							continue;
 						// Если сетевой интерфейс не соответствует, пропускаем
@@ -1076,7 +1076,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						// Заполняем структуры нулями сетевых адресов
 						::memset(host, 0, INET6_ADDRSTRLEN);
 						// Заполняем буфер данными сетевых адресов IPv6
-						inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr, host, INET6_ADDRSTRLEN);
+						::inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr, host, INET6_ADDRSTRLEN);
 						// Искомый IP-адрес соответствует данному серверу
 						if(::memcmp(host, target, INET6_ADDRSTRLEN) == 0){
 							// Структура сетевого интерфейса
@@ -1084,7 +1084,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 							// Заполняем нуляем наши буферы
 							::memset(hardware, 0, sizeof(hardware));
 							// Копируем название сетевого интерфейса
-							strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+							::strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 							// Извлекаем аппаратный адрес сетевого интерфейса
 							if(::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1){
 								// Создаём объект MAC-адреса
@@ -1120,7 +1120,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						}
 					}
 					// Очищаем объект сетевой карты
-					freeifaddrs(headIfa);
+					::freeifaddrs(headIfa);
 					// Закрываем сетевой сокет
 					this->close(fd);
 				} break;
@@ -1148,9 +1148,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Устанавливаем протокол интернета
 					sin.sin_family = family;
 					// Устанавливаем IP-адрес
-					sin.sin_addr.s_addr = inet_addr(ip.c_str());
+					sin.sin_addr.s_addr = ::inet_addr(ip.c_str());
 					// Выполняем копирование IP-адреса
-					if(inet_pton(family, ip.c_str(), &sin.sin_addr) != 1){
+					if(::inet_pton(family, ip.c_str(), &sin.sin_addr) != 1){
 						// Выводим сообщение об ошибке
 						this->_log->print("Invalid IPv4 address", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1161,9 +1161,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Объект работы с сетевой картой
 					struct ifaddrs * headIfa = nullptr;
 					// Считываем данные сетевой карты
-					if(getifaddrs(&headIfa) == -1){
+					if(::getifaddrs(&headIfa) == -1){
 						// Очищаем объект сетевой карты
-						freeifaddrs(headIfa);
+						::freeifaddrs(headIfa);
 						// Выводим сообщение об ошибке
 						this->_log->print("Invalid ifaddrs", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1183,11 +1183,11 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Переходим по всем сетевым интерфейсам
 					for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 						// Пропускаем локальные сетевые интерфейсы
-						if(0 == strncmp(ifa->ifa_name, "lo", 2))
+						if(0 == ::strncmp(ifa->ifa_name, "lo", 2))
 							// Выполняем пропуск
 							continue;
 						// Пропускаем локальные сетевые интерфейсы
-						if(nullptr != strchr(ifa->ifa_name, ':'))
+						if(nullptr != ::strchr(ifa->ifa_name, ':'))
 							// Выполняем пропуск
 							continue;
 						// Если сетевой интерфейс не соответствует, пропускаем
@@ -1205,7 +1205,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 								// Структура сетевого интерфейса
 								struct ifreq ifreq;
 								// Копируем название сетевого интерфейса
-								strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+								::strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 								// Извлекаем аппаратный адрес сетевого интерфейса
 								if((found = (::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1)))
 									// Копируем данные MAC-адреса
@@ -1238,7 +1238,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						}
 					}
 					// Очищаем объект сетевой карты
-					freeifaddrs(headIfa);
+					::freeifaddrs(headIfa);
 					// Если MAC-адрес получен
 					if(found){
 						// Выделяем память для MAC-адреса
@@ -1264,7 +1264,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Устанавливаем протокол интернета
 					sin.sin6_family = family;
 					// Выполняем копирование IP-адреса
-					if(inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
+					if(::inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
 						// Выводим сообщение об ошибке
 						this->_log->print("Invalid IPv6 address", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1275,13 +1275,13 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Заполняем структуру нулями текущего адреса
 					::memset(target, 0, INET6_ADDRSTRLEN);
 					// Заполняем буфер данными текущего адреса IPv6
-					inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
+					::inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
 					// Объект работы с сетевой картой
 					struct ifaddrs * headIfa = nullptr;
 					// Считываем данные сетевой карты
-					if(getifaddrs(&headIfa) == -1){
+					if(::getifaddrs(&headIfa) == -1){
 						// Очищаем объект сетевой карты
-						freeifaddrs(headIfa);
+						::freeifaddrs(headIfa);
 						// Выводим сообщение об ошибке
 						this->_log->print("Invalid ifaddrs", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1303,11 +1303,11 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Переходим по всем сетевым интерфейсам
 					for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 						// Пропускаем локальные сетевые интерфейсы
-						if(0 == strncmp(ifa->ifa_name, "lo", 2))
+						if(0 == ::strncmp(ifa->ifa_name, "lo", 2))
 							// Выполняем пропуск
 							continue;
 						// Пропускаем локальные сетевые интерфейсы
-						if(nullptr != strchr(ifa->ifa_name, ':'))
+						if(nullptr != ::strchr(ifa->ifa_name, ':'))
 							// Выполняем пропуск
 							continue;
 						// Если сетевой интерфейс не соответствует, пропускаем
@@ -1317,7 +1317,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						// Заполняем структуры нулями сетевых адресов
 						::memset(host, 0, INET6_ADDRSTRLEN);
 						// Заполняем буфер данными сетевых адресов IPv6
-						inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr, host, INET6_ADDRSTRLEN);
+						::inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr, host, INET6_ADDRSTRLEN);
 						// Искомый IP-адрес соответствует данному серверу
 						if(::memcmp(host, target, INET6_ADDRSTRLEN) == 0){
 							// Структура сетевого интерфейса
@@ -1325,7 +1325,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 							// Заполняем нуляем наши буферы
 							::memset(hardware, 0, sizeof(hardware));
 							// Копируем название сетевого интерфейса
-							strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+							::strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 							// Извлекаем аппаратный адрес сетевого интерфейса
 							if(::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1){
 								// Создаём объект MAC-адреса
@@ -1361,7 +1361,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						}
 					}
 					// Очищаем объект сетевой карты
-					freeifaddrs(headIfa);
+					::freeifaddrs(headIfa);
 					// Закрываем сетевой сокет
 					this->close(fd);
 				} break;
@@ -1381,7 +1381,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Объект IP-адреса назначения
 					struct in_addr destip;
 					// Устанавливаем IP-адрес назначения
-					destip.s_addr = inet_addr(ip.c_str());
+					destip.s_addr = ::inet_addr(ip.c_str());
 					// Отправляем запрос на указанный адрес
 					SendARP(static_cast <IPAddr> (destip.S_un.S_addr), 0, buffer, &size);
 					// Если MAC-адрес получен
@@ -1420,7 +1420,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						// Устанавливаем протокол интернета
 						sin.sin6_family = family;
 						// Выполняем копирование IP-адреса
-						if(inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
+						if(::inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
 							// Выводим сообщение об ошибке
 							this->_log->print("Invalid IPv6 address", log_t::flag_t::WARNING);
 							// Выходим из функции
@@ -1433,13 +1433,13 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						// Заполняем структуру нулями текущего адреса
 						::memset(target, 0, INET6_ADDRSTRLEN);
 						// Заполняем буфер данными текущего адреса IPv6
-						inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
+						::inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
 						// Переходим по всему списку подключений
 						for(uint32_t i = 0; static_cast <uint32_t> (i) < pipTable->NumEntries; i++){
 							// Заполняем нуляем наши буферы
 							::memset(host, 0, INET6_ADDRSTRLEN);
 							// Запрашиваем данные ip адреса
-							inet_ntop(AF_INET6, reinterpret_cast <void *> (&pipTable->Table[i].Address.Ipv6.sin6_addr), host, INET6_ADDRSTRLEN);
+							::inet_ntop(AF_INET6, reinterpret_cast <void *> (&pipTable->Table[i].Address.Ipv6.sin6_addr), host, INET6_ADDRSTRLEN);
 							// Если искомый IP-адрес найден
 							if(::memcmp(target, host, INET6_ADDRSTRLEN) == 0){
 								// Если MAC-адрес получен
@@ -1477,11 +1477,11 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 			// Если протокол интернета IPv4
 			case AF_INET: {
 				// Получаем IP-адрес в числовом виде
-				uint32_t addr = inet_addr(ip.c_str());
+				uint32_t addr = ::inet_addr(ip.c_str());
 				// Выполняем перебор всех локальных IP-адресов
 				for(auto & item : this->_ips){
 					// Если IP-адрес соответствует
-					if(inet_addr(item.second.c_str()) == addr){
+					if(::inet_addr(item.second.c_str()) == addr){
 						// Запоминаем название сетевого интерфейса
 						ifrName = item.first;
 						// Выходим из цикла
@@ -1498,7 +1498,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 				// Устанавливаем протокол интернета
 				addr1.sin6_family = family;
 				// Указываем адрес IPv6 для сервера
-				inet_pton(family, ip.c_str(), &addr1.sin6_addr);
+				::inet_pton(family, ip.c_str(), &addr1.sin6_addr);
 				// Выполняем перебор всех локальных IP-адресов
 				for(auto & item : this->_ips6){
 					// Заполняем нулями структуру объекта подключения
@@ -1506,7 +1506,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Устанавливаем протокол интернета
 					addr2.sin6_family = family;
 					// Указываем адрес IPv6 для сервера
-					inet_pton(family, item.second.c_str(), &addr2.sin6_addr);
+					::inet_pton(family, item.second.c_str(), &addr2.sin6_addr);
 					// Если IP-адрес соответствует
 					if(IN6_ARE_ADDR_EQUAL(&addr1.sin6_addr, &addr2.sin6_addr)){
 						// Запоминаем название сетевого интерфейса
@@ -1603,7 +1603,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 				// Устанавливаем порт DNS сервера
 				serv.sin_port = htons(53);
 				// Указываем адрес DNS сервера
-				serv.sin_addr.s_addr = inet_addr(dns.front().c_str());
+				serv.sin_addr.s_addr = ::inet_addr(dns.front().c_str());
 				// Выполняем подключение к серверу
 				int32_t conn = ::connect(fd, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
 				// Если подключение удачное
@@ -1621,7 +1621,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 						// Обнуляем массив
 						::memset(buffer, 0, sizeof(buffer));
 						// Запрашиваем данные ip адреса
-						inet_ntop(family, &name.sin_addr, buffer, sizeof(buffer));
+						::inet_ntop(family, &name.sin_addr, buffer, sizeof(buffer));
 						// Выводим результат
 						result = buffer;
 					}
@@ -1640,7 +1640,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 				// Устанавливаем порт DNS сервера
 				serv.sin6_port = htons(53);
 				// Указываем адреса
-				inet_pton(family, dns.front().c_str(), &serv.sin6_addr);
+				::inet_pton(family, dns.front().c_str(), &serv.sin6_addr);
 				// Выполняем подключение к серверу
 				int32_t conn = ::connect(fd, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
 				// Если подключение удачное
@@ -1658,7 +1658,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 						// Обнуляем массив
 						::memset(buffer, 0, sizeof(buffer));
 						// Запрашиваем данные ip адреса
-						inet_ntop(family, &name.sin6_addr, buffer, sizeof(buffer));
+						::inet_ntop(family, &name.sin6_addr, buffer, sizeof(buffer));
 						// Выводим результат
 						result = buffer;
 					}
@@ -1693,7 +1693,7 @@ string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcep
 				// Получаем данные адреса
 				struct sockaddr_in * s = reinterpret_cast <struct sockaddr_in *> (sin);
 				// Копируем полученные данные
-				inet_ntop(family, &s->sin_addr, buffer, sizeof(buffer));
+				::inet_ntop(family, &s->sin_addr, buffer, sizeof(buffer));
 				// Выводим результат
 				result = buffer;
 			}
@@ -1706,7 +1706,7 @@ string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcep
 				// Получаем данные адреса
 				struct sockaddr_in6 * s = reinterpret_cast <struct sockaddr_in6 *> (sin);
 				// Копируем полученные данные
-				inet_ntop(family, &s->sin6_addr, buffer, sizeof(buffer));
+				::inet_ntop(family, &s->sin6_addr, buffer, sizeof(buffer));
 				// Выводим результат
 				result = buffer;
 			}
