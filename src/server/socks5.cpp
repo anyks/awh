@@ -812,60 +812,60 @@ void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const u
 	this->_core.cluster(mode, size);
 }
 /**
- * send Метод отправки сообщения родительскому процессу
+ * sendToProcess Метод отправки сообщения родительскому процессу
  * @param sid идентификатор схемы сети
  */
-void awh::server::ProxySocks5::send(const uint16_t sid) noexcept {
+void awh::server::ProxySocks5::sendToProcess(const uint16_t sid) noexcept {
 	// Выполняем отправку сообщения родительскому процессу
-	this->_core.send(sid);
+	this->_core.sendToProcess(sid);
 }
 /**
- * send Метод отправки сообщения родительскому процессу
+ * sendToProcess Метод отправки сообщения родительскому процессу
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::ProxySocks5::send(const uint16_t sid, const char * buffer, const size_t size) noexcept {
+void awh::server::ProxySocks5::sendToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения родительскому процессу
-	this->_core.send(sid, buffer, size);
+	this->_core.sendToProcess(sid, buffer, size);
 }
 /**
- * send Метод отправки сообщения дочернему процессу
+ * sendToProcess Метод отправки сообщения дочернему процессу
  * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса для получения сообщения
  */
-void awh::server::ProxySocks5::send(const uint16_t sid, const pid_t pid) noexcept {
+void awh::server::ProxySocks5::sendToProcess(const uint16_t sid, const pid_t pid) noexcept {
 	// Выполняем отправку сообщения дочернему процессу
-	this->_core.send(sid, pid);
+	this->_core.sendToProcess(sid, pid);
 }
 /**
- * send Метод отправки сообщения дочернему процессу
+ * sendToProcess Метод отправки сообщения дочернему процессу
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::ProxySocks5::send(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
+void awh::server::ProxySocks5::sendToProcess(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения дочернему процессу
-	this->_core.send(sid, pid, buffer, size);
+	this->_core.sendToProcess(sid, pid, buffer, size);
 }
 /**
- * broadcast Метод отправки сообщения всем дочерним процессам
+ * broadcastToProcess Метод отправки сообщения всем дочерним процессам
  * @param sid идентификатор схемы сети
  */
-void awh::server::ProxySocks5::broadcast(const uint16_t sid) noexcept {
+void awh::server::ProxySocks5::broadcastToProcess(const uint16_t sid) noexcept {
 	// Выполняем отправку сообщения всем дочерним процессам
-	this->_core.broadcast(sid);
+	this->_core.broadcastToProcess(sid);
 }
 /**
- * broadcast Метод отправки сообщения всем дочерним процессам
+ * broadcastToProcess Метод отправки сообщения всем дочерним процессам
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::ProxySocks5::broadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept {
+void awh::server::ProxySocks5::broadcastToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept {
 	// Выполняем отправку сообщения всем дочерним процессам
-	this->_core.broadcast(sid, buffer, size);
+	this->_core.broadcastToProcess(sid, buffer, size);
 }
 /**
  * mode Метод установки флагов модуля

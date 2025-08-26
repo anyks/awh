@@ -667,45 +667,45 @@ namespace awh {
 				void cluster(const awh::scheme_t::mode_t mode, const uint16_t size = 0) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения родительскому процессу
+				 * sendToProcess Метод отправки сообщения родительскому процессу
 				 * @param sid идентификатор схемы сети
 				 */
-				void send(const uint16_t sid) noexcept;
+				void sendToProcess(const uint16_t sid) noexcept;
 				/**
-				 * send Метод отправки сообщения родительскому процессу
+				 * sendToProcess Метод отправки сообщения родительскому процессу
 				 * @param sid    идентификатор схемы сети
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void send(const uint16_t sid, const char * buffer, const size_t size) noexcept;
+				void sendToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения дочернему процессу
+				 * sendToProcess Метод отправки сообщения дочернему процессу
 				 * @param sid идентификатор схемы сети
 				 * @param pid идентификатор процесса для получения сообщения
 				 */
-				void send(const uint16_t sid, const pid_t pid) noexcept;
+				void sendToProcess(const uint16_t sid, const pid_t pid) noexcept;
 				/**
-				 * send Метод отправки сообщения дочернему процессу
+				 * sendToProcess Метод отправки сообщения дочернему процессу
 				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса для получения сообщения
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void send(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
+				void sendToProcess(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * broadcast Метод отправки сообщения всем дочерним процессам
+				 * broadcastToProcess Метод отправки сообщения всем дочерним процессам
 				 * @param sid идентификатор схемы сети
 				 */
-				void broadcast(const uint16_t sid) noexcept;
+				void broadcastToProcess(const uint16_t sid) noexcept;
 				/**
-				 * broadcast Метод отправки сообщения всем дочерним процессам
+				 * broadcastToProcess Метод отправки сообщения всем дочерним процессам
 				 * @param sid    идентификатор схемы сети
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void broadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept;
+				void broadcastToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * total Метод установки максимального количества одновременных подключений

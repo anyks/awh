@@ -49,123 +49,129 @@ void awh::server::Core::accept(const SOCKET fd, const uint16_t sid) noexcept {
 					 * Выполняем отлов ошибок
 					 */
 					try {
-						// Если процесс является дочерним
-						if(!this->master()){
-							// Выводим в консоль информацию
-							this->_log->print("Working in child processes for \"UDP-protocol\" is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Working in child processes for \"UDP-protocol\" is not supported PID=%d", ::getpid()));
-							// Выходим
-							break;
-						// Выполняем остановку работы получения запроса на подключение
-						} else {
-							// Создаём бъект активного брокера подключения
-							std::unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
-							/**
-							 * !!!!!! ВНИМАНИЕ !!!!!!
-							 * Нельзя устанавливать таймаут на чтение и запись, так-как по истечению таймаута будет закрыт сокет сервера а не клиента
-							 * Примеры установки таймаутов здесь стоят для демонстрации, что их добавлять сюда не надо!!!
-							 */
-							// Отключаем таймаут начтение данных из сокета
-							broker->timeout(0, engine_t::method_t::READ);
-							// Отключаем таймаут на запись данных в сокет
-							broker->timeout(0, engine_t::method_t::WRITE);
-							// Определяем тип протокола подключения
-							switch(static_cast <uint8_t> (this->_settings.family)){
-								// Если тип протокола подключения IPv4
-								case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-									// Выполняем перебор всего списка адресов
-									for(auto & host : this->_settings.network){
-										// Если хост соответствует адресу IPv4
-										if(this->_net.host(host) == net_t::type_t::IPV4)
-											// Выполняем установку полученного хоста
-											broker->addr.network.push_back(host);
+						// Определяем члена семейства кластера
+						switch(static_cast <uint8_t> (this->clusterFamily())){
+							// Если процесс является неустановленным процессом
+							case static_cast <uint8_t> (cluster_t::family_t::NONE):
+							// Если процесс является родительским
+							case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
+								// Создаём бъект активного брокера подключения
+								std::unique_ptr <awh::scheme_t::broker_t> broker(new awh::scheme_t::broker_t(sid, this->_fmk, this->_log));
+								/**
+								 * !!!!!! ВНИМАНИЕ !!!!!!
+								 * Нельзя устанавливать таймаут на чтение и запись, так-как по истечению таймаута будет закрыт сокет сервера а не клиента
+								 * Примеры установки таймаутов здесь стоят для демонстрации, что их добавлять сюда не надо!!!
+								 */
+								// Отключаем таймаут начтение данных из сокета
+								broker->timeout(0, engine_t::method_t::READ);
+								// Отключаем таймаут на запись данных в сокет
+								broker->timeout(0, engine_t::method_t::WRITE);
+								// Определяем тип протокола подключения
+								switch(static_cast <uint8_t> (this->_settings.family)){
+									// Если тип протокола подключения IPv4
+									case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+										// Выполняем перебор всего списка адресов
+										for(auto & host : this->_settings.network){
+											// Если хост соответствует адресу IPv4
+											if(this->_net.host(host) == net_t::type_t::IPV4)
+												// Выполняем установку полученного хоста
+												broker->addr.network.push_back(host);
+										}
+									} break;
+									// Если тип протокола подключения IPv6
+									case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+										// Выполняем перебор всего списка адресов
+										for(auto & host : this->_settings.network){
+											// Если хост соответствует адресу IPv4
+											if(this->_net.host(host) == net_t::type_t::IPV6)
+												// Выполняем установку полученного хоста
+												broker->addr.network.push_back(host);
+										}
+									} break;
+								}
+								// Устанавливаем параметры сокета
+								broker->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
+								// Если unix-сокет используется
+								if(this->_settings.family == scheme_t::family_t::IPC){
+									// Если название unix-сокета ещё не инициализированно
+									if(this->_settings.sockname.empty())
+										// Выполняем установку названия unix-сокета
+										this->sockname();
+									// Выполняем инициализацию сокета
+									broker->addr.init(this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), engine_t::type_t::SERVER);
+								// Если unix-сокет не используется, выполняем инициализацию сокета
+								} else broker->addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_settings.ipV6only);
+								// Выполняем разрешение подключения
+								if(broker->addr.accept(broker->addr.fd, 0)){
+									// Получаем адрес подключения клиента
+									broker->ip(broker->addr.ip);
+									// Получаем аппаратный адрес клиента
+									broker->mac(broker->addr.mac);
+									// Получаем порт подключения клиента
+									broker->port(broker->addr.port);
+									// Выполняем установку желаемого протокола подключения
+									broker->ectx.proto(this->_settings.proto);
+									// Выполняем получение контекста сертификата
+									this->_engine.wrap(broker->ectx, &broker->addr);
+									// Если подключение не обёрнуто
+									if((broker->addr.fd == INVALID_SOCKET) || (broker->addr.fd >= AWH_MAX_SOCKETS)){
+										// Выводим сообщение об ошибке
+										this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+										// Если функция обратного вызова установлена
+										if(this->_callback.is("error"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
+										// Выходим из функции
+										return;
 									}
-								} break;
-								// Если тип протокола подключения IPv6
-								case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-									// Выполняем перебор всего списка адресов
-									for(auto & host : this->_settings.network){
-										// Если хост соответствует адресу IPv4
-										if(this->_net.host(host) == net_t::type_t::IPV6)
-											// Выполняем установку полученного хоста
-											broker->addr.network.push_back(host);
-									}
-								} break;
-							}
-							// Устанавливаем параметры сокета
-							broker->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
-							// Если unix-сокет используется
-							if(this->_settings.family == scheme_t::family_t::IPC){
-								// Если название unix-сокета ещё не инициализированно
-								if(this->_settings.sockname.empty())
-									// Выполняем установку названия unix-сокета
-									this->sockname();
-								// Выполняем инициализацию сокета
-								broker->addr.init(this->_fmk->format("%s/%s.sock", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str()), engine_t::type_t::SERVER);
-							// Если unix-сокет не используется, выполняем инициализацию сокета
-							} else broker->addr.init(shm->_host, shm->_port, (this->_settings.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_settings.ipV6only);
-							// Выполняем разрешение подключения
-							if(broker->addr.accept(broker->addr.fd, 0)){
-								// Получаем адрес подключения клиента
-								broker->ip(broker->addr.ip);
-								// Получаем аппаратный адрес клиента
-								broker->mac(broker->addr.mac);
-								// Получаем порт подключения клиента
-								broker->port(broker->addr.port);
-								// Выполняем установку желаемого протокола подключения
-								broker->ectx.proto(this->_settings.proto);
-								// Выполняем получение контекста сертификата
-								this->_engine.wrap(broker->ectx, &broker->addr);
-								// Если подключение не обёрнуто
-								if((broker->addr.fd == INVALID_SOCKET) || (broker->addr.fd >= AWH_MAX_SOCKETS)){
+									// Выполняем блокировку потока
+									this->_mtx.accept.lock();
+									// Выполняем установку базы событий
+									broker->base(this->eventBase());
+									// Добавляем созданного брокера в список брокеров
+									auto ret = shm->_brokers.emplace(broker->id(), std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
+									// Добавляем брокера в список подключений
+									node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
+									// Выполняем блокировку потока
+									this->_mtx.accept.unlock();
+									// Переводим сокет в блокирующий режим
+									ret.first->second->ectx.blocking(engine_t::mode_t::ENABLED);
+									// Выполняем установку функции обратного вызова на получении сообщений
+									ret.first->second->on <void (const uint64_t)> ("read", &core_t::read, this, _1);
+									// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
+									ret.first->second->on <void (const uint64_t)> ("close", static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::close), this, sid, _1);
+									// Выполняем запуск работы события
+									ret.first->second->start();
+									// Активируем получение данных с клиента
+									ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+									// Деактивируем ожидание записи данных
+									ret.first->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+									// Выполняем создание буфера полезной нагрузки
+									this->initBuffer(ret.first->second->id());
+									// Если функция обратного вызова установлена
+									if(this->_callback.is("connect"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const uint64_t, const uint16_t)> ("connect", ret.first->first, sid);
+								// Подключение не установлено
+								} else {
 									// Выводим сообщение об ошибке
-									this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
+									this->_log->print("Accepting failed, PID=%d", log_t::flag_t::WARNING, ::getpid());
 									// Если функция обратного вызова установлена
 									if(this->_callback.is("error"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::ACCEPT, "Wrap engine context is failed");
-									// Выходим из функции
-									return;
+										this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
 								}
-								// Выполняем блокировку потока
-								this->_mtx.accept.lock();
-								// Выполняем установку базы событий
-								broker->base(this->eventBase());
-								// Добавляем созданного брокера в список брокеров
-								auto ret = shm->_brokers.emplace(broker->id(), std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
-								// Добавляем брокера в список подключений
-								node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
-								// Выполняем блокировку потока
-								this->_mtx.accept.unlock();
-								// Переводим сокет в блокирующий режим
-								ret.first->second->ectx.blocking(engine_t::mode_t::ENABLED);
-								// Выполняем установку функции обратного вызова на получении сообщений
-								ret.first->second->on <void (const uint64_t)> ("read", &core_t::read, this, _1);
-								// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
-								ret.first->second->on <void (const uint64_t)> ("close", static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::close), this, sid, _1);
-								// Выполняем запуск работы события
-								ret.first->second->start();
-								// Активируем получение данных с клиента
-								ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
-								// Деактивируем ожидание записи данных
-								ret.first->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
-								// Выполняем создание буфера полезной нагрузки
-								this->initBuffer(ret.first->second->id());
-								// Если функция обратного вызова установлена
-								if(this->_callback.is("connect"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint64_t, const uint16_t)> ("connect", ret.first->first, sid);
-							// Подключение не установлено
-							} else {
-								// Выводим сообщение об ошибке
-								this->_log->print("Accepting failed, PID=%d", log_t::flag_t::WARNING, ::getpid());
+							} break;
+							// Если процесс является дочерним
+							case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
+								// Выводим в консоль информацию
+								this->_log->print("Working in child processes for \"UDP-protocol\" is not supported PID=%d", log_t::flag_t::WARNING, ::getpid());
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("error"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d", ::getpid()));
+									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Working in child processes for \"UDP-protocol\" is not supported PID=%d", ::getpid()));
+								// Выходим
+								return;
 							}
 						}
 					/**
@@ -1108,47 +1114,47 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 	}
 }
 /**
- * ready Метод получения события подключения дочерних процессов
+ * clusterReadyCallback Метод получения события подключения дочерних процессов
  * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса
  */
-void awh::server::Core::ready(const uint16_t sid, const pid_t pid) noexcept {
+void awh::server::Core::clusterReadyCallback(const uint16_t sid, const pid_t pid) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("clusterReady"))
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const uint16_t, const pid_t)> ("clusterReady", sid, pid);
 }
 /**
- * rebase Метод события пересоздании процесса
+ * clusterRebaseCallback Метод события пересоздании процесса
  * @param sid  идентификатор схемы сети
  * @param pid  идентификатор процесса
  * @param opid идентификатор старого процесса
  */
-void awh::server::Core::rebase(const uint16_t sid, const pid_t pid, const pid_t opid) const noexcept {
+void awh::server::Core::clusterRebaseCallback(const uint16_t sid, const pid_t pid, const pid_t opid) const noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("clusterRebase"))
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const uint16_t, const pid_t, const pid_t)> ("clusterRebase", sid, pid, opid);
 }
 /**
- * exit Метод события завершения работы процесса
+ * clusterExitCallback Метод события завершения работы процесса
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса
  * @param status статус остановки работы процесса
  */
-void awh::server::Core::exit(const uint16_t sid, const pid_t pid, const int32_t status) const noexcept {
+void awh::server::Core::clusterExitCallback(const uint16_t sid, const pid_t pid, const int32_t status) const noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("clusterExit"))
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const uint16_t, const pid_t, const int32_t)> ("clusterExit", sid, pid, status);
 }
 /**
- * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
+ * clusterEventsCallback Метод события ЗАПУСКА/ОСТАНОВКИ кластера
  * @param sid   идентификатор схемы сети
  * @param pid   идентификатор процесса
  * @param event идентификатор события
  */
-void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
+void awh::server::Core::clusterEventsCallback(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
 	// Выполняем поиск идентификатора схемы сети
 	auto i = this->_schemes.find(sid);
 	// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
@@ -1156,7 +1162,7 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 		// Получаем объект подключения
 		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Определяем члена семейства кластера
-		const cluster_t::family_t family = (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN);
+		const cluster_t::family_t family = this->clusterFamily();
 		// Выполняем тип возникшего события
 		switch(static_cast <uint8_t> (event)){
 			// Если производится запуск процесса
@@ -1287,29 +1293,17 @@ void awh::server::Core::cluster(const uint16_t sid, const pid_t pid, const clust
 	}
 }
 /**
- * message Метод получения сообщений от дочерних процессоров кластера
+ * clusterMessageCallback Метод получения сообщений от дочерних процессоров кластера
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса
  * @param buffer буфер бинарных данных
  * @param size   размер буфера бинарных данных
  */
-void awh::server::Core::message(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
+void awh::server::Core::clusterMessageCallback(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterMessage")){
-		// Определяем члена семейства кластера
-		switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
-			// Если процесс является родительским
-			case static_cast <uint8_t> (cluster_t::family_t::MASTER):
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const char *, const size_t)> ("clusterMessage", cluster_t::family_t::MASTER, sid, pid, buffer, size);
-			break;
-			// Если процесс является дочерним
-			case static_cast <uint8_t> (cluster_t::family_t::CHILDREN):
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const char *, const size_t)> ("clusterMessage", cluster_t::family_t::CHILDREN, sid, pid, buffer, size);
-			break;
-		}
-	}
+	if(this->_callback.is("clusterMessage"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const char *, const size_t)> ("clusterMessage", this->clusterFamily(), sid, pid, buffer, size);
 }
 /**
  * initDTLS Метод инициализации DTLS-брокера
@@ -1399,14 +1393,6 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 			}
 		}
 	}
-}
-/**
- * master Метод проверки является ли процесс родительским
- * @return результат проверки
- */
-bool awh::server::Core::master() const noexcept {
-	// Выводим результат проверки
-	return this->_cluster.master();
 }
 /**
  * stop Метод остановки клиента
@@ -2221,12 +2207,12 @@ bool awh::server::Core::send(const char * buffer, const size_t size, const uint6
 	return result;
 }
 /**
- * send Метод отправки сообщения родительскому процессу
+ * sendToProcess Метод отправки сообщения родительскому процессу
  * @param sid идентификатор схемы сети
  */
-void awh::server::Core::send(const uint16_t sid) noexcept {
+void awh::server::Core::sendToProcess(const uint16_t sid) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
 			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
@@ -2244,14 +2230,14 @@ void awh::server::Core::send(const uint16_t sid) noexcept {
 	}
 }
 /**
- * send Метод отправки сообщения родительскому процессу
+ * sendToProcess Метод отправки сообщения родительскому процессу
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Core::send(const uint16_t sid, const char * buffer, const size_t size) noexcept {
+void awh::server::Core::sendToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
 			// Выводим сообщение в лог, потому что вещание доступно только из родительского процесса
@@ -2269,13 +2255,13 @@ void awh::server::Core::send(const uint16_t sid, const char * buffer, const size
 	}
 }
 /**
- * send Метод отправки сообщения дочернему процессу
+ * sendToProcess Метод отправки сообщения дочернему процессу
  * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса для получения сообщения
  */
-void awh::server::Core::send(const uint16_t sid, const pid_t pid) noexcept {
+void awh::server::Core::sendToProcess(const uint16_t sid, const pid_t pid) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения дочернему процессу
@@ -2293,15 +2279,15 @@ void awh::server::Core::send(const uint16_t sid, const pid_t pid) noexcept {
 	}
 }
 /**
- * send Метод отправки сообщения дочернему процессу
+ * sendToProcess Метод отправки сообщения дочернему процессу
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Core::send(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
+void awh::server::Core::sendToProcess(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения дочернему процессу
@@ -2319,12 +2305,12 @@ void awh::server::Core::send(const uint16_t sid, const pid_t pid, const char * b
 	}
 }
 /**
- * broadcast Метод отправки сообщения всем дочерним процессам
+ * broadcastToProcess Метод отправки сообщения всем дочерним процессам
  * @param sid идентификатор схемы сети
  */
-void awh::server::Core::broadcast(const uint16_t sid) noexcept {
+void awh::server::Core::broadcastToProcess(const uint16_t sid) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения всем дочерним процессам
@@ -2342,14 +2328,14 @@ void awh::server::Core::broadcast(const uint16_t sid) noexcept {
 	}
 }
 /**
- * broadcast Метод отправки сообщения всем дочерним процессам
+ * broadcastToProcess Метод отправки сообщения всем дочерним процессам
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::server::Core::broadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept {
+void awh::server::Core::broadcastToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept {
 	// Определяем члена семейства кластера
-	switch(static_cast <uint8_t> (this->master() ? cluster_t::family_t::MASTER : cluster_t::family_t::CHILDREN)){
+	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
 			// Выполняем отправку сообщения всем дочерним процессам
@@ -3209,6 +3195,26 @@ void awh::server::Core::clusterBandwidth(const string & read, const string & wri
 	#endif
 }
 /**
+ * clusterFamily Меод получения семейства кластера
+ * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
+ */
+awh::cluster_t::family_t awh::server::Core::clusterFamily() const noexcept {
+	// Определяем режим активации кластера
+	switch(static_cast <uint8_t> (this->_clusterMode)){
+		// Если кластер активирован
+		case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
+			// Если мы работаем в режиме MASTER
+			if(this->_cluster.master())
+				// Устанавливаем семейство кластера
+				return cluster_t::family_t::MASTER;
+			// Устанавливаем семейство кластера
+			return cluster_t::family_t::CHILDREN;
+		} break;
+	}
+	// Выводим результат
+	return cluster_t::family_t::NONE;
+}
+/**
  * cluster Метод проверки активации кластера
  * @return режим активации кластера
  */
@@ -3481,15 +3487,15 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения события подключения дочерних процессов
-	this->_cluster.on <void (const uint16_t, const pid_t)> ("ready", &core_t::ready, this, _1, _2);
+	this->_cluster.on <void (const uint16_t, const pid_t)> ("ready", &core_t::clusterReadyCallback, this, _1, _2);
 	// Устанавливаем функцию получения события завершения работы процесса
-	this->_cluster.on <void (const uint16_t, const pid_t, const int32_t)> ("exit", &core_t::exit, this, _1, _2, _3);
+	this->_cluster.on <void (const uint16_t, const pid_t, const int32_t)> ("exit", &core_t::clusterExitCallback, this, _1, _2, _3);
 	// Устанавливаем функцию получения события пересоздании процесса
-	this->_cluster.on <void (const uint16_t, const pid_t, const pid_t)> ("rebase", &core_t::rebase, this, _1, _2, _3);
-	// Устанавливаем функцию получения сообщений процессов кластера
-	this->_cluster.on <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", &core_t::message, this, _1, _2, _3, _4);
+	this->_cluster.on <void (const uint16_t, const pid_t, const pid_t)> ("rebase", &core_t::clusterRebaseCallback, this, _1, _2, _3);
 	// Устанавливаем функцию получения статуса кластера
-	this->_cluster.on <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("process", static_cast <void (core_t::*)(const uint16_t, const pid_t, const cluster_t::event_t)> (&core_t::cluster), this, _1, _2, _3);
+	this->_cluster.on <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("events", &core_t::clusterEventsCallback, this, _1, _2, _3);
+	// Устанавливаем функцию получения сообщений процессов кластера
+	this->_cluster.on <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", &core_t::clusterMessageCallback, this, _1, _2, _3, _4);
 }
 /**
  * Core Конструктор
@@ -3504,13 +3510,13 @@ awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log)
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения события подключения дочерних процессов
-	this->_cluster.on <void (const uint16_t, const pid_t)> ("ready", &core_t::ready, this, _1, _2);
+	this->_cluster.on <void (const uint16_t, const pid_t)> ("ready", &core_t::clusterReadyCallback, this, _1, _2);
 	// Устанавливаем функцию получения события завершения работы процесса
-	this->_cluster.on <void (const uint16_t, const pid_t, const int32_t)> ("exit", &core_t::exit, this, _1, _2, _3);
+	this->_cluster.on <void (const uint16_t, const pid_t, const int32_t)> ("exit", &core_t::clusterExitCallback, this, _1, _2, _3);
 	// Устанавливаем функцию получения события пересоздании процесса
-	this->_cluster.on <void (const uint16_t, const pid_t, const pid_t)> ("rebase", &core_t::rebase, this, _1, _2, _3);
-	// Устанавливаем функцию получения сообщений процессов кластера
-	this->_cluster.on <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", &core_t::message, this, _1, _2, _3, _4);
+	this->_cluster.on <void (const uint16_t, const pid_t, const pid_t)> ("rebase", &core_t::clusterRebaseCallback, this, _1, _2, _3);
 	// Устанавливаем функцию получения статуса кластера
-	this->_cluster.on <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("process", static_cast <void (core_t::*)(const uint16_t, const pid_t, const cluster_t::event_t)> (&core_t::cluster), this, _1, _2, _3);
+	this->_cluster.on <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("events", &core_t::clusterEventsCallback, this, _1, _2, _3);
+	// Устанавливаем функцию получения сообщений процессов кластера
+	this->_cluster.on <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", &core_t::clusterMessageCallback, this, _1, _2, _3, _4);
 }

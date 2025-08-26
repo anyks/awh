@@ -546,9 +546,9 @@ using namespace placeholders;
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", item.first, pid, status);
 					// Если функция обратного вызова установлена
-					if(this->_callback.is("process"))
+					if(this->_callback.is("events"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", item.first, pid, event_t::STOP);
+						this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("events", item.first, pid, event_t::STOP);
 					// Выполняем поиск воркера
 					auto i = this->_workers.find(item.first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
@@ -1160,9 +1160,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 									} break;
 								}
 								// Если функция обратного вызова установлена
-								if(this->_callback.is("process"))
+								if(this->_callback.is("events"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
+									this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("events", i->first, pid, event_t::START);
 							}
 						// Если процесс превратился в зомби
 						} else {
@@ -1556,9 +1556,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 										} break;
 									}
 									// Если функция обратного вызова установлена
-									if(this->_callback.is("process"))
+									if(this->_callback.is("events"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, pid, event_t::START);
+										this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("events", i->first, pid, event_t::START);
 								}
 							// Если процесс превратился в зомби
 							} else {
@@ -1677,9 +1677,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							// Выводим информацию о запущенном сервере на PIPE
 							this->_log->print("Cluster [%s] has been started successfully", log_t::flag_t::INFO, this->_name.c_str());
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("process"))
+						if(this->_callback.is("events"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("process", i->first, this->_pid, event_t::START);
+							this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("events", i->first, this->_pid, event_t::START);
 					}
 				}
 			}
@@ -2591,7 +2591,7 @@ void awh::Cluster::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова при пересоздании процесса
 	this->_callback.set("rebase", callback);
 	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
-	this->_callback.set("process", callback);
+	this->_callback.set("events", callback);
 	// Выполняем установку функции обратного вызова при получении сообщения
 	this->_callback.set("message", callback);
 }

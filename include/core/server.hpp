@@ -160,52 +160,46 @@ namespace awh {
 				void createTimeout(const uint16_t sid, const uint64_t bid, const uint32_t msec, const mode_t mode) noexcept;
 			private:
 				/**
-				 * ready Метод получения события подключения дочерних процессов
+				 * clusterReadyCallback Метод получения события подключения дочерних процессов
 				 * @param sid идентификатор схемы сети
 				 * @param pid идентификатор процесса
 				 */
-				void ready(const uint16_t sid, const pid_t pid) noexcept;
+				void clusterReadyCallback(const uint16_t sid, const pid_t pid) noexcept;
 				/**
-				 * rebase Метод события пересоздании процесса
+				 * clusterRebaseCallback Метод события пересоздании процесса
 				 * @param sid  идентификатор схемы сети
 				 * @param pid  идентификатор процесса
 				 * @param opid идентификатор старого процесса
 				 */
-				void rebase(const uint16_t sid, const pid_t pid, const pid_t opid) const noexcept;
+				void clusterRebaseCallback(const uint16_t sid, const pid_t pid, const pid_t opid) const noexcept;
 				/**
-				 * exit Метод события завершения работы процесса
+				 * clusterExitCallback Метод события завершения работы процесса
 				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса
 				 * @param status статус остановки работы процесса
 				 */
-				void exit(const uint16_t sid, const pid_t pid, const int32_t status) const noexcept;
+				void clusterExitCallback(const uint16_t sid, const pid_t pid, const int32_t status) const noexcept;
 				/**
-				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
+				 * clusterEventsCallback Метод события ЗАПУСКА/ОСТАНОВКИ кластера
 				 * @param sid   идентификатор схемы сети
 				 * @param pid   идентификатор процесса
 				 * @param event идентификатор события
 				 */
-				void cluster(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
+				void clusterEventsCallback(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
 				/**
-				 * message Метод получения сообщений от дочерних процессоров кластера
+				 * clusterMessageCallback Метод получения сообщений от дочерних процессоров кластера
 				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса
 				 * @param buffer буфер бинарных данных
 				 * @param size   размер буфера бинарных данных
 				 */
-				void message(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
+				void clusterMessageCallback(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * initDTLS Метод инициализации DTLS-брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				void initDTLS(const uint16_t sid) noexcept;
-			public:
-				/**
-				 * master Метод проверки является ли процесс родительским
-				 * @return результат проверки
-				 */
-				bool master() const noexcept;
 			public:
 				/**
 				 * stop Метод остановки клиента
@@ -286,45 +280,45 @@ namespace awh {
 				bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения родительскому процессу
+				 * sendToProcess Метод отправки сообщения родительскому процессу
 				 * @param sid идентификатор схемы сети
 				 */
-				void send(const uint16_t sid) noexcept;
+				void sendToProcess(const uint16_t sid) noexcept;
 				/**
-				 * send Метод отправки сообщения родительскому процессу
+				 * sendToProcess Метод отправки сообщения родительскому процессу
 				 * @param sid    идентификатор схемы сети
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void send(const uint16_t sid, const char * buffer, const size_t size) noexcept;
+				void sendToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения дочернему процессу
+				 * sendToProcess Метод отправки сообщения дочернему процессу
 				 * @param sid идентификатор схемы сети
 				 * @param pid идентификатор процесса для получения сообщения
 				 */
-				void send(const uint16_t sid, const pid_t pid) noexcept;
+				void sendToProcess(const uint16_t sid, const pid_t pid) noexcept;
 				/**
-				 * send Метод отправки сообщения дочернему процессу
+				 * sendToProcess Метод отправки сообщения дочернему процессу
 				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса для получения сообщения
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void send(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
+				void sendToProcess(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * broadcast Метод отправки сообщения всем дочерним процессам
+				 * broadcastToProcess Метод отправки сообщения всем дочерним процессам
 				 * @param sid идентификатор схемы сети
 				 */
-				void broadcast(const uint16_t sid) noexcept;
+				void broadcastToProcess(const uint16_t sid) noexcept;
 				/**
-				 * broadcast Метод отправки сообщения всем дочерним процессам
+				 * broadcastToProcess Метод отправки сообщения всем дочерним процессам
 				 * @param sid    идентификатор схемы сети
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
 				 */
-				void broadcast(const uint16_t sid, const char * buffer, const size_t size) noexcept;
+				void broadcastToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * read Метод чтения данных для брокера
@@ -425,6 +419,12 @@ namespace awh {
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
 				void clusterBandwidth(const string & read = "", const string & write = "") noexcept;
+			public:
+				/**
+				 * clusterFamily Меод получения семейства кластера
+				 * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
+				 */
+				cluster_t::family_t clusterFamily() const noexcept;
 			public:
 				/**
 				 * cluster Метод проверки активации кластера

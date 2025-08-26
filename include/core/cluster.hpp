@@ -55,55 +55,51 @@ namespace awh {
 				cluster_t _cluster;
 			private:
 				/**
-				 * active Метод вывода статуса работы сетевого ядра
+				 * activeCallback Метод вывода статуса работы сетевого ядра
 				 * @param status флаг запуска сетевого ядра
 				 */
-				void active(const status_t status) noexcept;
-			private:
+				void activeCallback(const status_t status) noexcept;
 				/**
-				 * ready Метод получения события подключения дочерних процессов
+				 * readyCallback Метод получения события подключения дочерних процессов
 				 * @param wid  идентификатор воркера
 				 * @param pid идентификатор процесса
 				 */
-				void ready(const uint16_t wid, const pid_t pid) noexcept;
+				void readyCallback(const uint16_t wid, const pid_t pid) noexcept;
 				/**
-				 * rebase Метод события пересоздании процесса
+				 * rebaseCallback Метод события пересоздании процесса
 				 * @param wid  идентификатор воркера
 				 * @param pid  идентификатор процесса
 				 * @param opid идентификатор старого процесса
 				 */
-				void rebase(const uint16_t wid, const pid_t pid, const pid_t opid) const noexcept;
-			private:
+				void rebaseCallback(const uint16_t wid, const pid_t pid, const pid_t opid) const noexcept;
 				/**
-				 * exit Метод события завершения работы процесса
+				 * exitCallback Метод события завершения работы процесса
 				 * @param wid    идентификатор воркера
 				 * @param pid    идентификатор процесса
 				 * @param status статус остановки работы процесса
 				 */
-				void exit(const uint16_t wid, const pid_t pid, const int32_t status) const noexcept;
-			private:
+				void exitCallback(const uint16_t wid, const pid_t pid, const int32_t status) const noexcept;
 				/**
-				 * cluster Метод информирования о статусе кластера
+				 * eventsCallback Метод информирования о статусе кластера
 				 * @param wid   идентификатор воркера
 				 * @param pid   идентификатор процесса
 				 * @param event идентификатор события
 				 */
-				void cluster(const uint16_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept;
-			private:
+				void eventsCallback(const uint16_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept;
 				/**
-				 * message Метод получения сообщения
+				 * messageCallback Метод получения сообщения
 				 * @param wid    идентификатор воркера
 				 * @param pid    идентификатор процесса
 				 * @param buffer буфер бинарных данных
 				 * @param size   размер буфера бинарных данных
 				 */
-				void message(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept;
+				void messageCallback(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
-				 * master Метод проверки является ли процесс родительским
-				 * @return результат проверки
+				 * family Меод получения семейства кластера
+				 * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
 				 */
-				bool master() const noexcept;
+				cluster_t::family_t family() const noexcept;
 			public:
 				/**
 				 * pids Метод получения списка дочерних процессов
