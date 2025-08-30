@@ -135,7 +135,7 @@ mkdir -p "$MANIFEST_PREFIX" || exit 1
 pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Заменяем группу пользователя по умолчанию
-gsed -i "s%group=bin%group=root%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+#gsed -i "s%group=bin%group=root%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Создаём файл информационных данных
 touch $MANIFEST_PREFIX/$PACKAGE_NAME.mog
