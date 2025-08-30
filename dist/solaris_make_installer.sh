@@ -33,7 +33,7 @@ readonly APP_DIR="$ROOT/../${PACKAGE_NAME}_dist"
 readonly BUILD_DIR="$ROOT/../${PACKAGE_NAME}_build"
 
 # Выполняем создание каталогов
-mkdir -p $APP_DIR/usr/lib || exit 1
+mkdir -p $APP_DIR/usr/lib/amd64 || exit 1
 mkdir -p $APP_DIR/usr/tmp/scripts || exit 1
 mkdir -p $APP_DIR/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME || exit 1
 
@@ -59,7 +59,7 @@ cmake \
 cmake --build . || exit 1
 
 # Копируем собранную динамическую библиотеку
-cp $BUILD_DIR/lib$PACKAGE_NAME.so $APP_DIR/usr/lib/
+cp $BUILD_DIR/lib$PACKAGE_NAME.so $APP_DIR/usr/lib/amd64/
 
 # Очищаем всю дирректорию
 cmake --build . --target clean
@@ -76,7 +76,7 @@ cmake \
 cmake --build . || exit 1
 
 # Копируем собранную статическую библиотеку
-cp $BUILD_DIR/lib$PACKAGE_NAME.a $APP_DIR/usr/lib/
+cp $BUILD_DIR/lib$PACKAGE_NAME.a $APP_DIR/usr/lib/amd64/
 
 # Переходим в корневой каталог обратно
 cd $ROOT/../
@@ -115,7 +115,7 @@ cp -r "$ROOT/../third_party/include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME"/
 cp -r "$ROOT/../include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
 
 # Заменяем конечный адрес назначения
-gsed -i "s%\${CMAKE_SOURCE_DIR}/third_party/lib%/usr/lib%g" $APP_DIR/usr/tmp/FindAWH.cmake
+gsed -i "s%\${CMAKE_SOURCE_DIR}/third_party/lib%/usr/lib/amd64%g" $APP_DIR/usr/tmp/FindAWH.cmake
 gsed -i "s%\${CMAKE_SOURCE_DIR}/third_party/include%/usr/include/lib${PACKAGE_NAME}%g" $APP_DIR/usr/tmp/FindAWH.cmake
 
 # Выставляем права доступа на каталог
@@ -135,7 +135,7 @@ mkdir -p "$MANIFEST_PREFIX" || exit 1
 pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Заменяем группу пользователя по умолчанию
-gsed -i "s%group=bin%group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+gsed -i "s%group=bin%group=root%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Создаём файл информационных данных
 touch $MANIFEST_PREFIX/$PACKAGE_NAME.mog
