@@ -78,14 +78,14 @@ cmake --build . || exit 1
 # Копируем собранную статическую библиотеку
 cp $BUILD_DIR/lib$PACKAGE_NAME.a $APP_DIR/usr/lib/
 
+# Переходим в корневой каталог обратно
+cd $ROOT/../
+
 # Выполняем удаление директории для сборки пакета
 if [ -d $BUILD_DIR ]; then
 	# Удаляем ранее собранный каталог
 	rm -rf $BUILD_DIR || exit 1
 fi
-
-# Переходим в корневой каталог обратно
-cd $ROOT/../
 
 # Инициализируем манифест
 readonly MANIFEST_PREFIX="$ROOT/../${PACKAGE_NAME}_manifest"

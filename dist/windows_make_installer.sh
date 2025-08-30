@@ -73,14 +73,14 @@ cmake --build . || exit 1
 # Копируем собранную статическую библиотеку
 cp $BUILD_DIR/lib$PACKAGE_NAME.a $ROOT/../setup/
 
+# Переходим в корневой каталог обратно
+cd $ROOT/../
+
 # Выполняем удаление директории для сборки пакета
 if [ -d $BUILD_DIR ]; then
 	# Удаляем ранее собранный каталог
 	rm -rf $BUILD_DIR || exit 1
 fi
-
-# Переходим в корневой каталог обратно
-cd $ROOT/../
 
 # Получаем версию приложения
 readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
