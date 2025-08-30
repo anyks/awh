@@ -154,7 +154,7 @@ echo "set name=info.classification value=\"org.opensolaris.category.2008:Applica
 # Выполняем установку скрипта postinstall
 # echo "set name=postinstall value=\"usr/tmp/scripts/postinstall\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем установку скрипта postinstall
-echo "legacy pkg=awh pkg.relocation.pkgmap=no postinstall=usr/tmp/scripts/postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+echo "legacy pkg=$PACKAGE_NAME pkg.relocation.pkgmap=no postinstall=usr/tmp/scripts/postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем правила сборки
 echo "<transform dir path=usr\$->drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 
