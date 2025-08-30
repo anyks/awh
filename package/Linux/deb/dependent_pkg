@@ -1,0 +1,6 @@
+cmake
+libc6
+libstdc++6
+libgcc-s1
+libgcc-9-dev
+libsctp-dev

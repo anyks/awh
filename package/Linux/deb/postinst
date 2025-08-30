@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+modprobe sctp
+sysctl -w net.sctp.auth_enable=1
+
+# Получаем каталог с модулями CMake
+readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+
+# Выполняем перемещение файла CMake
+mv /tmp/FindAWH.cmake $CMAKE/Modules/FindAWH.cmake

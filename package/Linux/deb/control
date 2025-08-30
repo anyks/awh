@@ -1,0 +1,10 @@
+Package: @package@
+Version: @version@
+Priority: standard
+Section: network
+Architecture: @architecture@
+Depends: @dependencies@
+Maintainer: AWH
+Homepage: https://anyks.com
+Installed-Size: @size@
+Description: ANYKS - WEB (AWH)

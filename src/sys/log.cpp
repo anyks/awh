@@ -453,7 +453,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
 		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
 		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
-			// Создаем список аргументов
+			// Создаём список аргументов
 			va_list args;
 			// Запускаем инициализацию списка аргументов
 			va_start(args, flag);

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# Экспортируем все существующие пути где могут лежать приложения
+export PATH="/usr/local/bin:/opt/homebrew/bin:/opt/local/bin:/Applications/CMake.app/Contents/bin:$PATH"
+
+echo "Post installation process started"
+
+[ -d /usr/local/lib ] || mkdir /usr/local/lib
+[ -d /usr/local/include/lib__PRODUCT__ ] || mkdir -p /usr/local/include/lib__PRODUCT__
+
+# CMake адрес
+readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+
+# Копируем CMake файл в нужный нам каталог
+mv /tmp/FindAWH.cmake "$CMAKE/Modules"/FindAWH.cmake
+
+# Выставляем права доступа на каталог
+find . -type d ! -perm 755 -exec chmod 755 {} \;
+# Выставляем права доступа на файлы
+find . -type f ! -perm 644 -exec chmod 644 {} \;
+
+# Выставляем права доступа на исполняемые файлы
+chmod +x /usr/local/include/lib__PRODUCT__/uninstall.sh
+
+echo "Post installation process finished"

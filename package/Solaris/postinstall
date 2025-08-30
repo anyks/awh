@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+
+# Экспортируем все существующие пути где могут лежать приложения
+export PATH="/usr/bin:/usr/local/bin:/opt/local/bin:$PATH"
+
+echo "Post installation process started"
+
+# CMake адрес
+readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+
+# Копируем CMake файл в нужный нам каталог
+mv /usr/tmp/FindAWH.cmake "$CMAKE/Modules"/FindAWH.cmake
+
+# Переходим в основной катало
+cd /usr/tmp
+
+echo "Post installation process finished"
+
+# Удаляем каталог с скриптами
+rm -rf /usr/tmp/scripts
