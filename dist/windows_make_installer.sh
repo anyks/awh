@@ -87,12 +87,14 @@ readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | grep AWH_VERSION | awk '{p
 
 # Копируем файл cmake
 cp "$ROOT/../contrib/cmake"/FindAWH.cmake $ROOT/../setup/
+# Копируем шаблон установщика
+cp "$ROOT/../package/Windows"/install.iss $ROOT/../setup/
 # Копируем зависимости сторонние
-cp -r "$ROOT/../contrib/include"/* $ROOT/../setup/include/
+cp -ar "$ROOT/../contrib/include"/* $ROOT/../setup/include/
 # Копируем собранные зависимости
-cp -r "$ROOT/../third_party/include"/* $ROOT/../setup/include/
+cp -ar "$ROOT/../third_party/include"/* $ROOT/../setup/include/
 # Копируем заголовки библиотеки
-cp -r "$ROOT/../include"/* $ROOT/../setup/include/$PACKAGE_NAME/
+cp -ar "$ROOT/../include"/* $ROOT/../setup/include/$PACKAGE_NAME/
 
 # Заменяем конечный адрес назначения
 sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/lib%/usr/lib%g" $ROOT/../setup/FindAWH.cmake
