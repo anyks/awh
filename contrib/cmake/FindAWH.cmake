@@ -2,15 +2,15 @@ SET(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    # Если нужно загрузить и динамическую библиотеку
-    if (CMAKE_SHARED_LIB)
-        SET(CMAKE_FIND_LIBRARY_PREFIXES "")
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dll")
-    # Если нужно загрузить и статическую библиотеку
-    else (CMAKE_SHARED_LIB)
+    # Если нужно загрузить статическую библиотеку
+    if (CMAKE_STATIC_LIB_AWH)
         SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
         SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
-    endif (CMAKE_SHARED_LIB)
+    # Если нужно загрузить динамическую библиотеку
+    else (CMAKE_STATIC_LIB_AWH)
+        SET(CMAKE_FIND_LIBRARY_PREFIXES "")
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dll")
+    endif (CMAKE_STATIC_LIB_AWH)
 endif()
 
 # Поиск пути к заголовочным файлам
