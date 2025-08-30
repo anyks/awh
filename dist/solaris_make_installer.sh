@@ -138,7 +138,7 @@ pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 gsed -i "s%group=bin%group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Скрипт postinstall
-echo "legacy pkg.description="lib$PACKAGE_NAME with postinstall" pkg.relocation.base=usr/tmp/scripts pkg.relocation.pkgmap=no postinstall=usr/tmp/scripts/postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+echo "legacy pkg.relocation.pkgmap=no postinstall=usr/tmp/scripts/postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Создаём файл информационных данных
 touch $MANIFEST_PREFIX/$PACKAGE_NAME.mog
@@ -152,8 +152,11 @@ echo "set name=pkg.description value=\"$PACKAGE_DESCRIPTION\"" >> $MANIFEST_PREF
 echo "set name=pkg.human-version value=\"P$VERSION_P-u$VERSION_u-r$VERSION_r\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем название архитектуры процессора
 echo "set name=variant.arch value=\$(ARCH)" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Выполняем установку скрипта postinstall
+# echo "set name=postinstall value=\"usr/tmp/scripts/postinstall\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем категорию размещения приложения согласно файлу ($ cat /usr/share/lib/pkg/opensolaris.org.sections)
 echo "set name=info.classification value=\"org.opensolaris.category.2008:Applications/Internet\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+
 # Формируем правила сборки
 echo "<transform dir path=usr\$->drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 
