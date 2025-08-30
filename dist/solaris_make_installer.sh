@@ -33,8 +33,9 @@ readonly APP_DIR="$ROOT/../${PACKAGE_NAME}_dist"
 readonly BUILD_DIR="$ROOT/../${PACKAGE_NAME}_build"
 
 # Выполняем создание каталогов
+mkdir -p $APP_DIR/tmp || exit 1
+mkdir -p $APP_DIR/usr/sbin || exit 1
 mkdir -p $APP_DIR/usr/lib/amd64 || exit 1
-mkdir -p $APP_DIR/usr/tmp/scripts || exit 1
 mkdir -p $APP_DIR/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME || exit 1
 
 # Очистка сборочной директории
@@ -104,15 +105,15 @@ readonly VERSION_r=$(echo $VERSION | awk -F '\\.' '{print $3}')
 readonly PKG_NAME="${PACKAGE_NAME}_${VERSION}-1_${SYSTEM_ARCHITECTURE}.p5p"
 
 # Копируем файл cmake
-cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/tmp"/
-# Копируем каталог с скриптом последующей установки
-cp "$ROOT/../package/Solaris"/postinstall "$APP_DIR/usr/tmp/scripts"/
+cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/tmp"/
 # Копируем зависимости сторонние
 cp -r "$ROOT/../contrib/include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME"/
 # Копируем собранные зависимости
 cp -r "$ROOT/../third_party/include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME"/
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
+# Копируем каталог с скриптом последующей установки
+cp "$ROOT/../package/Solaris"/postinstall "$APP_DIR/usr/sbin"/postinstall-$PACKAGE_NAME
 
 # Заменяем конечный адрес назначения
 gsed -i "s%\${CMAKE_SOURCE_DIR}/third_party/lib%/usr/lib/amd64%g" $APP_DIR/usr/tmp/FindAWH.cmake
@@ -134,9 +135,6 @@ mkdir -p "$MANIFEST_PREFIX" || exit 1
 # Генерируем Manifest файл
 pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
-# Заменяем группу пользователя по умолчанию
-#gsed -i "s%group=bin%group=root%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
-
 # Создаём файл информационных данных
 touch $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем версию приложения
@@ -154,7 +152,7 @@ echo "set name=info.classification value=\"org.opensolaris.category.2008:Applica
 # Выполняем установку скрипта postinstall
 # echo "set name=postinstall value=\"usr/tmp/scripts/postinstall\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем установку скрипта postinstall
-echo "legacy pkg=$PACKAGE_NAME pkg.relocation.pkgmap=no postinstall=usr/tmp/scripts/postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+echo "legacy pkg=$PACKAGE_NAME pkg.relocation.pkgmap=no postinstall=usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем правила сборки
 echo "<transform dir path=usr\$->drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 
