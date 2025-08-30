@@ -5,8 +5,6 @@
 #define MyAppVersion "@version@"
 #define MyAppPublisher "@ANYKS"
 #define MyAppURL "https://anyks.com"
-#define MyAppAssocName MyAppName + " File"
-#define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
 #define MyDir "@pwd@"
 #define MyResaultDir "@installerDir@"
 
@@ -26,9 +24,6 @@ ChangesAssociations=yes
 ChangesEnvironment=yes
 DisableProgramGroupPage=yes
 ArchitecturesInstallIn64BitMode=x64compatible
-; SetupIconFile="{#MyDir}\icon.ico"
-; Uncomment the following line to run in non administrative install mode (install for current user only.)
-;PrivilegesRequired=lowest
 PrivilegesRequired=none
 OutputDir="{#MyResaultDir}"
 OutputBaseFilename=InstallAWHv{#MyAppVersion}
@@ -41,8 +36,8 @@ WizardStyle=modern
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "{#MyDir}\libawh.a"; DestDir: "{%windir}\..\msys64\mingw64\lib"; Flags: ignoreversion
-Source: "{#MyDir}\libawh.dll"; DestDir: "{%windir}\..\msys64\mingw64\bin"; Flags: ignoreversion
-Source: "{#MyDir}\FindAWH.cmake"; DestDir: "{%windir}\..\msys64\mingw64\bin"; Flags: ignoreversion
-Source: "{#MyDir}\include\*"; DestDir: "{%windir}\..\msys64\mingw64\share\cmake\Modules"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyDir}\awh.dll"; DestDir: "{%windir}\..\msys64\mingw64\bin"; Flags: ignoreversion
+Source: "{#MyDir}\libawh.lib"; DestDir: "{%windir}\..\msys64\mingw64\lib"; Flags: ignoreversion
+Source: "{#MyDir}\FindAWH.cmake"; DestDir: "{%windir}\..\msys64\mingw64\share\cmake\Modules"; Flags: ignoreversion
+Source: "{#MyDir}\include\*"; DestDir: "{%windir}\..\msys64\mingw64\include\libawh"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files

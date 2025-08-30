@@ -52,7 +52,7 @@ cmake \
 cmake --build . || exit 1
 
 # Копируем собранную динамическую библиотеку
-cp $BUILD_DIR/lib$PACKAGE_NAME.dll $ROOT/../setup/
+cp $BUILD_DIR/lib$PACKAGE_NAME.dll $ROOT/../setup/$PACKAGE_NAME.dll
 
 # Очищаем всю дирректорию
 cmake --build . --target clean
@@ -71,7 +71,7 @@ cmake \
 cmake --build . || exit 1
 
 # Копируем собранную статическую библиотеку
-cp $BUILD_DIR/lib$PACKAGE_NAME.a $ROOT/../setup/
+cp $BUILD_DIR/lib$PACKAGE_NAME.a $ROOT/../setup/lib$PACKAGE_NAME.lib
 
 # Переходим в корневой каталог обратно
 cd $ROOT/../
@@ -85,6 +85,10 @@ fi
 # Получаем версию приложения
 readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
+# Копируем иконку приложения
+cp "$ROOT/../icons"/icon.ico $ROOT/../setup/
+# Копируем иконку установщика
+cp "$ROOT/../icons"/setup.ico $ROOT/../setup/
 # Копируем файл cmake
 cp "$ROOT/../contrib/cmake"/FindAWH.cmake $ROOT/../setup/
 # Копируем шаблон установщика
