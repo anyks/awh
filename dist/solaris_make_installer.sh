@@ -138,7 +138,7 @@ pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 gsed -i "s%group=bin%group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Скрипт postinstall
-echo "script phase=install path=usr/tmp/scripts/postinstall method=exec" >> $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+echo "legacy pkg.description="lib$PACKAGE_NAME with postinstall" pkg.relocation.base=usr/tmp/scripts pkg.relocation.pkgmap=no postinstall=usr/tmp/scripts/postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Создаём файл информационных данных
 touch $MANIFEST_PREFIX/$PACKAGE_NAME.mog
