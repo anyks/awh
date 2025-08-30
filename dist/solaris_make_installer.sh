@@ -38,13 +38,13 @@ mkdir -p $APP_DIR/usr/tmp/scripts || exit 1
 mkdir -p $APP_DIR/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME || exit 1
 
 # Очистка сборочной директории
-if [ -d "$ROOT/../build" ]; then
-	rm -rf "$ROOT/../build" || exit 1
+if [ -d $BUILD_DIR ]; then
+	rm -rf $BUILD_DIR || exit 1
 fi
 
 # Собираем приложение
-mkdir "$ROOT/../build" || exit 1
-cd "$ROOT/../build" || exit 1
+mkdir $BUILD_DIR || exit 1
+cd $BUILD_DIR || exit 1
 
 # Устанавливаем жёстко компилятор
 export CC="gcc -m64"
