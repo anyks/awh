@@ -3,25 +3,30 @@
 # Экспортируем все существующие пути где могут лежать приложения
 export PATH="/usr/bin:/usr/local/bin:/opt/local/bin:$PATH"
 
-echo "Post installation process started"
-
 # Получаем название скрипта
 readonly NAME=$0
 # Получаем корневую дирректорию
 readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 # CMake адрес
 readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+# Адрес размещения файла CMake
+readonly $CMAKE_PATH_AWH "/usr/share/cmake-awh"
 
-# Копируем CMake файл в нужный нам каталог
-mv /usr/share/cmake-awh/FindAWH.cmake "$CMAKE/Modules"/FindAWH.cmake
+# Если адрес файла CMake существует
+if [ -f "$CMAKE_PATH_AWH/FindAWH.cmake" ]; then
+	# Выводим сообщение, что мы запустили процесс регистрации
+	echo "Process registration CMake started"
+
+	# Перемещаем CMake файл в нужный нам каталог
+	mv $CMAKE_PATH_AWH/FindAWH.cmake "$CMAKE/Modules"/
+	# Удаляем ненужный нам каталог
+	rm -rf $CMAKE_PATH_AWH
+
+	# Выводим сообщение, что мы завершили процесс регистрации
+	echo "Process registration CMake finished"
+fi
 
 # Переходим в временный каталог
-cd /usr
-
-# Удаляем ненужный нам каталог
-rm -rf /usr/share/cmake-awh
-
-echo "Post installation process finished"
-
+cd $ROOT
 # Удаляем каталог с скриптами
-rm  $ROOT/$NAME
+rm $NAME
