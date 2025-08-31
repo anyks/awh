@@ -51,7 +51,7 @@ cp "@root@/../contrib/cmake"/FindAWH.cmake "@prefix@/usr/share/@name@/cmake"/
 rm -rf @tmp@
 
 # Активируем глобальную сорку
-sed -i "s!SET(AHW_GLOBAL_INSTALLATION FALSE)!SET(AHW_GLOBAL_INSTALLATION TRUE)!g" @prefix@/tmp/FindAWH.cmake
+sed -i "s!SET(AHW_GLOBAL_INSTALLATION FALSE)!SET(AHW_GLOBAL_INSTALLATION TRUE)!g" "@prefix@/usr/share/@name@/cmake"/FindAWH.cmake
 
 %clean
 cp $(find @prefix@ -name "@name@*.rpm") %{buildroot}/../

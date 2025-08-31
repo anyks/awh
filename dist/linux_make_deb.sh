@@ -141,7 +141,7 @@ cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$WORK_PREFIX/usr/share/$PACKAGE_NAME/
 rm -rf $TMP_DIR
 
 # Активируем глобальную сорку
-sed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $WORK_PREFIX/tmp/FindAWH.cmake
+sed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" "$WORK_PREFIX/usr/share/$PACKAGE_NAME/cmake"/FindAWH.cmake
 
 # Создаем директории для сборки deb пакета
 mkdir -p "$PACKAGE_DEST_DIR" || exit 1

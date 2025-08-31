@@ -89,7 +89,7 @@ cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/local/share/$PACKAGE_NAM
 ln -s /usr/local/share/$PACKAGE_NAME/cmake/FindAWH.cmake $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake
 
 # Активируем глобальную сорку
-sed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake
+sed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" "$APP_DIR/usr/local/share/$PACKAGE_NAME/cmake"/FindAWH.cmake
 
 # Заходим в каталог
 cd $APP_DIR || exit 1
