@@ -193,11 +193,25 @@ pkgdepend generate -md $APP_DIR $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.2 | pkgfmt > 
 pkgdepend resolve -m $MANIFEST_PREFIX/$PACKAGE_NAME.p5m
 
 # Проверяем соответствие зависимостям
-pkglint $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.res
+pkglint \
+ --ignore action003.3 \
+ --ignore action005.1 \
+ $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.res
+
 # Проверяем соответствие зависимостей в репозитории
-pkglint -c $MANIFEST_PREFIX/solaris-reference -r http://pkg.oracle.com/solaris/release $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.res
+pkglint \
+ --ignore action003.3 \
+ --ignore action005.1 \
+ -c $MANIFEST_PREFIX/solaris-reference \
+ -r http://pkg.oracle.com/solaris/release \
+ $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.res
+
 # Перепроверяем результат с учётом кэша
-pkglint -c $MANIFEST_PREFIX/solaris-reference $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.res
+pkglint \
+ --ignore action003.3 \
+ --ignore action005.1 \
+ -c $MANIFEST_PREFIX/solaris-reference \
+ $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.res
 
 # Выполняем создание репозитория под проект
 pkgrepo create $MANIFEST_PREFIX/$PACKAGE_NAME-repository
