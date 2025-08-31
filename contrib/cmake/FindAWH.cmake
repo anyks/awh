@@ -31,7 +31,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если нужно загрузить динамическую библиотеку
     if (CMAKE_SHARED_LIB_AWH)
         # Ищем саму DLL
-        find_file(AWH_LIBRARY_DLL NAMES awh.dll PATHS ${CMAKE_SOURCE_DIR}/third_party/bin/awh NO_DEFAULT_PATH)
+        find_file(AWH_LIBRARY_DLL NAMES libawh.dll PATHS ${CMAKE_SOURCE_DIR}/third_party/bin/awh NO_DEFAULT_PATH)
         # Поиск библиотеки AWH
         find_library(AWH_LIBRARY NAMES awh libawh libawh.dll.a PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
     # Если нужно загрузить статическую библиотеку

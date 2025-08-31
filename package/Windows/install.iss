@@ -36,7 +36,7 @@ WizardStyle=modern
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "{#MyDir}\awh.dll"; DestDir: "{%windir}\..\msys64\mingw64\bin"; Flags: ignoreversion
+Source: "{#MyDir}\libawh.dll"; DestDir: "{%windir}\..\msys64\mingw64\bin"; Flags: ignoreversion
 Source: "{#MyDir}\libawh.lib"; DestDir: "{%windir}\..\msys64\mingw64\lib"; Flags: ignoreversion
 Source: "{#MyDir}\libawh.dll.a"; DestDir: "{%windir}\..\msys64\mingw64\lib"; Flags: ignoreversion
 Source: "{#MyDir}\FindAWH.cmake"; DestDir: "{%windir}\..\msys64\mingw64\share\cmake\Modules"; Flags: ignoreversion

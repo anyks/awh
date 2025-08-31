@@ -363,12 +363,6 @@ endif()
 if (CMAKE_SHARED_BUILD_LIB)
     # Добавляем динамическую библиотеку
     add_library(${AWH_LIB_NAME} SHARED ${SOURCE_FILES})
-    # Убираем префикс "lib" и задаём имя
-    set_target_properties(${AWH_LIB_NAME} PROPERTIES
-        OUTPUT_NAME "${CMAKE_PROJECT_NAME}" # имя: awh, а не libawh
-        PREFIX ""                           # убираем "lib"
-        IMPORT_PREFIX ""                    # для import-библиотеки тоже
-    )
     # Выполняем компиляцию библиотеки
     target_compile_definitions(${AWH_LIB_NAME} PRIVATE AWH_SHARED_LIBRARY_EXPORT)
 # Если нужно собрать и статическую библиотеку
@@ -1452,14 +1446,14 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Устанавливаем статическую библиотеку AWH
         install(TARGETS ${AWH_LIB_NAME}
             # .lib (import) — для линковки
-            ARCHIVE DESTINATION lib RENAME lib${CMAKE_PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}.a # libawh.lib → lib/libawh.dll.a
+            ARCHIVE DESTINATION lib RENAME ${CMAKE_PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX} # awh.lib → lib/libawh.dll.a
             # .dll (Windows) или .so (Linux) — исполняемый модуль
-            RUNTIME DESTINATION bin/${CMAKE_PROJECT_NAME} RENAME ${CMAKE_PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX} # awh.dll → bin/awh/awh.dll
+            RUNTIME DESTINATION bin/${CMAKE_PROJECT_NAME} RENAME ${CMAKE_PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX} # awh.dll → bin/awh/libawh.dll
         )
     # Если собрана статическая библиотека
     else (CMAKE_SHARED_BUILD_LIB)
         # Устанавливаем статическую библиотеку AWH
-        install(TARGETS ${AWH_LIB_NAME} ARCHIVE DESTINATION lib RENAME lib${CMAKE_PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
+        install(TARGETS ${AWH_LIB_NAME} ARCHIVE DESTINATION lib RENAME ${CMAKE_PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
     endif (CMAKE_SHARED_BUILD_LIB)
 # Если операцинная система относится к Nix-подобной
 else()

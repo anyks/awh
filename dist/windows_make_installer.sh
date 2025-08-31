@@ -52,8 +52,8 @@ cmake \
 cmake --build . || exit 1
 
 # Копируем собранную динамическую библиотеку
+cp $BUILD_DIR/lib$PACKAGE_NAME.dll $ROOT/../setup/
 cp $BUILD_DIR/lib$PACKAGE_NAME.dll.a $ROOT/../setup/
-cp $BUILD_DIR/lib$PACKAGE_NAME.dll $ROOT/../setup/$PACKAGE_NAME.dll
 
 # Очищаем всю дирректорию
 cmake --build . --target clean
