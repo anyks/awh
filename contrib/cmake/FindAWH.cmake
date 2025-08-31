@@ -120,8 +120,15 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 else()
     # Если нужно загрузить динамическую библиотеку
     if (CMAKE_SHARED_LIB_AWH)
-        # Устанавливаем расширение поиска библиотеки
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".so")
+        # Если операцинная система относится к MacOS X
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+            # Устанавливаем расширение поиска библиотеки
+            SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")
+        # Если операцинная система относится к другой Nix-подобной
+        else()
+            # Устанавливаем расширение поиска библиотеки
+            SET(CMAKE_FIND_LIBRARY_SUFFIXES ".so")
+        endif()
     # Если нужно загрузить статическую библиотеку
     else (CMAKE_SHARED_LIB_AWH)
         # Устанавливаем расширение поиска библиотеки
