@@ -38,6 +38,14 @@ readonly APP_DIR="$ROOT/../${PACKAGE_NAME}_dist"
 # Сборочная дирректория
 readonly BUILD_DIR="$ROOT/../${PACKAGE_NAME}_build"
 
+# Выполняем получение номера релиза
+RELEASE_NUMBER="$1"
+# Если номер релиза не установлен
+if [ ! -n "$RELEASE_NUMBER" ]; then
+	# Устанавливаем номер релиза по умолчанию
+	RELEASE_NUMBER="1"
+fi
+
 # Выполняем создание каталогов
 mkdir -p $APP_DIR/usr/sbin || exit 1
 mkdir -p $APP_DIR/usr/lib/amd64 || exit 1
@@ -157,7 +165,7 @@ echo "set name=info.classification value=\"org.opensolaris.category.2008:Applica
 # Выполняем установку скрипта postinstall
 echo "set name=com.oracle.info.system.postinstall value=usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем установку скрипта postinstall в секцию Legacy
-echo "legacy pkg=$PACKAGE_NAME name=\"$PACKAGE_DISTRIBUTION\" desc=\"$PACKAGE_DESCRIPTION\" vendor=\"$PACKAGE_VENDOR\" version=$VERSION category=\"application\" hotline=\"$PACKAGE_EMAIL\" pkg.relocation.pkgmap=no postinstall=/usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+echo "legacy pkg=$PACKAGE_NAME REV=$RELEASE_NUMBER name=\"$PACKAGE_DISTRIBUTION\" desc=\"$PACKAGE_DESCRIPTION\" vendor=\"$PACKAGE_VENDOR\" version=$VERSION category=\"application\" hotline=\"$PACKAGE_EMAIL\" pkg.relocation.pkgmap=no postinstall=/usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Удаляем из манифеста каталог /usr та-как он уже есть в системе и создавать его не требуется
 echo "<transform dir path=usr\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Удаляем из манифеста каталог /usr/lib та-как он уже есть в системе и создавать его не требуется
