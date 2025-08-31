@@ -150,12 +150,6 @@ echo "set name=variant.arch value=\$(ARCH)" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mo
 echo "set name=info.classification value=\"org.opensolaris.category.2008:Applications/Internet\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем установку скрипта postinstall
 echo "set name=com.oracle.info.system.postinstall value=usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
-
-# Выполняем установку скрипта postinstall
-# echo "set name=postinstall value=\"usr/tmp/scripts/postinstall\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
-# Выполняем установку скрипта postinstall
-# echo "legacy pkg=$PACKAGE_NAME pkg.relocation.pkgmap=no postinstall=usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
-
 # Удаляем из манифеста каталог /usr та-как он уже есть в системе и создавать его не требуется
 echo "<transform dir path=usr\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Удаляем из манифеста каталог /usr/lib та-как он уже есть в системе и создавать его не требуется
