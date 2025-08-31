@@ -35,7 +35,7 @@ readonly BUILD_DIR="$ROOT/../${PACKAGE_NAME}_build"
 # Выполняем создание каталогов
 mkdir -p $APP_DIR/usr/sbin || exit 1
 mkdir -p $APP_DIR/usr/lib/amd64 || exit 1
-mkdir -p $APP_DIR/usr/share/cmake-$PACKAGE_NAME || exit 1
+mkdir -p $APP_DIR/usr/share/$PACKAGE_NAME/cmake || exit 1
 mkdir -p $APP_DIR/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME || exit 1
 
 # Очистка сборочной директории
@@ -111,12 +111,12 @@ cp -r "$ROOT/../third_party/include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME"/
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
 # Копируем файл cmake
-cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/share/cmake-$PACKAGE_NAME"/
+cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/share/$PACKAGE_NAME/cmake"/
 # Копируем каталог с скриптом последующей установки
 cp "$ROOT/../package/Solaris"/postinstall "$APP_DIR/usr/sbin"/postinstall-$PACKAGE_NAME
 
 # Активируем глобальную сорку
-gsed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $APP_DIR/usr/share/cmake-$PACKAGE_NAME/FindAWH.cmake
+gsed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $APP_DIR/usr/share/$PACKAGE_NAME/cmake/FindAWH.cmake
 
 # Выставляем права доступа на каталог
 find $APP_DIR -type d ! -perm 755 -exec chmod 755 {} \;
@@ -134,12 +134,12 @@ mkdir -p "$MANIFEST_PREFIX" || exit 1
 # Генерируем Manifest файл
 pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
-# Добавляем скрипт выполнения postinstall
-# echo "script mode=0555 owner=root group=bin value=usr/sbin/postinstall-$PACKAGE_NAME type=postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
-
 # Заменяем группу пользователя по умолчанию
-gsed -i "s%path=usr/share owner=root group=bin%path=usr/share owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
-gsed -i "s%path=usr/share/cmake-$PACKAGE_NAME owner=root group=bin%path=usr/share/cmake-$PACKAGE_NAME owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+# gsed -i "s%path=usr/share owner=root group=bin%path=usr/share owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+# gsed -i "s%path=usr/share/$PACKAGE_NAME/cmake owner=root group=bin%path=usr/share/$PACKAGE_NAME/cmake owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+
+# Добавляем сам скрипт как файл
+# file usr/sbin/postinstall-awh path=usr/sbin/postinstall-awh mode=0555 owner=root group=bin
 
 # Создаём файл информационных данных
 touch $MANIFEST_PREFIX/$PACKAGE_NAME.mog
@@ -155,15 +155,21 @@ echo "set name=pkg.human-version value=\"P$VERSION_P-u$VERSION_u-r$VERSION_r\"" 
 echo "set name=variant.arch value=\$(ARCH)" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем категорию размещения приложения согласно файлу ($ cat /usr/share/lib/pkg/opensolaris.org.sections)
 echo "set name=info.classification value=\"org.opensolaris.category.2008:Applications/Internet\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
-
-echo "script mode=0555 owner=root group=bin value=usr/sbin/postinstall-$PACKAGE_NAME type=postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Выполняем установку скрипта postinstall
+echo "set name=com.oracle.info.system.postinstall value=usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 
 # Выполняем установку скрипта postinstall
 # echo "set name=postinstall value=\"usr/tmp/scripts/postinstall\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем установку скрипта postinstall
 # echo "legacy pkg=$PACKAGE_NAME pkg.relocation.pkgmap=no postinstall=usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+
 # Формируем правила сборки
 echo "<transform dir path=usr\$->drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Меняем у каталога группу пользователя
+echo "<transform dir path=usr/share -> edit group bin sys>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+echo "<transform dir path=usr/share/$PACKAGE_NAME/cmake -> edit group bin sys>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Выполняем изменение прав доступа на исполняемый скрипт
+echo "<transform file path=usr/sbin/postinstall-$PACKAGE_NAME -> edit mode .* 0555>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 
 # Комбинируем наш манифест с информационным файлом
 pkgmogrify -DARCH=`uname -p` $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1 $MANIFEST_PREFIX/$PACKAGE_NAME.mog | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.2
@@ -199,6 +205,8 @@ pkgrepo verify -s $PACKAGE_NAME-repository
 pkgrepo info -s $PACKAGE_NAME-repository
 # Выводим список пакетов в репозитории
 pkgrepo list -s $PACKAGE_NAME-repository
+# Выводим составляющую часть пакета
+pkgrepo contents -s $PACKAGE_NAME-repository pkg://$PACKAGE_NAME
 # Выводим проверку всего репозитория
 pkg list -afv -g $PACKAGE_NAME-repository
 
