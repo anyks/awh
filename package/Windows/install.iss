@@ -38,6 +38,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 Source: "{#MyDir}\awh.dll"; DestDir: "{%windir}\..\msys64\mingw64\bin"; Flags: ignoreversion
 Source: "{#MyDir}\libawh.lib"; DestDir: "{%windir}\..\msys64\mingw64\lib"; Flags: ignoreversion
+Source: "{#MyDir}\libawh.dll.a"; DestDir: "{%windir}\..\msys64\mingw64\lib"; Flags: ignoreversion
 Source: "{#MyDir}\FindAWH.cmake"; DestDir: "{%windir}\..\msys64\mingw64\share\cmake\Modules"; Flags: ignoreversion
 Source: "{#MyDir}\include\*"; DestDir: "{%windir}\..\msys64\mingw64\include\libawh"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
