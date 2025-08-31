@@ -134,13 +134,6 @@ mkdir -p "$MANIFEST_PREFIX" || exit 1
 # Генерируем Manifest файл
 pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
-# Заменяем группу пользователя по умолчанию
-# gsed -i "s%path=usr/share owner=root group=bin%path=usr/share owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
-# gsed -i "s%path=usr/share/$PACKAGE_NAME/cmake owner=root group=bin%path=usr/share/$PACKAGE_NAME/cmake owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
-
-# Добавляем сам скрипт как файл
-# file usr/sbin/postinstall-awh path=usr/sbin/postinstall-awh mode=0555 owner=root group=bin
-
 # Создаём файл информационных данных
 touch $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем версию приложения
@@ -230,5 +223,5 @@ echo "To install the application, please perform a:"
 echo ""
 echo "$ sudo pkg install -g $PKG_NAME $PACKAGE_NAME"
 echo ""
-echo "$ sudo chmod +x /usr/sbin/postinstall-$PACKAGE_NAME && sudo postinstall-$PACKAGE_NAME"
+echo "$ sudo postinstall-$PACKAGE_NAME"
 echo ""
