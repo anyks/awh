@@ -137,7 +137,7 @@ mkdir -p "$MANIFEST_PREFIX" || exit 1
 pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Добавляем скрипт выполнения postinstall
-echo "script mode=0555 owner=root group=bin value=usr/sbin/postinstall-$PACKAGE_NAME type=postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+# echo "script mode=0555 owner=root group=bin value=usr/sbin/postinstall-$PACKAGE_NAME type=postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
 # Заменяем группу пользователя по умолчанию
 gsed -i "s%path=usr/share owner=root group=bin%path=usr/share owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
@@ -157,6 +157,9 @@ echo "set name=pkg.human-version value=\"P$VERSION_P-u$VERSION_u-r$VERSION_r\"" 
 echo "set name=variant.arch value=\$(ARCH)" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем категорию размещения приложения согласно файлу ($ cat /usr/share/lib/pkg/opensolaris.org.sections)
 echo "set name=info.classification value=\"org.opensolaris.category.2008:Applications/Internet\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+
+echo "script mode=0555 owner=root group=bin value=usr/sbin/postinstall-$PACKAGE_NAME type=postinstall" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+
 # Выполняем установку скрипта postinstall
 # echo "set name=postinstall value=\"usr/tmp/scripts/postinstall\"" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем установку скрипта postinstall
