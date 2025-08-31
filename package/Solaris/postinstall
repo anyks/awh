@@ -1,4 +1,13 @@
-#!/usr/bin/env sh
+#!/bin/sh
+
+# Отладочный вывод
+echo "[$(date)] postinstall-awh started (PID: $$)" >> /tmp/postinstall-awh.log
+echo "CWD: $(pwd)" >> /tmp/postinstall-awh.log
+echo "Arguments: $*" >> /tmp/postinstall-awh.log
+echo "PATH: $PATH" >> /tmp/postinstall-awh.log
+echo "--- Environment ---" >> /tmp/postinstall-awh.log
+env >> /tmp/postinstall-awh.log 2>&1
+echo "===================" >> /tmp/postinstall-awh.log
 
 # Экспортируем все существующие пути где могут лежать приложения
 export PATH="/usr/bin:/usr/local/bin:/opt/local/bin:$PATH"
