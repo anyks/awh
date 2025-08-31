@@ -50,10 +50,8 @@ cp -r "@root@/../include"/* "@prefix@/usr/include/lib@name@/@name@"/
 # Удаляем более ненужный нам каталог
 rm -rf @tmp@
 
-# Заменяем конечный адрес назначения
-sed -i "s!\${CMAKE_SOURCE_DIR}/third_party/lib!/usr/lib!g" @prefix@/tmp/FindAWH.cmake
-sed -i "s!\${CMAKE_SOURCE_DIR}/third_party/bin/@name@!/usr/bin!g" @prefix@/tmp/FindAWH.cmake
-sed -i "s!\${CMAKE_SOURCE_DIR}/third_party/include!/usr/include/lib@name@!g" @prefix@/tmp/FindAWH.cmake
+# Активируем глобальную сорку
+sed -i "s!SET(AHW_GLOBAL_INSTALLATION FALSE)!SET(AHW_GLOBAL_INSTALLATION TRUE)!g" @prefix@/tmp/FindAWH.cmake
 
 %clean
 cp $(find @prefix@ -name "@name@*.rpm") %{buildroot}/../

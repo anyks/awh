@@ -84,10 +84,8 @@ cp -r "$ROOT/../third_party/include"/* "$APP_DIR/usr/local/include/lib$PACKAGE_N
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$APP_DIR/usr/local/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
 
-# Заменяем конечный адрес назначения
-sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/lib%/usr/local/lib%g" $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake
-sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/bin/${PACKAGE_NAME}%/usr/local/bin%g" $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake
-sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/include%/usr/local/include/lib${PACKAGE_NAME}%g" $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake
+# Активируем глобальную сорку
+sed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake
 
 # Заходим в каталог
 cd $APP_DIR || exit 1

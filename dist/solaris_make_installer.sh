@@ -115,10 +115,8 @@ cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/share/cmake-$PACKAGE_NAM
 # Копируем каталог с скриптом последующей установки
 cp "$ROOT/../package/Solaris"/postinstall "$APP_DIR/usr/sbin"/postinstall-$PACKAGE_NAME
 
-# Заменяем конечный адрес назначения
-gsed -i "s%\${CMAKE_SOURCE_DIR}/third_party/lib%/usr/lib/amd64%g" $APP_DIR/usr/share/cmake-$PACKAGE_NAME/FindAWH.cmake
-gsed -i "s%\${CMAKE_SOURCE_DIR}/third_party/bin/${PACKAGE_NAME}%/usr/bin%g" $APP_DIR/usr/share/cmake-$PACKAGE_NAME/FindAWH.cmake
-gsed -i "s%\${CMAKE_SOURCE_DIR}/third_party/include%/usr/include/lib${PACKAGE_NAME}%g" $APP_DIR/usr/share/cmake-$PACKAGE_NAME/FindAWH.cmake
+# Активируем глобальную сорку
+gsed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $APP_DIR/usr/share/cmake-$PACKAGE_NAME/FindAWH.cmake
 
 # Выставляем права доступа на каталог
 find $APP_DIR -type d ! -perm 755 -exec chmod 755 {} \;

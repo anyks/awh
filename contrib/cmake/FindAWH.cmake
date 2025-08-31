@@ -1,29 +1,100 @@
+# Отключаем поиск в системных каталогах
 SET(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
+
+# Флаг активации системной установки
+SET(AHW_GLOBAL_INSTALLATION FALSE)
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
-    SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+    # Если произведена установка глобально
+    if (AHW_GLOBAL_INSTALLATION)
+        # Ищем через переменную окружения
+        if(DEFINED ENV{MSYS2_ROOT})
+            # Устанавливаем системный путь поиска зависимостей
+            SET(AWH_SEARCH_PATH "$ENV{MSYS2_ROOT}/usr")
+        elseif(DEFINED ENV{MINGW_PREFIX})
+            # Устанавливаем системный путь поиска зависимостей
+            SET(AWH_SEARCH_PATH "$ENV{MINGW_PREFIX}/../usr")
+        endif()
+        # Выполняем формирование пути поиска исполняемых файлов
+        SET(AHW_BIN_PATH ${AWH_SEARCH_PATH}/bin)
+        # Выполняем формирование пути поиска заголовков
+        SET(AHW_HEADERS_PATH ${AWH_SEARCH_PATH}/include/libawh)
+    # Если произведена локальная установка
+    else (AHW_GLOBAL_INSTALLATION)
+        # Устанавливаем системный путь поиска зависимостей
+        SET(AWH_SEARCH_PATH ${CMAKE_SOURCE_DIR}/third_party)
+        # Выполняем формирование пути поиска исполняемых файлов
+        SET(AHW_BIN_PATH ${AWH_SEARCH_PATH}/bin/awh)
+        # Выполняем формирование пути поиска заголовков
+        SET(AHW_HEADERS_PATH ${AWH_SEARCH_PATH}/include)
+    endif (AHW_GLOBAL_INSTALLATION)
+    # Выполняем формирование пути поиска библиотек
+    SET(AHW_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
+# Если операцинная система относится к Nix-подобной
+else()
+    # Если произведена установка глобально
+    if (AHW_GLOBAL_INSTALLATION)
+        # Если операцинная система относится к MacOS X
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+            # Устанавливаем системный путь поиска зависимостей
+            SET(AWH_SEARCH_PATH /usr/local)
+            # Выполняем формирование пути поиска библиотек
+            SET(AHW_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
+        # Если операцинная система относится к Solaris
+        elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+            # Устанавливаем системный путь поиска зависимостей
+            SET(AWH_SEARCH_PATH /usr)
+            # Выполняем формирование пути поиска библиотек
+            SET(AHW_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib/amd64)
+       # Если операцинная система относится к Linux
+        elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+            # Устанавливаем системный путь поиска зависимостей
+            SET(AWH_SEARCH_PATH /usr)
+            # Выполняем формирование пути поиска библиотек
+            SET(AHW_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
+        # Если операцинная система относится к FreeBSD, NetBSD и OpenBSD
+        elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+            # Устанавливаем системный путь поиска зависимостей
+            SET(AWH_SEARCH_PATH /usr/local)
+            # Выполняем формирование пути поиска библиотек
+            SET(AHW_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
+        # Если операционная система не определена
+        else()
+            # Выводим сообщение, что операционная система не поддерживается
+            message(FATAL_ERROR "Operating system is not supported")
+        endif()
+        # Выполняем формирование пути поиска заголовков
+        SET(AHW_HEADERS_PATH ${AWH_SEARCH_PATH}/include/libawh)
+    # Если произведена локальная установка
+    else (AHW_GLOBAL_INSTALLATION)
+        # Устанавливаем системный путь поиска зависимостей
+        SET(AWH_SEARCH_PATH ${CMAKE_SOURCE_DIR}/third_party)
+        # Выполняем формирование пути поиска библиотек
+        SET(AHW_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
+        # Выполняем формирование пути поиска заголовков
+        SET(AHW_HEADERS_PATH ${AWH_SEARCH_PATH}/include)
+    endif (AHW_GLOBAL_INSTALLATION)
 endif()
 
 # Поиск пути к заголовочным файлам
-find_path(LZ4_INCLUDE_DIR NAMES lz4.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/lz4 NO_DEFAULT_PATH)
-find_path(BZ2_INCLUDE_DIR NAMES bzlib.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/bz2 NO_DEFAULT_PATH)
-find_path(ZSTD_INCLUDE_DIR NAMES zstd.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/zstd NO_DEFAULT_PATH)
-find_path(LZMA_INCLUDE_DIR NAMES lzma.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/lzma NO_DEFAULT_PATH)
-find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/zlib NO_DEFAULT_PATH)
-find_path(CITY_INCLUDE_DIR NAMES cityhash/city.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
-find_path(AWH_INCLUDE_DIR NAMES awh/server/awh.hpp PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
-find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
-find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
-find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
-find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/pcre2 NO_DEFAULT_PATH)
-find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp2 NO_DEFAULT_PATH)
+find_path(LZ4_INCLUDE_DIR NAMES lz4.h PATHS ${AHW_HEADERS_PATH}/lz4 NO_DEFAULT_PATH)
+find_path(BZ2_INCLUDE_DIR NAMES bzlib.h PATHS ${AHW_HEADERS_PATH}/bz2 NO_DEFAULT_PATH)
+find_path(ZSTD_INCLUDE_DIR NAMES zstd.h PATHS ${AHW_HEADERS_PATH}/zstd NO_DEFAULT_PATH)
+find_path(LZMA_INCLUDE_DIR NAMES lzma.h PATHS ${AHW_HEADERS_PATH}/lzma NO_DEFAULT_PATH)
+find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS ${AHW_HEADERS_PATH}/zlib NO_DEFAULT_PATH)
+find_path(CITY_INCLUDE_DIR NAMES cityhash/city.h PATHS ${AHW_HEADERS_PATH} NO_DEFAULT_PATH)
+find_path(AWH_INCLUDE_DIR NAMES awh/server/awh.hpp PATHS ${AHW_HEADERS_PATH} NO_DEFAULT_PATH)
+find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${AHW_HEADERS_PATH}/brotli NO_DEFAULT_PATH)
+find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${AHW_HEADERS_PATH}/brotli NO_DEFAULT_PATH)
+find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${AHW_HEADERS_PATH} NO_DEFAULT_PATH)
+find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${AHW_HEADERS_PATH}/pcre2 NO_DEFAULT_PATH)
+find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${AHW_HEADERS_PATH}/nghttp2 NO_DEFAULT_PATH)
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-    find_path(IDN2_INCLUDE_DIR NAMES idn2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/idn2 NO_DEFAULT_PATH)
-    find_path(ICONV_INCLUDE_DIR NAMES iconv.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/iconv NO_DEFAULT_PATH)
+    find_path(IDN2_INCLUDE_DIR NAMES idn2.h PATHS ${AHW_HEADERS_PATH}/idn2 NO_DEFAULT_PATH)
+    find_path(ICONV_INCLUDE_DIR NAMES iconv.h PATHS ${AHW_HEADERS_PATH}/iconv NO_DEFAULT_PATH)
 endif()
 
 # Если операцинная система относится к MS Windows
@@ -31,24 +102,27 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если нужно загрузить динамическую библиотеку
     if (CMAKE_SHARED_LIB_AWH)
         # Ищем саму DLL
-        find_file(AWH_LIBRARY_DLL NAMES libawh.dll PATHS ${CMAKE_SOURCE_DIR}/third_party/bin/awh NO_DEFAULT_PATH)
+        find_file(AWH_LIBRARY_DLL NAMES libawh.dll PATHS ${AHW_BIN_PATH} NO_DEFAULT_PATH)
         # Поиск библиотеки AWH
-        find_library(AWH_LIBRARY NAMES awh libawh libawh.dll.a PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+        find_library(AWH_LIBRARY NAMES awh PATHS ${AHW_LIBRARY_PATH} NO_DEFAULT_PATH)
     # Если нужно загрузить статическую библиотеку
     else (CMAKE_SHARED_LIB_AWH)
+        # Устанавливаем правила поиска библиотеки
+        SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
         # Поиск библиотеки AWH
-        find_library(AWH_LIBRARY NAMES awh libawh PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+        find_library(AWH_LIBRARY NAMES awh PATHS ${AHW_LIBRARY_PATH} NO_DEFAULT_PATH)
     endif (CMAKE_SHARED_LIB_AWH)
 # Если операцинная система относится к Nix-подобной
 else()
     # Поиск библиотеки AWH
-    find_library(AWH_LIBRARY NAMES awh PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+    find_library(AWH_LIBRARY NAMES awh PATHS ${AHW_LIBRARY_PATH} NO_DEFAULT_PATH)
 endif()
 
 # Если активирован режим отладки
 if (CMAKE_AWH_BUILD_DEBUG)
     # Поиск библиотеки AWH
-    find_library(DEPEND_LIBRARY NAMES dependence PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+    find_library(DEPEND_LIBRARY NAMES dependence PATHS ${AHW_LIBRARY_PATH} NO_DEFAULT_PATH)
 endif()
 
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))

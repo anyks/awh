@@ -87,10 +87,8 @@ cp -r "$ROOT/../third_party/include"/* "$APP_DIR/include"/
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$APP_DIR/include/$PACKAGE_NAME"/
 
-# Заменяем конечный адрес назначения
-sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party/lib!/usr/local/lib!" $APP_DIR/FindAWH.cmake
-sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party/bin/${PACKAGE_NAME}!/usr/local/bin!" $APP_DIR/FindAWH.cmake
-sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party/include!/usr/local/include/lib${PACKAGE_NAME}!" $APP_DIR/FindAWH.cmake
+# Активируем глобальную сорку
+sed -i -e "s!SET(AHW_GLOBAL_INSTALLATION FALSE)!SET(AHW_GLOBAL_INSTALLATION TRUE)!" $APP_DIR/FindAWH.cmake
 
 # Удаляем все ненужные нам файлы
 find $APP_DIR -type f -name "*-e" -exec rm {} \;

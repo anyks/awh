@@ -136,10 +136,8 @@ cp -r "$ROOT/../include"/* "$WORK_PREFIX/usr/include/lib$PACKAGE_NAME/$PACKAGE_N
 # Удаляем более ненужный нам каталог
 rm -rf $TMP_DIR
 
-# Заменяем конечный адрес назначения
-sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/lib%/usr/lib%g" $WORK_PREFIX/tmp/FindAWH.cmake
-sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/bin/${PACKAGE_NAME}%/usr/bin%g" $WORK_PREFIX/tmp/FindAWH.cmake
-sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/include%/usr/include/lib${PACKAGE_NAME}%g" $WORK_PREFIX/tmp/FindAWH.cmake
+# Активируем глобальную сорку
+sed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $WORK_PREFIX/tmp/FindAWH.cmake
 
 # Создаем директории для сборки deb пакета
 mkdir -p "$PACKAGE_DEST_DIR" || exit 1
