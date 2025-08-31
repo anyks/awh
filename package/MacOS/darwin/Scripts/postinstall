@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # Экспортируем все существующие пути где могут лежать приложения
 export PATH="/usr/local/bin:/opt/homebrew/bin:/opt/local/bin:/Applications/CMake.app/Contents/bin:$PATH"

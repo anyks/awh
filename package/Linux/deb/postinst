@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 modprobe sctp
 sysctl -w net.sctp.auth_enable=1
