@@ -156,10 +156,20 @@ echo "set name=com.oracle.info.system.postinstall value=usr/sbin/postinstall-$PA
 # Выполняем установку скрипта postinstall
 # echo "legacy pkg=$PACKAGE_NAME pkg.relocation.pkgmap=no postinstall=usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 
-# Формируем правила сборки
-echo "<transform dir path=usr\$->drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
-# Меняем у каталога группу пользователя
-echo "<transform dir path=usr/share -> edit group bin sys>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Удаляем из манифеста каталог /usr та-как он уже есть в системе и создавать его не требуется
+echo "<transform dir path=usr\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Удаляем из манифеста каталог /usr/lib та-как он уже есть в системе и создавать его не требуется
+echo "<transform dir path=usr/lib\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Удаляем из манифеста каталог /usr/sbin та-как он уже есть в системе и создавать его не требуется
+echo "<transform dir path=usr/sbin\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Удаляем из манифеста каталог /usr/share та-как он уже есть в системе и создавать его не требуется
+echo "<transform dir path=usr/share\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Удаляем из манифеста каталог /usr/include та-как он уже есть в системе и создавать его не требуется
+echo "<transform dir path=usr/include\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Удаляем из манифеста каталог /usr/lib/amd64 та-как он уже есть в системе и создавать его не требуется
+echo "<transform dir path=usr/lib/amd64\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# Меняем у каталога группу пользователя с bin на sys
+echo "<transform dir path=usr/share/$PACKAGE_NAME -> edit group bin sys>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 echo "<transform dir path=usr/share/$PACKAGE_NAME/cmake -> edit group bin sys>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем изменение прав доступа на исполняемый скрипт
 echo "<transform file path=usr/sbin/postinstall-$PACKAGE_NAME -> edit mode (0?644|0?755|644|755) 0555>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
