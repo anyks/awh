@@ -10,7 +10,7 @@ readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 # CMake адрес
 readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 # Адрес размещения файла CMake
-readonly $CMAKE_PATH_AWH "/usr/share/awh/cmake"
+readonly $CMAKE_PATH_AWH="/usr/share/awh/cmake"
 
 # Если адрес файла CMake существует
 if [ -f "$CMAKE_PATH_AWH/FindAWH.cmake" ]; then

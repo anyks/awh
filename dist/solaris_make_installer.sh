@@ -206,7 +206,7 @@ pkgrepo info -s $PACKAGE_NAME-repository
 # Выводим список пакетов в репозитории
 pkgrepo list -s $PACKAGE_NAME-repository
 # Выводим составляющую часть пакета
-pkgrepo contents -s $PACKAGE_NAME-repository pkg://$PACKAGE_NAME
+pkgrepo contents -s $PACKAGE_NAME-repository pkg://$PACKAGE_PUBLISHER/$PACKAGE_NAME@$VERSION
 # Выводим проверку всего репозитория
 pkg list -afv -g $PACKAGE_NAME-repository
 
