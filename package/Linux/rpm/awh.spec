@@ -64,7 +64,7 @@ cp $(find @prefix@ -name "@name@*.rpm") %{buildroot}/../
 /usr/lib/libawh.a
 /usr/lib/libawh.so
 /tmp/FindAWH.cmake
-/usr/include/lib@name@/@name@/*
+/usr/include/lib@name@/*
 
 %post
 modprobe sctp
