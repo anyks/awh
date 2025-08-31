@@ -99,17 +99,20 @@ endif()
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Устанавливаем префикс поиска библиотеки
+    SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
     # Если нужно загрузить динамическую библиотеку
     if (CMAKE_SHARED_LIB_AWH)
+        # Устанавливаем расширение поиска библиотеки
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dll.a")
         # Ищем саму DLL
         find_file(AWH_LIBRARY_DLL NAMES libawh.dll PATHS ${AHW_BIN_PATH} NO_DEFAULT_PATH)
         # Поиск библиотеки AWH
         find_library(AWH_LIBRARY NAMES awh PATHS ${AHW_LIBRARY_PATH} NO_DEFAULT_PATH)
     # Если нужно загрузить статическую библиотеку
     else (CMAKE_SHARED_LIB_AWH)
-        # Устанавливаем правила поиска библиотеки
-        SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+        # Устанавливаем расширение поиска библиотеки
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
         # Поиск библиотеки AWH
         find_library(AWH_LIBRARY NAMES awh PATHS ${AHW_LIBRARY_PATH} NO_DEFAULT_PATH)
     endif (CMAKE_SHARED_LIB_AWH)

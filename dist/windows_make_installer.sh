@@ -72,7 +72,7 @@ cmake \
 cmake --build . || exit 1
 
 # Копируем собранную статическую библиотеку
-cp $BUILD_DIR/lib$PACKAGE_NAME.a $ROOT/../setup/lib$PACKAGE_NAME.lib
+cp $BUILD_DIR/lib$PACKAGE_NAME.a $ROOT/../setup/
 
 # Переходим в корневой каталог обратно
 cd $ROOT/../
