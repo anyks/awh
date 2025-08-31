@@ -9,10 +9,10 @@ echo "Post installation process started"
 [ -d /usr/local/include/lib__PRODUCT__ ] || mkdir -p /usr/local/include/lib__PRODUCT__
 
 # CMake адрес
-readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+readonly CMAKE_PATH=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Копируем CMake файл в нужный нам каталог
-mv /tmp/FindAWH.cmake "$CMAKE/Modules"/FindAWH.cmake
+ln -s /usr/local/share/__PRODUCT__/cmake/FindAWH.cmake "$CMAKE_PATH/Modules"/FindAWH.cmake
 
 # Выставляем права доступа на каталог
 find . -type d ! -perm 755 -exec chmod 755 {} \;

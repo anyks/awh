@@ -46,8 +46,17 @@ echo "Application uninstalling process started"
 # Cmake Path
 readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
-# Remove CMake file
+# Remove link CMake file
 find $CMAKE/Modules -name "FindAWH.cmake" | xargs rm
+if [ $? -eq 0 ]
+then
+  echo "[1/3] [DONE] Successfully deleted link CMake file FindAWH.cmake"
+else
+  echo "[1/3] [ERROR] Could not delete link CMake file FindAWH.cmake" >&2
+fi
+
+# Remove CMake file
+find "/usr/local/share/__PRODUCT__/cmake" -name "FindAWH.cmake" | xargs rm
 if [ $? -eq 0 ]
 then
   echo "[1/3] [DONE] Successfully deleted CMake file FindAWH.cmake"

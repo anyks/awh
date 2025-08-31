@@ -23,6 +23,7 @@ readonly BUILD_DIR="$ROOT/../${PACKAGE_NAME}_build"
 # Выполняем создание каталогов
 mkdir -p $APP_DIR/usr/local/lib || exit 1
 mkdir -p $APP_DIR/usr/local/share/cmake/Modules || exit 1
+mkdir -p $APP_DIR/usr/local/share/$PACKAGE_NAME/cmake || exit 1
 mkdir -p $APP_DIR/usr/local/include/lib$PACKAGE_NAME/$PACKAGE_NAME || exit 1
 
 # Очистка сборочной директории
@@ -75,14 +76,17 @@ if [ "${SYSTEM_ARCHITECTURE}" = "x86_64" ] || [ "${SYSTEM_ARCHITECTURE}" = "i86p
 	SYSTEM_ARCHITECTURE="amd64"
 fi
 
-# Копируем файл cmake
-cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/local/share/cmake/Modules"/
 # Копируем зависимости сторонние
 cp -r "$ROOT/../contrib/include"/* "$APP_DIR/usr/local/include/lib$PACKAGE_NAME"/
 # Копируем собранные зависимости
 cp -r "$ROOT/../third_party/include"/* "$APP_DIR/usr/local/include/lib$PACKAGE_NAME"/
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$APP_DIR/usr/local/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
+# Копируем файл cmake
+cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/local/share/$PACKAGE_NAME/cmake"/
+
+# Создаём ярлык на файл CMake
+ln -s /usr/local/share/$PACKAGE_NAME/cmake/FindAWH.cmake $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake
 
 # Активируем глобальную сорку
 sed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake

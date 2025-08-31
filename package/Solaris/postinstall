@@ -22,7 +22,7 @@ if [ -f "$CMAKE_PATH_AWH/FindAWH.cmake" ] && [ -d "$CMAKE_PATH/Modules" ]; then
 	# Выводим сообщение, что мы запустили процесс регистрации
 	echo "Process registration CMake started"
 	# Перемещаем CMake файл в нужный нам каталог
-	cp $CMAKE_PATH_AWH/FindAWH.cmake "$CMAKE_PATH/Modules"/
+	ln -s $CMAKE_PATH_AWH/FindAWH.cmake "$CMAKE_PATH/Modules"/FindAWH.cmake
 	# Выводим сообщение, что мы завершили процесс регистрации
 	echo "Process registration CMake finished"
 fi

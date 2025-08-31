@@ -7,4 +7,4 @@ sysctl -w net.sctp.auth_enable=1
 readonly CMAKE_PATH=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Выполняем перемещение файла CMake
-mv /usr/share/awh/cmake/FindAWH.cmake $CMAKE_PATH/Modules/
+ln -s /usr/share/awh/cmake/FindAWH.cmake $CMAKE_PATH/Modules/FindAWH.cmake

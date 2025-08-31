@@ -84,14 +84,14 @@ copyBuildDirectory() {
 	mkdir -p "${TARGET_DIRECTORY}/darwinpkg"
 
 	# Copy cellery product to ${PRODUCT}
-	mkdir -p "${TARGET_DIRECTORY}/darwinpkg/tmp"
 	mkdir -p "${TARGET_DIRECTORY}/darwinpkg/usr/local/lib"
 	mkdir -p "${TARGET_DIRECTORY}/darwinpkg/usr/local/include/lib${PRODUCT}"
+	mkdir -p "${TARGET_DIRECTORY}/darwinpkg/usr/local/share/${PRODUCT}/cmake"
 
-	cp -a "$SCRIPTPATH/application"/FindAWH.cmake "${TARGET_DIRECTORY}/darwinpkg/tmp"/FindAWH.cmake
 	cp -a "$SCRIPTPATH/application"/lib${PRODUCT}.a "${TARGET_DIRECTORY}/darwinpkg/usr/local/lib"/lib${PRODUCT}.a
 	cp -a "$SCRIPTPATH/application"/lib${PRODUCT}.dylib "${TARGET_DIRECTORY}/darwinpkg/usr/local/lib"/lib${PRODUCT}.dylib
 	cp -r "$SCRIPTPATH/application/include"/* "${TARGET_DIRECTORY}/darwinpkg/usr/local/include/lib${PRODUCT}"/
+	cp -a "$SCRIPTPATH/application"/FindAWH.cmake "${TARGET_DIRECTORY}/darwinpkg/usr/local/share/${PRODUCT}/cmake"/
 
 	chmod -R 755 "${TARGET_DIRECTORY}/darwinpkg/"
 
