@@ -118,6 +118,15 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     endif (CMAKE_SHARED_LIB_AWH)
 # Если операцинная система относится к Nix-подобной
 else()
+    # Если нужно загрузить динамическую библиотеку
+    if (CMAKE_SHARED_LIB_AWH)
+        # Устанавливаем расширение поиска библиотеки
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".so")
+    # Если нужно загрузить статическую библиотеку
+    else (CMAKE_SHARED_LIB_AWH)
+        # Устанавливаем расширение поиска библиотеки
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    endif (CMAKE_SHARED_LIB_AWH)
     # Поиск библиотеки AWH
     find_library(AWH_LIBRARY NAMES awh PATHS ${AHW_LIBRARY_PATH} NO_DEFAULT_PATH)
 endif()
