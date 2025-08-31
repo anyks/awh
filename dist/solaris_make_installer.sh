@@ -136,6 +136,10 @@ mkdir -p "$MANIFEST_PREFIX" || exit 1
 # Генерируем Manifest файл
 pkgsend generate $APP_DIR | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
 
+# Заменяем группу пользователя по умолчанию
+gsed -i "s%path=usr/share owner=root group=bin%path=usr/share owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+gsed -i "s%path=usr/share/cmake-$PACKAGE_NAME owner=root group=bin%path=usr/share/cmake-$PACKAGE_NAME owner=root group=sys%g" $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1
+
 # Создаём файл информационных данных
 touch $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Формируем версию приложения
