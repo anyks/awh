@@ -67,6 +67,9 @@ cmake \
 
 cmake --build . || exit 1
 
+# Копируем собранную статическую библиотеку
+cp $BUILD_DIR/lib$PACKAGE_NAME.a $TMP_DIR/
+
 # Переходим в корневой каталог обратно
 cd $ROOT/../
 
