@@ -169,7 +169,9 @@ echo "<transform dir path=usr\$->drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 echo "<transform dir path=usr/share -> edit group bin sys>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 echo "<transform dir path=usr/share/$PACKAGE_NAME/cmake -> edit group bin sys>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем изменение прав доступа на исполняемый скрипт
-echo "<transform file path=usr/sbin/postinstall-$PACKAGE_NAME -> edit mode .* 0555>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+# echo "<transform file path=usr/sbin/postinstall-$PACKAGE_NAME -> edit mode .* 0555>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+echo "<transform file path=usr/sbin/postinstall-$PACKAGE_NAME -> drop mode .*>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+echo "<transform file path=usr/sbin/postinstall-$PACKAGE_NAME -> add mode 0555>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 
 # Комбинируем наш манифест с информационным файлом
 pkgmogrify -DARCH=`uname -p` $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.1 $MANIFEST_PREFIX/$PACKAGE_NAME.mog | pkgfmt > $MANIFEST_PREFIX/$PACKAGE_NAME.p5m.2
