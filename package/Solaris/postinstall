@@ -12,21 +12,17 @@ echo "===================" >> /tmp/postinstall-awh.log
 # Экспортируем все существующие пути где могут лежать приложения
 export PATH="/usr/bin:/usr/local/bin:/opt/local/bin:$PATH"
 
-# Получаем название скрипта
-readonly NAME=$0
-# Получаем корневую дирректорию
-readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 # CMake адрес
-readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+readonly CMAKE_PATH=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 # Адрес размещения файла CMake
 readonly CMAKE_PATH_AWH="/usr/share/awh/cmake"
 
 # Если адрес файла CMake существует
-if [ -f "$CMAKE_PATH_AWH/FindAWH.cmake" ]; then
+if [ -f "$CMAKE_PATH_AWH/FindAWH.cmake" ] && [ -d "$CMAKE_PATH/Modules" ]; then
 	# Выводим сообщение, что мы запустили процесс регистрации
 	echo "Process registration CMake started"
 	# Перемещаем CMake файл в нужный нам каталог
-	cp $CMAKE_PATH_AWH/FindAWH.cmake "$CMAKE/Modules"/
+	cp $CMAKE_PATH_AWH/FindAWH.cmake "$CMAKE_PATH/Modules"/
 	# Выводим сообщение, что мы завершили процесс регистрации
 	echo "Process registration CMake finished"
 fi
