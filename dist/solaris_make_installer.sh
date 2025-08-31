@@ -17,6 +17,12 @@ readonly PACKAGE_NAME="awh"
 
 # Автор публикуемого проекта
 readonly PACKAGE_PUBLISHER="ANYKS"
+# Владелец публикуемого проекта
+readonly PACKAGE_VENDOR="ANYKS LLC"
+# Адрес электронной почты
+readonly PACKAGE_EMAIL="info@anyks.com"
+# Название продавца
+readonly PACKAGE_DISTRIBUTION="ANYKS - WEB (AWH)"
 
 # Название приложения
 readonly PACKAGE_SMMARY="Modern network technologies"
@@ -151,7 +157,7 @@ echo "set name=info.classification value=\"org.opensolaris.category.2008:Applica
 # Выполняем установку скрипта postinstall
 echo "set name=com.oracle.info.system.postinstall value=usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Выполняем установку скрипта postinstall в секцию Legacy
-echo "legacy pkg=$PACKAGE_NAME pkg.relocation.pkgmap=no postinstall=/usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
+echo "legacy pkg=$PACKAGE_NAME name=\"$PACKAGE_DISTRIBUTION\" desc=\"$PACKAGE_DESCRIPTION\" vendor=\"$PACKAGE_VENDOR\" version=$VERSION category=\"application\" hotline=\"$PACKAGE_EMAIL\" pkg.relocation.pkgmap=no postinstall=/usr/sbin/postinstall-$PACKAGE_NAME" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Удаляем из манифеста каталог /usr та-как он уже есть в системе и создавать его не требуется
 echo "<transform dir path=usr\$ -> drop>" >> $MANIFEST_PREFIX/$PACKAGE_NAME.mog
 # Удаляем из манифеста каталог /usr/lib та-как он уже есть в системе и создавать его не требуется
