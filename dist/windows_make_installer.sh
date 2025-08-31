@@ -102,6 +102,7 @@ cp -ar "$ROOT/../include"/* $ROOT/../setup/include/$PACKAGE_NAME/
 
 # Заменяем конечный адрес назначения
 sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/lib%/usr/lib%g" $ROOT/../setup/FindAWH.cmake
+sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/bin/${PACKAGE_NAME}%/usr/bin%g" $ROOT/../setup/FindAWH.cmake
 sed -i "s%\${CMAKE_SOURCE_DIR}/third_party/include%/usr/include/lib${PACKAGE_NAME}%g" $ROOT/../setup/FindAWH.cmake
 
 # Извлекаем все библиотеки зависимостей

@@ -13,10 +13,13 @@ readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 readonly CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Копируем CMake файл в нужный нам каталог
-mv /tmp/FindAWH.cmake "$CMAKE/Modules"/FindAWH.cmake
+mv /usr/share/cmake-awh/FindAWH.cmake "$CMAKE/Modules"/FindAWH.cmake
 
 # Переходим в временный каталог
-cd /tmp
+cd /usr
+
+# Удаляем ненужный нам каталог
+rm -rf /usr/share/cmake-awh
 
 echo "Post installation process finished"
 

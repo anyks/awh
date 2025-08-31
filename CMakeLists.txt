@@ -379,7 +379,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     SET(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
-    SET(RES_FILES "awh.rc")
+    SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)
     SET(CMAKE_RC_COMPILER_INIT windres)
     ENABLE_LANGUAGE(RC)
     SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
@@ -1438,8 +1438,28 @@ if (NOT CMAKE_SHARED_BUILD_LIB)
     endif()
 endif()
 
-# Устанавливаем статическую библиотеку AWH
-install(TARGETS ${AWH_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+# Если операционной системой является Windows
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Если собрана динамическая библиотека
+    if (CMAKE_SHARED_BUILD_LIB)
+        # Устанавливаем статическую библиотеку AWH
+        install(TARGETS ${AWH_LIB_NAME}
+            # .lib (import) — для линковки
+            ARCHIVE DESTINATION lib RENAME lib${CMAKE_PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}.a # libawh.lib → lib/libawh.dll.a
+            # .dll (Windows) или .so (Linux) — исполняемый модуль
+            RUNTIME DESTINATION bin/${CMAKE_PROJECT_NAME} RENAME ${CMAKE_PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX} # awh.dll → bin/awh.dll
+        )
+    # Если собрана статическая библиотека
+    else (CMAKE_SHARED_BUILD_LIB)
+        # Устанавливаем статическую библиотеку AWH
+        install(TARGETS ${AWH_LIB_NAME} ARCHIVE DESTINATION lib RENAME lib${CMAKE_PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
+    endif (CMAKE_SHARED_BUILD_LIB)
+# Если операцинная система относится к Nix-подобной
+else()
+    # Устанавливаем статическую библиотеку AWH
+    install(TARGETS ${AWH_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
+
 # Устанавливаем статическую библиотеку TcMalloc
 install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 

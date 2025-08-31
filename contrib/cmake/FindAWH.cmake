@@ -2,15 +2,8 @@ SET(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    # Если нужно загрузить статическую библиотеку
-    if (CMAKE_STATIC_LIB_AWH)
-        SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
-    # Если нужно загрузить динамическую библиотеку
-    else (CMAKE_STATIC_LIB_AWH)
-        SET(CMAKE_FIND_LIBRARY_PREFIXES "")
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dll")
-    endif (CMAKE_STATIC_LIB_AWH)
+    SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+    SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
 endif()
 
 # Поиск пути к заголовочным файлам
@@ -33,8 +26,24 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     find_path(ICONV_INCLUDE_DIR NAMES iconv.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/iconv NO_DEFAULT_PATH)
 endif()
 
-# Поиск библиотеки AWH
-find_library(AWH_LIBRARY NAMES awh PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+# Если операцинная система относится к MS Windows
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Если нужно загрузить динамическую библиотеку
+    if (CMAKE_SHARED_LIB_AWH)
+        # Ищем саму DLL
+        find_file(AWH_LIBRARY_DLL NAMES awh.dll PATHS ${CMAKE_SOURCE_DIR}/third_party/bin/awh NO_DEFAULT_PATH)
+        # Поиск библиотеки AWH
+        find_library(AWH_LIBRARY NAMES awh libawh libawh.dll.a PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+    # Если нужно загрузить статическую библиотеку
+    else (CMAKE_SHARED_LIB_AWH)
+        # Поиск библиотеки AWH
+        find_library(AWH_LIBRARY NAMES awh libawh PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+    endif (CMAKE_SHARED_LIB_AWH)
+# Если операцинная система относится к Nix-подобной
+else()
+    # Поиск библиотеки AWH
+    find_library(AWH_LIBRARY NAMES awh PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+endif()
 
 # Если активирован режим отладки
 if (CMAKE_AWH_BUILD_DEBUG)
@@ -143,24 +152,48 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         SET(AWH_LIBRARIES ${DEPEND_LIBRARY} ${AWH_LIBRARY})
     # Если режим отладки не активирован
     else()
-        # Выполняем проверку на существование зависимостей
-        find_package_handle_standard_args(AWH REQUIRED_VARS
-            AWH_LIBRARY
-            LZ4_INCLUDE_DIR
-            BZ2_INCLUDE_DIR
-            ZSTD_INCLUDE_DIR
-            LZMA_INCLUDE_DIR
-            ZLIB_INCLUDE_DIR
-            BROTLI_INCLUDE_ENCODE_DIR
-            BROTLI_INCLUDE_DECODE_DIR
-            AWH_INCLUDE_DIR
-            CITY_INCLUDE_DIR
-            OPENSSL_INCLUDE_DIR
-            PCRE_INCLUDE_DIR
-            NGHTTP2_INCLUDE_DIR
+        # Если нужно загрузить динамическую библиотеку
+        if (CMAKE_SHARED_LIB_AWH)
+            # Выполняем проверку на существование зависимостей
+            find_package_handle_standard_args(AWH REQUIRED_VARS
+                AWH_LIBRARY
+                AWH_LIBRARY_DLL
+                LZ4_INCLUDE_DIR
+                BZ2_INCLUDE_DIR
+                ZSTD_INCLUDE_DIR
+                LZMA_INCLUDE_DIR
+                ZLIB_INCLUDE_DIR
+                BROTLI_INCLUDE_ENCODE_DIR
+                BROTLI_INCLUDE_DECODE_DIR
+                AWH_INCLUDE_DIR
+                CITY_INCLUDE_DIR
+                OPENSSL_INCLUDE_DIR
+                PCRE_INCLUDE_DIR
+                NGHTTP2_INCLUDE_DIR
 
-            FAIL_MESSAGE "AWH library is not found"
-        )
+                FAIL_MESSAGE "AWH library is not found"
+            )
+        # Если нужно загрузить статическую библиотеку
+        else (CMAKE_SHARED_LIB_AWH)
+            # Выполняем проверку на существование зависимостей
+            find_package_handle_standard_args(AWH REQUIRED_VARS
+                AWH_LIBRARY
+                LZ4_INCLUDE_DIR
+                BZ2_INCLUDE_DIR
+                ZSTD_INCLUDE_DIR
+                LZMA_INCLUDE_DIR
+                ZLIB_INCLUDE_DIR
+                BROTLI_INCLUDE_ENCODE_DIR
+                BROTLI_INCLUDE_DECODE_DIR
+                AWH_INCLUDE_DIR
+                CITY_INCLUDE_DIR
+                OPENSSL_INCLUDE_DIR
+                PCRE_INCLUDE_DIR
+                NGHTTP2_INCLUDE_DIR
+
+                FAIL_MESSAGE "AWH library is not found"
+            )
+        endif (CMAKE_SHARED_LIB_AWH)
         # Формируем список библиотек
         SET(AWH_LIBRARIES ${AWH_LIBRARY})
     endif()
@@ -242,13 +275,29 @@ else()
     )
 endif()
 
-# Устанавливаем библиотеку AWH
-install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+# Если операцинная система относится к MS Windows
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Если нужно загрузить динамическую библиотеку
+    if (CMAKE_SHARED_LIB_AWH)
+        # Устанавливаем библиотеку AWH
+        install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+        # Устанавливаем библиотеку AWH DLL
+        install(FILES ${AWH_LIBRARY_DLL} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+    # Если нужно загрузить статическую библиотеку
+    else (CMAKE_SHARED_LIB_AWH)
+        # Устанавливаем библиотеку AWH
+        install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    endif (CMAKE_SHARED_LIB_AWH)
+# Если операцинная система относится к Nix-подобной
+else()
+    # Устанавливаем библиотеку AWH
+    install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
 
 # Если активирован режим отладки
 if (CMAKE_AWH_BUILD_DEBUG)
     # Устанавливаем статическую библиотеку
-    install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")    
+    install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()
 
 # Выполняем установку оставшихся заголовочных файлов зависимостей
