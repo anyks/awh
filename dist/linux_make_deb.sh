@@ -116,22 +116,23 @@ done
 readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Выполняем создание каталогов
-mkdir -p "$WORK_PREFIX/tmp" || exit 1
 mkdir -p "$WORK_PREFIX/usr/lib" || exit 1
+mkdir -p "$WORK_PREFIX/usr/share/$PACKAGE_NAME/cmake" || exit 1
 mkdir -p "$WORK_PREFIX/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME" || exit 1
 
 # Копируем собранную статическую библиотеку
 mv $TMP_DIR/lib$PACKAGE_NAME.a "$WORK_PREFIX/usr/lib"/
 # Копируем собранную динамическую библиотеку
 mv $TMP_DIR/lib$PACKAGE_NAME.so "$WORK_PREFIX/usr/lib"/
-# Копируем файл cmake
-cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$WORK_PREFIX/tmp"/
+
 # Копируем зависимости сторонние
 cp -r "$ROOT/../contrib/include"/* "$WORK_PREFIX/usr/include/lib$PACKAGE_NAME"/
 # Копируем собранные зависимости
 cp -r "$ROOT/../third_party/include"/* "$WORK_PREFIX/usr/include/lib$PACKAGE_NAME"/
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$WORK_PREFIX/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
+# Копируем файл cmake
+cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$WORK_PREFIX/usr/share/$PACKAGE_NAME/cmake"/
 
 # Удаляем более ненужный нам каталог
 rm -rf $TMP_DIR

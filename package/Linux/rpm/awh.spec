@@ -30,22 +30,22 @@ BuildRequires: cmake
 
 %install
 # Выполняем создание каталогов
-mkdir -p "@prefix@/tmp" || exit 1
 mkdir -p "@prefix@/usr/lib" || exit 1
+mkdir -p "@prefix@/usr/share/@name@/cmake" || exit 1
 mkdir -p "@prefix@/usr/include/lib@name@/@name@" || exit 1
 
 # Копируем собранную статическую библиотеку
 mv @tmp@/libawh.a "@prefix@/usr/lib"/libawh.a
 # Копируем собранную динамическую библиотеку
 mv @tmp@/libawh.so "@prefix@/usr/lib"/libawh.so
-# Копируем файл cmake
-cp "@root@/../contrib/cmake"/FindAWH.cmake "@prefix@/tmp"/
 # Копируем зависимости сторонние
 cp -r "@root@/../contrib/include"/* "@prefix@/usr/include/lib@name@"/
 # Копируем собранные зависимости
 cp -r "@root@/../third_party/include"/* "@prefix@/usr/include/lib@name@"/
 # Копируем заголовки библиотеки
 cp -r "@root@/../include"/* "@prefix@/usr/include/lib@name@/@name@"/
+# Копируем файл cmake
+cp "@root@/../contrib/cmake"/FindAWH.cmake "@prefix@/usr/share/@name@/cmake"/
 
 # Удаляем более ненужный нам каталог
 rm -rf @tmp@
@@ -63,18 +63,18 @@ cp $(find @prefix@ -name "@name@*.rpm") %{buildroot}/../
 %defattr(-,root,root)
 /usr/lib/libawh.a
 /usr/lib/libawh.so
-/tmp/FindAWH.cmake
 /usr/include/lib@name@/*
+/usr/share/@name@/cmake/FindAWH.cmake
 
 %post
 modprobe sctp
 sysctl -w net.sctp.auth_enable=1
 
 # Получаем путь установки cmake
-CMAKE=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+CMAKE_PATH=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Выполняем перемещение файла CMake
-mv /tmp/FindAWH.cmake $CMAKE/Modules/FindAWH.cmake
+cp @prefix@/usr/share/@name@/cmake/FindAWH.cmake $CMAKE_PATH/Modules/
 
 %changelog
 * @date@ @distribution@ <@email@> - @version@-@release_number@
