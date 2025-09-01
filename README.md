@@ -153,8 +153,6 @@ $ cmake \
 $ cmake --build .
 ```
 
----
-
 ### Make installation packages
 
 #### Build PKG package for MacOS X
@@ -208,8 +206,6 @@ $ ./dist/linux_make_rpm.sh
 # Install AWH library
 sudo dpkg -i awh_X.X.X-X~X_amd64.deb
 ```
-
----
 
 ### Example include AWH in your project
 
