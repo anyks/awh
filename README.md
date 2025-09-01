@@ -199,7 +199,7 @@ $ sudo tar -xzvf awh_X.X.X_FreeBSD_amd64.tar.gz -C /
 $ ./dist/linux_make_deb.sh
 
 # Install AWH library
-$ sudo rpm -i awh_X.X.X_X_amd64.tar.gz
+sudo dpkg -i awh_X.X.X-X~X_amd64.deb
 ```
 
 #### Build RPM package for Linux (ALT, RedOS, Fedora, openSUSE, CentOS, RedHat)
@@ -209,7 +209,7 @@ $ sudo rpm -i awh_X.X.X_X_amd64.tar.gz
 $ ./dist/linux_make_rpm.sh
 
 # Install AWH library
-sudo dpkg -i awh_X.X.X-X~X_amd64.deb
+sudo rpm -i glb-X.X.X-X.X_amd64.rpm
 ```
 
 ### Example include AWH in your project
