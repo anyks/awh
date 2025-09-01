@@ -174,8 +174,10 @@ $ ./dist/windows_make_installer.sh
 ```bash
 # Build installation package
 $ ./dist/solaris_make_installer.sh
+
 # Install AWH library
 $ sudo pkg install -g awh_X.X.X-1_i86pc.p5p awh
+
 # Registering installed components
 $ sudo postinstall-awh
 ```
@@ -185,6 +187,7 @@ $ sudo postinstall-awh
 ```bash
 # Build installation package
 $ ./dist/freebsd_make_tar.sh
+
 # Install AWH library
 $ sudo tar -xzvf awh_X.X.X_FreeBSD_amd64.tar.gz -C /
 ```
@@ -194,6 +197,7 @@ $ sudo tar -xzvf awh_X.X.X_FreeBSD_amd64.tar.gz -C /
 ```bash
 # Build installation package
 $ ./dist/linux_make_deb.sh
+
 # Install AWH library
 $ sudo rpm -i awh_X.X.X_X_amd64.tar.gz
 ```
@@ -203,6 +207,7 @@ $ sudo rpm -i awh_X.X.X_X_amd64.tar.gz
 ```bash
 # Build installation package
 $ ./dist/linux_make_rpm.sh
+
 # Install AWH library
 sudo dpkg -i awh_X.X.X-X~X_amd64.deb
 ```
