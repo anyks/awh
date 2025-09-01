@@ -286,7 +286,7 @@ $ cmake --build .
 
 ### Example WEB-client multirequests
 ```c++
-#include <client/awh.hpp>
+#include <awh/client/awh.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -424,7 +424,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example WEB-client
 ```c++
-#include <client/awh.hpp>
+#include <awh/client/awh.hpp>
 
 using namespace awh;
 
@@ -493,7 +493,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example WEB-server
 ```c++
-#include <server/awh.hpp>
+#include <awh/server/awh.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -685,7 +685,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example WebSocket-client
 ```c++
-#include <client/ws.hpp>
+#include <awh/client/ws.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -806,7 +806,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example WebSocket-server
 ```c++
-#include <server/ws.hpp>
+#include <awh/server/ws.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -941,7 +941,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example multiprotocol HTTPS-server
 ```c++
-#include <server/awh.hpp>
+#include <awh/server/awh.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1145,7 +1145,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example HTTPS PROXY-server
 ```c++
-#include <server/proxy.hpp>
+#include <awh/server/proxy.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1237,7 +1237,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example Socks5 PROXY-server
 ```c++
-#include <server/socks5.hpp>
+#include <awh/server/socks5.hpp>
 
 using namespace awh;
 using namespace server;
@@ -1307,7 +1307,7 @@ int32_t main(int32_t argc, char * argv[]){
 ### Example Timer
 ```c++
 #include <chrono>
-#include <core/timer.hpp>
+#include <awh/core/timer.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1387,8 +1387,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example DNS-resolver
 ```c++
-#include <net/dns.hpp>
-#include <core/core.hpp>
+#include <awh/net/dns.hpp>
+#include <awh/core/core.hpp>
 
 using namespace awh;
 
@@ -1428,8 +1428,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example NTP-client
 ```c++
-#include <net/ntp.hpp>
-#include <core/core.hpp>
+#include <awh/net/ntp.hpp>
+#include <awh/core/core.hpp>
 
 using namespace awh;
 
@@ -1457,8 +1457,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example ICMP-client PINGER
 ```c++
-#include <net/ping.hpp>
-#include <core/core.hpp>
+#include <awh/net/ping.hpp>
+#include <awh/core/core.hpp>
 
 using namespace awh;
 
@@ -1483,7 +1483,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example TCP-client
 ```c++
-#include <client/sample.hpp>
+#include <awh/client/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1546,7 +1546,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example TCP-server
 ```c++
-#include <server/sample.hpp>
+#include <awh/server/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1613,7 +1613,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example TLS-client
 ```c++
-#include <client/sample.hpp>
+#include <awh/client/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1682,7 +1682,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example TLS-server
 ```c++
-#include <server/sample.hpp>
+#include <awh/server/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1755,7 +1755,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example UDP-client
 ```c++
-#include <client/sample.hpp>
+#include <awh/client/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1818,7 +1818,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example UDP-server
 ```c++
-#include <server/sample.hpp>
+#include <awh/server/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1884,7 +1884,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example SCTP-client
 ```c++
-#include <client/sample.hpp>
+#include <awh/client/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -1953,7 +1953,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example SCTP-server
 ```c++
-#include <server/sample.hpp>
+#include <awh/server/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -2026,7 +2026,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example DTLS-client
 ```c++
-#include <client/sample.hpp>
+#include <awh/client/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -2095,7 +2095,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example DTLS-server
 ```c++
-#include <server/sample.hpp>
+#include <awh/server/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -2167,7 +2167,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example UnixSocket TCP-client
 ```c++
-#include <client/sample.hpp>
+#include <awh/client/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -2231,7 +2231,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example UnixSocket TCP-server
 ```c++
-#include <server/sample.hpp>
+#include <awh/server/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -2299,7 +2299,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example UnixSocket UDP-client
 ```c++
-#include <client/sample.hpp>
+#include <awh/client/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -2363,7 +2363,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example UnixSocket UDP-server
 ```c++
-#include <server/sample.hpp>
+#include <awh/server/sample.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -2430,7 +2430,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example Cluster
 ```c++
-#include <core/cluster.hpp>
+#include <awh/core/cluster.hpp>
 
 using namespace awh;
 using namespace placeholders;
@@ -2522,7 +2522,7 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example IP-address
 ```c++
-#include <net/net.hpp>
+#include <awh/net/net.hpp>
 
 using namespace awh;
 
@@ -2715,9 +2715,9 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example Investigator
 ```c++
-#include <sys/investigator.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
+#include <awh/sys/investigator.hpp>
+#include <awh/sys/fmk.hpp>
+#include <awh/sys/log.hpp>
 
 using namespace awh;
 
@@ -2774,8 +2774,8 @@ int32_t main(int32_t argc, char * argv[]){
 
 ### Example Date and Time
 ```c++
-#include <sys/log.hpp>
-#include <sys/chrono.hpp>
+#include <awh/sys/log.hpp>
+#include <awh/sys/chrono.hpp>
 
 using namespace awh;
 
