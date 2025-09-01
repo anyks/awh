@@ -73,8 +73,14 @@ sysctl -w net.sctp.auth_enable=1
 # Получаем путь установки cmake
 CMAKE_PATH=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
+# Если ссылка уже существует
+if [ -f "$CMAKE_PATH/Modules/FindAWH.cmake" ]; then
+   # Удаляем устаревшую ссылку
+   rm "$CMAKE_PATH/Modules"/FindAWH.cmake
+fi
+
 # Выполняем перемещение файла CMake
-ln -s /usr/share/@name@/cmake/FindAWH.cmake $CMAKE_PATH/Modules/FindAWH.cmake
+ln -s /usr/share/@name@/cmake/FindAWH.cmake "$CMAKE_PATH/Modules"/FindAWH.cmake
 
 %changelog
 * @date@ @distribution@ <@email@> - @version@-@release_number@

@@ -11,6 +11,12 @@ echo "Post installation process started"
 # CMake адрес
 readonly CMAKE_PATH=$(cmake --system-information | grep CMAKE_ROOT | cut -d= -f2 | awk '{print $2}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
+# Если ссылка уже существует
+if [ -f "$CMAKE_PATH/Modules/FindAWH.cmake" ]; then
+   # Удаляем устаревшую ссылку
+   rm "$CMAKE_PATH/Modules"/FindAWH.cmake
+fi
+
 # Копируем CMake файл в нужный нам каталог
 ln -s /usr/local/share/__PRODUCT__/cmake/FindAWH.cmake "$CMAKE_PATH/Modules"/FindAWH.cmake
 
@@ -23,3 +29,6 @@ find . -type f ! -perm 644 -exec chmod 644 {} \;
 chmod +x /usr/local/include/lib__PRODUCT__/uninstall.sh
 
 echo "Post installation process finished"
+
+# Завершаем установку
+exit 0

@@ -131,6 +131,7 @@ $ pacman -S mingw-w64-x86_64-dlfcn
 ```
 
 ### Build third party for MS Windows
+
 ```bash
 $ ./build_third_party.sh
 ```
@@ -147,6 +148,131 @@ $ cmake \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  -DCMAKE_SHARED_BUILD_LIB=YES \
+ ..
+
+$ cmake --build .
+```
+
+---
+
+### Make installation packages
+
+#### Build PKG package for Apple MacOS X
+
+```bash
+# Build installation package
+$ ./dist/macos_make_installer.sh
+```
+
+#### Build EXE installator for MS Windows
+
+```bash
+# Build installation package
+$ ./dist/windows_make_installer.sh
+```
+
+#### Build P5P package for Oracle Solaris
+
+```bash
+# Build installation package
+$ ./dist/solaris_make_installer.sh
+# Install AWH library
+$ sudo pkg install -g awh_X.X.X-1_i86pc.p5p awh
+# Registering installed components
+$ sudo postinstall-awh
+```
+
+#### Build TAR.GZ package for FreeBSD
+
+```bash
+# Build installation package
+$ ./dist/freebsd_make_tar.sh
+# Install AWH library
+$ sudo tar -xzvf awh_X.X.X_FreeBSD_amd64.tar.gz -C /
+```
+
+#### Build DEB package for Linux (Astra / Ubuntu / Debian / Deepin)
+
+```bash
+# Build installation package
+$ ./dist/linux_make_deb.sh
+# Install AWH library
+$ sudo rpm -i awh_X.X.X_X_amd64.tar.gz
+```
+
+#### Build RPM package for Linux (ALT / RedOS / Fedora / openSUSE / CentOS / RedHat)
+
+```bash
+# Build installation package
+$ ./dist/linux_make_rpm.sh
+# Install AWH library
+sudo dpkg -i awh_X.X.X-X~X_amd64.deb
+```
+
+#### Example include AWH in your project
+
+##### Example c++ project
+```c++
+// main.cpp
+// cmake -DCMAKE_SHARED_LIB_AWH=YES ..
+#include <iostream>
+#include <awh/sys/lib.hpp>
+
+int main(){
+    std::cout << "AWH Version: " << AWH_VERSION << std::endl;
+    return 0;
+}
+```
+
+##### Example cmake project
+
+```cmake
+cmake_minimum_required(VERSION 3.16)
+
+project(my_app LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+
+find_package(AWH REQUIRED)
+
+if (AWH_FOUND)
+    message(STATUS "AWH found: " ${AWH_LIBRARY} " " ${AWH_LIBRARY_DLL} " " ${AWH_INCLUDE_DIR})
+else (AWH_FOUND)
+    message(FATAL_ERROR "AWH not found")
+endif (AWH_FOUND)
+
+add_executable(my_app main.cpp)
+
+target_link_libraries(my_app PRIVATE ${AWH_LIBRARY})
+```
+
+##### Example project build for (MacOS X / Linux / FreeBSD / Solaris)
+
+```bash
+$ mkdir ./build
+$ cd ./build
+
+$ cmake \
+ -DCMAKE_BUILD_IDN=YES \
+ -DCMAKE_BUILD_TYPE=Release \
+ -DCMAKE_SHARED_LIB_AWH=YES \
+ ..
+
+$ cmake --build .
+```
+
+##### Example project build for MS Windows
+
+```bash
+$ mkdir ./build
+$ cd ./build
+
+$ cmake \
+ -G "MSYS Makefiles" \
+ -DCMAKE_BUILD_IDN=YES \
+ -DCMAKE_BUILD_TYPE=Release \
+ -DCMAKE_SYSTEM_NAME=Windows \
+ -DCMAKE_SHARED_LIB_AWH=YES \
  ..
 
 $ cmake --build .
