@@ -157,7 +157,7 @@ $ cmake --build .
 
 ### Make installation packages
 
-#### Build PKG package for Apple MacOS X
+#### Build PKG package for MacOS X
 
 ```bash
 # Build installation package
@@ -171,7 +171,7 @@ $ ./dist/macos_make_installer.sh
 $ ./dist/windows_make_installer.sh
 ```
 
-#### Build P5P package for Oracle Solaris
+#### Build P5P package for Solaris
 
 ```bash
 # Build installation package
@@ -191,7 +191,7 @@ $ ./dist/freebsd_make_tar.sh
 $ sudo tar -xzvf awh_X.X.X_FreeBSD_amd64.tar.gz -C /
 ```
 
-#### Build DEB package for Linux (Astra / Ubuntu / Debian / Deepin)
+#### Build DEB package for Linux (Astra, Ubuntu, Debian, Deepin)
 
 ```bash
 # Build installation package
@@ -200,7 +200,7 @@ $ ./dist/linux_make_deb.sh
 $ sudo rpm -i awh_X.X.X_X_amd64.tar.gz
 ```
 
-#### Build RPM package for Linux (ALT / RedOS / Fedora / openSUSE / CentOS / RedHat)
+#### Build RPM package for Linux (ALT, RedOS, Fedora, openSUSE, CentOS, RedHat)
 
 ```bash
 # Build installation package
@@ -209,9 +209,12 @@ $ ./dist/linux_make_rpm.sh
 sudo dpkg -i awh_X.X.X-X~X_amd64.deb
 ```
 
-#### Example include AWH in your project
+---
 
-##### Example c++ project
+### Example include AWH in your project
+
+#### Example c++ project
+
 ```c++
 // main.cpp
 // cmake -DCMAKE_SHARED_LIB_AWH=YES ..
@@ -224,7 +227,7 @@ int main(){
 }
 ```
 
-##### Example cmake project
+#### Example cmake project
 
 ```cmake
 cmake_minimum_required(VERSION 3.16)
@@ -246,7 +249,7 @@ add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE ${AWH_LIBRARY})
 ```
 
-##### Example project build for (MacOS X / Linux / FreeBSD / Solaris)
+#### Example project build for MacOS X, Linux, FreeBSD or Solaris
 
 ```bash
 $ mkdir ./build
@@ -261,7 +264,7 @@ $ cmake \
 $ cmake --build .
 ```
 
-##### Example project build for MS Windows
+#### Example project build for MS Windows
 
 ```bash
 $ mkdir ./build
