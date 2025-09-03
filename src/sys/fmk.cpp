@@ -181,7 +181,7 @@ static uint8_t decimalPlaces(double number) noexcept {
  */
 template <typename T>
 /**
- * split Метод разделения строк на составляющие
+ * split Функция разделения строк на составляющие
  * @param str       строка для поиска
  * @param delim     разделитель
  * @param container контенер содержащий данные
@@ -189,7 +189,7 @@ template <typename T>
  */
 static T & split(const string & str, const string & delim, T & container) noexcept {
 	/**
-	 * trimFn Метод удаления пробелов вначале и конце текста
+	 * trimFn Функция удаления пробелов вначале и конце текста
 	 * @param text текст для удаления пробелов
 	 * @return     результат работы функции
 	 */
@@ -290,7 +290,7 @@ static T & split(const string & str, const string & delim, T & container) noexce
  */
 template <typename T>
 /**
- * split Метод разделения строк на составляющие
+ * split Функция разделения строк на составляющие
  * @param str       строка для поиска
  * @param delim     разделитель
  * @param container контенер содержащий данные
@@ -298,7 +298,7 @@ template <typename T>
  */
 static T & split(const wstring & str, const wstring & delim, T & container) noexcept {
 	/**
-	 * trimFn Метод удаления пробелов вначале и конце текста
+	 * trimFn Функция удаления пробелов вначале и конце текста
 	 * @param text текст для удаления пробелов
 	 * @return     результат работы функции
 	 */
@@ -415,15 +415,15 @@ static class Symbols {
 		// Контейнер арабских чисел
 		std::map <char, uint8_t> _arabics;
 	private:
-		// Контейнер римских чисел для UTF-8
-		std::map <wchar_t, uint16_t> _wideRomes;
-		// Контейнер арабских чисел для UTF-8
-		std::map <wchar_t, uint8_t> _wideArabics;
-	private:
 		// Контейнер латинских символов
 		std::map <char, wchar_t> _letters;
 		// Контейнер латинских символов для UTF-8
 		std::map <wchar_t, char> _wideLetters;
+	private:
+		// Контейнер римских чисел для UTF-8
+		std::map <wchar_t, uint16_t> _wideRomes;
+		// Контейнер арабских чисел для UTF-8
+		std::map <wchar_t, uint8_t> _wideArabics;
 	public:
 		/**
 		 * isRome Метод проверки соответствия римской цифре
@@ -451,7 +451,7 @@ static class Symbols {
 		 */
 		bool isArabic(const char num) const noexcept {
 			// Выполняем проверку сущестования цифры
-			return isdigit(static_cast <int32_t> (num));
+			return ::isdigit(static_cast <int32_t> (num));
 		}
 		/**
 		 * isArabic Метод проверки соответствия арабской цифре
@@ -460,7 +460,7 @@ static class Symbols {
 		 */
 		bool isArabic(const wchar_t num) const noexcept {
 			// Выполняем проверку сущестования цифры
-			return iswdigit(static_cast <wint_t> (num));
+			return ::iswdigit(static_cast <wint_t> (num));
 		}
 	public:
 		/**
@@ -591,55 +591,79 @@ static class Symbols {
 		 * Symbols Конструктор
 		 */
 		Symbols() noexcept {
-			// Выполняем заполнение арабских чисел
+			/**
+			 * Выполняем заполнение арабских чисел
+			 */
 			this->_arabics = {
-				{'0', 0}, {'1', 1}, {'2', 2},
-				{'3', 3}, {'4', 4}, {'5', 5},
-				{'6', 6}, {'7', 7}, {'8', 8},
-				{'9', 9}
+				{'0', 0}, {'1', 1},
+				{'2', 2}, {'3', 3},
+				{'4', 4}, {'5', 5},
+				{'6', 6}, {'7', 7},
+				{'8', 8}, {'9', 9}
 			};
-			// Выполняем заполнение арабских чисел для UTF-8
+			/**
+			 * Выполняем заполнение арабских чисел для UTF-8
+			 */
 			this->_wideArabics = {
-				{L'0', 0}, {L'1', 1}, {L'2', 2},
-				{L'3', 3}, {L'4', 4}, {L'5', 5},
-				{L'6', 6}, {L'7', 7}, {L'8', 8},
-				{L'9', 9}
+				{L'0',0}, {L'1',1},
+				{L'2',2}, {L'3',3},
+				{L'4',4}, {L'5',5},
+				{L'6',6}, {L'7',7},
+				{L'8',8}, {L'9',9}
 			};
-			// Выполняем заполнение римских чисел
+			/**
+			 * Выполняем заполнение римских чисел
+			 */
 			this->_romes = {
-				{'I', 1}, {'V', 5}, {'X', 10},
-				{'L', 50}, {'C', 100}, {'D', 500},
-				{'M', 1000}
+				{'I',1}, {'V',5},
+				{'X',10}, {'L',50},
+				{'C',100}, {'D',500},
+				{'M',1000}
 			};
-			// Выполняем заполнение римских чисел для UTF-8
+			/**
+			 * Выполняем заполнение римских чисел для UTF-8
+			 */
 			this->_wideRomes = {
-				{L'I', 1}, {L'V', 5}, {L'X', 10},
-				{L'L', 50}, {L'C', 100}, {L'D', 500},
-				{L'M', 1000}
+				{L'I',1}, {L'V',5},
+				{L'X',10}, {L'L',50},
+				{L'C' 100}, {L'D',500},
+				{L'M',1000}
 			};
-			// Выполняем заполнение латинских символов
+			/**
+			 * Выполняем заполнение латинских символов
+			 */
 			this->_letters = {
-				{'a', L'a'}, {'b', L'b'}, {'c', L'c'},
-				{'d', L'd'}, {'e', L'e'}, {'f', L'f'},
-				{'g', L'g'}, {'h', L'h'}, {'i', L'i'},
-				{'j', L'j'}, {'k', L'k'}, {'l', L'l'},
-				{'m', L'm'}, {'n', L'n'}, {'o', L'o'},
-				{'p', L'p'}, {'q', L'q'}, {'r', L'r'},
-				{'s', L's'}, {'t', L't'}, {'u', L'u'},
-				{'v', L'v'}, {'w', L'w'}, {'x', L'x'},
-				{'y', L'y'}, {'z', L'z'}
+				{'a',L'a'}, {'b',L'b'},
+				{'c',L'c'}, {'d',L'd'},
+				{'e',L'e'}, {'f',L'f'},
+				{'g',L'g'}, {'h',L'h'},
+				{'i',L'i'}, {'j',L'j'},
+				{'k',L'k'}, {'l',L'l'},
+				{'m',L'm'}, {'n',L'n'},
+				{'o',L'o'}, {'p',L'p'},
+				{'q',L'q'}, {'r',L'r'},
+				{'s',L's'}, {'t',L't'},
+				{'u',L'u'}, {'v',L'v'},
+				{'w',L'w'}, {'x',L'x'},
+				{'y',L'y'}, {'z',L'z'}
 			};
-			// Выполняем заполнение латинских символов для UTF-8
+			/**
+			 * Выполняем заполнение латинских символов для UTF-8
+			 */
 			this->_wideLetters = {
-				{L'a', 'a'}, {L'b', 'b'}, {L'c', 'c'},
-				{L'd', 'd'}, {L'e', 'e'}, {L'f', 'f'},
-				{L'g', 'g'}, {L'h', 'h'}, {L'i', 'i'},
-				{L'j', 'j'}, {L'k', 'k'}, {L'l', 'l'},
-				{L'm', 'm'}, {L'n', 'n'}, {L'o', 'o'},
-				{L'p', 'p'}, {L'q', 'q'}, {L'r', 'r'},
-				{L's', 's'}, {L't', 't'}, {L'u', 'u'},
-				{L'v', 'v'}, {L'w', 'w'}, {L'x', 'x'},
-				{L'y', 'y'}, {L'z', 'z'}
+				{L'a','a'}, {L'b','b'},
+				{L'c','c'}, {L'd','d'},
+				{L'e','e'}, {L'f','f'},
+				{L'g','g'}, {L'h','h'},
+				{L'i','i'}, {L'j','j'},
+				{L'k','k'}, {L'l','l'},
+				{L'm','m'}, {L'n','n'},
+				{L'o','o'}, {L'p','p'},
+				{L'q','q'}, {L'r','r'},
+				{L's','s'}, {L't','t'},
+				{L'u','u'}, {L'v','v'},
+				{L'w','w'}, {L'x','x'},
+				{L'y','y'}, {L'z','z'}
 			};
 		}
 } standardSymbols;
