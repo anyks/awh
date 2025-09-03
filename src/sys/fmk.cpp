@@ -626,7 +626,7 @@ static class Symbols {
 			this->_wideRomes = {
 				{L'I',1}, {L'V',5},
 				{L'X',10}, {L'L',50},
-				{L'C' 100}, {L'D',500},
+				{L'C',100}, {L'D',500},
 				{L'M',1000}
 			};
 			/**
