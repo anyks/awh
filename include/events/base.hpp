@@ -39,8 +39,8 @@
  * Для операционной системы Sun Solaris
  */
 #elif __sun__
-	// Подключаем модуль /dev/poll
-	#include <sys/devpoll.h>
+	// Подключаем модуль работы с портами
+	#include <port.h>
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
  */
@@ -184,12 +184,10 @@ namespace awh {
 			 * Для операционной системы Sun Solaris
 			 */
 			#elif __sun__
-				// Идентификатор активного /dev/poll
-				SOCKET _wfd;
+				// Идентификатор активного  порта
+				SOCKET _pfd;
 				// Список активных событий
-				struct dvpoll _dopoll;
-				// Список активных файловых дескрипторов
-				vector <struct pollfd> _fds;
+				vector <port_event_t> _events;
 			/**
 			 * Для операционной системы Linux
 			 */
@@ -214,9 +212,6 @@ namespace awh {
 		private:
 			// Объект работы с часами
 			watch_t _watch;
-		private:
-			// Объект работы с сокетами
-			socket_t _socket;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
