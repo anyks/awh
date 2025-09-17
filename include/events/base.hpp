@@ -88,11 +88,12 @@ namespace awh {
 			 * Тип активного события
 			 */
 			enum class event_type_t : uint8_t {
-				NONE  = 0x00, // Тип активного события не установлено
-				CLOSE = 0x01, // Активное событие закрытия подключения
-				READ  = 0x02, // Активное событие доступности данных на чтение
-				WRITE = 0x03, // Активное событие доступности сокета на запись
-				TIMER = 0x04  // Активное событие таймера в миллисекундах
+				NONE   = 0x00, // Тип активного события не установлено
+				CLOSE  = 0x01, // Событие закрытия подключения
+				READ   = 0x02, // Событие доступности данных на чтение
+				WRITE  = 0x03, // Событие доступности сокета на запись
+				TIMER  = 0x04, // Событие таймера в миллисекундах
+				STREAM = 0x05  // Событие межпотоковое системное
 			};
 		private:
 			// Максимальное количество отслеживаемых сокетов
@@ -128,16 +129,16 @@ namespace awh {
 			 * Peer Структура участника
 			 */
 			typedef struct Peer {
-				// Файловые дескрипторы таймеров
-				SOCKET tid;
-				// Отслеживаемый файловый дескриптор
-				SOCKET sock;
 				// Идентификатор участника
 				uint64_t id;
 				// Флаг активации серийного таймера
 				bool series;
+				// Отслеживаемый файловый дескриптор
+				SOCKET socks[2];
 				// Задержка времени таймера
 				uint32_t delay;
+				// Тип участника по умолчанию
+				event_type_t type;
 				// Функция обратного вызова
 				callback_t callback;
 				// Список соответствия типов событий режиму работы
@@ -146,8 +147,9 @@ namespace awh {
 				 * Peer Конструктор
 				 */
 				Peer() noexcept :
-				 tid(INVALID_SOCKET), sock(INVALID_SOCKET), id(0),
-				 series(false), delay(0), callback(nullptr) {}
+				 id(0), series(false),
+				 socks{INVALID_SOCKET, INVALID_SOCKET},
+				 delay(0), type(event_type_t::NONE), callback(nullptr) {}
 			} peer_t;
 		private:
 			// Идентификатор потока
@@ -219,8 +221,8 @@ namespace awh {
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
 		private:
-			// Список существующих таймеров
-			std::set <SOCKET> _timers;
+			// Список существующих соучастников
+			std::set <SOCKET> _partners;
 			// Список отслеживаемых участников
 			std::map <SOCKET, peer_t> _peers;
 			// Спиоск активных верхнеуровневых потоков
