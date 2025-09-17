@@ -2695,7 +2695,7 @@ void awh::Base::clear() noexcept {
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_events.begin(); i != this->_events.end();){
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto j = this->_peers.find(i->socks[0]);
+				auto j = this->_peers.find(static_cast <SOCKET> (i->portev_object));
 				// Если файловый дескриптор есть в базе событий
 				if(j != this->_peers.end()){
 					// Определяем тип события к которому принадлежит сокет
@@ -3246,7 +3246,7 @@ void awh::Base::start() noexcept {
 							// Формируем количество получаемых сообщений
 							poll = static_cast <uint32_t> (this->_events.size());
 							// Выполняем ожидание входящих сообщений
-							if(::port_getn(this->_pfd, this->_events.data(), nget, &nget, ((this->_baseDelay > -1) || this->_easily ? &baseDelay : nullptr)) == INVALID_SOCKET){
+							if(::port_getn(this->_pfd, this->_events.data(), poll, &poll, ((this->_baseDelay > -1) || this->_easily ? &baseDelay : nullptr)) == INVALID_SOCKET){
 								// Если мы получили сообщение об ошибке
 								if(errno != EINTR){
 									/**
@@ -3378,7 +3378,7 @@ void awh::Base::start() noexcept {
 																}
 															}
 														// Удаляем файловый дескриптор из базы событий
-														} else this->del(item->id, item->socks[0]);
+														} else this->del(id, sock);
 													} break;
 													// Если событие принадлежит к потоку
 													case static_cast <uint8_t> (event_type_t::STREAM): {
@@ -3396,7 +3396,7 @@ void awh::Base::start() noexcept {
 																	std::apply(j->second.callback, std::make_tuple(sock, event_type_t::TIMER));
 															}
 														// Удаляем файловый дескриптор из базы событий
-														} else this->del(item->id, item->socks[0]);
+														} else this->del(id, sock);
 													} break;
 												}
 											}
