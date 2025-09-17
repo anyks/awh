@@ -324,6 +324,8 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			result[0] = this->_socks[0];
 			// Устанавливаем данные сокета на запись
 			result[1] = this->_socks[1];
+			// Установи неблокирующий режим на чтение
+			::set_nonblocking(result[0]);
 		/**
 		 * Для операционной системы Sun Solaris
 		 */
@@ -414,6 +416,8 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			result[0] = this->_socks[0];
 			// Устанавливаем данные сокета на запись
 			result[1] = this->_socks[1];
+			// Установи неблокирующий режим на чтение
+			::set_nonblocking(result[0]);
 		/**
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
