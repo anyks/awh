@@ -1947,7 +1947,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно активировать событие работы таймера
 									case static_cast <uint8_t> (event_mode_t::ENABLED): {
 										
-										#ifndef DISABLE_FEATURE_X
+										#ifdef DISABLE_FEATURE_X
 										int64_t k = 0;
 										
 										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
@@ -1972,7 +1972,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, (uintptr_t) 1, 0x04, (void *) 1) == INVALID_SOCKET) {
 											
 											cout << " ^^^^^^^^^^ TIMER ENABLED2 " << endl;
-											
+
 											/**
 											 * Если включён режим отладки
 											 */
