@@ -15,6 +15,12 @@
 #ifndef __AWH_CLUSTER__
 #define __AWH_CLUSTER__
 
+// ✅✅✅ САМОЕ ПЕРВОЕ: активируем расширения Solaris ДО ЛЮБЫХ include
+#if defined(__sun) && !defined(__EXTENSIONS__)
+    #define __EXTENSIONS__
+    #warning "✅ __EXTENSIONS__ activated at top of evbase.hpp"
+#endif
+
 /**
  * Стандартные библиотеки
  */

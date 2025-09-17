@@ -15,12 +15,6 @@
 #ifndef __AWH_EVENT_BASE__
 #define __AWH_EVENT_BASE__
 
-// ✅✅✅ САМОЕ ПЕРВОЕ: активируем расширения Solaris ДО ЛЮБЫХ include
-#if defined(__sun) && !defined(__EXTENSIONS__)
-    #define __EXTENSIONS__
-    #warning "✅ __EXTENSIONS__ activated at top of evbase.hpp"
-#endif
-
 /**
  * Для операционной системы Linux
  */
