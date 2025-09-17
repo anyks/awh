@@ -186,7 +186,7 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			// Если сокеты ещё не инициализированны
 			if((this->_fds[0] == nullptr) && (this->_fds[1] == nullptr)){
 				// Выполняем инициализацию сокета события
-				if(!::CreatePipe(&this->_fds[0], &this->__fds[1], nullptr, 0)){
+				if(!::CreatePipe(&this->_fds[0], &this->_fds[1], nullptr, 0)){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[256] = {0};
 					// Сбрасываем значение сокета на чтение
@@ -695,8 +695,10 @@ awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fm
 	 * Для операционной системы OS Windows или OpenBSD
 	 */
 	#if _WIN32 || _WIN64 || __OpenBSD__
-		// Инициализируем список файловых дескрипторов
-		this->_fds = {nullptr, nullptr};
+		// Сбрасываем значение сокета на чтение
+		this->_fds[0] = nullptr;
+		// Сбрасываем значение сокета на запись
+		this->_fds[1] = nullptr;
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD, Linux или Sun Solaris
 	 */
