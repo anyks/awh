@@ -86,18 +86,18 @@ void awh::Notifier::reset() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[0] != INVALID_SOCKET){
+			if(this->_fds[0] != nullptr){
 				// Закрываем сокет на чтение
 				::CloseHandle(this->_fds[0]);
 				// Сбрасываем значение сокета на чтение
-				this->_fds[0] = INVALID_SOCKET;
+				this->_fds[0] = nullptr;
 			}
 			// Если сокет ещё не закрыт
-			if(this->_fds[1] != INVALID_SOCKET){
+			if(this->_fds[1] != nullptr){
 				// Закрываем сокет на запись
 				::CloseHandle(this->_fds[1]);
 				// Сбрасываем значение сокета на запись
-				this->_fds[1] = INVALID_SOCKET;
+				this->_fds[1] = nullptr;
 			}
 		/**
 		 * Для операционной системы Linux или Sun Solaris
@@ -184,15 +184,15 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокеты ещё не инициализированны
-			if((this->_fds[0] == INVALID_SOCKET) && (this->_fds[1] == INVALID_SOCKET)){
+			if((this->_fds[0] == nullptr) && (this->_fds[1] == nullptr)){
 				// Выполняем инициализацию сокета события
 				if(!::CreatePipe(&this->_fds[0], &this->__fds[1], nullptr, 0)){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[256] = {0};
 					// Сбрасываем значение сокета на чтение
-					this->_fds[0] = INVALID_SOCKET;
+					this->_fds[0] = nullptr;
 					// Сбрасываем значение сокета на запись
-					this->_fds[1] = INVALID_SOCKET;
+					this->_fds[1] = nullptr;
 					// Выполняем формирование текста ошибки
 					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
 					/**
@@ -396,7 +396,7 @@ uint64_t awh::Notifier::event() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[0] != INVALID_SOCKET){
+			if(this->_fds[0] != nullptr){
 				// Буфер данных для чтения
 				char buffer[8];
 				// Общий размер прочитанных данных
@@ -531,7 +531,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[1] != INVALID_SOCKET){
+			if(this->_fds[1] != nullptr){
 				// Количество отправленных байт
 				DWORD bytes = 0;
 				// Выполняем отправку сообщения
@@ -696,7 +696,7 @@ awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fm
 	 */
 	#if _WIN32 || _WIN64 || __OpenBSD__
 		// Инициализируем список файловых дескрипторов
-		this->_fds = {INVALID_SOCKET, INVALID_SOCKET};
+		this->_fds = {nullptr, nullptr};
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD, Linux или Sun Solaris
 	 */
