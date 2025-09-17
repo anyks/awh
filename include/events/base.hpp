@@ -31,6 +31,7 @@
 	 * Подключаем системные заголовки
 	 */
 	#include "/usr/include/port.h"
+	#include "/usr/include/sys/port_impl.h"
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
  */
