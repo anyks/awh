@@ -521,7 +521,7 @@ uint64_t awh::Notifier::event() noexcept {
 				// Выполняем чтение данных пока не прочитаем все
 				while(size < 8){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::recv(this->_fds[0], &buffer + size, 8, 0));
+					bytes = static_cast <int8_t> (::recv(this->_fds[0], &(buffer + size), 8, 0));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
