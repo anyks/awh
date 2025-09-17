@@ -12,6 +12,8 @@
  * @copyright: Copyright © 2025
  */
 
+#include <port.h>
+
 /**
  * Для операционной системы Sun Solaris
  */
@@ -22,7 +24,7 @@
 	// Явно включаем расширения и системные заголовки в правильном порядке
 	#include <sys/types.h>
 	#include <sys/port.h>   // ← Именно здесь объявляется port_event_t
-	#include <port.h>
+	// #include <port.h>
 
 	/**
 	 * Создаём идентификатор события
