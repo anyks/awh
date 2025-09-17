@@ -2811,7 +2811,7 @@ void awh::Base::start() noexcept {
 						// Если в списке достаточно событий для опроса
 						if(!this->_fds.empty()){
 							// Выполняем опрос базы событий
-							poll = ::WSAPoll(this->_fds.data(), this->_fds.size(), (!this->_easily ? this->_baseDelay : 0));
+							poll = ::WSAPoll(this->_fds.data(), this->_fds.size(), (!this->_easily ? static_cast <int32_t> (this->_baseDelay) : 0));
 							// Если мы получили ошибку
 							if(poll == SOCKET_ERROR){
 								/**
@@ -3265,7 +3265,7 @@ void awh::Base::start() noexcept {
 						// Если в списке достаточно событий для опроса
 						if(!this->_change.empty()){
 							// Выполняем опрос базы событий
-							poll = ::epoll_wait(this->_efd, this->_events.data(), static_cast <uint32_t> (this->_maxCount), (!this->_easily ? this->_baseDelay : 0));
+							poll = ::epoll_wait(this->_efd, this->_events.data(), static_cast <uint32_t> (this->_maxCount), (!this->_easily ? static_cast <int32_t> (this->_baseDelay) : 0));
 							// Если мы получили ошибку
 							if(poll == INVALID_SOCKET){
 								/**
