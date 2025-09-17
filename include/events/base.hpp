@@ -30,8 +30,11 @@
 	/**
 	 * Подключаем системные заголовки
 	 */
+	// #include <port.h>
+
+	// Явно включаем расширения и системные заголовки в правильном порядке
 	#include <sys/types.h>
-	#include <port.h>
+	#include <sys/port.h>   // ← Именно здесь объявляется port_event_t
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
  */
