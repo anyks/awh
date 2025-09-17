@@ -1965,7 +1965,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 											#endif
 										// Выполняем подписку на получение событий межпротоковой передачи данных
-										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1), PORT_ALERT, (void *) 1) == INVALID_SOCKET) {
+										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1), PORT_ALERT_SET, (void *) 1) == INVALID_SOCKET) {
 											
 											cout << " ^^^^^^^^^^ TIMER ENABLED2 " << endl;
 											
