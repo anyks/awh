@@ -2021,7 +2021,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										// Выполняем отписку от межпотокового события
 										::port_dissociate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1));
 										// Выполняем деактивацию таймера
-										this->_watch.away(k->socks[0]);
+										this->_watch.away(sock);
 									} break;
 								}
 							} break;
@@ -2964,12 +2964,19 @@ void awh::Base::start() noexcept {
 	if(!this->_started){
 		// Устанавливаем флаг работы базы событий
 		this->_started = !this->_started;
-		// Переменная опроса события
-		int32_t poll = 0;
-		// Количество событий для опроса
-		size_t count = 0;
-		// Получаем идентификатор потока
-		this->_wid = this->wid();
+		/**
+		 * Для операционной системы Sun Solaris
+		 */
+		#if __sun__
+			// Переменная опроса события
+			uint32_t poll = 0;
+		/**
+		 * Для всех остальних операционных систем
+		 */
+		#else
+			// Переменная опроса события
+			int32_t poll = 0;
+		#endif
 		/**
 		 * Если это  MacOS X, FreeBSD, NetBSD, OpenBSD или Sun Solaris
 		 */
@@ -2986,13 +2993,24 @@ void awh::Base::start() noexcept {
 		#endif
 		// Запускаем работу часов
 		this->_watch.start();
+		// Получаем идентификатор потока
+		this->_wid = this->wid();
 		// Устанавливаем флаг запущенного опроса базы событий
 		this->_launched = static_cast <bool> (this->_started);
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем запуск базы события
+			/**
+			 * Для операционной системы OS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Количество событий для опроса
+				size_t count = 0;
+			#endif
+			/**
+			 * Выполняем запуск базы события
+			 */
 			while(this->_started){
 				/**
 				 * Для операционной системы OS Windows
