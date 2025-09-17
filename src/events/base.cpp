@@ -387,16 +387,10 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 				if((i->data.ptr != nullptr) && (reinterpret_cast <peer_t *> (i->data.ptr)->sock == sock)){
 					// Выполняем изменение параметров события
 					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
-					
-					cout << " ----------DEL1 " << sock << endl;
-					
 					// Выполняем закрытие подключения
 					::close(sock);
 					// Если событие является таймером
 					if(reinterpret_cast <peer_t *> (i->data.ptr)->delay > 0){
-						
-						cout << " ========== AWAY4" << reinterpret_cast <peer_t *> (i->data.ptr)->sock << endl;
-						
 						// Выполняем удаление таймера
 						this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 						// Выполняем поиск таймера в списке таймеров
@@ -420,16 +414,10 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 					if(!erased){
 						// Выполняем изменение параметров события
 						result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
-						
-						cout << " ----------DEL2 " << sock << endl;
-						
 						// Выполняем закрытие подключения
 						::close(sock);
 						// Если событие является таймером
 						if(reinterpret_cast <peer_t *> (i->data.ptr)->delay > 0){
-							
-							cout << " ========== AWAY5" << reinterpret_cast <peer_t *> (i->data.ptr)->sock << endl;
-							
 							// Выполняем удаление таймера
 							this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 							// Выполняем поиск таймера в списке таймеров
@@ -450,9 +438,6 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 			if(!result){
 				// Выполняем изменение параметров события
 				result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, nullptr) == 0);
-				
-				cout << " ----------DEL3 " << sock << endl;
-				
 				// Выполняем закрытие подключения
 				::close(sock);
 			}
@@ -667,13 +652,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 			auto i = this->_peers.find(sock);
 			// Если файловый дескриптор есть в базе событий
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
-				// Флаг удалённого события из базы событий
-				bool erased = false;
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
-
-				cout << " ========== AWAY1 " << i->second.sock << endl;
-
 				// Выполняем удаление таймера
 				this->_watch.away(i->second.sock);
 				// Если событие является таймером
@@ -685,6 +665,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 						// Выполняем удаление таймера
 						this->_timers.erase(j);
 				}
+				// Флаг удалённого события из базы событий
+				bool erased = false;
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 					// Если файловый дескриптор найден
@@ -692,9 +674,6 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 					   (reinterpret_cast <peer_t *> (j->data.ptr)->id == id)){
 						// Выполняем изменение параметров события
 						result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
-						
-						cout << " ----------DEL4 " << i->second.sock << endl;
-						
 						// Выполняем закрытие подключения
 						::close(i->second.sock);
 						// Выполняем удаление события из списка отслеживания
@@ -712,9 +691,6 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 						if(!erased){
 							// Выполняем изменение параметров события
 							result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
-							
-							cout << " ----------DEL5 " << i->second.sock << endl;
-							
 							// Выполняем закрытие подключения
 							::close(i->second.sock);
 						}
@@ -1262,9 +1238,6 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								} else result = (::epoll_ctl(this->_efd, EPOLL_CTL_MOD, i->second.sock, &(* k)) == 0);
 								// Если событие является таймером
 								if(i->second.delay > 0){
-									
-									cout << " ----------DEL6 " << i->second.sock << endl;
-									
 									// Выполняем удаление таймера
 									this->_watch.away(i->second.sock);
 									// Выполняем закрытие подключения
@@ -1294,9 +1267,6 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 							   (reinterpret_cast <peer_t *> (k->data.ptr)->id == id)){
 								// Если событие является таймером
 								if(i->second.delay > 0){
-									
-									cout << " ----------DEL7 " << i->second.sock << endl;
-									
 									// Выполняем удаление таймера
 									this->_watch.away(i->second.sock);
 									// Выполняем закрытие подключения
@@ -1708,9 +1678,6 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 								return result;
 							// Выполняем установку файлового дескриптора таймера
 							sock = fds[0];
-
-							cout << " ----------ADD " << sock << endl;
-
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
@@ -2244,12 +2211,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													#endif
 												// Выполняем деактивацию таймера
-												} else {
-												
-													cout << " ========== AWAY2 " << sock << endl;
-													
-													this->_watch.away(sock);
-												}
+												} else this->_watch.away(sock);
 											} break;
 										}
 									} break;
@@ -2593,16 +2555,10 @@ void awh::Base::clear() noexcept {
 			for(auto i = this->_change.begin(); i != this->_change.end();){
 				// Выполняем изменение параметров события
 				::epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <peer_t *> (i->data.ptr)->sock, &(* i));
-				
-				cout << " ----------DEL8 " << reinterpret_cast <peer_t *> (i->data.ptr)->sock << endl;
-				
 				// Выполняем закрытие подключения
 				::close(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 				// Если событие является таймером
 				if(reinterpret_cast <peer_t *> (i->data.ptr)->delay > 0){
-					
-					cout << " ========== AWAY13" << reinterpret_cast <peer_t *> (i->data.ptr)->sock << endl;
-					
 					// Выполняем удаление таймера
 					this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 					// Выполняем поиск таймера в списке таймеров

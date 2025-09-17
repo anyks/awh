@@ -220,9 +220,6 @@ void awh::Notifier::reset() noexcept {
 		#elif __linux__ || __sun__
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
-
-				cout << " ----------RESET " << this->_sock << endl;
-
 				// Выполняем закрытие сокета
 				::close(this->_sock);
 				// Сбрасываем значение сокета
@@ -369,9 +366,6 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			if(this->_sock == INVALID_SOCKET){
 				// Выполняем инициализацию сокета события
 				this->_sock = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-				
-				cout << " ************ INIT1 " << this->_sock << endl;
-				
 				// Если сокет не создан
 				if(this->_sock == INVALID_SOCKET){
 					/**
@@ -388,7 +382,7 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
-			} else cout << " ************ INIT2 " << this->_sock << endl;
+			}
 			// Устанавливаем данные сокета на чтение
 			result[0] = this->_sock;
 			// Устанавливаем данные сокета на запись
