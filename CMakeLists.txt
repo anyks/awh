@@ -68,10 +68,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif()
     # Добавляем расширения Sun Solaris
     add_compile_definitions(__EXTENSIONS__)
-
-    include_directories(BEFORE SYSTEM /usr/include)
-    target_include_directories(awh PRIVATE include)
-
 # Если операционной системой является MacOS X
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     if (NOT OS_VERSION)
@@ -260,6 +256,9 @@ include_directories(SYSTEM ${DEPEND_INCLUDE_DIRS})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+
+include_directories(BEFORE SYSTEM /usr/include)
+target_include_directories(awh PRIVATE include)
 
 # Выполняем подключение исходников
 SET(SOURCE_FILES
