@@ -19,6 +19,7 @@
 	/**
 	 * Подключаем системные заголовки
 	 */
+	#include <sys/types.h>
 	#include <port.h>
 
 	/**
