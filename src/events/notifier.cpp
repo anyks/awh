@@ -27,6 +27,16 @@
  */
 #elif __sun__
 	/**
+	 * Если расширения Sun Solaris не подключены
+	 */
+	#ifndef __EXTENSIONS__
+		/**
+		 * Включаем расширения Sun Solaris для доступа к port_event_t
+		 */
+		#define __EXTENSIONS__
+	#endif
+
+	/**
 	 * Подключаем системные заголовки
 	 */
 	#include <port.h>

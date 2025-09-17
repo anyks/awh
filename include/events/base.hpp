@@ -33,21 +33,35 @@
  * Для операционной системы Linux
  */
 #if __linux__
-	// Подключаем модуль EPoll
+	/**
+	 * Подключаем системные заголовки
+	 */
 	#include <sys/epoll.h>
 /**
  * Для операционной системы Sun Solaris
  */
 #elif __sun__
-	// Включаем расширения Solaris для доступа к port_event_t
-	#define __EXTENSIONS__
-	// Подключаем модуль работы с портами
+	/**
+	 * Если расширения Sun Solaris не подключены
+	 */
+	#ifndef __EXTENSIONS__
+		/**
+		 * Включаем расширения Sun Solaris для доступа к port_event_t
+		 */
+		#define __EXTENSIONS__
+	#endif
+
+	/**
+	 * Подключаем системные заголовки
+	 */
 	#include <sys/port.h>
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
  */
 #elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-	// Подключаем модуль Kqueue
+	/**
+	 * Подключаем системные заголовки
+	 */
 	#include <sys/event.h>
 #endif
 
