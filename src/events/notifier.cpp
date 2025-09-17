@@ -13,24 +13,9 @@
  */
 
 /**
- * Подключаем заголовочный файл
- */
-#include <events/notifier.hpp>
-
-/**
  * Для операционной системы Sun Solaris
  */
 #if __sun__
-	/**
-	 * Если расширения Sun Solaris не подключены
-	 */
-	#ifndef __EXTENSIONS__
-		/**
-		 * Включаем расширения Sun Solaris для доступа к port_event_t
-		 */
-		#define __EXTENSIONS__
-	#endif
-
 	/**
 	 * Подключаем системные заголовки
 	 */
@@ -72,6 +57,11 @@
 	 */
 	static constexpr uintptr_t USER_EVENT = 1;
 #endif
+
+/**
+ * Подключаем заголовочный файл
+ */
+#include <events/notifier.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён

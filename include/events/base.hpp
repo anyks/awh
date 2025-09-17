@@ -28,16 +28,6 @@
  */
 #elif __sun__
 	/**
-	 * Если расширения Sun Solaris не подключены
-	 */
-	#ifndef __EXTENSIONS__
-		/**
-		 * Включаем расширения Sun Solaris для доступа к port_event_t
-		 */
-		#define __EXTENSIONS__
-	#endif
-
-	/**
 	 * Подключаем системные заголовки
 	 */
 	#include <port.h>
@@ -202,6 +192,9 @@ namespace awh {
 			#elif __sun__
 				// Идентификатор активного  порта
 				SOCKET _pfd;
+
+				port_event_t ev;
+
 				// Список активных событий
 				vector <port_event_t> _events;
 			/**
