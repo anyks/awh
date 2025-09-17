@@ -1900,7 +1900,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 							// Устанавливаем идентификатор записи
 							item->id = id;
 							// Выполняем установку файлового дескриптора события
-							item->fd = sock;
+							item->sock = sock;
 							// Если функция обратного вызова передана
 							if(callback != nullptr)
 								// Выполняем установку функции обратного вызова
@@ -3489,7 +3489,7 @@ void awh::Base::start() noexcept {
 							// Устанавливаем количество сокетов для опроса
 							this->_dopoll.dp_nfds = this->_fds.size();
 							// Устанавливаем таймаут ожидания получения события
-							this->_dopoll.dp_timeout = (!this->_easily ? this->_baseDelay : -1);
+							this->_dopoll.dp_timeout = (!this->_easily ? static_cast <int32_t> (this->_baseDelay) : -1);
 							// Выполняем опрос базы событий
 							poll = ::ioctl(this->_wfd, DP_POLL, &this->_dopoll);
 							// Если мы получили ошибку
@@ -3678,8 +3678,8 @@ void awh::Base::start() noexcept {
 													// Удаляем файловый дескриптор из базы событий
 													this->del(j->second.id, sock);
 												}
-											// Если файловый дескриптор не принадлежит таймерам
-											} else if(this->_timers.find(sock) == this->_timers.end())
+											// Если файловый дескриптор не принадлежит соучастнику
+											} else if(this->_partners.find(sock) == this->_partners.end())
 												// Выполняем удаление фантомного файлового дескриптора
 												this->del(sock);
 										}
