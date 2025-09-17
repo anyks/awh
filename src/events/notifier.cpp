@@ -521,7 +521,7 @@ uint64_t awh::Notifier::event() noexcept {
 				// Выполняем чтение данных пока не прочитаем все
 				while(size < 8){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::recv(this->_fds[0], reinterpret_cast <char *> (buffer) + size, 8, 0));
+					bytes = static_cast <int8_t> (::recv(this->_fds[0], buffer + size, 8, 0));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -648,7 +648,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 			// Если сокет ещё не закрыт
 			if(this->_fds[1] != INVALID_SOCKET){
 				// Выполняем отправку сообщения
-				if(::send(this->_fds[1], &id, sizeof(id), 0) < sizeof(id)){
+				if(::send(this->_fds[1], reinterpret_cast <const char *> (&id), sizeof(id), 0) < sizeof(id)){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[256] = {0};
 					// Выполняем формирование текста ошибки
@@ -806,8 +806,10 @@ awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fm
 	 * Для операционной системы OS Windows или OpenBSD
 	 */
 	#if _WIN32 || _WIN64 || __OpenBSD__
-		// Инициализируем список файловых дескрипторов
-		this->_fds = {INVALID_SOCKET, INVALID_SOCKET};
+		// Сбрасываем значение сокета на чтение
+		this->_fds[0] = INVALID_SOCKET;
+		// Сбрасываем значение сокета на запись
+		this->_fds[1] = INVALID_SOCKET;
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD, Linux или Sun Solaris
 	 */
