@@ -277,11 +277,11 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_fds.begin(); i != this->_fds.end(); ++i){
 				// Если файловый дескриптор найден
-				if(i->sock == sock){
+				if(i->fd == sock){
 					// Очищаем полученное событие
 					i->revents = 0;
 					// Выполняем поиск файлового дескриптора в базе событий
-					auto j = this->_peers.find(i->sock);
+					auto j = this->_peers.find(i->fd);
 					// Если файловый дескриптор есть в базе событий
 					if(j != this->_peers.end()){
 						// Если событие является таймером
@@ -297,9 +297,9 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 						}
 					}
 					// Выполняем закрытие подключения
-					::closesocket(i->sock);
+					::closesocket(i->fd);
 					// Выполняем сброс файлового дескриптора
-					i->sock = INVALID_SOCKET;
+					i->fd = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
 					this->_fds.erase(i);
 					// Выходим из цикла
@@ -548,7 +548,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_fds.begin(); j != this->_fds.end(); ++j){
 					// Если файловый дескриптор найден
-					if(j->sock == sock){
+					if(j->fd == sock){
 						// Очищаем полученное событие
 						j->revents = 0;
 						// Если событие является таймером
@@ -563,9 +563,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 								this->_timers.erase(j);
 						}
 						// Выполняем закрытие подключения
-						::closesocket(j->sock);
+						::closesocket(j->fd);
 						// Выполняем сброс файлового дескриптора
-						j->sock = INVALID_SOCKET;
+						j->fd = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
 						this->_fds.erase(j);
 						// Выходим из цикла
@@ -857,7 +857,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->sock == sock))){
+									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
@@ -899,7 +899,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->sock == sock))){
+									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
@@ -933,7 +933,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->sock == sock))){
+									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на запись
@@ -1576,7 +1576,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 							// Устанавливаем файловый дескриптор в список для отслеживания
 							this->_fds.push_back((WSAPOLLFD){});
 							// Выполняем установку файлового дескриптора
-							this->_fds.back().sock = sock;
+							this->_fds.back().fd = sock;
 							// Сбрасываем состояние события
 							this->_fds.back().revents = 0;
 						}
@@ -1881,7 +1881,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 							// Выполняем поиск файлового дескриптора из списка событий
 							for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 								// Если файловый дескриптор найден
-								if(k->sock == sock){
+								if(k->fd == sock){
 									// Очищаем полученное событие
 									k->revents = 0;
 									// Определяем тип события
@@ -1895,14 +1895,14 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 													k->events |= POLLIN;
 													// Выполняем активацию таймера на указанное время
-													this->_watch.wait(k->sock, i->second.delay);
+													this->_watch.wait(k->fd, i->second.delay);
 												} break;
 												// Если нужно деактивировать событие работы таймера
 												case static_cast <uint8_t> (event_mode_t::DISABLED): {
 													// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 													k->events ^= POLLIN;
 													// Выполняем деактивацию таймера
-													this->_watch.away(k->sock);
+													this->_watch.away(k->fd);
 												} break;
 											}
 										} break;
@@ -2494,7 +2494,7 @@ void awh::Base::clear() noexcept {
 				// Очищаем полученное событие
 				i->revents = 0;
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto j = this->_peers.find(i->sock);
+				auto j = this->_peers.find(i->fd);
 				// Если файловый дескриптор есть в базе событий
 				if(j != this->_peers.end()){
 					// Если событие является таймером
@@ -2510,9 +2510,9 @@ void awh::Base::clear() noexcept {
 					}
 				}
 				// Выполняем закрытие подключения
-				::closesocket(i->sock);
+				::closesocket(i->fd);
 				// Выполняем сброс файлового дескриптора
-				i->sock = INVALID_SOCKET;
+				i->fd = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
 				i = this->_fds.erase(i);
 			}
@@ -2850,7 +2850,7 @@ void awh::Base::start() noexcept {
 										// Получаем объект файлового дескриптора
 										auto & event = this->_fds.at(i);
 										// Получаем файловый дескриптор
-										sock = event.sock;
+										sock = event.fd;
 										// Получаем флаг достуности чтения из сокета
 										isRead = (event.revents & POLLIN);
 										// Получаем флаг доступности сокета на запись
