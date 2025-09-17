@@ -68,6 +68,9 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif()
     # Добавляем расширения Sun Solaris
     add_compile_definitions(__EXTENSIONS__)
+
+    target_include_directories(awh PRIVATE include BEFORE SYSTEM /usr/include)
+
 # Если операционной системой является MacOS X
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     if (NOT OS_VERSION)
