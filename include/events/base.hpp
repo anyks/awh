@@ -16,20 +16,6 @@
 #define __AWH_EVENT_BASE__
 
 /**
- * Стандартные модули
- */
-#include <map>
-#include <cmath>
-#include <mutex>
-#include <thread>
-#include <chrono>
-#include <vector>
-#include <string>
-#include <future>
-#include <atomic>
-#include <functional>
-
-/**
  * Для операционной системы Linux
  */
 #if __linux__
@@ -64,6 +50,20 @@
 	 */
 	#include <sys/event.h>
 #endif
+
+/**
+ * Стандартные модули
+ */
+#include <map>
+#include <cmath>
+#include <mutex>
+#include <thread>
+#include <chrono>
+#include <vector>
+#include <string>
+#include <future>
+#include <atomic>
+#include <functional>
 
 /**
  * Наши модули

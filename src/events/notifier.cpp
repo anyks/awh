@@ -18,14 +18,9 @@
 #include <events/notifier.hpp>
 
 /**
- * Для операционной системы OS Windows
- */
-#if _WIN32 || _WIN64
-
-/**
  * Для операционной системы Sun Solaris
  */
-#elif __sun__
+#if __sun__
 	/**
 	 * Если расширения Sun Solaris не подключены
 	 */
