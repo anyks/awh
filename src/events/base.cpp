@@ -2899,10 +2899,8 @@ void awh::Base::start() noexcept {
 																	this->_watch.wait(j->second.fd, j->second.delay);
 															}
 														}
-													// Выполняем закрытие подключения
-													} else if(bytes == 0)
-														// Удаляем файловый дескриптор из базы событий
-														this->del(j->second.id, j->second.fd);
+													// Удаляем файловый дескриптор из базы событий
+													} else this->del(j->second.id, j->second.fd);
 													
 													/*
 													// Количество прочитанных байт
@@ -3347,10 +3345,8 @@ void awh::Base::start() noexcept {
 																	this->_watch.wait(j->second.fd, j->second.delay);
 															}
 														}
-													// Выполняем закрытие подключения
-													} else if(bytes == 0)
-														// Удаляем файловый дескриптор из базы событий
-														this->del(item->id, item->fd);
+													// Удаляем файловый дескриптор из базы событий
+													} else this->del(item->id, item->fd);
 													
 													/*
 													// Количество прочитанных байт
