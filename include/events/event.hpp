@@ -49,7 +49,7 @@ namespace awh {
 			bool _series;
 		private:
 			// Файловый дескриптор
-			SOCKET _fd;
+			SOCKET _sock;
 		private:
 			// Идентификатор события
 			uint64_t _id;
@@ -157,9 +157,7 @@ namespace awh {
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Event(const type_t type, const fmk_t * fmk, const log_t * log) noexcept :
-			 _mode(false), _series(false), _fd(INVALID_SOCKET), _id(0), _type(type),
-			 _delay(0), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
+			Event(const type_t type, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Event Деструктор
 			 */

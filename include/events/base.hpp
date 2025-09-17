@@ -64,10 +64,6 @@ namespace awh {
 	 */
 	class Event;
 	/**
-	 * Event Прототип класса события AWH event notifier
-	 */
-	class Notifier;
-	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
 	using namespace std;
