@@ -12,12 +12,12 @@
  * @copyright: Copyright © 2025
  */
 
+#include <port.h>
+
 /**
  * Подключаем заголовочный файл
  */
 #include <events/base.hpp>
-
-#include <port.h>
 
 /**
  * Подписываемся на стандартное пространство имён
