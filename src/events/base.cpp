@@ -3317,7 +3317,6 @@ void awh::Base::start() noexcept {
 											if(isRead){
 												// Если событие является таймером
 												if(item->delay > 0){
-													
 													// Выполняем чтение данных
 													const uint64_t infelicity = this->_watch.event(fd);
 													// Если чтение выполнено удачно
@@ -3347,43 +3346,6 @@ void awh::Base::start() noexcept {
 														}
 													// Удаляем файловый дескриптор из базы событий
 													} else this->del(item->id, item->fd);
-													
-													/*
-													// Количество прочитанных байт
-													int32_t bytes = -1;
-													// Фремя погрешности работы таймера
-													uint64_t infelicity = 0;
-													// Если чтение выполнено удачно
-													if((bytes = item->pipe->read(item->fd, infelicity)) > 0){
-														// Если функция обратного вызова установлена
-														if(item->callback != nullptr){
-															// Выполняем поиск события таймера присутствует в базе событий
-															auto j = item->mode.find(event_type_t::TIMER);
-															// Если событие найдено и оно активированно
-															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
-																// Выполняем функцию обратного вызова
-																std::apply(item->callback, std::make_tuple(item->fd, event_type_t::TIMER));
-														}
-														// Выполняем поиск файлового дескриптора в базе событий
-														auto j = this->_peers.find(fd);
-														// Если файловый дескриптор есть в базе событий
-														if((j != this->_peers.end()) && (id == j->second.id)){
-															// Если таймер установлен как серийный
-															if(j->second.series){
-																// Выполняем поиск события таймера присутствует в базе событий
-																auto k = j->second.mode.find(event_type_t::TIMER);
-																// Если событие найдено и оно активированно
-																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
-																	// Выполняем активацию таймера на указанное время
-																	this->_watch.wait(j->second.fd, j->second.delay);
-															}
-														}
-													// Выполняем закрытие подключения
-													} else if(bytes == 0)
-														// Удаляем файловый дескриптор из базы событий
-														this->del(item->id, item->fd);
-													*/
-													
 												// Если событие не является таймером
 												} else {
 													// Если функция обратного вызова установлена
