@@ -1948,10 +1948,10 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									case static_cast <uint8_t> (event_mode_t::ENABLED): {
 										
 										
-										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+										// Выполняем подписку на получение событий межпротоковой передачи данных
+										if(::port_associate(static_cast <uintptr_t> (sock), PORT_SOURCE_USER, static_cast <uintptr_t> (1), 0, (void *) 1) == INVALID_SOCKET) {
 											
-											cout << " ^^^^^^^^^^ TIMER ENABLED1 " << endl;
+											cout << " ^^^^^^^^^^ TIMER ENABLED2 " << endl;
 											
 											/**
 											 * Если включён режим отладки
@@ -1966,7 +1966,6 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Выводим сообщение об ошибке
 												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 											#endif
-										
 										// Выполняем активацию таймера на указанное время
 										} else this->_watch.wait(sock, i->second.delay);
 
