@@ -80,11 +80,11 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 			 */
 			#if _WIN32 || _WIN64
 				// Если WinSocksAPI ещё не инициализирована
-				if(!(this->_winSockInit = winsockInitialized())){
+				if(!(this->_winSockInit = ::winsockInitialized())){
 					// Идентификатор ошибки
 					int32_t error = 0;
 					// Выполняем инициализацию сетевого контекста
-					if((error = WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
+					if((error = ::WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -99,7 +99,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message(error).c_str());
 						#endif
 						// Очищаем сетевой контекст
-						WSACleanup();
+						::WSACleanup();
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -108,7 +108,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->print("Events base is not init", log_t::flag_t::CRITICAL);
 						// Очищаем сетевой контекст
-						WSACleanup();
+						::WSACleanup();
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
@@ -196,7 +196,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 				// Если WinSocksAPI была инициализированна в этой базе событий
 				if(!this->_winSockInit)
 					// Очищаем сетевой контекст
-					WSACleanup();
+					::WSACleanup();
 			/**
 			 * Для операционной системы Sun Solaris
 			 */
@@ -1531,11 +1531,14 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							// Выполняем создание сокетов
 							auto fds = this->_watch.create();
 							// Выполняем инициализацию таймера
-							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
+							if((fds[0] == nullptr) || (fds[1] == nullptr))
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
+
+							cout << " ********** " << fd << endl;
+
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
@@ -2974,7 +2977,7 @@ void awh::Base::start() noexcept {
 										// Если сокет отключился или произошла ошибка
 										if(isClose || isError){
 											// Если мы реально получили ошибку
-											if(WSAGetLastError() > 0){
+											if(::WSAGetLastError() > 0){
 												/**
 												 * Если включён режим отладки
 												 */
