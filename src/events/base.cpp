@@ -1948,6 +1948,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									case static_cast <uint8_t> (event_mode_t::ENABLED): {
 										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
 										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+											
+											cout << " ^^^^^^^^^^ TIMER ENABLED1 " << endl;
+											
 											/**
 											 * Если включён режим отладки
 											 */
@@ -1963,6 +1966,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 											#endif
 										// Выполняем подписку на получение событий межпротоковой передачи данных
 										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1), 0, (void *) 1) == INVALID_SOCKET) {
+											
+											cout << " ^^^^^^^^^^ TIMER ENABLED2 " << endl;
+											
 											/**
 											 * Если включён режим отладки
 											 */
@@ -1981,6 +1987,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									} break;
 									// Если нужно деактивировать событие работы таймера
 									case static_cast <uint8_t> (event_mode_t::DISABLED): {
+										
+										cout << " ^^^^^^^^^^ TIMER DISABLED " << endl;
+										
 										// Выполняем отписку от событий сокета
 										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
 										// Выполняем отписку от межпотокового события
@@ -2057,6 +2066,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 											flags |= POLLOUT;
 										// Ассоциируем сокет: ждём закрытия подключения + ошибки
 										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
+											
+											cout << " ^^^^^^^^^^ CLOSE ENABLED " << endl;
+											
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2090,6 +2102,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										if(flags > 0){
 											// Ассоциируем сокет: ждём поступления новых данных + ошибки
 											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
+												
+												cout << " ^^^^^^^^^^ CLOSE DISABLED " << endl;
+												
 												/**
 												 * Если включён режим отладки
 												 */
@@ -2122,6 +2137,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 											flags |= POLLOUT;
 										// Ассоциируем сокет: ждём поступления новых данных + ошибки
 										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
+											
+											cout << " ^^^^^^^^^^ READ ENABLED " << endl;
+											
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2145,6 +2163,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED){
 											// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
 											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+												
+												cout << " ^^^^^^^^^^ READ DISABLED " << endl;
+												
 												/**
 												 * Если включён режим отладки
 												 */
@@ -2177,6 +2198,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 											flags |= POLLIN;
 										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
 										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
+											
+											cout << " ^^^^^^^^^^ WRITE ENABLED " << endl;
+											
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2200,6 +2224,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED){
 											// Ассоциируем сокет: ждём поступления новых данных + ошибки
 											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLIN | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+												
+												cout << " ^^^^^^^^^^ WRITE DISABLED " << endl;
+												
 												/**
 												 * Если включён режим отладки
 												 */
