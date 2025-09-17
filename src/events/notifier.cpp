@@ -83,7 +83,7 @@ using namespace std;
 	 * @param overlapped флаг установки использования перекрывающихся операций ввода-вывода
 	 * @return           результат выполнения операции
 	 */
-	static int32_t socketpair(SOCKET socks[2], const bool overlapped = true) noexcept {
+	static int64_t socketpair(SOCKET socks[2], const bool overlapped = true) noexcept {
 		/**
 		 * Объединение сетевых интерфейсов
 		 */
