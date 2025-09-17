@@ -1982,7 +1982,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно активировать событие работы таймера
 									case static_cast <uint8_t> (event_mode_t::ENABLED): {
 										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
 											/**
 											 * Если включён режим отладки
 											 */
@@ -1997,7 +1997,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 											#endif
 										// Выполняем подписку на получение событий межпротоковой передачи данных
-										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, reinterpret_cast <uintptr_t> (1), 0, (void *) 1) == INVALID_SOCKET) {
+										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1), 0, (void *) 1) == INVALID_SOCKET) {
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2017,9 +2017,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно деактивировать событие работы таймера
 									case static_cast <uint8_t> (event_mode_t::DISABLED): {
 										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock));
+										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
 										// Выполняем отписку от межпотокового события
-										::port_dissociate(this->_pfd, PORT_SOURCE_USER, reinterpret_cast <uintptr_t> (1));
+										::port_dissociate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1));
 										// Выполняем деактивацию таймера
 										this->_watch.away(k->socks[0]);
 									} break;
@@ -2034,7 +2034,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно активировать событие чтения из сокета
 									case static_cast <uint8_t> (event_mode_t::ENABLED): {
 										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2049,7 +2049,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 											#endif
 										// Выполняем подписку на получение событий межпротоковой передачи данных
-										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, reinterpret_cast <uintptr_t> (1), 0, (void *) 1) == INVALID_SOCKET) {
+										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1), 0, (void *) 1) == INVALID_SOCKET) {
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2068,9 +2068,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно деактивировать событие чтения из сокета
 									case static_cast <uint8_t> (event_mode_t::DISABLED): {
 										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock));
+										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
 										// Выполняем отписку от межпотокового события
-										::port_dissociate(this->_pfd, PORT_SOURCE_USER, reinterpret_cast <uintptr_t> (1));
+										::port_dissociate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1));
 									} break;
 								}
 							} break;
@@ -2091,7 +2091,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 											// Устанавливаем флаг ассоциации сокета на запись
 											flags |= POLLOUT;
 										// Ассоциируем сокет: ждём закрытия подключения + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
+										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2110,7 +2110,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно деактивировать событие чтения из сокета
 									case static_cast <uint8_t> (event_mode_t::DISABLED): {
 										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock));
+										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
 										// Флаги установки ассоциаций сокета
 										short flags = 0;
 										// Если событие на чтение включено
@@ -2124,7 +2124,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										// Если события ещё активированны
 										if(flags > 0){
 											// Ассоциируем сокет: ждём поступления новых данных + ошибки
-											if(::port_associate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
+											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
 												/**
 												 * Если включён режим отладки
 												 */
@@ -2156,7 +2156,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 											// Устанавливаем флаг ассоциации сокета на запись
 											flags |= POLLOUT;
 										// Ассоциируем сокет: ждём поступления новых данных + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
+										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2175,11 +2175,11 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно деактивировать событие чтения из сокета
 									case static_cast <uint8_t> (event_mode_t::DISABLED): {
 										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock));
+										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
 										// Если событие на запись включено
 										if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED){
 											// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-											if(::port_associate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
 												/**
 												 * Если включён режим отладки
 												 */
@@ -2211,7 +2211,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 											// Устанавливаем флаг ассоциации сокета на чтение
 											flags |= POLLIN;
 										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
+										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
 											/**
 											 * Если включён режим отладки
 											 */
@@ -2230,11 +2230,11 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно деактивировать событие записи в сокет
 									case static_cast <uint8_t> (event_mode_t::DISABLED): {
 										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock));
+										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
 										// Если событие на чтение включено
 										if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED){
 											// Ассоциируем сокет: ждём поступления новых данных + ошибки
-											if(::port_associate(this->_pfd, PORT_SOURCE_FD, reinterpret_cast <uintptr_t> (sock), POLLIN | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLIN | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
 												/**
 												 * Если включён режим отладки
 												 */

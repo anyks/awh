@@ -196,9 +196,6 @@ namespace awh {
 			#elif __sun__
 				// Идентификатор активного  порта
 				SOCKET _pfd;
-
-				::port_event_t ev;
-
 				// Список активных событий
 				vector <port_event_t> _events;
 			/**
