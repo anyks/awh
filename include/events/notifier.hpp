@@ -49,15 +49,9 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Notifier {
 		private:
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы OS Windows или OpenBSD
 			 */
-			#if _WIN32 || _WIN64
-				// Основные сокеты уведомителя
-				HANDLE _fds[2];
-			/**
-			 * Для операционной системы OpenBSD
-			 */
-			#elif __OpenBSD__
+			#if _WIN32 || _WIN64 || __OpenBSD__
 				// Основные сокеты уведомителя
 				SOCKET _fds[2];
 			/**

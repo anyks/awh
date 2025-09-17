@@ -74,6 +74,121 @@
 using namespace std;
 
 /**
+ * Для операционной системы OS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * socketpair Метод создания пары сокетов
+	 * @param socks      список сокетов которые будут инициализированы
+	 * @param overlapped флаг установки использования перекрывающихся операций ввода-вывода
+	 * @return           результат выполнения операции
+	 */
+	static int32_t socketpair(SOCKET socks[2], const bool overlapped = true) noexcept {
+		/**
+		 * Объединение сетевых интерфейсов
+		 */
+		union {
+			struct sockaddr_in inaddr; // Объект слушателя
+			struct sockaddr addr;      // Объект подключения
+		} a;
+		// Получаем размер структуры слушателя
+		socklen_t addrlen = sizeof(a.inaddr);
+		// Получаем флаги инициализации сокета
+		DWORD flags = (overlapped ? WSA_FLAG_OVERLAPPED : 0);
+		// Если сокеты пустые
+		if(socks == 0){
+			// Выполняем формирование ошибки
+			::WSASetLastError(WSAEINVAL);
+			// Выводим ошибку
+			return INVALID_SOCKET;
+		}
+		// Выполняем изначальную инициализацию структуры сокетов
+		socks[0] = socks[1] = INVALID_SOCKET;
+		// Создаём сокет слушателя
+		const SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		// Если сокет слушателя не создан
+		if(listener == INVALID_SOCKET)
+			// Выводим ошибку
+			return INVALID_SOCKET;
+		// Выполняем инициализацию всех сетевых интерфейсов
+		::memset(&a, 0, sizeof(a));
+		// Устанавливаем нулевой порт так-как он нам не нужен
+		a.inaddr.sin_port = 0;
+		// Устанавливаем семейство сокетов
+		a.inaddr.sin_family = AF_INET;
+		// Устанавливаем петлевой сетевой интерфейс (127.0.0.1)
+		a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		// Формируем флаг разрешающий переиспользовать данные сокеты
+		const int32_t reuse = 1;
+		/**
+		 * Выполняем инициализацию сокетов на чтение и запись
+		 */
+		for(;;){
+			// Устанавливаем флаг разрешающий переиспользование сокетов
+			if(::setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&reuse), (socklen_t) sizeof(reuse)) == INVALID_SOCKET)
+				// Выходим из цикла
+				break;
+			// Выполняем биндинг полученного сокета
+			if(::bind(listener, &a.addr, sizeof(a.inaddr)) == INVALID_SOCKET)
+				// Выходим из цикла
+				break;
+			// Обнуляем все сетевые интерфейсы
+			::memset(&a, 0, sizeof(a));
+			// Извлекаем имя указанного слушателя сокета
+			if(::getsockname(listener, &a.addr, &addrlen) == INVALID_SOCKET)
+				// Выходим из цикла
+				break;
+			/**
+			 * Win32 GetockName может установить только номер порта, p = 0,0005.
+			 * ( http://msdn.microsoft.com/library/ms738543.aspx )
+			 */
+			// Устанавливаем семейство IPv4-адресов 
+			a.inaddr.sin_family = AF_INET;
+			// Устанавливаем петлевой сетевой интерфейс (127.0.0.1)
+			a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			// Запускаем прослушивание порта
+			if(::listen(listener, 1) == INVALID_SOCKET)
+				// Выходим из цикла
+				break;
+			// Создаём сокет для чтения данных
+			socks[0] = ::WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, flags);
+			// Если сокет не создан
+			if(socks[0] == INVALID_SOCKET)
+				// Выходим из цикла
+				break;
+			// Выполняем подключение к сокету на чтение данных
+			if(::connect(socks[0], &a.addr, sizeof(a.inaddr)) == INVALID_SOCKET)
+				// Выходим из цикла
+				break;
+			// Выполняем разрешение подключения к сокету и это у нас будет сокет на запись
+			socks[1] = ::accept(listener, nullptr, nullptr);
+			// Если сокет не создан
+			if(socks[1] == INVALID_SOCKET)
+				// Выходим из цикла
+				break;
+			// Закрываем сокет слушателя
+			::closesocket(listener);
+			// Выходим из функции и сообщаем, что все сокеты созданы удачно
+			return 0;
+		}
+		// Получаем ошибки сгенерированные системой
+		const int32_t error = ::WSAGetLastError();
+		// Закрываем сокет слушателя
+		::closesocket(listener);
+		// Закрываем сокет чтение данных
+		::closesocket(socks[0]);
+		// Закрываем сокет для записи данных
+		::closesocket(socks[1]);
+		// Выполняем регистрацию ошибки
+		::WSASetLastError(error);
+		// Выполняем сброс значения сокетов
+		socks[0] = socks[1] = INVALID_SOCKET;
+		// Выводим ошибку
+		return INVALID_SOCKET;
+	}
+#endif
+
+/**
  * reset Метод сброса уведомителя
  */
 void awh::Notifier::reset() noexcept {
@@ -86,18 +201,18 @@ void awh::Notifier::reset() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[0] != nullptr){
+			if(this->_fds[0] != INVALID_SOCKET){
 				// Закрываем сокет на чтение
-				::CloseHandle(this->_fds[0]);
+				::closesocket(this->_fds[0]);
 				// Сбрасываем значение сокета на чтение
-				this->_fds[0] = nullptr;
+				this->_fds[0] = INVALID_SOCKET;
 			}
 			// Если сокет ещё не закрыт
-			if(this->_fds[1] != nullptr){
+			if(this->_fds[1] != INVALID_SOCKET){
 				// Закрываем сокет на запись
-				::CloseHandle(this->_fds[1]);
+				::closesocket(this->_fds[1]);
 				// Сбрасываем значение сокета на запись
-				this->_fds[1] = nullptr;
+				this->_fds[1] = INVALID_SOCKET;
 			}
 		/**
 		 * Для операционной системы Linux или Sun Solaris
@@ -184,15 +299,15 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокеты ещё не инициализированны
-			if((this->_fds[0] == nullptr) && (this->_fds[1] == nullptr)){
+			if((this->_fds[0] == INVALID_SOCKET) && (this->_fds[1] == INVALID_SOCKET)){
 				// Выполняем инициализацию сокета события
-				if(!::CreatePipe(&this->_fds[0], &this->_fds[1], nullptr, 0)){
+				if(::socketpair(this->_fds) == INVALID_SOCKET){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[256] = {0};
 					// Сбрасываем значение сокета на чтение
-					this->_fds[0] = nullptr;
+					this->_fds[0] = INVALID_SOCKET;
 					// Сбрасываем значение сокета на запись
-					this->_fds[1] = nullptr;
+					this->_fds[1] = INVALID_SOCKET;
 					// Выполняем формирование текста ошибки
 					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
 					/**
@@ -211,9 +326,9 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = (SOCKET) this->_fds[0];
+			result[0] = this->_fds[0];
 			// Устанавливаем данные сокета на запись
-			result[1] = (SOCKET) this->_fds[1];
+			result[1] = this->_fds[1];
 		/**
 		 * Для операционной системы Sun Solaris
 		 */
@@ -396,17 +511,17 @@ uint64_t awh::Notifier::event() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[0] != nullptr){
+			if(this->_fds[0] != INVALID_SOCKET){
 				// Буфер данных для чтения
 				char buffer[8];
 				// Общий размер прочитанных данных
-				DWORD size = 0;
+				int8_t size = 0;
 				// Количество прочитанных данных
-				DWORD bytes = 0;
+				int8_t bytes = 0;
 				// Выполняем чтение данных пока не прочитаем все
 				while(size < 8){
 					// Выполняем чтение данных
-					::ReadFile(this->_fds[0], buffer + size, 8, &bytes, nullptr);
+					bytes = static_cast <int8_t> (::recv(this->_fds[0], &buffer + size, 8, 0));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -531,13 +646,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[1] != nullptr){
-				// Количество отправленных байт
-				DWORD bytes = 0;
+			if(this->_fds[1] != INVALID_SOCKET){
 				// Выполняем отправку сообщения
-				::WriteFile(this->_fds[1], &id, sizeof(id), &bytes, nullptr);
-				// Если данные отправлены не полностью
-				if(bytes < sizeof(id)){
+				if(::send(this->_fds[1], &id, sizeof(id), 0) < sizeof(id)){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[256] = {0};
 					// Выполняем формирование текста ошибки
@@ -695,10 +806,8 @@ awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fm
 	 * Для операционной системы OS Windows или OpenBSD
 	 */
 	#if _WIN32 || _WIN64 || __OpenBSD__
-		// Сбрасываем значение сокета на чтение
-		this->_fds[0] = nullptr;
-		// Сбрасываем значение сокета на запись
-		this->_fds[1] = nullptr;
+		// Инициализируем список файловых дескрипторов
+		this->_fds = {INVALID_SOCKET, INVALID_SOCKET};
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD, Linux или Sun Solaris
 	 */
