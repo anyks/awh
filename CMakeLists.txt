@@ -257,9 +257,6 @@ include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 
-include_directories(BEFORE SYSTEM /usr/include)
-target_include_directories(awh PRIVATE include)
-
 # Выполняем подключение исходников
 SET(SOURCE_FILES
     "${SOURCE_FILES}"
@@ -379,6 +376,9 @@ else (CMAKE_SHARED_BUILD_LIB)
     # Добавляем статическу библиотеку
     add_library(${AWH_LIB_NAME} STATIC ${SOURCE_FILES})
 endif (CMAKE_SHARED_BUILD_LIB)
+
+# Устанавливаем пути включения для цели awh
+target_include_directories(${AWH_LIB_NAME} PRIVATE include SYSTEM BEFORE /usr/include)
 
 # Если операционной системой является Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
