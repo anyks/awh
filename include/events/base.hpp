@@ -39,6 +39,8 @@
  * Для операционной системы Sun Solaris
  */
 #elif __sun__
+	// Включаем расширения Solaris для доступа к port_event_t
+	#define __EXTENSIONS__
 	// Подключаем модуль работы с портами
 	#include <port.h>
 /**
