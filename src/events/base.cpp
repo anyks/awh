@@ -1531,14 +1531,11 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							// Выполняем создание сокетов
 							auto fds = this->_watch.create();
 							// Выполняем инициализацию таймера
-							if((fds[0] == nullptr) || (fds[1] == nullptr))
+							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
 							fd = fds[0];
-
-							cout << " ********** " << fd << endl;
-
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
