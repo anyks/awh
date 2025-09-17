@@ -46,7 +46,7 @@
 #include "../sys/callback.hpp"
 #include "../net/socket.hpp"
 #include "../core/core.hpp"
-#include "../events/evbase.hpp"
+#include "../events/event.hpp"
 
 /**
  * awh пространство имён

@@ -26,6 +26,7 @@
 #include <vector>
 #include <string>
 #include <future>
+#include <atomic>
 #include <functional>
 
 /**
@@ -41,7 +42,7 @@
 	// Подключаем модуль /dev/poll
 	#include <sys/devpoll.h>
 /**
- * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+ * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
  */
 #elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 	// Подключаем модуль Kqueue
@@ -51,16 +52,21 @@
 /**
  * Наши модули
  */
-#include "evtimer.hpp"
+#include "watch.hpp"
+#include "../net/socket.hpp"
 
 /**
  * awh пространство имён
  */
 namespace awh {
 	/**
-	 * Event Прототип класса события AWHEvent
+	 * Event Прототип класса события AWH event
 	 */
 	class Event;
+	/**
+	 * Event Прототип класса события AWH event notifier
+	 */
+	class Notifier;
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
@@ -104,6 +110,7 @@ namespace awh {
 			/**
 			 * Upstream Структура работы вышестоящего потока
 			 */
+			/*
 			typedef struct Upstream {
 				// Файловые дескрипторы для чтения и записи
 				SOCKET read, write;
@@ -111,13 +118,16 @@ namespace awh {
 				std::shared_ptr <evpipe_t> pipe;
 				// Функция обратного вызова
 				function <void (const uint64_t)> callback;
+			*/
 				/**
 				 * Upstream Конструктор
 				 */
+			/*
 				Upstream() noexcept :
 				 read(INVALID_SOCKET), write(INVALID_SOCKET),
 				 pipe(nullptr), callback(nullptr) {}
 			} upstream_t;
+			*/
 			/**
 			 * Peer Структура участника
 			 */
@@ -125,7 +135,7 @@ namespace awh {
 				// Отслеживаемый файловый дескриптор
 				SOCKET fd;
 				// Файловые дескрипторы таймеров
-				SOCKET timer;
+				SOCKET tid;
 				// Идентификатор записи
 				uint64_t id;
 				// Флаг активации серийного таймера
@@ -134,35 +144,33 @@ namespace awh {
 				uint32_t delay;
 				// Функция обратного вызова
 				callback_t callback;
-				// Объект работы с пайпом
-				std::shared_ptr <evpipe_t> pipe;
 				// Список соответствия типов событий режиму работы
 				std::map <event_type_t, event_mode_t> mode;
 				/**
 				 * Peer Конструктор
 				 */
 				Peer() noexcept :
-				 fd(INVALID_SOCKET), timer(INVALID_SOCKET), id(0),
-				 series(false), delay(0), callback(nullptr), pipe(nullptr) {}
+				 fd(INVALID_SOCKET), tid(INVALID_SOCKET), id(0),
+				 series(false), delay(0), callback(nullptr) {}
 			} peer_t;
 		private:
-			// Идентификатор модуля
-			uint64_t _id;
+			// Идентификатор потока
+			uint64_t _wid;
 		private:
 			// Флаг простого чтения базы событий
-			bool _easily;
+			std::atomic_bool _easily;
 			// Флаг блокировки опроса базы событий
-			bool _locker;
+			std::atomic_bool _locker;
 			// Флаг запуска работы базы событий
-			bool _started;
+			std::atomic_bool _started;
 			// Флаг запущенного опроса базы событий
-			bool _launched;
+			std::atomic_bool _launched;
 		private:
 			// Таймаут времени блокировки базы событий
-			int32_t _baseDelay;
+			std::atomic_int _baseDelay;
 		private:
 			// Максимальное количество обрабатываемых сокетов
-			uint32_t _maxCount;
+			std::atomic_uint _maxCount;
 		private:
 			/**
 			 * Для операционной системы OS Windows
@@ -179,7 +187,7 @@ namespace awh {
 			 */
 			#elif __sun__
 				// Идентификатор активного /dev/poll
-				int32_t _wfd;
+				SOCKET _wfd;
 				// Список активных событий
 				struct dvpoll _dopoll;
 				// Список активных файловых дескрипторов
@@ -189,28 +197,28 @@ namespace awh {
 			 */
 			#elif __linux__
 				// Идентификатор активного EPoll
-				int32_t _efd;
+				SOCKET _efd;
 				// Список активных изменений событий
 				vector <struct epoll_event> _change;
 				// Список активных событий
 				vector <struct epoll_event> _events;
 			/**
-			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+			 * Для операционной системы MacOS Xб FreeBSD, NetBSD или OpenBSD
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Идентификатор активного kqueue
-				int32_t _kq;
+				SOCKET _kq;
 				// Список активных изменений событий
 				vector <struct kevent> _change;
 				// Список активных событий
 				vector <struct kevent> _events;
 			#endif
 		private:
+			// Объект работы с часами
+			watch_t _watch;
+		private:
 			// Объект работы с сокетами
 			socket_t _socket;
-		private:
-			// Объект работы с таймером событий
-			evtimer_t _evtimer;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
@@ -220,7 +228,7 @@ namespace awh {
 			// Список отслеживаемых участников
 			std::map <SOCKET, peer_t> _peers;
 			// Спиоск активных верхнеуровневых потоков
-			std::map <uint64_t, upstream_t> _upstreams;
+			// std::map <uint64_t, upstream_t> _upstreams;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -228,16 +236,16 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * id Метод получения идентификатора потока
+			 * wid Метод получения идентификатора потока
 			 * @return идентификатор потока для получения
 			 */
-			uint64_t id() const noexcept;
+			uint64_t wid() const noexcept;
 		private:
 			/**
-			 * stream Метод проверки запущен ли модуль в дочернем потоке
+			 * isChildThread Метод проверки запущен ли модуль в дочернем потоке
 			 * @return результат проверки
 			 */
-			bool stream() const noexcept;
+			bool isChildThread() const noexcept;
 		private:
 			/**
 			 * init Метод инициализации базы событий
@@ -371,143 +379,6 @@ namespace awh {
 			 */
 			~Base() noexcept;
 	} base_t;
-	/**
-	 * Event Класс события AWHEvent
-	 */
-	typedef class Event {
-		public:
-			/**
-			 * Типы события
-			 */
-			enum class type_t : uint8_t {
-				NONE  = 0x00, // Тип события не установлен
-				EVENT = 0x01, // Тип события обычное
-				TIMER = 0x02  // Тип события таймер
-			};
-		private:
-			// Режим активации события
-			bool _mode;
-		private:
-			// Флаг активации серийного таймера
-			bool _series;
-		private:
-			// Файловый дескриптор
-			SOCKET _fd;
-		private:
-			// Идентификатор события
-			uint64_t _id;
-		private:
-			// Тип события таймера
-			type_t _type;
-		private:
-			// Задержка времени таймера
-			uint32_t _delay;
-		private:
-			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
-		private:
-			// Функция обратного вызова
-			base_t::callback_t _callback;
-		private:
-			// База данных событий
-			base_t * _base;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
-		public:
-			/**
-			 * type Метод получения типа события
-			 * @return установленный тип события
-			 */
-			type_t type() const noexcept;
-		public:
-			/**
-			 * set Метод установки базы событий
-			 * @param base база событий для установки
-			 */
-			void set(base_t * base) noexcept;
-			/**
-			 * set Метод установки файлового дескриптора
-			 * @param fd файловый дескриптор для установки
-			 */
-			void set(const SOCKET fd) noexcept;
-			/**
-			 * set Метод установки функции обратного вызова
-			 * @param callback функция обратного вызова
-			 */
-			void set(base_t::callback_t callback) noexcept;
-		public:
-			/**
-			 * Метод удаления типа события
-			 * @param type тип события для удаления
-			 */
-			void del(const base_t::event_type_t type) noexcept;
-		public:
-			/**
-			 * timeout Метод установки задержки времени таймера
-			 * @param delay  задержка времени в миллисекундах
-			 * @param series флаг серийного таймаута
-			 */
-			void timeout(const uint32_t delay, const bool series = false) noexcept;
-		public:
-			/**
-			 * mode Метод установки режима работы модуля
-			 * @param type тип событий модуля для которого требуется сменить режим работы
-			 * @param mode флаг режима работы модуля
-			 * @return     результат работы функции
-			 */
-			bool mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept;
-		public:
-			/**
-			 * stop Метод остановки работы события
-			 */
-			void stop() noexcept;
-			/**
-			 * start Метод запуска работы события
-			 */
-			void start() noexcept;
-		public:
-			/**
-			 * Оператор [=] для установки базы событий
-			 * @param base база событий для установки
-			 * @return     текущий объект
-			 */
-			Event & operator = (base_t * base) noexcept;
-			/**
-			 * Оператор [=] для установки файлового дескриптора
-			 * @param fd файловый дескриптор для установки
-			 * @return   текущий объект
-			 */
-			Event & operator = (const SOCKET fd) noexcept;
-			/**
-			 * Оператор [=] для установки задержки времени таймера
-			 * @param delay задержка времени в миллисекундах
-			 * @return      текущий объект
-			 */
-			Event & operator = (const uint32_t delay) noexcept;
-			/**
-			 * Оператор [=] для установки функции обратного вызова
-			 * @param callback функция обратного вызова
-			 * @return         текущий объект
-			 */
-			Event & operator = (base_t::callback_t callback) noexcept;
-		public:
-			/**
-			 * Event Конструктор
-			 * @param type тип события
-			 * @param fmk  объект фреймворка
-			 * @param log  объект для работы с логами
-			 */
-			Event(const type_t type, const fmk_t * fmk, const log_t * log) noexcept :
-			 _mode(false), _series(false), _fd(INVALID_SOCKET), _id(0), _type(type),
-			 _delay(0), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
-			/**
-			 * ~Event Деструктор
-			 */
-			~Event() noexcept;
-	} event_t;
 };
 
 #endif // __AWH_EVENT_BASE__

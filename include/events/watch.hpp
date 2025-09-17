@@ -1,6 +1,6 @@
 /**
- * @file: evtimer.hpp
- * @date: 2024-07-03
+ * @file: watch.hpp
+ * @date: 2025-09-16
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2025
  */
 
-#ifndef __AWH_EVENT_TIMER__
-#define __AWH_EVENT_TIMER__
+#ifndef __AWH_EVENT_WATCH__
+#define __AWH_EVENT_WATCH__
 
 /**
  * Стандартные модули
@@ -25,7 +25,7 @@
 /**
  * Наши модули
  */
-#include "evpipe.hpp"
+#include "notifier.hpp"
 #include "../sys/screen.hpp"
 
 /**
@@ -37,40 +37,39 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * EventTimer Класс для работы с таймером в экране
+	 * Watch Класс для работы с часами
 	 */
-	typedef class AWHSHARED_EXPORT EventTimer {
+	typedef class AWHSHARED_EXPORT Watch {
 		private:
 			/**
-			 * Data структура обмена данными
+			 * Unit структура участника обмена данными
 			 */
-			typedef struct Data {
+			typedef struct Unit {
 				// Файловый дескрипторв (сокет)
 				SOCKET fd;
 				// Время задержки работы таймера
 				uint64_t delay;
 				/**
-				 * Data Конструктор
+				 * Unit Конструктор
 				 */
-				Data() noexcept : fd(INVALID_SOCKET), delay(0) {}
-			} __attribute__((packed)) data_t;
-		private:
-			// Объект работы с пайпом
-			evpipe_t _evpipe;
+				Unit() noexcept : fd(INVALID_SOCKET), delay(0) {}
+			} __attribute__((packed)) unit_t;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
 		private:
 			// Объект экрана для работы в дочернем потоке
-			screen_t <data_t> _screen;
+			screen_t <unit_t> _screen;
 		private:
-			// Список существующих файловых дескрипторов
-			std::set <SOCKET> _fds;
+			// Список существующих уведомителей
+			std::map <SOCKET, std::unique_ptr <notifier_t>> _notifiers;
 			// Список активных таймеров
-			std::multimap <uint64_t, SOCKET> _timers;
+			std::multimap <std::pair <uint64_t, uint64_t>, SOCKET> _timers;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
+			// Объект работы с логами
+			const log_t * _log;
 		private:
 			/**
 			 * trigger Метод обработки событий триггера
@@ -78,9 +77,9 @@ namespace awh {
 			void trigger() noexcept;
 			/**
 			 * process Метод обработки процесса добавления таймеров
-			 * @param data данные таймера для добавления
+			 * @param unit параметры участника
 			 */
-			void process(const data_t data) noexcept;
+			void process(const unit_t unit) noexcept;
 		public:
 			/**
 			 * stop Метод остановки работы таймера
@@ -92,28 +91,41 @@ namespace awh {
 			void start() noexcept;
 		public:
 			/**
-			 * del Метод удаления таймера
+			 * create Метод создания нового таймера
+			 * @return файловый дескриптор для отслеживания
+			 */
+			std::array <SOCKET, 2> create() noexcept;
+		public:
+			/**
+			 * event Метод извлечения идентификатора события
+			 * @param fd файловый дескриптор таймера
+			 * @return   идентификатор события
+			 */
+			uint64_t event(const SOCKET fd) noexcept;
+		public:
+			/**
+			 * away Метод убрать таймер из отслеживания
 			 * @param fd файловый дескриптор таймера
 			 */
-			void del(const SOCKET fd) noexcept;
+			void away(const SOCKET fd) noexcept;
 			/**
-			 * add Метод добавления таймера
+			 * wait Метод ожидания указанного промежутка времени
 			 * @param fd    файловый дескриптор таймера
 			 * @param delay задержка времени в миллисекундах
 			 */
-			void add(const SOCKET fd, const uint32_t delay) noexcept;
+			void wait(const SOCKET fd, const uint32_t delay) noexcept;
 		public:
 			/**
-			 * EventTimer Конструктор
+			 * Watch Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			EventTimer(const fmk_t * fmk, const log_t * log) noexcept;
+			Watch(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~EventTimer Деструктор
+			 * ~Watch Деструктор
 			 */
-			~EventTimer() noexcept;
-	} evtimer_t;
+			~Watch() noexcept;
+	} watch_t;
 };
 
-#endif // __AWH_EVENT_TIMER__
+#endif // __AWH_EVENT_WATCH__
