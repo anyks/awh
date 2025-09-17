@@ -12,7 +12,12 @@
  * @copyright: Copyright © 2025
  */
 
-#include <port.h>
+/**
+ * Подключаем Lua Си
+ */
+extern "C" {
+	#include <port.h>
+}
 
 /**
  * Подключаем заголовочный файл

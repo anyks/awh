@@ -251,8 +251,6 @@ else (TcMalloc_FOUND)
     message(FATAL_ERROR "TcMalloc not found")
 endif (TcMalloc_FOUND)
 
-include_directories(SYSTEM /usr/include)
-
 # Выполняем подключение хидеров
 include_directories(SYSTEM ${DEPEND_INCLUDE_DIRS})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
