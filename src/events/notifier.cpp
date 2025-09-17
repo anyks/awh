@@ -12,7 +12,12 @@
  * @copyright: Copyright © 2025
  */
 
-#include <port.h>
+
+#if defined(__sun)
+    #pragma message("🔍 Trying to include <port.h>...")
+    #include <port.h>
+    #pragma message("✅ Included <port.h> from: " __FILE__)
+#endif
 
 /**
  * Для операционной системы Sun Solaris
