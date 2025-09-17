@@ -19,7 +19,7 @@
 	/**
 	 * Подключаем системные заголовки
 	 */
-	#include </usr/local/port.h>
+	#include "/usr/include/port.h"
 
 	/**
 	 * Создаём идентификатор события

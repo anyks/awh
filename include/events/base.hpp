@@ -30,7 +30,7 @@
 	/**
 	 * Подключаем системные заголовки
 	 */
-	#include </usr/local/port.h>
+	#include "/usr/include/port.h"
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
  */
