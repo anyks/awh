@@ -37,13 +37,13 @@ using namespace placeholders;
 	 */
 	static bool winsockInitialized() noexcept {
 		// Выполняем создание сокета
-		SOCKET fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		SOCKET sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		// Если сокет не создан
-		if(fd == INVALID_SOCKET)
+		if(sock == INVALID_SOCKET)
 			// Сообщаем, что сокет не создан а значит WinSocksAPI не инициализирован
 			return false;
 		// Выполняем закрытие открытого сокета
-		::closesocket(fd);
+		::closesocket(sock);
 		// Сообщаем, что WinSocksAPI уже инициализирован
 		return true;
 	}
@@ -222,10 +222,10 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 /**
  * upstream Метод получения событий верхнеуровневых потоков
  * @param sid  идентификатор верхнеуровневого потока
- * @param fd   файловый дескриптор верхнеуровневого потока
+ * @param sock файловый дескриптор верхнеуровневого потока
  * @param type тип отслеживаемого события
  */
-void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t type) noexcept {
+void awh::Base::upstream(const uint64_t sid, const SOCKET sock, const event_type_t type) noexcept {
 	/*
 	// Выполняем поиск указанного верхнеуровневого потока
 	auto i = this->_upstreams.find(sid);
@@ -258,10 +258,10 @@ void awh::Base::upstream(const uint64_t sid, const SOCKET fd, const event_type_t
 }
 /**
  * del Метод удаления файлового дескриптора из базы событий
- * @param fd файловый дескриптор для удаления
- * @return   результат работы функции
+ * @param sock файловый дескриптор для удаления
+ * @return     результат работы функции
  */
-bool awh::Base::del(const SOCKET fd) noexcept {
+bool awh::Base::del(const SOCKET sock) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -277,17 +277,17 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_fds.begin(); i != this->_fds.end(); ++i){
 				// Если файловый дескриптор найден
-				if(i->fd == fd){
+				if(i->sock == sock){
 					// Очищаем полученное событие
 					i->revents = 0;
 					// Выполняем поиск файлового дескриптора в базе событий
-					auto j = this->_peers.find(i->fd);
+					auto j = this->_peers.find(i->sock);
 					// Если файловый дескриптор есть в базе событий
 					if(j != this->_peers.end()){
 						// Если событие является таймером
 						if(j->second.delay > 0){
 							// Выполняем удаление таймера
-							this->_watch.away(j->second.fd);
+							this->_watch.away(j->second.sock);
 							// Выполняем поиск таймера в списке таймеров
 							auto k = this->_timers.find(j->second.tid);
 							// Если таймер в списке таймеров найден, удаляем его
@@ -297,9 +297,9 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						}
 					}
 					// Выполняем закрытие подключения
-					::closesocket(i->fd);
+					::closesocket(i->sock);
 					// Выполняем сброс файлового дескриптора
-					i->fd = INVALID_SOCKET;
+					i->sock = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
 					this->_fds.erase(i);
 					// Выходим из цикла
@@ -317,17 +317,17 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_fds.begin(); i != this->_fds.end(); ++i){
 				// Если файловый дескриптор найден
-				if(i->fd == fd){
+				if(i->sock == sock){
 					// Очищаем полученное событие
 					i->revents = 0;
 					// Выполняем поиск файлового дескриптора в базе событий
-					auto j = this->_peers.find(i->fd);
+					auto j = this->_peers.find(i->sock);
 					// Если файловый дескриптор есть в базе событий
 					if(j != this->_peers.end()){
 						// Если событие является таймером
 						if(j->second.delay > 0){
 							// Выполняем удаление таймера
-							this->_watch.away(j->second.fd);
+							this->_watch.away(j->second.sock);
 							// Выполняем поиск таймера в списке таймеров
 							auto k = this->_timers.find(j->second.tid);
 							// Если таймер в списке таймеров найден, удаляем его
@@ -337,9 +337,9 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 						}
 					}
 					// Выполняем закрытие подключения
-					::close(i->fd);
+					::close(i->sock);
 					// Выполняем сброс файлового дескриптора
-					i->fd = INVALID_SOCKET;
+					i->sock = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
 					this->_fds.erase(i);
 					// Если в списке ещё есть что отслеживать
@@ -351,7 +351,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -384,15 +384,15 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_events.begin(); i != this->_events.end(); ++i){
 				// Если файловый дескриптор найден
-				if((i->data.ptr != nullptr) && (reinterpret_cast <peer_t *> (i->data.ptr)->fd == fd)){
+				if((i->data.ptr != nullptr) && (reinterpret_cast <peer_t *> (i->data.ptr)->sock == sock)){
 					// Выполняем изменение параметров события
-					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, &(* i)) == 0);
+					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
 					// Выполняем закрытие подключения
-					::close(fd);
+					::close(sock);
 					// Если событие является таймером
 					if(reinterpret_cast <peer_t *> (i->data.ptr)->delay > 0){
 						// Выполняем удаление таймера
-						this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->fd);
+						this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 						// Выполняем поиск таймера в списке таймеров
 						auto j = this->_timers.find(reinterpret_cast <peer_t *> (i->data.ptr)->tid);
 						// Если таймер в списке таймеров найден, удаляем его
@@ -409,17 +409,17 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора из списка изменений
 			for(auto i = this->_change.begin(); i != this->_change.end(); ++i){
 				// Если файловый дескриптор найден
-				if((i->data.ptr != nullptr) && (reinterpret_cast <peer_t *> (i->data.ptr)->fd == fd)){
+				if((i->data.ptr != nullptr) && (reinterpret_cast <peer_t *> (i->data.ptr)->sock == sock)){
 					// Если событие ещё не удалено из базы событий
 					if(!erased){
 						// Выполняем изменение параметров события
-						result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, &(* i)) == 0);
+						result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
 						// Выполняем закрытие подключения
-						::close(fd);
+						::close(sock);
 						// Если событие является таймером
 						if(reinterpret_cast <peer_t *> (i->data.ptr)->delay > 0){
 							// Выполняем удаление таймера
-							this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->fd);
+							this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 							// Выполняем поиск таймера в списке таймеров
 							auto j = this->_timers.find(reinterpret_cast <peer_t *> (i->data.ptr)->tid);
 							// Если таймер в списке таймеров найден, удаляем его
@@ -437,9 +437,9 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Если удаление не выполненно
 			if(!result){
 				// Выполняем изменение параметров события
-				result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, fd, nullptr) == 0);
+				result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, nullptr) == 0);
 				// Выполняем закрытие подключения
-				::close(fd);
+				::close(sock);
 			}
 			// Выполняем разблокировку чтения базы событий
 			this->_locker = false;
@@ -452,13 +452,13 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
 			// Выполняем поиск файлового дескриптора в базе событий
-			auto i = this->_peers.find(fd);
+			auto i = this->_peers.find(sock);
 			// Если файловый дескриптор есть в базе событий
 			if(i != this->_peers.end()){
 				// Если событие является таймером
 				if(i->second.delay > 0){
 					// Выполняем удаление таймера
-					this->_watch.away(i->second.fd);
+					this->_watch.away(i->second.sock);
 					// Выполняем поиск таймера в списке таймеров
 					auto j = this->_timers.find(i->second.tid);
 					// Если таймер в списке таймеров найден, удаляем его
@@ -470,7 +470,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_events.begin(); i != this->_events.end(); ++i){
 				// Если файловый дескриптор найден
-				if((erased = (i->ident == fd))){
+				if((erased = (i->ident == sock))){
 					// Выполняем удаление объекта события
 					EV_SET(&(* i), i->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 					// Выполняем закрытие подключения
@@ -484,7 +484,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 			// Выполняем поиск файлового дескриптора из списка изменений
 			for(auto i = this->_change.begin(); i != this->_change.end(); ++i){
 				// Если файловый дескриптор найден
-				if(i->ident == fd){
+				if(i->ident == sock){
 					// Если событие ещё не удалено из базы событий
 					if(!erased){
 						// Выполняем удаление объекта события
@@ -510,7 +510,7 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -525,10 +525,10 @@ bool awh::Base::del(const SOCKET fd) noexcept {
 /**
  * del Метод удаления файлового дескриптора из базы событий для всех событий
  * @param id идентификатор записи
- * @param fd файловый дескриптор для удаления
+ * @param sock файловый дескриптор для удаления
  * @return   результат работы функции
  */
-bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
+bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -540,7 +540,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем поиск файлового дескриптора в базе событий
-			auto i = this->_peers.find(fd);
+			auto i = this->_peers.find(sock);
 			// Если файловый дескриптор есть в базе событий
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
 				// Выполняем блокировку чтения базы событий
@@ -548,13 +548,13 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_fds.begin(); j != this->_fds.end(); ++j){
 					// Если файловый дескриптор найден
-					if(j->fd == fd){
+					if(j->sock == sock){
 						// Очищаем полученное событие
 						j->revents = 0;
 						// Если событие является таймером
 						if(i->second.delay > 0){
 							// Выполняем удаление таймера
-							this->_watch.away(i->second.fd);
+							this->_watch.away(i->second.sock);
 							// Выполняем поиск таймера в списке таймеров
 							auto j = this->_timers.find(i->second.tid);
 							// Если таймер в списке таймеров найден, удаляем его
@@ -563,9 +563,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 								this->_timers.erase(j);
 						}
 						// Выполняем закрытие подключения
-						::closesocket(j->fd);
+						::closesocket(j->sock);
 						// Выполняем сброс файлового дескриптора
-						j->fd = INVALID_SOCKET;
+						j->sock = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
 						this->_fds.erase(j);
 						// Выходим из цикла
@@ -582,7 +582,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 		 */
 		#elif __sun__
 			// Выполняем поиск файлового дескриптора в базе событий
-			auto i = this->_peers.find(fd);
+			auto i = this->_peers.find(sock);
 			// Если файловый дескриптор есть в базе событий
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
 				// Выполняем блокировку чтения базы событий
@@ -590,13 +590,13 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_fds.begin(); j != this->_fds.end(); ++j){
 					// Если файловый дескриптор найден
-					if(j->fd == fd){
+					if(j->sock == sock){
 						// Очищаем полученное событие
 						j->revents = 0;
 						// Если событие является таймером
 						if(i->second.delay > 0){
 							// Выполняем удаление таймера
-							this->_watch.away(i->second.fd);
+							this->_watch.away(i->second.sock);
 							// Выполняем поиск таймера в списке таймеров
 							auto j = this->_timers.find(i->second.tid);
 							// Если таймер в списке таймеров найден, удаляем его
@@ -605,9 +605,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 								this->_timers.erase(j);
 						}
 						// Выполняем закрытие подключения
-						::close(j->fd);
+						::close(j->sock);
 						// Выполняем сброс файлового дескриптора
-						j->fd = INVALID_SOCKET;
+						j->sock = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
 						this->_fds.erase(j);
 						// Если в списке ещё есть что отслеживать
@@ -619,7 +619,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -649,7 +649,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 		 */
 		#elif __linux__
 			// Выполняем поиск файлового дескриптора в базе событий
-			auto i = this->_peers.find(fd);
+			auto i = this->_peers.find(sock);
 			// Если файловый дескриптор есть в базе событий
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
 				// Флаг удалённого события из базы событий
@@ -657,7 +657,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				// Выполняем удаление таймера
-				this->_watch.away(i->second.fd);
+				this->_watch.away(i->second.sock);
 				// Если событие является таймером
 				if(i->second.delay > 0){
 					// Выполняем поиск таймера в списке таймеров
@@ -673,9 +673,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 					if((reinterpret_cast <peer_t *> (j->data.ptr) == &i->second) &&
 					   (reinterpret_cast <peer_t *> (j->data.ptr)->id == id)){
 						// Выполняем изменение параметров события
-						result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.fd, &(* j)) == 0);
+						result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
 						// Выполняем закрытие подключения
-						::close(i->second.fd);
+						::close(i->second.sock);
 						// Выполняем удаление события из списка отслеживания
 						this->_events.erase(j);
 						// Выходим из цикла
@@ -690,9 +690,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 						// Если событие ещё не удалено из базы событий
 						if(!erased){
 							// Выполняем изменение параметров события
-							result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.fd, &(* j)) == 0);
+							result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
 							// Выполняем закрытие подключения
-							::close(i->second.fd);
+							::close(i->second.sock);
 						}
 						// Выполняем удаление события из списка изменений
 						this->_change.erase(j);
@@ -710,7 +710,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 			// Выполняем поиск файлового дескриптора в базе событий
-			auto i = this->_peers.find(fd);
+			auto i = this->_peers.find(sock);
 			// Если файловый дескриптор есть в базе событий
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
 				// Флаг удалённого события из базы событий
@@ -718,7 +718,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				// Выполняем удаление таймера
-				this->_watch.away(i->second.fd);
+				this->_watch.away(i->second.sock);
 				// Если событие является таймером
 				if(i->second.delay > 0){
 					// Выполняем поиск таймера в списке таймеров
@@ -731,13 +731,13 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 					// Если файловый дескриптор найден
-					if((erased = (j->ident == fd))){
+					if((erased = (j->ident == sock))){
 						// Если событие является таймером
 						if(i->second.delay > 0){
 							// Выполняем удаление события таймера
 							EV_SET(&(* j), j->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 							// Выполняем закрытие подключения
-							::close(i->second.fd);
+							::close(i->second.sock);
 						// Если событие является обычным
 						} else {
 							// Выполняем удаление объекта события
@@ -754,7 +754,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 				// Выполняем поиск файлового дескриптора из списка изменений
 				for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
 					// Если файловый дескриптор найден
-					if(j->ident == fd){
+					if(j->ident == sock){
 						// Если событие ещё не удалено из базы событий
 						if(!erased){
 							// Если событие является таймером
@@ -762,7 +762,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 								// Выполняем удаление события таймера
 								EV_SET(&(* j), j->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 								// Выполняем закрытие подключения
-								::close(i->second.fd);
+								::close(i->second.sock);
 							// Если событие является обычным
 							} else {
 								// Выполняем удаление объекта события
@@ -792,7 +792,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -807,15 +807,15 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd) noexcept {
 /**
  * del Метод удаления файлового дескриптора из базы событий для указанного события
  * @param id   идентификатор записи
- * @param fd   файловый дескриптор для удаления
+ * @param sock   файловый дескриптор для удаления
  * @param type тип отслеживаемого события
  * @return     результат работы функции
  */
-bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type) noexcept {
+bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t type) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
-	if((fd != INVALID_SOCKET) || (type == event_type_t::TIMER)){
+	if((sock != INVALID_SOCKET) || (type == event_type_t::TIMER)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -825,7 +825,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 			 */
 			#if _WIN32 || _WIN64
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto i = this->_peers.find(fd);
+				auto i = this->_peers.find(sock);
 				// Если файловый дескриптор есть в базе событий
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
@@ -857,15 +857,15 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->sock == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
 										k->events ^= POLLIN;
 										// Выполняем удаление таймера
-										this->_watch.away(i->second.fd);
+										this->_watch.away(i->second.sock);
 										// Выполняем закрытие подключения
-										::closesocket(i->second.fd);
+										::closesocket(i->second.sock);
 										// Выполняем поиск таймера в списке таймеров
 										auto l = this->_timers.find(i->second.tid);
 										// Если таймер в списке таймеров найден, удаляем его
@@ -899,7 +899,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->sock == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
@@ -933,7 +933,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->sock == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на запись
@@ -967,7 +967,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 			 */
 			#elif __sun__
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto i = this->_peers.find(fd);
+				auto i = this->_peers.find(sock);
 				// Если файловый дескриптор есть в базе событий
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
@@ -999,15 +999,15 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->sock == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
 										k->events ^= POLLIN;
 										// Выполняем удаление таймера
-										this->_watch.away(i->second.fd);
+										this->_watch.away(i->second.sock);
 										// Выполняем закрытие подключения
-										::close(i->second.fd);
+										::close(i->second.sock);
 										// Выполняем поиск таймера в списке таймеров
 										auto l = this->_timers.find(i->second.tid);
 										// Если таймер в списке таймеров найден, удаляем его
@@ -1027,7 +1027,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -1066,7 +1066,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->sock == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
@@ -1086,7 +1086,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -1126,7 +1126,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->sock == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на запись
@@ -1146,7 +1146,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -1186,7 +1186,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 			 */
 			#elif __linux__
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto i = this->_peers.find(fd);
+				auto i = this->_peers.find(sock);
 				// Если файловый дескриптор есть в базе событий
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
@@ -1231,17 +1231,17 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Если список режимов событий пустой
 								if(i->second.mode.empty()){
 									// Выполняем изменение параметров события
-									result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.fd, &(* k)) == 0);
+									result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* k)) == 0);
 									// Выполняем удаление события из списка изменений
 									this->_change.erase(k);
 								// Выполняем изменение параметров события
-								} else result = (::epoll_ctl(this->_efd, EPOLL_CTL_MOD, i->second.fd, &(* k)) == 0);
+								} else result = (::epoll_ctl(this->_efd, EPOLL_CTL_MOD, i->second.sock, &(* k)) == 0);
 								// Если событие является таймером
 								if(i->second.delay > 0){
 									// Выполняем удаление таймера
-									this->_watch.away(i->second.fd);
+									this->_watch.away(i->second.sock);
 									// Выполняем закрытие подключения
-									::close(i->second.fd);
+									::close(i->second.sock);
 									// Выполняем поиск таймера в списке таймеров
 									auto j = this->_timers.find(i->second.tid);
 									// Если таймер в списке таймеров найден, удаляем его
@@ -1268,9 +1268,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Если событие является таймером
 								if(i->second.delay > 0){
 									// Выполняем удаление таймера
-									this->_watch.away(i->second.fd);
+									this->_watch.away(i->second.sock);
 									// Выполняем закрытие подключения
-									::close(i->second.fd);
+									::close(i->second.sock);
 									// Выполняем поиск таймера в списке таймеров
 									auto j = this->_timers.find(i->second.tid);
 									// Если таймер в списке таймеров найден, удаляем его
@@ -1295,7 +1295,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto i = this->_peers.find(fd);
+				auto i = this->_peers.find(sock);
 				// Если файловый дескриптор есть в базе событий
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
@@ -1327,13 +1327,13 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->ident == fd))){
+									if((erased = (k->ident == sock))){
 										// Выполняем удаление таймера
-										this->_watch.away(i->second.fd);
+										this->_watch.away(i->second.sock);
 										// Выполняем удаление работы события
 										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
-										::close(i->second.fd);
+										::close(i->second.sock);
 										// Выполняем поиск таймера в списке таймеров
 										auto l = this->_timers.find(i->second.tid);
 										// Если таймер в списке таймеров найден, удаляем его
@@ -1367,7 +1367,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->ident == fd))){
+									if((erased = (k->ident == sock))){
 										// Выполняем удаление работы события
 										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, &i->second);
 										// Выполняем поиск типа события
@@ -1405,7 +1405,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->ident == fd))){
+									if((erased = (k->ident == sock))){
 										// Выполняем удаление работы события
 										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, &i->second);
 										// Выполняем поиск типа события
@@ -1436,15 +1436,15 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 						// Выполняем поиск файлового дескриптора из списка событий
 						for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
 							// Если файловый дескриптор найден
-							if(k->ident == fd){
+							if(k->ident == sock){
 								// Если событие является таймером
 								if(i->second.delay > 0){
 									// Выполняем удаление таймера
-									this->_watch.away(i->second.fd);
+									this->_watch.away(i->second.sock);
 									// Выполняем удаление события таймера
 									EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 									// Выполняем закрытие подключения
-									::close(i->second.fd);
+									::close(i->second.sock);
 									// Выполняем поиск таймера в списке таймеров
 									auto j = this->_timers.find(i->second.tid);
 									// Если таймер в списке таймеров найден, удаляем его
@@ -1475,7 +1475,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1491,17 +1491,17 @@ bool awh::Base::del(const uint64_t id, const SOCKET fd, const event_type_t type)
 /**
  * add Метод добавления файлового дескриптора в базу событий
  * @param id       идентификатор записи
- * @param fd       файловый дескриптор для добавления
+ * @param sock     файловый дескриптор для добавления
  * @param callback функция обратного вызова при получении события
  * @param delay    задержка времени для создания таймеров
  * @param series   флаг серийного таймаута
  * @return         результат работы функции
  */
-bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const uint32_t delay, const bool series) noexcept {
+bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const uint32_t delay, const bool series) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
-	if((fd != INVALID_SOCKET) || (delay > 0)){
+	if((sock != INVALID_SOCKET) || (delay > 0)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1515,7 +1515,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем поиск файлового дескриптора в базе событий
-					auto i = this->_peers.find(fd);
+					auto i = this->_peers.find(sock);
 					// Если файловый дескриптор есть в базе событий
 					if((result = (i != this->_peers.end()) && (i->second.id == id))){
 						// Если функция обратного вызова передана
@@ -1535,11 +1535,11 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
-							fd = fds[0];
+							sock = fds[0];
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
-							auto ret = this->_peers.emplace(fd, peer_t());
+							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выполняем установку файлового дескриптора таймера
 							ret.first->second.tid = fds[1];
 							// Выполняем установку задержки времени таймера
@@ -1553,7 +1553,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если нам необходимо создать обычное событие
 						} else {
 							// Выполняем добавление в список параметров для отслеживания
-							auto ret = this->_peers.emplace(fd, peer_t());
+							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выключаем установку событий модуля
 							ret.first->second.mode = {
 								{event_type_t::READ, event_mode_t::DISABLED},
@@ -1566,7 +1566,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если объект текущего события получен
 						if((result = (item != nullptr))){
 							// Выполняем установку файлового дескриптора события
-							item->fd = fd;
+							item->sock = sock;
 							// Устанавливаем идентификатор записи
 							item->id = id;
 							// Если функция обратного вызова передана
@@ -1576,7 +1576,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							// Устанавливаем файловый дескриптор в список для отслеживания
 							this->_fds.push_back((WSAPOLLFD){});
 							// Выполняем установку файлового дескриптора
-							this->_fds.back().fd = fd;
+							this->_fds.back().sock = sock;
 							// Сбрасываем состояние события
 							this->_fds.back().revents = 0;
 						}
@@ -1586,7 +1586,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 				 */
 				#elif __sun__
 					// Выполняем поиск файлового дескриптора в базе событий
-					auto i = this->_peers.find(fd);
+					auto i = this->_peers.find(sock);
 					// Если файловый дескриптор есть в базе событий
 					if((result = (i != this->_peers.end()) && (i->second.id == id))){
 						// Если функция обратного вызова передана
@@ -1606,11 +1606,11 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
-							fd = fds[0];
+							sock = fds[0];
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
-							auto ret = this->_peers.emplace(fd, peer_t());
+							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выполняем установку файлового дескриптора таймера
 							ret.first->second.tid = fds[1];
 							// Выполняем установку задержки времени таймера
@@ -1624,7 +1624,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если нам необходимо создать обычное событие
 						} else {
 							// Выполняем добавление в список параметров для отслеживания
-							auto ret = this->_peers.emplace(fd, peer_t());
+							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выключаем установку событий модуля
 							ret.first->second.mode = {
 								{event_type_t::READ, event_mode_t::DISABLED},
@@ -1637,7 +1637,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если объект текущего события получен
 						if((result = (item != nullptr))){
 							// Выполняем установку файлового дескриптора события
-							item->fd = fd;
+							item->sock = sock;
 							// Устанавливаем идентификатор записи
 							item->id = id;
 							// Если функция обратного вызова передана
@@ -1647,7 +1647,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							// Устанавливаем файловый дескриптор в список для отслеживания
 							this->_fds.push_back((struct pollfd){});
 							// Выполняем установку файлового дескриптора
-							this->_fds.back().fd = fd;
+							this->_fds.back().sock = sock;
 							// Сбрасываем состояние события
 							this->_fds.back().revents = 0;
 						}
@@ -1657,7 +1657,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 				 */
 				#elif __linux__
 					// Выполняем поиск файлового дескриптора в базе событий
-					auto i = this->_peers.find(fd);
+					auto i = this->_peers.find(sock);
 					// Если файловый дескриптор есть в базе событий
 					if((result = (i != this->_peers.end()) && (i->second.id == id))){
 						// Если функция обратного вызова передана
@@ -1677,11 +1677,11 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
-							fd = fds[0];
+							sock = fds[0];
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
-							auto ret = this->_peers.emplace(fd, peer_t());
+							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выполняем установку файлового дескриптора таймера
 							ret.first->second.tid = fds[1];
 							// Выполняем установку задержки времени таймера
@@ -1695,7 +1695,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если нам необходимо создать обычное событие
 						} else {
 							// Выполняем добавление в список параметров для отслеживания
-							auto ret = this->_peers.emplace(fd, peer_t());
+							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выключаем установку событий модуля
 							ret.first->second.mode = {
 								{event_type_t::READ, event_mode_t::DISABLED},
@@ -1708,7 +1708,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если объект текущего события получен
 						if((result = (item != nullptr))){
 							// Выполняем установку файлового дескриптора события
-							item->fd = fd;
+							item->sock = sock;
 							// Устанавливаем идентификатор записи
 							item->id = id;
 							// Если функция обратного вызова передана
@@ -1724,13 +1724,13 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							// Устанавливаем флаг ожидания отключения сокета
 							this->_change.back().events = EPOLLERR;
 							// Выполняем изменение параметров события
-							if(!(result = (::epoll_ctl(this->_efd, EPOLL_CTL_ADD, fd, &this->_change.back()) == 0))){
+							if(!(result = (::epoll_ctl(this->_efd, EPOLL_CTL_ADD, sock, &this->_change.back()) == 0))){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, delay, series), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 								/**
 								* Если режим отладки не включён
 								*/
@@ -1746,7 +1746,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 				 */
 				#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 					// Выполняем поиск файлового дескриптора в базе событий
-					auto i = this->_peers.find(fd);
+					auto i = this->_peers.find(sock);
 					// Если файловый дескриптор есть в базе событий
 					if((result = (i != this->_peers.end()) && (i->second.id == id))){
 						// Если функция обратного вызова передана
@@ -1766,11 +1766,11 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
-							fd = fds[0];
+							sock = fds[0];
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
-							auto ret = this->_peers.emplace(fd, peer_t());
+							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выполняем установку файлового дескриптора таймера
 							ret.first->second.tid = fds[1];
 							// Выполняем установку задержки времени таймера
@@ -1784,7 +1784,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						// Если нам необходимо создать обычное событие
 						} else {
 							// Выполняем добавление в список параметров для отслеживания
-							auto ret = this->_peers.emplace(fd, peer_t());
+							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выключаем установку событий модуля
 							ret.first->second.mode = {
 								{event_type_t::READ, event_mode_t::DISABLED},
@@ -1796,10 +1796,10 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 						}
 						// Если объект текущего события получен
 						if((result = (item != nullptr))){
-							// Выполняем установку файлового дескриптора события
-							item->fd = fd;
 							// Устанавливаем идентификатор записи
 							item->id = id;
+							// Выполняем установку файлового дескриптора события
+							item->sock = sock;
 							// Если функция обратного вызова передана
 							if(callback != nullptr)
 								// Выполняем установку функции обратного вызова
@@ -1813,7 +1813,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 							// Выполняем заполнение нулями всю структуру событий
 							::memset(&this->_events.back(), 0, sizeof(this->_events.back()));
 							// Устанавливаем идентификатор файлового дескриптора
-							this->_change.back().ident = fd;
+							this->_change.back().ident = sock;
 							// Выполняем смену режима работы отлова события
 							EV_SET(&this->_change.back(), this->_change.back().ident, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, item);
 						}
@@ -1822,7 +1822,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 				// Выполняем разблокировку чтения базы событий
 				this->_locker = false;
 			// Выводим сообщение об ошибке
-			} else this->_log->print("SOCKET=%d cannot be added because the number of events being monitored has already reached the limit of %d", log_t::flag_t::WARNING, fd, static_cast <uint32_t> (this->_maxCount));
+			} else this->_log->print("SOCKET=%d cannot be added because the number of events being monitored has already reached the limit of %d", log_t::flag_t::WARNING, sock, static_cast <uint32_t> (this->_maxCount));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -1832,7 +1832,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, delay, series), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, delay, series), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -1848,22 +1848,22 @@ bool awh::Base::add(const uint64_t id, SOCKET & fd, callback_t callback, const u
 /**
  * mode Метод установки режима работы модуля
  * @param id   идентификатор записи
- * @param fd   файловый дескриптор для установки режима работы
+ * @param sock файловый дескриптор для установки режима работы
  * @param type тип событий модуля для которого требуется сменить режим работы
  * @param mode флаг режима работы модуля
  * @return     результат работы функции
  */
-bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type, const event_mode_t mode) noexcept {
+bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t type, const event_mode_t mode) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор передан верный
-	if((fd != INVALID_SOCKET) || (type == event_type_t::TIMER)){
+	if((sock != INVALID_SOCKET) || (type == event_type_t::TIMER)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Выполняем поиск файлового дескриптора в базе событий
-			auto i = this->_peers.find(fd);
+			auto i = this->_peers.find(sock);
 			// Если файловый дескриптор есть в базе событий
 			if((i != this->_peers.end()) && (i->second.id == id)){
 				// Выполняем поиск события модуля
@@ -1881,7 +1881,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 							// Выполняем поиск файлового дескриптора из списка событий
 							for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 								// Если файловый дескриптор найден
-								if(k->fd == fd){
+								if(k->sock == sock){
 									// Очищаем полученное событие
 									k->revents = 0;
 									// Определяем тип события
@@ -1895,14 +1895,14 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 													k->events |= POLLIN;
 													// Выполняем активацию таймера на указанное время
-													this->_watch.wait(k->fd, i->second.delay);
+													this->_watch.wait(k->sock, i->second.delay);
 												} break;
 												// Если нужно деактивировать событие работы таймера
 												case static_cast <uint8_t> (event_mode_t::DISABLED): {
 													// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 													k->events ^= POLLIN;
 													// Выполняем деактивацию таймера
-													this->_watch.away(k->fd);
+													this->_watch.away(k->sock);
 												} break;
 											}
 										} break;
@@ -1951,7 +1951,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 						// Выполняем поиск файлового дескриптора из списка событий
 						for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 							// Если файловый дескриптор найден
-							if(k->fd == fd){
+							if(k->sock == sock){
 								// Очищаем полученное событие
 								k->revents = 0;
 								// Определяем тип события
@@ -1971,7 +1971,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -1980,7 +1980,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													#endif
 												// Выполняем активацию таймера на указанное время
-												} else this->_watch.wait(k->fd, i->second.delay);
+												} else this->_watch.wait(k->sock, i->second.delay);
 											} break;
 											// Если нужно деактивировать событие работы таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -1993,7 +1993,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2002,7 +2002,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													#endif
 												// Выполняем деактивацию таймера
-												} else this->_watch.away(k->fd);
+												} else this->_watch.away(k->sock);
 											} break;
 										}
 									} break;
@@ -2021,7 +2021,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2042,7 +2042,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2069,7 +2069,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2090,7 +2090,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2117,7 +2117,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2138,7 +2138,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2162,7 +2162,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 						// Выполняем поиск файлового дескриптора из списка событий
 						for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 							// Если файловый дескриптор найден
-							if(reinterpret_cast <peer_t *> (k->data.ptr)->fd == fd){
+							if(reinterpret_cast <peer_t *> (k->data.ptr)->sock == sock){
 								// Определяем тип события
 								switch(static_cast <uint8_t> (type)){
 									// Если событие установлено как таймер
@@ -2174,13 +2174,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= (EPOLLIN | EPOLLET);
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, sock, &(* k)) != 0){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2189,20 +2189,20 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													#endif
 												// Выполняем активацию таймера на указанное время
-												} else this->_watch.wait(fd, i->second.delay);
+												} else this->_watch.wait(sock, i->second.delay);
 											} break;
 											// Если нужно деактивировать событие таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= (EPOLLIN | EPOLLET);
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, sock, &(* k)) != 0){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2211,7 +2211,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													#endif
 												// Выполняем деактивацию таймера
-												} else this->_watch.away(fd);
+												} else this->_watch.away(sock);
 											} break;
 										}
 									} break;
@@ -2224,13 +2224,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Выполняем установку флагов отслеживания закрытия подключения
 												k->events |= (EPOLLRDHUP | EPOLLHUP);
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, sock, &(* k)) != 0){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2245,13 +2245,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Выполняем удаление флагов отслеживания закрытия подключения
 												k->events ^= (EPOLLRDHUP | EPOLLHUP);
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, sock, &(* k)) != 0){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2272,13 +2272,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= EPOLLIN;
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, sock, &(* k)) != 0){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2293,13 +2293,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= EPOLLIN;
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, sock, &(* k)) != 0){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2320,13 +2320,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Устанавливаем флаг отслеживания записи данных в сокет
 												k->events |= EPOLLOUT;
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, sock, &(* k)) != 0){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2341,13 +2341,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 												// Снимаем флаг ожидания готовности файлового дескриптора на запись
 												k->events ^= EPOLLOUT;
 												// Выполняем изменение параметров события
-												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, fd, &(* k)) != 0){
+												if(::epoll_ctl(this->_efd, EPOLL_CTL_MOD, sock, &(* k)) != 0){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2373,7 +2373,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 							// Выполняем поиск файлового дескриптора из списка событий
 							for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 								// Если файловый дескриптор найден
-								if(k->ident == fd){
+								if(k->ident == sock){
 									// Определяем тип события
 									switch(static_cast <uint8_t> (type)){
 										// Если событие установлено как таймер
@@ -2454,7 +2454,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET fd, const event_type_t type
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -2494,13 +2494,13 @@ void awh::Base::clear() noexcept {
 				// Очищаем полученное событие
 				i->revents = 0;
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto j = this->_peers.find(i->fd);
+				auto j = this->_peers.find(i->sock);
 				// Если файловый дескриптор есть в базе событий
 				if(j != this->_peers.end()){
 					// Если событие является таймером
 					if(j->second.delay > 0){
 						// Выполняем удаление таймера
-						this->_watch.away(j->second.fd);
+						this->_watch.away(j->second.sock);
 						// Выполняем поиск таймера в списке таймеров
 						auto k = this->_timers.find(j->second.tid);
 						// Если таймер в списке таймеров найден, удаляем его
@@ -2510,9 +2510,9 @@ void awh::Base::clear() noexcept {
 					}
 				}
 				// Выполняем закрытие подключения
-				::closesocket(i->fd);
+				::closesocket(i->sock);
 				// Выполняем сброс файлового дескриптора
-				i->fd = INVALID_SOCKET;
+				i->sock = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
 				i = this->_fds.erase(i);
 			}
@@ -2525,13 +2525,13 @@ void awh::Base::clear() noexcept {
 				// Очищаем полученное событие
 				i->revents = 0;
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto j = this->_peers.find(i->fd);
+				auto j = this->_peers.find(i->sock);
 				// Если файловый дескриптор есть в базе событий
 				if(j != this->_peers.end()){
 					// Если событие является таймером
 					if(j->second.delay > 0){
 						// Выполняем удаление таймера
-						this->_watch.away(j->second.fd);
+						this->_watch.away(j->second.sock);
 						// Выполняем поиск таймера в списке таймеров
 						auto k = this->_timers.find(j->second.tid);
 						// Если таймер в списке таймеров найден, удаляем его
@@ -2541,9 +2541,9 @@ void awh::Base::clear() noexcept {
 					}
 				}
 				// Выполняем закрытие подключения
-				::close(i->fd);
+				::close(i->sock);
 				// Выполняем сброс файлового дескриптора
-				i->fd = INVALID_SOCKET;
+				i->sock = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
 				i = this->_fds.erase(i);
 			}
@@ -2554,13 +2554,13 @@ void awh::Base::clear() noexcept {
 			// Выполняем поиск файлового дескриптора из списка изменений
 			for(auto i = this->_change.begin(); i != this->_change.end();){
 				// Выполняем изменение параметров события
-				::epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <peer_t *> (i->data.ptr)->fd, &(* i));
+				::epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <peer_t *> (i->data.ptr)->sock, &(* i));
 				// Выполняем закрытие подключения
-				::close(reinterpret_cast <peer_t *> (i->data.ptr)->fd);
+				::close(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 				// Если событие является таймером
 				if(reinterpret_cast <peer_t *> (i->data.ptr)->delay > 0){
 					// Выполняем удаление таймера
-					this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->fd);
+					this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 					// Выполняем поиск таймера в списке таймеров
 					auto j = this->_timers.find(reinterpret_cast <peer_t *> (i->data.ptr)->tid);
 					// Если таймер в списке таймеров найден, удаляем его
@@ -2588,11 +2588,11 @@ void awh::Base::clear() noexcept {
 					// Если событие является таймером
 					if(j->second.delay > 0){
 						// Выполняем удаление таймера
-						this->_watch.away(j->second.fd);
+						this->_watch.away(j->second.sock);
 						// Выполняем удаление события таймера
 						EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 						// Выполняем закрытие подключения
-						::close(j->second.fd);
+						::close(j->second.sock);
 						// Выполняем поиск таймера в списке таймеров
 						auto k = this->_timers.find(j->second.tid);
 						// Если таймер в списке таймеров найден, удаляем его
@@ -2621,11 +2621,11 @@ void awh::Base::clear() noexcept {
 					// Если событие является таймером
 					if(j->second.delay > 0){
 						// Выполняем удаление таймера
-						this->_watch.away(j->second.fd);
+						this->_watch.away(j->second.sock);
 						// Выполняем удаление события таймера
 						EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 						// Выполняем закрытие подключения
-						::close(j->second.fd);
+						::close(j->second.sock);
 						// Выполняем поиск таймера в списке таймеров
 						auto k = this->_timers.find(j->second.tid);
 						// Если таймер в списке таймеров найден, удаляем его
@@ -2694,15 +2694,15 @@ void awh::Base::kick() noexcept {
 				// Выполняем перебор всего списка активных событий
 				for(auto & item : items){
 					// Выполняем добавление события в базу событий
-					if(!this->add(item.second.id, item.second.fd, item.second.callback, item.second.delay, item.second.series))
+					if(!this->add(item.second.id, item.second.sock, item.second.callback, item.second.delay, item.second.series))
 						// Выводим сообщение что событие не вышло активировать
-						this->_log->print("Failed activate event for SOCKET=%d", log_t::flag_t::WARNING, item.second.fd);
+						this->_log->print("Failed activate event for SOCKET=%d", log_t::flag_t::WARNING, item.second.sock);
 					// Если событие добавленно удачно
 					else {
 						// Выполняем перебор всех разрешений на запуск событий
 						for(auto & mode : item.second.mode)
 							// Выполняем активацию события на запуск
-							this->mode(item.second.id, item.second.fd, mode.first, mode.second);
+							this->mode(item.second.id, item.second.sock, mode.first, mode.second);
 					}
 				}
 			}
@@ -2838,7 +2838,7 @@ void awh::Base::start() noexcept {
 								// Идентификатор события
 								uint64_t id = 0;
 								// Файловый дескриптор события
-								SOCKET fd = INVALID_SOCKET;
+								SOCKET sock = INVALID_SOCKET;
 								// Флаги статусов полученного сокета
 								bool isRead = false, isWrite = false, isClose = false, isError = false;
 								// Выполняем перебор всех файловых дескрипторов
@@ -2850,7 +2850,7 @@ void awh::Base::start() noexcept {
 										// Получаем объект файлового дескриптора
 										auto & event = this->_fds.at(i);
 										// Получаем файловый дескриптор
-										fd = event.fd;
+										sock = event.sock;
 										// Получаем флаг достуности чтения из сокета
 										isRead = (event.revents & POLLIN);
 										// Получаем флаг доступности сокета на запись
@@ -2864,7 +2864,7 @@ void awh::Base::start() noexcept {
 										// Если флаг на чтение данных из сокета установлен
 										if(isRead){
 											// Выполняем поиск указанной записи
-											auto j = this->_peers.find(fd);
+											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
 											if(j != this->_peers.end()){
 												// Получаем идентификатор события
@@ -2872,7 +2872,7 @@ void awh::Base::start() noexcept {
 												// Если событие является таймером
 												if(j->second.delay > 0){
 													// Выполняем чтение данных
-													const uint64_t infelicity = this->_watch.event(fd);
+													const uint64_t infelicity = this->_watch.event(sock);
 													// Если чтение выполнено удачно
 													if(infelicity > 0){
 														// Если функция обратного вызова установлена
@@ -2882,10 +2882,10 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																std::apply(j->second.callback, std::make_tuple(fd, event_type_t::TIMER));
+																std::apply(j->second.callback, std::make_tuple(sock, event_type_t::TIMER));
 														}
 														// Выполняем поиск указанной записи
-														j = this->_peers.find(fd);
+														j = this->_peers.find(sock);
 														// Если сокет в списке найден
 														if((j != this->_peers.end()) && (id == j->second.id)){
 															// Если таймер установлен как серийный
@@ -2895,11 +2895,11 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем активацию таймера на указанное время
-																	this->_watch.wait(j->second.fd, j->second.delay);
+																	this->_watch.wait(j->second.sock, j->second.delay);
 															}
 														}
 													// Удаляем файловый дескриптор из базы событий
-													} else this->del(j->second.id, j->second.fd);
+													} else this->del(j->second.id, j->second.sock);
 												// Если событие не является таймером
 												} else {
 													// Если функция обратного вызова установлена
@@ -2909,7 +2909,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															std::apply(j->second.callback, std::make_tuple(fd, event_type_t::READ));
+															std::apply(j->second.callback, std::make_tuple(sock, event_type_t::READ));
 													}
 												}
 											}
@@ -2917,7 +2917,7 @@ void awh::Base::start() noexcept {
 										// Если сокет доступен для записи
 										if(isWrite){
 											// Выполняем поиск указанной записи
-											auto j = this->_peers.find(fd);
+											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
 											if((j != this->_peers.end()) && ((id == j->second.id) || (id == 0))){
 												// Получаем идентификатор события
@@ -2929,7 +2929,7 @@ void awh::Base::start() noexcept {
 													// Если событие найдено и оно активированно
 													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
-														std::apply(j->second.callback, std::make_tuple(fd, event_type_t::WRITE));
+														std::apply(j->second.callback, std::make_tuple(sock, event_type_t::WRITE));
 												}
 											}
 										}
@@ -2942,7 +2942,7 @@ void awh::Base::start() noexcept {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 												/**
 												* Если режим отладки не включён
 												*/
@@ -2952,7 +2952,7 @@ void awh::Base::start() noexcept {
 												#endif
 											}
 											// Выполняем поиск указанной записи
-											auto j = this->_peers.find(fd);
+											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
 											if(j != this->_peers.end()){
 												// Если идентификаторы соответствуют
@@ -2962,13 +2962,13 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(j->second.callback != nullptr){
 														// Получаем функцию обратного вызова
-														auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
+														auto callback = std::bind(j->second.callback, sock, event_type_t::CLOSE);
 														// Выполняем поиск события на отключение присутствует в базе событий
 														auto k = j->second.mode.find(event_type_t::CLOSE);
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
 															// Удаляем файловый дескриптор из базы событий
-															this->del(j->second.id, fd);
+															this->del(j->second.id, sock);
 															// Выполняем функцию обратного вызова
 															std::apply(callback, std::make_tuple());
 															// Продолжаем обход дальше
@@ -2976,12 +2976,12 @@ void awh::Base::start() noexcept {
 														}
 													}
 													// Удаляем файловый дескриптор из базы событий
-													this->del(j->second.id, fd);
+													this->del(j->second.id, sock);
 												}
 											// Если файловый дескриптор не принадлежит таймерам
-											} else if(this->_timers.find(fd) == this->_timers.end())
+											} else if(this->_timers.find(sock) == this->_timers.end())
 												// Выполняем удаление фантомного файлового дескриптора
-												this->del(fd);
+												this->del(sock);
 										}
 									// Выходим из цикла
 									} else break;
@@ -3045,7 +3045,7 @@ void awh::Base::start() noexcept {
 								// Идентификатор события
 								uint64_t id = 0;
 								// Файловый дескриптор события
-								SOCKET fd = INVALID_SOCKET;
+								SOCKET sock = INVALID_SOCKET;
 								// Флаги статусов полученного сокета
 								bool isRead = false, isWrite = false, isClose = false, isError = false;
 								// Выполняем перебор всех файловых дескрипторов
@@ -3057,7 +3057,7 @@ void awh::Base::start() noexcept {
 										// Получаем объект файлового дескриптора
 										auto & event = this->_dopoll.dp_fds[i];
 										// Получаем файловый дескриптор
-										fd = event.fd;
+										sock = event.sock;
 										// Получаем флаг достуности чтения из сокета
 										isRead = (event.revents & POLLIN);
 										// Получаем флаг доступности сокета на запись
@@ -3071,7 +3071,7 @@ void awh::Base::start() noexcept {
 										// Если флаг на чтение данных из сокета установлен
 										if(isRead){
 											// Выполняем поиск указанной записи
-											auto j = this->_peers.find(fd);
+											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
 											if(j != this->_peers.end()){
 												// Получаем идентификатор события
@@ -3083,7 +3083,7 @@ void awh::Base::start() noexcept {
 													// Фремя погрешности работы таймера
 													uint64_t infelicity = 0;
 													// Если чтение выполнено удачно
-													if((bytes = j->second.pipe->read(fd, infelicity)) > 0){
+													if((bytes = j->second.pipe->read(sock, infelicity)) > 0){
 														// Если функция обратного вызова установлена
 														if(j->second.callback != nullptr){
 															// Выполняем поиск события таймера присутствует в базе событий
@@ -3091,10 +3091,10 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																std::apply(j->second.callback, std::make_tuple(fd, event_type_t::TIMER));
+																std::apply(j->second.callback, std::make_tuple(sock, event_type_t::TIMER));
 														}
 														// Выполняем поиск указанной записи
-														j = this->_peers.find(fd);
+														j = this->_peers.find(sock);
 														// Если сокет в списке найден
 														if((j != this->_peers.end()) && (id == j->second.id)){
 															// Если таймер установлен как серийный
@@ -3104,13 +3104,13 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем активацию таймера на указанное время
-																	this->_watch.wait(j->second.fd, j->second.delay);
+																	this->_watch.wait(j->second.sock, j->second.delay);
 															}
 														}
 													// Выполняем закрытие подключения
 													} else if(bytes == 0)
 														// Удаляем файловый дескриптор из базы событий
-														this->del(j->second.id, j->second.fd);
+														this->del(j->second.id, j->second.sock);
 												// Если событие не является таймером
 												} else {
 													// Если функция обратного вызова установлена
@@ -3120,7 +3120,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															std::apply(j->second.callback, std::make_tuple(fd, event_type_t::READ));
+															std::apply(j->second.callback, std::make_tuple(sock, event_type_t::READ));
 													}
 												}
 											}
@@ -3128,7 +3128,7 @@ void awh::Base::start() noexcept {
 										// Если сокет доступен для записи
 										if(isWrite){
 											// Выполняем поиск указанной записи
-											auto j = this->_peers.find(fd);
+											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
 											if((j != this->_peers.end()) && ((id == j->second.id) || (id == 0))){
 												// Получаем идентификатор события
@@ -3140,7 +3140,7 @@ void awh::Base::start() noexcept {
 													// Если событие найдено и оно активированно
 													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
-														std::apply(j->second.callback, std::make_tuple(fd, event_type_t::WRITE));
+														std::apply(j->second.callback, std::make_tuple(sock, event_type_t::WRITE));
 												}
 											}
 										}
@@ -3153,7 +3153,7 @@ void awh::Base::start() noexcept {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 												/**
 												* Если режим отладки не включён
 												*/
@@ -3163,7 +3163,7 @@ void awh::Base::start() noexcept {
 												#endif
 											}
 											// Выполняем поиск указанной записи
-											auto j = this->_peers.find(fd);
+											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
 											if(j != this->_peers.end()){
 												// Если идентификаторы соответствуют
@@ -3173,13 +3173,13 @@ void awh::Base::start() noexcept {
 													// Если функция обратного вызова установлена
 													if(j->second.callback != nullptr){
 														// Получаем функцию обратного вызова
-														auto callback = std::bind(j->second.callback, fd, event_type_t::CLOSE);
+														auto callback = std::bind(j->second.callback, sock, event_type_t::CLOSE);
 														// Выполняем поиск события на отключение присутствует в базе событий
 														auto k = j->second.mode.find(event_type_t::CLOSE);
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
 															// Удаляем файловый дескриптор из базы событий
-															this->del(j->second.id, fd);
+															this->del(j->second.id, sock);
 															// Выполняем функцию обратного вызова
 															std::apply(callback, std::make_tuple());
 															// Продолжаем обход дальше
@@ -3187,12 +3187,12 @@ void awh::Base::start() noexcept {
 														}
 													}
 													// Удаляем файловый дескриптор из базы событий
-													this->del(j->second.id, fd);
+													this->del(j->second.id, sock);
 												}
 											// Если файловый дескриптор не принадлежит таймерам
-											} else if(this->_timers.find(fd) == this->_timers.end())
+											} else if(this->_timers.find(sock) == this->_timers.end())
 												// Выполняем удаление фантомного файлового дескриптора
-												this->del(fd);
+												this->del(sock);
 										}
 									// Выходим из цикла
 									} else break;
@@ -3250,7 +3250,7 @@ void awh::Base::start() noexcept {
 								// Идентификатор события
 								uint64_t id = 0;
 								// Файловый дескриптор события
-								SOCKET fd = INVALID_SOCKET;
+								SOCKET sock = INVALID_SOCKET;
 								// Флаги статусов полученного сокета
 								bool isRead = false, isWrite = false, isClose = false, isError = false;
 								// Выполняем перебор всех событий в которых мы получили изменения
@@ -3274,13 +3274,13 @@ void awh::Base::start() noexcept {
 											// Получаем идентификатор события
 											id = item->id;
 											// Получаем значение текущего идентификатора
-											fd = item->fd;
+											sock = item->sock;
 											// Если в сокете появились данные для чтения
 											if(isRead){
 												// Если событие является таймером
 												if(item->delay > 0){
 													// Выполняем чтение данных
-													const uint64_t infelicity = this->_watch.event(fd);
+													const uint64_t infelicity = this->_watch.event(sock);
 													// Если чтение выполнено удачно
 													if(infelicity > 0){
 														// Если функция обратного вызова установлена
@@ -3290,10 +3290,10 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																std::apply(item->callback, std::make_tuple(item->fd, event_type_t::TIMER));
+																std::apply(item->callback, std::make_tuple(item->sock, event_type_t::TIMER));
 														}
 														// Выполняем поиск файлового дескриптора в базе событий
-														auto j = this->_peers.find(fd);
+														auto j = this->_peers.find(sock);
 														// Если файловый дескриптор есть в базе событий
 														if((j != this->_peers.end()) && (id == j->second.id)){
 															// Если таймер установлен как серийный
@@ -3303,11 +3303,11 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем активацию таймера на указанное время
-																	this->_watch.wait(j->second.fd, j->second.delay);
+																	this->_watch.wait(j->second.sock, j->second.delay);
 															}
 														}
 													// Удаляем файловый дескриптор из базы событий
-													} else this->del(item->id, item->fd);
+													} else this->del(item->id, item->sock);
 												// Если событие не является таймером
 												} else {
 													// Если функция обратного вызова установлена
@@ -3317,14 +3317,14 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															std::apply(item->callback, std::make_tuple(item->fd, event_type_t::READ));
+															std::apply(item->callback, std::make_tuple(item->sock, event_type_t::READ));
 													}
 												}
 											}
 											// Если сокет доступен для записи
 											if(isWrite){
 												// Выполняем поиск файлового дескриптора в базе событий
-												auto i = this->_peers.find(fd);
+												auto i = this->_peers.find(sock);
 												// Если файловый дескриптор есть в базе событий
 												if((i != this->_peers.end()) && (id == i->second.id)){
 													// Если функция обратного вызова установлена
@@ -3334,7 +3334,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															std::apply(i->second.callback, std::make_tuple(i->second.fd, event_type_t::WRITE));
+															std::apply(i->second.callback, std::make_tuple(i->second.sock, event_type_t::WRITE));
 													}
 												}
 											}
@@ -3347,7 +3347,7 @@ void awh::Base::start() noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -3357,7 +3357,7 @@ void awh::Base::start() noexcept {
 													#endif
 												}
 												// Выполняем поиск файлового дескриптора в базе событий
-												auto i = this->_peers.find(fd);
+												auto i = this->_peers.find(sock);
 												// Если файловый дескриптор есть в базе событий
 												if(i != this->_peers.end()){
 													// Если идентификаторы соответствуют
@@ -3365,13 +3365,13 @@ void awh::Base::start() noexcept {
 														// Если функция обратного вызова установлена
 														if(i->second.callback != nullptr){
 															// Получаем функцию обратного вызова
-															auto callback = std::bind(i->second.callback, i->second.fd, event_type_t::CLOSE);
+															auto callback = std::bind(i->second.callback, i->second.sock, event_type_t::CLOSE);
 															// Выполняем поиск события на отключение присутствует в базе событий
 															auto j = i->second.mode.find(event_type_t::CLOSE);
 															// Если событие найдено и оно активированно
 															if((j != i->second.mode.end()) && (j->second == event_mode_t::ENABLED)){
 																// Удаляем файловый дескриптор из базы событий
-																this->del(i->second.id, i->second.fd);
+																this->del(i->second.id, i->second.sock);
 																// Выполняем функцию обратного вызова
 																std::apply(callback, std::make_tuple());
 																// Продолжаем обход дальше
@@ -3379,12 +3379,12 @@ void awh::Base::start() noexcept {
 															}
 														}
 														// Удаляем файловый дескриптор из базы событий
-														this->del(i->second.id, i->second.fd);
+														this->del(i->second.id, i->second.sock);
 													}
 												// Если файловый дескриптор не принадлежит таймерам
-												} else if(this->_timers.find(fd) == this->_timers.end())
+												} else if(this->_timers.find(sock) == this->_timers.end())
 													// Выполняем удаление фантомного файлового дескриптора
-													this->del(fd);
+													this->del(sock);
 											}
 										}
 									// Выходим из цикла
@@ -3445,7 +3445,7 @@ void awh::Base::start() noexcept {
 								// Код ошибки полученный от ядра
 								int32_t code = 0;
 								// Файловый дескриптор события
-								SOCKET fd = INVALID_SOCKET;
+								SOCKET sock = INVALID_SOCKET;
 								// Флаги статусов полученного сокета
 								bool isRead = false, isWrite = false,
 								     isClose = false, isError = false, isEvent = false;
@@ -3476,13 +3476,13 @@ void awh::Base::start() noexcept {
 											// Получаем идентификатор события
 											id = item->id;
 											// Получаем значение текущего идентификатора
-											fd = item->fd;
+											sock = item->sock;
 											// Если мы получили наше кастомное событие
 											if(isEvent){
 												// Если событие является таймером
 												if(item->delay > 0){
 													// Выполняем чтение данных
-													const uint64_t infelicity = this->_watch.event(fd);
+													const uint64_t infelicity = this->_watch.event(sock);
 													// Если чтение выполнено удачно
 													if(infelicity > 0){
 														// Если функция обратного вызова установлена
@@ -3492,10 +3492,10 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																std::apply(item->callback, std::make_tuple(item->fd, event_type_t::TIMER));
+																std::apply(item->callback, std::make_tuple(item->sock, event_type_t::TIMER));
 														}
 														// Выполняем поиск файлового дескриптора в базе событий
-														j = this->_peers.find(fd);
+														j = this->_peers.find(sock);
 														// Если файловый дескриптор есть в базе событий
 														if((j != this->_peers.end()) && (id == j->second.id)){
 															// Если таймер установлен как серийный
@@ -3505,11 +3505,11 @@ void awh::Base::start() noexcept {
 																// Если событие найдено и оно активированно
 																if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																	// Выполняем активацию таймера на указанное время
-																	this->_watch.wait(j->second.fd, j->second.delay);
+																	this->_watch.wait(j->second.sock, j->second.delay);
 															}
 														}
 													// Удаляем файловый дескриптор из базы событий
-													} else this->del(item->id, item->fd);
+													} else this->del(item->id, item->sock);
 												}
 											}
 											// Если в сокете появились данные для чтения
@@ -3521,13 +3521,13 @@ void awh::Base::start() noexcept {
 													// Если событие найдено и оно активированно
 													if((k != item->mode.end()) && (k->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
-														std::apply(item->callback, std::make_tuple(fd, event_type_t::READ));
+														std::apply(item->callback, std::make_tuple(sock, event_type_t::READ));
 												}
 											}
 											// Если сокет доступен для записи
 											if(isWrite){
 												// Выполняем поиск файлового дескриптора в базе событий
-												j = this->_peers.find(fd);
+												j = this->_peers.find(sock);
 												// Если файловый дескриптор есть в базе событий
 												if((j != this->_peers.end()) && (id == j->second.id)){
 													// Если функция обратного вызова установлена
@@ -3537,7 +3537,7 @@ void awh::Base::start() noexcept {
 														// Если событие найдено и оно активированно
 														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 															// Выполняем функцию обратного вызова
-															std::apply(j->second.callback, std::make_tuple(j->second.fd, event_type_t::WRITE));
+															std::apply(j->second.callback, std::make_tuple(j->second.sock, event_type_t::WRITE));
 													}
 												}
 											}
@@ -3550,7 +3550,7 @@ void awh::Base::start() noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, this->_socket.message(code).c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, this->_socket.message(code).c_str());
 													/**
 													* Если режим отладки не включён
 													*/
@@ -3560,7 +3560,7 @@ void awh::Base::start() noexcept {
 													#endif
 												}
 												// Выполняем поиск файлового дескриптора в базе событий
-												j = this->_peers.find(fd);
+												j = this->_peers.find(sock);
 												// Если файловый дескриптор есть в базе событий
 												if(j != this->_peers.end()){
 													// Если идентификаторы соответствуют
@@ -3568,13 +3568,13 @@ void awh::Base::start() noexcept {
 														// Если функция обратного вызова установлена
 														if(j->second.callback != nullptr){
 															// Получаем функцию обратного вызова
-															auto callback = std::bind(j->second.callback, j->second.fd, event_type_t::CLOSE);
+															auto callback = std::bind(j->second.callback, j->second.sock, event_type_t::CLOSE);
 															// Выполняем поиск события на отключение присутствует в базе событий
 															auto k = j->second.mode.find(event_type_t::CLOSE);
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
 																// Удаляем файловый дескриптор из базы событий
-																this->del(j->second.id, j->second.fd);
+																this->del(j->second.id, j->second.sock);
 																// Выполняем функцию обратного вызова
 																std::apply(callback, std::make_tuple());
 																// Продолжаем обход дальше
@@ -3582,12 +3582,12 @@ void awh::Base::start() noexcept {
 															}
 														}
 														// Удаляем файловый дескриптор из базы событий
-														this->del(j->second.id, j->second.fd);
+														this->del(j->second.id, j->second.sock);
 													}
 												// Если файловый дескриптор не принадлежит таймерам
-												} else if(this->_timers.find(fd) == this->_timers.end())
+												} else if(this->_timers.find(sock) == this->_timers.end())
 													// Выполняем удаление фантомного файлового дескриптора
-													this->del(fd);
+													this->del(sock);
 											}
 										}
 									// Выходим из цикла
@@ -3667,15 +3667,15 @@ void awh::Base::rebase() noexcept {
 					// Выполняем перебор всего списка активных событий
 					for(auto & item : items){
 						// Выполняем добавление события в базу событий
-						if(!this->add(item.second.id, item.second.fd, item.second.callback))
+						if(!this->add(item.second.id, item.second.sock, item.second.callback))
 							// Выводим сообщение что событие не вышло активировать
-							this->_log->print("Failed activate event for SOCKET=%d", log_t::flag_t::WARNING, item.second.fd);
+							this->_log->print("Failed activate event for SOCKET=%d", log_t::flag_t::WARNING, item.second.sock);
 						// Если событие добавленно удачно
 						else {
 							// Выполняем перебор всех разрешений на запуск событий
 							for(auto & mode : item.second.mode)
 								// Выполняем активацию события на запуск
-								this->mode(item.second.id, item.second.fd, mode.first, mode.second);
+								this->mode(item.second.id, item.second.sock, mode.first, mode.second);
 						}
 					}
 				}

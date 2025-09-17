@@ -87,9 +87,9 @@ namespace awh {
 			void set(base_t * base) noexcept;
 			/**
 			 * set Метод установки файлового дескриптора
-			 * @param fd файловый дескриптор для установки
+			 * @param sock файловый дескриптор для установки
 			 */
-			void set(const SOCKET fd) noexcept;
+			void set(const SOCKET sock) noexcept;
 			/**
 			 * set Метод установки функции обратного вызова
 			 * @param callback функция обратного вызова
@@ -134,10 +134,10 @@ namespace awh {
 			Event & operator = (base_t * base) noexcept;
 			/**
 			 * Оператор [=] для установки файлового дескриптора
-			 * @param fd файловый дескриптор для установки
-			 * @return   текущий объект
+			 * @param sock файловый дескриптор для установки
+			 * @return     текущий объект
 			 */
-			Event & operator = (const SOCKET fd) noexcept;
+			Event & operator = (const SOCKET sock) noexcept;
 			/**
 			 * Оператор [=] для установки задержки времени таймера
 			 * @param delay задержка времени в миллисекундах

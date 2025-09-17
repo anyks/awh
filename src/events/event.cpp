@@ -47,11 +47,11 @@ void awh::Event::set(base_t * base) noexcept {
 }
 /**
  * set Метод установки файлового дескриптора
- * @param fd файловый дескриптор для установки
+ * @param sock файловый дескриптор для установки
  */
-void awh::Event::set(const SOCKET fd) noexcept {
+void awh::Event::set(const SOCKET sock) noexcept {
 	// Получаем флаг перезапуска работы события
-	const bool restart = (this->_mode && (fd != INVALID_SOCKET) && (this->_fd != INVALID_SOCKET) && (fd != this->_fd));
+	const bool restart = (this->_mode && (sock != INVALID_SOCKET) && (this->_fd != INVALID_SOCKET) && (sock != this->_fd));
 	// Если необходимо выполнить перезапуск события
 	if(restart)
 		// Выполняем остановку работы события
@@ -63,7 +63,7 @@ void awh::Event::set(const SOCKET fd) noexcept {
 		// Если тип является обычным событием
 		case static_cast <uint8_t> (type_t::EVENT):
 			// Устанавливаем файловый дескриптор
-			this->_fd = fd;
+			this->_fd = sock;
 		break;
 		// Если тип события является таймером
 		case static_cast <uint8_t> (type_t::TIMER):
@@ -211,12 +211,12 @@ awh::Event & awh::Event::operator = (base_t * base) noexcept {
 }
 /**
  * Оператор [=] для установки файлового дескриптора
- * @param fd файловый дескриптор для установки
- * @return   текущий объект
+ * @param sock файловый дескриптор для установки
+ * @return     текущий объект
  */
-awh::Event & awh::Event::operator = (const SOCKET fd) noexcept {
+awh::Event & awh::Event::operator = (const SOCKET sock) noexcept {
 	// Выполняем установку файлового дескриптора
-	this->set(fd);
+	this->set(sock);
 	// Возвращаем текущий объект
 	return (* this);
 }

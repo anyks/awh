@@ -132,11 +132,11 @@ namespace awh {
 			 * Peer Структура участника
 			 */
 			typedef struct Peer {
-				// Отслеживаемый файловый дескриптор
-				SOCKET fd;
 				// Файловые дескрипторы таймеров
 				SOCKET tid;
-				// Идентификатор записи
+				// Отслеживаемый файловый дескриптор
+				SOCKET sock;
+				// Идентификатор участника
 				uint64_t id;
 				// Флаг активации серийного таймера
 				bool series;
@@ -150,7 +150,7 @@ namespace awh {
 				 * Peer Конструктор
 				 */
 				Peer() noexcept :
-				 fd(INVALID_SOCKET), tid(INVALID_SOCKET), id(0),
+				 tid(INVALID_SOCKET), sock(INVALID_SOCKET), id(0),
 				 series(false), delay(0), callback(nullptr) {}
 			} peer_t;
 		private:
@@ -256,53 +256,53 @@ namespace awh {
 			/**
 			 * upstream Метод получения событий верхнеуровневых потоков
 			 * @param sid  идентификатор верхнеуровневого потока
-			 * @param fd   файловый дескриптор верхнеуровневого потока
+			 * @param sock файловый дескриптор верхнеуровневого потока
 			 * @param type тип отслеживаемого события
 			 */
-			void upstream(const uint64_t sid, const SOCKET fd, const event_type_t type) noexcept;
+			void upstream(const uint64_t sid, const SOCKET sock, const event_type_t type) noexcept;
 		private:
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий
-			 * @param fd файловый дескриптор для удаления
-			 * @return   результат работы функции
+			 * @param sock файловый дескриптор для удаления
+			 * @return     результат работы функции
 			 */
-			bool del(const SOCKET fd) noexcept;
+			bool del(const SOCKET sock) noexcept;
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий для всех событий
-			 * @param id идентификатор записи
-			 * @param fd файловый дескриптор для удаления
-			 * @return   результат работы функции
+			 * @param id   идентификатор записи
+			 * @param sock файловый дескриптор для удаления
+			 * @return     результат работы функции
 			 */
-			bool del(const uint64_t id, const SOCKET fd) noexcept;
+			bool del(const uint64_t id, const SOCKET sock) noexcept;
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий для указанного события
 			 * @param id   идентификатор записи
-			 * @param fd   файловый дескриптор для удаления
+			 * @param sock файловый дескриптор для удаления
 			 * @param type тип отслеживаемого события
 			 * @return     результат работы функции
 			 */
-			bool del(const uint64_t id, const SOCKET fd, const event_type_t type) noexcept;
+			bool del(const uint64_t id, const SOCKET sock, const event_type_t type) noexcept;
 		private:
 			/**
 			 * add Метод добавления файлового дескриптора в базу событий
 			 * @param id       идентификатор записи
-			 * @param fd       файловый дескриптор для добавления
+			 * @param sock     файловый дескриптор для добавления
 			 * @param callback функция обратного вызова при получении события
 			 * @param delay    задержка времени для создания таймеров
 			 * @param series   флаг серийного таймаута
 			 * @return         результат работы функции
 			 */
-			bool add(const uint64_t id, SOCKET & fd, callback_t callback = nullptr, const uint32_t delay = 0, const bool series = false) noexcept;
+			bool add(const uint64_t id, SOCKET & sock, callback_t callback = nullptr, const uint32_t delay = 0, const bool series = false) noexcept;
 		private:
 			/**
 			 * mode Метод установки режима работы модуля
 			 * @param id   идентификатор записи
-			 * @param fd   файловый дескриптор для установки режима работы
+			 * @param sock файловый дескриптор для установки режима работы
 			 * @param type тип событий модуля для которого требуется сменить режим работы
 			 * @param mode флаг режима работы модуля
 			 * @return     результат работы функции
 			 */
-			bool mode(const uint64_t id, const SOCKET fd, const event_type_t type, const event_mode_t mode) noexcept;
+			bool mode(const uint64_t id, const SOCKET sock, const event_type_t type, const event_mode_t mode) noexcept;
 		public:
 			/**
 			 * launched Метод проверки запущена ли в данный момент база событий
