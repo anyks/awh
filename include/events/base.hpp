@@ -57,14 +57,17 @@
  * Наши модули
  */
 #include "watch.hpp"
+#include "partners.hpp"
 #include "../net/socket.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
-	 * Event Прототип класса события AWH event
+	 * @brief Прототип класса события AWH event
+	 *
 	 */
 	class Event;
 	/**
@@ -72,12 +75,14 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Base Класс базы событий
+	 * @brief Класс базы событий
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Base {
 		private:
 			/**
-			 * Event Устанавливаем дружбу с модулем события
+			 * @brief Устанавливаем дружбу с модулем события
+			 *
 			 */
 			friend class Event;
 		public:
@@ -100,8 +105,10 @@ namespace awh {
 				STREAM = 0x05  // Событие межпотоковое системное
 			};
 		private:
-			// Максимальное количество отслеживаемых сокетов
-			static constexpr const uint32_t MAX_COUNT_FDS = 0x20000;
+			/**
+			 * Максимальное количество отслеживаемых сокетов
+			 */
+			static constexpr const uint32_t MAX_SOCKS = 0x20000;
 		public:
 			/**
 			 * Создаём тип функции обратного вызова
@@ -109,7 +116,8 @@ namespace awh {
 			typedef function <void (const SOCKET, const event_type_t)> callback_t;
 		private:
 			/**
-			 * Upstream Структура работы вышестоящего потока
+			 * @brief Структура работы вышестоящего потока
+			 *
 			 */
 			typedef struct Upstream {
 				// Дополнительный партнёрский сокет
@@ -121,7 +129,8 @@ namespace awh {
 				// Функция обратного вызова
 				function <void (const uint64_t)> callback;
 				/**
-				 * Upstream Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
@@ -129,7 +138,8 @@ namespace awh {
 				 sock(INVALID_SOCKET), notifier(fmk, log), callback(nullptr) {}
 			} upstream_t;
 			/**
-			 * Peer Структура участника
+			 * @brief Структура участника
+			 *
 			 */
 			typedef struct Peer {
 				// Идентификатор участника
@@ -147,7 +157,8 @@ namespace awh {
 				// Список соответствия типов событий режиму работы
 				std::map <event_type_t, event_mode_t> mode;
 				/**
-				 * Peer Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Peer() noexcept :
 				 id(0), persist(false),
@@ -158,19 +169,19 @@ namespace awh {
 			// Идентификатор потока
 			uint64_t _wid;
 		private:
+			// Время блокировки базы событий в ожидании событий
+			std::atomic_int _rate;
+			// Максимальное количество обрабатываемых сокетов
+			std::atomic_uint _sockmax;
+		private:
+			// Флаг запуска работы базы событий
+			std::atomic_bool _works;
 			// Флаг простого чтения базы событий
 			std::atomic_bool _easily;
 			// Флаг блокировки опроса базы событий
 			std::atomic_bool _locker;
-			// Флаг запуска работы базы событий
-			std::atomic_bool _started;
 			// Флаг запущенного опроса базы событий
 			std::atomic_bool _launched;
-		private:
-			// Время блокировки базы событий в ожидании событий
-			std::atomic_int _baserate;
-			// Максимальное количество обрабатываемых сокетов
-			std::atomic_uint _maxSockets;
 		private:
 			/**
 			 * Для операционной системы OS Windows
@@ -216,12 +227,12 @@ namespace awh {
 		private:
 			// Объект работы с часами
 			watch_t _watch;
+			// Объект работы с партнёрами
+			partners_t _partners;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
 		private:
-			// Список существующих соучастников
-			std::set <SOCKET> _partners;
 			// Список отслеживаемых участников
 			std::map <SOCKET, peer_t> _peers;
 			// Спиоск активных верхнеуровневых потоков
@@ -233,45 +244,52 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * wid Метод получения идентификатора потока
+			 * @brief Метод получения идентификатора потока
+			 *
 			 * @return идентификатор потока для получения
 			 */
 			uint64_t wid() const noexcept;
 		private:
 			/**
-			 * isChildThread Метод проверки запущен ли модуль в дочернем потоке
+			 * @brief Метод проверки запущен ли модуль в дочернем потоке
+			 *
 			 * @return результат проверки
 			 */
 			bool isChildThread() const noexcept;
 		private:
 			/**
-			 * init Метод инициализации базы событий
+			 * @brief Метод инициализации базы событий
+			 *
 			 * @param mode флаг инициализации
 			 */
 			void init(const event_mode_t mode) noexcept;
 		private:
 			/**
-			 * upstream Метод получения событий верхнеуровневых потоков
+			 * @brief Метод получения событий верхнеуровневых потоков
+			 *
 			 * @param sock  окет межпотокового передатчика
 			 * @param event входящее событие от межпотокового передатчика
 			 */
-			void upstream(const SOCKET sock, const uint64_t event) noexcept;
+			void stream(const SOCKET sock, const uint64_t event) noexcept;
 		private:
 			/**
-			 * del Метод удаления файлового дескриптора из базы событий
+			 * @brief Метод удаления файлового дескриптора из базы событий
+			 *
 			 * @param sock сокет для удаления
 			 * @return     результат работы функции
 			 */
 			bool del(const SOCKET sock) noexcept;
 			/**
-			 * del Метод удаления файлового дескриптора из базы событий для всех событий
+			 * @brief Метод удаления файлового дескриптора из базы событий для всех событий
+			 *
 			 * @param id   идентификатор записи
 			 * @param sock сокет для удаления
 			 * @return     результат работы функции
 			 */
 			bool del(const uint64_t id, const SOCKET sock) noexcept;
 			/**
-			 * del Метод удаления файлового дескриптора из базы событий для указанного события
+			 * @brief Метод удаления файлового дескриптора из базы событий для указанного события
+			 *
 			 * @param id   идентификатор записи
 			 * @param sock сокет для удаления
 			 * @param type тип отслеживаемого события
@@ -280,7 +298,8 @@ namespace awh {
 			bool del(const uint64_t id, const SOCKET sock, const event_type_t type) noexcept;
 		private:
 			/**
-			 * add Метод добавления файлового дескриптора в базу событий
+			 * @brief Метод добавления файлового дескриптора в базу событий
+			 *
 			 * @param id       идентификатор записи
 			 * @param sock     сокет для добавления
 			 * @param callback функция обратного вызова при получении события
@@ -291,7 +310,8 @@ namespace awh {
 			bool add(const uint64_t id, SOCKET & sock, callback_t callback = nullptr, const uint32_t delay = 0, const bool persist = false) noexcept;
 		private:
 			/**
-			 * mode Метод установки режима работы модуля
+			 * @brief Метод установки режима работы модуля
+			 *
 			 * @param id   идентификатор записи
 			 * @param sock сокет для установки режима работы
 			 * @param type тип событий модуля для которого требуется сменить режим работы
@@ -301,82 +321,97 @@ namespace awh {
 			bool mode(const uint64_t id, const SOCKET sock, const event_type_t type, const event_mode_t mode) noexcept;
 		public:
 			/**
-			 * launched Метод проверки запущена ли в данный момент база событий
+			 * @brief Метод проверки запущена ли в данный момент база событий
+			 *
 			 * @return результат проверки запущена ли база событий
 			 */
 			bool launched() const noexcept;
 		public:
 			/**
-			 * clear Метод очистки списка событий
+			 * @brief Метод очистки списка событий
+			 *
 			 */
 			void clear() noexcept;
 		public:
 			/**
-			 * kick Метод отправки пинка
+			 * @brief Метод отправки пинка
+			 *
 			 */
 			void kick() noexcept;
 			/**
-			 * stop Метод остановки чтения базы событий
+			 * @brief Метод остановки чтения базы событий
+			 *
 			 */
 			void stop() noexcept;
 			/**
-			 * start Метод запуска чтения базы событий
+			 * @brief Метод запуска чтения базы событий
+			 *
 			 */
 			void start() noexcept;
 			/**
-			 * rebase Метод пересоздания базы событий
+			 * @brief Метод пересоздания базы событий
+			 *
 			 */
 			void rebase() noexcept;
 		public:
 			/**
-			 * freeze Метод заморозки чтения данных
+			 * @brief Метод заморозки чтения данных
+			 *
 			 * @param mode флаг активации
 			 */
 			void freeze(const bool mode) noexcept;
 			/**
-			 * easily Метод активации простого режима чтения базы событий
+			 * @brief Метод активации простого режима чтения базы событий
+			 *
 			 * @param mode флаг активации
 			 */
 			void easily(const bool mode) noexcept;
 		public:
 			/**
-			 * maxSockets Максимальное количество поддерживаемых сокетов
-			 * @param count максимальное количество поддерживаемых сокетов
-			 */
-			void maxSockets(const uint32_t count) noexcept;
-		public:
-			/**
-			 * baserate Метод установки времени блокировки базы событий в ожидании событий
+			 * @brief Метод установки времени блокировки базы событий в ожидании событий
+			 *
 			 * @param msec время ожидания событий в миллисекундах
 			 */
-			void baserate(const uint32_t msec = 10) noexcept;
+			void rate(const uint32_t msec = 10) noexcept;
 		public:
 			/**
-			 * send Метод отправки сообщения между потоками
+			 * @brief Максимальное количество поддерживаемых сокетов
+			 *
+			 * @param count максимальное количество поддерживаемых сокетов
+			 */
+			void sockmax(const uint32_t count) noexcept;
+		public:
+			/**
+			 * @brief Метод отправки сообщения между потоками
+			 *
 			 * @param sock сокет межпотокового передатчика
 			 * @param tid  идентификатор трансферной передачи
 			 */
-			void send(const SOCKET sock, const uint64_t tid) noexcept;
+			void upstream(const SOCKET sock, const uint64_t tid) noexcept;
 			/**
-			 * deactivation Метод деактивации межпотокового передатчика
+			 * @brief Метод деактивации межпотокового передатчика
+			 *
 			 * @param sock сокет межпотокового передатчика
 			 */
-			void deactivation(const SOCKET sock) noexcept;
+			void deactivationUpstream(const SOCKET sock) noexcept;
 			/**
-			 * activation Метод активации межпотокового передатчика
+			 * @brief Метод активации межпотокового передатчика
+			 *
 			 * @param callback функция обратного вызова
 			 * @return         сокет межпотокового передатчика
 			 */
-			SOCKET activation(function <void (const uint64_t)> callback) noexcept;
+			SOCKET activationUpstream(function <void (const uint64_t)> callback) noexcept;
 		public:
 			/**
-			 * Base Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Base(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Base Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Base() noexcept;
 	} base_t;

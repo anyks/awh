@@ -109,7 +109,7 @@ class Executor {
 
 						cout << " ******** " << fd << " || " << std::this_thread::get_id() << endl;
 
-						timer->sendUpstream(fd, 2281);
+						timer->upstream(fd, 2281);
 
 						timer->deactivationUpstream(fd);
 					

@@ -30,7 +30,8 @@
 #include "../sys/callback.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -38,12 +39,14 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Core Класс ядра биндинга TCP/IP
+	 * @brief Класс ядра биндинга TCP/IP
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Core {
 		private:
 			/**
-			 * Scheme Устанавливаем дружбу с схемой сети
+			 * @brief Устанавливаем дружбу с схемой сети
+			 *
 			 */
 			friend class Scheme;
 		public:
@@ -56,7 +59,8 @@ namespace awh {
 			};
 		protected:
 			/**
-			 * Mutex Объект основных мютексов
+			 * @brief Объект основных мютексов
+			 *
 			 */
 			typedef struct Mutex {
 				// Для работы с параметрами модуля
@@ -68,7 +72,8 @@ namespace awh {
 			} mtx_t;
 		private:
 			/**
-			 * Dispatch Класс работы с событиями
+			 * @brief Класс работы с событиями
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT Dispatch {
 				private:
@@ -96,58 +101,75 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
-					 * kick Метод отправки пинка
+					 * @brief Метод отправки пинка
+					 *
 					 */
 					void kick() noexcept;
 					/**
-					 * stop Метод остановки чтения базы событий
+					 * @brief Метод остановки чтения базы событий
+					 *
 					 */
 					void stop() noexcept;
 					/**
-					 * start Метод запуска чтения базы событий
+					 * @brief Метод запуска чтения базы событий
+					 *
 					 */
 					void start() noexcept;
 				public:
 					/**
-					 * rebase Метод пересоздания базы событий
+					 * @brief Метод пересоздания базы событий
+					 *
 					 */
 					void rebase() noexcept;
 					/**
-					 * reinit Метод реинициализации базы событий
+					 * @brief Метод реинициализации базы событий
+					 *
 					 */
 					void reinit() noexcept;
 					/**
-					 * freeze Метод заморозки чтения данных
+					 * @brief Метод заморозки чтения данных
+					 *
 					 * @param mode флаг активации
 					 */
 					void freeze(const bool mode) noexcept;
 					/**
-					 * easily Метод активации простого режима чтения базы событий
+					 * @brief Метод активации простого режима чтения базы событий
+					 *
 					 * @param mode флаг активации
 					 */
 					void easily(const bool mode) noexcept;
 				public:
 					/**
-					 * baserate Метод установки времени блокировки базы событий в ожидании событий
+					 * @brief Метод установки времени блокировки базы событий в ожидании событий
+					 *
 					 * @param msec время ожидания событий в миллисекундах
 					 */
-					void baserate(const uint8_t msec = 10) noexcept;
+					void rate(const uint8_t msec = 10) noexcept;
+					/**
+					 * @brief Максимальное количество поддерживаемых сокетов
+					 *
+					 * @param count максимальное количество поддерживаемых сокетов
+					 */
+					void sockmax(const uint32_t count) noexcept;
 				public:
 					/**
-					 * on Метод установки функции обратного вызова
+					 * @brief Метод установки функции обратного вызова
+					 *
 					 * @param status   статус которому соответствует функция
 					 * @param callback функция обратного вызова
 					 */
 					void on(const status_t status, function <void (const bool, const bool)> callback) noexcept;
 				public:
 					/**
-					 * Dispatch Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Dispatch(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
-					 * ~Dispatch Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Dispatch() noexcept;
 			} dispatch_t;
@@ -184,59 +206,70 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * signal Метод вывода полученного сигнала
+			 * @brief Метод вывода полученного сигнала
+			 *
 			 */
 			void signal(const int32_t signal) noexcept;
 		public:
 			/**
-			 * rebase Метод пересоздания базы событий
+			 * @brief Метод пересоздания базы событий
+			 *
 			 */
 			void rebase() noexcept;
 			/**
-			 * reinit Метод реинициализации базы событий
+			 * @brief Метод реинициализации базы событий
+			 *
 			 */
 			void reinit() noexcept;
 		public:
 			/**
-			 * bind Метод подключения модуля ядра к текущей базе событий
+			 * @brief Метод подключения модуля ядра к текущей базе событий
+			 *
 			 * @param core модуль ядра для подключения
 			 */
 			void bind(Core * core) noexcept;
 			/**
-			 * unbind Метод отключения модуля ядра от текущей базы событий
+			 * @brief Метод отключения модуля ядра от текущей базы событий
+			 *
 			 * @param core модуль ядра для отключения
 			 */
 			void unbind(Core * core) noexcept;
 		public:
 			/**
-			 * kick Метод отправки пинка
+			 * @brief Метод отправки пинка
+			 *
 			 */
 			void kick() noexcept;
 		public:
 			/**
-			 * stop Метод остановки клиента
+			 * @brief Метод остановки клиента
+			 *
 			 */
 			virtual void stop() noexcept;
 			/**
-			 * start Метод запуска клиента
+			 * @brief Метод запуска клиента
+			 *
 			 */
 			virtual void start() noexcept;
 		protected:
 			/**
-			 * launching Метод вызова при активации базы событий
+			 * @brief Метод вызова при активации базы событий
+			 *
 			 * @param mode   флаг работы с сетевым протоколом
 			 * @param status флаг вывода события статуса
 			 */
 			virtual void launching(const bool mode, const bool status) noexcept;
 			/**
-			 * closedown Метод вызова при деакцтивации базы событий
+			 * @brief Метод вызова при деакцтивации базы событий
+			 *
 			 * @param mode   флаг работы с сетевым протоколом
 			 * @param status флаг вывода события статуса
 			 */
 			virtual void closedown(const bool mode, const bool status) noexcept;
 		public:
 			/**
-			 * callback Метод установки функций обратного вызова
+			 * @brief Метод установки функций обратного вызова
+			 *
 			 * @param callback функции обратного вызова
 			 */
 			virtual void callback(const callback_t & callback) noexcept;
@@ -248,7 +281,8 @@ namespace awh {
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -268,7 +302,8 @@ namespace awh {
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -288,7 +323,8 @@ namespace awh {
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -309,7 +345,8 @@ namespace awh {
 			 */
 			template <typename A, typename B, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -324,70 +361,89 @@ namespace awh {
 			}
 		public:
 			/**
-			 * working Метод проверки на запуск работы
+			 * @brief Метод проверки на запуск работы
+			 *
 			 * @return результат проверки
 			 */
 			bool working() const noexcept;
 		public:
 			/**
-			 * eventBase Метод получения базы событий
+			 * @brief Метод получения базы событий
+			 *
 			 * @return инициализированная база событий
 			 */
 			base_t * eventBase() noexcept;
 		public:
 			/**
-			 * easily Метод активации простого режима чтения базы событий
+			 * @brief Метод активации простого режима чтения базы событий
+			 *
 			 * @param mode флаг активации простого чтения базы событий
 			 */
 			void easily(const bool mode = true) noexcept;
 			/**
-			 * freeze Метод заморозки чтения данных
+			 * @brief Метод заморозки чтения данных
+			 *
 			 * @param mode флаг активации заморозки чтения данных
 			 */
 			void freeze(const bool mode = true) noexcept;
 			/**
-			 * verbose Метод установки флага запрета вывода информационных сообщений
+			 * @brief Метод установки флага запрета вывода информационных сообщений
+			 *
 			 * @param mode флаг запрета вывода информационных сообщений
 			 */
 			void verbose(const bool mode = true) noexcept;
 		public:
 			/**
-			 * baserate Метод установки времени блокировки базы событий в ожидании событий
+			 * @brief Метод установки времени блокировки базы событий в ожидании событий
+			 *
 			 * @param msec время ожидания событий в миллисекундах
 			 */
-			void baserate(const uint8_t msec = 10) noexcept;
+			void rate(const uint8_t msec = 10) noexcept;
 			/**
-			 * signalInterception Метод активации перехвата сигналов
+			 * @brief Максимальное количество поддерживаемых сокетов
+			 *
+			 * @param count максимальное количество поддерживаемых сокетов
+			 */
+			void sockmax(const uint32_t count) noexcept;
+		public:
+			/**
+			 * @brief Метод активации перехвата сигналов
+			 *
 			 * @param mode флаг активации
 			 */
 			void signalInterception(const scheme_t::mode_t mode = scheme_t::mode_t::DISABLED) noexcept;
 		public:
 			/**
-			 * sendUpstream Метод отправки сообщения между потоками
+			 * @brief Метод отправки сообщения между потоками
+			 *
 			 * @param sock сокет межпотокового передатчика
 			 * @param tid  идентификатор трансферной передачи
 			 */
-			void sendUpstream(const SOCKET sock, const uint64_t tid) noexcept;
+			void upstream(const SOCKET sock, const uint64_t tid) noexcept;
 			/**
-			 * deactivationUpstream Метод деактивации межпотокового передатчика
+			 * @brief Метод деактивации межпотокового передатчика
+			 *
 			 * @param sock сокет межпотокового передатчика
 			 */
 			void deactivationUpstream(const SOCKET sock) noexcept;
 			/**
-			 * activationUpstream Метод активации межпотокового передатчика
+			 * @brief Метод активации межпотокового передатчика
+			 *
 			 * @param callback функция обратного вызова
 			 * @return         сокет межпотокового передатчика
 			 */
 			SOCKET activationUpstream(function <void (const uint64_t)> callback) noexcept;
 		public:
 			/**
-			 * Core Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Core(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Core Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			virtual ~Core() noexcept;
 	} core_t;

@@ -299,7 +299,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/events/event.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/watch.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/notifier.cpp"
-    "${CMAKE_SOURCE_DIR}/src/events/evpipe.cpp"
+    "${CMAKE_SOURCE_DIR}/src/events/partners.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/node.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/timer.cpp"

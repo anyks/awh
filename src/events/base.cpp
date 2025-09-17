@@ -32,7 +32,8 @@ using namespace placeholders;
  */
 #if _WIN32 || _WIN64
 	/**
-	 * winsockInitialized Метод проверки на инициализацию WinSocksAPI
+	 * @brief Метод проверки на инициализацию WinSocksAPI
+	 *
 	 * @return результат проверки
 	 */
 	static bool winsockInitialized() noexcept {
@@ -49,7 +50,8 @@ using namespace placeholders;
 	}
 #endif
 /**
- * wid Метод получения идентификатора потока
+ * @brief Метод получения идентификатора потока
+ *
  * @return идентификатор потока для получения
  */
 uint64_t awh::Base::wid() const noexcept {
@@ -59,7 +61,8 @@ uint64_t awh::Base::wid() const noexcept {
 	return hasher(std::this_thread::get_id());
 }
 /**
- * isChildThread Метод проверки запущен ли модуль в дочернем потоке
+ * @brief Метод проверки запущен ли модуль в дочернем потоке
+ *
  * @return результат проверки
  */
 bool awh::Base::isChildThread() const noexcept {
@@ -67,7 +70,8 @@ bool awh::Base::isChildThread() const noexcept {
 	return (this->_wid != this->wid());
 }
 /**
- * init Метод инициализации базы событий
+ * @brief Метод инициализации базы событий
+ *
  * @param mode флаг инициализации
  */
 void awh::Base::init(const event_mode_t mode) noexcept {
@@ -150,7 +154,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 			 */
 			#elif __linux__
 				// Выполняем инициализацию EPoll
-				if((this->_efd = ::epoll_create(static_cast <uint32_t> (this->_maxSockets))) == INVALID_SOCKET){
+				if((this->_efd = ::epoll_create(static_cast <uint32_t> (this->_sockmax))) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -228,11 +232,12 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 	}
 }
 /**
- * upstream Метод получения событий верхнеуровневых потоков
+ * @brief Метод получения событий верхнеуровневых потоков
+ *
  * @param sock  сокет межпотокового передатчика
  * @param event входящее событие от межпотокового передатчика
  */
-void awh::Base::upstream(const SOCKET sock, const uint64_t event) noexcept {
+void awh::Base::stream(const SOCKET sock, const uint64_t event) noexcept {
 	// Выполняем поиск указанного межпотокового передатчика
 	auto i = this->_upstream.find(sock);
 	// Если межпотоковый передатчик обнаружен
@@ -244,7 +249,8 @@ void awh::Base::upstream(const SOCKET sock, const uint64_t event) noexcept {
 	}
 }
 /**
- * del Метод удаления файлового дескриптора из базы событий
+ * @brief Метод удаления файлового дескриптора из базы событий
+ *
  * @param sock сокет для удаления
  * @return     результат работы функции
  */
@@ -277,22 +283,14 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 							case static_cast <uint8_t> (event_type_t::TIMER): {
 								// Выполняем удаление таймера
 								this->_watch.away(j->second.socks[0]);
-								// Выполняем поиск соучастника в списке соучастникам
-								auto k = this->_partners.find(j->second.socks[1]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(k != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(k);
+								// Выполняем удаление партнёра
+								this->_partners.del(j->second.socks[0]);
 							} break;
 							// Если событие принадлежит к потоку
-							case static_cast <uint8_t> (event_type_t::STREAM): {
-								// Выполняем поиск соучастника в списке соучастникам
-								auto k = this->_partners.find(j->second.socks[0]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(k != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(k);
-							} break;
+							case static_cast <uint8_t> (event_type_t::STREAM):
+								// Выполняем удаление партнёра
+								this->_partners.del(j->second.socks[0]);
+							break;
 						}
 					}
 					// Выполняем закрытие подключения
@@ -329,22 +327,14 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 							case static_cast <uint8_t> (event_type_t::TIMER): {
 								// Выполняем удаление таймера
 								this->_watch.away(j->second.socks[0]);
-								// Выполняем поиск соучастника в списке соучастникам
-								auto k = this->_partners.find(j->second.socks[1]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(k != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(k);
+								// Выполняем удаление партнёра
+								this->_partners.del(j->second.socks[0]);
 							} break;
 							// Если событие принадлежит к потоку
-							case static_cast <uint8_t> (event_type_t::STREAM): {
-								// Выполняем поиск соучастника в списке соучастникам
-								auto k = this->_partners.find(j->second.socks[0]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(k != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(k);
-							} break;
+							case static_cast <uint8_t> (event_type_t::STREAM):
+								// Выполняем удаление партнёра
+								this->_partners.del(j->second.socks[0]);
+							break;
 						}
 					}
 					// Выполняем закрытие подключения
@@ -406,22 +396,14 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 						case static_cast <uint8_t> (event_type_t::TIMER): {
 							// Выполняем удаление таймера
 							this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
-							// Выполняем поиск соучастника в списке соучастникам
-							auto j = this->_partners.find(reinterpret_cast <peer_t *> (i->data.ptr)->socks[1]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(j != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(j);
+							// Выполняем удаление партнёра
+							this->_partners.del(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
 						} break;
 						// Если событие принадлежит к потоку
-						case static_cast <uint8_t> (event_type_t::STREAM): {
-							// Выполняем поиск соучастника в списке соучастникам
-							auto j = this->_partners.find(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(j != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(j);
-						} break;
+						case static_cast <uint8_t> (event_type_t::STREAM):
+							// Выполняем удаление партнёра
+							this->_partners.del(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
+						break;
 					}
 					// Выполняем удаление события из списка отслеживания
 					this->_events.erase(i);
@@ -445,22 +427,14 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 							case static_cast <uint8_t> (event_type_t::TIMER): {
 								// Выполняем удаление таймера
 								this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);							
-								// Выполняем поиск соучастника в списке соучастникам
-								auto j = this->_partners.find(reinterpret_cast <peer_t *> (i->data.ptr)->socks[1]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(j != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(j);
+								// Выполняем удаление партнёра
+								this->_partners.del(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
 							} break;
 							// Если событие принадлежит к потоку
-							case static_cast <uint8_t> (event_type_t::STREAM): {					
-								// Выполняем поиск соучастника в списке соучастникам
-								auto j = this->_partners.find(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(j != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(j);
-							} break;
+							case static_cast <uint8_t> (event_type_t::STREAM):
+								// Выполняем удаление партнёра
+								this->_partners.del(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
+							break;
 						}
 					}
 					// Выполняем удаление события из списка изменений
@@ -496,22 +470,14 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 					case static_cast <uint8_t> (event_type_t::TIMER): {
 						// Выполняем удаление таймера
 						this->_watch.away(i->second.socks[0]);					
-						// Выполняем поиск соучастника в списке соучастникам
-						auto j = this->_partners.find(i->second.socks[1]);
-						// Если соучастник в списке соучастников найден, удаляем его
-						if(j != this->_partners.end())
-							// Выполняем удаление соучастника
-							this->_partners.erase(j);
+						// Выполняем удаление партнёра
+						this->_partners.del(i->second.socks[0]);
 					} break;
 					// Если событие принадлежит к потоку
-					case static_cast <uint8_t> (event_type_t::STREAM): {				
-						// Выполняем поиск соучастника в списке соучастникам
-						auto j = this->_partners.find(i->second.socks[0]);
-						// Если соучастник в списке соучастников найден, удаляем его
-						if(j != this->_partners.end())
-							// Выполняем удаление соучастника
-							this->_partners.erase(j);
-					} break;
+					case static_cast <uint8_t> (event_type_t::STREAM):
+						// Выполняем удаление партнёра
+						this->_partners.del(i->second.socks[0]);
+					break;
 				}
 			}
 			// Выполняем поиск файлового дескриптора из списка событий
@@ -570,7 +536,8 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 	return result;
 }
 /**
- * del Метод удаления файлового дескриптора из базы событий для всех событий
+ * @brief Метод удаления файлового дескриптора из базы событий для всех событий
+ *
  * @param id идентификатор записи
  * @param sock сокет для удаления
  * @return   результат работы функции
@@ -604,22 +571,14 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 							case static_cast <uint8_t> (event_type_t::TIMER): {
 								// Выполняем удаление таймера
 								this->_watch.away(i->second.socks[0]);
-								// Выполняем поиск соучастника в списке соучастникам
-								auto j = this->_partners.find(i->second.socks[1]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(j != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(j);
+								// Выполняем удаление партнёра
+								this->_partners.del(i->second.socks[0]);
 							} break;
 							// Если событие принадлежит к потоку
-							case static_cast <uint8_t> (event_type_t::STREAM): {
-								// Выполняем поиск соучастника в списке соучастникам
-								auto j = this->_partners.find(i->second.socks[0]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(j != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(j);
-							} break;
+							case static_cast <uint8_t> (event_type_t::STREAM):
+								// Выполняем удаление партнёра
+								this->_partners.del(i->second.socks[0]);
+							break;
 						}
 						// Выполняем закрытие подключения
 						::closesocket(j->fd);
@@ -658,22 +617,14 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 							case static_cast <uint8_t> (event_type_t::TIMER): {
 								// Выполняем удаление таймера
 								this->_watch.away(i->second.socks[0]);
-								// Выполняем поиск соучастника в списке соучастникам
-								auto j = this->_partners.find(i->second.socks[1]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(j != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(j);
+								// Выполняем удаление партнёра
+								this->_partners.del(i->second.socks[0]);
 							} break;
 							// Если событие принадлежит к потоку
-							case static_cast <uint8_t> (event_type_t::STREAM): {
-								// Выполняем поиск соучастника в списке соучастникам
-								auto j = this->_partners.find(i->second.socks[0]);
-								// Если соучастник в списке соучастников найден, удаляем его
-								if(j != this->_partners.end())
-									// Выполняем удаление соучастника
-									this->_partners.erase(j);
-							} break;
+							case static_cast <uint8_t> (event_type_t::STREAM):
+								// Выполняем удаление партнёра
+								this->_partners.del(i->second.socks[0]);
+							break;
 						}
 						// Выполняем закрытие подключения
 						::close(j->fd);
@@ -731,22 +682,14 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 					case static_cast <uint8_t> (event_type_t::TIMER): {
 						// Выполняем удаление таймера
 						this->_watch.away(i->second.socks[0]);
-						// Выполняем поиск соучастника в списке соучастникам
-						auto j = this->_partners.find(i->second.socks[1]);
-						// Если соучастник в списке соучастников найден, удаляем его
-						if(j != this->_partners.end())
-							// Выполняем удаление соучастника
-							this->_partners.erase(j);
+						// Выполняем удаление партнёра
+						this->_partners.del(i->second.socks[0]);
 					} break;
 					// Если событие принадлежит к потоку
-					case static_cast <uint8_t> (event_type_t::STREAM): {
-						// Выполняем поиск соучастника в списке соучастникам
-						auto j = this->_partners.find(i->second.socks[0]);
-						// Если соучастник в списке соучастников найден, удаляем его
-						if(j != this->_partners.end())
-							// Выполняем удаление соучастника
-							this->_partners.erase(j);
-					} break;
+					case static_cast <uint8_t> (event_type_t::STREAM):
+						// Выполняем удаление партнёра
+						this->_partners.del(i->second.socks[0]);
+					break;
 				}
 				// Флаг удалённого события из базы событий
 				bool erased = false;
@@ -806,22 +749,14 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 					case static_cast <uint8_t> (event_type_t::TIMER): {
 						// Выполняем удаление таймера
 						this->_watch.away(i->second.socks[0]);
-						// Выполняем поиск соучастника в списке соучастникам
-						auto j = this->_partners.find(i->second.socks[1]);
-						// Если соучастник в списке соучастников найден, удаляем его
-						if(j != this->_partners.end())
-							// Выполняем удаление соучастника
-							this->_partners.erase(j);
+						// Выполняем удаление партнёра
+						this->_partners.del(i->second.socks[0]);
 					} break;
 					// Если событие принадлежит к потоку
-					case static_cast <uint8_t> (event_type_t::STREAM): {
-						// Выполняем поиск соучастника в списке соучастникам
-						auto j = this->_partners.find(i->second.socks[0]);
-						// Если соучастник в списке соучастников найден, удаляем его
-						if(j != this->_partners.end())
-							// Выполняем удаление соучастника
-							this->_partners.erase(j);
-					} break;
+					case static_cast <uint8_t> (event_type_t::STREAM):
+						// Выполняем удаление партнёра
+						this->_partners.del(i->second.socks[0]);
+					break;
 				}
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
@@ -912,7 +847,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 	return result;
 }
 /**
- * del Метод удаления файлового дескриптора из базы событий для указанного события
+ * @brief Метод удаления файлового дескриптора из базы событий для указанного события
+ *
  * @param id   идентификатор записи
  * @param sock   сокет для удаления
  * @param type тип отслеживаемого события
@@ -973,12 +909,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										this->_watch.away(i->second.socks[0]);
 										// Выполняем закрытие подключения
 										::closesocket(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto l = this->_partners.find(i->second.socks[1]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(l != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(l);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -1013,12 +945,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										k->events ^= POLLIN;
 										// Выполняем закрытие подключения
 										::closesocket(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto l = this->_partners.find(i->second.socks[0]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(l != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(l);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -1155,12 +1083,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										this->_watch.away(i->second.socks[0]);
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto l = this->_partners.find(i->second.socks[1]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(l != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(l);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -1220,12 +1144,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										k->events ^= POLLIN;
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto l = this->_partners.find(i->second.socks[0]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(l != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(l);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
@@ -1458,23 +1378,15 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										this->_watch.away(i->second.socks[0]);
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto j = this->_partners.find(i->second.socks[1]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(j != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(j);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 									} break;
 									// Если событие принадлежит к потоку
 									case static_cast <uint8_t> (event_type_t::STREAM): {
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto j = this->_partners.find(i->second.socks[0]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(j != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(j);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 									} break;
 								}
 								// Выходим из цикла
@@ -1501,23 +1413,15 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										this->_watch.away(i->second.socks[0]);
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto j = this->_partners.find(i->second.socks[1]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(j != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(j);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 									} break;
 									// Если событие принадлежит к потоку
 									case static_cast <uint8_t> (event_type_t::STREAM): {
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto j = this->_partners.find(i->second.socks[0]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(j != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(j);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 									} break;
 								}
 								// Выполняем удаление события из списка событий
@@ -1576,12 +1480,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto l = this->_partners.find(i->second.socks[1]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(l != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(l);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка изменений
@@ -1614,12 +1514,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto l = this->_partners.find(i->second.socks[0]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(l != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(l);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка изменений
@@ -1727,12 +1623,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto j = this->_partners.find(i->second.socks[1]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(j != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(j);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 									} break;
 									// Если событие принадлежит к потоку
 									case static_cast <uint8_t> (event_type_t::STREAM): {
@@ -1740,12 +1632,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
-										// Выполняем поиск соучастника в списке соучастникам
-										auto j = this->_partners.find(i->second.socks[0]);
-										// Если соучастник в списке соучастников найден, удаляем его
-										if(j != this->_partners.end())
-											// Выполняем удаление соучастника
-											this->_partners.erase(j);
+										// Выполняем удаление партнёра
+										this->_partners.del(i->second.socks[0]);
 									} break;
 									// Если это другие события
 									default:
@@ -1788,7 +1676,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 	return result;
 }
 /**
- * add Метод добавления файлового дескриптора в базу событий
+ * @brief Метод добавления файлового дескриптора в базу событий
+ *
  * @param id       идентификатор записи
  * @param sock     сокет для добавления
  * @param callback функция обратного вызова при получении события
@@ -1806,7 +1695,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 		 */
 		try {
 			// Если количество добавленных файловых дескрипторов для отслеживания не достигло предела
-			if(this->_peers.size() < static_cast <size_t> (this->_maxSockets)){
+			if(this->_peers.size() < static_cast <size_t> (this->_sockmax)){
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				/**
@@ -1828,19 +1717,19 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Выполняем создание сокетов
-							auto fds = this->_watch.create();
+							auto socks = this->_watch.create();
 							// Выполняем инициализацию таймера
-							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
+							if((socks[0] == INVALID_SOCKET) || (socks[1] == INVALID_SOCKET))
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
-							sock = fds[0];
-							// Выполняем добавление таймера в список соучастников
-							this->_partners.emplace(fds[1]);
+							sock = socks[0];
+							// Выполняем объединение партнёров
+							this->_partners.merge(socks[0], socks[1]);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выполняем установку файлового дескриптора таймера
-							ret.first->second.socks[1] = fds[1];
+							ret.first->second.socks[1] = socks[1];
 							// Выполняем установку задержки времени таймера
 							ret.first->second.delay = delay;
 							// Выполняем установку флага персистентного таймера
@@ -1902,19 +1791,19 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Выполняем создание сокетов
-							auto fds = this->_watch.create();
+							auto socks = this->_watch.create();
 							// Выполняем инициализацию таймера
-							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
+							if((socks[0] == INVALID_SOCKET) || (socks[1] == INVALID_SOCKET))
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
-							sock = fds[0];
-							// Выполняем добавление таймера в список соучастников
-							this->_partners.emplace(fds[1]);
+							sock = socks[0];
+							// Выполняем объединение партнёров
+							this->_partners.merge(socks[0], socks[1]);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выполняем установку файлового дескриптора таймера
-							ret.first->second.socks[1] = fds[1];
+							ret.first->second.socks[1] = socks[1];
 							// Выполняем установку задержки времени таймера
 							ret.first->second.delay = delay;
 							// Выполняем установку флага персистентного таймера
@@ -1976,19 +1865,19 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Выполняем создание сокетов
-							auto fds = this->_watch.create();
+							auto socks = this->_watch.create();
 							// Выполняем инициализацию таймера
-							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
+							if((socks[0] == INVALID_SOCKET) || (socks[1] == INVALID_SOCKET))
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
-							sock = fds[0];
-							// Выполняем добавление таймера в список соучастников
-							this->_partners.emplace(fds[1]);
+							sock = socks[0];
+							// Выполняем объединение партнёров
+							this->_partners.merge(socks[0], socks[1]);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выполняем установку файлового дескриптора таймера
-							ret.first->second.socks[1] = fds[1];
+							ret.first->second.socks[1] = socks[1];
 							// Выполняем установку задержки времени таймера
 							ret.first->second.delay = delay;
 							// Выполняем установку флага персистентного таймера
@@ -2068,19 +1957,19 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 						// Если нам необходимо создать таймер
 						if(delay > 0){
 							// Выполняем создание сокетов
-							auto fds = this->_watch.create();
+							auto socks = this->_watch.create();
 							// Выполняем инициализацию таймера
-							if((fds[0] == INVALID_SOCKET) || (fds[1] == INVALID_SOCKET))
+							if((socks[0] == INVALID_SOCKET) || (socks[1] == INVALID_SOCKET))
 								// Выходим из функции
 								return result;
 							// Выполняем установку файлового дескриптора таймера
-							sock = fds[0];
-							// Выполняем добавление таймера в список соучастников
-							this->_partners.emplace(fds[1]);
+							sock = socks[0];
+							// Выполняем объединение партнёров
+							this->_partners.merge(socks[0], socks[1]);
 							// Выполняем добавление в список параметров для отслеживания
 							auto ret = this->_peers.emplace(sock, peer_t());
 							// Выполняем установку файлового дескриптора таймера
-							ret.first->second.socks[1] = fds[1];
+							ret.first->second.socks[1] = socks[1];
 							// Выполняем установку задержки времени таймера
 							ret.first->second.delay = delay;
 							// Выполняем установку флага персистентного таймера
@@ -2133,7 +2022,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 				// Выполняем разблокировку чтения базы событий
 				this->_locker = false;
 			// Выводим сообщение об ошибке
-			} else this->_log->print("SOCKET=%d cannot be added because the number of events being monitored has already reached the limit of %d", log_t::flag_t::WARNING, sock, static_cast <uint32_t> (this->_maxSockets));
+			} else this->_log->print("SOCKET=%d cannot be added because the number of events being monitored has already reached the limit of %d", log_t::flag_t::WARNING, sock, static_cast <uint32_t> (this->_sockmax));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -2157,7 +2046,8 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 	return result;
 }
 /**
- * mode Метод установки режима работы модуля
+ * @brief Метод установки режима работы модуля
+ *
  * @param id   идентификатор записи
  * @param sock сокет для установки режима работы
  * @param type тип событий модуля для которого требуется сменить режим работы
@@ -2915,7 +2805,8 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 	return result;
 }
 /**
- * launched Метод проверки запущена ли в данный момент база событий
+ * @brief Метод проверки запущена ли в данный момент база событий
+ *
  * @return результат проверки запущена ли база событий
  */
 bool awh::Base::launched() const noexcept {
@@ -2923,7 +2814,8 @@ bool awh::Base::launched() const noexcept {
 	return this->_launched;
 }
 /**
- * clear Метод очистки списка событий
+ * @brief Метод очистки списка событий
+ *
  */
 void awh::Base::clear() noexcept {
 	/**
@@ -2950,22 +2842,14 @@ void awh::Base::clear() noexcept {
 						case static_cast <uint8_t> (event_type_t::TIMER): {
 							// Выполняем удаление таймера
 							this->_watch.away(j->second.socks[0]);
-							// Выполняем поиск соучастника в списке соучастникам
-							auto k = this->_partners.find(j->second.socks[1]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(k != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(k);
+							// Выполняем удаление партнёра
+							this->_partners.del(j->second.socks[0]);
 						} break;
 						// Если событие принадлежит к потоку
-						case static_cast <uint8_t> (event_type_t::STREAM): {
-							// Выполняем поиск соучастника в списке соучастникам
-							auto k = this->_partners.find(j->second.socks[0]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(k != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(k);
-						} break;
+						case static_cast <uint8_t> (event_type_t::STREAM):
+							// Выполняем удаление партнёра
+							this->_partners.del(j->second.socks[0]);
+						break;
 					}
 				}
 				// Выполняем закрытие подключения
@@ -2993,22 +2877,14 @@ void awh::Base::clear() noexcept {
 						case static_cast <uint8_t> (event_type_t::TIMER): {
 							// Выполняем удаление таймера
 							this->_watch.away(j->second.socks[0]);
-							// Выполняем поиск соучастника в списке соучастникам
-							auto k = this->_partners.find(j->second.socks[1]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(k != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(k);
+							// Выполняем удаление партнёра
+							this->_partners.del(j->second.socks[0]);
 						} break;
 						// Если событие принадлежит к потоку
-						case static_cast <uint8_t> (event_type_t::STREAM): {
-							// Выполняем поиск соучастника в списке соучастникам
-							auto k = this->_partners.find(j->second.socks[0]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(k != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(k);
-						} break;
+						case static_cast <uint8_t> (event_type_t::STREAM):
+							// Выполняем удаление партнёра
+							this->_partners.del(j->second.socks[0]);
+						break;
 					}
 				}
 				// Выполняем закрытие подключения
@@ -3034,22 +2910,14 @@ void awh::Base::clear() noexcept {
 					case static_cast <uint8_t> (event_type_t::TIMER): {
 						// Выполняем удаление таймера
 						this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
-						// Выполняем поиск соучастника в списке соучастникам
-						auto j = this->_partners.find(reinterpret_cast <peer_t *> (i->data.ptr)->socks[1]);
-						// Если соучастник в списке соучастников найден, удаляем его
-						if(j != this->_partners.end())
-							// Выполняем удаление соучастника
-							this->_partners.erase(j);
+						// Выполняем удаление партнёра
+						this->_partners.del(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
 					} break;
 					// Если событие принадлежит к потоку
-					case static_cast <uint8_t> (event_type_t::STREAM): {
-						// Выполняем поиск соучастника в списке соучастникам
-						auto j = this->_partners.find(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
-						// Если соучастник в списке соучастников найден, удаляем его
-						if(j != this->_partners.end())
-							// Выполняем удаление соучастника
-							this->_partners.erase(j);
-					} break;
+					case static_cast <uint8_t> (event_type_t::STREAM):
+						// Выполняем удаление партнёра
+						this->_partners.del(reinterpret_cast <peer_t *> (i->data.ptr)->socks[0]);
+					break;
 				}
 				// Выполняем удаление события из списка изменений
 				i = this->_change.erase(i);
@@ -3078,12 +2946,8 @@ void awh::Base::clear() noexcept {
 							EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 							// Выполняем закрытие подключения
 							::close(j->second.socks[0]);
-							// Выполняем поиск соучастника в списке соучастникам
-							auto k = this->_partners.find(j->second.socks[1]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(k != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(k);
+							// Выполняем удаление партнёра
+							this->_partners.del(j->second.socks[0]);
 						} break;
 						// Если событие принадлежит к потоку
 						case static_cast <uint8_t> (event_type_t::STREAM): {
@@ -3091,12 +2955,8 @@ void awh::Base::clear() noexcept {
 							EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 							// Выполняем закрытие подключения
 							::close(j->second.socks[0]);
-							// Выполняем поиск соучастника в списке соучастникам
-							auto k = this->_partners.find(j->second.socks[0]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(k != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(k);
+							// Выполняем удаление партнёра
+							this->_partners.del(j->second.socks[0]);
 						} break;
 						// Если это другое событие
 						default: {
@@ -3128,12 +2988,8 @@ void awh::Base::clear() noexcept {
 							EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 							// Выполняем закрытие подключения
 							::close(j->second.socks[0]);
-							// Выполняем поиск соучастника в списке соучастникам
-							auto k = this->_partners.find(j->second.socks[1]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(k != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(k);
+							// Выполняем удаление партнёра
+							this->_partners.del(j->second.socks[0]);
 						} break;
 						// Если событие принадлежит к потоку
 						case static_cast <uint8_t> (event_type_t::STREAM): {
@@ -3141,12 +2997,8 @@ void awh::Base::clear() noexcept {
 							EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 							// Выполняем закрытие подключения
 							::close(j->second.socks[0]);
-							// Выполняем поиск соучастника в списке соучастникам
-							auto k = this->_partners.find(j->second.socks[0]);
-							// Если соучастник в списке соучастников найден, удаляем его
-							if(k != this->_partners.end())
-								// Выполняем удаление соучастника
-								this->_partners.erase(k);
+							// Выполняем удаление партнёра
+							this->_partners.del(j->second.socks[0]);
 						} break;
 						// Если это другое событие
 						default: {
@@ -3187,7 +3039,8 @@ void awh::Base::clear() noexcept {
 	}
 }
 /**
- * kick Метод отправки пинка
+ * @brief Метод отправки пинка
+ *
  */
 void awh::Base::kick() noexcept {
 	/**
@@ -3195,9 +3048,9 @@ void awh::Base::kick() noexcept {
 	 */
 	try {
 		// Если работа базы событий запущена
-		if(this->_started){
+		if(this->_works){
 			// Выполняем активацию блокировки
-			this->_locker = static_cast <bool> (this->_started);
+			this->_locker = static_cast <bool> (this->_works);
 			// Запоминаем список активных событий
 			std::map <SOCKET, peer_t> items = this->_peers;
 			// Выполняем очистку всех параметров
@@ -3244,7 +3097,8 @@ void awh::Base::kick() noexcept {
 	}
 }
 /**
- * stop Метод остановки чтения базы событий
+ * @brief Метод остановки чтения базы событий
+ *
  */
 void awh::Base::stop() noexcept {
 	/**
@@ -3252,9 +3106,9 @@ void awh::Base::stop() noexcept {
 	 */
 	try {
 		// Если работа базы событий запущена
-		if(this->_started){
+		if(this->_works){
 			// Снимаем флаг работы базы событий
-			this->_started = !this->_started;
+			this->_works = !this->_works;
 			// Выполняем очистку списка событий
 			this->clear();
 			// Выполняем деинициализацию базы событий
@@ -3282,13 +3136,14 @@ void awh::Base::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска чтения базы событий
+ * @brief Метод запуска чтения базы событий
+ *
  */
 void awh::Base::start() noexcept {
 	// Если работа базы событий не запущена
-	if(!this->_started){
+	if(!this->_works){
 		// Устанавливаем флаг работы базы событий
-		this->_started = !this->_started;
+		this->_works = !this->_works;
 		/**
 		 * Если это  MacOS X, FreeBSD, NetBSD, OpenBSD или Sun Solaris
 		 */
@@ -3296,11 +3151,11 @@ void awh::Base::start() noexcept {
 			// Создаём объект временного таймаута
 			struct timespec baseDelay = {0, 0};
 			// Если установлен конкретный таймаут
-			if((this->_baserate > 0) && !this->_easily){
+			if((this->_rate > 0) && !this->_easily){
 				// Устанавливаем время в секундах
-				baseDelay.tv_sec = (this->_baserate / 1000);
+				baseDelay.tv_sec = (this->_rate / 1000);
 				// Устанавливаем время счётчика (наносекунды)
-				baseDelay.tv_nsec = ((this->_baserate % 1000) * 1000000L);
+				baseDelay.tv_nsec = ((this->_rate % 1000) * 1000000L);
 			}
 		#endif
 		// Запускаем работу часов
@@ -3308,7 +3163,7 @@ void awh::Base::start() noexcept {
 		// Получаем идентификатор потока
 		this->_wid = this->wid();
 		// Устанавливаем флаг запущенного опроса базы событий
-		this->_launched = static_cast <bool> (this->_started);
+		this->_launched = static_cast <bool> (this->_works);
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -3325,7 +3180,7 @@ void awh::Base::start() noexcept {
 			/**
 			 * Выполняем запуск базы события
 			 */
-			while(this->_started){
+			while(this->_works){
 				/**
 				 * Для операционной системы OS Windows
 				 */
@@ -3335,7 +3190,7 @@ void awh::Base::start() noexcept {
 						// Если в списке достаточно событий для опроса
 						if(!this->_fds.empty()){
 							// Выполняем запуск ожидания входящих событий сокетов
-							poll = ::WSAPoll(this->_fds.data(), this->_fds.size(), (!this->_easily ? static_cast <int32_t> (this->_baserate) : 0));
+							poll = ::WSAPoll(this->_fds.data(), this->_fds.size(), (!this->_easily ? static_cast <int32_t> (this->_rate) : 0));
 							// Если мы получили ошибку
 							if(poll == SOCKET_ERROR){
 								// Создаём буфер сообщения ошибки
@@ -3452,7 +3307,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																this->upstream(i->first, event);
+																this->stream(i->first, event);
 														}
 													} break;
 													// Если это другое событие
@@ -3543,7 +3398,7 @@ void awh::Base::start() noexcept {
 													this->del(j->second.id, sock);
 												}
 											// Если сокет не принадлежит соучастнику
-											} else if(this->_partners.find(sock) == this->_partners.end())
+											} else if(!this->_partners.has(sock))
 												// Выполняем удаление фантомного файлового дескриптора
 												this->del(sock);
 										}
@@ -3554,9 +3409,9 @@ void awh::Base::start() noexcept {
 							// Если активирован простой режим работы чтения базы событий
 							if(this->_easily){
 								// Если время установленно
-								if(this->_baserate > 0)
+								if(this->_rate > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(chrono::milliseconds(this->_baserate));
+									std::this_thread::sleep_for(chrono::milliseconds(this->_rate));
 								// Устанавливаем задержку времени по умолчанию
 								else std::this_thread::sleep_for(10ms);
 								// Продолжаем опрос дальше
@@ -3582,7 +3437,7 @@ void awh::Base::start() noexcept {
 							// Устанавливаем количество сокетов для опроса
 							this->_dopoll.dp_nfds = this->_fds.size();
 							// Устанавливаем таймаут ожидания получения события
-							this->_dopoll.dp_timeout = (!this->_easily ? static_cast <int32_t> (this->_baserate) : -1);
+							this->_dopoll.dp_timeout = (!this->_easily ? static_cast <int32_t> (this->_rate) : -1);
 							// Выполняем запуск ожидания входящих событий сокетов
 							poll = ::ioctl(this->_wfd, DP_POLL, &this->_dopoll);
 							// Если мы получили ошибку
@@ -3691,7 +3546,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																this->upstream(i->first, event);
+																this->stream(i->first, event);
 														}
 													} break;
 													// Если это другое событие
@@ -3774,7 +3629,7 @@ void awh::Base::start() noexcept {
 													this->del(j->second.id, sock);
 												}
 											// Если сокет не принадлежит соучастнику
-											} else if(this->_partners.find(sock) == this->_partners.end())
+											} else if(!this->_partners.has(sock))
 												// Выполняем удаление фантомного файлового дескриптора
 												this->del(sock);
 										}
@@ -3785,9 +3640,9 @@ void awh::Base::start() noexcept {
 							// Если активирован простой режим работы чтения базы событий
 							if(this->_easily){
 								// Если время установленно
-								if(this->_baserate > 0)
+								if(this->_rate > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(chrono::milliseconds(this->_baserate));
+									std::this_thread::sleep_for(chrono::milliseconds(this->_rate));
 								// Устанавливаем задержку времени по умолчанию
 								else std::this_thread::sleep_for(10ms);
 								// Продолжаем опрос дальше
@@ -3809,7 +3664,7 @@ void awh::Base::start() noexcept {
 						// Если в списке достаточно событий для опроса
 						if(!this->_change.empty()){
 							// Выполняем запуск ожидания входящих событий сокетов
-							poll = ::epoll_wait(this->_efd, this->_events.data(), static_cast <uint32_t> (this->_maxSockets), (!this->_easily ? static_cast <int32_t> (this->_baserate) : 0));
+							poll = ::epoll_wait(this->_efd, this->_events.data(), static_cast <uint32_t> (this->_sockmax), (!this->_easily ? static_cast <int32_t> (this->_rate) : 0));
 							// Если мы получили ошибку
 							if(poll == INVALID_SOCKET){
 								/**
@@ -3912,7 +3767,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																this->upstream(i->first, event);
+																this->stream(i->first, event);
 														}
 													} break;
 													// Если это другое событие
@@ -3990,7 +3845,7 @@ void awh::Base::start() noexcept {
 														this->del(i->second.id, i->second.socks[0]);
 													}
 												// Если сокет не принадлежит соучастнику
-												} else if(this->_partners.find(sock) == this->_partners.end())
+												} else if(!this->_partners.has(sock))
 													// Выполняем удаление фантомного файлового дескриптора
 													this->del(sock);
 											}
@@ -4002,9 +3857,9 @@ void awh::Base::start() noexcept {
 							// Если активирован простой режим работы чтения базы событий
 							if(this->_easily){
 								// Если время установленно
-								if(this->_baserate > 0)
+								if(this->_rate > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(chrono::milliseconds(this->_baserate));
+									std::this_thread::sleep_for(chrono::milliseconds(this->_rate));
 								// Устанавливаем задержку времени по умолчанию
 								else std::this_thread::sleep_for(10ms);
 								// Продолжаем опрос дальше
@@ -4026,7 +3881,7 @@ void awh::Base::start() noexcept {
 						// Если в списке достаточно событий для опроса
 						if(!this->_change.empty()){
 							// Выполняем запуск ожидания входящих событий сокетов
-							poll = ::kevent(this->_kq, this->_change.data(), this->_change.size(), this->_events.data(), this->_events.size(), ((this->_baserate > -1) || this->_easily ? &baseDelay : nullptr));
+							poll = ::kevent(this->_kq, this->_change.data(), this->_change.size(), this->_events.data(), this->_events.size(), ((this->_rate > -1) || this->_easily ? &baseDelay : nullptr));
 							// Если мы получили ошибку
 							if(poll == INVALID_SOCKET){
 								/**
@@ -4138,7 +3993,7 @@ void awh::Base::start() noexcept {
 															// Если событие найдено и оно активированно
 															if((j != item->mode.end()) && (j->second == event_mode_t::ENABLED))
 																// Выполняем функцию обратного вызова
-																this->upstream(i->first, event);
+																this->stream(i->first, event);
 														}
 													} break;
 													// Если это другое событие
@@ -4216,7 +4071,7 @@ void awh::Base::start() noexcept {
 														this->del(j->second.id, j->second.socks[0]);
 													}
 												// Если сокет не принадлежит соучастнику
-												} else if(this->_partners.find(sock) == this->_partners.end())
+												} else if(!this->_partners.has(sock))
 													// Выполняем удаление фантомного файлового дескриптора
 													this->del(sock);
 											}
@@ -4228,9 +4083,9 @@ void awh::Base::start() noexcept {
 							// Если активирован простой режим работы чтения базы событий
 							if(this->_easily){
 								// Если время установленно
-								if(this->_baserate > 0)
+								if(this->_rate > 0)
 									// Выполняем задержку времени на указанное количество времени
-									std::this_thread::sleep_for(chrono::milliseconds(this->_baserate));
+									std::this_thread::sleep_for(chrono::milliseconds(this->_rate));
 								// Устанавливаем задержку времени по умолчанию
 								else std::this_thread::sleep_for(10ms);
 								// Продолжаем опрос дальше
@@ -4248,13 +4103,13 @@ void awh::Base::start() noexcept {
 			// Останавливаем работу таймеров скрина
 			this->_watch.stop();
 			// Снимаем флаг запущенного опроса базы событий
-			this->_launched = static_cast <bool> (this->_started);
+			this->_launched = static_cast <bool> (this->_works);
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
 			// Если не происходит отключение работы базы событий
-			if(this->_started){
+			if(this->_works){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -4269,12 +4124,13 @@ void awh::Base::start() noexcept {
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Снимаем флаг запущенного опроса базы событий
-			} else this->_launched = static_cast <bool> (this->_started);
+			} else this->_launched = static_cast <bool> (this->_works);
 		}
 	}
 }
 /**
- * rebase Метод пересоздания базы событий
+ * @brief Метод пересоздания базы событий
+ *
  */
 void awh::Base::rebase() noexcept {
 	// Если метод запущен в дочернем потоке
@@ -4288,7 +4144,7 @@ void awh::Base::rebase() noexcept {
 		 */
 		try {
 			// Если работа базы событий запущена
-			if(this->_started){
+			if(this->_works){
 				// Запоминаем список активных событий
 				std::map <SOCKET, peer_t> items = this->_peers;
 				// Выполняем остановку работы базы событий
@@ -4334,7 +4190,8 @@ void awh::Base::rebase() noexcept {
 	}
 }
 /**
- * freeze Метод заморозки чтения данных
+ * @brief Метод заморозки чтения данных
+ *
  * @param mode флаг активации
  */
 void awh::Base::freeze(const bool mode) noexcept {
@@ -4342,7 +4199,8 @@ void awh::Base::freeze(const bool mode) noexcept {
 	this->_locker = mode;
 }
 /**
- * easily Метод активации простого режима чтения базы событий
+ * @brief Метод активации простого режима чтения базы событий
+ *
  * @param mode флаг активации
  */
 void awh::Base::easily(const bool mode) noexcept {
@@ -4351,38 +4209,41 @@ void awh::Base::easily(const bool mode) noexcept {
 	// Если активирован простой режим работы чтения базы событий
 	if(!this->_easily)
 		// Выполняем сброс времени ожидания
-		this->_baserate = -1;
+		this->_rate = -1;
 }
 /**
- * maxSockets Максимальное количество поддерживаемых сокетов
- * @param count максимальное количество поддерживаемых сокетов
- */
-void awh::Base::maxSockets(const uint32_t count) noexcept {
-	// Если максимальное количество поддерживаемых сокетов передано пустым
-	if(count == 0)
-		// Выполняем установку максимального количества сокетов по умолчанию
-		this->_maxSockets = MAX_COUNT_FDS;
-	// Если максимальное количество поддерживаемых сокетов передано не пустым
-	else this->_maxSockets = count;
-}
-/**
- * baserate Метод установки времени блокировки базы событий в ожидании событий
+ * @brief Метод установки времени блокировки базы событий в ожидании событий
+ *
  * @param msec время ожидания событий в миллисекундах
  */
-void awh::Base::baserate(const uint32_t msec) noexcept {
+void awh::Base::rate(const uint32_t msec) noexcept {
 	// Если количество миллисекунд передано верно
 	if(msec > 0)
 		// Выполняем установку времени ожидания
-		this->_baserate = static_cast <int32_t> (msec);
+		this->_rate = static_cast <int32_t> (msec);
 	// Выполняем сброс времени ожидания
-	else this->_baserate = -1;
+	else this->_rate = -1;
 }
 /**
- * send Метод отправки сообщения между потоками
+ * @brief Максимальное количество поддерживаемых сокетов
+ *
+ * @param count максимальное количество поддерживаемых сокетов
+ */
+void awh::Base::sockmax(const uint32_t count) noexcept {
+	// Если максимальное количество поддерживаемых сокетов передано пустым
+	if(count == 0)
+		// Выполняем установку максимального количества сокетов по умолчанию
+		this->_sockmax = MAX_SOCKS;
+	// Если максимальное количество поддерживаемых сокетов передано не пустым
+	else this->_sockmax = count;
+}
+/**
+ * @brief Метод отправки сообщения между потоками
+ *
  * @param sock сокет межпотокового передатчика
  * @param tid  идентификатор трансферной передачи
  */
-void awh::Base::send(const SOCKET sock, const uint64_t tid) noexcept {
+void awh::Base::upstream(const SOCKET sock, const uint64_t tid) noexcept {
 	// Если метод запущен в основном потоке
 	if(!this->isChildThread())
 		// Выводим сообщение об ошибке
@@ -4423,10 +4284,11 @@ void awh::Base::send(const SOCKET sock, const uint64_t tid) noexcept {
 	}
 }
 /**
- * deactivation Метод деактивации межпотокового передатчика
+ * @brief Метод деактивации межпотокового передатчика
+ *
  * @param sock сокет межпотокового передатчика
  */
-void awh::Base::deactivation(const SOCKET sock) noexcept {
+void awh::Base::deactivationUpstream(const SOCKET sock) noexcept {
 	// Если метод запущен в дочернем потоке
 	if(this->isChildThread())
 		// Выводим сообщение об ошибке
@@ -4447,12 +4309,8 @@ void awh::Base::deactivation(const SOCKET sock) noexcept {
 				if(!this->del(static_cast <uint64_t> (i->first), i->first))
 					// Выводим сообщение что событие не вышло активировать
 					this->_log->print("Failed remove upstream event for SOCKET=%d", log_t::flag_t::WARNING, i->first);
-				// Выполняем поиск партнёрского сокета
-				auto j = this->_partners.find(i->second->sock);
-				// Если партнёрский сокет найден
-				if(j != this->_partners.end())
-					// Удаляем партнёрский сокет
-					this->_partners.erase(j);
+				// Выполняем удаление партнёра
+				this->_partners.del(i->second->sock);
 				// Выполняем удаление верхнеуровневого потока из списка
 				this->_upstream.erase(i);
 			}
@@ -4477,11 +4335,12 @@ void awh::Base::deactivation(const SOCKET sock) noexcept {
 	}
 }
 /**
- * activation Метод активации межпотокового передатчика
+ * @brief Метод активации межпотокового передатчика
+ *
  * @param callback функция обратного вызова
  * @return         сокет межпотокового передатчика
  */
-SOCKET awh::Base::activation(function <void (const uint64_t)> callback) noexcept {
+SOCKET awh::Base::activationUpstream(function <void (const uint64_t)> callback) noexcept {
 	// Результат работы функции
 	SOCKET result = INVALID_SOCKET;
 	// Если метод запущен в дочернем потоке
@@ -4508,8 +4367,8 @@ SOCKET awh::Base::activation(function <void (const uint64_t)> callback) noexcept
 				result = socks[0];
 				// Устанавливаем партнёрский сокет
 				upstream->sock = socks[1];
-				// Доавляем сокет в список партёров
-				this->_partners.emplace(upstream->sock);
+				// Выполняем объединение партнёров
+				this->_partners.merge(socks[0], socks[1]);
 				// Выполняем перенос нашего уведомителя в список уведомителей
 				if(this->_upstream.emplace(result, ::move(upstream)).first->first){
 					// Выполняем добавление события в базу событий
@@ -4565,20 +4424,23 @@ SOCKET awh::Base::activation(function <void (const uint64_t)> callback) noexcept
 	return result;
 }
 /**
- * Base Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
 awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
- _wid(0), _easily(false), _locker(false), _started(false), _launched(false),
- _baserate(-1), _maxSockets(MAX_COUNT_FDS), _watch(fmk, log), _fmk(fmk), _log(log) {
+ _wid(0), _rate(-1), _sockmax(MAX_SOCKS),
+ _works(false), _easily(false), _locker(false), _launched(false),
+ _watch(fmk, log), _partners(log), _fmk(fmk), _log(log) {
 	// Получаем идентификатор потока
 	this->_wid = this->wid();
 	// Выполняем инициализацию базы событий
 	this->init(event_mode_t::ENABLED);
 }
 /**
- * ~Base Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Base::~Base() noexcept {
 	// Выполняем деинициализацию базы событий
