@@ -330,7 +330,7 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 			// Выполняем поиск файлового дескриптора из списка событий
 			for(auto i = this->_fds.begin(); i != this->_fds.end(); ++i){
 				// Если файловый дескриптор найден
-				if(i->fd == fd){
+				if(i->fd == sock){
 					// Очищаем полученное событие
 					i->revents = 0;
 					// Выполняем поиск файлового дескриптора в базе событий
@@ -369,7 +369,7 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -620,7 +620,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 		 */
 		#elif __sun__
 			// Выполняем поиск файлового дескриптора в базе событий
-			auto i = this->_peers.find(fd);
+			auto i = this->_peers.find(sock);
 			// Если файловый дескриптор есть в базе событий
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
 				// Выполняем блокировку чтения базы событий
@@ -628,7 +628,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_fds.begin(); j != this->_fds.end(); ++j){
 					// Если файловый дескриптор найден
-					if(j->fd == fd){
+					if(j->fd == sock){
 						// Очищаем полученное событие
 						j->revents = 0;
 						// Определяем тип события к которому принадлежит сокет
@@ -662,7 +662,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd), log_t::flag_t::CRITICAL, ::strerror(errno));
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1072,7 +1072,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 			 */
 			#elif __sun__
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto i = this->_peers.find(fd);
+				auto i = this->_peers.find(sock);
 				// Если файловый дескриптор есть в базе событий
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
@@ -1104,7 +1104,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
@@ -1132,7 +1132,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -1171,7 +1171,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
@@ -1197,7 +1197,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -1236,7 +1236,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
@@ -1256,7 +1256,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -1296,7 +1296,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем поиск файлового дескриптора из списка событий
 								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (k->fd == fd))){
+									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
 										k->revents = 0;
 										// Удаляем флаг ожидания готовности файлового дескриптора на запись
@@ -1316,7 +1316,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -2234,7 +2234,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 						// Выполняем поиск файлового дескриптора из списка событий
 						for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 							// Если файловый дескриптор найден
-							if(k->fd == fd){
+							if(k->fd == sock){
 								// Очищаем полученное событие
 								k->revents = 0;
 								// Определяем тип события
@@ -2254,16 +2254,16 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												// Выполняем активацию таймера на указанное время
-												} else this->_evtimer.add(i->second.timer, i->second.delay);
+												} else this->_watch.wait(sock, i->second.delay);
 											} break;
 											// Если нужно деактивировать событие работы таймера
 											case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -2276,16 +2276,16 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												// Выполняем деактивацию таймера
-												} else this->_evtimer.del(i->second.timer);
+												} else this->_watch.away(sock);
 											} break;
 										}
 									} break;
@@ -2304,13 +2304,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												}
 											} break;
@@ -2325,13 +2325,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												}
 											} break;
@@ -2352,13 +2352,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												}
 											} break;
@@ -2373,13 +2373,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												}
 											} break;
@@ -2400,13 +2400,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												}
 											} break;
@@ -2421,13 +2421,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												}
 											} break;
@@ -2448,13 +2448,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												}
 											} break;
@@ -2469,13 +2469,13 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
 												}
 											} break;
@@ -3499,13 +3499,13 @@ void awh::Base::start() noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								* Если режим отладки не включён
 								*/
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 							// Если сработал таймаут
 							} else if(poll == 0)
@@ -3575,7 +3575,7 @@ void awh::Base::start() noexcept {
 																	// Если событие найдено и оно активированно
 																	if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																		// Выполняем активацию таймера на указанное время
-																		this->_evtimer.add(j->second.socks[0], j->second.delay);
+																		this->_watch.wait(j->second.socks[0], j->second.delay);
 																}
 															}
 														// Удаляем файловый дескриптор из базы событий
