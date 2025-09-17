@@ -1947,6 +1947,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									// Если нужно активировать событие работы таймера
 									case static_cast <uint8_t> (event_mode_t::ENABLED): {
 										
+										#ifndef DISABLE_FEATURE_X
 										int64_t k = 0;
 										
 										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
@@ -1987,6 +1988,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 											#endif
 										// Выполняем активацию таймера на указанное время
 										} else this->_watch.wait(sock, i->second.delay);
+										#endif
 									} break;
 									// Если нужно деактивировать событие работы таймера
 									case static_cast <uint8_t> (event_mode_t::DISABLED): {
@@ -3260,6 +3262,9 @@ void awh::Base::start() noexcept {
 							poll = static_cast <uint32_t> (this->_events.size());
 							// Выполняем ожидание входящих сообщений
 							if(::port_getn(this->_pfd, this->_events.data(), poll, &poll, ((this->_baseDelay > -1) || this->_easily ? &baseDelay : nullptr)) == INVALID_SOCKET){
+								
+								cout << " ^^^^1 " << endl;
+								
 								// Если мы получили сообщение об ошибке
 								if(errno != EINTR){
 									/**
@@ -3279,17 +3284,23 @@ void awh::Base::start() noexcept {
 								// Выполняем пропуск и идём дальше
 								continue;
 							// Если сработал таймаут
-							} else if(poll == 0)
+							} else if(poll == 0) {
 								// Компенсируем условие
 								poll = 0;
+
+								cout << " ^^^^2 " << endl;
+
 							// Если опрос прошёл успешно
-							else {
+							} else {
 								// Идентификатор события
 								uint64_t id = 0;
 								// Список полученных флагов события
 								short events = 0;
 								// Файловый дескриптор события
 								SOCKET sock = INVALID_SOCKET;
+
+								cout << " ^^^^3 " << endl;
+
 								// Флаги статусов полученного сокета
 								bool isRead = false, isWrite = false,
 								     isClose = false, isError = false, isEvent = false;
@@ -3309,10 +3320,19 @@ void awh::Base::start() noexcept {
 									isClose = (events & POLLHUP);
 									// Получаем флаг получения ошибки сокета
 									isError = ((events & POLLERR) || (events & POLLNVAL));
+									
+									cout << " ^^^^4 " << sock << endl;
+									
 									// Если мы получили событие сетевого сокета
 									if(this->_events.at(i).portev_source == PORT_SOURCE_FD){
+										
+										cout << " ^^^^5 " << sock << endl;
+										
 										// Если флаг на чтение данных из сокета установлен
 										if(isRead){
+											
+											cout << " ^^^^6 " << sock << endl;
+											
 											// Выполняем поиск указанной записи
 											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
@@ -3332,6 +3352,9 @@ void awh::Base::start() noexcept {
 										}
 										// Если сокет доступен для записи
 										if(isWrite){
+											
+											cout << " ^^^^7 " << sock << endl;
+											
 											// Выполняем поиск указанной записи
 											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
@@ -3351,6 +3374,9 @@ void awh::Base::start() noexcept {
 										}
 									// Если мы получили событие межпотокового сообщения
 									} else if(this->_events.at(i).portev_source == PORT_SOURCE_USER) {
+										
+										cout << " ^^^^8 " << sock << endl;
+										
 										// Если сообщение пришло то, что нам нужно
 										if(this->_events.at(i).portev_user == (void *) 1){
 											// Выполняем поиск указанной записи
@@ -3417,6 +3443,9 @@ void awh::Base::start() noexcept {
 									}
 									// Если сокет отключился или произошла ошибка
 									if(isClose || isError){
+										
+										cout << " ^^^^9 " << sock << endl;
+										
 										// Если была вызвана ошибка
 										if(isError){
 											/**
