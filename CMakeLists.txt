@@ -66,6 +66,9 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
     endif()
+
+    add_compile_definitions(__EXTENSIONS__)
+
 # Если операционной системой является MacOS X
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     if (NOT OS_VERSION)
