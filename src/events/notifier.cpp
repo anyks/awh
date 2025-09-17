@@ -13,31 +13,18 @@
  */
 
 /**
- * Для операционной системы Sun Solaris
- */
-#if __sun__
-	/**
-	 * Подключаем системные заголовки
-	 */
-	#include "/usr/include/port.h"
-
-	/**
-	 * Создаём идентификатор события
-	 */
-	static constexpr uintptr_t USER_EVENT = 1;
-/**
  * Для операционной системы Linux
  */
-#elif __linux__
+#if __linux__
 	/**
 	 * Подключаем системные заголовки
 	 */
 	#include <sys/epoll.h>
 	#include <sys/eventfd.h>
 /**
- * Для операционной системы OpenBSD
+ * Для операционной системы OpenBSD или Sun Solaris
  */
-#elif __OpenBSD__
+#elif __OpenBSD__ || __sun__
 	/**
 	 * Подключаем системные заголовки
 	 */
@@ -210,9 +197,9 @@ void awh::Notifier::reset() noexcept {
 				this->_socks[1] = INVALID_SOCKET;
 			}
 		/**
-		 * Для операционной системы Linux или Sun Solaris
+		 * Для операционной системы Linux
 		 */
-		#elif __linux__ || __sun__
+		#elif __linux__
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
 				// Выполняем закрытие сокета
@@ -221,9 +208,9 @@ void awh::Notifier::reset() noexcept {
 				this->_sock = INVALID_SOCKET;
 			}
 		/**
-		 * Для операционной системы OpenBSD
+		 * Для операционной системы OpenBSD или Sun Solaris
 		 */
-		#elif __OpenBSD__
+		#elif __OpenBSD__ || __sun__
 			// Если сокет ещё не закрыт
 			if(this->_socks[0] != INVALID_SOCKET){
 				// Закрываем сокет на чтение
@@ -327,35 +314,6 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			// Установи неблокирующий режим на чтение
 			::set_nonblocking(result[0]);
 		/**
-		 * Для операционной системы Sun Solaris
-		 */
-		#elif __sun__
-			// Если сокет ещё не инициализирован
-			if(this->_sock == INVALID_SOCKET){
-				// Выполняем инициализацию сокета события
-				this->_sock = ::port_create();
-				// Если сокет не создан
-				if(this->_sock == INVALID_SOCKET){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-					#endif
-				}
-			}
-			// Устанавливаем данные сокета на чтение
-			result[0] = this->_sock;
-			// Устанавливаем данные сокета на запись
-			result[1] = this->_sock;
-		/**
 		 * Для операционной системы Linux
 		 */
 		#elif __linux__
@@ -385,9 +343,9 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			// Устанавливаем данные сокета на запись
 			result[1] = this->_sock;
 		/**
-		 * Для операционной системы OpenBSD
+		 * Для операционной системы OpenBSD или Sun Solaris
 		 */
-		#elif __OpenBSD__
+		#elif __OpenBSD__ || __sun__
 			// Если сокеты ещё не инициализированны
 			if((this->_socks[0] == INVALID_SOCKET) && (this->_socks[1] == INVALID_SOCKET)){
 				// Выполняем инициализацию сокета события
@@ -530,19 +488,6 @@ uint64_t awh::Notifier::event() noexcept {
 				::memcpy(&result, buffer, size);
 			}
 		/**
-		 * Для операционной системы Sun Solaris
-		 */
-		#elif __sun__
-			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
-			// Если очередь событий не пустая
-			if(!this->_events.empty()){
-				// Выполняем извлечение из очереди события
-				result = this->_events.front();
-				// Удаляем извлечённое событие
-				this->_events.pop();
-			}
-		/**
 		 * Для операционной системы Linux
 		 */
 		#elif __linux__
@@ -567,9 +512,9 @@ uint64_t awh::Notifier::event() noexcept {
 				::memcpy(&result, buffer, size);
 			}
 		/**
-		 * Для операционной системы OpenBSD
+		 * Для операционной системы OpenBSD или Sun Solaris
 		 */
-		#elif __OpenBSD__
+		#elif __OpenBSD__ || __sun__
 			// Если сокет ещё не закрыт
 			if(this->_socks[0] != INVALID_SOCKET){
 				// Буфер данных для чтения
@@ -668,35 +613,6 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 				}
 			}
 		/**
-		 * Для операционной системы Sun Solaris
-		 */
-		#elif __sun__
-			// Если сокет ещё не закрыт
-			if(this->_sock != INVALID_SOCKET){
-				// Выполняем блокирование потока
-				this->_mtx.lock();
-				// Удаляем извлечённое событие
-				this->_events.push(id);
-				// Выполняем разблокирование потока
-				this->_mtx.unlock();
-				// Выполняем отправку сообщения в порт
-				if(::port_send(this->_sock, USER_EVENT, nullptr) == INVALID_SOCKET){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					* Если режим отладки не включён
-					*/
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			}
-		/**
 		 * Для операционной системы Linux
 		 */
 		#elif __linux__
@@ -720,9 +636,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 				}
 			}
 		/**
-		 * Для операционной системы OpenBSD
+		 * Для операционной системы OpenBSD или Sun Solaris
 		 */
-		#elif __OpenBSD__
+		#elif __OpenBSD__ || __sun__
 			// Если сокет ещё не закрыт
 			if(this->_socks[1] != INVALID_SOCKET){
 				// Выполняем отправку сообщения
@@ -802,17 +718,17 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
  */
 awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 	/**
-	 * Для операционной системы OS Windows или OpenBSD
+	 * Для операционной системы OS Windows или OpenBSD или Sun Solaris
 	 */
-	#if _WIN32 || _WIN64 || __OpenBSD__
+	#if _WIN32 || _WIN64 || __OpenBSD__ || __sun__
 		// Сбрасываем значение сокета на чтение
 		this->_socks[0] = INVALID_SOCKET;
 		// Сбрасываем значение сокета на запись
 		this->_socks[1] = INVALID_SOCKET;
 	/**
-	 * Для операционной системы MacOS X, FreeBSD, NetBSD, Linux или Sun Solaris
+	 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
 	 */
-	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__ || __sun__
+	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
 		// Инициализируем файловый дескриптор
 		this->_sock = INVALID_SOCKET;
 	#endif

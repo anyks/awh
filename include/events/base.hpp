@@ -30,7 +30,7 @@
 	/**
 	 * Подключаем системные заголовки
 	 */
-	#include "/usr/include/port.h"
+	#include <sys/devpoll.h>
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
  */
@@ -190,10 +190,12 @@ namespace awh {
 			 * Для операционной системы Sun Solaris
 			 */
 			#elif __sun__
-				// Идентификатор активного  порта
-				SOCKET _pfd;
+				// Идентификатор активного /dev/poll
+				int32_t _wfd;
 				// Список активных событий
-				vector <port_event_t> _events;
+				struct dvpoll _dopoll;
+				// Список активных файловых дескрипторов
+				vector <struct pollfd> _fds;
 			/**
 			 * Для операционной системы Linux
 			 */

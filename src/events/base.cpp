@@ -125,10 +125,8 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 			 * Для операционной системы Sun Solaris
 			 */
 			#elif __sun__
-				// Выполняем создание порта
-				this->_pfd = ::port_create();
-				// Если порт не создан
-				if(this->_pfd == INVALID_SOCKET){
+				// Выполняем инициализацию /dev/poll
+				if((this->_wfd = ::open("/dev/poll", O_RDWR, 0)) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -145,6 +143,8 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 					// Выходим принудительно из приложения
 					::exit(EXIT_FAILURE);
 				}
+				// Выполняем открытие файлового дескриптора
+				::fcntl(this->_wfd, F_SETFD, FD_CLOEXEC);
 			/**
 			 * Для операционной системы Linux
 			 */
@@ -210,7 +210,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 			 */
 			#elif __sun__
 				// Выполняем закрытие подключения
-				::close(this->_pfd);
+				::close(this->_wfd);
 			/**
 			 * Для операционной системы Linux
 			 */
@@ -328,13 +328,13 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
 			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_events.begin(); i != this->_events.end(); ++i){
+			for(auto i = this->_fds.begin(); i != this->_fds.end(); ++i){
 				// Если файловый дескриптор найден
-				if(static_cast <SOCKET> (i->portev_object) == sock){
-					// Удаляем сокет из порта и закрываем
-					::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
+				if(i->fd == fd){
+					// Очищаем полученное событие
+					i->revents = 0;
 					// Выполняем поиск файлового дескриптора в базе событий
-					auto j = this->_peers.find(sock);
+					auto j = this->_peers.find(i->fd);
 					// Если файловый дескриптор есть в базе событий
 					if(j != this->_peers.end()){
 						// Определяем тип события к которому принадлежит сокет
@@ -355,13 +355,36 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 						}
 					}
 					// Выполняем закрытие подключения
-					::close(sock);
+					::close(i->fd);
+					// Выполняем сброс файлового дескриптора
+					i->fd = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
-					this->_events.erase(i);
-					// Выполняем деинициализацию базы событий
-					this->init(event_mode_t::DISABLED);
-					// Выполняем инициализацию базы событий
-					this->init(event_mode_t::ENABLED);
+					this->_fds.erase(i);
+					// Если в списке ещё есть что отслеживать
+					if(!this->_fds.empty()){
+						// Выполняем добавление списка файловых дескрипторов для отслеживания
+						if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					// Если в списке больше нет файловых дескрипторов
+					} else {
+						// Выполняем деинициализацию базы событий
+						this->init(event_mode_t::DISABLED);
+						// Выполняем инициализацию базы событий
+						this->init(event_mode_t::ENABLED);
+					}
 					// Выходим из цикла
 					break;
 				}
@@ -597,17 +620,17 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 		 */
 		#elif __sun__
 			// Выполняем поиск файлового дескриптора в базе событий
-			auto i = this->_peers.find(sock);
+			auto i = this->_peers.find(fd);
 			// Если файловый дескриптор есть в базе событий
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				// Выполняем поиск файлового дескриптора из списка событий
-				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
+				for(auto j = this->_fds.begin(); j != this->_fds.end(); ++j){
 					// Если файловый дескриптор найден
-					if(static_cast <SOCKET> (j->portev_object) == sock){
-						// Удаляем сокет из порта и закрываем
-						::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
+					if(j->fd == fd){
+						// Очищаем полученное событие
+						j->revents = 0;
 						// Определяем тип события к которому принадлежит сокет
 						switch(static_cast <uint8_t> (i->second.type)){
 							// Если событие принадлежит к таймеру
@@ -625,13 +648,36 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 							} break;
 						}
 						// Выполняем закрытие подключения
-						::close(sock);
+						::close(j->fd);
+						// Выполняем сброс файлового дескриптора
+						j->fd = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
-						this->_events.erase(j);
-						// Выполняем деинициализацию базы событий
-						this->init(event_mode_t::DISABLED);
-						// Выполняем инициализацию базы событий
-						this->init(event_mode_t::ENABLED);
+						this->_fds.erase(j);
+						// Если в списке ещё есть что отслеживать
+						if(!this->_fds.empty()){
+							// Выполняем добавление списка файловых дескрипторов для отслеживания
+							if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd), log_t::flag_t::CRITICAL, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								#endif
+							}
+						// Если в списке больше нет файловых дескрипторов
+						} else {
+							// Выполняем деинициализацию базы событий
+							this->init(event_mode_t::DISABLED);
+							// Выполняем инициализацию базы событий
+							this->init(event_mode_t::ENABLED);
+						}
 						// Выходим из цикла
 						break;
 					}
@@ -905,6 +951,46 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 									i->second.mode.erase(j);
 							}
 						} break;
+						// Если событие принадлежит к потоку
+						case static_cast <uint8_t> (event_type_t::STREAM): {
+							// Флаг удалённого события из базы событий
+							bool erased = false;
+							// Выполняем поиск типа события и его режим работы
+							auto j = i->second.mode.find(type);
+							// Если режим работы события получен
+							if((result = (j != i->second.mode.end()))){
+								// Выполняем отключение работы события
+								j->second = event_mode_t::DISABLED;
+								// Выполняем поиск файлового дескриптора из списка событий
+								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+									// Если файловый дескриптор найден
+									if((erased = (k->fd == sock))){
+										// Очищаем полученное событие
+										k->revents = 0;
+										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
+										k->events ^= POLLIN;
+										// Выполняем закрытие подключения
+										::closesocket(i->second.socks[0]);
+										// Выполняем поиск соучастника в списке соучастникам
+										auto l = this->_partners.find(i->second.socks[1]);
+										// Если соучастник в списке соучастников найден, удаляем его
+										if(l != this->_partners.end())
+											// Выполняем удаление соучастника
+											this->_partners.erase(l);
+										// Выполняем удаление типа события
+										i->second.mode.erase(j);
+										// Выполняем удаление события из списка отслеживания
+										this->_fds.erase(k);
+										// Выходим из цикла
+										break;
+									}
+								}
+								// Если удаление события небыло произведено
+								if(!erased)
+									// Выполняем удаление типа события
+									i->second.mode.erase(j);
+							}
+						} break;
 						// Если событие установлено как отслеживание события чтения из сокета
 						case static_cast <uint8_t> (event_type_t::READ): {
 							// Флаг удалённого события из базы событий
@@ -986,7 +1072,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 			 */
 			#elif __sun__
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto i = this->_peers.find(sock);
+				auto i = this->_peers.find(fd);
 				// Если файловый дескриптор есть в базе событий
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
@@ -1016,11 +1102,13 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
+								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (static_cast <SOCKET> (k->portev_object) == sock))){
-										// Удаляем сокет из порта и закрываем
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
+									if((erased = (k->fd == fd))){
+										// Очищаем полученное событие
+										k->revents = 0;
+										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
+										k->events ^= POLLIN;
 										// Выполняем удаление таймера
 										this->_watch.away(i->second.socks[0]);
 										// Выполняем закрытие подключения
@@ -1034,11 +1122,97 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
-										this->_events.erase(k);
-										// Выполняем деинициализацию базы событий
-										this->init(event_mode_t::DISABLED);
-										// Выполняем инициализацию базы событий
-										this->init(event_mode_t::ENABLED);
+										this->_fds.erase(k);
+										// Если в списке ещё есть что отслеживать
+										if(!this->_fds.empty()){
+											// Выполняем добавление списка файловых дескрипторов для отслеживания
+											if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+												#endif
+											}
+										// Если в списке больше нет файловых дескрипторов
+										} else {
+											// Выполняем деинициализацию базы событий
+											this->init(event_mode_t::DISABLED);
+											// Выполняем инициализацию базы событий
+											this->init(event_mode_t::ENABLED);
+										}
+										// Выходим из цикла
+										break;
+									}
+								}
+								// Если удаление события небыло произведено
+								if(!erased)
+									// Выполняем удаление типа события
+									i->second.mode.erase(j);
+							}
+						} break;
+						// Если событие принадлежит к потоку
+						case static_cast <uint8_t> (event_type_t::STREAM): {
+							// Флаг удалённого события из базы событий
+							bool erased = false;
+							// Выполняем поиск типа события и его режим работы
+							auto j = i->second.mode.find(type);
+							// Если режим работы события получен
+							if((result = (j != i->second.mode.end()))){
+								// Выполняем отключение работы события
+								j->second = event_mode_t::DISABLED;
+								// Выполняем поиск файлового дескриптора из списка событий
+								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+									// Если файловый дескриптор найден
+									if((erased = (k->fd == fd))){
+										// Очищаем полученное событие
+										k->revents = 0;
+										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
+										k->events ^= POLLIN;
+										// Выполняем закрытие подключения
+										::close(i->second.socks[0]);
+										// Выполняем поиск соучастника в списке соучастникам
+										auto l = this->_partners.find(i->second.socks[1]);
+										// Если соучастник в списке соучастников найден, удаляем его
+										if(l != this->_partners.end())
+											// Выполняем удаление соучастника
+											this->_partners.erase(l);
+										// Выполняем удаление типа события
+										i->second.mode.erase(j);
+										// Выполняем удаление события из списка отслеживания
+										this->_fds.erase(k);
+										// Если в списке ещё есть что отслеживать
+										if(!this->_fds.empty()){
+											// Выполняем добавление списка файловых дескрипторов для отслеживания
+											if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+												#endif
+											}
+										// Если в списке больше нет файловых дескрипторов
+										} else {
+											// Выполняем деинициализацию базы событий
+											this->init(event_mode_t::DISABLED);
+											// Выполняем инициализацию базы событий
+											this->init(event_mode_t::ENABLED);
+										}
 										// Выходим из цикла
 										break;
 									}
@@ -1060,21 +1234,44 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
+								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (static_cast <SOCKET> (k->portev_object) == sock))){
-										// Удаляем сокет из порта и закрываем
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
+									if((erased = (k->fd == fd))){
+										// Очищаем полученное событие
+										k->revents = 0;
+										// Удаляем флаг ожидания готовности файлового дескриптора на чтение
+										k->events ^= POLLIN;
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Если список режимов событий пустой
 										if(i->second.mode.empty() || (i->second.mode.find(event_type_t::WRITE) == i->second.mode.end())){
 											// Выполняем удаление события из списка отслеживания
-											this->_events.erase(k);
-											// Выполняем деинициализацию базы событий
-											this->init(event_mode_t::DISABLED);
-											// Выполняем инициализацию базы событий
-											this->init(event_mode_t::ENABLED);
+											this->_fds.erase(k);
+											// Если в списке ещё есть что отслеживать
+											if(!this->_fds.empty()){
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+													#endif
+												}
+											// Если в списке больше нет файловых дескрипторов
+											} else {
+												// Выполняем деинициализацию базы событий
+												this->init(event_mode_t::DISABLED);
+												// Выполняем инициализацию базы событий
+												this->init(event_mode_t::ENABLED);
+											}
 										}
 										// Выходим из цикла
 										break;
@@ -1097,21 +1294,44 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
+								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
 									// Если файловый дескриптор найден
-									if((erased = (static_cast <SOCKET> (k->portev_object) == sock))){
-										// Удаляем сокет из порта и закрываем
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
+									if((erased = (k->fd == fd))){
+										// Очищаем полученное событие
+										k->revents = 0;
+										// Удаляем флаг ожидания готовности файлового дескриптора на запись
+										k->events ^= POLLOUT;
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Если список режимов событий пустой
 										if(i->second.mode.empty() || (i->second.mode.find(event_type_t::READ) == i->second.mode.end())){
 											// Выполняем удаление события из списка отслеживания
-											this->_events.erase(k);
-											// Выполняем деинициализацию базы событий
-											this->init(event_mode_t::DISABLED);
-											// Выполняем инициализацию базы событий
-											this->init(event_mode_t::ENABLED);
+											this->_fds.erase(k);
+											// Если в списке ещё есть что отслеживать
+											if(!this->_fds.empty()){
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+													#endif
+												}
+											// Если в списке больше нет файловых дескрипторов
+											} else {
+												// Выполняем деинициализацию базы событий
+												this->init(event_mode_t::DISABLED);
+												// Выполняем инициализацию базы событий
+												this->init(event_mode_t::ENABLED);
+											}
 										}
 										// Выходим из цикла
 										break;
@@ -1157,6 +1377,8 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								switch(static_cast <uint8_t> (type)){
 									// Если событие установлено как таймер
 									case static_cast <uint8_t> (event_type_t::TIMER):
+									// Если событие принадлежит к потоку
+									case static_cast <uint8_t> (event_type_t::STREAM):
 										// Выполняем удаление флагов отслеживания таймера
 										k->events ^= (EPOLLIN | EPOLLET);
 									break;
@@ -1189,11 +1411,20 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Определяем тип события к которому принадлежит сокет
 								switch(static_cast <uint8_t> (i->second.type)){
 									// Если событие принадлежит к таймеру
-									case static_cast <uint8_t> (event_type_t::TIMER):
-									// Если событие принадлежит к потоку
-									case static_cast <uint8_t> (event_type_t::STREAM): {
+									case static_cast <uint8_t> (event_type_t::TIMER): {
 										// Выполняем удаление таймера
 										this->_watch.away(i->second.socks[0]);
+										// Выполняем закрытие подключения
+										::close(i->second.socks[0]);
+										// Выполняем поиск соучастника в списке соучастникам
+										auto j = this->_partners.find(i->second.socks[1]);
+										// Если соучастник в списке соучастников найден, удаляем его
+										if(j != this->_partners.end())
+											// Выполняем удаление соучастника
+											this->_partners.erase(j);
+									} break;
+									// Если событие принадлежит к потоку
+									case static_cast <uint8_t> (event_type_t::STREAM): {
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
 										// Выполняем поиск соучастника в списке соучастникам
@@ -1223,11 +1454,20 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Определяем тип события к которому принадлежит сокет
 								switch(static_cast <uint8_t> (i->second.type)){
 									// Если событие принадлежит к таймеру
-									case static_cast <uint8_t> (event_type_t::TIMER):
-									// Если событие принадлежит к потоку
-									case static_cast <uint8_t> (event_type_t::STREAM): {
+									case static_cast <uint8_t> (event_type_t::TIMER): {
 										// Выполняем удаление таймера
 										this->_watch.away(i->second.socks[0]);
+										// Выполняем закрытие подключения
+										::close(i->second.socks[0]);
+										// Выполняем поиск соучастника в списке соучастникам
+										auto j = this->_partners.find(i->second.socks[1]);
+										// Если соучастник в списке соучастников найден, удаляем его
+										if(j != this->_partners.end())
+											// Выполняем удаление соучастника
+											this->_partners.erase(j);
+									} break;
+									// Если событие принадлежит к потоку
+									case static_cast <uint8_t> (event_type_t::STREAM): {
 										// Выполняем закрытие подключения
 										::close(i->second.socks[0]);
 										// Выполняем поиск соучастника в списке соучастникам
@@ -1290,6 +1530,44 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 									if((erased = (k->ident == sock))){
 										// Выполняем удаление таймера
 										this->_watch.away(i->second.socks[0]);
+										// Выполняем удаление работы события
+										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
+										// Выполняем закрытие подключения
+										::close(i->second.socks[0]);
+										// Выполняем поиск соучастника в списке соучастникам
+										auto l = this->_partners.find(i->second.socks[1]);
+										// Если соучастник в списке соучастников найден, удаляем его
+										if(l != this->_partners.end())
+											// Выполняем удаление соучастника
+											this->_partners.erase(l);
+										// Выполняем удаление типа события
+										i->second.mode.erase(j);
+										// Выполняем удаление события из списка изменений
+										this->_change.erase(k);
+										// Выходим из цикла
+										break;
+									}
+								}
+								// Если удаление события небыло произведено
+								if(!erased)
+									// Выполняем удаление типа события
+									i->second.mode.erase(j);
+							}
+						} break;
+						// Если событие принадлежит к потоку
+						case static_cast <uint8_t> (event_type_t::STREAM): {
+							// Флаг удалённого события из базы событий
+							bool erased = false;
+							// Выполняем поиск типа события и его режим работы
+							auto j = i->second.mode.find(type);
+							// Если режим работы события получен
+							if((result = (j != i->second.mode.end()))){
+								// Выполняем отключение работы события
+								j->second = event_mode_t::DISABLED;
+								// Выполняем поиск файлового дескриптора из списка событий
+								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
+									// Если файловый дескриптор найден
+									if((erased = (k->ident == sock))){
 										// Выполняем удаление работы события
 										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
@@ -1400,11 +1678,22 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Определяем тип события к которому принадлежит сокет
 								switch(static_cast <uint8_t> (i->second.type)){
 									// Если событие принадлежит к таймеру
-									case static_cast <uint8_t> (event_type_t::TIMER):
-									// Если событие принадлежит к потоку
-									case static_cast <uint8_t> (event_type_t::STREAM): {
+									case static_cast <uint8_t> (event_type_t::TIMER): {
 										// Выполняем удаление таймера
 										this->_watch.away(i->second.socks[0]);
+										// Выполняем удаление события таймера
+										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
+										// Выполняем закрытие подключения
+										::close(i->second.socks[0]);
+										// Выполняем поиск соучастника в списке соучастникам
+										auto j = this->_partners.find(i->second.socks[1]);
+										// Если соучастник в списке соучастников найден, удаляем его
+										if(j != this->_partners.end())
+											// Выполняем удаление соучастника
+											this->_partners.erase(j);
+									} break;
+									// Если событие принадлежит к потоку
+									case static_cast <uint8_t> (event_type_t::STREAM): {
 										// Выполняем удаление события таймера
 										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
 										// Выполняем закрытие подключения
@@ -1611,13 +1900,17 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 							// Устанавливаем идентификатор записи
 							item->id = id;
 							// Выполняем установку файлового дескриптора события
-							item->socks[0] = sock;
+							item->fd = sock;
 							// Если функция обратного вызова передана
 							if(callback != nullptr)
 								// Выполняем установку функции обратного вызова
 								item->callback = callback;
-							// Добавляем в список событий новое событие
-							this->_events.push_back(port_event_t());
+							// Устанавливаем файловый дескриптор в список для отслеживания
+							this->_fds.push_back((struct pollfd){});
+							// Выполняем установку файлового дескриптора
+							this->_fds.back().fd = sock;
+							// Сбрасываем состояние события
+							this->_fds.back().revents = 0;
 						}
 					}
 				/**
@@ -1938,318 +2231,260 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 					 * Для операционной системы Sun Solaris
 					 */
 					#elif __sun__
-						// Определяем тип события
-						switch(static_cast <uint8_t> (type)){
-							// Если событие установлено как таймер
-							case static_cast <uint8_t> (event_type_t::TIMER): {
-								// Определяем режим работы модуля
-								switch(static_cast <uint8_t> (mode)){
-									// Если нужно активировать событие работы таймера
-									case static_cast <uint8_t> (event_mode_t::ENABLED): {
-										
-										#ifdef DISABLE_FEATURE_X
-										int64_t k = 0;
-										
-										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
-											
-											cout << " ^^^^^^^^^^ TIMER ENABLED1 " << endl;
-											
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										// Выполняем подписку на получение событий межпротоковой передачи данных
-										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, (uintptr_t) 1, 0x04, (void *) 1) == INVALID_SOCKET) {
-											
-											cout << " ^^^^^^^^^^ TIMER ENABLED2 " << endl;
-
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										// Выполняем активацию таймера на указанное время
-										} else this->_watch.wait(sock, i->second.delay);
-										#endif
-									} break;
-									// Если нужно деактивировать событие работы таймера
-									case static_cast <uint8_t> (event_mode_t::DISABLED): {
-										
-										cout << " ^^^^^^^^^^ TIMER DISABLED " << endl;
-										
-										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
-										// Выполняем отписку от межпотокового события
-										::port_dissociate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1));
-										// Выполняем деактивацию таймера
-										this->_watch.away(sock);
-									} break;
-								}
-							} break;
-							// Если событие принадлежит к потоку
-							case static_cast <uint8_t> (event_type_t::STREAM): {
-								// Устанавливаем тип события сокета
-								i->second.type = type;
-								// Определяем режим работы модуля
-								switch(static_cast <uint8_t> (mode)){
-									// Если нужно активировать событие чтения из сокета
-									case static_cast <uint8_t> (event_mode_t::ENABLED): {
-										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										// Выполняем подписку на получение событий межпротоковой передачи данных
-										} else if(::port_associate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1), 0, (void *) 1) == INVALID_SOCKET) {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
+						// Выполняем поиск файлового дескриптора из списка событий
+						for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+							// Если файловый дескриптор найден
+							if(k->fd == fd){
+								// Очищаем полученное событие
+								k->revents = 0;
+								// Определяем тип события
+								switch(static_cast <uint8_t> (type)){
+									// Если событие установлено как таймер
+									case static_cast <uint8_t> (event_type_t::TIMER): {
+										// Определяем режим работы модуля
+										switch(static_cast <uint8_t> (mode)){
+											// Если нужно активировать событие работы таймера
+											case static_cast <uint8_t> (event_mode_t::ENABLED): {
+												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events |= POLLIN;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												// Выполняем активацию таймера на указанное время
+												} else this->_evtimer.add(i->second.timer, i->second.delay);
+											} break;
+											// Если нужно деактивировать событие работы таймера
+											case static_cast <uint8_t> (event_mode_t::DISABLED): {
+												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events ^= POLLIN;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												// Выполняем деактивацию таймера
+												} else this->_evtimer.del(i->second.timer);
+											} break;
 										}
 									} break;
-									// Если нужно деактивировать событие чтения из сокета
-									case static_cast <uint8_t> (event_mode_t::DISABLED): {
-										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
-										// Выполняем отписку от межпотокового события
-										::port_dissociate(this->_pfd, PORT_SOURCE_USER, static_cast <uintptr_t> (1));
-									} break;
-								}
-							} break;
-							// Если событие установлено как отслеживание закрытия подключения
-							case static_cast <uint8_t> (event_type_t::CLOSE): {
-								// Определяем режим работы модуля
-								switch(static_cast <uint8_t> (mode)){
-									// Если нужно активировать событие чтения из сокета
-									case static_cast <uint8_t> (event_mode_t::ENABLED): {
-										// Флаги установки ассоциаций сокета
-										short flags = (POLLERR | POLLHUP);
-										// Если событие на чтение включено
-										if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED)
-											// Устанавливаем флаг ассоциации сокета на чтение
-											flags |= POLLIN;
-										// Если событие на запись включено
-										if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED)
-											// Устанавливаем флаг ассоциации сокета на запись
-											flags |= POLLOUT;
-										// Ассоциируем сокет: ждём закрытия подключения + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
-											
-											cout << " ^^^^^^^^^^ CLOSE ENABLED " << endl;
-											
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
+									// Если событие принадлежит к потоку
+									case static_cast <uint8_t> (event_type_t::STREAM): {
+										// Определяем режим работы модуля
+										switch(static_cast <uint8_t> (mode)){
+											// Если нужно активировать событие работы таймера
+											case static_cast <uint8_t> (event_mode_t::ENABLED): {
+												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events |= POLLIN;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
+											} break;
+											// Если нужно деактивировать событие работы таймера
+											case static_cast <uint8_t> (event_mode_t::DISABLED): {
+												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events ^= POLLIN;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
+											} break;
 										}
 									} break;
-									// Если нужно деактивировать событие чтения из сокета
-									case static_cast <uint8_t> (event_mode_t::DISABLED): {
-										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
-										// Флаги установки ассоциаций сокета
-										short flags = 0;
-										// Если событие на чтение включено
-										if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED)
-											// Устанавливаем флаг ассоциации сокета на чтение
-											flags |= POLLIN;
-										// Если событие на запись включено
-										if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED)
-											// Устанавливаем флаг ассоциации сокета на запись
-											flags |= POLLOUT;
-										// Если события ещё активированны
-										if(flags > 0){
-											// Ассоциируем сокет: ждём поступления новых данных + ошибки
-											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
-												
-												cout << " ^^^^^^^^^^ CLOSE DISABLED " << endl;
-												
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-												#endif
-											}
+									// Если событие установлено как отслеживание закрытия подключения
+									case static_cast <uint8_t> (event_type_t::CLOSE): {
+										// Определяем режим работы модуля
+										switch(static_cast <uint8_t> (mode)){
+											// Если нужно активировать событие чтения из сокета
+											case static_cast <uint8_t> (event_mode_t::ENABLED): {
+												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events |= POLLHUP;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
+											} break;
+											// Если нужно деактивировать событие чтения из сокета
+											case static_cast <uint8_t> (event_mode_t::DISABLED): {
+												// Выполняем удаление флагов отслеживания закрытия подключения
+												k->events ^= POLLHUP;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
+											} break;
 										}
 									} break;
-								}
-							} break;
-							// Если событие является чтением данных из сокета
-							case static_cast <uint8_t> (event_type_t::READ): {
-								// Определяем режим работы модуля
-								switch(static_cast <uint8_t> (mode)){
-									// Если нужно активировать событие чтения из сокета
-									case static_cast <uint8_t> (event_mode_t::ENABLED): {
-										// Флаги установки ассоциаций сокета
-										short flags = (POLLIN | POLLERR | POLLHUP);
-										// Если событие на запись включено
-										if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED)
-											// Устанавливаем флаг ассоциации сокета на запись
-											flags |= POLLOUT;
-										// Ассоциируем сокет: ждём поступления новых данных + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
-											
-											cout << " ^^^^^^^^^^ READ ENABLED " << endl;
-											
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
+									// Если событие является чтением данных из сокета
+									case static_cast <uint8_t> (event_type_t::READ): {
+										// Определяем режим работы модуля
+										switch(static_cast <uint8_t> (mode)){
+											// Если нужно активировать событие чтения из сокета
+											case static_cast <uint8_t> (event_mode_t::ENABLED): {
+												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events |= POLLIN;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
+											} break;
+											// Если нужно деактивировать событие чтения из сокета
+											case static_cast <uint8_t> (event_mode_t::DISABLED): {
+												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
+												k->events ^= POLLIN;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
+											} break;
 										}
 									} break;
-									// Если нужно деактивировать событие чтения из сокета
-									case static_cast <uint8_t> (event_mode_t::DISABLED): {
-										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
-										// Если событие на запись включено
-										if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED){
-											// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
-												
-												cout << " ^^^^^^^^^^ READ DISABLED " << endl;
-												
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-												#endif
-											}
-										}
-									} break;
-								}
-							} break;
-							// Если событие является записи данных в сокет
-							case static_cast <uint8_t> (event_type_t::WRITE): {
-								// Определяем режим работы модуля
-								switch(static_cast <uint8_t> (mode)){
-									// Если нужно активировать событие записи в сокет
-									case static_cast <uint8_t> (event_mode_t::ENABLED): {
-										// Флаги установки ассоциаций сокета
-										short flags = (POLLOUT | POLLERR | POLLHUP);
-										// Если событие на чтение включено
-										if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED)
-											// Устанавливаем флаг ассоциации сокета на чтение
-											flags |= POLLIN;
-										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
-										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), flags, nullptr) == INVALID_SOCKET){
-											
-											cout << " ^^^^^^^^^^ WRITE ENABLED " << endl;
-											
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
-									} break;
-									// Если нужно деактивировать событие записи в сокет
-									case static_cast <uint8_t> (event_mode_t::DISABLED): {
-										// Выполняем отписку от событий сокета
-										::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
-										// Если событие на чтение включено
-										if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED){
-											// Ассоциируем сокет: ждём поступления новых данных + ошибки
-											if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLIN | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
-												
-												cout << " ^^^^^^^^^^ WRITE DISABLED " << endl;
-												
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-												#endif
-											}
+									// Если событие является записи данных в сокет
+									case static_cast <uint8_t> (event_type_t::WRITE): {
+										// Определяем режим работы модуля
+										switch(static_cast <uint8_t> (mode)){
+											// Если нужно активировать событие записи в сокет
+											case static_cast <uint8_t> (event_mode_t::ENABLED): {
+												// Устанавливаем флаг отслеживания записи данных в сокет
+												k->events |= POLLOUT;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
+											} break;
+											// Если нужно деактивировать событие записи в сокет
+											case static_cast <uint8_t> (event_mode_t::DISABLED): {
+												// Снимаем флаг ожидания готовности файлового дескриптора на запись
+												k->events ^= POLLOUT;
+												// Выполняем добавление списка файловых дескрипторов для отслеживания
+												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fd, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+													#endif
+												}
+											} break;
 										}
 									} break;
 								}
-							} break;
+								// Выходим из цикла
+								break;
+							}
 						}
 					/**
 					 * Для операционной системы Linux
@@ -2690,9 +2925,11 @@ void awh::Base::clear() noexcept {
 		 */
 		#elif __sun__
 			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_events.begin(); i != this->_events.end();){
+			for(auto i = this->_fds.begin(); i != this->_fds.end();){
+				// Очищаем полученное событие
+				i->revents = 0;
 				// Выполняем поиск файлового дескриптора в базе событий
-				auto j = this->_peers.find(static_cast <SOCKET> (i->portev_object));
+				auto j = this->_peers.find(i->fd);
 				// Если файловый дескриптор есть в базе событий
 				if(j != this->_peers.end()){
 					// Определяем тип события к которому принадлежит сокет
@@ -2712,12 +2949,12 @@ void awh::Base::clear() noexcept {
 						} break;
 					}
 				}
-				// Удаляем сокет из порта и закрываем
-				::port_dissociate(this->_pfd, PORT_SOURCE_FD, i->portev_object);
 				// Выполняем закрытие подключения
-				::close(static_cast <SOCKET> (i->portev_object));
+				::close(i->fd);
+				// Выполняем сброс файлового дескриптора
+				i->fd = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
-				i = this->_events.erase(i);
+				i = this->_fds.erase(i);
 			}
 		/**
 		 * Для операционной системы Linux
@@ -2962,19 +3199,6 @@ void awh::Base::start() noexcept {
 		// Устанавливаем флаг работы базы событий
 		this->_started = !this->_started;
 		/**
-		 * Для операционной системы Sun Solaris
-		 */
-		#if __sun__
-			// Переменная опроса события
-			uint32_t poll = 0;
-		/**
-		 * Для всех остальних операционных систем
-		 */
-		#else
-			// Переменная опроса события
-			int32_t poll = 0;
-		#endif
-		/**
 		 * Если это  MacOS X, FreeBSD, NetBSD, OpenBSD или Sun Solaris
 		 */
 		#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __sun__
@@ -3005,6 +3229,8 @@ void awh::Base::start() noexcept {
 				// Количество событий для опроса
 				size_t count = 0;
 			#endif
+			// Переменная опроса события
+			int32_t poll = 0;
 			/**
 			 * Выполняем запуск базы события
 			 */
@@ -3257,131 +3483,64 @@ void awh::Base::start() noexcept {
 					// Если опрос базы событий не заблокирован
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса
-						if(!this->_events.empty()){
-							// Формируем количество получаемых сообщений
-							poll = static_cast <uint32_t> (this->_events.size());
-							
-							cout << " ^^^^0 " << poll << endl;
-							
-							// Выполняем ожидание входящих сообщений
-							if(::port_getn(this->_pfd, this->_events.data(), poll, &poll, ((this->_baseDelay > -1) || this->_easily ? &baseDelay : nullptr)) == INVALID_SOCKET){
-								
-								cout << " ^^^^1 " << endl;
-								
-								// Если мы получили сообщение об ошибке
-								if(errno != EINTR){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-									/**
-									* Если режим отладки не включён
-									*/
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-									#endif
-								}
-								// Выполняем пропуск и идём дальше
-								continue;
+						if(!this->_fds.empty()){
+							// Устанавливаем список опрашиваемых сокетов
+							this->_dopoll.dp_fds = this->_fds.data();
+							// Устанавливаем количество сокетов для опроса
+							this->_dopoll.dp_nfds = this->_fds.size();
+							// Устанавливаем таймаут ожидания получения события
+							this->_dopoll.dp_timeout = (!this->_easily ? this->_baseDelay : -1);
+							// Выполняем опрос базы событий
+							poll = ::ioctl(this->_wfd, DP_POLL, &this->_dopoll);
+							// Если мы получили ошибку
+							if(poll < 0){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socket.message().c_str());
+								#endif
 							// Если сработал таймаут
-							} else if(poll == 0) {
+							} else if(poll == 0)
 								// Компенсируем условие
 								poll = 0;
-
-								cout << " ^^^^2 " << endl;
-
 							// Если опрос прошёл успешно
-							} else {
+							else {
 								// Идентификатор события
 								uint64_t id = 0;
-								// Список полученных флагов события
-								short events = 0;
 								// Файловый дескриптор события
 								SOCKET sock = INVALID_SOCKET;
-
-								cout << " ^^^^3 " << endl;
-
 								// Флаги статусов полученного сокета
-								bool isRead = false, isWrite = false,
-								     isClose = false, isError = false, isEvent = false;
+								bool isRead = false, isWrite = false, isClose = false, isError = false;
 								// Выполняем перебор всех файловых дескрипторов
 								for(int32_t i = 0; i < poll; i++){
-									// Зануляем идентификатор события
-									id = 0;
-									// Получаем список полученных флагов событий
-									events = this->_events.at(i).portev_events;
-									// Получаем файловый дескриптор
-									sock = static_cast <SOCKET> (this->_events.at(i).portev_object);
-									// Получаем флаг достуности чтения из сокета
-									isRead = (events & POLLIN);
-									// Получаем флаг доступности сокета на запись
-									isWrite = (events & POLLOUT);
-									// Получаем флаг закрытия подключения
-									isClose = (events & POLLHUP);
-									// Получаем флаг получения ошибки сокета
-									isError = ((events & POLLERR) || (events & POLLNVAL));
-									
-									cout << " ^^^^4 " << sock << endl;
-									
-									// Если мы получили событие сетевого сокета
-									if(this->_events.at(i).portev_source == PORT_SOURCE_FD){
-										
-										cout << " ^^^^5 " << sock << endl;
-										
+									// Если записей достаточно в списке
+									if(i < this->_dopoll.dp_nfds){
+										// Зануляем идентификатор события
+										id = 0;
+										// Получаем объект файлового дескриптора
+										auto & event = this->_dopoll.dp_fds[i];
+										// Получаем файловый дескриптор
+										sock = event.fd;
+										// Получаем флаг достуности чтения из сокета
+										isRead = (event.revents & POLLIN);
+										// Получаем флаг доступности сокета на запись
+										isWrite = (event.revents & POLLOUT);
+										// Получаем флаг получения ошибки сокета
+										isError = (event.revents & POLLERR);
+										// Получаем флаг закрытия подключения
+										isClose = (event.revents & POLLHUP);
+										// Обнуляем количество событий
+										event.revents = 0;
 										// Если флаг на чтение данных из сокета установлен
 										if(isRead){
-											
-											cout << " ^^^^6 " << sock << endl;
-											
-											// Выполняем поиск указанной записи
-											auto j = this->_peers.find(sock);
-											// Если сокет в списке найден
-											if(j != this->_peers.end()){
-												// Получаем идентификатор события
-												id = j->second.id;
-												// Если функция обратного вызова установлена
-												if(j->second.callback != nullptr){
-													// Выполняем поиск события на получение данных присутствует в базе событий
-													auto k = j->second.mode.find(event_type_t::READ);
-													// Если событие найдено и оно активированно
-													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
-														// Выполняем функцию обратного вызова
-														std::apply(j->second.callback, std::make_tuple(sock, event_type_t::READ));
-												}
-											}
-										}
-										// Если сокет доступен для записи
-										if(isWrite){
-											
-											cout << " ^^^^7 " << sock << endl;
-											
-											// Выполняем поиск указанной записи
-											auto j = this->_peers.find(sock);
-											// Если сокет в списке найден
-											if((j != this->_peers.end()) && ((id == j->second.id) || (id == 0))){
-												// Получаем идентификатор события
-												id = j->second.id;
-												// Если функция обратного вызова установлена
-												if(j->second.callback != nullptr){
-													// Выполняем поиск события на запись данных присутствует в базе событий
-													auto k = j->second.mode.find(event_type_t::WRITE);
-													// Если событие найдено и оно активированно
-													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
-														// Выполняем функцию обратного вызова
-														std::apply(j->second.callback, std::make_tuple(sock, event_type_t::WRITE));
-												}
-											}
-										}
-									// Если мы получили событие межпотокового сообщения
-									} else if(this->_events.at(i).portev_source == PORT_SOURCE_USER) {
-										
-										cout << " ^^^^8 " << sock << endl;
-										
-										// Если сообщение пришло то, что нам нужно
-										if(this->_events.at(i).portev_user == (void *) 1){
 											// Выполняем поиск указанной записи
 											auto j = this->_peers.find(sock);
 											// Если сокет в списке найден
@@ -3416,11 +3575,11 @@ void awh::Base::start() noexcept {
 																	// Если событие найдено и оно активированно
 																	if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 																		// Выполняем активацию таймера на указанное время
-																		this->_watch.wait(j->second.socks[0], j->second.delay);
+																		this->_evtimer.add(j->second.socks[0], j->second.delay);
 																}
 															}
 														// Удаляем файловый дескриптор из базы событий
-														} else this->del(id, sock);
+														} else this->del(j->second.id, j->second.socks[0]);
 													} break;
 													// Если событие принадлежит к потоку
 													case static_cast <uint8_t> (event_type_t::STREAM): {
@@ -3438,65 +3597,94 @@ void awh::Base::start() noexcept {
 																	std::apply(j->second.callback, std::make_tuple(sock, event_type_t::TIMER));
 															}
 														// Удаляем файловый дескриптор из базы событий
-														} else this->del(id, sock);
+														} else this->del(j->second.id, j->second.socks[0]);
 													} break;
+													// Если это другое событие
+													default: {
+														// Если функция обратного вызова установлена
+														if(j->second.callback != nullptr){
+															// Выполняем поиск события на получение данных присутствует в базе событий
+															auto k = j->second.mode.find(event_type_t::READ);
+															// Если событие найдено и оно активированно
+															if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
+																// Выполняем функцию обратного вызова
+																std::apply(j->second.callback, std::make_tuple(sock, event_type_t::READ));
+														}
+													}
 												}
 											}
 										}
-									}
-									// Если сокет отключился или произошла ошибка
-									if(isClose || isError){
-										
-										cout << " ^^^^9 " << sock << endl;
-										
-										// Если была вызвана ошибка
-										if(isError){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-											/**
-											* Если режим отладки не включён
-											*/
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-											#endif
-										}
-										// Выполняем поиск указанной записи
-										auto j = this->_peers.find(sock);
-										// Если сокет в списке найден
-										if(j != this->_peers.end()){
-											// Если идентификаторы соответствуют
-											if((id == j->second.id) || (id == 0)){
+										// Если сокет доступен для записи
+										if(isWrite){
+											// Выполняем поиск указанной записи
+											auto j = this->_peers.find(sock);
+											// Если сокет в списке найден
+											if((j != this->_peers.end()) && ((id == j->second.id) || (id == 0))){
 												// Получаем идентификатор события
 												id = j->second.id;
 												// Если функция обратного вызова установлена
 												if(j->second.callback != nullptr){
-													// Получаем функцию обратного вызова
-													auto callback = std::bind(j->second.callback, sock, event_type_t::CLOSE);
-													// Выполняем поиск события на отключение присутствует в базе событий
-													auto k = j->second.mode.find(event_type_t::CLOSE);
+													// Выполняем поиск события на запись данных присутствует в базе событий
+													auto k = j->second.mode.find(event_type_t::WRITE);
 													// Если событие найдено и оно активированно
-													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
-														// Удаляем файловый дескриптор из базы событий
-														this->del(j->second.id, sock);
+													if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED))
 														// Выполняем функцию обратного вызова
-														std::apply(callback, std::make_tuple());
-														// Продолжаем обход дальше
-														continue;
-													}
+														std::apply(j->second.callback, std::make_tuple(sock, event_type_t::WRITE));
 												}
-												// Удаляем файловый дескриптор из базы событий
-												this->del(j->second.id, sock);
 											}
-										// Если файловый дескриптор не принадлежит соучастнику
-										} else if(this->_partners.find(sock) == this->_partners.end())
-											// Выполняем удаление фантомного файлового дескриптора
-											this->del(sock);
-									}
+										}
+										// Если сокет отключился или произошла ошибка
+										if(isClose || isError){
+											// Если была вызвана ошибка
+											if(isError){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+												/**
+												* Если режим отладки не включён
+												*/
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+												#endif
+											}
+											// Выполняем поиск указанной записи
+											auto j = this->_peers.find(sock);
+											// Если сокет в списке найден
+											if(j != this->_peers.end()){
+												// Если идентификаторы соответствуют
+												if((id == j->second.id) || (id == 0)){
+													// Получаем идентификатор события
+													id = j->second.id;
+													// Если функция обратного вызова установлена
+													if(j->second.callback != nullptr){
+														// Получаем функцию обратного вызова
+														auto callback = std::bind(j->second.callback, sock, event_type_t::CLOSE);
+														// Выполняем поиск события на отключение присутствует в базе событий
+														auto k = j->second.mode.find(event_type_t::CLOSE);
+														// Если событие найдено и оно активированно
+														if((k != j->second.mode.end()) && (k->second == event_mode_t::ENABLED)){
+															// Удаляем файловый дескриптор из базы событий
+															this->del(j->second.id, sock);
+															// Выполняем функцию обратного вызова
+															std::apply(callback, std::make_tuple());
+															// Продолжаем обход дальше
+															continue;
+														}
+													}
+													// Удаляем файловый дескриптор из базы событий
+													this->del(j->second.id, sock);
+												}
+											// Если файловый дескриптор не принадлежит таймерам
+											} else if(this->_timers.find(sock) == this->_timers.end())
+												// Выполняем удаление фантомного файлового дескриптора
+												this->del(sock);
+										}
+									// Выходим из цикла
+									} else break;
 								}
 							}
 							// Если активирован простой режим работы чтения базы событий

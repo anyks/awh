@@ -16,9 +16,9 @@
 #define __AWH_EVENT_NOTIFIER__
 
 /**
- * Для операционной системы MacOS X, FreeBSD, NetBSD или Sun Solaris
+ * Для операционной системы MacOS X, FreeBSD или NetBSD
  */
-#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __sun__
+#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 	/**
 	 * Стандартные модули
 	 */
@@ -49,22 +49,22 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Notifier {
 		private:
 			/**
-			 * Для операционной системы OS Windows или OpenBSD
+			 * Для операционной системы OS Windows, OpenBSD или Sun Solaris
 			 */
-			#if _WIN32 || _WIN64 || __OpenBSD__
+			#if _WIN32 || _WIN64 || __OpenBSD__ || __sun__
 				// Основные сокеты уведомителя
 				SOCKET _socks[2];
 			/**
-			 * Для операционной системы MacOS X, FreeBSD, NetBSD, Sun Solaris или Linux
+			 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __sun__ || __linux__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ ||  || __linux__
 				// Основной сокет уведомителя
 				SOCKET _sock;
 			#endif
 			/**
-			 * Для операционной системы MacOS X, FreeBSD, NetBSD или Sun Solaris
+			 * Для операционной системы MacOS X, FreeBSD или NetBSD
 			 */
-			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __sun__
+			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 				private:
 					// Мютекс для блокировки потока
 					std::mutex _mtx;
