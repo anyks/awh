@@ -100,7 +100,7 @@ namespace awh {
 			};
 		private:
 			// Максимальное количество отслеживаемых сокетов
-			static constexpr const uint32_t MAX_COUNT_FDS = 0x5000;
+			static constexpr const uint32_t MAX_COUNT_FDS = 0x20000;
 		public:
 			/**
 			 * Создаём тип функции обратного вызова

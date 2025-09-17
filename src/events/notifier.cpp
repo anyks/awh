@@ -211,9 +211,9 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_fds[0];
+			result[0] = (SOCKET) this->_fds[0];
 			// Устанавливаем данные сокета на запись
-			result[1] = this->_fds[1];
+			result[1] = (SOCKET) this->_fds[1];
 		/**
 		 * Для операционной системы Sun Solaris
 		 */
