@@ -103,7 +103,7 @@ void awh::Watch::process(const unit_t unit) noexcept {
 		// Получаем текущее значение даты
 		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 		// Выполняем добавления нового таймера
-		this->_timers.emplace(std::make_pair(unit.delay + date, date), unit.fd);
+		this->_timers.emplace(std::make_pair(unit.delay + date, date), unit.sock);
 		// Выполняем перебор всего списка таймеров
 		for(auto i = this->_timers.begin(); i != this->_timers.end();){
 			// Если время вышло
@@ -144,7 +144,7 @@ void awh::Watch::process(const unit_t unit) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unit.fd, unit.delay), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(unit.sock, unit.delay), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -216,12 +216,12 @@ std::array <SOCKET, 2> awh::Watch::create() noexcept {
 }
 /**
  * event Метод извлечения идентификатора события
- * @param fd файловый дескриптор таймера
- * @return   идентификатор события
+ * @param sock файловый дескриптор таймера
+ * @return     идентификатор события
  */
-uint64_t awh::Watch::event(const SOCKET fd) noexcept {
+uint64_t awh::Watch::event(const SOCKET sock) noexcept {
 	// Выполняем поиск нужного нам уведомителя
-	auto i = this->_notifiers.find(fd);
+	auto i = this->_notifiers.find(sock);
 	// Если уведомитель найден
 	if(i != this->_notifiers.end())
 		// Выполняем вывод полученного уведомления
@@ -231,9 +231,9 @@ uint64_t awh::Watch::event(const SOCKET fd) noexcept {
 }
 /**
  * away Метод убрать таймер из отслеживания
- * @param fd файловый дескриптор таймера
+ * @param sock файловый дескриптор таймера
  */
-void awh::Watch::away(const SOCKET fd) noexcept {
+void awh::Watch::away(const SOCKET sock) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -245,7 +245,7 @@ void awh::Watch::away(const SOCKET fd) noexcept {
 			// Выполняем перебор всего списка таймеров
 			for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
 				// Если таймер найден
-				if(i->second == fd){
+				if(i->second == sock){
 					// Выполняем удаление уведомителя
 					this->_notifiers.erase(i->second);
 					// Выполняем удаление таймера
@@ -264,7 +264,7 @@ void awh::Watch::away(const SOCKET fd) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -276,16 +276,16 @@ void awh::Watch::away(const SOCKET fd) noexcept {
 }
 /**
  * wait Метод ожидания указанного промежутка времени
- * @param fd    файловый дескриптор таймера
+ * @param sock  файловый дескриптор таймера
  * @param delay задержка времени в миллисекундах
  */
-void awh::Watch::wait(const SOCKET fd, const uint32_t delay) noexcept {
+void awh::Watch::wait(const SOCKET sock, const uint32_t delay) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Выполняем поиск уведомитель
-		auto i = this->_notifiers.find(fd);
+		auto i = this->_notifiers.find(sock);
 		// Если уведомитель найден
 		if(i != this->_notifiers.end()){
 			// Выполняем обновление уведомителя
@@ -293,7 +293,7 @@ void awh::Watch::wait(const SOCKET fd, const uint32_t delay) noexcept {
 			// Создаём объект даты для передачи
 			unit_t unit;
 			// Устанавливаем идентификатор файлового дескриптора
-			unit.fd = fd;
+			unit.sock = sock;
 			// Устанавливаем задержку времени в наносекундах
 			unit.delay = (static_cast <uint64_t> (delay) * 1000000);
 			// Выполняем отправку события экрану
@@ -308,7 +308,7 @@ void awh::Watch::wait(const SOCKET fd, const uint32_t delay) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fd, delay), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, delay), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/

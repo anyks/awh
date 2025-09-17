@@ -201,64 +201,64 @@ void awh::Notifier::reset() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[0] != INVALID_SOCKET){
+			if(this->_socks[0] != INVALID_SOCKET){
 				// Закрываем сокет на чтение
-				::closesocket(this->_fds[0]);
+				::closesocket(this->_socks[0]);
 				// Сбрасываем значение сокета на чтение
-				this->_fds[0] = INVALID_SOCKET;
+				this->_socks[0] = INVALID_SOCKET;
 			}
 			// Если сокет ещё не закрыт
-			if(this->_fds[1] != INVALID_SOCKET){
+			if(this->_socks[1] != INVALID_SOCKET){
 				// Закрываем сокет на запись
-				::closesocket(this->_fds[1]);
+				::closesocket(this->_socks[1]);
 				// Сбрасываем значение сокета на запись
-				this->_fds[1] = INVALID_SOCKET;
+				this->_socks[1] = INVALID_SOCKET;
 			}
 		/**
 		 * Для операционной системы Linux или Sun Solaris
 		 */
 		#elif __linux__ || __sun__
 			// Если сокет ещё не закрыт
-			if(this->_fd != INVALID_SOCKET){
+			if(this->_sock != INVALID_SOCKET){
 				// Выполняем закрытие сокета
-				::close(this->_fd);
+				::close(this->_sock);
 				// Сбрасываем значение сокета
-				this->_fd = INVALID_SOCKET;
+				this->_sock = INVALID_SOCKET;
 			}
 		/**
 		 * Для операционной системы OpenBSD
 		 */
 		#elif __OpenBSD__
 			// Если сокет ещё не закрыт
-			if(this->_fds[0] != INVALID_SOCKET){
+			if(this->_socks[0] != INVALID_SOCKET){
 				// Закрываем сокет на чтение
-				::close(this->_fds[0]);
+				::close(this->_socks[0]);
 				// Сбрасываем значение сокета на чтение
-				this->_fds[0] = INVALID_SOCKET;
+				this->_socks[0] = INVALID_SOCKET;
 			}
 			// Если сокет ещё не закрыт
-			if(this->_fds[1] != INVALID_SOCKET){
+			if(this->_socks[1] != INVALID_SOCKET){
 				// Закрываем сокет на запись
-				::close(this->_fds[1]);
+				::close(this->_socks[1]);
 				// Сбрасываем значение сокета на запись
-				this->_fds[1] = INVALID_SOCKET;
+				this->_socks[1] = INVALID_SOCKET;
 			}
 		/**
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Если сокет ещё не закрыт
-			if(this->_fd != INVALID_SOCKET){
+			if(this->_sock != INVALID_SOCKET){
 				// Создаём объект события
 				struct kevent event;
 				// Выполняем удаление события
 				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
 				// Выполняем обновления ядра операционной системы
-				::kevent(this->_fd, &event, 1, nullptr, 0, nullptr);
+				::kevent(this->_sock, &event, 1, nullptr, 0, nullptr);
 				// Выполняем закрытие сокета
-				::close(this->_fd);
+				::close(this->_sock);
 				// Сбрасываем значение сокета
-				this->_fd = INVALID_SOCKET;
+				this->_sock = INVALID_SOCKET;
 			}
 		#endif
 	/**
@@ -299,15 +299,15 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокеты ещё не инициализированны
-			if((this->_fds[0] == INVALID_SOCKET) && (this->_fds[1] == INVALID_SOCKET)){
+			if((this->_socks[0] == INVALID_SOCKET) && (this->_socks[1] == INVALID_SOCKET)){
 				// Выполняем инициализацию сокета события
-				if(::socketpair(this->_fds) == INVALID_SOCKET){
+				if(::socketpair(this->_socks) == INVALID_SOCKET){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[256] = {0};
 					// Сбрасываем значение сокета на чтение
-					this->_fds[0] = INVALID_SOCKET;
+					this->_socks[0] = INVALID_SOCKET;
 					// Сбрасываем значение сокета на запись
-					this->_fds[1] = INVALID_SOCKET;
+					this->_socks[1] = INVALID_SOCKET;
 					// Выполняем формирование текста ошибки
 					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
 					/**
@@ -326,19 +326,19 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_fds[0];
+			result[0] = this->_socks[0];
 			// Устанавливаем данные сокета на запись
-			result[1] = this->_fds[1];
+			result[1] = this->_socks[1];
 		/**
 		 * Для операционной системы Sun Solaris
 		 */
 		#elif __sun__
 			// Если сокет ещё не инициализирован
-			if(this->_fd == INVALID_SOCKET){
+			if(this->_sock == INVALID_SOCKET){
 				// Выполняем инициализацию сокета события
-				this->_fd = ::port_create();
+				this->_sock = ::port_create();
 				// Если сокет не создан
-				if(this->_fd == INVALID_SOCKET){
+				if(this->_sock == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -355,19 +355,19 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_fd;
+			result[0] = this->_sock;
 			// Устанавливаем данные сокета на запись
-			result[1] = this->_fd;
+			result[1] = this->_sock;
 		/**
 		 * Для операционной системы Linux
 		 */
 		#elif __linux__
 			// Если сокет ещё не инициализирован
-			if(this->_fd == INVALID_SOCKET){
+			if(this->_sock == INVALID_SOCKET){
 				// Выполняем инициализацию сокета события
-				this->_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+				this->_sock = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 				// Если сокет не создан
-				if(this->_fd == INVALID_SOCKET){
+				if(this->_sock == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -384,21 +384,21 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_fd;
+			result[0] = this->_sock;
 			// Устанавливаем данные сокета на запись
-			result[1] = this->_fd;
+			result[1] = this->_sock;
 		/**
 		 * Для операционной системы OpenBSD
 		 */
 		#elif __OpenBSD__
 			// Если сокеты ещё не инициализированны
-			if((this->_fds[0] == INVALID_SOCKET) && (this->_fds[1] == INVALID_SOCKET)){
+			if((this->_socks[0] == INVALID_SOCKET) && (this->_socks[1] == INVALID_SOCKET)){
 				// Выполняем инициализацию сокета события
-				if(::pipe(this->_fds) == INVALID_SOCKET){
+				if(::pipe(this->_socks) == INVALID_SOCKET){
 					// Сбрасываем значение сокета на чтение
-					this->_fds[0] = INVALID_SOCKET;
+					this->_socks[0] = INVALID_SOCKET;
 					// Сбрасываем значение сокета на запись
-					this->_fds[1] = INVALID_SOCKET;
+					this->_socks[1] = INVALID_SOCKET;
 					/**
 					 * Если включён режим отладки
 					 */
@@ -413,22 +413,22 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				// Установим неблокирующий режим на чтение
-				} else ::fcntl(this->_fds[0], F_SETFL, O_NONBLOCK);
+				} else ::fcntl(this->_socks[0], F_SETFL, O_NONBLOCK);
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_fds[0];
+			result[0] = this->_socks[0];
 			// Устанавливаем данные сокета на запись
-			result[1] = this->_fds[1];
+			result[1] = this->_socks[1];
 		/**
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Если сокет ещё не инициализирован
-			if(this->_fd == INVALID_SOCKET){
+			if(this->_sock == INVALID_SOCKET){
 				// Выполняем инициализацию сокета события
-				this->_fd = ::kqueue();
+				this->_sock = ::kqueue();
 				// Если сокет не создан
-				if(this->_fd == INVALID_SOCKET){
+				if(this->_sock == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -445,7 +445,7 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Если сокет уже инициализирован
-			if(this->_fd != INVALID_SOCKET){
+			if(this->_sock != INVALID_SOCKET){
 				// Создаём объект события
 				struct kevent event;
 				// Выполняем удаление события
@@ -453,7 +453,7 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				// Выполняем активацию события
 				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, nullptr);
 				// Выполняем активацию нашего события
-				if(::kevent(this->_fd, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
+				if(::kevent(this->_sock, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -470,9 +470,9 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_fd;
+			result[0] = this->_sock;
 			// Устанавливаем данные сокета на запись
-			result[1] = this->_fd;
+			result[1] = this->_sock;
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -511,7 +511,7 @@ uint64_t awh::Notifier::event() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[0] != INVALID_SOCKET){
+			if(this->_socks[0] != INVALID_SOCKET){
 				// Буфер данных для чтения
 				char buffer[8];
 				// Общий размер прочитанных данных
@@ -521,7 +521,7 @@ uint64_t awh::Notifier::event() noexcept {
 				// Выполняем чтение данных пока не прочитаем все
 				while(size < 8){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::recv(this->_fds[0], buffer + size, 8, 0));
+					bytes = static_cast <int8_t> (::recv(this->_socks[0], buffer + size, 8, 0));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -548,7 +548,7 @@ uint64_t awh::Notifier::event() noexcept {
 		 */
 		#elif __linux__
 			// Если сокет ещё не закрыт
-			if(this->_fd != INVALID_SOCKET){
+			if(this->_sock != INVALID_SOCKET){
 				// Буфер данных для чтения
 				char buffer[8];
 				// Общий размер прочитанных данных
@@ -558,7 +558,7 @@ uint64_t awh::Notifier::event() noexcept {
 				// Выполняем чтение данных пока не прочитаем все
 				while(size < 8){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::read(this->_fd, buffer + size, 8));
+					bytes = static_cast <int8_t> (::read(this->_sock, buffer + size, 8));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -572,7 +572,7 @@ uint64_t awh::Notifier::event() noexcept {
 		 */
 		#elif __OpenBSD__
 			// Если сокет ещё не закрыт
-			if(this->_fds[0] != INVALID_SOCKET){
+			if(this->_socks[0] != INVALID_SOCKET){
 				// Буфер данных для чтения
 				char buffer[8];
 				// Общий размер прочитанных данных
@@ -582,7 +582,7 @@ uint64_t awh::Notifier::event() noexcept {
 				// Выполняем чтение данных пока не прочитаем все
 				while(size < 8){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::read(this->_fds[0], buffer + size, 8));
+					bytes = static_cast <int8_t> (::read(this->_socks[0], buffer + size, 8));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -600,7 +600,7 @@ uint64_t awh::Notifier::event() noexcept {
 			// Выполняем удаление события
 			EV_SET(&event, USER_EVENT, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
 			// Выполняем обновления ядра операционной системы
-			::kevent(this->_fd, &event, 1, nullptr, 0, nullptr);
+			::kevent(this->_sock, &event, 1, nullptr, 0, nullptr);
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если очередь событий не пустая
@@ -646,9 +646,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
-			if(this->_fds[1] != INVALID_SOCKET){
+			if(this->_socks[1] != INVALID_SOCKET){
 				// Выполняем отправку сообщения
-				if(::send(this->_fds[1], reinterpret_cast <const char *> (&id), sizeof(id), 0) < sizeof(id)){
+				if(::send(this->_socks[1], reinterpret_cast <const char *> (&id), sizeof(id), 0) < sizeof(id)){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[256] = {0};
 					// Выполняем формирование текста ошибки
@@ -673,7 +673,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		 */
 		#elif __sun__
 			// Если сокет ещё не закрыт
-			if(this->_fd != INVALID_SOCKET){
+			if(this->_sock != INVALID_SOCKET){
 				// Выполняем блокирование потока
 				this->_mtx.lock();
 				// Удаляем извлечённое событие
@@ -681,7 +681,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 				// Выполняем разблокирование потока
 				this->_mtx.unlock();
 				// Выполняем отправку сообщения в порт
-				if(::port_send(this->_fd, USER_EVENT, nullptr) == INVALID_SOCKET){
+				if(::port_send(this->_sock, USER_EVENT, nullptr) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -702,9 +702,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		 */
 		#elif __linux__
 			// Если сокет ещё не закрыт
-			if(this->_fd != INVALID_SOCKET){
+			if(this->_sock != INVALID_SOCKET){
 				// Выполняем отправку сообщения
-				if(::write(this->_fd, reinterpret_cast <const char *> (&id), sizeof(id)) < sizeof(id)){
+				if(::write(this->_sock, reinterpret_cast <const char *> (&id), sizeof(id)) < sizeof(id)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -725,9 +725,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		 */
 		#elif __OpenBSD__
 			// Если сокет ещё не закрыт
-			if(this->_fds[1] != INVALID_SOCKET){
+			if(this->_socks[1] != INVALID_SOCKET){
 				// Выполняем отправку сообщения
-				if(::write(this->_fds[1], reinterpret_cast <const char *> (&id), sizeof(id)) < sizeof(id)){
+				if(::write(this->_socks[1], reinterpret_cast <const char *> (&id), sizeof(id)) < sizeof(id)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -748,7 +748,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Если сокет ещё не закрыт
-			if(this->_fd != INVALID_SOCKET){
+			if(this->_sock != INVALID_SOCKET){
 				// Выполняем блокирование потока
 				this->_mtx.lock();
 				// Удаляем извлечённое событие
@@ -760,7 +760,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 				// Выполняем установку события триггера
 				EV_SET(&trigger, USER_EVENT, EVFILT_USER, 0, NOTE_TRIGGER, 0, nullptr);
 				// Выполняем отправку события триггера
-				if(::kevent(this->_fd, &trigger, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
+				if(::kevent(this->_sock, &trigger, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -807,15 +807,15 @@ awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fm
 	 */
 	#if _WIN32 || _WIN64 || __OpenBSD__
 		// Сбрасываем значение сокета на чтение
-		this->_fds[0] = INVALID_SOCKET;
+		this->_socks[0] = INVALID_SOCKET;
 		// Сбрасываем значение сокета на запись
-		this->_fds[1] = INVALID_SOCKET;
+		this->_socks[1] = INVALID_SOCKET;
 	/**
 	 * Для операционной системы MacOS X, FreeBSD, NetBSD, Linux или Sun Solaris
 	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__ || __sun__
 		// Инициализируем файловый дескриптор
-		this->_fd = INVALID_SOCKET;
+		this->_sock = INVALID_SOCKET;
 	#endif
 }
 /**

@@ -46,13 +46,13 @@ namespace awh {
 			 */
 			typedef struct Unit {
 				// Файловый дескрипторв (сокет)
-				SOCKET fd;
+				SOCKET sock;
 				// Время задержки работы таймера
 				uint64_t delay;
 				/**
 				 * Unit Конструктор
 				 */
-				Unit() noexcept : fd(INVALID_SOCKET), delay(0) {}
+				Unit() noexcept : sock(INVALID_SOCKET), delay(0) {}
 			} __attribute__((packed)) unit_t;
 		private:
 			// Мютекс для блокировки потока
@@ -98,22 +98,22 @@ namespace awh {
 		public:
 			/**
 			 * event Метод извлечения идентификатора события
-			 * @param fd файловый дескриптор таймера
-			 * @return   идентификатор события
+			 * @param sock файловый дескриптор таймера
+			 * @return     идентификатор события
 			 */
-			uint64_t event(const SOCKET fd) noexcept;
+			uint64_t event(const SOCKET sock) noexcept;
 		public:
 			/**
 			 * away Метод убрать таймер из отслеживания
-			 * @param fd файловый дескриптор таймера
+			 * @param sock файловый дескриптор таймера
 			 */
-			void away(const SOCKET fd) noexcept;
+			void away(const SOCKET sock) noexcept;
 			/**
 			 * wait Метод ожидания указанного промежутка времени
-			 * @param fd    файловый дескриптор таймера
+			 * @param sock  файловый дескриптор таймера
 			 * @param delay задержка времени в миллисекундах
 			 */
-			void wait(const SOCKET fd, const uint32_t delay) noexcept;
+			void wait(const SOCKET sock, const uint32_t delay) noexcept;
 		public:
 			/**
 			 * Watch Конструктор

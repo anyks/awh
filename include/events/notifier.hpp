@@ -53,13 +53,13 @@ namespace awh {
 			 */
 			#if _WIN32 || _WIN64 || __OpenBSD__
 				// Основные сокеты уведомителя
-				SOCKET _fds[2];
+				SOCKET _socks[2];
 			/**
 			 * Для операционной системы MacOS X, FreeBSD, NetBSD, Sun Solaris или Linux
 			 */
 			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __sun__ || __linux__
 				// Основной сокет уведомителя
-				SOCKET _fd;
+				SOCKET _sock;
 			#endif
 			/**
 			 * Для операционной системы MacOS X, FreeBSD, NetBSD или Sun Solaris
