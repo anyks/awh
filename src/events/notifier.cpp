@@ -558,7 +558,7 @@ uint64_t awh::Notifier::event() noexcept {
 				// Выполняем чтение данных пока не прочитаем все
 				while(size < 8){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::read(this->_fd, &buffer + size, 8));
+					bytes = static_cast <int8_t> (::read(this->_fd, buffer + size, 8));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -582,7 +582,7 @@ uint64_t awh::Notifier::event() noexcept {
 				// Выполняем чтение данных пока не прочитаем все
 				while(size < 8){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::read(this->_fds[0], &buffer + size, 8));
+					bytes = static_cast <int8_t> (::read(this->_fds[0], buffer + size, 8));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных
@@ -704,7 +704,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 			// Если сокет ещё не закрыт
 			if(this->_fd != INVALID_SOCKET){
 				// Выполняем отправку сообщения
-				if(::write(this->_fd, &id, sizeof(id)) < sizeof(id)){
+				if(::write(this->_fd, reinterpret_cast <const char *> (&id), sizeof(id)) < sizeof(id)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -727,7 +727,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 			// Если сокет ещё не закрыт
 			if(this->_fds[1] != INVALID_SOCKET){
 				// Выполняем отправку сообщения
-				if(::write(this->_fds[1], &id, sizeof(id)) < sizeof(id)){
+				if(::write(this->_fds[1], reinterpret_cast <const char *> (&id), sizeof(id)) < sizeof(id)){
 					/**
 					 * Если включён режим отладки
 					 */
