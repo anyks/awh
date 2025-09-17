@@ -640,7 +640,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 				// Выполняем поиск файлового дескриптора из списка событий
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 					// Если файловый дескриптор найден
-					if(static_cast <SOCKET> (i->portev_object) == sock){
+					if(static_cast <SOCKET> (j->portev_object) == sock){
 						// Удаляем сокет из порта и закрываем
 						::port_dissociate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock));
 						// Определяем тип события к которому принадлежит сокет
