@@ -54,6 +54,7 @@
 	/**
 	 * Подключаем системные заголовки
 	 */
+	#include <port.h>
 	#include <sys/port.h>
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
