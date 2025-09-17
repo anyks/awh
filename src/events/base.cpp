@@ -387,6 +387,9 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 				if((i->data.ptr != nullptr) && (reinterpret_cast <peer_t *> (i->data.ptr)->sock == sock)){
 					// Выполняем изменение параметров события
 					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
+					
+					cout << " ----------DEL1 " << sock << endl;
+					
 					// Выполняем закрытие подключения
 					::close(sock);
 					// Если событие является таймером
@@ -414,6 +417,9 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 					if(!erased){
 						// Выполняем изменение параметров события
 						result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
+						
+						cout << " ----------DEL2 " << sock << endl;
+						
 						// Выполняем закрытие подключения
 						::close(sock);
 						// Если событие является таймером
@@ -438,6 +444,9 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 			if(!result){
 				// Выполняем изменение параметров события
 				result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, nullptr) == 0);
+				
+				cout << " ----------DEL3 " << sock << endl;
+				
 				// Выполняем закрытие подключения
 				::close(sock);
 			}
@@ -674,6 +683,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 					   (reinterpret_cast <peer_t *> (j->data.ptr)->id == id)){
 						// Выполняем изменение параметров события
 						result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
+						
+						cout << " ----------DEL4 " << i->second.sock << endl;
+						
 						// Выполняем закрытие подключения
 						::close(i->second.sock);
 						// Выполняем удаление события из списка отслеживания
@@ -691,6 +703,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 						if(!erased){
 							// Выполняем изменение параметров события
 							result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
+							
+							cout << " ----------DEL5 " << i->second.sock << endl;
+							
 							// Выполняем закрытие подключения
 							::close(i->second.sock);
 						}
@@ -1240,6 +1255,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								if(i->second.delay > 0){
 									// Выполняем удаление таймера
 									this->_watch.away(i->second.sock);
+									
+									cout << " ----------DEL6 " << i->second.sock << endl;
+									
 									// Выполняем закрытие подключения
 									::close(i->second.sock);
 									// Выполняем поиск таймера в списке таймеров
@@ -1269,6 +1287,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								if(i->second.delay > 0){
 									// Выполняем удаление таймера
 									this->_watch.away(i->second.sock);
+									
+									cout << " ----------DEL7 " << i->second.sock << endl;
+									
 									// Выполняем закрытие подключения
 									::close(i->second.sock);
 									// Выполняем поиск таймера в списке таймеров
@@ -1678,6 +1699,9 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 								return result;
 							// Выполняем установку файлового дескриптора таймера
 							sock = fds[0];
+
+							cout << " ----------ADD " << sock << endl;
+
 							// Выполняем добавление таймера в список таймеров
 							this->_timers.emplace(fds[1]);
 							// Выполняем добавление в список параметров для отслеживания
@@ -2555,6 +2579,9 @@ void awh::Base::clear() noexcept {
 			for(auto i = this->_change.begin(); i != this->_change.end();){
 				// Выполняем изменение параметров события
 				::epoll_ctl(this->_efd, EPOLL_CTL_DEL, reinterpret_cast <peer_t *> (i->data.ptr)->sock, &(* i));
+				
+				cout << " ----------DEL8 " << reinterpret_cast <peer_t *> (i->data.ptr)->sock << endl;
+				
 				// Выполняем закрытие подключения
 				::close(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 				// Если событие является таймером

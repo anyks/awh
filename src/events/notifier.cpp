@@ -220,6 +220,9 @@ void awh::Notifier::reset() noexcept {
 		#elif __linux__ || __sun__
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
+
+				cout << " ----------RESET " << this->_sock << endl;
+
 				// Выполняем закрытие сокета
 				::close(this->_sock);
 				// Сбрасываем значение сокета
