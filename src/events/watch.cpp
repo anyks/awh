@@ -242,12 +242,12 @@ void awh::Watch::away(const SOCKET sock) noexcept {
 		if(!this->_timers.empty()){
 			// Выполняем блокировку потока
 			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			// Выполняем удаление уведомителя
+			this->_notifiers.erase(sock);
 			// Выполняем перебор всего списка таймеров
 			for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
 				// Если таймер найден
 				if(i->second == sock){
-					// Выполняем удаление уведомителя
-					this->_notifiers.erase(i->second);
 					// Выполняем удаление таймера
 					this->_timers.erase(i);
 					// Выходим из цикла
