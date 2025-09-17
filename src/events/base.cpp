@@ -1948,9 +1948,29 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									case static_cast <uint8_t> (event_mode_t::ENABLED): {
 										
 										
+										// Ассоциируем сокет: ждём готовности к записи (соединение установлено) + ошибки
+										if(::port_associate(this->_pfd, PORT_SOURCE_FD, static_cast <uintptr_t> (sock), POLLOUT | POLLERR | POLLHUP, nullptr) == INVALID_SOCKET){
+											
+											cout << " ^^^^^^^^^^ TIMER ENABLED1 " << endl;
+											
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sock, static_cast <uint16_t> (type), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											#endif
 										
+										// Выполняем активацию таймера на указанное время
+										} else this->_watch.wait(sock, i->second.delay);
 
-
+										
 									} break;
 									// Если нужно деактивировать событие работы таймера
 									case static_cast <uint8_t> (event_mode_t::DISABLED): {
