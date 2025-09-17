@@ -1900,7 +1900,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 							// Устанавливаем идентификатор записи
 							item->id = id;
 							// Выполняем установку файлового дескриптора события
-							item->sock = sock;
+							item->socks[0] = sock;
 							// Если функция обратного вызова передана
 							if(callback != nullptr)
 								// Выполняем установку функции обратного вызова

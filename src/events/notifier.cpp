@@ -311,8 +311,10 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			result[0] = this->_socks[0];
 			// Устанавливаем данные сокета на запись
 			result[1] = this->_socks[1];
-			// Установи неблокирующий режим на чтение
-			::set_nonblocking(result[0]);
+			// Делаем сокет неблокирующим
+			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
+			// Делаем блокирующим сокет на запись
+			this->_socket.blocking(result[1], socket_t::mode_t::ENABLED);
 		/**
 		 * Для операционной системы Linux
 		 */
@@ -374,8 +376,10 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			result[0] = this->_socks[0];
 			// Устанавливаем данные сокета на запись
 			result[1] = this->_socks[1];
-			// Установи неблокирующий режим на чтение
-			::set_nonblocking(result[0]);
+			// Делаем сокет неблокирующим
+			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
+			// Делаем блокирующим сокет на запись
+			this->_socket.blocking(result[1], socket_t::mode_t::ENABLED);
 		/**
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
@@ -712,27 +716,42 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 	}
 }
 /**
- * Notifier Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
+ * Для операционной системы OS Windows, OpenBSD или Sun Solaris
  */
-awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+#if _WIN32 || _WIN64 || __OpenBSD__ || __sun__
 	/**
-	 * Для операционной системы OS Windows или OpenBSD или Sun Solaris
+	 * Notifier Конструктор
+	 * @param fmk объект фреймворка
+	 * @param log объект для работы с логами
 	 */
-	#if _WIN32 || _WIN64 || __OpenBSD__ || __sun__
-		// Сбрасываем значение сокета на чтение
-		this->_socks[0] = INVALID_SOCKET;
-		// Сбрасываем значение сокета на запись
-		this->_socks[1] = INVALID_SOCKET;
+	awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _socket(fmk, log), _fmk(fmk), _log(log) {
+/**
+ * Для других операционных систем
+ */
+#else
 	/**
-	 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
+	 * Notifier Конструктор
+	 * @param fmk объект фреймворка
+	 * @param log объект для работы с логами
 	 */
-	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
-		// Инициализируем файловый дескриптор
-		this->_sock = INVALID_SOCKET;
-	#endif
-}
+	awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+#endif
+		/**
+		 * Для операционной системы OS Windows или OpenBSD или Sun Solaris
+		 */
+		#if _WIN32 || _WIN64 || __OpenBSD__ || __sun__
+			// Сбрасываем значение сокета на чтение
+			this->_socks[0] = INVALID_SOCKET;
+			// Сбрасываем значение сокета на запись
+			this->_socks[1] = INVALID_SOCKET;
+		/**
+		 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
+		 */
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
+			// Инициализируем файловый дескриптор
+			this->_sock = INVALID_SOCKET;
+		#endif
+	}
 /**
  * ~Notifier Деструктор
  */

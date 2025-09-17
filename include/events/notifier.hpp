@@ -73,6 +73,14 @@ namespace awh {
 					std::queue <uint64_t> _events;
 				#endif
 		private:
+			/**
+			 * Для операционной системы OS Windows, OpenBSD или Sun Solaris
+			 */
+			#if _WIN32 || _WIN64 || __OpenBSD__ || __sun__
+				// Объект работы с сокетами
+				socket_t _socket;
+			#endif
+		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
 			// Объект работы с логами
