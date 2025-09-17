@@ -369,6 +369,9 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 			if(this->_sock == INVALID_SOCKET){
 				// Выполняем инициализацию сокета события
 				this->_sock = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+				
+				cout << " ************ INIT1 " << this->_sock << endl;
+				
 				// Если сокет не создан
 				if(this->_sock == INVALID_SOCKET){
 					/**
@@ -385,7 +388,7 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
-			}
+			} else cout << " ************ INIT2 " << this->_sock << endl;
 			// Устанавливаем данные сокета на чтение
 			result[0] = this->_sock;
 			// Устанавливаем данные сокета на запись
