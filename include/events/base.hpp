@@ -42,7 +42,7 @@
 	// Включаем расширения Solaris для доступа к port_event_t
 	#define __EXTENSIONS__
 	// Подключаем модуль работы с портами
-	#include <port.h>
+	#include <sys/port.h>
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
  */
