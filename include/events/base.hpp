@@ -48,10 +48,8 @@
 #include <cmath>
 #include <mutex>
 #include <thread>
-#include <chrono>
 #include <vector>
 #include <string>
-#include <future>
 #include <atomic>
 #include <functional>
 
@@ -113,33 +111,32 @@ namespace awh {
 			/**
 			 * Upstream Структура работы вышестоящего потока
 			 */
-			/*
 			typedef struct Upstream {
-				// Файловые дескрипторы для чтения и записи
-				SOCKET read, write;
-				// Объект работы с пайпом
-				std::shared_ptr <evpipe_t> pipe;
+				// Дополнительный партнёрский сокет
+				SOCKET sock;
+				// Мютекс для блокировки потока
+				std::mutex mtx;
+				// Объект работы с уведомителем
+				notifier_t notifier;
 				// Функция обратного вызова
 				function <void (const uint64_t)> callback;
-			*/
 				/**
 				 * Upstream Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-			/*
-				Upstream() noexcept :
-				 read(INVALID_SOCKET), write(INVALID_SOCKET),
-				 pipe(nullptr), callback(nullptr) {}
+				Upstream(const fmk_t * fmk, const log_t * log) noexcept :
+				 sock(INVALID_SOCKET), notifier(fmk, log), callback(nullptr) {}
 			} upstream_t;
-			*/
 			/**
 			 * Peer Структура участника
 			 */
 			typedef struct Peer {
 				// Идентификатор участника
 				uint64_t id;
-				// Флаг активации серийного таймера
-				bool series;
-				// Отслеживаемый файловый дескриптор
+				// Флаг персистентного таймера
+				bool persist;
+				// Отслеживаемый сокет
 				SOCKET socks[2];
 				// Задержка времени таймера
 				uint32_t delay;
@@ -153,7 +150,7 @@ namespace awh {
 				 * Peer Конструктор
 				 */
 				Peer() noexcept :
-				 id(0), series(false),
+				 id(0), persist(false),
 				 socks{INVALID_SOCKET, INVALID_SOCKET},
 				 delay(0), type(event_type_t::NONE), callback(nullptr) {}
 			} peer_t;
@@ -170,11 +167,10 @@ namespace awh {
 			// Флаг запущенного опроса базы событий
 			std::atomic_bool _launched;
 		private:
-			// Таймаут времени блокировки базы событий
-			std::atomic_int _baseDelay;
-		private:
+			// Время блокировки базы событий в ожидании событий
+			std::atomic_int _baserate;
 			// Максимальное количество обрабатываемых сокетов
-			std::atomic_uint _maxCount;
+			std::atomic_uint _maxSockets;
 		private:
 			/**
 			 * Для операционной системы OS Windows
@@ -229,7 +225,7 @@ namespace awh {
 			// Список отслеживаемых участников
 			std::map <SOCKET, peer_t> _peers;
 			// Спиоск активных верхнеуровневых потоков
-			// std::map <uint64_t, upstream_t> _upstreams;
+			std::map <SOCKET, std::unique_ptr <upstream_t>> _upstream;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -256,29 +252,28 @@ namespace awh {
 		private:
 			/**
 			 * upstream Метод получения событий верхнеуровневых потоков
-			 * @param sid  идентификатор верхнеуровневого потока
-			 * @param sock файловый дескриптор верхнеуровневого потока
-			 * @param type тип отслеживаемого события
+			 * @param sock  окет межпотокового передатчика
+			 * @param event входящее событие от межпотокового передатчика
 			 */
-			void upstream(const uint64_t sid, const SOCKET sock, const event_type_t type) noexcept;
+			void upstream(const SOCKET sock, const uint64_t event) noexcept;
 		private:
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий
-			 * @param sock файловый дескриптор для удаления
+			 * @param sock сокет для удаления
 			 * @return     результат работы функции
 			 */
 			bool del(const SOCKET sock) noexcept;
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий для всех событий
 			 * @param id   идентификатор записи
-			 * @param sock файловый дескриптор для удаления
+			 * @param sock сокет для удаления
 			 * @return     результат работы функции
 			 */
 			bool del(const uint64_t id, const SOCKET sock) noexcept;
 			/**
 			 * del Метод удаления файлового дескриптора из базы событий для указанного события
 			 * @param id   идентификатор записи
-			 * @param sock файловый дескриптор для удаления
+			 * @param sock сокет для удаления
 			 * @param type тип отслеживаемого события
 			 * @return     результат работы функции
 			 */
@@ -287,18 +282,18 @@ namespace awh {
 			/**
 			 * add Метод добавления файлового дескриптора в базу событий
 			 * @param id       идентификатор записи
-			 * @param sock     файловый дескриптор для добавления
+			 * @param sock     сокет для добавления
 			 * @param callback функция обратного вызова при получении события
 			 * @param delay    задержка времени для создания таймеров
-			 * @param series   флаг серийного таймаута
+			 * @param persist  флаг персистентного таймера
 			 * @return         результат работы функции
 			 */
-			bool add(const uint64_t id, SOCKET & sock, callback_t callback = nullptr, const uint32_t delay = 0, const bool series = false) noexcept;
+			bool add(const uint64_t id, SOCKET & sock, callback_t callback = nullptr, const uint32_t delay = 0, const bool persist = false) noexcept;
 		private:
 			/**
 			 * mode Метод установки режима работы модуля
 			 * @param id   идентификатор записи
-			 * @param sock файловый дескриптор для установки режима работы
+			 * @param sock сокет для установки режима работы
 			 * @param type тип событий модуля для которого требуется сменить режим работы
 			 * @param mode флаг режима работы модуля
 			 * @return     результат работы функции
@@ -345,36 +340,41 @@ namespace awh {
 			void easily(const bool mode) noexcept;
 		public:
 			/**
-			 * frequency Метод установки частоты обновления базы событий
-			 * @param msec частота обновления базы событий в миллисекундах
+			 * maxSockets Максимальное количество поддерживаемых сокетов
+			 * @param count максимальное количество поддерживаемых сокетов
 			 */
-			void frequency(const uint32_t msec = 10) noexcept;
+			void maxSockets(const uint32_t count) noexcept;
 		public:
 			/**
-			 * eraseUpstream Метод удаления верхнеуровневого потока
-			 * @param sid идентификатор верхнеуровневого потока
+			 * baserate Метод установки времени блокировки базы событий в ожидании событий
+			 * @param msec время ожидания событий в миллисекундах
 			 */
-			void eraseUpstream(const uint64_t sid) noexcept;
+			void baserate(const uint32_t msec = 10) noexcept;
+		public:
 			/**
-			 * launchUpstream Метод запуска верхнеуровневого потока
-			 * @param sid идентификатор верхнеуровневого потока
-			 * @param tid идентификатор трансферной передачи
+			 * send Метод отправки сообщения между потоками
+			 * @param sock сокет межпотокового передатчика
+			 * @param tid  идентификатор трансферной передачи
 			 */
-			void launchUpstream(const uint64_t sid, const uint64_t tid = 0) noexcept;
+			void send(const SOCKET sock, const uint64_t tid) noexcept;
 			/**
-			 * emplaceUpstream Метод создания верхнеуровневого потока
+			 * deactivation Метод деактивации межпотокового передатчика
+			 * @param sock сокет межпотокового передатчика
+			 */
+			void deactivation(const SOCKET sock) noexcept;
+			/**
+			 * activation Метод активации межпотокового передатчика
 			 * @param callback функция обратного вызова
-			 * @return         идентификатор верхнеуровневого потока
+			 * @return         сокет межпотокового передатчика
 			 */
-			uint64_t emplaceUpstream(function <void (const uint64_t)> callback) noexcept;
+			SOCKET activation(function <void (const uint64_t)> callback) noexcept;
 		public:
 			/**
 			 * Base Конструктор
-			 * @param fmk   объект фреймворка
-			 * @param log   объект для работы с логами
-			 * @param count максимальное количество обрабатываемых сокетов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			Base(const fmk_t * fmk, const log_t * log, const uint32_t count = MAX_COUNT_FDS) noexcept;
+			Base(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Base Деструктор
 			 */

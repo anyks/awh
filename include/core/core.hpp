@@ -75,15 +75,15 @@ namespace awh {
 					// Идентификатор процесса
 					pid_t _pid;
 				private:
-					// Флаг работы модуля
-					bool _work;
-					// Флаг инициализации базы событий
-					bool _init;
-					// Флаг виртуальной базы данных
-					bool _virt;
-				private:
 					// Мютекс для блокировки потока
-					std::recursive_mutex _mtx;
+					std::mutex _mtx;
+				private:
+					// Флаг работы модуля
+					std::atomic_bool _work;
+					// Флаг инициализации базы событий
+					std::atomic_bool _init;
+					// Флаг виртуальной базы данных
+					std::atomic_bool _virt;
 				private:
 					// Функция обратного вызова при запуске модуля
 					function <void (const bool, const bool)> _launching;
@@ -128,10 +128,10 @@ namespace awh {
 					void easily(const bool mode) noexcept;
 				public:
 					/**
-					 * frequency Метод установки частоты обновления базы событий
-					 * @param msec частота обновления базы событий в миллисекундах
+					 * baserate Метод установки времени блокировки базы событий в ожидании событий
+					 * @param msec время ожидания событий в миллисекундах
 					 */
-					void frequency(const uint8_t msec = 10) noexcept;
+					void baserate(const uint8_t msec = 10) noexcept;
 				public:
 					/**
 					 * on Метод установки функции обратного вызова
@@ -352,10 +352,10 @@ namespace awh {
 			void verbose(const bool mode = true) noexcept;
 		public:
 			/**
-			 * frequency Метод установки частоты обновления базы событий
-			 * @param msec частота обновления базы событий в миллисекундах
+			 * baserate Метод установки времени блокировки базы событий в ожидании событий
+			 * @param msec время ожидания событий в миллисекундах
 			 */
-			void frequency(const uint8_t msec = 10) noexcept;
+			void baserate(const uint8_t msec = 10) noexcept;
 			/**
 			 * signalInterception Метод активации перехвата сигналов
 			 * @param mode флаг активации
@@ -363,22 +363,22 @@ namespace awh {
 			void signalInterception(const scheme_t::mode_t mode = scheme_t::mode_t::DISABLED) noexcept;
 		public:
 			/**
-			 * eraseUpstream Метод удаления верхнеуровневого потока
-			 * @param sid идентификатор верхнеуровневого потока
+			 * sendUpstream Метод отправки сообщения между потоками
+			 * @param sock сокет межпотокового передатчика
+			 * @param tid  идентификатор трансферной передачи
 			 */
-			void eraseUpstream(const uint64_t sid) noexcept;
+			void sendUpstream(const SOCKET sock, const uint64_t tid) noexcept;
 			/**
-			 * launchUpstream Метод запуска верхнеуровневого потока
-			 * @param sid идентификатор верхнеуровневого потока
-			 * @param tid идентификатор трансферной передачи
+			 * deactivationUpstream Метод деактивации межпотокового передатчика
+			 * @param sock сокет межпотокового передатчика
 			 */
-			void launchUpstream(const uint64_t sid, const uint64_t tid = 0) noexcept;
+			void deactivationUpstream(const SOCKET sock) noexcept;
 			/**
-			 * emplaceUpstream Метод создания верхнеуровневого потока
+			 * activationUpstream Метод активации межпотокового передатчика
 			 * @param callback функция обратного вызова
-			 * @return         идентификатор верхнеуровневого потока
+			 * @return         сокет межпотокового передатчика
 			 */
-			uint64_t emplaceUpstream(function <void (const uint64_t)> callback) noexcept;
+			SOCKET activationUpstream(function <void (const uint64_t)> callback) noexcept;
 		public:
 			/**
 			 * Core Конструктор

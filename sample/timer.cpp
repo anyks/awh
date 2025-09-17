@@ -28,6 +28,10 @@ using namespace awh;
  */
 using namespace placeholders;
 
+static void TestFN(const uint64_t tid){
+	cout << " ********** GET TID " << tid << " || " << std::this_thread::get_id() << endl;
+}
+
 /**
  * Executor Класс объекта исполнителя
  */
@@ -96,6 +100,21 @@ class Executor {
 					tid = timer->interval(5000);
 					// Устанавливаем интервал времени времени на 5 секунд
 					timer->on(tid, &Executor::interval, this, tid, timer);
+
+					SOCKET fd = timer->activationUpstream(&::TestFN);
+
+					cout << " !!!!!!! " << std::this_thread::get_id() << endl;
+
+					std::thread([timer](SOCKET fd) -> void {
+
+						cout << " ******** " << fd << " || " << std::this_thread::get_id() << endl;
+
+						timer->sendUpstream(fd, 2281);
+
+						timer->deactivationUpstream(fd);
+					
+					}, fd).join();
+
 				} break;
 				// Если система остановлена
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):

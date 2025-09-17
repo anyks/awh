@@ -57,7 +57,7 @@ namespace awh {
 			/**
 			 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ ||  || __linux__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
 				// Основной сокет уведомителя
 				SOCKET _sock;
 			#endif

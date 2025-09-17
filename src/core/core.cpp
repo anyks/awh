@@ -39,7 +39,7 @@ void awh::Core::Dispatch::kick() noexcept {
 	// Если база событий проинициализированна
 	if(this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем остановку всех событий
 		EventBase->kick();
 	}
@@ -50,10 +50,10 @@ void awh::Core::Dispatch::kick() noexcept {
 void awh::Core::Dispatch::stop() noexcept {
 	// Если чтение базы событий уже началось
 	if(this->_work && this->_init && (EventBase != nullptr)){
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Снимаем флаг работы модуля
 		this->_work = !this->_work;
+		// Выполняем блокировку потока
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем остановку базы событий
 		EventBase->stop();
 	// Если модуль не инициализирован
@@ -68,14 +68,10 @@ void awh::Core::Dispatch::stop() noexcept {
  * start Метод запуска чтения базы событий
  */
 void awh::Core::Dispatch::start() noexcept {
-	// Выполняем блокировку потока
-	this->_mtx.lock();
 	// Если чтение базы событий ещё не началось
 	if(!this->_work && this->_init && (EventBase != nullptr)){
 		// Устанавливаем флаг работы модуля
 		this->_work = !this->_work;
-		// Выполняем разблокировку потока
-		this->_mtx.unlock();
 		// Если функция обратного вызова установлена
 		if(this->_launching != nullptr)
 			// Выполняем запуск функции активации базы событий
@@ -88,14 +84,11 @@ void awh::Core::Dispatch::start() noexcept {
 			this->_closedown(true, true);
 	// Если модуль не инициализирован
 	} else if(!this->_init) {
-		// Выполняем разблокировку потока
-		this->_mtx.unlock();
 		// Если функция обратного вызова установлена
 		if(this->_launching != nullptr)
 			// Выполняем запуск функции активации базы событий
 			this->_launching(true, false);
-	// Выполняем разблокировку потока
-	} else this->_mtx.unlock();
+	}
 }
 /**
  * rebase Метод пересоздания базы событий
@@ -107,12 +100,12 @@ void awh::Core::Dispatch::rebase() noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Если работа уже запущена
 			if(this->_work)
 				// Выполняем блокировку чтения данных
-				this->_init = this->_virt;
+				this->_init = static_cast <bool> (this->_virt);
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если база событий уже создана
 			if(EventBase != nullptr)
 				// Выполняем пересоздание базы событий
@@ -170,12 +163,12 @@ void awh::Core::Dispatch::reinit() noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Если работа уже запущена
 			if(this->_work)
 				// Выполняем блокировку чтения данных
-				this->_init = this->_virt;
+				this->_init = static_cast <bool> (this->_virt);
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если база событий уже создана
 			if(EventBase != nullptr)
 				// Удаляем объект базы событий
@@ -231,7 +224,7 @@ void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 	// Если база событий проинициализированна
 	if(this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем фриз получения данных
 		EventBase->freeze(mode);
 	}
@@ -244,7 +237,7 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	// Если база событий инициализированна
 	if(EventBase != nullptr){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Устанавливаем флаг активации простого чтения базы событий
 		EventBase->easily(mode);
 		// Выполняем остановку всех событий
@@ -252,16 +245,16 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	}
 }
 /**
- * frequency Метод установки частоты обновления базы событий
- * @param msec частота обновления базы событий в миллисекундах
+ * baserate Метод установки времени блокировки базы событий в ожидании событий
+ * @param msec время ожидания событий в миллисекундах
  */
-void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
+void awh::Core::Dispatch::baserate(const uint8_t msec) noexcept {
 	// Если база событий проинициализированна
 	if(this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx);
+		const lock_guard <std::mutex> lock(this->_mtx);
 		// Устанавливаем частоту обновления базы событий
-		EventBase->frequency(msec);
+		EventBase->baserate(msec);
 		// Выполняем остановку всех событий
 		EventBase->kick();
 	}
@@ -574,12 +567,12 @@ void awh::Core::verbose(const bool mode) noexcept {
 	this->_info = mode;
 }
 /**
- * frequency Метод установки частоты обновления базы событий
- * @param msec частота обновления базы событий в миллисекундах
+ * baserate Метод установки времени блокировки базы событий в ожидании событий
+ * @param msec время ожидания событий в миллисекундах
  */
-void awh::Core::frequency(const uint8_t msec) noexcept {
+void awh::Core::baserate(const uint8_t msec) noexcept {
 	// Устанавливаем частоту чтения базы событий
-	this->_dispatch.frequency(msec);
+	this->_dispatch.baserate(msec);
 }
 /**
  * signalInterception Метод активации перехвата сигналов
@@ -612,47 +605,38 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
 	}
 }
 /**
- * eraseUpstream Метод удаления верхнеуровневого потока
- * @param sid идентификатор верхнеуровневого потока
+ * sendUpstream Метод отправки сообщения между потоками
+ * @param sock сокет межпотокового передатчика
+ * @param tid  идентификатор трансферной передачи
  */
-void awh::Core::eraseUpstream(const uint64_t sid) noexcept {
+void awh::Core::sendUpstream(const SOCKET sock, const uint64_t tid) noexcept {
 	// Если база событий инициализированна
-	if(EventBase != nullptr){
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
-		// Выполняем удаление верхнеуровневого потока
-		EventBase->eraseUpstream(sid);
-	}
+	if(EventBase != nullptr)
+		// Выполняем отправку сообщения
+		EventBase->send(sock, tid);
 }
 /**
- * launchUpstream Метод запуска верхнеуровневого потока
- * @param sid идентификатор верхнеуровневого потока
- * @param tid идентификатор трансферной передачи
+ * deactivationUpstream Метод деактивации межпотокового передатчика
+ * @param sock сокет межпотокового передатчика
  */
-void awh::Core::launchUpstream(const uint64_t sid, const uint64_t tid) noexcept {
+void awh::Core::deactivationUpstream(const SOCKET sock) noexcept {
 	// Если база событий инициализированна
-	if(EventBase != nullptr){
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
-		// Выполняем запуск верхнеуровневого потока
-		EventBase->launchUpstream(sid, tid);
-	}
+	if(EventBase != nullptr)
+		// Выполняем деактивации межпотокового передатчика
+		EventBase->deactivation(sock);
 }
 /**
- * emplaceUpstream Метод создания верхнеуровневого потока
+ * activationUpstream Метод активации межпотокового передатчика
  * @param callback функция обратного вызова
- * @return         идентификатор верхнеуровневого потока
+ * @return         сокет межпотокового передатчика
  */
-uint64_t awh::Core::emplaceUpstream(function <void (const uint64_t)> callback) noexcept {
+SOCKET awh::Core::activationUpstream(function <void (const uint64_t)> callback) noexcept {
 	// Если база событий инициализированна
-	if(EventBase != nullptr){
-		// Выполняем блокировку потока
-		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
-		// Выполняем создание верхнеуровневого потока
-		return EventBase->emplaceUpstream(callback);
-	}
-	// Выводим результат по умолчанию
-	return 0;
+	if(EventBase != nullptr)
+		// Выполняем активации межпотокового передатчика
+		return EventBase->activation(callback);
+	// Выводим значение по умолчанию
+	return INVALID_SOCKET;
 }
 /**
  * Core Конструктор
