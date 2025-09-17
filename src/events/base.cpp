@@ -3260,6 +3260,9 @@ void awh::Base::start() noexcept {
 						if(!this->_events.empty()){
 							// Формируем количество получаемых сообщений
 							poll = static_cast <uint32_t> (this->_events.size());
+							
+							cout << " ^^^^0 " << poll << endl;
+							
 							// Выполняем ожидание входящих сообщений
 							if(::port_getn(this->_pfd, this->_events.data(), poll, &poll, ((this->_baseDelay > -1) || this->_easily ? &baseDelay : nullptr)) == INVALID_SOCKET){
 								
