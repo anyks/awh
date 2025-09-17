@@ -12,41 +12,6 @@
  * @copyright: Copyright © 2025
  */
 
-
-
-#include <sys/types.h>
-#include <sys/port.h>
-
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-/*
- * ports API
- */
-
-int     port_create(void);
-int     port_associate(int, int, uintptr_t, int, void *);
-int     port_dissociate(int, int, uintptr_t);
-int     port_send(int, int, void *);
-int     port_sendn(int [], int [], uint_t, int, void *);
-int     port_get(int, port_event_t *, struct timespec *);
-int     port_getn(int, port_event_t [], uint_t, uint_t *, struct timespec *);
-int     port_alert(int, int, int, void *);
-
-/*
- * postwait API
- */
-int     postwait_genkey(postwkey_t *);
-int     postwait_post(postwkey_t, int, uintptr_t);
-int     postwait_postn(postwkey_t *, postwkey_uevdata_t *, int *, uint_t);
-int     postwait_post_deferred(postwkey_t, int, int, uintptr_t);
-
-#ifdef  __cplusplus
-}
-#endif
-
-
 /**
  * Подключаем заголовочный файл
  */

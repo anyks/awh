@@ -377,9 +377,6 @@ else (CMAKE_SHARED_BUILD_LIB)
     add_library(${AWH_LIB_NAME} STATIC ${SOURCE_FILES})
 endif (CMAKE_SHARED_BUILD_LIB)
 
-# Устанавливаем пути включения для цели awh
-target_include_directories(${AWH_LIB_NAME} PRIVATE include SYSTEM BEFORE /usr/include)
-
 # Если операционной системой является Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
