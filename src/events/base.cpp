@@ -3191,10 +3191,6 @@ void awh::Base::start() noexcept {
 							if(poll == SOCKET_ERROR){
 								// Создаём буфер сообщения ошибки
 								wchar_t message[256] = {0};
-								// Сбрасываем значение сокета на чтение
-								this->_socks[0] = INVALID_SOCKET;
-								// Сбрасываем значение сокета на запись
-								this->_socks[1] = INVALID_SOCKET;
 								// Выполняем формирование текста ошибки
 								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
 								/**
@@ -3346,10 +3342,6 @@ void awh::Base::start() noexcept {
 											if(::WSAGetLastError() > 0){
 												// Создаём буфер сообщения ошибки
 												wchar_t message[256] = {0};
-												// Сбрасываем значение сокета на чтение
-												this->_socks[0] = INVALID_SOCKET;
-												// Сбрасываем значение сокета на запись
-												this->_socks[1] = INVALID_SOCKET;
 												// Выполняем формирование текста ошибки
 												::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
 												/**
