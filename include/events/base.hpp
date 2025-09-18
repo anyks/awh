@@ -56,6 +56,7 @@
 /**
  * Наши модули
  */
+#include "fds.hpp"
 #include "watch.hpp"
 #include "partners.hpp"
 #include "../net/socket.hpp"
@@ -106,9 +107,22 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Максимальное количество отслеживаемых сокетов
+			 * Для операционной системы OS Windows
 			 */
-			static constexpr const uint32_t MAX_SOCKS = 0x20000;
+			#if _WIN32 || _WIN64
+				/**
+				 * Максимальное количество отслеживаемых сокетов
+				 */
+				static constexpr const uint64_t MAX_SOCKS = 0x4000;
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				/**
+				 * Максимальное количество отслеживаемых сокетов
+				 */
+				static constexpr const uint64_t MAX_SOCKS = 0x20000;
+			#endif
 		public:
 			/**
 			 * Создаём тип функции обратного вызова
@@ -172,7 +186,7 @@ namespace awh {
 			// Время блокировки базы событий в ожидании событий
 			std::atomic_int _rate;
 			// Максимальное количество обрабатываемых сокетов
-			std::atomic_uint _sockmax;
+			std::atomic_ullong _sockmax;
 		private:
 			// Флаг запуска работы базы событий
 			std::atomic_bool _works;
@@ -192,7 +206,7 @@ namespace awh {
 				// Флаг инициализации WinSocksAPI
 				bool _winSockInit;
 				// Список активных файловых дескрипторов
-				vector <WSAPOLLFD> _fds;
+				vector <WSAPOLLFD> _socks;
 			/**
 			 * Для операционной системы Sun Solaris
 			 */
@@ -202,7 +216,7 @@ namespace awh {
 				// Список активных событий
 				struct dvpoll _dopoll;
 				// Список активных файловых дескрипторов
-				vector <struct pollfd> _fds;
+				vector <struct pollfd> _socks;
 			/**
 			 * Для операционной системы Linux
 			 */
@@ -225,6 +239,8 @@ namespace awh {
 				vector <struct kevent> _events;
 			#endif
 		private:
+			// Объект работы с файловыми дескрипторами
+			fds_t _fds;
 			// Объект работы с часами
 			watch_t _watch;
 			// Объект работы с партнёрами
@@ -379,7 +395,7 @@ namespace awh {
 			 *
 			 * @param count максимальное количество поддерживаемых сокетов
 			 */
-			void sockmax(const uint32_t count) noexcept;
+			void sockmax(const uint64_t count) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки сообщения между потоками

@@ -150,7 +150,7 @@ namespace awh {
 					 *
 					 * @param count максимальное количество поддерживаемых сокетов
 					 */
-					void sockmax(const uint32_t count) noexcept;
+					void sockmax(const uint64_t count) noexcept;
 				public:
 					/**
 					 * @brief Метод установки функции обратного вызова
@@ -404,7 +404,7 @@ namespace awh {
 			 *
 			 * @param count максимальное количество поддерживаемых сокетов
 			 */
-			void sockmax(const uint32_t count) noexcept;
+			void sockmax(const uint64_t count) noexcept;
 		public:
 			/**
 			 * @brief Метод активации перехвата сигналов

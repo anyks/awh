@@ -268,7 +268,7 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
 			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_fds.begin(); i != this->_fds.end(); ++i){
+			for(auto i = this->_socks.begin(); i != this->_socks.end(); ++i){
 				// Если сокет найден
 				if(i->fd == sock){
 					// Очищаем полученное событие
@@ -298,7 +298,7 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 					// Выполняем сброс файлового дескриптора
 					i->fd = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
-					this->_fds.erase(i);
+					this->_socks.erase(i);
 					// Выходим из цикла
 					break;
 				}
@@ -312,7 +312,7 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
 			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_fds.begin(); i != this->_fds.end(); ++i){
+			for(auto i = this->_socks.begin(); i != this->_socks.end(); ++i){
 				// Если сокет найден
 				if(i->fd == sock){
 					// Очищаем полученное событие
@@ -342,11 +342,11 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 					// Выполняем сброс файлового дескриптора
 					i->fd = INVALID_SOCKET;
 					// Выполняем удаление события из списка отслеживания
-					this->_fds.erase(i);
+					this->_socks.erase(i);
 					// Если в списке ещё есть что отслеживать
-					if(!this->_fds.empty()){
+					if(!this->_socks.empty()){
 						// Выполняем добавление списка файловых дескрипторов для отслеживания
-						if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+						if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -560,7 +560,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				// Выполняем поиск файлового дескриптора из списка событий
-				for(auto j = this->_fds.begin(); j != this->_fds.end(); ++j){
+				for(auto j = this->_socks.begin(); j != this->_socks.end(); ++j){
 					// Если сокет найден
 					if(j->fd == sock){
 						// Очищаем полученное событие
@@ -585,7 +585,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 						// Выполняем сброс файлового дескриптора
 						j->fd = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
-						this->_fds.erase(j);
+						this->_socks.erase(j);
 						// Выходим из цикла
 						break;
 					}
@@ -606,7 +606,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				// Выполняем поиск файлового дескриптора из списка событий
-				for(auto j = this->_fds.begin(); j != this->_fds.end(); ++j){
+				for(auto j = this->_socks.begin(); j != this->_socks.end(); ++j){
 					// Если сокет найден
 					if(j->fd == sock){
 						// Очищаем полученное событие
@@ -631,11 +631,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 						// Выполняем сброс файлового дескриптора
 						j->fd = INVALID_SOCKET;
 						// Выполняем удаление события из списка отслеживания
-						this->_fds.erase(j);
+						this->_socks.erase(j);
 						// Если в списке ещё есть что отслеживать
-						if(!this->_fds.empty()){
+						if(!this->_socks.empty()){
 							// Выполняем добавление списка файловых дескрипторов для отслеживания
-							if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+							if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 								/**
 								 * Если включён режим отладки
 								 */
@@ -898,7 +898,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 									// Если сокет найден
 									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
@@ -914,7 +914,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
-										this->_fds.erase(k);
+										this->_socks.erase(k);
 										// Выходим из цикла
 										break;
 									}
@@ -936,7 +936,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 									// Если сокет найден
 									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
@@ -950,7 +950,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
-										this->_fds.erase(k);
+										this->_socks.erase(k);
 										// Выходим из цикла
 										break;
 									}
@@ -972,7 +972,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 									// Если сокет найден
 									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
@@ -984,7 +984,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Если список режимов событий пустой
 										if(i->second.mode.empty() || (i->second.mode.find(event_type_t::WRITE) == i->second.mode.end()))
 											// Выполняем удаление события из списка отслеживания
-											this->_fds.erase(k);
+											this->_socks.erase(k);
 										// Выходим из цикла
 										break;
 									}
@@ -1006,7 +1006,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 									// Если сокет найден
 									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
@@ -1018,7 +1018,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Если список режимов событий пустой
 										if(i->second.mode.empty() || (i->second.mode.find(event_type_t::READ) == i->second.mode.end()))
 											// Выполняем удаление события из списка отслеживания
-											this->_fds.erase(k);
+											this->_socks.erase(k);
 										// Выходим из цикла
 										break;
 									}
@@ -1072,7 +1072,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 									// Если сокет найден
 									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
@@ -1088,11 +1088,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
-										this->_fds.erase(k);
+										this->_socks.erase(k);
 										// Если в списке ещё есть что отслеживать
-										if(!this->_fds.empty()){
+										if(!this->_socks.empty()){
 											// Выполняем добавление списка файловых дескрипторов для отслеживания
-											if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+											if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 												/**
 												 * Если включён режим отладки
 												 */
@@ -1135,7 +1135,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 									// Если сокет найден
 									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
@@ -1149,11 +1149,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Выполняем удаление типа события
 										i->second.mode.erase(j);
 										// Выполняем удаление события из списка отслеживания
-										this->_fds.erase(k);
+										this->_socks.erase(k);
 										// Если в списке ещё есть что отслеживать
-										if(!this->_fds.empty()){
+										if(!this->_socks.empty()){
 											// Выполняем добавление списка файловых дескрипторов для отслеживания
-											if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+											if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 												/**
 												 * Если включён режим отладки
 												 */
@@ -1196,7 +1196,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 									// Если сокет найден
 									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
@@ -1208,11 +1208,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Если список режимов событий пустой
 										if(i->second.mode.empty() || (i->second.mode.find(event_type_t::WRITE) == i->second.mode.end())){
 											// Выполняем удаление события из списка отслеживания
-											this->_fds.erase(k);
+											this->_socks.erase(k);
 											// Если в списке ещё есть что отслеживать
-											if(!this->_fds.empty()){
+											if(!this->_socks.empty()){
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -1256,7 +1256,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
 								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+								for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 									// Если сокет найден
 									if((erased = (k->fd == sock))){
 										// Очищаем полученное событие
@@ -1268,11 +1268,11 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 										// Если список режимов событий пустой
 										if(i->second.mode.empty() || (i->second.mode.find(event_type_t::READ) == i->second.mode.end())){
 											// Выполняем удаление события из списка отслеживания
-											this->_fds.erase(k);
+											this->_socks.erase(k);
 											// Если в списке ещё есть что отслеживать
-											if(!this->_fds.empty()){
+											if(!this->_socks.empty()){
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -1765,11 +1765,11 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 								// Выполняем установку функции обратного вызова
 								item->callback = callback;
 							// Устанавливаем сокет в список для отслеживания
-							this->_fds.push_back((WSAPOLLFD){});
+							this->_socks.push_back((WSAPOLLFD){});
 							// Выполняем установку файлового дескриптора
-							this->_fds.back().fd = sock;
+							this->_socks.back().fd = sock;
 							// Сбрасываем состояние события
-							this->_fds.back().revents = 0;
+							this->_socks.back().revents = 0;
 						}
 					}
 				/**
@@ -1839,11 +1839,11 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 								// Выполняем установку функции обратного вызова
 								item->callback = callback;
 							// Устанавливаем сокет в список для отслеживания
-							this->_fds.push_back((struct pollfd){});
+							this->_socks.push_back((struct pollfd){});
 							// Выполняем установку файлового дескриптора
-							this->_fds.back().fd = sock;
+							this->_socks.back().fd = sock;
 							// Сбрасываем состояние события
-							this->_fds.back().revents = 0;
+							this->_socks.back().revents = 0;
 						}
 					}
 				/**
@@ -2022,7 +2022,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 				// Выполняем разблокировку чтения базы событий
 				this->_locker = false;
 			// Выводим сообщение об ошибке
-			} else this->_log->print("SOCKET=%d cannot be added because the number of events being monitored has already reached the limit of %d", log_t::flag_t::WARNING, sock, static_cast <uint32_t> (this->_sockmax));
+			} else this->_log->print("SOCKET=%d cannot be added because the number of events being monitored has already reached the limit of %llu", log_t::flag_t::WARNING, sock, static_cast <uint64_t> (this->_sockmax));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -2080,7 +2080,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 						// Если тип установлен как не закрытие подключения
 						if(type != event_type_t::CLOSE){
 							// Выполняем поиск файлового дескриптора из списка событий
-							for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+							for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 								// Если сокет найден
 								if(k->fd == sock){
 									// Очищаем полученное событие
@@ -2168,7 +2168,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 					 */
 					#elif __sun__
 						// Выполняем поиск файлового дескриптора из списка событий
-						for(auto k = this->_fds.begin(); k != this->_fds.end(); ++k){
+						for(auto k = this->_socks.begin(); k != this->_socks.end(); ++k){
 							// Если сокет найден
 							if(k->fd == sock){
 								// Очищаем полученное событие
@@ -2184,7 +2184,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2206,7 +2206,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2236,7 +2236,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2257,7 +2257,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2284,7 +2284,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLHUP;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2305,7 +2305,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Выполняем удаление флагов отслеживания закрытия подключения
 												k->events ^= POLLHUP;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2332,7 +2332,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Устанавливаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events |= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2353,7 +2353,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 												k->events ^= POLLIN;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2380,7 +2380,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Устанавливаем флаг отслеживания записи данных в сокет
 												k->events |= POLLOUT;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2401,7 +2401,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												// Снимаем флаг ожидания готовности файлового дескриптора на запись
 												k->events ^= POLLOUT;
 												// Выполняем добавление списка файловых дескрипторов для отслеживания
-												if(::write(this->_wfd, this->_fds.data(), sizeof(struct pollfd) * this->_fds.size()) <= 0){
+												if(::write(this->_wfd, this->_socks.data(), sizeof(struct pollfd) * this->_socks.size()) <= 0){
 													/**
 													 * Если включён режим отладки
 													 */
@@ -2829,7 +2829,7 @@ void awh::Base::clear() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_fds.begin(); i != this->_fds.end();){
+			for(auto i = this->_socks.begin(); i != this->_socks.end();){
 				// Очищаем полученное событие
 				i->revents = 0;
 				// Выполняем поиск файлового дескриптора в базе событий
@@ -2857,14 +2857,14 @@ void awh::Base::clear() noexcept {
 				// Выполняем сброс файлового дескриптора
 				i->fd = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
-				i = this->_fds.erase(i);
+				i = this->_socks.erase(i);
 			}
 		/**
 		 * Для операционной системы Sun Solaris
 		 */
 		#elif __sun__
 			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_fds.begin(); i != this->_fds.end();){
+			for(auto i = this->_socks.begin(); i != this->_socks.end();){
 				// Очищаем полученное событие
 				i->revents = 0;
 				// Выполняем поиск файлового дескриптора в базе событий
@@ -2892,7 +2892,7 @@ void awh::Base::clear() noexcept {
 				// Выполняем сброс файлового дескриптора
 				i->fd = INVALID_SOCKET;
 				// Выполняем удаление события из списка отслеживания
-				i = this->_fds.erase(i);
+				i = this->_socks.erase(i);
 			}
 		/**
 		 * Для операционной системы Linux
@@ -3188,9 +3188,9 @@ void awh::Base::start() noexcept {
 					// Если опрос базы событий не заблокирован
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса
-						if(!this->_fds.empty()){
+						if(!this->_socks.empty()){
 							// Выполняем запуск ожидания входящих событий сокетов
-							poll = ::WSAPoll(this->_fds.data(), this->_fds.size(), (!this->_easily ? static_cast <int32_t> (this->_rate) : 0));
+							poll = ::WSAPoll(this->_socks.data(), this->_socks.size(), (!this->_easily ? static_cast <int32_t> (this->_rate) : 0));
 							// Если мы получили ошибку
 							if(poll == SOCKET_ERROR){
 								// Создаём буфер сообщения ошибки
@@ -3221,7 +3221,7 @@ void awh::Base::start() noexcept {
 							// Если опрос прошёл успешно
 							else {
 								// Получаем количество файловых дескрипторов для проверки
-								count = this->_fds.size();
+								count = this->_socks.size();
 								// Идентификатор события
 								uint64_t id = 0;
 								// Файловый дескриптор события
@@ -3231,11 +3231,11 @@ void awh::Base::start() noexcept {
 								// Выполняем перебор всех файловых дескрипторов
 								for(size_t i = 0; i < count; i++){
 									// Если записей достаточно в списке
-									if(i < this->_fds.size()){
+									if(i < this->_socks.size()){
 										// Зануляем идентификатор события
 										id = 0;
 										// Получаем объект файлового дескриптора
-										auto & event = this->_fds.at(i);
+										auto & event = this->_socks.at(i);
 										// Получаем сокет
 										sock = event.fd;
 										// Получаем флаг достуности чтения из сокета
@@ -3431,11 +3431,11 @@ void awh::Base::start() noexcept {
 					// Если опрос базы событий не заблокирован
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса
-						if(!this->_fds.empty()){
+						if(!this->_socks.empty()){
 							// Устанавливаем список опрашиваемых сокетов
-							this->_dopoll.dp_fds = this->_fds.data();
+							this->_dopoll.dp_fds = this->_socks.data();
 							// Устанавливаем количество сокетов для опроса
-							this->_dopoll.dp_nfds = this->_fds.size();
+							this->_dopoll.dp_nfds = this->_socks.size();
 							// Устанавливаем таймаут ожидания получения события
 							this->_dopoll.dp_timeout = (!this->_easily ? static_cast <int32_t> (this->_rate) : -1);
 							// Выполняем запуск ожидания входящих событий сокетов
@@ -4229,13 +4229,22 @@ void awh::Base::rate(const uint32_t msec) noexcept {
  *
  * @param count максимальное количество поддерживаемых сокетов
  */
-void awh::Base::sockmax(const uint32_t count) noexcept {
+void awh::Base::sockmax(const uint64_t count) noexcept {
 	// Если максимальное количество поддерживаемых сокетов передано пустым
 	if(count == 0)
 		// Выполняем установку максимального количества сокетов по умолчанию
 		this->_sockmax = MAX_SOCKS;
 	// Если максимальное количество поддерживаемых сокетов передано не пустым
 	else this->_sockmax = count;
+	// Выполняем установку нужного нам количества файловых дескрипторов
+	if(!this->_fds.limit(this->_sockmax)){
+		// Получаем лимиты файловых дескрипторов
+		const auto & limits = this->_fds.limit();
+		// Если текущий лимит меньше желаемого
+		if(limits.first < this->_sockmax)
+			// Выводим сообщение подсказки
+			this->_fds.help(limits.first, this->_sockmax);
+	}
 }
 /**
  * @brief Метод отправки сообщения между потоками
@@ -4432,11 +4441,13 @@ SOCKET awh::Base::activationUpstream(function <void (const uint64_t)> callback) 
 awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
  _wid(0), _rate(-1), _sockmax(MAX_SOCKS),
  _works(false), _easily(false), _locker(false), _launched(false),
- _watch(fmk, log), _partners(log), _fmk(fmk), _log(log) {
+ _fds(log), _watch(fmk, log), _partners(log), _fmk(fmk), _log(log) {
 	// Получаем идентификатор потока
 	this->_wid = this->wid();
 	// Выполняем инициализацию базы событий
 	this->init(event_mode_t::ENABLED);
+	// Выполняем установку нужного нам количества файловых дескрипторов
+	this->sockmax(this->_sockmax);
 }
 /**
  * @brief Деструктор

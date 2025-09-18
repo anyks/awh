@@ -272,7 +272,7 @@ void awh::Core::Dispatch::rate(const uint8_t msec) noexcept {
  *
  * @param count максимальное количество поддерживаемых сокетов
  */
-void awh::Core::Dispatch::sockmax(const uint32_t count) noexcept {
+void awh::Core::Dispatch::sockmax(const uint64_t count) noexcept {
 	// Если база событий проинициализированна
 	if(this->_init && (EventBase != nullptr)){
 		// Выполняем блокировку потока
@@ -621,7 +621,7 @@ void awh::Core::rate(const uint8_t msec) noexcept {
  *
  * @param count максимальное количество поддерживаемых сокетов
  */
-void awh::Core::sockmax(const uint32_t count) noexcept {
+void awh::Core::sockmax(const uint64_t count) noexcept {
 	// Устанавливаем максимальное количество поддерживаемых сокетов
 	this->_dispatch.sockmax(count);
 }

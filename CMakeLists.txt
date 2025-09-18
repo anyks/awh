@@ -295,6 +295,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/events/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/base.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/event.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/watch.cpp"
