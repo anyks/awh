@@ -91,10 +91,6 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 					if((error = ::WSAStartup(MAKEWORD(2, 2), &this->_wsaData)) != 0){
 						// Создаём буфер сообщения ошибки
 						wchar_t message[256] = {0};
-						// Сбрасываем значение сокета на чтение
-						this->_socks[0] = INVALID_SOCKET;
-						// Сбрасываем значение сокета на запись
-						this->_socks[1] = INVALID_SOCKET;
 						// Выполняем формирование текста ошибки
 						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
 						/**
