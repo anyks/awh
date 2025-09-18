@@ -370,6 +370,8 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 			#endif
 			// (Опционально) Пытаемся поднять hard лимит — если есть права
 			if(currentHard < limit){
+				// Выводим информацию о помощи
+				this->help(currentHard, limit);
 				// Поднимаем текущее значение лимита
 				rl.rlim_cur = static_cast <rlim_t> (soft);
 				// Пытаемся поднять hard лимит
