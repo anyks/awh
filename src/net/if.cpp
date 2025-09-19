@@ -516,8 +516,9 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			// В случае успеха выводим некоторую информацию из полученных данных.
 			PIP_ADAPTER_ADDRESSES adapter = addr;
 			/**
- *  Выполняем обработку всех сетевых адаптеров
- */(adapter != nullptr){
+			 *  Выполняем обработку всех сетевых адаптеров
+			 */
+			while(adapter != nullptr){
 				// Если MAC-адрес сетевой карты найден
 				if(adapter->PhysicalAddressLength != 0){
 					// Заполняем нуляем наши буферы
