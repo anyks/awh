@@ -376,31 +376,31 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 				rl.rlim_cur = static_cast <rlim_t> (soft);
 				// Пытаемся поднять hard лимит
 				rl.rlim_max = static_cast <rlim_t> (limit);
-			}
-			// Устанавливаем новое значение файловых дескрипторов
-			if(::setrlimit(RLIMIT_NOFILE, &rl) == 0){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим информационное сообщение
-					this->_log->print("Successfully raised hard FD limit to %llu", log_t::flag_t::INFO, limit);
-				#endif
-			// Если ничего не получилось
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, ::strerror(errno));
-				/**
-				* Если режим отладки не включён
-				*/
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Failed to raise hard FD limit to %llu (need root?): %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
-				#endif
+				// Устанавливаем новое значение файловых дескрипторов
+				if(::setrlimit(RLIMIT_NOFILE, &rl) == 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим информационное сообщение
+						this->_log->print("Successfully raised hard FD limit to %llu", log_t::flag_t::INFO, limit);
+					#endif
+				// Если ничего не получилось
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Failed to raise hard FD limit to %llu (need root?): %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
+					#endif
+				}
 			}
 			// Выводим положительный результат
 			return true;
