@@ -131,14 +131,6 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * @brief Метод получения текста описания ошибки
-			 *
-			 * @param code код ошибки для получения сообщения
-			 * @return     текст сообщения описания кода ошибки
-			 */
-			string message(const int32_t code = 0) const noexcept;
-		public:
-			/**
 			 * @brief Метод проверяющий существование дирректории
 			 *
 			 * @param addr адрес дирректории

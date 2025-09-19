@@ -23,34 +23,6 @@
 using namespace std;
 
 /**
- * message Метод получения текста описания ошибки
- * @param code код ошибки для получения сообщения
- * @return     текст сообщения описания кода ошибки
- */
-string awh::FS::message(const int32_t code) const noexcept {
-	// Если код ошибки не передан
-	if(code == 0)
-		// Выполняем получение кода ошибки
-		const_cast <int32_t &> (code) = AWH_ERROR();
-	/**
-	 * Для операционной системы OS Windows
-	 */
-	#if _WIN32 || _WIN64
-		// Создаём буфер сообщения ошибки
-		wchar_t message[256] = {0};
-		// Выполняем формирование текста ошибки
-		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, message, 256, 0);
-		// Выводим текст полученной ошибки
-		return this->_fmk->convert(message);
-	/**
-	 * Для операционной системы не являющейся OS Windows
-	 */
-	#else
-		// Выводим текст полученной ошибки
-		return ::strerror(code);
-	#endif
-}
-/**
  * isDir Метод проверяющий существование дирректории
  * @param addr адрес дирректории
  * @return     результат проверки
@@ -1197,9 +1169,9 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 			// Создаём объект информационных данных файла или каталога
 			struct stat info;
 			// Выполняем чтение информационных данных файла
-			if(!(result = (::stat(path.c_str(), &info) == 0)) && (AWH_ERROR() != 0))
+			if(!(result = (::stat(path.c_str(), &info) == 0)) && (errno != 0))
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::WARNING, this->message(AWH_ERROR()).c_str());
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			// Если информационные данные считаны удачно
 			else result = (info.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
 		#endif
@@ -1233,9 +1205,9 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 		 */
 		#else
 			// Выполняем установку метаданных файла
-			if(!(result = (::chmod(path.c_str(), mode) == 0)) && (AWH_ERROR() != 0))
+			if(!(result = (::chmod(path.c_str(), mode) == 0)) && (errno != 0))
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::WARNING, this->message(AWH_ERROR()).c_str());
+				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
 	// Выводим результат
@@ -1264,9 +1236,9 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 			// Устанавливаем права на каталог
 			if((result = (uid && gid))){
 				// Выполняем установку владельца
-				if(!(result = (::chown(path.c_str(), uid, gid) == 0)) && (AWH_ERROR() != 0))
+				if(!(result = (::chown(path.c_str(), uid, gid) == 0)) && (errno != 0))
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::WARNING, this->message(AWH_ERROR()).c_str());
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			}
 		}
 		// Выводим результат
