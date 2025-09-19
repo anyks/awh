@@ -254,7 +254,7 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 							// Выполняем инициализацию сессии HTTP/2
 							this->implementation(bid);
 							// Если флаг инициализации сессии HTTP/2 установлен
-							if(this->_http2.is()){
+							if(this->_http2.initialized()){
 								// Создаём объек запроса
 								awh::web_t::req_t request(awh::web_t::method_t::CONNECT, this->_scheme.url);
 								/**
@@ -375,7 +375,7 @@ void awh::client::Web2::altsvcCallback(const string & origin, const string & fie
  */
 void awh::client::Web2::implementation(const uint64_t bid) noexcept {
 	// Если флаг инициализации сессии HTTP/2 не активирован, но протокол HTTP/2 поддерживается сервером
-	if(!this->_http2.is() && (this->_core->proto(bid) == engine_t::proto_t::HTTP2)){
+	if(!this->_http2.initialized() && (this->_core->proto(bid) == engine_t::proto_t::HTTP2)){
 		// Если список параметров настроек не пустой
 		if(!this->_settings.empty()){
 			// Создаём локальный контейнер функций обратного вызова

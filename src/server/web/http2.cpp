@@ -502,7 +502,7 @@ int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, c
 								// Если активная сессия найдена
 								if(i != this->_ws2._sessions.end()){
 									// Если сессия была удалена
-									if(!i->second->is())
+									if(!i->second->initialized())
 										// Выполняем копирование контекста сессии HTTP/2
 										this->_sessions.at(bid) = i->second;
 								}
@@ -2847,7 +2847,7 @@ void awh::server::Http2::multiThreads(const uint16_t count, const bool mode) noe
 	// Если нужно активировать многопоточность
 	if(mode){
 		// Если многопоточность ещё не активированна
-		if(!this->_ws2._thr.is())
+		if(!this->_ws2._thr.initialized())
 			// Выполняем инициализацию пула потоков
 			this->_ws2._thr.init(count);
 		// Если многопоточность уже активированна
@@ -2975,7 +2975,7 @@ void awh::server::Http2::core(const server::core_t * core) noexcept {
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Если многопоточность активированна
-		if(this->_ws2._thr.is() || this->_ws2._ws1._thr.is())
+		if(this->_ws2._thr.initialized() || this->_ws2._ws1._thr.initialized())
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
 		// Устанавливаем событие на запуск системы
@@ -2993,7 +2993,7 @@ void awh::server::Http2::core(const server::core_t * core) noexcept {
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
-		if(this->_ws2._thr.is() || this->_ws2._ws1._thr.is()){
+		if(this->_ws2._thr.initialized() || this->_ws2._ws1._thr.initialized()){
 			// Выполняем завершение всех активных потоков
 			this->_ws2._thr.stop();
 			// Выполняем завершение всех активных потоков

@@ -20,6 +20,7 @@
  */
 #include <queue>
 #include <mutex>
+#include <atomic>
 #include <vector>
 #include <memory>
 #include <thread>
@@ -35,7 +36,8 @@
 #include "global.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -47,19 +49,21 @@ namespace awh {
 	 */
 	typedef class ThreadPool {
 		private:
-			// Тип очереди задач
+			/**
+			 * Тип очереди задач
+			 */
 			typedef std::queue <function <void()>> task_t;
 		private:
-			// Флаг завершения работы пула потоков
-			bool _stop;
-			// Флаг ожидания завершения работы всех задачь
-			bool _wait;
+			// Очередь задач на исполнение
+			task_t _tasks;
 		private:
 			// Количество потоков
 			uint16_t _threads;
 		private:
-			// Очередь задач на исполнение
-			task_t _tasks;
+			// Флаг завершения работы пула потоков
+			std::atomic_bool _stop;
+			// Флаг ожидания завершения работы всех задачь
+			std::atomic_bool _wait;
 		private:
 			// Мьютекс для разграничения доступа к очереди задач
 			mutable std::mutex _locker;
@@ -70,7 +74,8 @@ namespace awh {
 			vector <std::thread> _workers;
 		private:
 			/**
-			 * check Метод проверки завершения заморозки потока
+			 * @brief Метод проверки завершения заморозки потока
+			 *
 			 * @return результат проверки
 			 */
 			bool check() const noexcept {
@@ -79,7 +84,8 @@ namespace awh {
 			}
 		private:
 			/**
-			 * work Метод обработки очереди задач в одном потоке
+			 * @brief Метод обработки очереди задач в одном потоке
+			 *
 			 */
 			void work() noexcept {
 				// Запускаем бесконечный цикл
@@ -115,16 +121,18 @@ namespace awh {
 			}
 		public:
 			/**
-			 * is Метод проверки на инициализацию тредпула
+			 * @brief Метод проверки на инициализацию тредпула
+			 *
 			 * @return результат проверки
 			 */
-			bool is() const noexcept {
+			bool initialized() const noexcept {
 				// Выводим результат проверки
 				return !this->_workers.empty();
 			}
 		public:
 			/**
-			 * wait Метод ожидания выполнения задач
+			 * @brief Метод ожидания выполнения задач
+			 *
 			 */
 			void wait() noexcept {
 				// Устанавливаем флаг ожидания выполнения всех зада
@@ -133,8 +141,6 @@ namespace awh {
 				for(auto & worker: this->_workers)
 					// Выполняем ожидание завершения работы потоков
 					worker.join();
-				// Создаем пустой список задач
-				task_t empty;
 				// Сбрасываем флаг завершения работы пула потоков по умолчанию
 				this->_stop = false;
 				// Сбрасываем флаг ожидания выполнения всех зада
@@ -142,42 +148,39 @@ namespace awh {
 				// Очищаем список потоков
 				this->_workers.clear();
 				// Очищаем список задач
-				swap(this->_tasks, empty);
+				std::queue <decltype(this->_tasks)::value_type> ().swap(this->_tasks);
 			}
 			/**
-			 * stop Метод завершения выполнения задач
+			 * @brief Метод завершения выполнения задач
+			 *
 			 */
 			void stop() noexcept {
-				{
-					// Останавливаем работу потоков
-					this->_stop = true;
-					// Создаем уникальный мютекс
-					unique_lock <std::mutex> lock(this->_locker);
-				}
+				// Останавливаем работу потоков
+				this->_stop = true;
 				// Сообщаем всем что мы завершаем работу
 				this->_cv.notify_all();
 				// Ожидаем завершение работы каждого воркера
 				for(auto & worker: this->_workers)
 					// Выполняем ожидание завершения работы потоков
 					worker.join();
-				// Создаем пустой список задач
-				task_t empty;
 				// Восстанавливаем работу потоков
 				this->_stop = false;
 				// Очищаем список потоков
 				this->_workers.clear();
 				// Очищаем список задач
-				swap(this->_tasks, empty);
+				std::queue <decltype(this->_tasks)::value_type> ().swap(this->_tasks);
 			}
 			/**
-			 * clean Метод очистки списка потоков
+			 * @brief Метод очистки списка потоков
+			 *
 			 */
 			void clean() noexcept {
 				// Очищаем список потоков
 				this->_workers.clear();
 			}
 			/**
-			 * init Метод инициализации работы тредпула
+			 * @brief Метод инициализации работы тредпула
+			 *
 			 * @param count количество потоков
 			 */
 			void init(const uint16_t count = 0) noexcept {
@@ -195,7 +198,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * getTaskQueueSize Метод возврата количества сообщений в очереди задач на исполнение
+			 * @brief Метод возврата количества сообщений в очереди задач на исполнение
+			 *
 			 * @return результат работы функции
 			 */
 			const size_t getTaskQueueSize() const noexcept {
@@ -206,10 +210,11 @@ namespace awh {
 			}
 		public:
 			/**
-			 * ThreadPool Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param count количество потоков
 			 */
-			explicit ThreadPool(const uint16_t count = 0) noexcept : _stop(false), _wait(false), _threads(0) {
+			explicit ThreadPool(const uint16_t count = 0) noexcept : _threads(0), _stop(false), _wait(false) {
 				// Ели количество потоков передано
 				if(count > 0)
 					// Устанавливаем количество потоков
@@ -218,7 +223,8 @@ namespace awh {
 				else this->_threads = static_cast <uint16_t> (std::thread::hardware_concurrency());
 			}
 			/**
-			 * ~ThreadPool Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~ThreadPool() noexcept {
 				// Выполняем ожидание завершения работы пула потоков
@@ -226,11 +232,15 @@ namespace awh {
 			}
 		public:
 			/**
-			 * Шаблон метода добавления задач в пул
+			 * @brief Шаблон метода добавления задач в пул
+			 *
+			 * @tclass Func тип данных функции обратного вызова
+			 * @tclass Args аргумента функции обратного вызова
 			 */
 			template <class Func, class ... Args>
 			/**
-			 * push Метод добавления задач в пул
+			 * @brief Метод добавления задач в пул
+			 *
 			 * @param func функция для обработки
 			 * @param args аргументы для передачи в функцию
 			 */

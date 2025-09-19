@@ -37,7 +37,8 @@
 #include "fmk.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -45,7 +46,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Chrono Структура модуля Chrono
+	 * @brief Структура модуля Chrono
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Chrono {
 		private:
@@ -349,7 +351,8 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Mutex структура рабочих мютексов
+			 * @brief структура рабочих мютексов
+			 *
 			 */
 			typedef struct Mutex {
 				std::mutex tz;              // Мютекс контроля добавления временной зоны
@@ -357,7 +360,8 @@ namespace awh {
 				std::recursive_mutex parse; // Мютекс контроля парсинга
 			} mtx_t;
 			/**
-			 * DateTime Структура параметров даты и времени
+			 * @brief Структура параметров даты и времени
+			 *
 			 */
 			typedef struct DateTime {
 				bool dst;              // Флаг летнего времени
@@ -378,7 +382,8 @@ namespace awh {
 				uint64_t nanoseconds;  // Количество наносекунд
 				uint64_t microseconds; // Количество микросекунд
 				/**
-				 * DateTime Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				DateTime() noexcept :
 				 dst(false), leap(false),
@@ -404,32 +409,37 @@ namespace awh {
 			const fmk_t * _fmk;
 		public:
 			/**
-			 * clear Метод очистку всех локальных данных
+			 * @brief Метод очистку всех локальных данных
+			 *
 			 */
 			void clear() noexcept;
 		private:
 			/**
-			 * makeDate Метод получения штампа времени из объекта даты
+			 * @brief Метод получения штампа времени из объекта даты
+			 *
 			 * @param dt объект даты из которой необходимо получить штамп времени
 			 * @return   штамп времени в миллисекундах
 			 */
 			uint64_t makeDate(const dt_t & dt) const noexcept;
 			/**
-			 * makeDate Метод заполнения объекта даты из штампа времени
+			 * @brief Метод заполнения объекта даты из штампа времени
+			 *
 			 * @param date дата из которой необходимо заполнить объект
 			 * @param dt   объект даты который необходимо заполнить
 			 */
 			void makeDate(const uint64_t date, dt_t & dt) const noexcept;
 		private:
 			/**
-			 * compile Метод компиляции регулярных выражений
+			 * @brief Метод компиляции регулярных выражений
+			 *
 			 * @param expression регулярное выражение для компиляции
 			 * @param format     формат к которому относится регулярное выражение
 			 */
 			void compile(const string & expression, const format_t format) noexcept;
 		private:
 			/**
-			 * prepare Функция заполнения объекта даты и времени
+			 * @brief Функция заполнения объекта даты и времени
+			 *
 			 * @param dt     объект даты и времени для заполнения
 			 * @param text   текст в котором производится поиск
 			 * @param format формат выполнения поиска
@@ -439,21 +449,24 @@ namespace awh {
 			ssize_t prepare(dt_t & dt, const string & text, const format_t format, const size_t pos = 0) const noexcept;
 		public:
 			/**
-			 * abbreviation Метод перевода времени в аббревиатуру
+			 * @brief Метод перевода времени в аббревиатуру
+			 *
 			 * @param date дата в UnixTimestamp
 			 * @return     сформированная аббревиатура даты
 			 */
 			pair <type_t, double> abbreviation(const uint64_t date) const noexcept;
 		public:
 			/**
-			 * end Метод получения конца позиции указанной даты
+			 * @brief Метод получения конца позиции указанной даты
+			 *
 			 * @param date дата для которой необходимо получить позицию
 			 * @param type тип единиц измерений даты
 			 * @return     конец указанной даты в формате UnixTimestamp
 			 */
 			uint64_t end(const uint64_t date, const type_t type) const noexcept;
 			/**
-			 * end Метод получения конца позиции текущей даты
+			 * @brief Метод получения конца позиции текущей даты
+			 *
 			 * @param type    тип единиц измерений даты
 			 * @param storage хранение значение времени
 			 * @return        конец текущей даты в формате UnixTimestamp
@@ -461,14 +474,16 @@ namespace awh {
 			uint64_t end(const type_t type, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * begin Метод получения начала позиции указанной даты
+			 * @brief Метод получения начала позиции указанной даты
+			 *
 			 * @param date дата для которой необходимо получить позицию
 			 * @param type тип единиц измерений даты
 			 * @return     начало указанной даты в формате UnixTimestamp
 			 */
 			uint64_t begin(const uint64_t date, const type_t type) const noexcept;
 			/**
-			 * begin Метод получения начала позиции текущей даты
+			 * @brief Метод получения начала позиции текущей даты
+			 *
 			 * @param type    тип единиц измерений даты
 			 * @param storage хранение значение времени
 			 * @return        начало текущей даты в формате UnixTimestamp
@@ -476,7 +491,8 @@ namespace awh {
 			uint64_t begin(const type_t type, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * actual Метод актуализации прошедшего и оставшегося времени
+			 * @brief Метод актуализации прошедшего и оставшегося времени
+			 *
 			 * @param date   дата относительно которой производятся расчёты
 			 * @param value  тип определяемых единиц измерений времени
 			 * @param type   тип единиц измерений даты
@@ -485,7 +501,8 @@ namespace awh {
 			 */
 			uint64_t actual(const uint64_t date, const type_t value, const type_t type, const actual_t actual) const noexcept;
 			/**
-			 * actual Метод актуализации прошедшего и оставшегося времени
+			 * @brief Метод актуализации прошедшего и оставшегося времени
+			 *
 			 * @param value   тип определяемых единиц измерений времени
 			 * @param type    тип единиц измерений даты
 			 * @param actual  направление актуализации
@@ -495,7 +512,8 @@ namespace awh {
 			uint64_t actual(const type_t value, const type_t type, const actual_t actual, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * offset Метод смещения на указанное количество единиц времени
+			 * @brief Метод смещения на указанное количество единиц времени
+			 *
 			 * @param date   дата относительно которой производится смещение
 			 * @param value  значение на которое производится смещение
 			 * @param type   тип единиц измерений даты
@@ -504,7 +522,8 @@ namespace awh {
 			 */
 			uint64_t offset(const uint64_t date, const uint64_t value, const type_t type, const offset_t offset) const noexcept;
 			/**
-			 * offset Метод смещения текущей даты на указанное количество единиц времени
+			 * @brief Метод смещения текущей даты на указанное количество единиц времени
+			 *
 			 * @param value   значение на которое производится смещение
 			 * @param type    тип единиц измерений даты
 			 * @param offset  направление смещения
@@ -514,76 +533,88 @@ namespace awh {
 			uint64_t offset(const uint64_t value, const type_t type, const offset_t offset, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * seconds Метод получения текстового значения времени
+			 * @brief Метод получения текстового значения времени
+			 *
 			 * @param seconds количество секунд для конвертации
 			 * @return        обозначение времени с указанием размерности
 			 */
 			string seconds(const double seconds) const noexcept;
 			/**
-			 * seconds Метод получения размера в секундах из строки
+			 * @brief Метод получения размера в секундах из строки
+			 *
 			 * @param value строка обозначения размерности (s, m, h, d, w, M, y)
 			 * @return      размер в секундах
 			 */
 			double seconds(const string & value) const noexcept;
 		public:
 			/**
-			 * h12 Метод извлечения статуса 12-и часового формата времени
+			 * @brief Метод извлечения статуса 12-и часового формата времени
+			 *
 			 * @param date дата для проверки
 			 */
 			h12_t h12(const uint64_t date) const noexcept;
 			/**
-			 * h12 Метод извлечения текущего статуса 12-и часового формата времени
+			 * @brief Метод извлечения текущего статуса 12-и часового формата времени
+			 *
 			 * @param storage хранение значение времени
 			 * @return        текущее установленное значение статуса 12-и часового формата времени
 			 */
 			h12_t h12(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * year Метод извлечения значения года
+			 * @brief Метод извлечения значения года
+			 *
 			 * @param date дата для извлечения года
 			 */
 			uint16_t year(const uint64_t date) const noexcept;
 			/**
-			 * year Метод получение текущего значения года
+			 * @brief Метод получение текущего значения года
+			 *
 			 * @param storage хранение значение времени
 			 * @return        текущее значение года
 			 */
 			uint16_t year(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * dst Метод проверки принадлежит ли дата к лету
+			 * @brief Метод проверки принадлежит ли дата к лету
+			 *
 			 * @param date дата для проверки
 			 * @return     результат проверки
 			 */
 			bool dst(const uint64_t date) const noexcept;
 			/**
-			 * dst Метод проверки стоит ли на дворе лето
+			 * @brief Метод проверки стоит ли на дворе лето
+			 *
 			 * @param storage хранение значение времени
 			 * @return        результат проверки
 			 */
 			bool dst(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * leap Метод проверки является ли год високосным
+			 * @brief Метод проверки является ли год високосным
+			 *
 			 * @param year год для проверки
 			 * @return     результат проверки
 			 */
 			bool leap(const uint16_t year) const noexcept;
 			/**
-			 * leap Метод проверки является ли год високосным
+			 * @brief Метод проверки является ли год високосным
+			 *
 			 * @param date дата для проверки
 			 * @return     результат проверки
 			 */
 			bool leap(const uint64_t date) const noexcept;
 			/**
-			 * leap Метод проверки является ли текущий год високосным
+			 * @brief Метод проверки является ли текущий год високосным
+			 *
 			 * @param storage хранение значение времени
 			 * @return        результат проверки
 			 */
 			bool leap(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		private:
 			/**
-			 * set Метод установки данных даты и времени
+			 * @brief Метод установки данных даты и времени
+			 *
 			 * @param buffer бинарный буфер данных
 			 * @param size   размер бинарного буфера
 			 * @param unit   элементы данных для установки
@@ -592,12 +623,14 @@ namespace awh {
 			void set(const void * buffer, const size_t size, const unit_t unit, const bool text) noexcept;
 		public:
 			/**
-			 * set Шаблон метода установки данных даты и времени
+			 * @brief Шаблон метода установки данных даты и времени
+			 *
 			 * @tparam T тип данных в котором устанавливаются данные
 			 */
 			template <typename T>
 			/**
-			 * set Метод установки данных даты и времени
+			 * @brief Метод установки данных даты и времени
+			 *
 			 * @param date дата для обработки
 			 * @param unit элементы данных для установки
 			 */
@@ -607,7 +640,8 @@ namespace awh {
 			}
 		private:
 			/**
-			 * get Метод извлечения данных даты и времени
+			 * @brief Метод извлечения данных даты и времени
+			 *
 			 * @param buffer бинарный буфер данных
 			 * @param size   размер бинарного буфера
 			 * @param date   дата для обработки
@@ -616,7 +650,8 @@ namespace awh {
 			 */
 			void get(void * buffer, const size_t size, const uint64_t date, const unit_t unit, const bool text) const noexcept;
 			/**
-			 * get Метод извлечения данных даты и времени
+			 * @brief Метод извлечения данных даты и времени
+			 *
 			 * @param buffer  бинарный буфер данных
 			 * @param size    размер бинарного буфера
 			 * @param unit    элементы данных для установки
@@ -626,12 +661,14 @@ namespace awh {
 			void get(void * buffer, const size_t size, const unit_t unit, const bool text, const storage_t storage) const noexcept;
 		public:
 			/**
-			 * get Шаблон метода извлечения данных даты и времени
+			 * @brief Шаблон метода извлечения данных даты и времени
+			 *
 			 * @tparam T тип данных в котором извлекаются данные
 			 */
 			template <typename T>
 			/**
-			 * get Метод извлечения данных даты и времени
+			 * @brief Метод извлечения данных даты и времени
+			 *
 			 * @param date дата для обработки
 			 * @param unit элементы данных для извлечения
 			 * @return     значение данных даты и времени
@@ -654,12 +691,14 @@ namespace awh {
 				return result;
 			}
 			/**
-			 * get Шаблон метода извлечения данных даты и времени
+			 * @brief Шаблон метода извлечения данных даты и времени
+			 *
 			 * @tparam T тип данных в котором извлекаются данные
 			 */
 			template <typename T>
 			/**
-			 * get Метод извлечения данных даты и времени
+			 * @brief Метод извлечения данных даты и времени
+			 *
 			 * @param unit    элементы данных для извлечения
 			 * @param storage хранение значение времени
 			 * @return        значение данных даты и времени
@@ -683,49 +722,57 @@ namespace awh {
 			}
 		public:
 			/**
-			 * setTimeZone Метод установки временной зоны
+			 * @brief Метод установки временной зоны
+			 *
 			 * @param zone смещение временной зоны для установки (в секундах)
 			 */
 			void setTimeZone(const int32_t zone) noexcept;
 			/**
-			 * setTimeZone Метод установки временной зоны
+			 * @brief Метод установки временной зоны
+			 *
 			 * @param zone временная зона для установки
 			 */
 			void setTimeZone(const zone_t zone) noexcept;
 			/**
-			 * setTimeZone Метод установки временной зоны
+			 * @brief Метод установки временной зоны
+			 *
 			 * @param zone временная зона для установки
 			 */
 			void setTimeZone(const string & zone) noexcept;
 		public:
 			/**
-			 * matchTimeZone Метод выполнения матчинга временной зоны
+			 * @brief Метод выполнения матчинга временной зоны
+			 *
 			 * @param zone временная зона для конвертации
 			 * @return     определённая временная зона
 			 */
 			zone_t matchTimeZone(const string & zone) const noexcept;
 			/**
-			 * matchTimeZone Метод выполнения матчинга временной зоны
+			 * @brief Метод выполнения матчинга временной зоны
+			 *
 			 * @param storage хранение значение времени
 			 * @return        определённая временная зона
 			 */
 			zone_t matchTimeZone(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * getTimeZone Метод перевода временной зоны в смещение
+			 * @brief Метод перевода временной зоны в смещение
+			 *
 			 * @param zone временная зона для конвертации
 			 * @return     смещение временной зоны в секундах
 			 */
 			int32_t getTimeZone(const zone_t zone) const noexcept;
 			/**
-			 * getTimeZone Метод перевода временной зоны в смещение
+			 * @brief Метод перевода временной зоны в смещение
+			 *
 			 * @param zone временная зона для конвертации
 			 * @return     смещение временной зоны в секундах
 			 */
 			int32_t getTimeZone(const string & zone) const noexcept;
 		public:
 			/**
-			 * getTimeZone Метод определения текущей временной зоны относительно летнего времени
+			 * @brief Метод определения текущей временной зоны относительно летнего времени
+			 *
 			 * @param std временная зона стандартного времени
 			 * @param sum временная зона летнего времени
 			 * @return    смещение временной зоны в секундах
@@ -733,36 +780,42 @@ namespace awh {
 			int32_t getTimeZone(const zone_t std, const zone_t sum) const noexcept;
 		public:
 			/**
-			 * getTimeZone Метод получения установленной временной зоны
+			 * @brief Метод получения установленной временной зоны
+			 *
 			 * @param storage хранение значение времени
 			 * @return        смещение временной зоны в секундах
 			 */
 			int32_t getTimeZone(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * clearTimeZones Метод очистки списка временных зон
+			 * @brief Метод очистки списка временных зон
+			 *
 			 */
 			void clearTimeZones() noexcept;
 			/**
-			 * addTimeZone Метод добавления собственной временной зоны
+			 * @brief Метод добавления собственной временной зоны
+			 *
 			 * @param name   название временной зоны
 			 * @param offset смещение времени в секундах
 			 */
 			void addTimeZone(const string & name, const int32_t offset) noexcept;
 			/**
-			 * setTimeZones Метод установки своего списка временных зон
+			 * @brief Метод установки своего списка временных зон
+			 *
 			 * @param zones список временных зон для установки
 			 */
 			void setTimeZones(const std::unordered_map <string, int32_t> & zones) noexcept;
 		public:
 			/**
-			 * timestamp Метод установки штампа времени в указанных единицах измерения
+			 * @brief Метод установки штампа времени в указанных единицах измерения
+			 *
 			 * @param date дата для установки
 			 * @param type единицы измерения штампа времени
 			 */
 			void timestamp(const uint64_t date, const type_t type) noexcept;
 			/**
-			 * timestamp Метод получения штампа времени в указанных единицах измерения
+			 * @brief Метод получения штампа времени в указанных единицах измерения
+			 *
 			 * @param type    единицы измерения штампа времени
 			 * @param storage хранение значение времени
 			 * @return        штамп времени в указанных единицах измерения
@@ -770,7 +823,8 @@ namespace awh {
 			uint64_t timestamp(const type_t type, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * parse Метод парсинга строки даты и времени в UnixTimestamp
+			 * @brief Метод парсинга строки даты и времени в UnixTimestamp
+			 *
 			 * @param date    строка даты
 			 * @param format  формат даты
 			 * @param storage хранение значение времени
@@ -779,20 +833,23 @@ namespace awh {
 			uint64_t parse(const string & date, const string & format, const storage_t storage = storage_t::GLOBAL) noexcept;
 		public:
 			/**
-			 * format Метод форматирования временной зоны
+			 * @brief Метод форматирования временной зоны
+			 *
 			 * @param zone временная зона (в секундах) в которой нужно получить результат
 			 * @return     строковое обозначение временной зоны
 			 */
 			string format(const int32_t zone) const noexcept;
 			/**
-			 * format Метод форматирования временной зоны
+			 * @brief Метод форматирования временной зоны
+			 *
 			 * @param zone временная зона в которой нужно получить результат
 			 * @return     строковое обозначение временной зоны
 			 */
 			string format(const zone_t zone) const noexcept;
 		private:
 			/**
-			 * format Метод формирования объекта даты и времени
+			 * @brief Метод формирования объекта даты и времени
+			 *
 			 * @param dt     объект даты и времени
 			 * @param format формат даты
 			 * @return       строка содержащая дату
@@ -800,14 +857,16 @@ namespace awh {
 			string format(const dt_t & dt, const string & format) const noexcept;
 		public:
 			/**
-			 * format Метод формирования UnixTimestamp без учёта временной зоны
+			 * @brief Метод формирования UnixTimestamp без учёта временной зоны
+			 *
 			 * @param date   дата в UnixTimestamp
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
 			string format(const uint64_t date, const string & format) const noexcept;
 			/**
-			 * format Метод формирования UnixTimestamp с учётом временной зоны
+			 * @brief Метод формирования UnixTimestamp с учётом временной зоны
+			 *
 			 * @param date   дата в UnixTimestamp
 			 * @param zone   временная зона в которой нужно получить дату (в секундах)
 			 * @param format формат даты
@@ -815,7 +874,8 @@ namespace awh {
 			 */
 			string format(const uint64_t date, const int32_t zone, const string & format) const noexcept;
 			/**
-			 * format Метод формирования UnixTimestamp с учётом временной зоны
+			 * @brief Метод формирования UnixTimestamp с учётом временной зоны
+			 *
 			 * @param date   дата в UnixTimestamp
 			 * @param zone   временная зона в которой нужно получить дату
 			 * @param format формат даты
@@ -823,7 +883,8 @@ namespace awh {
 			 */
 			string format(const uint64_t date, const zone_t zone, const string & format) const noexcept;
 			/**
-			 * format Метод формирования UnixTimestamp с учётом временной зоны
+			 * @brief Метод формирования UnixTimestamp с учётом временной зоны
+			 *
 			 * @param date   дата в UnixTimestamp
 			 * @param zone   временная зона в которой нужно получить дату
 			 * @param format формат даты
@@ -832,14 +893,16 @@ namespace awh {
 			string format(const uint64_t date, const string & zone, const string & format) const noexcept;
 		public:
 			/**
-			 * format Метод формирования текущей даты без учёта временной зоны
+			 * @brief Метод формирования текущей даты без учёта временной зоны
+			 *
 			 * @param format  формат даты
 			 * @param storage хранение значение времени
 			 * @return        строка содержащая дату
 			 */
 			string format(const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 			/**
-			 * format Метод формирования текущей даты с учётом временной зоны
+			 * @brief Метод формирования текущей даты с учётом временной зоны
+			 *
 			 * @param zone    временная зона в которой нужно получить дату (в секундах)
 			 * @param format  формат даты
 			 * @param storage хранение значение времени
@@ -847,7 +910,8 @@ namespace awh {
 			 */
 			string format(const int32_t zone, const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 			/**
-			 * format Метод формирования текущей даты с учётом временной зоны
+			 * @brief Метод формирования текущей даты с учётом временной зоны
+			 *
 			 * @param zone    временная зона в которой нужно получить дату
 			 * @param format  формат даты
 			 * @param storage хранение значение времени
@@ -855,7 +919,8 @@ namespace awh {
 			 */
 			string format(const zone_t zone, const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 			/**
-			 * format Метод формирования текущей даты с учётом временной зоны
+			 * @brief Метод формирования текущей даты с учётом временной зоны
+			 *
 			 * @param zone    временная зона в которой нужно получить дату
 			 * @param format  формат даты
 			 * @param storage хранение значение времени
@@ -864,7 +929,8 @@ namespace awh {
 			string format(const string & zone, const string & format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * strip Метод преобразования даты из оного формата в другой
+			 * @brief Метод преобразования даты из оного формата в другой
+			 *
 			 * @param date    строка даты для преобразования
 			 * @param format1 формат даты из которой нужно получить дату
 			 * @param format2 формат даты в который нужно перевести дату
@@ -874,13 +940,15 @@ namespace awh {
 			string strip(const string & date, const string & format1, const string & format2, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * Chrono Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 */
 			Chrono(const fmk_t * fmk) noexcept;
 		public:
 			/**
-			 * ~Chrono Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Chrono() noexcept;
 	} chrono_t;

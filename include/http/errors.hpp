@@ -21,11 +21,13 @@
 #include <cstdint>
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
-	 * http пространство имён
+	 * @brief пространство имён
+	 *
 	 */
 	namespace http {
 		/**
@@ -52,7 +54,7 @@ namespace awh {
 			HTTP2_COMPRESSION         = 0x11, // Ошибка сжатия данных для протокола HTTP/2
 			HTTP2_FLOW_CONTROL        = 0x12, // Ошибка управления потоком для протокола HTTP/2
 			HTTP2_STREAM_CLOSED       = 0x13, // Ошибка закрытия потока протокола HTTP/2
-			HTTP2_REFUSED_STREAM      = 0x14, // Ошибка раннего закрытия подключения протокола HTTP/2 
+			HTTP2_REFUSED_STREAM      = 0x14, // Ошибка раннего закрытия подключения протокола HTTP/2
 			HTTP2_SETTINGS_TIMEOUT    = 0x15, // Ошибка настроек таймера для протокола HTTP/2
 			HTTP2_HTTP_1_1_REQUIRED   = 0x16, // Ошибка обмена данными, требуется протокола HTTP/1.1 а используется HTTP/2
 			HTTP2_ENHANCE_YOUR_CALM   = 0x17, // Ошибка повышения спокойствия для протокола HTTP/2

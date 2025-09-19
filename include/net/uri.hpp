@@ -51,7 +51,8 @@
 #include "../sys/hash.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -59,7 +60,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * URI Класс dns ресолвера
+	 * @brief Класс dns ресолвера
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT URI {
 		public:
@@ -78,21 +80,23 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Params Структура параметров URI
+			 * @brief Структура параметров URI
+			 *
 			 */
 			typedef struct Params {
-				uint32_t port; // Порт
-				string host;  // Хост
-				string user;  // Пользователь
-				string pass;  // Пароль
+				string host;   // Хост сервера
+				string user;   // Пользователь
+				string pass;   // Пароль пользователя
+				uint32_t port; // Порт сервера
 				/**
-				 * Params Конструктор
+				 * @brief Конструктор
+				 *
 				 */
-				Params() noexcept :
-				 port(0), host{""}, user{""}, pass{""} {}
+				Params() noexcept : host{""}, user{""}, pass{""}, port(0) {}
 			} params_t;
 			/**
-			 * URL Класс URL-адреса
+			 * @brief Класс URL-адреса
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT URL {
 				public:
@@ -121,53 +125,62 @@ namespace awh {
 					function <string (const URL *, const URI *)> callback;
 				public:
 					/**
-					 * clear Метод очистки
+					 * @brief Метод очистки
+					 *
 					 */
 					void clear() noexcept;
 				public:
 					/**
-					 * empty Метод проверки на существование данных
+					 * @brief Метод проверки на существование данных
+					 *
 					 * @return результат проверки
 					 */
 					bool empty() const noexcept;
 				public:
 					/**
-					 * Оператор [=] перемещения параметров URL-адреса
+					 * @brief Оператор [=] перемещения параметров URL-адреса
+					 *
 					 * @param url объект URL-адреса для получения параметров
 					 * @return    параметры URL-адреса
 					 */
 					URL & operator = (URL && url) noexcept;
 					/**
-					 * Оператор [=] присванивания параметров URL-адреса
+					 * @brief Оператор [=] присванивания параметров URL-адреса
+					 *
 					 * @param url объект URL-адреса для получения параметров
 					 * @return    параметры URL-адреса
 					 */
 					URL & operator = (const URL & url) noexcept;
 				public:
 					/**
-					 * Оператор сравнения
+					 * @brief Оператор сравнения
+					 *
 					 * @param url параметры URL-адреса
 					 * @return    результат сравнения
 					 */
 					bool operator == (const URL & url) noexcept;
 				public:
 					/**
-					 * URL Конструктор перемещения
+					 * @brief Конструктор перемещения
+					 *
 					 * @param url параметры URL-адреса
 					 */
 					URL(URL && url) noexcept;
 					/**
-					 * URL Конструктор копирования
+					 * @brief Конструктор копирования
+					 *
 					 * @param url параметры URL-адреса
 					 */
 					URL(const URL & url) noexcept;
 				public:
 					/**
-					 * URL Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					URL() noexcept;
 					/**
-					 * ~URL Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~URL() noexcept {}
 			} url_t;
@@ -193,73 +206,84 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * parse Метод получения параметров URL-запроса
+			 * @brief Метод получения параметров URL-запроса
+			 *
 			 * @param url строка URL-запроса для получения параметров
 			 * @return    параметры URL-запроса
 			 */
 			url_t parse(const string & url) const noexcept;
 		public:
 			/**
-			 * etag Метод генерации ETag хэша текста
+			 * @brief Метод генерации ETag хэша текста
+			 *
 			 * @param text текст для перевода в строку
 			 * @return     хэш etag
 			 */
 			string etag(const string & text) const noexcept;
 		public:
 			/**
-			 * encode Метод кодирования строки в URL-адресе
+			 * @brief Метод кодирования строки в URL-адресе
+			 *
 			 * @param text строка текста для кодирования
 			 * @return     результат кодирования
 			 */
 			string encode(const string & text) const noexcept;
 			/**
-			 * decode Метод декодирования строки в URL-адресе
+			 * @brief Метод декодирования строки в URL-адресе
+			 *
 			 * @param text строка текста для декодирования
 			 * @return     результат декодирования
 			 */
 			string decode(const string & text) const noexcept;
 		public:
 			/**
-			 * url Метод создания строки URL-запросы из параметров
+			 * @brief Метод создания строки URL-запросы из параметров
+			 *
 			 * @param url параметры URL-запроса
 			 * @return    URL-запрос в виде строки
 			 */
 			string url(const url_t & url) const noexcept;
 			/**
-			 * query Метод создания строки запроса из параметров
+			 * @brief Метод создания строки запроса из параметров
+			 *
 			 * @param url параметры URL-запроса
 			 * @return    URL-запрос в виде строки
 			 */
 			string query(const url_t & url) const noexcept;
 			/**
-			 * origin Метод создания заголовка [origin], для HTTP запроса
+			 * @brief Метод создания заголовка [origin], для HTTP запроса
+			 *
 			 * @param url параметры URL-запроса
 			 * @return    заголовок [origin]
 			 */
 			string origin(const url_t & url) const noexcept;
 		public:
 			/**
-			 * create Метод создания полного адреса
+			 * @brief Метод создания полного адреса
+			 *
 			 * @param dest адрес места назначения
 			 * @param src  исходный адрес для объединения
 			 */
 			void create(url_t & dest, const url_t & src) const noexcept;
 			/**
-			 * combine Метод комбинации двух адресов
+			 * @brief Метод комбинации двух адресов
+			 *
 			 * @param dest адрес места назначения
 			 * @param src  исходный адрес для объединения
 			 */
 			void combine(url_t & dest, const url_t & src) const noexcept;
 		public:
 			/**
-			 * append Метод добавления к URL адресу параметров запроса
+			 * @brief Метод добавления к URL адресу параметров запроса
+			 *
 			 * @param url    параметры URL-запроса
 			 * @param params параметры для добавления
 			 */
 			void append(url_t & url, const string & params) const noexcept;
 		public:
 			/**
-			 * concat Объединение двух адресов путём создания третьего
+			 * @brief Объединение двух адресов путём создания третьего
+			 *
 			 * @param dest адрес назначения
 			 * @param src  исходный адрес для объединения
 			 * @return     результирующий адрес
@@ -267,19 +291,22 @@ namespace awh {
 			url_t concat(const url_t & dest, const url_t & src) const noexcept;
 		public:
 			/**
-			 * split Метод сплита URI на составные части
+			 * @brief Метод сплита URI на составные части
+			 *
 			 * @param uri строка URI для сплита
 			 * @return    список полученных частей URI
 			 */
 			std::map <flag_t, string> split(const string & uri) const noexcept;
 			/**
-			 * splitParams Метод выполнения сплита параметров URI
+			 * @brief Метод выполнения сплита параметров URI
+			 *
 			 * @param uri строка URI для сплита
 			 * @return    параметры полученные при сплите
 			 */
 			vector <pair <string, string>> splitParams(const string & uri) const noexcept;
 			/**
-			 * splitPath Метод выполнения сплита пути
+			 * @brief Метод выполнения сплита пути
+			 *
 			 * @param path  путь для выполнения сплита
 			 * @param delim сепаратор-разделитель для сплита
 			 * @return      список параметров пути
@@ -287,13 +314,15 @@ namespace awh {
 			vector <string> splitPath(const string & path, const char delim = '/') const noexcept;
 		public:
 			/**
-			 * joinParams Метод сборки параметров URI
+			 * @brief Метод сборки параметров URI
+			 *
 			 * @param uri параметры URI для сборки
 			 * @return    строка полученная при сборке параметров URI
 			 */
 			string joinParams(const vector <pair <string, string>> & uri) const noexcept;
 			/**
-			 * joinPath Метод сборки пути запроса
+			 * @brief Метод сборки пути запроса
+			 *
 			 * @param path  список параметров пути запроса
 			 * @param delim сепаратор-разделитель для сплита
 			 * @return      строка собранного пути
@@ -301,7 +330,8 @@ namespace awh {
 			string joinPath(const vector <string> & path, const char delim = '/') const noexcept;
 		public:
 			/**
-			 * params Метод получения параметров URI
+			 * @brief Метод получения параметров URI
+			 *
 			 * @param uri    URI для получения параметров
 			 * @param schema протокол передачи данных
 			 * @return       параметры полученные из URI
@@ -309,26 +339,30 @@ namespace awh {
 			params_t params(const string & uri, const string & schema = "") const noexcept;
 		public:
 			/**
-			 * Оператор [=] получения параметров URL-запроса
+			 * @brief Оператор [=] получения параметров URL-запроса
+			 *
 			 * @param url строка URL-запроса для получения параметров
 			 * @return    параметры URL-запроса
 			 */
 			url_t operator = (const string & url) const noexcept;
 			/**
-			 * Оператор [=] создания строки URL-запросы из параметров
+			 * @brief Оператор [=] создания строки URL-запросы из параметров
+			 *
 			 * @param url параметры URL-запроса
 			 * @return    URL-запрос в виде строки
 			 */
 			string operator = (const url_t & url) const noexcept;
 		public:
 			/**
-			 * URI Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			URI(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~URI Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~URI() noexcept {}
 	} uri_t;

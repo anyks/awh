@@ -38,7 +38,8 @@
 #include "../../core/client.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -46,11 +47,13 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * client клиентское пространство имён
+	 * @brief клиентское пространство имён
+	 *
 	 */
 	namespace client {
 		/**
-		 * Web Базовый класс web-клиента
+		 * @brief Базовый класс web-клиента
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Web {
 			public:
@@ -96,7 +99,8 @@ namespace awh {
 				};
 			public:
 				/**
-				 * Request Класс HTTP-запроса клиента
+				 * @brief Класс HTTP-запроса клиента
+				 *
 				 */
 				typedef class AWHSHARED_EXPORT Request {
 					public:
@@ -109,48 +113,56 @@ namespace awh {
 						std::unordered_multimap <string, string> headers; // Заголовки клиента
 					public:
 						/**
-						 * Оператор [=] перемещения параметров запроса
+						 * @brief Оператор [=] перемещения параметров запроса
+						 *
 						 * @param request объект параметров запроса
 						 * @return        объект текущего запроса
 						 */
 						Request & operator = (Request && request) noexcept;
 						/**
-						 * Оператор [=] присванивания параметров запроса
+						 * @brief Оператор [=] присванивания параметров запроса
+						 *
 						 * @param request объект параметров запроса
 						 * @return        объект текущего запроса
 						 */
 						Request & operator = (const Request & request) noexcept;
 					public:
 						/**
-						 * Оператор сравнения
+						 * @brief Оператор сравнения
+						 *
 						 * @param request объект параметров запроса
 						 * @return        результат сравнения
 						 */
 						bool operator == (const Request & request) noexcept;
 					public:
 						/**
-						 * Request Конструктор перемещения
+						 * @brief Конструктор перемещения
+						 *
 						 * @param request объект параметров запроса
 						 */
 						Request(Request && request) noexcept;
 						/**
-						 * Request Конструктор копирования
+						 * @brief Конструктор копирования
+						 *
 						 * @param request объект параметров запроса
 						 */
 						Request(const Request & request) noexcept;
 					public:
 						/**
-						 * Request Конструктор
+						 * @brief Конструктор
+						 *
 						 */
 						Request() noexcept;
 						/**
-						 * ~Request Деструктор
+						 * @brief Деструктор
+						 *
 						 */
 						~Request() noexcept {}
 				} request_t;
 			protected:
 				/**
-				 * Proxy Структура работы с прокси-сервером
+				 * @brief Структура работы с прокси-сервером
+				 *
 				 */
 				typedef struct Proxy {
 					int32_t sid;     // Идентификатор потока HTTP/2
@@ -158,14 +170,16 @@ namespace awh {
 					bool connect;    // Флаг применения метода CONNECT
 					uint32_t answer; // Статус ответа прокси-сервера
 					/**
-					 * Proxy Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Proxy() noexcept :
 					 sid(-1), mode(false),
 					 connect(true), answer(0) {}
 				} __attribute__((packed)) proxy_t;
 				/**
-				 * Encryption Структура параметров шифрования
+				 * @brief Структура параметров шифрования
+				 *
 				 */
 				typedef struct Encryption {
 					bool mode;               // Флаг активности механизма шифрования
@@ -173,7 +187,8 @@ namespace awh {
 					string salt;             // Соль шифрования передаваемых данных
 					hash_t::cipher_t cipher; // Размер шифрования передаваемых данных
 					/**
-					 * Encryption Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Encryption() noexcept :
 					 mode(false), pass{""}, salt{""},
@@ -260,30 +275,35 @@ namespace awh {
 				const client::core_t * _core;
 			protected:
 				/**
-				 * openEvent Метод обратного вызова при запуске работы
+				 * @brief Метод обратного вызова при запуске работы
+				 *
 				 * @param sid идентификатор схемы сети
 				 */
 				void openEvent(const uint16_t sid) noexcept;
 				/**
-				 * statusEvent Метод обратного вызова при активации ядра сервера
+				 * @brief Метод обратного вызова при активации ядра сервера
+				 *
 				 * @param status флаг запуска/остановки
 				 */
 				virtual void statusEvent(const awh::core_t::status_t status) noexcept;
 			protected:
 				/**
-				 * connectEvent Метод обратного вызова при подключении к серверу
+				 * @brief Метод обратного вызова при подключении к серверу
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				virtual void connectEvent(const uint64_t bid, const uint16_t sid) noexcept = 0;
 				/**
-				 * disconnectEvent Метод обратного вызова при отключении от сервера
+				 * @brief Метод обратного вызова при отключении от сервера
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				virtual void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept = 0;
 				/**
-				 * readEvent Метод обратного вызова при чтении сообщения с сервера
+				 * @brief Метод обратного вызова при чтении сообщения с сервера
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
@@ -292,13 +312,15 @@ namespace awh {
 				virtual void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept = 0;
 			protected:
 				/**
-				 * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
+				 * @brief Метод обратного вызова при подключении к прокси-серверу
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				virtual void proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
+				 * @brief Метод обратного вызова при чтении сообщения с прокси-сервера
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
@@ -307,7 +329,8 @@ namespace awh {
 				virtual void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
-				 * enableSSLEvent Метод активации зашифрованного канала SSL
+				 * @brief Метод активации зашифрованного канала SSL
+				 *
 				 * @param url адрес сервера для которого выполняется активация зашифрованного канала SSL
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
@@ -316,7 +339,8 @@ namespace awh {
 				bool enableSSLEvent(const uri_t::url_t & url, const uint64_t bid, const uint16_t sid) noexcept;
 			protected:
 				/**
-				 * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+				 * @brief Метод отлавливания событий контейнера функций обратного вызова
+				 *
 				 * @param event обытие контейнера функций обратного вызова
 				 * @param fid   идентификатор функции обратного вызова
 				 * @param fn    функция обратного вызова в чистом виде
@@ -324,7 +348,8 @@ namespace awh {
 				virtual void callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept = 0;
 			protected:
 				/**
-				 * chunking Метод обработки получения чанков
+				 * @brief Метод обработки получения чанков
+				 *
 				 * @param bid   идентификатор брокера
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
@@ -332,7 +357,8 @@ namespace awh {
 				virtual void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			protected:
 				/**
-				 * errors Метод вывода полученных ошибок протокола
+				 * @brief Метод вывода полученных ошибок протокола
+				 *
 				 * @param bid     идентификатор брокера
 				 * @param flag    флаг типа сообщения
 				 * @param error   тип полученной ошибки
@@ -341,18 +367,21 @@ namespace awh {
 				void errors(const uint64_t bid, const log_t::flag_t flag, const awh::http::error_t error, const string & message) noexcept;
 			protected:
 				/**
-				 * flush Метод сброса параметров запроса
+				 * @brief Метод сброса параметров запроса
+				 *
 				 */
 				virtual void flush() noexcept = 0;
 			protected:
 				/**
-				 * pinging Метод таймера выполнения пинга удалённого сервера
+				 * @brief Метод таймера выполнения пинга удалённого сервера
+				 *
 				 * @param tid идентификатор таймера
 				 */
 				virtual void pinging(const uint16_t tid) noexcept = 0;
 			protected:
 				/**
-				 * prepare Метод выполнения препарирования полученных данных
+				 * @brief Метод выполнения препарирования полученных данных
+				 *
 				 * @param sid идентификатор запроса
 				 * @param bid идентификатор брокера
 				 * @return    результат препарирования
@@ -360,56 +389,66 @@ namespace awh {
 				virtual status_t prepare(const int32_t sid, const uint64_t bid) noexcept = 0;
 			public:
 				/**
-				 * init Метод инициализации клиента
+				 * @brief Метод инициализации клиента
+				 *
 				 * @param dest        адрес назначения удалённого сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void init(const string & dest, const vector <awh::http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
-				 * open Метод открытия подключения
+				 * @brief Метод открытия подключения
+				 *
 				 */
 				void open() noexcept;
 			public:
 				/**
-				 * reset Метод принудительного сброса подключения
+				 * @brief Метод принудительного сброса подключения
+				 *
 				 */
 				void reset() noexcept;
 			public:
 				/**
-				 * stop Метод остановки клиента
+				 * @brief Метод остановки клиента
+				 *
 				 */
 				virtual void stop() noexcept;
 				/**
-				 * start Метод запуска клиента
+				 * @brief Метод запуска клиента
+				 *
 				 */
 				virtual void start() noexcept;
 			public:
 				/**
-				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+				 * @brief Метод установки времени ожидания ответа WebSocket-сервера
+				 *
 				 * @param sec время ожидания в секундах
 				 */
 				virtual void waitPong(const uint16_t sec) noexcept = 0;
 				/**
-				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @brief Метод установки интервала времени выполнения пингов
+				 *
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
 				virtual void pingInterval(const uint16_t sec) noexcept = 0;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
+				 * @brief Метод установки функций обратного вызова
+				 *
 				 * @param callback функции обратного вызова
 				 */
 				virtual void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param name  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -423,13 +462,15 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param name  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -443,13 +484,15 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param fid  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -463,14 +506,16 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param A    тип идентификатора функции
-				 * @param B    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam A    тип идентификатора функции
+				 * @tparam B    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename A, typename B, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param fid  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -485,38 +530,44 @@ namespace awh {
 				}
 			public:
 				/**
-				 * proto Метод извлечения поддерживаемого протокола подключения
+				 * @brief Метод извлечения поддерживаемого протокола подключения
+				 *
 				 * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
 				 */
 				engine_t::proto_t proto() const noexcept;
 			public:
 				/**
-				 * cork Метод отключения/включения алгоритма TCP/CORK
+				 * @brief Метод отключения/включения алгоритма TCP/CORK
+				 *
 				 * @param mode режим применимой операции
 				 * @return     результат выполенния операции
 				 */
 				bool cork(const engine_t::mode_t mode) noexcept;
 				/**
-				 * nodelay Метод отключения/включения алгоритма Нейгла
+				 * @brief Метод отключения/включения алгоритма Нейгла
+				 *
 				 * @param mode режим применимой операции
 				 * @return     результат выполенния операции
 				 */
 				bool nodelay(const engine_t::mode_t mode) noexcept;
 			public:
 				/**
-				 * bandwidth Метод установки пропускной способности сети
+				 * @brief Метод установки пропускной способности сети
+				 *
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
 				void bandwidth(const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
+				 * @brief Метод ожидания входящих сообщений
+				 *
 				 * @param sec интервал времени в секундах
 				 */
 				void waitMessage(const uint16_t sec) noexcept;
 				/**
-				 * waitTimeDetect Метод детекции сообщений по количеству секунд
+				 * @brief Метод детекции сообщений по количеству секунд
+				 *
 				 * @param read    количество секунд для детекции по чтению
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для детекции по подключению
@@ -524,34 +575,40 @@ namespace awh {
 				void waitTimeDetect(const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
-				 * proxy Метод активации/деактивации прокси-склиента
+				 * @brief Метод активации/деактивации прокси-склиента
+				 *
 				 * @param work флаг активации/деактивации прокси-клиента
 				 */
 				virtual void proxy(const client::scheme_t::work_t work) noexcept;
 				/**
-				 * proxy Метод установки прокси-сервера
+				 * @brief Метод установки прокси-сервера
+				 *
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
 				 */
 				virtual void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * attempts Метод установки общего количества попыток
+				 * @brief Метод установки общего количества попыток
+				 *
 				 * @param attempts общее количество попыток
 				 */
 				void attempts(const uint8_t attempts) noexcept;
 				/**
-				 * core Метод установки сетевого ядра
+				 * @brief Метод установки сетевого ядра
+				 *
 				 * @param core объект сетевого ядра
 				 */
 				virtual void core(const client::core_t * core) noexcept;
 				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @brief Метод установки списка поддерживаемых компрессоров
+				 *
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept;
 				/**
-				 * keepAlive Метод установки жизни подключения
+				 * @brief Метод установки жизни подключения
+				 *
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
@@ -559,30 +616,35 @@ namespace awh {
 				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
-				 * mode Метод установки флагов настроек модуля
+				 * @brief Метод установки флагов настроек модуля
+				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
 				virtual void mode(const std::set <flag_t> & flags) noexcept = 0;
 			public:
 				/**
-				 * chunk Метод установки размера чанка
+				 * @brief Метод установки размера чанка
+				 *
 				 * @param size размер чанка для установки
 				 */
 				virtual void chunk(const size_t size) noexcept = 0;
 				/**
-				 * user Метод установки параметров авторизации
+				 * @brief Метод установки параметров авторизации
+				 *
 				 * @param login    логин пользователя для авторизации на сервере
 				 * @param password пароль пользователя для авторизации на сервере
 				 */
 				virtual void user(const string & login, const string & password) noexcept = 0;
 			public:
 				/**
-				 * userAgent Метод установки User-Agent для HTTP-запроса
+				 * @brief Метод установки User-Agent для HTTP-запроса
+				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
 				virtual void userAgent(const string & userAgent) noexcept;
 				/**
-				 * ident Метод установки идентификации клиента
+				 * @brief Метод установки идентификации клиента
+				 *
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
@@ -590,25 +652,29 @@ namespace awh {
 				virtual void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
-				 * authType Метод установки типа авторизации
+				 * @brief Метод установки типа авторизации
+				 *
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
 				 */
 				virtual void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept = 0;
 				/**
-				 * authTypeProxy Метод установки типа авторизации прокси-сервера
+				 * @brief Метод установки типа авторизации прокси-сервера
+				 *
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
 				 */
 				virtual void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * encryption Метод активации шифрования
+				 * @brief Метод активации шифрования
+				 *
 				 * @param mode флаг активации шифрования
 				 */
 				virtual void encryption(const bool mode) noexcept;
 				/**
-				 * encryption Метод установки параметров шифрования
+				 * @brief Метод установки параметров шифрования
+				 *
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
@@ -616,37 +682,43 @@ namespace awh {
 				virtual void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * Web Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Web(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * Web Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
 				Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Web Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				virtual ~Web() noexcept {}
 		} web_t;
 		/**
-		 * Web2 Базовый класс web2-клиента
+		 * @brief Базовый класс web2-клиента
+		 *
 		 */
 		typedef class Web2 : public web_t {
 			protected:
 				/**
-				 * Ident Структура идентификации сервиса
+				 * @brief Структура идентификации сервиса
+				 *
 				 */
 				typedef struct Ident {
 					string id;   // Идентификатор сервиса
 					string ver;  // Версия сервиса
 					string name; // Название сервиса
 					/**
-					 * Ident Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Ident() noexcept : id{""}, ver{""}, name{""} {}
 				} ident_t;
@@ -671,14 +743,16 @@ namespace awh {
 				std::map <http2_t::settings_t, uint32_t> _settings;
 			protected:
 				/**
-				 * sendSignal Метод обратного вызова при отправки данных HTTP/2
+				 * @brief Метод обратного вызова при отправки данных HTTP/2
+				 *
 				 * @param buffer буфер бинарных данных
 				 * @param size   размер буфера данных для отправки
 				 */
 				void sendSignal(const uint8_t * buffer, const size_t size) noexcept;
 			protected:
 				/**
-				 * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
+				 * @brief Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
+				 *
 				 * @param sid    идентификатор потока
 				 * @param direct направление передачи фрейма
 				 * @param type   тип полученного фрейма
@@ -687,7 +761,8 @@ namespace awh {
 				 */
 				int32_t frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept;
 				/**
-				 * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
+				 * @brief Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
+				 *
 				 * @param sid    идентификатор потока
 				 * @param direct направление передачи фрейма
 				 * @param type   тип полученного фрейма
@@ -697,7 +772,8 @@ namespace awh {
 				virtual int32_t frameSignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept = 0;
 			protected:
 				/**
-				 * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
+				 * @brief Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
+				 *
 				 * @param sid    идентификатор потока
 				 * @param buffer буфер данных который содержит полученный чанк
 				 * @param size   размер полученного буфера данных чанка
@@ -705,7 +781,8 @@ namespace awh {
 				 */
 				int32_t chunkProxySignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
-				 * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
+				 * @brief Метод обратного вызова при получении чанка с сервера HTTP/2
+				 *
 				 * @param sid    идентификатор потока
 				 * @param buffer буфер данных который содержит полученный чанк
 				 * @param size   размер полученного буфера данных чанка
@@ -714,20 +791,23 @@ namespace awh {
 				virtual int32_t chunkSignal(const int32_t sid, const uint8_t * buffer, const size_t size) noexcept = 0;
 			protected:
 				/**
-				 * beginProxySignal Метод начала получения фрейма заголовков HTTP/2 прокси-сервера
+				 * @brief Метод начала получения фрейма заголовков HTTP/2 прокси-сервера
+				 *
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
 				int32_t beginProxySignal(const int32_t sid) noexcept;
 				/**
-				 * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
+				 * @brief Метод начала получения фрейма заголовков HTTP/2 сервера
+				 *
 				 * @param sid идентификатор потока
 				 * @return    статус полученных данных
 				 */
 				virtual int32_t beginSignal(const int32_t sid) noexcept = 0;
 			protected:
 				/**
-				 * streamClosedSignal Метод завершения работы потока
+				 * @brief Метод завершения работы потока
+				 *
 				 * @param sid   идентификатор потока
 				 * @param error флаг ошибки если присутствует
 				 * @return      статус полученных данных
@@ -735,7 +815,8 @@ namespace awh {
 				virtual int32_t closedSignal(const int32_t sid, const http2_t::error_t error) noexcept = 0;
 			protected:
 				/**
-				 * headerProxySignal Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера
+				 * @brief Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера
+				 *
 				 * @param sid идентификатор потока
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
@@ -743,7 +824,8 @@ namespace awh {
 				 */
 				int32_t headerProxySignal(const int32_t sid, const string & key, const string & val) noexcept;
 				/**
-				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
+				 * @brief Метод обратного вызова при получении заголовка HTTP/2 сервера
+				 *
 				 * @param sid идентификатор потока
 				 * @param key данные ключа заголовка
 				 * @param val данные значения заголовка
@@ -752,25 +834,29 @@ namespace awh {
 				virtual int32_t headerSignal(const int32_t sid, const string & key, const string & val) noexcept = 0;
 			protected:
 				/**
-				 * statusEvent Метод обратного вызова при активации ядра сервера
+				 * @brief Метод обратного вызова при активации ядра сервера
+				 *
 				 * @param status флаг запуска/остановки
 				 */
 				void statusEvent(const awh::core_t::status_t status) noexcept;
 				/**
-				 * connectEvent Метод обратного вызова при подключении к серверу
+				 * @brief Метод обратного вызова при подключении к серверу
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				virtual void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 			protected:
 				/**
-				 * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
+				 * @brief Метод обратного вызова при подключении к прокси-серверу
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				void proxyConnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
+				 * @brief Метод обратного вызова при чтении сообщения с прокси-сервера
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
@@ -779,25 +865,29 @@ namespace awh {
 				void proxyReadEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
-				 * originCallback Метод вывода полученного списка разрешённых ресурсов для подключения
+				 * @brief Метод вывода полученного списка разрешённых ресурсов для подключения
+				 *
 				 * @param origin список разрешённых ресурсов для подключения
 				 */
 				void originCallback(const vector <string> & origin) noexcept;
 				/**
-				 * altsvcCallback Метод вывода полученного альтернативного сервиса от сервера
+				 * @brief Метод вывода полученного альтернативного сервиса от сервера
+				 *
 				 * @param origin источник альтернативного сервиса
 				 * @param field  поле параметров альтернативного сервиса
 				 */
 				void altsvcCallback(const string & origin, const string & field) noexcept;
 			private:
 				/**
-				 * implementation Метод выполнения активации сессии HTTP/2
+				 * @brief Метод выполнения активации сессии HTTP/2
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void implementation(const uint64_t bid) noexcept;
 			private:
 				/**
-				 * prepareProxy Метод выполнения препарирования полученных данных
+				 * @brief Метод выполнения препарирования полученных данных
+				 *
 				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера
 				 * @return    результат препарирования
@@ -805,19 +895,22 @@ namespace awh {
 				status_t prepareProxy(const int32_t sid, const uint64_t bid) noexcept;
 			protected:
 				/**
-				 * ping Метод выполнения пинга сервера
+				 * @brief Метод выполнения пинга сервера
+				 *
 				 * @return результат работы пинга
 				 */
 				bool ping() noexcept;
 			public:
 				/**
-				 * close Метод выполнения закрытия подключения
+				 * @brief Метод выполнения закрытия подключения
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint64_t bid) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения на сервер
+				 * @brief Метод отправки сообщения на сервер
+				 *
 				 * @param sid    идентификатор потока
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
@@ -827,7 +920,8 @@ namespace awh {
 				bool send(const int32_t sid, const char * buffer, const size_t size, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
-				 * send Метод отправки заголовков на сервер
+				 * @brief Метод отправки заголовков на сервер
+				 *
 				 * @param sid     идентификатор потока
 				 * @param headers заголовки отправляемые на сервер
 				 * @param flag    флаг передаваемого потока по сети
@@ -836,35 +930,41 @@ namespace awh {
 				int32_t send(const int32_t sid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
-				 * mode Метод установки флагов настроек модуля
+				 * @brief Метод установки флагов настроек модуля
+				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
 				virtual void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
-				 * settings Модуль установки настроек протокола HTTP/2
+				 * @brief Модуль установки настроек протокола HTTP/2
+				 *
 				 * @param settings список настроек протокола HTTP/2
 				 */
 				virtual void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
-				 * chunk Метод установки размера чанка
+				 * @brief Метод установки размера чанка
+				 *
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
 				/**
-				 * userAgent Метод установки User-Agent для HTTP-запроса
+				 * @brief Метод установки User-Agent для HTTP-запроса
+				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
 				void userAgent(const string & userAgent) noexcept;
 				/**
-				 * user Метод установки параметров авторизации
+				 * @brief Метод установки параметров авторизации
+				 *
 				 * @param login    логин пользователя для авторизации на сервере
 				 * @param password пароль пользователя для авторизации на сервере
 				 */
 				void user(const string & login, const string & password) noexcept;
 				/**
-				 * ident Метод установки идентификации клиента
+				 * @brief Метод установки идентификации клиента
+				 *
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
@@ -872,20 +972,23 @@ namespace awh {
 				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
-				 * Web2 Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Web2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * Web2 Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
 				Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Web2 Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				virtual ~Web2() noexcept {}
 		} web2_t;

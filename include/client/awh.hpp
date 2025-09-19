@@ -21,7 +21,8 @@
 #include "web/http2.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -29,16 +30,19 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * client клиентское пространство имён
+	 * @brief клиентское пространство имён
+	 *
 	 */
 	namespace client {
 		/**
-		 * AWH Класс работы с WEB-клиентом
+		 * @brief Класс работы с WEB-клиентом
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT AWH {
 			private:
 				/**
-				 * Response Структура ответа сервера
+				 * @brief Структура ответа сервера
+				 *
 				 */
 				typedef struct Response {
 					int32_t sid;                                        // Идентификатор потока
@@ -48,7 +52,8 @@ namespace awh {
 					vector <char> & entity;                             // Тело ответа
 					std::unordered_multimap <string, string> & headers; // Заголовки ответа
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param headers заголовки ответа
 					 * @param entity  тело ответа
 					 */
@@ -74,26 +79,30 @@ namespace awh {
 				const client::core_t * _core;
 			public:
 				/**
-				 * proto Метод извлечения поддерживаемого протокола подключения
+				 * @brief Метод извлечения поддерживаемого протокола подключения
+				 *
 				 * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
 				 */
 				engine_t::proto_t proto() const noexcept;
 			public:
 				/**
-				 * sendError Метод отправки сообщения об ошибке на сервер Websocket
+				 * @brief Метод отправки сообщения об ошибке на сервер Websocket
+				 *
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
 			public:
 				/**
-				 * sendMessage Метод отправки сообщения на сервер
+				 * @brief Метод отправки сообщения на сервер
+				 *
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
 				 * @return        результат отправки сообщения
 				 */
 				bool sendMessage(const vector <char> & message, const bool text = true) noexcept;
 				/**
-				 * sendMessage Метод отправки сообщения на сервер
+				 * @brief Метод отправки сообщения на сервер
+				 *
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param size    размер передаваемого сообещния
 				 * @param text    данные передаются в текстовом виде
@@ -102,21 +111,24 @@ namespace awh {
 				bool sendMessage(const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
-				 * send Метод отправки сообщения на сервер HTTP/2
+				 * @brief Метод отправки сообщения на сервер HTTP/2
+				 *
 				 * @param request параметры запроса на удалённый сервер
 				 * @return        идентификатор отправленного запроса
 				 */
 				int32_t send(const web_t::request_t & request) noexcept;
 			public:
 				/**
-				 * send Метод отправки данных в бинарном виде серверу
+				 * @brief Метод отправки данных в бинарном виде серверу
+				 *
 				 * @param buffer буфер бинарных данных передаваемых серверу
 				 * @param size   размер сообщения в байтах
 				 * @return       результат отправки сообщения
 				 */
 				bool send(const char * buffer, const size_t size) noexcept;
 				/**
-				 * send Метод отправки тела сообщения на сервер
+				 * @brief Метод отправки тела сообщения на сервер
+				 *
 				 * @param sid    идентификатор потока HTTP
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
@@ -126,7 +138,8 @@ namespace awh {
 				bool send(const int32_t sid, const char * buffer, const size_t size, const bool end) noexcept;
 			public:
 				/**
-				 * send Метод отправки заголовков на сервер
+				 * @brief Метод отправки заголовков на сервер
+				 *
 				 * @param sid     идентификатор потока HTTP
 				 * @param url     адрес запроса на сервере
 				 * @param method  метод запроса на сервере
@@ -137,7 +150,8 @@ namespace awh {
 				int32_t send(const int32_t sid, const uri_t::url_t & url, const awh::web_t::method_t method, const std::unordered_multimap <string, string> & headers, const bool end) noexcept;
 			public:
 				/**
-				 * send2 Метод HTTP/2 отправки сообщения на сервер
+				 * @brief Метод HTTP/2 отправки сообщения на сервер
+				 *
 				 * @param sid    идентификатор потока
 				 * @param buffer буфер бинарных данных передаваемых на сервер
 				 * @param size   размер сообщения в байтах
@@ -146,7 +160,8 @@ namespace awh {
 				 */
 				bool send2(const int32_t sid, const char * buffer, const size_t size, const awh::http2_t::flag_t flag) noexcept;
 				/**
-				 * send2 Метод HTTP/2 отправки заголовков на сервер
+				 * @brief Метод HTTP/2 отправки заголовков на сервер
+				 *
 				 * @param sid     идентификатор потока
 				 * @param headers заголовки отправляемые на сервер
 				 * @param flag    флаг передаваемого потока по сети
@@ -155,26 +170,30 @@ namespace awh {
 				int32_t send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
-				 * pause Метод установки на паузу клиента Websocket
+				 * @brief Метод установки на паузу клиента Websocket
+				 *
 				 */
 				void pause() noexcept;
 			public:
 				/**
-				 * init Метод инициализации клиента
+				 * @brief Метод инициализации клиента
+				 *
 				 * @param dest        адрес назначения удалённого сервера
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void init(const string & dest, const vector <awh::http_t::compressor_t> & compressors = {}) noexcept;
 			public:
 				/**
-				 * GET Метод запроса в формате HTTP методом GET
+				 * @brief Метод запроса в формате HTTP методом GET
+				 *
 				 * @param url     адрес запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
 				vector <char> GET(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * DEL Метод запроса в формате HTTP методом DEL
+				 * @brief Метод запроса в формате HTTP методом DEL
+				 *
 				 * @param url     адрес запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
@@ -182,7 +201,8 @@ namespace awh {
 				vector <char> DEL(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
-				 * PUT Метод запроса в формате HTTP методом PUT
+				 * @brief Метод запроса в формате HTTP методом PUT
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param headers заголовки запроса
@@ -190,7 +210,8 @@ namespace awh {
 				 */
 				vector <char> PUT(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * PUT Метод запроса в формате HTTP методом PUT
+				 * @brief Метод запроса в формате HTTP методом PUT
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param size    размер тела запроса
@@ -199,7 +220,8 @@ namespace awh {
 				 */
 				vector <char> PUT(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * PUT Метод запроса в формате HTTP методом PUT
+				 * @brief Метод запроса в формате HTTP методом PUT
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param headers заголовки запроса
@@ -208,7 +230,8 @@ namespace awh {
 				vector <char> PUT(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
-				 * POST Метод запроса в формате HTTP методом POST
+				 * @brief Метод запроса в формате HTTP методом POST
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param headers заголовки запроса
@@ -216,7 +239,8 @@ namespace awh {
 				 */
 				vector <char> POST(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * POST Метод запроса в формате HTTP методом POST
+				 * @brief Метод запроса в формате HTTP методом POST
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param size    размер тела запроса
@@ -225,7 +249,8 @@ namespace awh {
 				 */
 				vector <char> POST(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * POST Метод запроса в формате HTTP методом POST
+				 * @brief Метод запроса в формате HTTP методом POST
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param headers заголовки запроса
@@ -234,7 +259,8 @@ namespace awh {
 				vector <char> POST(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
-				 * PATCH Метод запроса в формате HTTP методом PATCH
+				 * @brief Метод запроса в формате HTTP методом PATCH
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param headers заголовки запроса
@@ -242,7 +268,8 @@ namespace awh {
 				 */
 				vector <char> PATCH(const uri_t::url_t & url, const vector <char> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * PATCH Метод запроса в формате HTTP методом PATCH
+				 * @brief Метод запроса в формате HTTP методом PATCH
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param size    размер тела запроса
@@ -251,7 +278,8 @@ namespace awh {
 				 */
 				vector <char> PATCH(const uri_t::url_t & url, const char * entity, const size_t size, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * PATCH Метод запроса в формате HTTP методом PATCH
+				 * @brief Метод запроса в формате HTTP методом PATCH
+				 *
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
 				 * @param headers заголовки запроса
@@ -260,21 +288,24 @@ namespace awh {
 				vector <char> PATCH(const uri_t::url_t & url, const std::unordered_multimap <string, string> & entity, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
-				 * HEAD Метод запроса в формате HTTP методом HEAD
+				 * @brief Метод запроса в формате HTTP методом HEAD
+				 *
 				 * @param url     адрес запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
 				std::unordered_multimap <string, string> HEAD(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * TRACE Метод запроса в формате HTTP методом TRACE
+				 * @brief Метод запроса в формате HTTP методом TRACE
+				 *
 				 * @param url     адрес запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
 				 */
 				std::unordered_multimap <string, string> TRACE(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 				/**
-				 * OPTIONS Метод запроса в формате HTTP методом OPTIONS
+				 * @brief Метод запроса в формате HTTP методом OPTIONS
+				 *
 				 * @param url     адрес запроса
 				 * @param headers заголовки запроса
 				 * @return        результат запроса
@@ -282,7 +313,8 @@ namespace awh {
 				std::unordered_multimap <string, string> OPTIONS(const uri_t::url_t & url, const std::unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
-				 * REQUEST Метод выполнения запроса HTTP
+				 * @brief Метод выполнения запроса HTTP
+				 *
 				 * @param method  метод запроса
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
@@ -290,7 +322,8 @@ namespace awh {
 				 */
 				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, std::unordered_multimap <string, string> & headers) noexcept;
 				/**
-				 * REQUEST Метод выполнения запроса HTTP
+				 * @brief Метод выполнения запроса HTTP
+				 *
 				 * @param method  метод запроса
 				 * @param url     адрес запроса
 				 * @param entity  тело запроса
@@ -301,49 +334,58 @@ namespace awh {
 				void REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, const char * entity, const size_t size, std::unordered_multimap <string, string> & headers, vector <char> & result) noexcept;
 			public:
 				/**
-				 * open Метод открытия подключения
+				 * @brief Метод открытия подключения
+				 *
 				 */
 				void open() noexcept;
 			public:
 				/**
-				 * reset Метод принудительного сброса подключения
+				 * @brief Метод принудительного сброса подключения
+				 *
 				 */
 				void reset() noexcept;
 			public:
 				/**
-				 * stop Метод остановки клиента
+				 * @brief Метод остановки клиента
+				 *
 				 */
 				void stop() noexcept;
 				/**
-				 * start Метод запуска клиента
+				 * @brief Метод запуска клиента
+				 *
 				 */
 				void start() noexcept;
 			public:
 				/**
-				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+				 * @brief Метод установки времени ожидания ответа WebSocket-сервера
+				 *
 				 * @param sec время ожидания в секундах
 				 */
 				void waitPong(const uint16_t sec) noexcept;
 				/**
-				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @brief Метод установки интервала времени выполнения пингов
+				 *
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
 				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
+				 * @brief Метод установки функций обратного вызова
+				 *
 				 * @param callback функции обратного вызова
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param name  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -357,13 +399,15 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param name  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -377,13 +421,15 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param fid  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -397,14 +443,16 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param A    тип идентификатора функции
-				 * @param B    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam A    тип идентификатора функции
+				 * @tparam B    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename A, typename B, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param fid  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -419,85 +467,100 @@ namespace awh {
 				}
 			public:
 				/**
-				 * subprotocol Метод установки поддерживаемого сабпротокола
+				 * @brief Метод установки поддерживаемого сабпротокола
+				 *
 				 * @param subprotocol сабпротокол для установки
 				 */
 				void subprotocol(const string & subprotocol) noexcept;
 				/**
-				 * subprotocol Метод получения списка выбранных сабпротоколов
+				 * @brief Метод получения списка выбранных сабпротоколов
+				 *
 				 * @return список выбранных сабпротоколов
 				 */
 				const std::unordered_set <string> & subprotocols() const noexcept;
 				/**
-				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
+				 * @brief Метод установки списка поддерживаемых сабпротоколов
+				 *
 				 * @param subprotocols сабпротоколы для установки
 				 */
 				void subprotocols(const std::unordered_set <string> & subprotocols) noexcept;
 			public:
 				/**
-				 * extensions Метод извлечения списка расширений Websocket
+				 * @brief Метод извлечения списка расширений Websocket
+				 *
 				 * @return список поддерживаемых расширений
 				 */
 				const vector <vector <string>> & extensions() const noexcept;
 				/**
-				 * extensions Метод установки списка расширений Websocket
+				 * @brief Метод установки списка расширений Websocket
+				 *
 				 * @param extensions список поддерживаемых расширений
 				 */
 				void extensions(const vector <vector <string>> & extensions) noexcept;
 			public:
 				/**
-				 * bandwidth Метод установки пропускной способности сети
+				 * @brief Метод установки пропускной способности сети
+				 *
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
 				void bandwidth(const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
-				 * mode Метод установки флагов настроек модуля
+				 * @brief Метод установки флагов настроек модуля
+				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
 				void mode(const std::set <web_t::flag_t> & flags) noexcept;
 			public:
 				/**
-				 * settings Модуль установки настроек протокола HTTP/2
+				 * @brief Модуль установки настроек протокола HTTP/2
+				 *
 				 * @param settings список настроек протокола HTTP/2
 				 */
 				void settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
-				 * chunk Метод установки размера чанка
+				 * @brief Метод установки размера чанка
+				 *
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
 				/**
-				 * segmentSize Метод установки размеров сегментов фрейма Websocket
+				 * @brief Метод установки размеров сегментов фрейма Websocket
+				 *
 				 * @param size минимальный размер сегмента
 				 */
 				void segmentSize(const size_t size) noexcept;
 				/**
-				 * attempts Метод установки общего количества попыток
+				 * @brief Метод установки общего количества попыток
+				 *
 				 * @param attempts общее количество попыток
 				 */
 				void attempts(const uint8_t attempts) noexcept;
 			public:
 				/**
-				 * hosts Метод загрузки файла со списком хостов
+				 * @brief Метод загрузки файла со списком хостов
+				 *
 				 * @param filename адрес файла для загрузки
 				 */
 				void hosts(const string & filename) noexcept;
 				/**
-				 * user Метод установки параметров авторизации
+				 * @brief Метод установки параметров авторизации
+				 *
 				 * @param login    логин пользователя для авторизации на сервере
 				 * @param password пароль пользователя для авторизации на сервере
 				 */
 				void user(const string & login, const string & password) noexcept;
 				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @brief Метод установки списка поддерживаемых компрессоров
+				 *
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept;
 				/**
-				 * keepAlive Метод установки жизни подключения
+				 * @brief Метод установки жизни подключения
+				 *
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
@@ -505,19 +568,22 @@ namespace awh {
 				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
-				 * multiThreads Метод активации многопоточности в Websocket
+				 * @brief Метод активации многопоточности в Websocket
+				 *
 				 * @param count количество потоков для активации
 				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
 				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
-				 * userAgent Метод установки User-Agent для HTTP-запроса
+				 * @brief Метод установки User-Agent для HTTP-запроса
+				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
 				void userAgent(const string & userAgent) noexcept;
 				/**
-				 * ident Метод установки идентификации клиента
+				 * @brief Метод установки идентификации клиента
+				 *
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
@@ -525,80 +591,93 @@ namespace awh {
 				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
-				 * proxy Метод активации/деактивации прокси-склиента
+				 * @brief Метод активации/деактивации прокси-склиента
+				 *
 				 * @param work флаг активации/деактивации прокси-клиента
 				 */
 				void proxy(const client::scheme_t::work_t work) noexcept;
 				/**
-				 * proxy Метод установки прокси-сервера
+				 * @brief Метод установки прокси-сервера
+				 *
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
 				 */
 				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * flushDNS Метод сброса кэша DNS-резолвера
+				 * @brief Метод сброса кэша DNS-резолвера
+				 *
 				 * @return результат работы функции
 				 */
 				bool flushDNS() noexcept;
 			public:
 				/**
-				 * timeoutDNS Метод установки времени ожидания выполнения запроса DNS-резолвера
+				 * @brief Метод установки времени ожидания выполнения запроса DNS-резолвера
+				 *
 				 * @param sec интервал времени выполнения запроса в секундах
 				 */
 				void timeoutDNS(const uint8_t sec) noexcept;
 			public:
 				/**
-				 * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
+				 * @brief Метод установки префикса переменной окружения для извлечения серверов имён
+				 *
 				 * @param prefix префикс переменной окружения для установки
 				 */
 				void prefixDNS(const string & prefix) noexcept;
 			public:
 				/**
-				 * clearDNSBlackList Метод очистки чёрного списка DNS-резолвера
+				 * @brief Метод очистки чёрного списка DNS-резолвера
+				 *
 				 * @param domain доменное имя для которого очищается чёрный список
 				 */
 				void clearDNSBlackList(const string & domain) noexcept;
 				/**
-				 * delInDNSBlackList Метод удаления IP-адреса из чёрного списока DNS-резолвера
+				 * @brief Метод удаления IP-адреса из чёрного списока DNS-резолвера
+				 *
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для удаления из чёрного списка
 				 */
 				void delInDNSBlackList(const string & domain, const string & ip) noexcept;
 				/**
-				 * setToDNSBlackList Метод добавления IP-адреса в чёрный список DNS-резолвера
+				 * @brief Метод добавления IP-адреса в чёрный список DNS-резолвера
+				 *
 				 * @param domain доменное имя соответствующее IP-адресу
 				 * @param ip     адрес для добавления в чёрный список
 				 */
 				void setToDNSBlackList(const string & domain, const string & ip) noexcept;
 			public:
 				/**
-				 * cork Метод отключения/включения алгоритма TCP/CORK
+				 * @brief Метод отключения/включения алгоритма TCP/CORK
+				 *
 				 * @param mode режим применимой операции
 				 * @return     результат выполенния операции
 				 */
 				bool cork(const engine_t::mode_t mode) noexcept;
 				/**
-				 * nodelay Метод отключения/включения алгоритма Нейгла
+				 * @brief Метод отключения/включения алгоритма Нейгла
+				 *
 				 * @param mode режим применимой операции
 				 * @return     результат выполенния операции
 				 */
 				bool nodelay(const engine_t::mode_t mode) noexcept;
 			public:
 				/**
-				 * crypted Метод получения флага шифрования
+				 * @brief Метод получения флага шифрования
+				 *
 				 * @param sid идентификатор потока
 				 * @return    результат проверки
 				 */
 				bool crypted(const int32_t sid) const noexcept;
 			public:
 				/**
-				 * encryption Метод активации шифрования
+				 * @brief Метод активации шифрования
+				 *
 				 * @param mode флаг активации шифрования
 				 */
 				void encryption(const bool mode) noexcept;
 				/**
-				 * encryption Метод установки параметров шифрования
+				 * @brief Метод установки параметров шифрования
+				 *
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
@@ -606,25 +685,29 @@ namespace awh {
 				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * authType Метод установки типа авторизации
+				 * @brief Метод установки типа авторизации
+				 *
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
 				 */
 				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 				/**
-				 * authTypeProxy Метод установки типа авторизации прокси-сервера
+				 * @brief Метод установки типа авторизации прокси-сервера
+				 *
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
 				 */
 				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
+				 * @brief Метод ожидания входящих сообщений
+				 *
 				 * @param sec интервал времени в секундах
 				 */
 				void waitMessage(const uint16_t sec) noexcept;
 				/**
-				 * waitTimeDetect Метод детекции сообщений по количеству секунд
+				 * @brief Метод детекции сообщений по количеству секунд
+				 *
 				 * @param read    количество секунд для детекции по чтению
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для детекции по подключению
@@ -632,7 +715,8 @@ namespace awh {
 				void waitTimeDetect(const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
-				 * network Метод установки параметров сети
+				 * @brief Метод установки параметров сети
+				 *
 				 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
 				 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
 				 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
@@ -640,14 +724,16 @@ namespace awh {
 				void network(const vector <string> & ips = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * AWH Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
 				AWH(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~AWH Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~AWH() noexcept {}
 		} awh_t;

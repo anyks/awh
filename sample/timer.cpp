@@ -28,12 +28,9 @@ using namespace awh;
  */
 using namespace placeholders;
 
-static void TestFN(const uint64_t tid){
-	cout << " ********** GET TID " << tid << " || " << std::this_thread::get_id() << endl;
-}
-
 /**
- * Executor Класс объекта исполнителя
+ * @brief Класс объекта исполнителя
+ *
  */
 class Executor {
 	private:
@@ -49,7 +46,8 @@ class Executor {
 		log_t * _log;
 	public:
 		/**
-		 * interval Метод интервала
+		 * @brief Метод интервала
+		 *
 		 * @param tid   идентификатор таймера
 		 * @param timer объект таймера
 		 */
@@ -69,7 +67,8 @@ class Executor {
 			}
 		}
 		/**
-		 * timeout Метод таймаута
+		 * @brief Метод таймаута
+		 *
 		 * @param id идентификатор таймера
 		 */
 		void timeout([[maybe_unused]] const uint16_t id){
@@ -77,7 +76,8 @@ class Executor {
 			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->_ts).count());
 		}
 		/**
-		 * status Метод запуска сетевого ядра
+		 * @brief Метод запуска сетевого ядра
+		 *
 		 * @param status флаг запуска сетевого ядра
 		 * @param timer  объект таймера
 		 */
@@ -100,21 +100,6 @@ class Executor {
 					tid = timer->interval(5000);
 					// Устанавливаем интервал времени времени на 5 секунд
 					timer->on(tid, &Executor::interval, this, tid, timer);
-
-					SOCKET fd = timer->activationUpstream(&::TestFN);
-
-					cout << " !!!!!!! " << std::this_thread::get_id() << endl;
-
-					std::thread([timer](SOCKET fd) -> void {
-
-						cout << " ******** " << fd << " || " << std::this_thread::get_id() << endl;
-
-						timer->upstream(fd, 2281);
-
-						timer->deactivationUpstream(fd);
-					
-					}, fd).join();
-
 				} break;
 				// Если система остановлена
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
@@ -125,13 +110,15 @@ class Executor {
 		}
 	public:
 		/**
-		 * Executor Конструктор
+		 * @brief Конструктор
+		 *
 		 * @param log объект логирования
 		 */
 		Executor(log_t * log) : _ts(chrono::system_clock::now()), _is(chrono::system_clock::now()), _count(0), _log(log) {}
 };
 /**
- * main Главная функция приложения
+ * @brief Главная функция приложения
+ *
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения

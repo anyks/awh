@@ -15,7 +15,26 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <sys/os.hpp>
 #include <sys/ver.hpp>
+
+/**
+ * Для операционной системы OS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Стандартная библиотека
+	 */
+	#include <winsock2.h>
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	/**
+	 * Стандартная библиотека
+	 */
+	#include <arpa/inet.h>
+#endif
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -23,7 +42,8 @@
 using namespace std;
 
 /**
- * num Метод извлечения версии в виде числа
+ * @brief Метод извлечения версии в виде числа
+ *
  * @return версия в виде числа
  */
 uint32_t awh::Version::num() const noexcept {
@@ -31,7 +51,8 @@ uint32_t awh::Version::num() const noexcept {
 	return this->_version;
 }
 /**
- * str Метод извлечения версии в виде строки
+ * @brief Метод извлечения версии в виде строки
+ *
  * @param octets количество октетов
  * @return       версия в виде строки
  */
@@ -42,6 +63,8 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Получаем текущее значение версии в Lite-Endian
+		const uint32_t version = htons(this->_version);
 		// Если количество октетов не указанно
 		if(octets == 0)
 			// Выполняем корректировку
@@ -57,7 +80,7 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 				// Добавляем разделитель
 				result.append(1, '.');
 			// Добавляем октет в версию
-			result.append(std::to_string(reinterpret_cast <const uint8_t *> (&this->_version)[i]));
+			result.append(std::to_string(reinterpret_cast <const uint8_t *> (&version)[i]));
 		}
 	/**
 	 * Если возникает ошибка
@@ -81,7 +104,8 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 	return result;
 }
 /**
- * set Метод установки версии
+ * @brief Метод установки версии
+ *
  * @param ver устанавливаемая версия
  */
 void awh::Version::set(const uint32_t ver) noexcept {
@@ -89,7 +113,8 @@ void awh::Version::set(const uint32_t ver) noexcept {
 	this->_version = ver;
 }
 /**
- * set Метод установки версии
+ * @brief Метод установки версии
+ *
  * @param ver устанавливаемая версия
  */
 void awh::Version::set(const string & ver) noexcept {
@@ -118,6 +143,8 @@ void awh::Version::set(const string & ver) noexcept {
 			}
 			// Выполняем установку последнего октета
 			reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (::stoi(ver.substr(start)));
+			// Переводим число в Big-Endian
+			this->_version = htonl(this->_version);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -139,7 +166,8 @@ void awh::Version::set(const string & ver) noexcept {
 	}
 }
 /**
- * Оператор вывода версии в качестве числа
+ * @brief Оператор вывода версии в качестве числа
+ *
  * @return версия в качестве числа
  */
 awh::Version::operator uint32_t() const noexcept {
@@ -147,7 +175,8 @@ awh::Version::operator uint32_t() const noexcept {
 	return this->num();
 }
 /**
- * Оператор вывода версии в качестве строки
+ * @brief Оператор вывода версии в качестве строки
+ *
  * @return версия в качестве строки
  */
 awh::Version::operator string() const noexcept {
@@ -155,7 +184,8 @@ awh::Version::operator string() const noexcept {
 	return this->str();
 }
 /**
- * Оператор [<] сравнения версии
+ * @brief Оператор [<] сравнения версии
+ *
  * @param ver версия для сравнения
  * @return    результат сравнения
  */
@@ -164,7 +194,8 @@ bool awh::Version::operator < (const ver_t & ver) const noexcept {
 	return (this->_version < ver._version);
 }
 /**
- * Оператор [>] сравнения версии
+ * @brief Оператор [>] сравнения версии
+ *
  * @param ver версия для сравнения
  * @return     результат сравнения
  */
@@ -173,7 +204,8 @@ bool awh::Version::operator > (const ver_t & ver) const noexcept {
 	return (this->_version > ver._version);
 }
 /**
- * Оператор [<=] сравнения версии
+ * @brief Оператор [<=] сравнения версии
+ *
  * @param ver версия для сравнения
  * @return     результат сравнения
  */
@@ -182,7 +214,8 @@ bool awh::Version::operator <= (const ver_t & ver) const noexcept {
 	return (this->_version <= ver._version);
 }
 /**
- * Оператор [>=] сравнения версии
+ * @brief Оператор [>=] сравнения версии
+ *
  * @param ver версия для сравнения
  * @return     результат сравнения
  */
@@ -191,7 +224,8 @@ bool awh::Version::operator >= (const ver_t & ver) const noexcept {
 	return (this->_version >= ver._version);
 }
 /**
- * Оператор [!=] сравнения версии
+ * @brief Оператор [!=] сравнения версии
+ *
  * @param ver версия для сравнения
  * @return     результат сравнения
  */
@@ -200,7 +234,8 @@ bool awh::Version::operator != (const ver_t & ver) const noexcept {
 	return (this->_version != ver._version);
 }
 /**
- * Оператор [==] сравнения версии
+ * @brief Оператор [==] сравнения версии
+ *
  * @param ver версия для сравнения
  * @return     результат сравнения
  */
@@ -209,7 +244,20 @@ bool awh::Version::operator == (const ver_t & ver) const noexcept {
 	return (this->_version == ver._version);
 }
 /**
- * Оператор [=] присвоения версии
+ * @brief Оператор [=] присвоения версии
+ *
+ * @param ver версия для присвоения
+ * @return    текущий объект
+ */
+awh::Version & awh::Version::operator = (const char * ver) noexcept {
+	// Устанавливаем версию
+	this->set(ver);
+	// Выводим результат
+	return (* this);
+}
+/**
+ * @brief Оператор [=] присвоения версии
+ *
  * @param ver версия для присвоения
  * @return    текущий объект
  */
@@ -220,7 +268,8 @@ awh::Version & awh::Version::operator = (const string & ver) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] присвоения версии
+ * @brief Оператор [=] присвоения версии
+ *
  * @param ver версия для присвоения
  * @return    текущий объект
  */
@@ -231,7 +280,40 @@ awh::Version & awh::Version::operator = (const uint32_t ver) noexcept {
 	return (* this);
 }
 /**
- * Оператор [>>] чтения из потока версии
+ * @brief Конструктор
+ *
+ */
+awh::Version::Version() noexcept : _version(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param ver устанавливаемая версия
+ */
+awh::Version::Version(const char * ver) noexcept : _version(0) {
+	// Устанавливаем версию
+	this->set(ver);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param ver устанавливаемая версия
+ */
+awh::Version::Version(const string & ver) noexcept : _version(0) {
+	// Устанавливаем версию
+	this->set(ver);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param ver устанавливаемая версия
+ */
+awh::Version::Version(const uint32_t ver) noexcept : _version(0) {
+	// Устанавливаем версию
+	this->set(ver);
+}
+/**
+ * @brief Оператор [>>] чтения из потока версии
+ *
  * @param is  поток для чтения
  * @param ver верси для присвоения
  */
@@ -248,7 +330,8 @@ istream & awh::operator >> (istream & is, ver_t & ver) noexcept {
 	return is;
 }
 /**
- * Оператор [<<] вывода в поток версии
+ * @brief Оператор [<<] вывода в поток версии
+ *
  * @param os  поток куда нужно вывести данные
  * @param ver верси для присвоения
  */

@@ -29,7 +29,8 @@
 #include "../sys/buffer.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -37,20 +38,24 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * scheme серверное пространство имён
+		 * @brief серверное пространство имён
+		 *
 		 */
 		namespace scheme {
 			/**
-			 * WEB Структура схемы сети WEB сервера
+			 * @brief Структура схемы сети WEB сервера
+			 *
 			 */
 			typedef struct AWHSHARED_EXPORT WEB : public scheme_t {
 				public:
 					/**
-					 * Options Структура параметров активного клиента
+					 * @brief Структура параметров активного клиента
+					 *
 					 */
 					typedef struct Options {
 						bool mode;                       // Флаг открытия подключения
@@ -67,7 +72,8 @@ namespace awh {
 						engine_t::proto_t proto;         // Активный прототип интернета
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
-						 * Options Конструктор
+						 * @brief Конструктор
+						 *
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
@@ -80,7 +86,8 @@ namespace awh {
 						 proto(engine_t::proto_t::HTTP1_1),
 						 compressor(awh::http_t::compressor_t::NONE) {}
 						/**
-						 * ~Options Деструктор
+						 * @brief Деструктор
+						 *
 						 */
 						~Options() noexcept {}
 					} options_t;
@@ -102,42 +109,49 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
-					 * clear Метод очистки
+					 * @brief Метод очистки
+					 *
 					 */
 					void clear() noexcept;
 				public:
 					/**
-					 * set Метод создания параметров активного клиента
+					 * @brief Метод создания параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void set(const uint64_t bid) noexcept;
 					/**
-					 * rm Метод удаления параметров активного клиента
+					 * @brief Метод удаления параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void rm(const uint64_t bid) noexcept;
 				public:
 					/**
-					 * get Метод извлечения списка параметров активных клиентов
+					 * @brief Метод извлечения списка параметров активных клиентов
+					 *
 					 * @return список параметров активных клиентов
 					 */
 					const clients_t & get() const noexcept;
 					/**
-					 * get Метод получения параметров активного клиента
+					 * @brief Метод получения параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
 					const options_t * get(const uint64_t bid) const noexcept;
 				public:
 					/**
-					 * WEB Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					WEB(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
-					 * ~WEB Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~WEB() noexcept {}
 			} web_t;

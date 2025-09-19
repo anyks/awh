@@ -172,12 +172,9 @@ void awh::Watch::start() noexcept {
  * create Метод создания нового таймера
  * @return файловый дескриптор для отслеживания
  */
-std::array <SOCKET, 2> awh::Watch::create() noexcept {
+SOCKET awh::Watch::create() noexcept {
 	// Результат работы функции
-	std::array <SOCKET, 2> result = {
-		INVALID_SOCKET,
-		INVALID_SOCKET
-	};
+	SOCKET result = INVALID_SOCKET;
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -187,11 +184,11 @@ std::array <SOCKET, 2> awh::Watch::create() noexcept {
 		// Выполняем инициализацию
 		result = notifier->init();
 		// Если уведомитель инициализирован правильно
-		if((result[0] != INVALID_SOCKET) && (result[1] != INVALID_SOCKET)){
+		if(result != INVALID_SOCKET){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выполняем перенос нашего уведомителя в список уведомителей
-			this->_notifiers.emplace(result[0], ::move(notifier));
+			this->_notifiers.emplace(result, ::move(notifier));
 		}
 	/**
 	 * Если возникает ошибка
@@ -241,7 +238,7 @@ void awh::Watch::away(const SOCKET sock) noexcept {
 		// Если список таймеров не пустой
 		if(!this->_timers.empty()){
 			// Выполняем блокировку потока
-			const lock_guard <std::recursive_mutex> lock(this->_mtx);
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выполняем удаление уведомителя
 			this->_notifiers.erase(sock);
 		}

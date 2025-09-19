@@ -52,10 +52,10 @@ void awh::Timer::closedown(const bool mode, const bool status) noexcept {
 /**
  * event Метод события таймера
  * @param tid   идентификатор таймера
- * @param fd    файловый дескриптор (сокет)
+ * @param sock  сетевой сокет
  * @param event произошедшее событие
  */
-void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET fd, const base_t::event_type_t event) noexcept {
+void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET sock, const base_t::event_type_t event) noexcept {
 	// Определяем тип события
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие таймера
@@ -115,7 +115,7 @@ void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET fd, con
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tid, fd, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tid, sock, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
 				/**
 				* Если режим отладки не включён
 				*/
@@ -240,7 +240,7 @@ uint16_t awh::Timer::timeout(const uint32_t delay) noexcept {
 			// Устанавливаем время задержки таймера
 			ret.first->second->event.timeout(delay);
 			// Устанавливаем базу данных событий
-			ret.first->second->event = this->eventBase();
+			ret.first->second->event = this->base();
 			// Устанавливаем функцию обратного вызова
 			ret.first->second->event = std::bind(&timer_t::event, this, ret.first->first, _1, _2);
 			// Выполняем запуск работы таймера
@@ -315,7 +315,7 @@ uint16_t awh::Timer::interval(const uint32_t delay) noexcept {
 			// Устанавливаем время задержки таймера
 			ret.first->second->event.timeout(delay, true);
 			// Устанавливаем базу данных событий
-			ret.first->second->event = this->eventBase();
+			ret.first->second->event = this->base();
 			// Устанавливаем функцию обратного вызова
 			ret.first->second->event = std::bind(&timer_t::event, this, ret.first->first, _1, _2);
 			// Выполняем запуск работы таймера

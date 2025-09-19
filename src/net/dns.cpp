@@ -308,23 +308,23 @@ vector <string> awh::DNS::Worker::items(const uint8_t * buffer, const size_t siz
  * close Метод закрытия подключения
  */
 void awh::DNS::Worker::close() noexcept {
-	// Если файловый дескриптор не закрыт
-	if(this->_fd != INVALID_SOCKET){
+	// Если сетевой сокет не закрыт
+	if(this->_sock != INVALID_SOCKET){
 		/**
 		 * Для операционной системы OS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
-			closesocket(this->_fd);
+			closesocket(this->_sock);
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
-			::close(this->_fd);
+			::close(this->_sock);
 		#endif
-		// Выполняем сброс файлового дескриптора
-		this->_fd = INVALID_SOCKET;
+		// Выполняем сброс сетевого сокета
+		this->_sock = INVALID_SOCKET;
 	}
 }
 /**
@@ -526,9 +526,9 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 		// Увеличиваем размер запроса
 		size += sizeof(q_flags_t);
 		// Создаём сокет подключения
-		this->_fd = ::socket(this->_family, SOCK_DGRAM, IPPROTO_UDP);
+		this->_sock = ::socket(this->_family, SOCK_DGRAM, IPPROTO_UDP);
 		// Если сокет не создан создан и работа резолвера не остановлена
-		if(this->_mode && (this->_fd == INVALID_SOCKET)){
+		if(this->_mode && (this->_sock == INVALID_SOCKET)){
 			// Выводим в лог сообщение
 			this->_self->_log->print("File descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
 			// Выполняем закрытие подключения
@@ -538,19 +538,19 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 		// Если сокет создан удачно и работа резолвера не остановлена
 		} else if(this->_mode) {
 			// Устанавливаем разрешение на повторное использование сокета
-			this->_socket.reuseable(this->_fd);
+			this->_socket.reuseable(this->_sock);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
-			this->_socket.closeOnExec(this->_fd);
+			this->_socket.closeOnExec(this->_sock);
 			// Устанавливаем размер буфера передачи данных на чтение
-			// this->_socket.bufferSize(this->_fd, AWH_BUFFER_SIZE_RCV, 1, socket_t::mode_t::READ);
+			// this->_socket.bufferSize(this->_sock, AWH_BUFFER_SIZE_RCV, 1, socket_t::mode_t::READ);
 			// Устанавливаем размер буфера передачи данных на запись
-			// this->_socket.bufferSize(this->_fd, AWH_BUFFER_SIZE_SND, 1, socket_t::mode_t::WRITE);
+			// this->_socket.bufferSize(this->_sock, AWH_BUFFER_SIZE_SND, 1, socket_t::mode_t::WRITE);
 			// Устанавливаем таймаут на получение данных из сокета
-			this->_socket.timeout(this->_fd, this->_self->_timeout * 1000, socket_t::mode_t::READ);
+			this->_socket.timeout(this->_sock, this->_self->_timeout * 1000, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
-			this->_socket.timeout(this->_fd, this->_self->_timeout * 1000, socket_t::mode_t::WRITE);
+			this->_socket.timeout(this->_sock, this->_self->_timeout * 1000, socket_t::mode_t::WRITE);
 			// Выполняем бинд на сокет
-			if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
+			if(::bind(this->_sock, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
 				// Выводим в лог сообщение
 				this->_self->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, from.c_str());
 				// Выполняем закрытие подключения
@@ -561,11 +561,11 @@ string awh::DNS::Worker::send(const string & fqdn, const string & from, const st
 			// Количество отправленных или полученных байт
 			int64_t bytes = 0;
 			// Если запрос на сервер DNS успешно отправлен
-			if((bytes = static_cast <int64_t> (::sendto(this->_fd, reinterpret_cast <const char *> (self->_buffer.get(buffer_t::type_t::DATA)), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
+			if((bytes = static_cast <int64_t> (::sendto(this->_sock, reinterpret_cast <const char *> (self->_buffer.get(buffer_t::type_t::DATA)), size, 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
 				// Выполняем очистку буфера данных
 				self->_buffer.clear(buffer_t::type_t::DATA);
 				// Выполняем чтение ответа сервера
-				bytes = static_cast <int64_t> (::recvfrom(this->_fd, reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::DATA)), self->_buffer.size(buffer_t::type_t::DATA), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
+				bytes = static_cast <int64_t> (::recvfrom(this->_sock, reinterpret_cast <char *> (self->_buffer.get(buffer_t::type_t::DATA)), self->_buffer.size(buffer_t::type_t::DATA), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
 				// Если данные прочитать не удалось
 				if(bytes <= 0){
 					// Выполняем закрытие подключения

@@ -33,7 +33,8 @@
 #include "global.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -41,12 +42,14 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Шаблон формата данных передаваемого между потоками
+	 * @brief Шаблон формата данных передаваемого между потоками
+	 *
 	 * @tparam T данные передаваемые между потоками
 	 */
 	template <typename T>
 	/**
-	 * Screen Класс для работы с дочерним потоком
+	 * @brief Класс для работы с дочерним потоком
+	 *
 	 */
 	class Screen {
 		public:
@@ -75,12 +78,12 @@ namespace awh {
 			// Состояние здоровья
 			health_t _health;
 		private:
+			// Мютекс для блокировки потока
+			std::mutex _mtx;
 			// Мютекс ожидания данных
 			std::mutex _locker;
 			// Объект дочернего потока
 			std::thread _thr;
-			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
 			// Условная переменная, ожидания поступления данных
 			std::condition_variable _cv;
 		private:
@@ -100,7 +103,8 @@ namespace awh {
 			function <void (const state_t, const size_t)> _state;
 		private:
 			/**
-			 * process Метод запуска обработки поступившей задачи
+			 * @brief Метод запуска обработки поступившей задачи
+			 *
 			 */
 			void process() noexcept {
 				// Если не производится остановка
@@ -154,7 +158,8 @@ namespace awh {
 			}
 		private:
 			/**
-			 * receiving Метод получения данных
+			 * @brief Метод получения данных
+			 *
 			 */
 			void receiving() noexcept {
 				// Запускаем бесконечный цикл
@@ -188,7 +193,8 @@ namespace awh {
 			}
 		private:
 			/**
-			 * check Метод проверки на существование данных
+			 * @brief Метод проверки на существование данных
+			 *
 			 * @return результат проверки
 			 */
 			bool check() noexcept {
@@ -201,7 +207,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * id Метод получения идентификатора потока
+			 * @brief Метод получения идентификатора потока
+			 *
 			 * @return идентификатор потока
 			 */
 			uint64_t id() const noexcept {
@@ -210,7 +217,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * size Метод получения размера очереди
+			 * @brief Метод получения размера очереди
+			 *
 			 * @return размер очереди для получения
 			 */
 			size_t size() const noexcept {
@@ -218,7 +226,8 @@ namespace awh {
 				return this->_payload.size();
 			}
 			/**
-			 * launched Метод проверки запущен ли в данный момент модуль
+			 * @brief Метод проверки запущен ли в данный момент модуль
+			 *
 			 * @return результат проверки запущен ли модуль
 			 */
 			bool launched() const noexcept {
@@ -227,7 +236,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * on Метод установки функции обратного вызова активации триггера
+			 * @brief Метод установки функции обратного вызова активации триггера
+			 *
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (void)> callback) noexcept {
@@ -236,7 +246,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_trigger = callback;
 				/**
@@ -259,7 +269,8 @@ namespace awh {
 				}
 			}
 			/**
-			 * on Метод установки функции обратного вызова
+			 * @brief Метод установки функции обратного вызова
+			 *
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (const T &)> callback) noexcept {
@@ -268,7 +279,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_callback = callback;
 				/**
@@ -291,7 +302,8 @@ namespace awh {
 				}
 			}
 			/**
-			 * on Метод установки функции обратного вызова получения состояния очереди
+			 * @brief Метод установки функции обратного вызова получения состояния очереди
+			 *
 			 * @param callback функция обратного вызова для установки
 			 */
 			void on(function <void (const state_t, const size_t)> callback) noexcept {
@@ -300,7 +312,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Устанавливаем функцию обратного вызова
 					this->_state = callback;
 				/**
@@ -324,7 +336,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * timeout Метод установки таймаута в миллисекундах
+			 * @brief Метод установки таймаута в миллисекундах
+			 *
 			 * @param delay значение таймаута для установки в миллисекундах
 			 */
 			void timeout(const uint32_t delay) noexcept {
@@ -333,7 +346,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполняем установку задержки времени
 					this->_delay = std::chrono::nanoseconds(static_cast <uint64_t> (delay) * 1000000);
 				/**
@@ -356,7 +369,8 @@ namespace awh {
 				}
 			}
 			/**
-			 * timeout Метод установки таймаута в наносекундах
+			 * @brief Метод установки таймаута в наносекундах
+			 *
 			 * @param delay значение таймаута для установки в наносекундах
 			 */
 			void timeout(const uint64_t delay = TIMEOUT) noexcept {
@@ -365,7 +379,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const lock_guard <std::recursive_mutex> lock(this->_mtx);
+					const lock_guard <std::mutex> lock(this->_mtx);
 					// Выполняем установку задержки времени
 					this->_delay = std::chrono::nanoseconds(delay);
 				/**
@@ -389,7 +403,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * send Метод отправки сообщения в экран
+			 * @brief Метод отправки сообщения в экран
+			 *
 			 * @param data данные отправляемого сообщения
 			 */
 			void send(T && data) noexcept {
@@ -429,7 +444,8 @@ namespace awh {
 				}
 			}
 			/**
-			 * send Метод отправки сообщения в экран
+			 * @brief Метод отправки сообщения в экран
+			 *
 			 * @param data данные отправляемого сообщения
 			 */
 			void send(const T & data) noexcept {
@@ -470,7 +486,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * stop Метод остановки работы модуля
+			 * @brief Метод остановки работы модуля
+			 *
 			 */
 			void stop() noexcept {
 				/**
@@ -494,14 +511,15 @@ namespace awh {
 				} catch(const exception &) {
 					/**
 					 * Пропускаем полученную ошибку.
-					 * 
+					 *
 					 * Этот метод вызывается также в деструкторе,
 					 * по этому ошибку выводить не надо, так-как она всплывает всегда
 					 */
 				}
 			}
 			/**
-			 * start Метод запуска работы модуля
+			 * @brief Метод запуска работы модуля
+			 *
 			 */
 			void start() noexcept {
 				/**
@@ -542,7 +560,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * Оператор проверки запущен ли в данный момент модуль
+			 * @brief Оператор проверки запущен ли в данный момент модуль
+			 *
 			 * @return результат проверки запущен ли модуль
 			 */
 			operator bool() const noexcept {
@@ -550,7 +569,8 @@ namespace awh {
 				return this->launched();
 			}
 			/**
-			 * Оператор получения размера очереди
+			 * @brief Оператор получения размера очереди
+			 *
 			 * @return размер очереди для получения
 			 */
 			operator size_t() const noexcept {
@@ -559,7 +579,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * Оператор [=] отправки данных в экран
+			 * @brief Оператор [=] отправки данных в экран
+			 *
 			 * @param data данные отправляемого сообщения
 			 * @return     текущий объект
 			 */
@@ -570,7 +591,8 @@ namespace awh {
 				return (* this);
 			}
 			/**
-			 * Оператор [=] отправки данных в экран
+			 * @brief Оператор [=] отправки данных в экран
+			 *
 			 * @param data данные отправляемого сообщения
 			 * @return     текущий объект
 			 */
@@ -581,7 +603,8 @@ namespace awh {
 				return (* this);
 			}
 			/**
-			 * Оператор [=] установки таймаута в наносекундах
+			 * @brief Оператор [=] установки таймаута в наносекундах
+			 *
 			 * @param delay значение таймаута для установки в наносекундах
 			 * @return      текущий объект
 			 */
@@ -592,7 +615,8 @@ namespace awh {
 				return (* this);
 			}
 			/**
-			 * Оператор [=] установки таймаута в миллисекундах
+			 * @brief Оператор [=] установки таймаута в миллисекундах
+			 *
 			 * @param delay значение таймаута для установки в миллисекундах
 			 * @return      текущий объект
 			 */
@@ -603,7 +627,8 @@ namespace awh {
 				return (* this);
 			}
 			/**
-			 * Оператор [=] установки функции обратного вызова активации триггера
+			 * @brief Оператор [=] установки функции обратного вызова активации триггера
+			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
 			 */
@@ -614,7 +639,8 @@ namespace awh {
 				return (* this);
 			}
 			/**
-			 * Оператор [=] установки функции обратного вызова
+			 * @brief Оператор [=] установки функции обратного вызова
+			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
 			 */
@@ -625,7 +651,8 @@ namespace awh {
 				return (* this);
 			}
 			/**
-			 * Оператор [=] установки функции обратного вызова получения состояния очереди
+			 * @brief Оператор [=] установки функции обратного вызова получения состояния очереди
+			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
 			 */
@@ -637,7 +664,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * Screen Конструктор
+			 * @brief Конструктор
+			 *
 			 */
 			Screen() noexcept :
 			 _stop(true), _id(0), _health(health_t::ALIVE),
@@ -647,7 +675,8 @@ namespace awh {
 				this->start();
 			}
 			/**
-			 * Screen Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param health статус здоровья
 			 */
 			Screen(const health_t health) noexcept :
@@ -660,7 +689,8 @@ namespace awh {
 					this->start();
 			}
 			/**
-			 * ~Screen Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Screen() noexcept {
 				// Выполняем остановку работы модуля
@@ -668,11 +698,14 @@ namespace awh {
 			}
 	};
 	/**
-	 * Шаблон формата данных передаваемого между потоками
+	 * @brief Шаблон формата данных передаваемого между потоками
+	 *
 	 * @tclass T данные передаваемые между потоками
 	 */
 	template <class T>
-	// Создаём тип данных работы с экраном
+	/**
+	 * Создаём тип данных работы с экраном
+	 */
 	using screen_t = Screen <T>;
 };
 

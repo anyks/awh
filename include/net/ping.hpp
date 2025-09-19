@@ -69,7 +69,8 @@
 #include "../sys/chrono.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -77,7 +78,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Ping Класс пинга
+	 * @brief Класс пинга
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Ping {
 		private:
@@ -91,20 +93,23 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Peer Структура подключения
+			 * @brief Структура подключения
+			 *
 			 */
 			typedef struct Peer {
 				socklen_t size;                 // Размер объекта подключения
 				struct sockaddr_storage client; // Параметры подключения клиента
 				struct sockaddr_storage server; // Параметры подключения сервера
 				/**
-				 * Peer Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Peer() noexcept : size(0), client{}, server{} {}
 			} peer_t;
 		private:
 			/**
-			 * IcmpHeader Структура заголовков ICMP
+			 * @brief Структура заголовков ICMP
+			 *
 			 */
 			struct IcmpHeader {
 				uint8_t type;      // Тип запроса
@@ -115,7 +120,8 @@ namespace awh {
 				 */
 				union {
 					/**
-					 * echo Структура отправляемого запроса
+					 * @brief Структура отправляемого запроса
+					 *
 					 */
 					struct {
 						uint16_t identifier = 0; // Идентификатор запроса
@@ -123,21 +129,24 @@ namespace awh {
 						uint64_t payload    = 0; // Тело полезной нагрузки
 					} echo;
 					/**
-					 * pointer Структура указателя запроса
+					 * @brief Структура указателя запроса
+					 *
 					 */
 					struct ICMP_PACKET_POINTER_HEADER {
 						// Указатель пакета
 						uint8_t pointer = 0;
 					} pointer;
 					/**
-					 * redirect Структура адреса ответа
+					 * @brief Структура адреса ответа
+					 *
 					 */
 					struct ICMP_PACKET_REDIRECT_HEADER {
 						// Адрес ответа IPv4
 						uint32_t gatewayAddress = 0;
 					} redirect;
 					/**
-					 * redirect Структура адреса ответа
+					 * @brief Структура адреса ответа
+					 *
 					 */
 					struct ICMP6_PACKET_REDIRECT_HEADER {
 						// Адрес ответа IPv6
@@ -146,8 +155,8 @@ namespace awh {
 				} meta;
 			};
 		private:
-			// Файловый дескриптор (сокет)
-			SOCKET _fd;
+			// Сетевой сокет
+			SOCKET _sock;
 		private:
 			// Флаг запуска работы
 			bool _mode;
@@ -196,14 +205,16 @@ namespace awh {
 			function <void (const uint64_t, const string &, Ping *)> _callback;
 		private:
 			/**
-			 * host Метод извлечения хоста компьютера
+			 * @brief Метод извлечения хоста компьютера
+			 *
 			 * @param family семейство сокета (AF_INET / AF_INET6)
 			 * @return       хост компьютера с которого производится запрос
 			 */
 			string host(const int32_t family) const noexcept;
 		private:
 			/**
-			 * checksum Метод подсчёта контрольной суммы
+			 * @brief Метод подсчёта контрольной суммы
+			 *
 			 * @param buffer буфер данных для подсчёта
 			 * @param size   размер данных для подсчёта
 			 * @return       подсчитанная контрольная сумма
@@ -211,7 +222,8 @@ namespace awh {
 			uint16_t checksum(const void * buffer, const size_t size) noexcept;
 		private:
 			/**
-			 * send Метод отправки запроса на сервер
+			 * @brief Метод отправки запроса на сервер
+			 *
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param index  индекс последовательности
 			 * @return       количество прочитанных байт
@@ -219,28 +231,33 @@ namespace awh {
 			int64_t send(const int32_t family, const size_t index) noexcept;
 		public:
 			/**
-			 * close Метод закрытия подключения
+			 * @brief Метод закрытия подключения
+			 *
 			 */
 			void close() noexcept;
 		public:
 			/**
-			 * cancel Метод остановки запущенной работы
+			 * @brief Метод остановки запущенной работы
+			 *
 			 */
 			void cancel() noexcept;
 		public:
 			/**
-			 * working Метод проверки запуска работы модуля
+			 * @brief Метод проверки запуска работы модуля
+			 *
 			 * @return результат работы
 			 */
 			bool working() const noexcept;
 		public:
 			/**
-			 * ping Метод запуска пинга хоста в асинхронном режиме
+			 * @brief Метод запуска пинга хоста в асинхронном режиме
+			 *
 			 * @param host хост для выполнения пинга
 			 */
 			void ping(const string & host) noexcept;
 			/**
-			 * ping Метод запуска пинга хоста в синхронном режиме
+			 * @brief Метод запуска пинга хоста в синхронном режиме
+			 *
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param host   хост для выполнения пинга
 			 */
@@ -254,14 +271,16 @@ namespace awh {
 			void _work(const int32_t family, const string & ip) noexcept;
 		public:
 			/**
-			 * ping Метод запуска пинга хоста в синхронном режиме
+			 * @brief Метод запуска пинга хоста в синхронном режиме
+			 *
 			 * @param host  хост для выполнения пинга
 			 * @param count количество итераций
 			 * @return      количество миллисекунд ответа хоста
 			 */
 			double ping(const string & host, const uint16_t count) noexcept;
 			/**
-			 * ping Метод запуска пинга хоста в синхронном режиме
+			 * @brief Метод запуска пинга хоста в синхронном режиме
+			 *
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param host   хост для выполнения пинга
 			 * @param count  количество итераций
@@ -279,60 +298,69 @@ namespace awh {
 			double _ping(const int32_t family, const string & ip, const uint16_t count) noexcept;
 		public:
 			/**
-			 * verbose Метод разрешающий/запрещающий выводить информационных сообщений
+			 * @brief Метод разрешающий/запрещающий выводить информационных сообщений
+			 *
 			 * @param mode флаг для установки
 			 */
 			void verbose(const bool mode) noexcept;
 		public:
 			/**
-			 * shifting Метод установки сдвига по времени выполнения пинга в миллисекундах
+			 * @brief Метод установки сдвига по времени выполнения пинга в миллисекундах
+			 *
 			 * @param msec сдвиг по времени в миллисекундах
 			 */
 			void shifting(const uint64_t msec) noexcept;
 		public:
 			/**
-			 * ns Метод добавления серверов DNS
+			 * @brief Метод добавления серверов DNS
+			 *
 			 * @param servers параметры DNS-серверов
 			 */
 			void ns(const vector <string> & servers) noexcept;
 		public:
 			/**
-			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 * @brief Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 *
 			 * @param network IP-адреса сетевых плат
 			 */
 			void network(const vector <string> & network) noexcept;
 			/**
-			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 * @brief Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 *
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param network IP-адреса сетевых плат
 			 */
 			void network(const int32_t family, const vector <string> & network) noexcept;
 		public:
 			/**
-			 * timeout Метод установки таймаутов в миллисекундах
+			 * @brief Метод установки таймаутов в миллисекундах
+			 *
 			 * @param read  таймаут на чтение
 			 * @param write таймаут на запись
 			 */
 			void timeout(const uint32_t read, const uint32_t write) noexcept;
 		public:
 			/**
-			 * on Метод установки функции обратного вызова, для работы в асинхронном режиме
+			 * @brief Метод установки функции обратного вызова, для работы в асинхронном режиме
+			 *
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const uint64_t, const string &, Ping *)> callback) noexcept;
 		public:
 			/**
-			 * Ping Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Ping(const fmk_t * fmk, const log_t * log) noexcept :
-			 _fd(INVALID_SOCKET), _mode(false), _verb(true),
+			 _sock(INVALID_SOCKET), _mode(false), _verb(true),
 			 _net(log), _dns(fmk, log), _socket(fmk, log), _chrono(fmk),
 			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
 			 _fmk(fmk), _log(log), _callback(nullptr) {}
 			/**
-			 * ~Ping Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Ping() noexcept {}
 	} ping_t;

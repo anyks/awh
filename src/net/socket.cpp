@@ -67,10 +67,10 @@ bool awh::Socket::noSigILL() const noexcept {
 }
 /**
  * events Метод активации получения событий SCTP для сокета
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
+ * @param sock сетевой сокет
+ * @return     результат работы функции
  */
-bool awh::Socket::events(const SOCKET fd) const noexcept {
+bool awh::Socket::events(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -84,13 +84,13 @@ bool awh::Socket::events(const SOCKET fd) const noexcept {
 		// Активируем получение входящих событий
 		event.sctp_data_io_event = 1;
 		// Выполняем активацию получения событий SCTP для сокета
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SCTP_EVENTS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set SCTP_EVENTS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -99,10 +99,10 @@ bool awh::Socket::events(const SOCKET fd) const noexcept {
 }
 /**
  * noSigPIPE Метод игнорирования отключения сигнала записи в убитый сокет
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
+ * @param sock сетевой сокет
+ * @return     результат работы функции
  */
-bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
+bool awh::Socket::noSigPIPE(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -140,13 +140,13 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 		// Устанавливаем параметр
 		const int32_t on = 1;
 		// Устанавливаем SO_NOSIGPIPE
-		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SO_NOSIGPIPE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set SO_NOSIGPIPE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -155,10 +155,10 @@ bool awh::Socket::noSigPIPE(const SOCKET fd) const noexcept {
 }
 /**
  * reuseable Метод разрешающая повторно использовать сокет после его удаления
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
+ * @param sock сетевой сокет
+ * @return     результат работы функции
  */
-bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
+bool awh::Socket::reuseable(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -168,13 +168,13 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 		// Устанавливаем параметр
 		const int32_t on = 1;
 		// Разрешаем повторно использовать тот же host:port после отключения
-		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SO_REUSEADDR option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set SO_REUSEADDR option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 		}
 	/**
@@ -184,13 +184,13 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 		// Устанавливаем параметр
 		const int32_t on = 1;
 		// Разрешаем повторно использовать тот же host:port после отключения
-		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SO_REUSEADDR option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set SO_REUSEADDR option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -200,13 +200,13 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 		 */
 		#if !__linux__
 			// Разрешаем повторно использовать тот же host:port после отключения
-			if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&on), sizeof(on))))){
+			if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&on), sizeof(on))))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Cannot set SO_REUSEPORT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Cannot set SO_REUSEPORT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 			}
 		#endif
@@ -216,40 +216,40 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 }
 /**
  * closeOnExec Метод разрешения закрывать сокет, после запуска
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
+ * @param sock сетевой сокет
+ * @return     результат работы функции
  */
-bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
+bool awh::Socket::closeOnExec(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !_WIN32 && !_WIN64
-		// Флаги файлового дескриптора
+		// Флаги сетевого сокета
 		int32_t flags = 0;
-		// Получаем флаги файлового дескриптора 
-		if(!(result = ((flags = ::fcntl(fd, F_GETFD, nullptr)) >= 0))){
+		// Получаем флаги сетевого сокета
+		if(!(result = ((flags = ::fcntl(sock, F_GETFD, nullptr)) >= 0))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set CLOSE_ON_EXEC option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set CLOSE_ON_EXEC option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
 		}
 		// Если флаг ещё не установлен
 		if(!(flags & FD_CLOEXEC)){
-			// Устанавливаем флаги для файлового дескриптора
-			if(!(result = ((flags = ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) >= 0))){
+			// Устанавливаем флаги для сетевого сокета
+			if(!(result = ((flags = ::fcntl(sock, F_SETFD, flags | FD_CLOEXEC)) >= 0))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Cannot set CLOSE_ON_EXEC option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Cannot set CLOSE_ON_EXEC option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 			}
 		}
@@ -259,26 +259,26 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 }
 /**
  * blocking Метод проверки сокета блокирующий режим
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
+ * @param sock сетевой сокет
+ * @return     результат работы функции
  */
-bool awh::Socket::blocking(const SOCKET fd) const noexcept {
+bool awh::Socket::blocking(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
 	 * Для операционной системы не являющейся OS Windows
 	 */
 	#if !_WIN32 && !_WIN64
-		// Флаги файлового дескриптора
+		// Флаги сетевого сокета
 		int32_t flags = 0;
-		// Получаем флаги файлового дескриптора
-		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
+		// Получаем флаги сетевого сокета
+		if(!(result = ((flags = ::fcntl(sock, F_GETFL, nullptr)) >= 0))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 		}
 		// Определяем в каком статусе установлен флаг сокета
@@ -289,11 +289,11 @@ bool awh::Socket::blocking(const SOCKET fd) const noexcept {
 }
 /**
  * blocking Метод установки блокирующего сокета
- * @param fd   файловый дескриптор (сокет)
+ * @param sock сетевого сокета
  * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
-bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
+bool awh::Socket::blocking(const SOCKET sock, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -307,13 +307,13 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 				// Формируем флаг разблокировки
 				u_long flag = 0;
 				// Выполняем разблокировку сокета
-				if(!(result = !static_cast <bool> (::ioctlsocket(fd, FIONBIO, &flag)))){
+				if(!(result = !static_cast <bool> (::ioctlsocket(sock, FIONBIO, &flag)))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -322,13 +322,13 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 				// Формируем флаг разблокировки
 				u_long flag = 1;
 				// Выполняем разблокировку сокета
-				if(!(result = !static_cast <bool> (::ioctlsocket(fd, FIONBIO, &flag)))){
+				if(!(result = !static_cast <bool> (::ioctlsocket(sock, FIONBIO, &flag)))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -337,16 +337,16 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 	 * Для операционной системы не являющейся OS Windows
 	 */
 	#else
-		// Флаги файлового дескриптора
+		// Флаги сетевого сокета
 		int32_t flags = 0;
-		// Получаем флаги файлового дескриптора
-		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
+		// Получаем флаги сетевого сокета
+		if(!(result = ((flags = ::fcntl(sock, F_GETFL, nullptr)) >= 0))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot get BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -358,13 +358,13 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 				// Если флаг уже установлен
 				if(flags & O_NONBLOCK){
 					// Устанавливаем неблокирующий режим
-					if(!(result = (::fcntl(fd, F_SETFL, flags ^ O_NONBLOCK) >= 0))){
+					if(!(result = (::fcntl(sock, F_SETFL, flags ^ O_NONBLOCK) >= 0))){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим в лог информацию
-							this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+							this->_log->print("Cannot set BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 						#endif
 					}
 				}
@@ -374,13 +374,13 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 				// Если флаг ещё не установлен
 				if(!(flags & O_NONBLOCK)){
 					// Устанавливаем неблокирующий режим
-					if(!(result = (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) >= 0))){
+					if(!(result = (::fcntl(sock, F_SETFL, flags | O_NONBLOCK) >= 0))){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим в лог информацию
-							this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+							this->_log->print("Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 						#endif
 					}
 				}
@@ -392,11 +392,11 @@ bool awh::Socket::blocking(const SOCKET fd, const mode_t mode) const noexcept {
 }
 /**
  * cork Метод активации TCP/CORK
- * @param fd   файловый дескриптор (сокет)
+ * @param sock сетевой сокет
  * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
-bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
+bool awh::Socket::cork(const SOCKET sock, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -419,13 +419,13 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 			break;
 		}
 		// Устанавливаем TCP_CORK
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_CORK, &flag, sizeof(flag))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_CORK, &flag, sizeof(flag))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_CORK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set TCP_CORK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 		}
 	/**
@@ -448,13 +448,13 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 			break;
 		}
 		// Устанавливаем TCP_NOPUSH
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &flag, sizeof(flag))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NOPUSH, &flag, sizeof(flag))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_NOPUSH option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set TCP_NOPUSH option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -463,11 +463,11 @@ bool awh::Socket::cork(const SOCKET fd, const mode_t mode) const noexcept {
 }
 /**
  * nodelay Метод отключения алгоритма Нейгла
- * @param fd   файловый дескриптор (сокет)
+ * @param sock сетевой сокет
  * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
-bool awh::Socket::nodelay(const SOCKET fd, const mode_t mode) const noexcept {
+bool awh::Socket::nodelay(const SOCKET sock, const mode_t mode) const noexcept {
 	// Флаг активации или деактивации алгоритма TCP/NODELAY
 	int32_t flag = -1;
 	// Результат работы функции
@@ -486,13 +486,13 @@ bool awh::Socket::nodelay(const SOCKET fd, const mode_t mode) const noexcept {
 		break;
 	}
 	// Устанавливаем TCP_NODELAY
-	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&flag), sizeof(flag))))){
+	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&flag), sizeof(flag))))){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим в лог информацию
-			this->_log->print("Cannot set TCP_NODELAY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+			this->_log->print("Cannot set TCP_NODELAY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 		#endif
 	}
 	// Выводим результат
@@ -500,16 +500,16 @@ bool awh::Socket::nodelay(const SOCKET fd, const mode_t mode) const noexcept {
 }
 /**
  * error Метод получения кода ошибки
- * @param fd файловый дескриптор (сокет)
- * @return   код ошибки на сокете если присутствует
+ * @param sock сетевой сокет
+ * @return     код ошибки на сокете если присутствует
  */
-int32_t awh::Socket::error(const SOCKET fd) const noexcept {
+int32_t awh::Socket::error(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	int32_t result = 0;
 	// Размер кода ошибки
 	socklen_t size = sizeof(result);
 	// Если мы получили ошибку, выходим сообщение
-	if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
+	if(static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size))){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -519,7 +519,7 @@ int32_t awh::Socket::error(const SOCKET fd) const noexcept {
 			// Если код ошибки получен
 			if(result > 0)
 				// Выводим в лог информацию
-				this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message(result).c_str());
+				this->_log->print("Getsockopt for SO_ERROR failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message(result).c_str());
 		#endif
 		// Выходим из функции
 		return -1;
@@ -557,23 +557,23 @@ string awh::Socket::message(const int32_t code) const noexcept {
 }
 /**
  * onlyIPv6 Метод включающая или отключающая режим отображения IPv4 на IPv6
- * @param fd   файловый дескриптор (сокет)
+ * @param sock сетевой сокет
  * @param mode режим активации или деактивации
  * @return     результат работы функции
  */
-bool awh::Socket::onlyIPv6(const SOCKET fd, const mode_t mode) const noexcept {
+bool awh::Socket::onlyIPv6(const SOCKET sock, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Устанавливаем параметр
 	const uint32_t on = static_cast <uint32_t> (mode == mode_t::ENABLED);
 	// Разрешаем повторно использовать тот же host:port после отключения
-	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&on), sizeof(on))))){
+	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&on), sizeof(on))))){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим в лог информацию
-			this->_log->print("Cannot set IPV6_V6ONLY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+			this->_log->print("Cannot set IPV6_V6ONLY option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 		#endif
 	}
 	// Выводим результат
@@ -581,12 +581,12 @@ bool awh::Socket::onlyIPv6(const SOCKET fd, const mode_t mode) const noexcept {
 }
 /**
  * timeout Метод установки таймаута на чтение из сокета
- * @param fd   файловый дескриптор (сокет)
+ * @param sock сетевой сокет
  * @param msec время таймаута в миллисекундах
  * @param mode режим установки типа сокета
  * @return     результат работы функции
  */
-bool awh::Socket::timeout(const SOCKET fd, const uint32_t msec, const mode_t mode) const noexcept {
+bool awh::Socket::timeout(const SOCKET sock, const uint32_t msec, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -598,26 +598,26 @@ bool awh::Socket::timeout(const SOCKET fd, const uint32_t msec, const mode_t mod
 			// Если необходимо установить таймаут на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <const char *> (&msec), sizeof(msec))))){
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <const char *> (&msec), sizeof(msec))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_RCVTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set SO_RCVTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			} break;
 			// Если необходимо установить таймаут на запись
 			case static_cast <uint8_t> (mode_t::WRITE): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <const char *> (&msec), sizeof(msec))))){
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <const char *> (&msec), sizeof(msec))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_SNDTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set SO_SNDTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -637,26 +637,26 @@ bool awh::Socket::timeout(const SOCKET fd, const uint32_t msec, const mode_t mod
 			// Если необходимо установить таймаут на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <void *> (&timeout), sizeof(timeout))))){
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <void *> (&timeout), sizeof(timeout))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_RCVTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set SO_RCVTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			} break;
 			// Если необходимо установить таймаут на запись
 			case static_cast <uint8_t> (mode_t::WRITE): {
 				// Выполняем установку таймаута на запись данных в сокет
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <void *> (&timeout), sizeof(timeout))))){
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <void *> (&timeout), sizeof(timeout))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_SNDTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set SO_SNDTIMEO option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -668,11 +668,11 @@ bool awh::Socket::timeout(const SOCKET fd, const uint32_t msec, const mode_t mod
 /**
  * timeToLive Метод установки времени жизни сокета
  * @param family тип протокола интернета AF_INET или AF_INET6
- * @param fd     файловый дескриптор (сокет)
- * @param ttl    время жизни файлового дескриптора в секундах (сокета)
+ * @param sock   сетевой сокет
+ * @param ttl    время жизни сетевого сокета в секундах
  * @return       результат установки времени жизни
  */
-bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_t ttl) const noexcept {
+bool awh::Socket::timeToLive(const int32_t family, const SOCKET sock, const int32_t ttl) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем тип протокола интернета
@@ -685,14 +685,14 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 			#ifdef __APPLE__
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
-				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, &mode, sizeof(&mode))))){
+				// Выполняем установку параметров времени жизни сетевого сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, &mode, sizeof(&mode))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			/**
@@ -701,14 +701,14 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 			#elif _WIN32 || _WIN64
 				// Выполняем получение размер TTL по умолчанию
 				const int32_t mode = (ttl <= 0 ? 128 : ttl);
-				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
+				// Выполняем установку параметров времени жизни файлового сетевого сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			/**
@@ -717,14 +717,14 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 			#else
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
-				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
+				// Выполняем установку параметров времени жизни файлового сетевого сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TTL, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set IP_TTL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			#endif
@@ -737,14 +737,14 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 			#ifdef __APPLE__
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
-				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &mode, sizeof(&mode))))){
+				// Выполняем установку параметров времени жизни сетевого сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &mode, sizeof(&mode))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			/**
@@ -753,14 +753,14 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 			#elif _WIN32 || _WIN64
 				// Выполняем получение размер TTL по умолчанию
 				const int32_t mode = (ttl <= 0 ? 128 : ttl);
-				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
+				// Выполняем установку параметров времени жизни сетевого сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			/**
@@ -769,14 +769,14 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET fd, const int32_
 			#else
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
-				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
+				// Выполняем установку параметров времени жизни сетевого сокета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, reinterpret_cast <const char *> (&mode), sizeof(mode))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set IPV6_UNICAST_HOPS option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			#endif
@@ -803,28 +803,28 @@ bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_
 		sd.sin_family = family;
 		// Присваиваем петлевой адрес подключения
 		sd.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-		// Выполняем создание файлового дескриптора (сокета)
-		const SOCKET fd = ::socket(family, type, 0);
+		// Выполняем создание сетевого сокета
+		const SOCKET sock = ::socket(family, type, 0);
 		// Если сокет создан продолжаем работу
-		if(fd != INVALID_SOCKET){
+		if(sock != INVALID_SOCKET){
 			// Устанавливаем порт
 			sd.sin_port = htons(port);
 			// Выполняем биндинг порта
-			result = (::bind(fd, reinterpret_cast <struct sockaddr *> (&sd), sizeof(sd)) != INVALID_SOCKET);
+			result = (::bind(sock, reinterpret_cast <struct sockaddr *> (&sd), sizeof(sd)) != INVALID_SOCKET);
 		// Выводим сообщение об ошибке
 		} else this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->message(AWH_ERROR()).c_str());
 		/**
 		 * Для операционной системы OS Windows
 		 */
 		#if _WIN32 || _WIN64
-			// Закрываем файловый дескриптор
-			::closesocket(fd);
+			// Закрываем сетевой сокет
+			::closesocket(sock);
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
-			// Закрываем файловый дескриптор
-			::close(fd);
+			// Закрываем сетевой сокет
+			::close(sock);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -832,13 +832,13 @@ bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_
 }
 /**
  * keepAlive Метод устанавливает постоянное подключение на сокет
- * @param fd    файловый дескриптор (сокет)
+ * @param sock  сетевой сокет
  * @param cnt   максимальное количество попыток
  * @param idle  время через которое происходит проверка подключения
  * @param intvl время между попытками
  * @return      результат работы функции
  */
-bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept {
+bool awh::Socket::keepAlive(const SOCKET sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если максимальное количество попыток передано неправильно
@@ -861,13 +861,13 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			// Флаг устанавливаемой опции KeepAlive
 			bool option = false;
 			// Если мы получили ошибку, выходим сообщение
-			if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <char *> (&option), sizeof(option))))){
+			if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <char *> (&option), sizeof(option))))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Setsockopt for SO_KEEPALIVE failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Setsockopt for SO_KEEPALIVE failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
@@ -878,13 +878,13 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			// Устанавливаем размер опции для чтения
 			socklen_t size = sizeof(option);
 			// Если мы получили ошибку, выходим сообщение
-			if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <char *> (&option), &size)))){
+			if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <char *> (&option), &size)))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Getsockopt for SO_KEEPALIVE failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Getsockopt for SO_KEEPALIVE failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
@@ -901,13 +901,13 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 			// Устанавливаем интервал в миллисекундах между отправкой последовательных пакетов проверки активности, если подтверждение не получено
 			alive.keepaliveinterval = (intvl * 1000);
 			// Устанавливаем оставшиеся параметры (время через которое происходит проверка подключения и время между попытками)
-			if(!(result = (WSAIoctl(fd, SIO_KEEPALIVE_VALS, &alive, sizeof(alive), nullptr, 0, reinterpret_cast <DWORD *> (&numBytesReturned), nullptr, nullptr) != SOCKET_ERROR))){
+			if(!(result = (::WSAIoctl(sock, SIO_KEEPALIVE_VALS, &alive, sizeof(alive), nullptr, 0, reinterpret_cast <DWORD *> (&numBytesReturned), nullptr, nullptr) != SOCKET_ERROR))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Getsockopt for TCP_KEEPIDLE and TCP_KEEPINTVL failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Getsockopt for TCP_KEEPIDLE and TCP_KEEPINTVL failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 			}
 		}
@@ -918,25 +918,25 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 		// Устанавливаем параметр
 		int32_t keepAlive = 1;
 		// Активация постоянного подключения
-		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(keepAlive))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(keepAlive))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set SO_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set SO_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
 		}
 		// Максимальное количество попыток
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_KEEPCNT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set TCP_KEEPCNT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -955,13 +955,13 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 		 */
 		#if __APPLE__
 			// Время через которое происходит проверка подключения
-			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Cannot set TCP_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Cannot set TCP_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
@@ -971,26 +971,26 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 		 */
 		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __sun__
 			// Время через которое происходит проверка подключения
-			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Cannot set TCP_KEEPIDLE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Cannot set TCP_KEEPIDLE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
 			}
 		#endif
 		// Время между попытками
-		if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl))))){
+		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl))))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_KEEPINTVL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Cannot set TCP_KEEPINTVL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 		}
 	#endif
@@ -999,10 +999,10 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int32_t cnt, const int32_t id
 }
 /**
  * listen Метод проверки сокета на прослушиваемость
- * @param fd файловый дескриптор (сокет)
- * @return   результат проверки сокета
+ * @param sock сетевой сокет
+ * @return     результат проверки сокета
  */
-bool awh::Socket::listen(const SOCKET fd) const noexcept {
+bool awh::Socket::listen(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	{
@@ -1011,13 +1011,13 @@ bool awh::Socket::listen(const SOCKET fd) const noexcept {
 		// Устанавливаем размер опции для чтения
 		socklen_t size = sizeof(option);
 		// Если мы получили ошибку, выходим сообщение
-		if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_ACCEPTCONN, reinterpret_cast <char *> (&option), &size)))){
+		if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_ACCEPTCONN, reinterpret_cast <char *> (&option), &size)))){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Getsockopt for SO_ACCEPTCONN failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+				this->_log->print("Getsockopt for SO_ACCEPTCONN failed option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 			#endif
 			// Выходим из функции
 			return result;
@@ -1030,11 +1030,11 @@ bool awh::Socket::listen(const SOCKET fd) const noexcept {
 }
 /**
  * availability Метод проверки количества находящихся байт в сокете
- * @param fd   файловый дескриптор (сокет)
+ * @param sock сетевой сокет
  * @param mode режим проверки типа сокета
  * @return     запрашиваемый размер буфера
  */
-u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexcept {
+u_long awh::Socket::availability(const SOCKET sock, const mode_t mode) const noexcept {
 	// Результат работы функции
 	u_long result = 0;
 	/**
@@ -1046,13 +1046,13 @@ u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexc
 			// Если необходимо получить размер буфера на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
 				// Выполняем получения количества байт в сокете
-				if(static_cast <bool> (::ioctlsocket(fd, FIONREAD, &result))){
+				if(static_cast <bool> (::ioctlsocket(sock, FIONREAD, &result))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -1072,13 +1072,13 @@ u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexc
 				 */
 				#if __sun__
 					// Выполняем получения количества байт в сокете
-					if(static_cast <bool> (::ioctl(fd, FIORDCHK, &bytes))){
+					if(static_cast <bool> (::ioctl(sock, FIORDCHK, &bytes))){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим в лог информацию
-							this->_log->print("Cannot set FIORDCHK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+							this->_log->print("Cannot set FIORDCHK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 						#endif
 					}
 				/**
@@ -1086,13 +1086,13 @@ u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexc
 				 */
 				#else
 					// Выполняем получения количества байт в сокете
-					if(static_cast <bool> (::ioctl(fd, FIONREAD, &bytes))){
+					if(static_cast <bool> (::ioctl(sock, FIONREAD, &bytes))){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим в лог информацию
-							this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+							this->_log->print("Cannot set FIONREAD option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 						#endif
 					}
 				#endif
@@ -1100,13 +1100,13 @@ u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexc
 			// Если необходимо получить размер буфера на запись
 			case static_cast <uint8_t> (mode_t::WRITE): {
 				// Выполняем получения количества байт в сокете
-				if(static_cast <bool> (::ioctl(fd, TIOCOUTQ, &bytes))){
+				if(static_cast <bool> (::ioctl(sock, TIOCOUTQ, &bytes))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set TIOCOUTQ option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set TIOCOUTQ option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			} break;
@@ -1121,11 +1121,11 @@ u_long awh::Socket::availability(const SOCKET fd, const mode_t mode) const noexc
 }
 /**
  * bufferSize Метод получения размера буфера
- * @param fd   файловый дескриптор (сокет)
+ * @param sock сетевой сокет
  * @param mode режим проверки типа сокета
  * @return     запрашиваемый размер буфера
  */
-int32_t awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
+int32_t awh::Socket::bufferSize(const SOCKET sock, const mode_t mode) const noexcept {
 	// Результат работы функции
 	int32_t result = 0;
 	// Размер результата
@@ -1135,26 +1135,26 @@ int32_t awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexce
 		// Если необходимо получить размер буфера на чтение
 		case static_cast <uint8_t> (mode_t::READ): {
 			// Считываем установленный размер буфера
-			if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&result), &size))){
+			if(static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&result), &size))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Get buffer read size wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Get buffer read size wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 			}
 		} break;
 		// Если необходимо получить размер буфера на запись
 		case static_cast <uint8_t> (mode_t::WRITE): {
 			// Считываем установленный размер буфера
-			if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&result), &size))){
+			if(static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&result), &size))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Get buffer write size wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+					this->_log->print("Get buffer write size wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 			}
 		} break;
@@ -1164,12 +1164,12 @@ int32_t awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexce
 }
 /**
  * bufferSize Метод установки размеров буфера
- * @param fd   файловый дескриптор (сокет)
+ * @param sock сетевой сокет
  * @param size устанавливаемый размер буфера
  * @param mode режим проверки типа сокета
  * @return     результат работы функции
  */
-bool awh::Socket::bufferSize(const SOCKET fd, const int32_t size, const mode_t mode) const noexcept {
+bool awh::Socket::bufferSize(const SOCKET sock, const int32_t size, const mode_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем размер массива опции
@@ -1183,25 +1183,25 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int32_t size, const mode_t m
 			// Если размер буфера установлен
 			if(bytes > 0){
 				// Время между попытками
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&bytes), sizeof(bytes))))){
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&bytes), sizeof(bytes))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_RCVBUF option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set SO_RCVBUF option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 					// Выводим результат
 					return result;
 				}
 				// Считываем установленный размер буфера
-				if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&bytes), &length)))){
+				if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&bytes), &length)))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Get buffer wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Get buffer wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			}
@@ -1213,25 +1213,25 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int32_t size, const mode_t m
 			// Если размер буфера установлен
 			if(bytes > 0){
 				// Время между попытками
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&bytes), sizeof(bytes))))){
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&bytes), sizeof(bytes))))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Cannot set SO_SNDBUF option on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Cannot set SO_SNDBUF option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 					// Выводим результат
 					return result;
 				}
 				// Считываем установленный размер буфера
-				if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&bytes), &length)))){
+				if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&bytes), &length)))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим в лог информацию
-						this->_log->print("Get buffer wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, fd, this->message().c_str());
+						this->_log->print("Get buffer wrong on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 					#endif
 				}
 			}

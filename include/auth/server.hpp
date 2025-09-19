@@ -22,7 +22,8 @@
 #include "../sys/callback.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -30,16 +31,19 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * AuthServer Класс работы с авторизацией на сервере
+		 * @brief Класс работы с авторизацией на сервере
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Auth : public auth_t {
 			public:
 				/**
-				 * Data Структура данных авторизации
+				 * @brief Структура данных авторизации
+				 *
 				 */
 				typedef struct Data {
 					const type_t * type;     // Тип авторизации
@@ -48,7 +52,8 @@ namespace awh {
 					const string * user;     // Логин пользователя
 					const string * pass;     // Пароль пользователя
 					/**
-					 * Data Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Data() noexcept :
 					 type(nullptr), digest(nullptr),
@@ -66,59 +71,69 @@ namespace awh {
 				callback_t _callback;
 			public:
 				/**
-				 * data Метод извлечения данных авторизации
+				 * @brief Метод извлечения данных авторизации
+				 *
 				 * @return данные модуля авторизации
 				 */
 				data_t data() const noexcept;
 				/**
-				 * data Метод установки данных авторизации
+				 * @brief Метод установки данных авторизации
+				 *
 				 * @param data данные авторизации для установки
 				 */
 				void data(const data_t & data) noexcept;
 			public:
 				/**
-				 * check Метод проверки авторизации
+				 * @brief Метод проверки авторизации
+				 *
 				 * @param method метод HTTP запроса
 				 * @return       результат проверки авторизации
 				 */
 				bool check(const string & method) noexcept;
 			public:
 				/**
-				 * realm Метод установки название сервера
+				 * @brief Метод установки название сервера
+				 *
 				 * @param realm название сервера
 				 */
 				void realm(const string & realm) noexcept;
 				/**
-				 * opaque Метод установки временного ключа сессии сервера
+				 * @brief Метод установки временного ключа сессии сервера
+				 *
 				 * @param opaque временный ключ сессии сервера
 				 */
 				void opaque(const string & opaque) noexcept;
 			public:
 				/**
-				 * extractPassCallback Метод добавления функции извлечения пароля
+				 * @brief Метод добавления функции извлечения пароля
+				 *
 				 * @param callback функция обратного вызова для извлечения пароля
 				 */
 				void extractPassCallback(function <string (const string &)> callback) noexcept;
 				/**
-				 * authCallback Метод добавления функции обработки авторизации
+				 * @brief Метод добавления функции обработки авторизации
+				 *
 				 * @param callback функция обратного вызова для обработки авторизации
 				 */
 				void authCallback(function <bool (const string &, const string &)> callback) noexcept;
 			public:
 				/**
-				 * header Метод установки параметров авторизации из заголовков
+				 * @brief Метод установки параметров авторизации из заголовков
+				 *
 				 * @param header заголовок HTTP с параметрами авторизации
 				 */
 				void header(const string & header) noexcept;
 			public:
 				/**
-				 * Оператор вывода строки авторизации
+				 * @brief Оператор вывода строки авторизации
+				 *
 				 * @return строка авторизации
 				 */
 				operator string() noexcept;
 			public:
 				/**
-				 * Auth Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */

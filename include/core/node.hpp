@@ -36,7 +36,8 @@
 #include "../scheme/core.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -44,7 +45,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Node Класс рабочей ноды сетевого ядра
+	 * @brief Класс рабочей ноды сетевого ядра
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Node : public awh::core_t {
 		public:
@@ -57,7 +59,8 @@ namespace awh {
 			};
 		public:
 			/**
-			 * SSL Класс SSL-параметров
+			 * @brief Класс SSL-параметров
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT SSL {
 				public:
@@ -80,48 +83,56 @@ namespace awh {
 					vector <string> ciphers;
 				public:
 					/**
-					 * Оператор [=] перемещения SSL-параметров
+					 * @brief Оператор [=] перемещения SSL-параметров
+					 *
 					 * @param ssl объект SSL-параметров
 					 * @return    объект текущий параметров
 					 */
 					SSL & operator = (SSL && ssl) noexcept;
 					/**
-					 * Оператор [=] присванивания SSL-параметров
+					 * @brief Оператор [=] присванивания SSL-параметров
+					 *
 					 * @param ssl объект SSL-параметров
 					 * @return    объект текущий параметров
 					 */
 					SSL & operator = (const SSL & ssl) noexcept;
 				public:
 					/**
-					 * Оператор сравнения
+					 * @brief Оператор сравнения
+					 *
 					 * @param ssl объект SSL-параметров
 					 * @return    результат сравнения
 					 */
 					bool operator == (const SSL & ssl) noexcept;
 				public:
 					/**
-					 * SSL Конструктор перемещения
+					 * @brief Конструктор перемещения
+					 *
 					 * @param ssl объект SSL-параметров
 					 */
 					SSL(SSL && ssl) noexcept;
 					/**
-					 * SSL Конструктор копирования
+					 * @brief Конструктор копирования
+					 *
 					 * @param ssl объект SSL-параметров
 					 */
 					SSL(const SSL & ssl) noexcept;
 				public:
 					/**
-					 * SSL Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					SSL() noexcept;
 					/**
-					 * ~SSL Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~SSL() noexcept {}
 			} ssl_t;
 		protected:
 			/**
-			 * Mutex Объект основных мютексов
+			 * @brief Объект основных мютексов
+			 *
 			 */
 			typedef struct Mutex {
 				// Для работы с параметрами модуля
@@ -130,7 +141,8 @@ namespace awh {
 				std::recursive_mutex send;
 			} mtx_t;
 			/**
-			 * Settings Структура текущих параметров сети
+			 * @brief Структура текущих параметров сети
+			 *
 			 */
 			typedef struct Settings {
 				// Флаг работы в режиме только IPv6
@@ -148,7 +160,8 @@ namespace awh {
 				// Параметры для сети
 				vector <string> network;
 				/**
-				 * Settings Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Settings() noexcept :
 				 ipV6only(false),
@@ -198,178 +211,208 @@ namespace awh {
 			const dns_t * _dns;
 		protected:
 			/**
-			 * remove Метод удаления всех схем сети
+			 * @brief Метод удаления всех схем сети
+			 *
 			 */
 			void remove() noexcept;
 			/**
-			 * remove Метод удаления схемы сети
+			 * @brief Метод удаления схемы сети
+			 *
 			 * @param sid идентификатор схемы сети
 			 */
 			void remove(const uint16_t sid) noexcept;
 			/**
-			 * remove Метод удаления брокера подключения
+			 * @brief Метод удаления брокера подключения
+			 *
 			 * @param bid идентификатор брокера
 			 */
 			void remove(const uint64_t bid) noexcept;
 		protected:
 			/**
-			 * has Метод проверки существования схемы сети
+			 * @brief Метод проверки существования схемы сети
+			 *
 			 * @param sid идентификатор схемы сети
 			 * @return    результат проверки
 			 */
 			bool has(const uint16_t sid) const noexcept;
 			/**
-			 * has Метод проверки существования брокера подключения
+			 * @brief Метод проверки существования брокера подключения
+			 *
 			 * @param bid идентификатор брокера
 			 * @return    результат проверки
 			 */
 			bool has(const uint64_t bid) const noexcept;
 		public:
 			/**
-			 * sid Метод извлечения идентификатора схемы сети
+			 * @brief Метод извлечения идентификатора схемы сети
+			 *
 			 * @param bid идентификатор брокера
 			 * @return    идентификатор схемы сети
 			 */
 			uint16_t sid(const uint64_t bid) const noexcept;
 		protected:
 			/**
-			 * initBuffer Метод инициализации буфера полезной нагрузки
+			 * @brief Метод инициализации буфера полезной нагрузки
+			 *
 			 * @param bid идентификатор брокера
 			 */
 			void initBuffer(const uint64_t bid) noexcept;
 			/**
-			 * erase Метод освобождение памяти занятой для хранение полезной нагрузки брокера
+			 * @brief Метод освобождение памяти занятой для хранение полезной нагрузки брокера
+			 *
 			 * @param bid  идентификатор брокера
 			 * @param size размер байт удаляемых из буфера
 			 */
 			void erase(const uint64_t bid, const size_t size) noexcept;
 		protected:
 			/**
-			 * broker Метод извлечения брокера подключения
+			 * @brief Метод извлечения брокера подключения
+			 *
 			 * @param bid идентификатор брокера
 			 * @return    объект брокера подключения
 			 */
 			const scheme_t::broker_t * broker(const uint64_t bid) const noexcept;
 		public:
 			/**
-			 * scheme Метод добавления схемы сети
+			 * @brief Метод добавления схемы сети
+			 *
 			 * @param scheme схема рабочей сети
 			 * @return       идентификатор схемы сети
 			 */
 			uint16_t scheme(const scheme_t * scheme) noexcept;
 		public:
 			/**
-			 * ssl Метод установки SSL-параметров
+			 * @brief Метод установки SSL-параметров
+			 *
 			 * @param ssl параметры SSL для установки
 			 */
 			void ssl(const ssl_t & ssl) noexcept;
 		public:
 			/**
-			 * resolver Метод установки объекта DNS-резолвера
+			 * @brief Метод установки объекта DNS-резолвера
+			 *
 			 * @param dns объект DNS-резолвер
 			 */
 			void resolver(const dns_t * dns) noexcept;
 		public:
 			/**
-			 * sockname Метод установки названия unix-сокета
+			 * @brief Метод установки названия unix-сокета
+			 *
 			 * @param name название unix-сокета
 			 * @return     результат установки названия unix-сокета
 			 */
 			bool sockname(const string & name = "") noexcept;
 			/**
-			 * sockpath Метод установки адреса каталога где хранится unix-сокет
+			 * @brief Метод установки адреса каталога где хранится unix-сокет
+			 *
 			 * @param path адрес каталога в файловой системе где хранится unix-сокет
 			 * @return     результат установки адреса каталога где хранится unix-сокет
 			 */
 			bool sockpath(const string & path = "") noexcept;
 		public:
 			/**
-			 * proto Метод извлечения поддерживаемого протокола подключения
+			 * @brief Метод извлечения поддерживаемого протокола подключения
+			 *
 			 * @return поддерживаемый протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
 			 */
 			engine_t::proto_t proto() const noexcept;
 			/**
-			 * proto Метод извлечения активного протокола подключения
+			 * @brief Метод извлечения активного протокола подключения
+			 *
 			 * @param bid идентификатор брокера
 			 * @return    активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
 			 */
 			engine_t::proto_t proto(const uint64_t bid) const noexcept;
 			/**
-			 * proto Метод установки поддерживаемого протокола подключения
+			 * @brief Метод установки поддерживаемого протокола подключения
+			 *
 			 * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
 			 */
 			void proto(const engine_t::proto_t proto) noexcept;
 		public:
 			/**
-			 * sonet Метод извлечения типа сокета подключения
+			 * @brief Метод извлечения типа сокета подключения
+			 *
 			 * @return тип сокета подключения (TCP / UDP / SCTP)
 			 */
 			scheme_t::sonet_t sonet() const noexcept;
 			/**
-			 * sonet Метод установки типа сокета подключения
+			 * @brief Метод установки типа сокета подключения
+			 *
 			 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 			 */
 			void sonet(const scheme_t::sonet_t sonet) noexcept;
 		public:
 			/**
-			 * family Метод извлечения типа протокола интернета
+			 * @brief Метод извлечения типа протокола интернета
+			 *
 			 * @return тип протокола интернета (IPV4 / IPV6 / IPC)
 			 */
 			scheme_t::family_t family() const noexcept;
 			/**
-			 * family Метод установки типа протокола интернета
+			 * @brief Метод установки типа протокола интернета
+			 *
 			 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
 			 */
 			void family(const scheme_t::family_t family) noexcept;
 		public:
 			/**
-			 * sending Метод получения режима отправки сообщений
+			 * @brief Метод получения режима отправки сообщений
+			 *
 			 * @return установленный режим отправки сообщений
 			 */
 			sending_t sending() const noexcept;
 			/**
-			 * sending Метод установки режима отправки сообщений
+			 * @brief Метод установки режима отправки сообщений
+			 *
 			 * @param sending режим отправки сообщений для установки
 			 */
 			void sending(const sending_t sending) noexcept;
 		public:
 			/**
-			 * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+			 * @brief Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+			 *
 			 * @return размер памяти для хранения полезной нагрузки всех брокеров
 			 */
 			size_t memoryAvailableSize() const noexcept;
 			/**
-			 * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+			 * @brief Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+			 *
 			 * @param size размер памяти для хранения полезной нагрузки всех брокеров
 			 */
 			void memoryAvailableSize(const size_t size) noexcept;
 		public:
 			/**
-			 * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+			 * @brief Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+			 *
 			 * @return размер хранимой полезной нагрузки для одного брокера
 			 */
 			size_t brokerAvailableSize() const noexcept;
 			/**
-			 * brokerAvailableSize Метод получения размера хранимой полезной нагрузки для текущего брокера
+			 * @brief Метод получения размера хранимой полезной нагрузки для текущего брокера
+			 *
 			 * @param bid идентификатор брокера
 			 * @return    размер хранимой полезной нагрузки для текущего брокера
 			 */
 			size_t brokerAvailableSize(const uint64_t bid) const noexcept;
 			/**
-			 * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+			 * @brief Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+			 *
 			 * @param size размер хранимой полезной нагрузки для одного брокера
 			 */
 			void brokerAvailableSize(const size_t size) noexcept;
 		public:
 			/**
-			 * cork Метод отключения/включения алгоритма TCP/CORK
+			 * @brief Метод отключения/включения алгоритма TCP/CORK
+			 *
 			 * @param bid  идентификатор брокера
 			 * @param mode режим применимой операции
 			 * @return     результат выполенния операции
 			 */
 			bool cork(const uint64_t bid, const engine_t::mode_t mode) noexcept;
 			/**
-			 * nodelay Метод отключения/включения алгоритма Нейгла
+			 * @brief Метод отключения/включения алгоритма Нейгла
+			 *
 			 * @param bid  идентификатор брокера
 			 * @param mode режим применимой операции
 			 * @return     результат выполенния операции
@@ -377,7 +420,8 @@ namespace awh {
 			bool nodelay(const uint64_t bid, const engine_t::mode_t mode) noexcept;
 		public:
 			/**
-			 * send Метод асинхронной отправки буфера данных в сокет
+			 * @brief Метод асинхронной отправки буфера данных в сокет
+			 *
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных
 			 * @param bid    идентификатор брокера
@@ -386,7 +430,8 @@ namespace awh {
 			virtual bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 		public:
 			/**
-			 * bandwidth Метод установки пропускной способности сети
+			 * @brief Метод установки пропускной способности сети
+			 *
 			 * @param bid   идентификатор брокера
 			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
@@ -394,7 +439,8 @@ namespace awh {
 			virtual void bandwidth(const uint64_t bid, const string & read = "", const string & write = "") noexcept;
 		public:
 			/**
-			 * events Метод активации/деактивации метода события сокета
+			 * @brief Метод активации/деактивации метода события сокета
+			 *
 			 * @param bid    идентификатор брокера
 			 * @param mode   сигнал активации сокета
 			 * @param method метод режима работы
@@ -402,7 +448,8 @@ namespace awh {
 			void events(const uint64_t bid, const awh::scheme_t::mode_t mode, const engine_t::method_t method) noexcept;
 		public:
 			/**
-			 * network Метод установки параметров сети
+			 * @brief Метод установки параметров сети
+			 *
 			 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
 			 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
 			 * @param sonet  тип сокета подключения (TCP / UDP)
@@ -410,55 +457,64 @@ namespace awh {
 			void network(const vector <string> & ips = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 		public:
 			/**
-			 * operator Оператор извлечения поддерживаемого протокола подключения
+			 * @brief Оператор извлечения поддерживаемого протокола подключения
+			 *
 			 * @return поддерживаемый протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
 			 */
 			operator engine_t::proto_t() const noexcept;
 			/**
-			 * operator Оператор извлечения типа сокета подключения
+			 * @brief Оператор извлечения типа сокета подключения
+			 *
 			 * @return тип сокета подключения (TCP / UDP / SCTP)
 			 */
 			operator scheme_t::sonet_t() const noexcept;
 			/**
-			 * operator Оператор извлечения типа протокола интернета
+			 * @brief Оператор извлечения типа протокола интернета
+			 *
 			 * @return тип протокола интернета (IPV4 / IPV6 / IPC)
 			 */
 			operator scheme_t::family_t() const noexcept;
 		public:
 			/**
-			 * Оператор [=] установки SSL-параметров
+			 * @brief Оператор [=] установки SSL-параметров
+			 *
 			 * @param ssl параметры SSL для установки
 			 * @return    текущий объект
 			 */
 			Node & operator = (const ssl_t & ssl) noexcept;
 			/**
-			 * Оператор [=] установки объекта DNS-резолвера
+			 * @brief Оператор [=] установки объекта DNS-резолвера
+			 *
 			 * @param dns объект DNS-резолвер
 			 * @return    текущий объект
 			 */
 			Node & operator = (const dns_t & dns) noexcept;
 		public:
 			/**
-			 * Оператор [=] установки поддерживаемого протокола подключения
+			 * @brief Оператор [=] установки поддерживаемого протокола подключения
+			 *
 			 * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
 			 * @return      текущий объект
 			 */
 			Node & operator = (const engine_t::proto_t proto) noexcept;
 			/**
-			 * Оператор [=] установки типа сокета подключения
+			 * @brief Оператор [=] установки типа сокета подключения
+			 *
 			 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 			 * @return      текущий объект
 			 */
 			Node & operator = (const scheme_t::sonet_t sonet) noexcept;
 			/**
-			 * Оператор [=] установки типа протокола интернета
+			 * @brief Оператор [=] установки типа протокола интернета
+			 *
 			 * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
 			 * @return       текущий объект
 			 */
 			Node & operator = (const scheme_t::family_t family) noexcept;
 		public:
 			/**
-			 * Core Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
@@ -468,7 +524,8 @@ namespace awh {
 			 _payloadSize(0), _memoryAvailableSize(AWH_WINDOW_SIZE),
 			 _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(nullptr) {}
 			/**
-			 * Core Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param dns объект DNS-резолвера
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
@@ -479,7 +536,8 @@ namespace awh {
 			 _payloadSize(0), _memoryAvailableSize(AWH_WINDOW_SIZE),
 			 _brokerAvailableSize(AWH_PAYLOAD_SIZE), _dns(dns) {}
 			/**
-			 * ~Node Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			virtual ~Node() noexcept;
 	} node_t;

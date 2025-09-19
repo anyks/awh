@@ -28,7 +28,8 @@ using namespace awh;
 using namespace placeholders;
 
 /**
- * Executor Класс объекта исполнителя
+ * @brief Класс объекта исполнителя
+ *
  */
 class Executor {
 	private:
@@ -36,7 +37,8 @@ class Executor {
 		log_t * _log;
 	public:
 		/**
-		 * ready Метод готовности дочерних процессов к работе
+		 * @brief Метод готовности дочерних процессов к работе
+		 *
 		 * @param pid  идентификатор процесса
 		 * @param core объект сетевого ядра
 		 */
@@ -47,7 +49,8 @@ class Executor {
 			core->send(pid, message.data(), message.size());
 		}
 		/**
-		 * events Метод вывода события активации процесса
+		 * @brief Метод вывода события активации процесса
+		 *
 		 * @param worker тип активного процесса
 		 * @param pid    идентификатор процесса
 		 * @param event  событие процесса
@@ -74,7 +77,8 @@ class Executor {
 			}
 		}
 		/**
-		 * message Метод получения сообщения
+		 * @brief Метод получения сообщения
+		 *
 		 * @param worker тип активного процесса
 		 * @param pid    идентификатор процесса
 		 * @param buffer буфер данных сообщения
@@ -100,7 +104,8 @@ class Executor {
 			}
 		}
 		/**
-		 * status Метод запуска сетевого ядра
+		 * @brief Метод запуска сетевого ядра
+		 *
 		 * @param status флаг запуска сетевого ядра
 		 */
 		void status(const awh::core_t::status_t status){
@@ -120,14 +125,16 @@ class Executor {
 		}
 	public:
 		/**
-		 * Executor Конструктор
+		 * @brief Конструктор
+		 *
 		 * @param log объект логирования
 		 */
 		Executor(log_t * log) : _log(log) {}
 };
 
 /**
- * main Главная функция приложения
+ * @brief Главная функция приложения
+ *
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения

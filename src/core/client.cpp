@@ -152,7 +152,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				// Если unix-сокет не используется, выполняем инициализацию сокета
 				} else broker->addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
-				if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS)){
+				if(broker->addr.sock != INVALID_SOCKET){
 					// Выполняем установку желаемого протокола подключения
 					broker->ectx.proto(this->_settings.proto);
 					// Определяем тип сокета
@@ -247,7 +247,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						}
 					}
 					// Если подключение не обёрнуто
-					if((broker->addr.fd == INVALID_SOCKET) || (broker->addr.fd >= AWH_MAX_SOCKETS)){
+					if(broker->addr.sock == INVALID_SOCKET){
 						// Разрешаем выполнение работы
 						shm->status.work = scheme_t::work_t::ALLOW;
 						// Устанавливаем статус подключения
@@ -268,7 +268,7 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					// Выполняем блокировку потока
 					this->_mtx.connect.lock();
 					// Выполняем установку базы событий
-					broker->base(this->eventBase());
+					broker->base(this->base());
 					// Добавляем созданного брокера в список брокеров
 					auto ret = shm->_brokers.emplace(broker->id(), std::forward <std::unique_ptr <awh::scheme_t::broker_t>> (broker));
 					// Добавляем брокера в список подключений
@@ -352,13 +352,13 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 							// Если unix-сокет используется
 							if(family == scheme_t::family_t::IPC)
 								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
-								this->_log->print("Server host [%s/%s.sock] SOCKET=%d is good", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str(), ret.first->second->addr.fd);
+								this->_log->print("Server host [%s/%s.sock] SOCKET=%d is good", log_t::flag_t::INFO, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str(), ret.first->second->addr.sock);
 							// Если доменное имя используется
 							else if(!url.domain.empty())
 								// Выводим ионформацию об удачном подключении к серверу по хосту и порту
-								this->_log->print("Server host %s [%s:%d] SOCKET=%d is good", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->addr.fd);
+								this->_log->print("Server host %s [%s:%d] SOCKET=%d is good", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->addr.sock);
 							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
-							else this->_log->print("Server host [%s:%d] SOCKET=%d is good", log_t::flag_t::INFO, url.ip.c_str(), url.port, ret.first->second->addr.fd);
+							else this->_log->print("Server host [%s:%d] SOCKET=%d is good", log_t::flag_t::INFO, url.ip.c_str(), url.port, ret.first->second->addr.sock);
 						}
 					}
 					// Выходим из функции
@@ -1215,7 +1215,7 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 					// Выполняем получение контекста сертификата
 					this->_engine.wrap(broker->ectx, broker->ectx, host);
 					// Если подключение не обёрнуто
-					if((broker->addr.fd == INVALID_SOCKET) || (broker->addr.fd >= AWH_MAX_SOCKETS)){
+					if(broker->addr.sock == INVALID_SOCKET){
 						// Выводим сообщение об ошибке
 						this->_log->print("Wrap engine context is failed", log_t::flag_t::CRITICAL);
 						// Если функция обратного вызова установлена
@@ -1404,7 +1404,7 @@ bool awh::client::Core::send(const char * buffer, const size_t size, const uint6
 			// Создаём бъект активного брокера подключения
 			awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 			// Если сокет подключения активен
-			if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS))
+			if(broker->addr.sock != INVALID_SOCKET)
 				// Запускаем ожидание записи данных
 				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
 		}
@@ -1422,7 +1422,7 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS)){
+		if(broker->addr.sock != INVALID_SOCKET){
 			// Выполняем поиск идентификатора схемы сети
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
@@ -1522,8 +1522,8 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, this->_fmk->format("Connection Broker %llu does not belong to a non-existent network diagram", bid));
 			}
-		// Если файловый дескриптор сломан, значит с памятью что-то не то
-		} else if(broker->addr.fd > AWH_MAX_SOCKETS) {
+		// Если сетевой сокет битый
+		} else {
 			// Удаляем из памяти объект брокера
 			node_t::remove(bid);
 			// Выводим в лог сообщение
@@ -1545,7 +1545,7 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS)){
+		if(broker->addr.sock != INVALID_SOCKET){
 			// Останавливаем детектирования возможности записи в сокет
 			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 			// Выполняем поиск идентификатора схемы сети
@@ -1573,7 +1573,7 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 						// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
 						if(this->_payloads.find(bid) != this->_payloads.end()){
 							// Если сокет подключения активен
-							if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS))
+							if(broker->addr.sock != INVALID_SOCKET)
 								// Запускаем ожидание записи данных
 								broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
 						}
@@ -1588,8 +1588,8 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, this->_fmk->format("Connection Broker %llu does not belong to a non-existent network diagram", bid));
 			}
-		// Если файловый дескриптор сломан, значит с памятью что-то не то
-		} else if(broker->addr.fd > AWH_MAX_SOCKETS) {
+		// Если сетевой сокет битый
+		} else {
 			// Удаляем из памяти объект брокера
 			node_t::remove(bid);
 			// Выводим в лог сообщение
@@ -1616,7 +1616,7 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS)){
+		if(broker->addr.sock != INVALID_SOCKET){
 			// Останавливаем детектирования возможности записи в сокет
 			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
 			// Выполняем поиск идентификатора схемы сети
@@ -1760,8 +1760,8 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::PROTOCOL, this->_fmk->format("Connection Broker %llu does not belong to a non-existent network diagram", bid));
 			}
-		// Если файловый дескриптор сломан, значит с памятью что-то не то
-		} else if(broker->addr.fd > AWH_MAX_SOCKETS) {
+		// Если сетевой сокет битый
+		} else {
 			// Удаляем из памяти объект брокера
 			node_t::remove(bid);
 			// Выводим в лог сообщение
@@ -1856,7 +1856,7 @@ void awh::client::Core::waitMessage(const uint64_t bid, const uint16_t sec) noex
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS))
+		if(broker->addr.sock != INVALID_SOCKET)
 			// Выполняем установку времени ожидания входящих сообщений
 			broker->timeouts.wait = sec;
 	}
@@ -1878,7 +1878,7 @@ void awh::client::Core::waitTimeDetect(const uint64_t bid, const uint16_t read, 
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
 		// Если сокет подключения активен
-		if((broker->addr.fd != INVALID_SOCKET) && (broker->addr.fd < AWH_MAX_SOCKETS)){
+		if(broker->addr.sock != INVALID_SOCKET){
 			// Устанавливаем количество секунд на чтение
 			broker->timeouts.read = read;
 			// Устанавливаем количество секунд на запись

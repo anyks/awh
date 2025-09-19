@@ -76,7 +76,8 @@
 #include "../sys/hold.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -88,7 +89,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * NTP Класс NTP-клиента
+	 * @brief Класс NTP-клиента
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT NTP {
 		private:
@@ -109,23 +111,27 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Шаблон формата данных NTP-сервера
+			 * @brief Шаблон формата данных NTP-сервера
+			 *
 			 * @tparam T размерность буфера NTP-сервера
 			 */
 			template <uint8_t T>
 			/**
-			 * Server Структура сервера имён
+			 * @brief Структура сервера имён
+			 *
 			 */
 			struct Server {
 				uint32_t port;     // Порт сервера
 				uint32_t ip[T]; // Буфер IP-адреса
 				/**
-				 * Server Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Server() noexcept : port(123), ip{0} {}
 			};
 			/**
-			 * Шаблон формата данных NTP-сервера
+			 * @brief Шаблон формата данных NTP-сервера
+			 *
 			 * @tparam T размерность буфера NTP-сервера
 			 */
 			template <uint8_t T>
@@ -134,19 +140,22 @@ namespace awh {
 		private:
 			private:
 			/**
-			 * Peer Структура подключения
+			 * @brief Структура подключения
+			 *
 			 */
 			typedef struct Peer {
 				socklen_t size;                 // Размер объекта подключения
 				struct sockaddr_storage client; // Параметры подключения клиента
 				struct sockaddr_storage server; // Параметры подключения сервера
 				/**
-				 * Peer Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Peer() noexcept : size(0), client{}, server{} {}
 			} peer_t;
 			/**
-			 * Packet Структура пакетов NTP-запроса
+			 * @brief Структура пакетов NTP-запроса
+			 *
 			 */
 			typedef struct Packet {
 				/**
@@ -185,7 +194,8 @@ namespace awh {
 				// Отметки времени в долях секунды для передачи
 				uint32_t transmitedTimeStampSecFrac;
 				/**
-				 * Packet Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Packet() noexcept :
 				 mode(0), stratum(0), poll(0),
@@ -197,17 +207,19 @@ namespace awh {
 				 transmitedTimeStampSec(0), transmitedTimeStampSecFrac(0) {}
 			} __attribute__((packed)) packet_t;
 			/**
-			 * Worker Класс воркера резолвинга
+			 * @brief Класс воркера резолвинга
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT Worker {
 				private:
 					/**
-					 * NTP Устанавливаем дружбу с классом NTP-клиента
+					 * @brief Устанавливаем дружбу с классом NTP-клиента
+					 *
 					 */
 					friend class NTP;
 				private:
-					// Файловый дескриптор (сокет)
-					SOCKET _fd;
+					// Сетевой сокет
+					SOCKET _sock;
 				private:
 					// Флаг запуска резолвера
 					bool _mode;
@@ -227,23 +239,27 @@ namespace awh {
 					const NTP * _self;
 				private:
 					/**
-					 * host Метод извлечения хоста компьютера
+					 * @brief Метод извлечения хоста компьютера
+					 *
 					 * @return хост компьютера с которого производится запрос
 					 */
 					string host() const noexcept;
 				public:
 					/**
-					 * close Метод закрытия подключения
+					 * @brief Метод закрытия подключения
+					 *
 					 */
 					void close() noexcept;
 				public:
 					/**
-					 * cancel Метод отмены выполнения запроса
+					 * @brief Метод отмены выполнения запроса
+					 *
 					 */
 					void cancel() noexcept;
 				public:
 					/**
-					 * request Метод выполнения запроса
+					 * @brief Метод выполнения запроса
+					 *
 					 * @return полученный UnixTimeStamp
 					 */
 					uint64_t request() noexcept;
@@ -257,15 +273,17 @@ namespace awh {
 					uint64_t send(const string & from, const string & to) noexcept;
 				public:
 					/**
-					 * Worker Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param family тип протокола интернета AF_INET или AF_INET6
 					 * @param self   объект NTP-клиента
 					 */
 					Worker(const int32_t family, const NTP * self) noexcept :
-					 _fd(INVALID_SOCKET), _mode(false), _family(family),
+					 _sock(INVALID_SOCKET), _mode(false), _family(family),
 					 _socket(self->_fmk, self->_log), _self(self) {}
 					/**
-					 * ~Worker Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Worker() noexcept;
 			} worker_t;
@@ -306,110 +324,128 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * clear Метод очистки данных NTP-клиента
+			 * @brief Метод очистки данных NTP-клиента
+			 *
 			 * @return результат работы функции
 			 */
 			bool clear() noexcept;
 		public:
 			/**
-			 * cancel Метод отмены выполнения запроса
+			 * @brief Метод отмены выполнения запроса
+			 *
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 */
 			void cancel(const int32_t family) noexcept;
 		public:
 			/**
-			 * shuffle Метод пересортировки серверов NTP
+			 * @brief Метод пересортировки серверов NTP
+			 *
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 */
 			void shuffle(const int32_t family) noexcept;
 		public:
 			/**
-			 * timeout Метод установки времени ожидания выполнения запроса
+			 * @brief Метод установки времени ожидания выполнения запроса
+			 *
 			 * @param sec интервал времени выполнения запроса в секундах
 			 */
 			void timeout(const uint8_t sec) noexcept;
 		public:
 			/**
-			 * ns Метод добавления DNS-серверов
+			 * @brief Метод добавления DNS-серверов
+			 *
 			 * @param servers адреса DNS-серверов
 			 */
 			void ns(const vector <string> & servers) noexcept;
 		public:
 			/**
-			 * server Метод получения данных NTP-сервера
+			 * @brief Метод получения данных NTP-сервера
+			 *
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @return       запрошенный NTP-сервер
 			 */
 			string server(const int32_t family) noexcept;
 		public:
 			/**
-			 * server Метод добавления NTP-сервера
+			 * @brief Метод добавления NTP-сервера
+			 *
 			 * @param server адрес NTP-сервера
 			 */
 			void server(const string & server) noexcept;
 			/**
-			 * server Метод добавления NTP-сервера
+			 * @brief Метод добавления NTP-сервера
+			 *
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param server адрес NTP-сервера
 			 */
 			void server(const int32_t family, const string & server) noexcept;
 		public:
 			/**
-			 * servers Метод добавления NTP-серверов
+			 * @brief Метод добавления NTP-серверов
+			 *
 			 * @param servers адреса NTP-серверов
 			 */
 			void servers(const vector <string> & servers) noexcept;
 			/**
-			 * servers Метод добавления NTP-серверов
+			 * @brief Метод добавления NTP-серверов
+			 *
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param servers адреса NTP-серверов
 			 */
 			void servers(const int32_t family, const vector <string> & servers) noexcept;
 		public:
 			/**
-			 * replace Метод замены существующих NTP-серверов
+			 * @brief Метод замены существующих NTP-серверов
+			 *
 			 * @param servers адреса NTP-серверов
 			 */
 			void replace(const vector <string> & servers = {}) noexcept;
 			/**
-			 * replace Метод замены существующих NTP-серверов
+			 * @brief Метод замены существующих NTP-серверов
+			 *
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param servers адреса NTP-серверов
 			 */
 			void replace(const int32_t family, const vector <string> & servers = {}) noexcept;
 		public:
 			/**
-			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 * @brief Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 *
 			 * @param network IP-адреса сетевых плат
 			 */
 			void network(const vector <string> & network) noexcept;
 			/**
-			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 * @brief Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 *
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param network IP-адреса сетевых плат
 			 */
 			void network(const int32_t family, const vector <string> & network) noexcept;
 		public:
 			/**
-			 * request Метод выполнение получения времени с NTP-сервера
+			 * @brief Метод выполнение получения времени с NTP-сервера
+			 *
 			 * @return полученный UnixTimeStamp
 			 */
 			uint64_t request() noexcept;
 			/**
-			 * request Метод выполнение получения времени с NTP-сервера
+			 * @brief Метод выполнение получения времени с NTP-сервера
+			 *
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @return       полученный UnixTimeStamp
 			 */
 			uint64_t request(const int32_t family) noexcept;
 		public:
 			/**
-			 * NTP Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			NTP(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~NTP Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~NTP() noexcept;
 	} ntp_t;

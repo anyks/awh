@@ -37,7 +37,7 @@ void awh::Buffer::clear() noexcept {
 		// Если размер выделенной памяти выше максимального размера буфера
 		if(this->_buffer.capacity() > AWH_BUFFER_SIZE)
 			// Выполняем очистку временного буфера данных
-			vector <uint8_t> ().swap(this->_buffer);
+			vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -111,7 +111,7 @@ void awh::Buffer::erase(const size_t size) noexcept {
 		// Если размер выделенной памяти выше максимального размера буфера
 		if(this->_buffer.empty() && (this->_buffer.capacity() > AWH_BUFFER_SIZE))
 			// Выполняем очистку временного буфера данных
-			vector <uint8_t> ().swap(this->_buffer);
+			vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -232,7 +232,7 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 			// Выполняем блокировку потока для перемещаемого объекта
 			const lock_guard <std::mutex> lock2(buffer._mtx);
 			// Выполняем перемещения данных буфера
-			this->_buffer = std::move(buffer._buffer);
+			this->_buffer = ::move(buffer._buffer);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -334,7 +334,7 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 			// Выполняем блокировку потока для перемещаемого объекта
 			const lock_guard <std::mutex> lock2(buffer._mtx);
 			// Выполняем перемещения данных буфера
-			this->_buffer = std::move(buffer._buffer);
+			this->_buffer = ::move(buffer._buffer);
 		/**
 		 * Если возникает ошибка
 		 */

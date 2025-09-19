@@ -28,7 +28,8 @@ using namespace awh;
 using namespace placeholders;
 
 /**
- * WebClient Класс объекта исполнителя
+ * @brief Класс объекта исполнителя
+ *
  */
 class WebClient {
 	private:
@@ -41,7 +42,8 @@ class WebClient {
 		const log_t * _log;
 	public:
 		/**
-		 * response Метод получения статуса результата запроса
+		 * @brief Метод получения статуса результата запроса
+		 *
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
@@ -54,7 +56,8 @@ class WebClient {
 				this->_log->print("Request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), sid);
 		}
 		/**
-		 * active Метод идентификации активности на Web-клиенте
+		 * @brief Метод идентификации активности на Web-клиенте
+		 *
 		 * @param mode режим события подключения
 		 * @param awh  объект web-клиента
 		 */
@@ -82,7 +85,8 @@ class WebClient {
 			}
 		}
 		/**
-		 * entity Метод получения тела ответа сервера
+		 * @brief Метод получения тела ответа сервера
+		 *
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
@@ -101,7 +105,8 @@ class WebClient {
 				awh->stop();
 		}
 		/**
-		 * headers Метод получения заголовков ответа сервера
+		 * @brief Метод получения заголовков ответа сервера
+		 *
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
@@ -115,7 +120,8 @@ class WebClient {
 				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
 		}
 		/**
-		 * complete Метод получения ответа с сервера
+		 * @brief Метод получения ответа с сервера
+		 *
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
@@ -140,7 +146,8 @@ class WebClient {
 		}
 	public:
 		/**
-		 * WebClient Конструктор
+		 * @brief Конструктор
+		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
 		 */
@@ -148,7 +155,8 @@ class WebClient {
 };
 
 /**
- * main Главная функция приложения
+ * @brief Главная функция приложения
+ *
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения

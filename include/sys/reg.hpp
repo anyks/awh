@@ -35,7 +35,8 @@
 #include "global.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -43,12 +44,14 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * RegExp Класс объекта регулярных выражения
+	 * @brief Класс объекта регулярных выражения
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT RegExp {
 		private:
 			/**
-			 * Mutex структура рабочих мютексов
+			 * @brief структура рабочих мютексов
+			 *
 			 */
 			typedef struct Mutex {
 				// Мютекс контроля матчинга
@@ -73,7 +76,8 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Expression Класс регулярного выражения
+			 * @brief Класс регулярного выражения
+			 *
 			 */
 			class AWHSHARED_EXPORT Expression {
 				private:
@@ -84,31 +88,39 @@ namespace awh {
 					regex_t reg;
 				public:
 					/**
-					 * Оператор проверки на инициализацию регулярного выражения
+					 * @brief Оператор проверки на инициализацию регулярного выражения
+					 *
 					 * @return результат проверки
 					 */
 					operator bool() const noexcept;
 				public:
 					/**
-					 * operator Оператор установки флага инициализации
+					 * @brief Оператор установки флага инициализации
+					 *
 					 * @param mode флаг инициализации для установки
 					 * @return     текущий объект регулярного выражения
 					 */
 					Expression & operator = (const bool mode) noexcept;
 				public:
 					/**
-					 * Expression Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Expression() noexcept;
 					/**
-					 * ~Expression Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Expression() noexcept;
 			};
 		public:
-			// Создаём новый тип данных регулярного выражения
+			/**
+			 * Создаём новый тип данных регулярного выражения
+			 */
 			using exp_t = std::shared_ptr <Expression>;
-			// Создаём новый тип данных для статического хранения регулярных выражений
+			/**
+			 * Создаём новый тип данных для статического хранения регулярных выражений
+			 */
 			using exp_weak_t = std::weak_ptr <Expression>;
 		private:
 			// Текст ошибки
@@ -121,20 +133,23 @@ namespace awh {
 			mutable std::map <pair <int32_t, string>, exp_weak_t> _cache;
 		public:
 			/**
-			 * error Метод извлечения текста ошибки регулярного выражения
+			 * @brief Метод извлечения текста ошибки регулярного выражения
+			 *
 			 * @return текст ошибки регулярного выражения
 			 */
 			const string & error() const noexcept;
 		public:
 			/**
-			 * test Метод проверки регулярного выражения
+			 * @brief Метод проверки регулярного выражения
+			 *
 			 * @param text текст для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат проверки регулярного выражения
 			 */
 			bool test(const string & text, const exp_t & exp) const noexcept;
 			/**
-			 * test Метод проверки регулярного выражения
+			 * @brief Метод проверки регулярного выражения
+			 *
 			 * @param text текст для обработки
 			 * @param size размер текста для обработки
 			 * @param exp  объект регулярного выражения
@@ -143,14 +158,16 @@ namespace awh {
 			bool test(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
 			/**
-			 * exec Метод запуска регулярного выражения
+			 * @brief Метод запуска регулярного выражения
+			 *
 			 * @param text текст для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
 			vector <string> exec(const string & text, const exp_t & exp) const noexcept;
 			/**
-			 * exec Метод запуска регулярного выражения
+			 * @brief Метод запуска регулярного выражения
+			 *
 			 * @param text текст для обработки
 			 * @param size размер текста для обработки
 			 * @param exp  объект регулярного выражения
@@ -159,14 +176,16 @@ namespace awh {
 			vector <string> exec(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
 			/**
-			 * match Метод выполнения регулярного выражения
+			 * @brief Метод выполнения регулярного выражения
+			 *
 			 * @param text текст для обработки
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
 			vector <pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
 			/**
-			 * match Метод выполнения регулярного выражения
+			 * @brief Метод выполнения регулярного выражения
+			 *
 			 * @param text текст для обработки
 			 * @param size размер текста для обработки
 			 * @param exp  объект регулярного выражения
@@ -175,7 +194,8 @@ namespace awh {
 			vector <pair <size_t, size_t>> match(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
 			/**
-			 * build Метод сборки регулярного выражения
+			 * @brief Метод сборки регулярного выражения
+			 *
 			 * @param pattern регулярное выражение для сборки
 			 * @param options список опций для сборки регулярного выражения
 			 * @return        результат собранного регулярного выражения
@@ -183,11 +203,13 @@ namespace awh {
 			exp_t build(const string & pattern, const vector <option_t> & options = {}) const noexcept;
 		public:
 			/**
-			 * RegExp Конструктор
+			 * @brief Конструктор
+			 *
 			 */
 			RegExp() noexcept : _error{""} {}
 			/**
-			 * ~RegExp Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~RegExp() noexcept {}
 	} regexp_t;

@@ -27,21 +27,21 @@
 #include <functional>
 
 /**
- * Для операционной системы OS Windows
- */
-#if _WIN32 || _WIN64
-	#include <windows.h>
-	#include <tchar.h>
-#endif
-
-/**
  * Подключаем наши модули
  */
 #include "fmk.hpp"
 #include "log.hpp"
 
 /**
- * awh пространство имён
+ * Для операционной системы OS Windows
+ */
+#if _WIN32 || _WIN64
+	#include <tchar.h>
+#endif
+
+/**
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -49,7 +49,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Signals Класс работы с сигналами
+	 * @brief Класс работы с сигналами
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Signals {
 		private:
@@ -58,7 +59,8 @@ namespace awh {
 			 */
 			#if !_WIN32 && !_WIN64
 				/**
-				 * Event Структура событий сигналов
+				 * @brief Структура событий сигналов
+				 *
 				 */
 				typedef struct Events {
 					struct sigaction sigInt;  // Перехватчик сигнала SIGINT
@@ -69,7 +71,8 @@ namespace awh {
 					struct sigaction sigTerm; // Перехватчик сигнала SIGTERM
 					struct sigaction sigSegv; // Перехватчик сигнала SIGSEGV
 					/**
-					 * Events Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Events() noexcept {}
 				} ev_t;
@@ -80,7 +83,8 @@ namespace awh {
 				// Устанавливаем прототип функции обработчика сигнала
 				typedef void (* SignalHandlerPointer)(int32_t);
 				/**
-				 * Events Структура событий сигналов
+				 * @brief Структура событий сигналов
+				 *
 				 */
 				typedef struct Events {
 					SignalHandlerPointer sigInt;  // Перехватчик сигнала SIGINT
@@ -90,7 +94,8 @@ namespace awh {
 					SignalHandlerPointer sigTerm; // Перехватчик сигнала SIGTERM
 					SignalHandlerPointer sigSegv; // Перехватчик сигнала SIGSEGV
 					/**
-					 * Events Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Events() noexcept {}
 				} ev_t;
@@ -106,34 +111,40 @@ namespace awh {
 			function <void (const int32_t)> _callback;
 		private:
 			/**
-			 * callback Функция обратного вызова
+			 * @brief Функция обратного вызова
+			 *
 			 * @param sig идентификатор сигнала
 			 */
 			void callback(const int32_t sig) noexcept;
 		public:
 			/**
-			 * stop Метод остановки обработки сигналов
+			 * @brief Метод остановки обработки сигналов
+			 *
 			 */
 			void stop() noexcept;
 			/**
-			 * start Метод запуска обработки сигналов
+			 * @brief Метод запуска обработки сигналов
+			 *
 			 */
 			void start() noexcept;
 		public:
 			/**
-			 * on Метод установки функции обратного вызова, которая должна сработать при получении сигнала
+			 * @brief Метод установки функции обратного вызова, которая должна сработать при получении сигнала
+			 *
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const int32_t)> callback) noexcept;
 		public:
 			/**
-			 * Signals Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Signals(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Signals Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Signals() noexcept;
 	} sig_t;

@@ -28,7 +28,8 @@ using namespace awh;
 using namespace placeholders;
 
 /**
- * Client Класс объекта исполнителя
+ * @brief Класс объекта исполнителя
+ *
  */
 class Client {
 	private:
@@ -38,7 +39,8 @@ class Client {
 		const log_t * _log;
 	public:
 		/**
-		 * active Метод идентификации активности на клиенте
+		 * @brief Метод идентификации активности на клиенте
+		 *
 		 * @param mode   режим события подключения
 		 * @param sample объект активного клиента
 		 */
@@ -55,7 +57,8 @@ class Client {
 			} else sample->stop();
 		}
 		/**
-		 * message Метод получения сообщений
+		 * @brief Метод получения сообщений
+		 *
 		 * @param buffer буфер входящих данных
 		 * @param sample объект активного клиента
 		 */
@@ -69,7 +72,8 @@ class Client {
 		}
 	public:
 		/**
-		 * Client Конструктор
+		 * @brief Конструктор
+		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
 		 */
@@ -77,7 +81,8 @@ class Client {
 };
 
 /**
- * main Главная функция приложения
+ * @brief Главная функция приложения
+ *
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения

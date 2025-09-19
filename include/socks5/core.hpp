@@ -44,7 +44,8 @@
 #include "../net/uri.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -52,7 +53,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Socks5 Класс работы с socks5 прокси-сервером
+	 * @brief Класс работы с socks5 прокси-сервером
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Socks5 {
 		private:
@@ -122,29 +124,34 @@ namespace awh {
 			static constexpr uint8_t AVER = 0x01;
 		protected:
 			/**
-			 * ResMethod Структура ответа с выбранным методом
+			 * @brief Структура ответа с выбранным методом
+			 *
 			 */
 			typedef struct ResMethod {
 				uint8_t ver;    // Версия прокси-протокола
 				uint8_t method; // Выбранный метод сервера
 				/**
-				 * ResMethod Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				ResMethod() noexcept : ver(0x0), method(0x0) {}
 			} __attribute__((packed)) res_method_t;
 			/**
-			 * Auth Структура ответа на авторизацию
+			 * @brief Структура ответа на авторизацию
+			 *
 			 */
 			typedef struct Auth {
 				uint8_t ver;    // Версия прокси-протокола
 				uint8_t status; // Статус авторизации на сервере
 				/**
-				 * Auth Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Auth() noexcept : ver(0x0), status(0x0) {}
 			} __attribute__((packed)) auth_t;
 			/**
-			 * Req Структура запроса
+			 * @brief Структура запроса
+			 *
 			 */
 			typedef struct Req {
 				uint8_t ver;  // Версия прокси-протокола
@@ -152,12 +159,14 @@ namespace awh {
 				uint8_t rsv;  // Зарезервированный октет
 				uint8_t atyp; // Тип подключения
 				/**
-				 * Req Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Req() noexcept : ver(0x0), cmd(0x0), rsv(0x0), atyp(0x0) {}
 			} __attribute__((packed)) req_t;
 			/**
-			 * Res Структура ответа
+			 * @brief Структура ответа
+			 *
 			 */
 			typedef struct Res {
 				uint8_t ver;  // Версия прокси-протокола
@@ -165,18 +174,21 @@ namespace awh {
 				uint8_t rsv;  // Зарезервированный октет
 				uint8_t atyp; // Тип подключения
 				/**
-				 * Resp Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Res() noexcept : ver(0x0), rep(0x0), rsv(0x0), atyp(0x0) {}
 			} __attribute__((packed)) res_t;
 			/**
-			 * IP Структура ip адреса сервера
+			 * @brief Структура ip адреса сервера
+			 *
 			 */
 			typedef struct IP {
 				uint32_t host; // Хост сервера
 				uint16_t port; // Порт сервера
 				/**
-				 * IP Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				IP() noexcept : host(0x0), port(0x0) {}
 			} __attribute__((packed)) ip_t;
@@ -196,14 +208,16 @@ namespace awh {
 			const log_t * _log;
 		protected:
 			/**
-			 * ipToHex Метод конвертации IP адреса в бинарный буфер
+			 * @brief Метод конвертации IP адреса в бинарный буфер
+			 *
 			 * @param ip     индернет адрес в виде строки
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       бинарный буфер IP адреса
 			 */
 			vector <char> ipToHex(const string & ip, const int32_t family = AF_INET) const noexcept;
 			/**
-			 * hexToIp Метод конвертации бинарного буфера в IP адрес
+			 * @brief Метод конвертации бинарного буфера в IP адрес
+			 *
 			 * @param buffer бинарный буфер для конвертации
 			 * @param size   размер бинарного буфера
 			 * @param family тип протокола интернета AF_INET или AF_INET6
@@ -212,13 +226,15 @@ namespace awh {
 			string hexToIp(const char * buffer, const size_t size, const int32_t family = AF_INET) const noexcept;
 		protected:
 			/**
-			 * text Метод установки в буфер текстовых данных
+			 * @brief Метод установки в буфер текстовых данных
+			 *
 			 * @param text текст для установки
 			 * @return     текущее значение смещения
 			 */
 			uint16_t text(const string & text) const noexcept;
 			/**
-			 * text Метод извлечения текстовых данных из буфера
+			 * @brief Метод извлечения текстовых данных из буфера
+			 *
 			 * @param buffer буфер данных для извлечения текста
 			 * @param size   размер буфера данных
 			 * @return       текст содержащийся в буфере данных
@@ -226,7 +242,8 @@ namespace awh {
 			string text(const char * buffer, const size_t size) const noexcept;
 		protected:
 			/**
-			 * octet Метод установки октета
+			 * @brief Метод установки октета
+			 *
 			 * @param octet  октет для установки
 			 * @param offset размер смещения в буфере
 			 * @return       текущее значение смещения
@@ -234,54 +251,63 @@ namespace awh {
 			uint16_t octet(const uint8_t octet, const uint16_t offset = 0) const noexcept;
 		public:
 			/**
-			 * is Метод проверки активного состояния
+			 * @brief Метод проверки активного состояния
+			 *
 			 * @param state состояние которое необходимо проверить
 			 */
 			bool is(const state_t state) const noexcept;
 		public:
 			/**
-			 * code Метод получения кода сообщения
+			 * @brief Метод получения кода сообщения
+			 *
 			 * @return код сообщения
 			 */
 			uint8_t code() const noexcept;
 			/**
-			 * message Метод получения сообщения
+			 * @brief Метод получения сообщения
+			 *
 			 * @param code код сообщения
 			 * @return     текстовое значение кода
 			 */
 			const string & message(const uint8_t code) const noexcept;
 		public:
 			/**
-			 * get Метод извлечения буфера запроса/ответа
+			 * @brief Метод извлечения буфера запроса/ответа
+			 *
 			 * @return бинарный буфер
 			 */
 			const vector <char> & get() const noexcept;
 		public:
 			/**
-			 * parse Метод парсинга входящих данных
+			 * @brief Метод парсинга входящих данных
+			 *
 			 * @param buffer бинарный буфер входящих данных
 			 * @param size   размер бинарного буфера входящих данных
 			 */
 			virtual void parse(const char * buffer = nullptr, const size_t size = 0) noexcept = 0;
 		public:
 			/**
-			 * reset Метод сброса собранных данных
+			 * @brief Метод сброса собранных данных
+			 *
 			 */
 			virtual void reset() noexcept = 0;
 		public:
 			/**
-			 * url Метод установки URL параметров REST запроса
+			 * @brief Метод установки URL параметров REST запроса
+			 *
 			 * @param url параметры REST запроса
 			 */
 			void url(const uri_t::url_t & url) noexcept;
 		public:
 			/**
-			 * Socks5 Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param log объект для работы с логами
 			 */
 			Socks5(const log_t * log) noexcept;
 			/**
-			 * ~Socks5 Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			virtual ~Socks5() noexcept {}
 	} socks5_t;

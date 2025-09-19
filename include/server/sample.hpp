@@ -23,7 +23,8 @@
 #include "../scheme/sample.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -31,11 +32,13 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * Sample Класс работы с SAMPLE сервером
+		 * @brief Класс работы с SAMPLE сервером
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Sample {
 			public:
@@ -98,35 +101,41 @@ namespace awh {
 				const server::core_t * _core;
 			private:
 				/**
-				 * openEvent Метод обратного вызова при запуске работы
+				 * @brief Метод обратного вызова при запуске работы
+				 *
 				 * @param sid идентификатор схемы сети
 				 */
 				void openEvent(const uint16_t sid) noexcept;
 				/**
-				 * statusEvent Метод обратного вызова при активации ядра сервера
+				 * @brief Метод обратного вызова при активации ядра сервера
+				 *
 				 * @param status флаг запуска/остановки
 				 */
 				void statusEvent(const awh::core_t::status_t status) noexcept;
 				/**
-				 * connectEvent Метод обратного вызова при подключении к серверу
+				 * @brief Метод обратного вызова при подключении к серверу
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * disconnectEvent Метод обратного вызова при отключении от сервера
+				 * @brief Метод обратного вызова при отключении от сервера
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * launchedEvent Метод получения события запуска сервера
+				 * @brief Метод получения события запуска сервера
+				 *
 				 * @param host хост запущенного сервера
 				 * @param port порт запущенного сервера
 				 */
 				void launchedEvent(const string & host, const uint32_t port) noexcept;
 				/**
-				 * readEvent Метод обратного вызова при чтении сообщения с брокера
+				 * @brief Метод обратного вызова при чтении сообщения с брокера
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
@@ -134,7 +143,8 @@ namespace awh {
 				 */
 				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * writeEvent Метод обратного вызова при записи сообщение брокеру
+				 * @brief Метод обратного вызова при записи сообщение брокеру
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
@@ -142,7 +152,8 @@ namespace awh {
 				 */
 				void writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * acceptEvent Метод обратного вызова при проверке подключения брокера
+				 * @brief Метод обратного вызова при проверке подключения брокера
+				 *
 				 * @param ip   адрес интернет подключения брокера
 				 * @param mac  мак-адрес подключившегося брокера
 				 * @param port порт подключившегося брокера
@@ -152,42 +163,49 @@ namespace awh {
 				bool acceptEvent(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept;
 			private:
 				/**
-				 * erase Метод удаления отключившихся клиентов
+				 * @brief Метод удаления отключившихся клиентов
+				 *
 				 * @param tid идентификатор таймера
 				 */
 				void erase(const uint16_t tid) noexcept;
 				/**
-				 * pinging Метод таймера выполнения пинга клиента
+				 * @brief Метод таймера выполнения пинга клиента
+				 *
 				 * @param tid идентификатор таймера
 				 */
 				void pinging(const uint16_t tid) noexcept;
 			public:
 				/**
-				 * init Метод инициализации Rest брокера
+				 * @brief Метод инициализации Rest брокера
+				 *
 				 * @param socket unix-сокет для биндинга
 				 */
 				void init(const string & socket) noexcept;
 				/**
-				 * init Метод инициализации Rest брокера
+				 * @brief Метод инициализации Rest брокера
+				 *
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
 				void init(const uint32_t port, const string & host = "") noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
+				 * @brief Метод установки функций обратного вызова
+				 *
 				 * @param callback функции обратного вызова
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param name  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -201,13 +219,15 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param name  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -221,13 +241,15 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param T    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam T    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename T, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param fid  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -241,14 +263,16 @@ namespace awh {
 					return 0;
 				}
 				/**
-				 * @tparam Шаблон метода подключения финкции обратного вызова
-				 * @param A    тип идентификатора функции
-				 * @param B    тип функции обратного вызова
-				 * @param Args аргументы функции обратного вызова
+				 * @brief Шаблон метода подключения финкции обратного вызова
+				 *
+				 * @tparam A    тип идентификатора функции
+				 * @tparam B    тип функции обратного вызова
+				 * @tparam Args аргументы функции обратного вызова
 				 */
 				template <typename A, typename B, class... Args>
 				/**
-				 * on Метод подключения финкции обратного вызова
+				 * @brief Метод подключения финкции обратного вызова
+				 *
 				 * @param fid  идентификатор функкции обратного вызова
 				 * @param args аргументы функции обратного вызова
 				 * @return     идентификатор добавленной функции обратного вызова
@@ -263,7 +287,8 @@ namespace awh {
 				}
 			public:
 				/**
-				 * response Метод отправки сообщения брокеру
+				 * @brief Метод отправки сообщения брокеру
+				 *
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных для отправки
 				 * @param size   размер бинарных данных для отправки
@@ -271,81 +296,95 @@ namespace awh {
 				void send(const uint64_t bid, const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
-				 * port Метод получения порта подключения брокера
+				 * @brief Метод получения порта подключения брокера
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
 				uint32_t port(const uint64_t bid) const noexcept;
 				/**
-				 * ip Метод получения IP-адреса брокера
+				 * @brief Метод получения IP-адреса брокера
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес интернет подключения брокера
 				 */
 				const string & ip(const uint64_t bid) const noexcept;
 				/**
-				 * mac Метод получения MAC-адреса брокера
+				 * @brief Метод получения MAC-адреса брокера
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес устройства брокера
 				 */
 				const string & mac(const uint64_t bid) const noexcept;
 			public:
 				/**
-				 * alive Метод установки долгоживущего подключения
+				 * @brief Метод установки долгоживущего подключения
+				 *
 				 * @param mode флаг долгоживущего подключения
 				 */
 				void alive(const bool mode) noexcept;
 				/**
-				 * alive Метод установки долгоживущего подключения
+				 * @brief Метод установки долгоживущего подключения
+				 *
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг долгоживущего подключения
 				 */
 				void alive(const uint64_t bid, const bool mode) noexcept;
 			public:
 				/**
-				 * stop Метод остановки сервера
+				 * @brief Метод остановки сервера
+				 *
 				 */
 				void stop() noexcept;
 				/**
-				 * start Метод запуска сервера
+				 * @brief Метод запуска сервера
+				 *
 				 */
 				void start() noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения брокера
+				 * @brief Метод закрытия подключения брокера
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint64_t bid) noexcept;
 			public:
 				/**
-				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @brief Метод установки интервала времени выполнения пингов
+				 *
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
 				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
+				 * @brief Метод ожидания входящих сообщений
+				 *
 				 * @param sec интервал времени в секундах
 				 */
 				void waitMessage(const uint16_t sec) noexcept;
 				/**
-				 * waitTimeDetect Метод детекции сообщений по количеству секунд
+				 * @brief Метод детекции сообщений по количеству секунд
+				 *
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
 				 */
 				void waitTimeDetect(const uint16_t read, const uint16_t write) noexcept;
 			public:
 				/**
-				 * total Метод установки максимального количества одновременных подключений
+				 * @brief Метод установки максимального количества одновременных подключений
+				 *
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const uint16_t total) noexcept;
 				/**
-				 * mode Метод установки флага модуля
+				 * @brief Метод установки флага модуля
+				 *
 				 * @param flag флаг модуля для установки
 				 */
 				void mode(const std::set <flag_t> & flags) noexcept;
 				/**
-				 * keepAlive Метод установки жизни подключения
+				 * @brief Метод установки жизни подключения
+				 *
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
@@ -353,14 +392,16 @@ namespace awh {
 				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
-				 * Sample Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
 				Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Sample Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Sample() noexcept {}
 		} sample_t;

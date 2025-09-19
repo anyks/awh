@@ -30,7 +30,8 @@
 #include "../sys/buffer.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -38,20 +39,24 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * scheme серверное пространство имён
+		 * @brief серверное пространство имён
+		 *
 		 */
 		namespace scheme {
 			/**
-			 * WebSocket Структура схемы сети WebSocket сервера
+			 * @brief Структура схемы сети WebSocket сервера
+			 *
 			 */
 			typedef struct AWHSHARED_EXPORT WebSocket : public scheme_t {
 				public:
 					/**
-					 * Buffer Структура буфера данных
+					 * @brief Структура буфера данных
+					 *
 					 */
 					typedef struct Buffer {
 						// Бинарный буфер полезной нагрузки
@@ -59,42 +64,49 @@ namespace awh {
 						// Данные фрагметрированного сообщения
 						vector <char> fragments;
 						/**
-						 * Buffer Конструктор
+						 * @brief Конструктор
+						 *
 						 * @param log объект для работы с логами
 						 */
 						Buffer(const log_t * log) noexcept : payload(log) {}
 					} buffer_t;
 					/**
-					 * Allow Структура флагов разрешения обменом данных
+					 * @brief Структура флагов разрешения обменом данных
+					 *
 					 */
 					typedef struct Allow {
 						bool send;    // Флаг разрешения отправки данных
 						bool receive; // Флаг разрешения чтения данных
 						/**
-						 * Allow Конструктор
+						 * @brief Конструктор
+						 *
 						 */
 						Allow() noexcept : send(true), receive(true) {}
 					} __attribute__((packed)) allow_t;
 					/**
-					 * Partner Структура партнёра
+					 * @brief Структура партнёра
+					 *
 					 */
 					typedef struct Partner {
 						int16_t wbit;  // Размер скользящего окна
 						bool takeover; // Флаг скользящего контекста сжатия
 						/**
-						 * Partner Конструктор
+						 * @brief Конструктор
+						 *
 						 */
 						Partner() noexcept : wbit(0), takeover(false) {}
 					} __attribute__((packed)) partner_t;
 					/**
-					 * Frame Объект фрейма WebSocket
+					 * @brief Объект фрейма WebSocket
+					 *
 					 */
 					typedef struct Frame {
 						size_t size;                  // Размер отправляемого сегмента
 						ws::frame_t methods;          // Методы работы с фреймом WebSocket
 						ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
 						/**
-						 * Frame Конструктор
+						 * @brief Конструктор
+						 *
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
@@ -104,7 +116,8 @@ namespace awh {
 					} frame_t;
 				public:
 					/**
-					 * Options Структура параметров активного клиента
+					 * @brief Структура параметров активного клиента
+					 *
 					 */
 					typedef struct Options {
 						bool close;                      // Флаг требования закрыть брокера
@@ -128,7 +141,8 @@ namespace awh {
 						std::recursive_mutex mtx;        // Мютекс для блокировки потока
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
-						 * Options Конструктор
+						 * @brief Конструктор
+						 *
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
@@ -141,7 +155,8 @@ namespace awh {
 						 proto(engine_t::proto_t::HTTP1_1),
 						 compressor(http_t::compressor_t::NONE) {}
 						/**
-						 * ~Options Деструктор
+						 * @brief Деструктор
+						 *
 						 */
 						~Options() noexcept {}
 					} options_t;
@@ -163,42 +178,49 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
-					 * clear Метод очистки
+					 * @brief Метод очистки
+					 *
 					 */
 					void clear() noexcept;
 				public:
 					/**
-					 * set Метод создания параметров активного клиента
+					 * @brief Метод создания параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void set(const uint64_t bid) noexcept;
 					/**
-					 * rm Метод удаления параметров активного клиента
+					 * @brief Метод удаления параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void rm(const uint64_t bid) noexcept;
 				public:
 					/**
-					 * get Метод извлечения списка параметров активных клиентов
+					 * @brief Метод извлечения списка параметров активных клиентов
+					 *
 					 * @return список параметров активных клиентов
 					 */
 					const clients_t & get() const noexcept;
 					/**
-					 * get Метод получения параметров активного клиента
+					 * @brief Метод получения параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
 					const options_t * get(const uint64_t bid) const noexcept;
 				public:
 					/**
-					 * WebSocket Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					WebSocket(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
-					 * ~WebSocket Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~WebSocket() noexcept {}
 			} ws_t;

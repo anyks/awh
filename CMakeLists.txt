@@ -28,6 +28,12 @@ else (CMAKE_BUILD_IDN)
     message(STATUS "Build AWH IDN: NO\n")
 endif (CMAKE_BUILD_IDN)
 
+# Сборка установкой количества доступных файловых дескрипторов
+if (CMAKE_MAX_COUNT_FDS)
+    add_compile_definitions(AWH_MAX_COUNT_FDS=${CMAKE_MAX_COUNT_FDS})
+    message(STATUS "Build AWH with max fds: ${CMAKE_MAX_COUNT_FDS}\n")
+endif (CMAKE_MAX_COUNT_FDS)
+
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 
@@ -300,7 +306,6 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/events/event.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/watch.cpp"
     "${CMAKE_SOURCE_DIR}/src/events/notifier.cpp"
-    "${CMAKE_SOURCE_DIR}/src/events/partners.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/node.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/timer.cpp"
@@ -445,7 +450,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения работы с IP-адресами
@@ -454,7 +458,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
@@ -463,7 +466,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
@@ -472,7 +474,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения DNS-резолвер
@@ -481,7 +482,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения NTP-клиента
@@ -490,7 +490,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Proxy-сервера
@@ -499,7 +498,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Socks5-сервера
@@ -508,7 +506,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Ping-клиента
@@ -517,7 +514,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения даты и времени
@@ -526,7 +522,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения таймера
@@ -535,7 +530,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения клиента
@@ -544,7 +538,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения сервера
@@ -553,7 +546,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения HTTP-клиента
@@ -562,7 +554,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения HTTP-сервера
@@ -571,7 +562,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения дознавателя
@@ -580,147 +570,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
-        )
-
-    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
-    elseif (CMAKE_BUILD_IDN)
-
-        # Выполняем сборку динамической библиотеки
-        target_link_libraries(
-            ${AWH_LIB_NAME}
-            PRIVATE
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения работы с IP-адресами
-        target_link_libraries(
-            ${IP_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения WebSocket-клиент
-        target_link_libraries(
-            ${WS_CLIENT_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения WebSocket-сервер
-        target_link_libraries(
-            ${WS_SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения DNS-резолвер
-        target_link_libraries(
-            ${DNS_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения NTP-клиента
-        target_link_libraries(
-            ${NTP_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения Socks5-сервера
-        target_link_libraries(
-            ${SOCKS5_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения Ping-клиента
-        target_link_libraries(
-            ${PING_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения даты и времени
-        target_link_libraries(
-            ${DATE_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения таймера
-        target_link_libraries(
-            ${TIMER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения клиента
-        target_link_libraries(
-            ${CLIENT_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения сервера
-        target_link_libraries(
-            ${SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения кластера
-        target_link_libraries(
-            ${CLUSTER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения HTTP-клиента
-        target_link_libraries(
-            ${WEB_CLIENT_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения HTTP-сервера
-        target_link_libraries(
-            ${WEB_SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения дознавателя
-        target_link_libraries(
-            ${INVESTIGATOR_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
         )
 
     # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
@@ -859,7 +708,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
@@ -869,7 +717,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
@@ -879,7 +726,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения DNS-резолвер
@@ -889,7 +735,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения NTP-клиента
@@ -899,7 +744,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Proxy-сервера
@@ -909,7 +753,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Socks5-сервера
@@ -919,7 +762,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения Ping-клиента
@@ -929,7 +771,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения даты и времени
@@ -939,7 +780,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения таймера
@@ -949,7 +789,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения клиента
@@ -959,7 +798,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения сервера
@@ -969,7 +807,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения HTTP-клиента
@@ -979,7 +816,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения HTTP-сервера
@@ -989,7 +825,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
         )
 
         # Выполняем сборку приложения дознавателя
@@ -999,154 +834,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DEPEND_LIBRARY}
             ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
-            ${AWH_IDN}
-        )
-
-    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris
-    elseif (CMAKE_BUILD_IDN)
-
-        # Выполняем сборку приложения работы с IP-адресами
-        target_link_libraries(
-            ${IP_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения WebSocket-клиент
-        target_link_libraries(
-            ${WS_CLIENT_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения WebSocket-сервер
-        target_link_libraries(
-            ${WS_SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения DNS-резолвер
-        target_link_libraries(
-            ${DNS_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения NTP-клиента
-        target_link_libraries(
-            ${NTP_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения Proxy-сервера
-        target_link_libraries(
-            ${PROXY_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения Socks5-сервера
-        target_link_libraries(
-            ${SOCKS5_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения Ping-клиента
-        target_link_libraries(
-            ${PING_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения даты и времени
-        target_link_libraries(
-            ${DATE_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения таймера
-        target_link_libraries(
-            ${TIMER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения клиента
-        target_link_libraries(
-            ${CLIENT_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения сервера
-        target_link_libraries(
-            ${SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения кластера
-        target_link_libraries(
-            ${CLUSTER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения HTTP-клиента
-        target_link_libraries(
-            ${WEB_CLIENT_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения HTTP-сервера
-        target_link_libraries(
-            ${WEB_SERVER_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
-        )
-
-        # Выполняем сборку приложения дознавателя
-        target_link_libraries(
-            ${INVESTIGATOR_APP_NAME}
-            ${AWH_LIB_NAME}
-            ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
-            ${AWH_IDN}
         )
 
     # Если операционной системой является Linux, FreeBSD, NetBSD, OpenBSD, MacOS X, Solaris

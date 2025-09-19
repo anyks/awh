@@ -135,7 +135,7 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 				// Устанавливаем список поддерживаемых расширений
 				this->_ws1.extensions(this->_extensions);
 			// Если многопоточность активированна
-			if(this->_thr.is()){
+			if(this->_thr.initialized()){
 				// Выполняем завершение всех активных потоков
 				this->_thr.stop();
 				// Выполняем инициализацию нового тредпула
@@ -397,7 +397,7 @@ int32_t awh::server::Websocket2::beginSignal(const int32_t sid, const uint64_t b
 		// Если размер выделенной памяти выше максимального размера буфера
 		if(options->buffer.fragments.capacity() > AWH_BUFFER_SIZE)
 			// Выполняем очистку временного буфера данных
-			vector <char> ().swap(options->buffer.fragments);
+			vector <decltype(options->buffer.fragments)::value_type> ().swap(options->buffer.fragments);
 	}
 	// Выводим результат
 	return 0;
@@ -592,7 +592,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 													// Если размер выделенной памяти выше максимального размера буфера
 													if(options->buffer.fragments.capacity() > AWH_BUFFER_SIZE)
 														// Выполняем очистку временного буфера данных
-														vector <char> ().swap(options->buffer.fragments);
+														vector <decltype(options->buffer.fragments)::value_type> ().swap(options->buffer.fragments);
 													// Создаём сообщение
 													options->mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 													// Выполняем отключение брокера
@@ -604,7 +604,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 												// Если сообщение является последним
 												else {
 													// Если тредпул активирован
-													if(this->_thr.is())
+													if(this->_thr.initialized())
 														// Добавляем в тредпул новую задачу на извлечение полученных сообщений
 														this->_thr.push(std::bind(&ws2_t::extraction, this, bid, payload, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
 													// Если тредпул не активирован, выполняем извлечение полученных сообщений
@@ -620,7 +620,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 													// Если сообщение является последним
 													if(head.fin){
 														// Если тредпул активирован
-														if(this->_thr.is())
+														if(this->_thr.initialized())
 															// Добавляем в тредпул новую задачу на извлечение полученных сообщений
 															this->_thr.push(std::bind(&ws2_t::extraction, this, bid, options->buffer.fragments, (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
 														// Если тредпул не активирован, выполняем извлечение полученных сообщений
@@ -630,7 +630,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 														// Если размер выделенной памяти выше максимального размера буфера
 														if(options->buffer.fragments.capacity() > AWH_BUFFER_SIZE)
 															// Выполняем очистку временного буфера данных
-															vector <char> ().swap(options->buffer.fragments);
+															vector <decltype(options->buffer.fragments)::value_type> ().swap(options->buffer.fragments);
 													}
 												// Если фрагментированные сообщения не существуют
 												} else {
@@ -1001,7 +1001,7 @@ void awh::server::Websocket2::error(const uint64_t bid, const ws::mess_t & messa
 		// Если размер выделенной памяти выше максимального размера буфера
 		if(options->buffer.fragments.capacity() > AWH_BUFFER_SIZE)
 			// Выполняем очистку временного буфера данных
-			vector <char> ().swap(options->buffer.fragments);
+			vector <decltype(options->buffer.fragments)::value_type> ().swap(options->buffer.fragments);
 	}
 	// Если идентификатор брокера передан и код ошибки указан
 	if((bid > 0) && (message.code > 0)){
@@ -1182,7 +1182,7 @@ void awh::server::Websocket2::erase(const uint64_t bid) noexcept {
 				// Если размер выделенной памяти выше максимального размера буфера
 				if(options->buffer.fragments.capacity() > AWH_BUFFER_SIZE)
 					// Выполняем очистку временного буфера данных
-					vector <char> ().swap(options->buffer.fragments);
+					vector <decltype(options->buffer.fragments)::value_type> ().swap(options->buffer.fragments);
 				// Если переключение протокола на HTTP/2 не выполнено
 				if(options->proto != engine_t::proto_t::HTTP2)
 					// Выполняем очистку отключившихся брокеров у Websocket-сервера
@@ -1788,7 +1788,7 @@ void awh::server::Websocket2::multiThreads(const uint16_t count, const bool mode
 		// Выполняем установку количества активных ядер
 		this->_threads = count;
 		// Если многопоточность ещё не активированна
-		if(!this->_thr.is())
+		if(!this->_thr.initialized())
 			// Выполняем инициализацию пула потоков
 			this->_thr.init(this->_threads);
 		// Если многопоточность уже активированна
@@ -1919,7 +1919,7 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Если многопоточность активированна
-		if(this->_thr.is() || this->_ws1._thr.is())
+		if(this->_thr.initialized() || this->_ws1._thr.initialized())
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
 		// Устанавливаем событие на запуск системы
@@ -1937,7 +1937,7 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
-		if(this->_thr.is() || this->_ws1._thr.is()){
+		if(this->_thr.initialized() || this->_ws1._thr.initialized()){
 			// Выполняем завершение всех активных потоков
 			this->_thr.stop();
 			// Выполняем завершение всех активных потоков
@@ -2145,7 +2145,7 @@ awh::server::Websocket2::Websocket2(const server::core_t * core, const fmk_t * f
  */
 awh::server::Websocket2::~Websocket2() noexcept {
 	// Если многопоточность активированна
-	if(this->_thr.is())
+	if(this->_thr.initialized())
 		// Выполняем завершение всех активных потоков
 		this->_thr.stop();
 }

@@ -600,7 +600,7 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
 			// Если размер выделенной памяти выше максимального размера буфера
 			if(i->second->request.entity.capacity() > AWH_BUFFER_SIZE)
 				// Выполняем очистку временного буфера данных
-				vector <char> ().swap(i->second->request.entity);
+				vector <decltype(i->second->request.entity)::value_type> ().swap(i->second->request.entity);
 		}
 	}
 }
@@ -633,7 +633,7 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 			// Если размер выделенной памяти выше максимального размера буфера
 			if(i->second->response.entity.capacity() > AWH_BUFFER_SIZE)
 				// Выполняем очистку временного буфера данных
-				vector <char> ().swap(i->second->response.entity);
+				vector <decltype(i->second->response.entity)::value_type> ().swap(i->second->response.entity);
 		}
 		// Снимаем флаг отправки результата
 		i->second->sending = false;

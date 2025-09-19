@@ -29,7 +29,8 @@
 #include "../sys/reg.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -37,7 +38,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * NWT Структура списка параметров URL
+	 * @brief Структура списка параметров URL
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT NWT {
 		public:
@@ -54,7 +56,8 @@ namespace awh {
 			};
 		public:
 			/**
-			 * URL Класс URL-адреса
+			 * @brief Класс URL-адреса
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT URL {
 				public:
@@ -71,42 +74,49 @@ namespace awh {
 					string schema; // Протокол URL-адреса
 				public:
 					/**
-					 * Оператор перемещения
+					 * @brief Оператор перемещения
+					 *
 					 * @param url параметры падреса
 					 * @return    параметры URL-запроса
 					 */
 					URL & operator = (URL && url) noexcept;
 					/**
-					 * Оператор присванивания
+					 * @brief Оператор присванивания
+					 *
 					 * @param url параметры падреса
 					 * @return    параметры URL-запроса
 					 */
 					URL & operator = (const URL & url) noexcept;
 				public:
 					/**
-					 * Оператор сравнения
+					 * @brief Оператор сравнения
+					 *
 					 * @param url параметры падреса
 					 * @return    результат сравнения
 					 */
 					bool operator == (const URL & url) noexcept;
 				public:
 					/**
-					 * URL Конструктор перемещения
+					 * @brief Конструктор перемещения
+					 *
 					 * @param url параметры падреса
 					 */
 					URL(URL && url) noexcept;
 					/**
-					 * URL Конструктор копирования
+					 * @brief Конструктор копирования
+					 *
 					 * @param url параметры падреса
 					 */
 					URL(const URL & url) noexcept;
 				public:
 					/**
-					 * URL Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					URL() noexcept;
 					/**
-					 * ~URL Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~URL() noexcept {}
 			} url_t;
@@ -132,54 +142,64 @@ namespace awh {
 			std::set <string> _national;
 		private:
 			/**
-			 * init Метод инициализации
+			 * @brief Метод инициализации
+			 *
 			 */
 			void init() noexcept;
 		public:
 			/**
-			 * zone Метод установки пользовательской зоны
+			 * @brief Метод установки пользовательской зоны
+			 *
 			 * @param zone пользовательская зона
 			 */
 			void zone(const string & zone) noexcept;
 		public:
 			/**
-			 * zones Метод извлечения списка пользовательских зон интернета
+			 * @brief Метод извлечения списка пользовательских зон интернета
+			 *
 			 */
 			const std::set <string> & zones() const noexcept;
 			/**
-			 * zones Метод установки списка пользовательских зон
+			 * @brief Метод установки списка пользовательских зон
+			 *
 			 * @param zones список доменных зон интернета
 			 */
 			void zones(const std::set <string> & zones) noexcept;
 		public:
 			/**
-			 * parse Метод парсинга URI-строки
+			 * @brief Метод парсинга URI-строки
+			 *
 			 * @param text текст для парсинга
 			 * @return     параметры полученные в результате парсинга
 			 */
 			url_t parse(const string & text) noexcept;
 		public:
 			/**
-			 * clear Метод очистки результатов парсинга
+			 * @brief Метод очистки результатов парсинга
+			 *
 			 */
 			void clear() noexcept;
 			/**
-			 * letters Метод добавления букв алфавита
+			 * @brief Метод добавления букв алфавита
+			 *
 			 * @param letters список букв алфавита
 			 */
 			void letters(const string & letters = "") noexcept;
 		public:
 			/**
-			 * NWT Конструктор
+			 * @brief Конструктор
+			 *
 			 */
 			NWT() noexcept;
 			/**
-			 * NWT Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param letters список букв алфавита
 			 */
 			NWT(const string & letters) noexcept;
 			/**
-			 * ~NWT Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~NWT() noexcept {}
 	} nwt_t;

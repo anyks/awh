@@ -28,7 +28,8 @@ using namespace awh;
 using namespace placeholders;
 
 /**
- * WebClient Класс объекта исполнителя
+ * @brief Класс объекта исполнителя
+ *
  */
 class WebClient {
 	private:
@@ -41,7 +42,8 @@ class WebClient {
 		std::map <uint64_t, std::queue <vector <char>>> _payloads;
 	public:
 		/**
-		 * status Метод статуса запуска/остановки сервера
+		 * @brief Метод статуса запуска/остановки сервера
+		 *
 		 * @param status статус события сервера
 		 */
 		void status(const awh::core_t::status_t status){
@@ -60,7 +62,8 @@ class WebClient {
 			}
 		}
 		/**
-		 * available Метод получения событий освобождения памяти буфера полезной нагрузки
+		 * @brief Метод получения событий освобождения памяти буфера полезной нагрузки
+		 *
 		 * @param bid  идентификатор брокера
 		 * @param size размер буфера полезной нагрузки
 		 * @param core объект сетевого ядра
@@ -80,7 +83,8 @@ class WebClient {
 			}
 		}
 		/**
-		 * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+		 * @brief Метод получения событий недоступности памяти буфера полезной нагрузки
+		 *
 		 * @param bid    идентификатор брокера
 		 * @param buffer буфер полезной нагрузки которую не получилось отправить
 		 * @param size   размер буфера полезной нагрузки
@@ -101,7 +105,8 @@ class WebClient {
 			}
 		}
 		/**
-		 * handshake Метод события рукопожатия
+		 * @brief Метод события рукопожатия
+		 *
 		 * @param sid   идентификатор потока
 		 * @param rid   идентификатор запроса
 		 * @param agent идентификатор агента клиента
@@ -228,7 +233,8 @@ class WebClient {
 			}
 		}
 		/**
-		 * error Метод вывода ошибок Websocket клиента
+		 * @brief Метод вывода ошибок Websocket клиента
+		 *
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
@@ -237,7 +243,8 @@ class WebClient {
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 		/**
-		 * message Метод получения сообщений
+		 * @brief Метод получения сообщений
+		 *
 		 * @param buffer бинарный буфер сообщения
 		 * @param utf8   тип буфера сообщения
 		 * @param awh    объект web-клиента
@@ -264,7 +271,8 @@ class WebClient {
 			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << subprotocol << endl;
 		}
 		/**
-		 * response Метод получения статуса результата запроса
+		 * @brief Метод получения статуса результата запроса
+		 *
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
@@ -277,7 +285,8 @@ class WebClient {
 				this->_log->print("request failed: %u %s stream=%i", log_t::flag_t::WARNING, code, message.c_str(), sid);
 		}
 		/**
-		 * active Метод идентификации активности на Web-клиенте
+		 * @brief Метод идентификации активности на Web-клиенте
+		 *
 		 * @param mode режим события подключения
 		 * @param awh  объект web-клиента
 		 */
@@ -303,7 +312,8 @@ class WebClient {
 			}
 		}
 		/**
-		 * entity Метод получения тела ответа сервера
+		 * @brief Метод получения тела ответа сервера
+		 *
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
@@ -334,7 +344,8 @@ class WebClient {
 			awh->stop();
 		}
 		/**
-		 * headers Метод получения заголовков ответа сервера
+		 * @brief Метод получения заголовков ответа сервера
+		 *
 		 * @param sid     идентификатор потока
 		 * @param rid     идентификатор запроса
 		 * @param code    код ответа сервера
@@ -349,7 +360,8 @@ class WebClient {
 		}
 	public:
 		/**
-		 * WebClient Конструктор
+		 * @brief Конструктор
+		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
 		 */
@@ -357,7 +369,8 @@ class WebClient {
 };
 
 /**
- * main Главная функция приложения
+ * @brief Главная функция приложения
+ *
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения

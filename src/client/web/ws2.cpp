@@ -112,7 +112,7 @@ void awh::client::Websocket2::connectEvent(const uint64_t bid, const uint16_t si
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectEvent(bid, sid);
 		// Если флаг инициализации сессии HTTP/2 установлен
-		if(this->_http2.is()){
+		if(this->_http2.initialized()){
 			// Выполняем переключение протокола интернета на HTTP/2
 			this->_proto = engine_t::proto_t::HTTP2;
 			// Выполняем отправку запроса на удалённый сервер
@@ -151,7 +151,7 @@ void awh::client::Websocket2::connectEvent(const uint64_t bid, const uint16_t si
 				// Выполняем установку HTTP-заголовков
 				this->_ws1.setHeaders(this->_headers);
 			// Если многопоточность активированна
-			if(this->_thr.is()){
+			if(this->_thr.initialized()){
 				// Выполняем завершение всех активных потоков
 				this->_thr.stop();
 				// Выполняем инициализацию нового тредпула
@@ -197,7 +197,7 @@ void awh::client::Websocket2::disconnectEvent(const uint64_t bid, const uint16_t
 		// Если размер выделенной памяти выше максимального размера буфера
 		if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 			// Выполняем очистку временного буфера данных
-			vector <char> ().swap(this->_fragments);
+			vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 	// Если подключение не является постоянным
 	} else {
 		// Выполняем сброс параметров запроса
@@ -224,7 +224,7 @@ void awh::client::Websocket2::disconnectEvent(const uint64_t bid, const uint16_t
 	// Если размер выделенной памяти выше максимального размера буфера
 	if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(this->_fragments);
+		vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 	// Выполняем переключение протокола интернета обратно на HTTP/1.1
 	this->_proto = engine_t::proto_t::HTTP1_1;
 	// Если функция обратного вызова при подключении/отключении установлена
@@ -604,7 +604,7 @@ int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::d
  */
 int32_t awh::client::Websocket2::closedSignal(const int32_t sid, const http2_t::error_t error) noexcept {
 	// Если флаг инициализации сессии HTTP/2 установлен
-	if((this->_core != nullptr) && (error != http2_t::error_t::NONE) && this->_http2.is())
+	if((this->_core != nullptr) && (error != http2_t::error_t::NONE) && this->_http2.initialized())
 		// Выполняем закрытие подключения
 		web2_t::close(this->_bid);
 	// Если функция обратного вызова активности потока установлена
@@ -641,7 +641,7 @@ int32_t awh::client::Websocket2::beginSignal(const int32_t sid) noexcept {
 			// Если размер выделенной памяти выше максимального размера буфера
 			if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 				// Выполняем очистку временного буфера данных
-				vector <char> ().swap(this->_fragments);
+				vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 		}
 	}
 	// Выводим результат
@@ -825,7 +825,7 @@ void awh::client::Websocket2::flush() noexcept {
 		// Если размер выделенной памяти выше максимального размера буфера
 		if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 			// Выполняем очистку временного буфера данных
-			vector <char> ().swap(this->_fragments);
+			vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 	}
 }
 /**
@@ -1001,7 +1001,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					// Если размер выделенной памяти выше максимального размера буфера
 					if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 						// Выполняем очистку временного буфера данных
-						vector <char> ().swap(this->_fragments);
+						vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
@@ -1163,7 +1163,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 							// Если размер выделенной памяти выше максимального размера буфера
 							if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 								// Выполняем очистку временного буфера данных
-								vector <char> ().swap(this->_fragments);
+								vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 							// Создаём сообщение
 							this->_mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
@@ -1177,7 +1177,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 						// Если сообщение является последним
 						else {
 							// Если тредпул активирован
-							if(this->_thr.is())
+							if(this->_thr.initialized())
 								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
 								this->_thr.push(std::bind(&ws2_t::extraction, this, payload, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
 							// Если тредпул не активирован, выполняем извлечение полученных сообщений
@@ -1193,7 +1193,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 							// Если сообщение является последним
 							if(head.fin){
 								// Если тредпул активирован
-								if(this->_thr.is())
+								if(this->_thr.initialized())
 									// Добавляем в тредпул новую задачу на извлечение полученных сообщений
 									this->_thr.push(std::bind(&ws2_t::extraction, this, this->_fragments, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
 								// Если тредпул не активирован, выполняем извлечение полученных сообщений
@@ -1203,7 +1203,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 								// Если размер выделенной памяти выше максимального размера буфера
 								if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 									// Выполняем очистку временного буфера данных
-									vector <char> ().swap(this->_fragments);
+									vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 							}
 						// Если фрагментированные сообщения не существуют
 						} else {
@@ -1269,7 +1269,7 @@ void awh::client::Websocket2::error(const ws::mess_t & message) const noexcept {
 	// Если размер выделенной памяти выше максимального размера буфера
 	if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(const_cast <ws2_t *> (this)->_fragments);
+		vector <decltype(this->_fragments)::value_type> ().swap(const_cast <ws2_t *> (this)->_fragments);
 	// Если код ошибки указан
 	if(message.code > 0){
 		// Если сообщение об ошибке пришло
@@ -1838,7 +1838,7 @@ void awh::client::Websocket2::core(const client::core_t * core) noexcept {
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
 		// Если многопоточность активированна
-		if(this->_thr.is() || this->_ws1._thr.is())
+		if(this->_thr.initialized() || this->_ws1._thr.initialized())
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 		// Устанавливаем функцию записи данных
@@ -1846,7 +1846,7 @@ void awh::client::Websocket2::core(const client::core_t * core) noexcept {
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
-		if(this->_thr.is() || this->_ws1._thr.is()){
+		if(this->_thr.initialized() || this->_ws1._thr.initialized()){
 			// Выполняем завершение всех активных потоков
 			this->_thr.stop();
 			// Выполняем завершение всех активных потоков
@@ -1936,7 +1936,7 @@ void awh::client::Websocket2::multiThreads(const uint16_t count, const bool mode
 		// Выполняем установку количества активных ядер
 		this->_threads = count;
 		// Если многопоточность ещё не активированна
-		if(!this->_thr.is())
+		if(!this->_thr.initialized())
 			// Выполняем инициализацию пула потоков
 			this->_thr.init(this->_threads);
 		// Если многопоточность уже активированна
@@ -2086,11 +2086,11 @@ awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * f
  */
 awh::client::Websocket2::~Websocket2() noexcept {
 	// Если многопоточность активированна
-	if(this->_thr.is())
+	if(this->_thr.initialized())
 		// Выполняем завершение всех активных потоков
 		this->_thr.stop();
 	// Если многопоточность активированна у Websocket/1.1 клиента
-	if(this->_ws1._thr.is())
+	if(this->_ws1._thr.initialized())
 		// Выполняем завершение всех активных потоков
 		this->_ws1._thr.stop();
 }

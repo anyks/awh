@@ -36,7 +36,8 @@
 #include "../sys/callback.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -44,7 +45,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Web Класс для работы с парсером HTTP
+	 * @brief Класс для работы с парсером HTTP
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Web {
 		public:
@@ -93,23 +95,29 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Provider Структура провайдера
+			 * @brief Класс провайдера
+			 *
 			 */
-			typedef struct Provider {
-				// Версия протокола
-				double version;
-				/**
-				 * Provider Конструктор
-				 */
-				Provider() noexcept : version(HTTP_VERSION) {}
-				/**
-				 * Provider Конструктор
-				 * @param version версия протокола
-				 */
-				Provider(const double version) noexcept : version(version) {}
+			typedef class Provider {
+				public:
+					// Версия протокола
+					double version;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					Provider() noexcept : version(HTTP_VERSION) {}
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param version версия протокола
+					 */
+					Provider(const double version) noexcept : version(version) {}
 			} provider_t;
 			/**
-			 * Request Класс HTTP-запроса клиента
+			 * @brief Класс HTTP-запроса клиента
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT Request : public provider_t {
 				public:
@@ -119,75 +127,88 @@ namespace awh {
 					uri_t::url_t url;
 				public:
 					/**
-					 * Оператор [=] перемещения параметров запроса клиента
+					 * @brief Оператор [=] перемещения параметров запроса клиента
+					 *
 					 * @param request объект параметров запроса клиента
 					 * @return        текущие параметры запроса клиента
 					 */
 					Request & operator = (Request && request) noexcept;
 					/**
-					 * Оператор [=] присванивания параметров запроса клиента
+					 * @brief Оператор [=] присванивания параметров запроса клиента
+					 *
 					 * @param request объект параметров запроса клиента
 					 * @return        текущие параметры запроса клиента
 					 */
 					Request & operator = (const Request & request) noexcept;
 				public:
 					/**
-					 * Оператор сравнения
+					 * @brief Оператор сравнения
+					 *
 					 * @param request объект параметров запроса клиента
 					 * @return        результат сравнения
 					 */
 					bool operator == (const Request & request) noexcept;
 				public:
 					/**
-					 * Request Конструктор перемещения
+					 * @brief Конструктор перемещения
+					 *
 					 * @param request объект параметров запроса клиента
 					 */
 					Request(Request && request) noexcept;
 					/**
-					 * Request Конструктор копирования
+					 * @brief Конструктор копирования
+					 *
 					 * @param request объект параметров запроса клиента
 					 */
 					Request(const Request & request) noexcept;
 				public:
 					/**
-					 * Request Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Request() noexcept;
 					/**
-					 * Request Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param method метод запроса клиента
 					 */
 					Request(const method_t method) noexcept;
 					/**
-					 * Request Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param version версия протокола
 					 */
 					Request(const double version) noexcept;
 					/**
-					 * Request Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param url адрес URL-запроса
 					 */
 					Request(const uri_t::url_t & url) noexcept;
 					/**
-					 * Request Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param version версия протокола
 					 * @param method  метод запроса клиента
 					 */
 					Request(const double version, const method_t method) noexcept;
 					/**
-					 * Request Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param method метод запроса клиента
 					 * @param url    адрес URL-запроса
 					 */
 					Request(const method_t method, const uri_t::url_t & url) noexcept;
 					/**
-					 * Request Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param version версия протокола
 					 * @param url     адрес URL-запроса
 					 */
 					Request(const double version, const uri_t::url_t & url) noexcept;
 					/**
-					 * Request Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param version версия протокола
 					 * @param method  метод запроса клиента
 					 * @param url     адрес URL-запроса
@@ -195,12 +216,14 @@ namespace awh {
 					Request(const double version, const method_t method, const uri_t::url_t & url) noexcept;
 				public:
 					/**
-					 * Request Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Request() noexcept {}
 			} req_t;
 			/**
-			 * Response Класс HTTP-ответа сервера
+			 * @brief Класс HTTP-ответа сервера
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT Response : public provider_t {
 				public:
@@ -210,75 +233,88 @@ namespace awh {
 					string message;
 				public:
 					/**
-					 * Оператор [=] перемещения параметров ответа сервера
+					 * @brief Оператор [=] перемещения параметров ответа сервера
+					 *
 					 * @param response объект параметров ответа сервера
 					 * @return         текущие параметры ответа сервера
 					 */
 					Response & operator = (Response && response) noexcept;
 					/**
-					 * Оператор [=] присванивания параметров ответа сервера
+					 * @brief Оператор [=] присванивания параметров ответа сервера
+					 *
 					 * @param response объект параметров ответа сервера
 					 * @return         текущие параметры ответа сервера
 					 */
 					Response & operator = (const Response & response) noexcept;
 				public:
 					/**
-					 * Оператор сравнения
+					 * @brief Оператор сравнения
+					 *
 					 * @param response объект параметров ответа сервера
 					 * @return         результат сравнения
 					 */
 					bool operator == (const Response & response) noexcept;
 				public:
 					/**
-					 * Response Конструктор перемещения
+					 * @brief Конструктор перемещения
+					 *
 					 * @param response объект параметров ответа сервера
 					 */
 					Response(Response && response) noexcept;
 					/**
-					 * Response Конструктор копирования
+					 * @brief Конструктор копирования
+					 *
 					 * @param response объект параметров ответа сервера
 					 */
 					Response(const Response & response) noexcept;
 				public:
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Response() noexcept;
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param code код ответа сервера
 					 */
 					Response(const uint32_t code) noexcept;
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param version версия протокола
 					 */
 					Response(const double version) noexcept;
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param message сообщение сервера
 					 */
 					Response(const string & message) noexcept;
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param version версия протокола
 					 * @param code    код ответа сервера
 					 */
 					Response(const double version, const uint32_t code) noexcept;
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param code    код ответа сервера
 					 * @param message сообщение сервера
 					 */
 					Response(const uint32_t code, const string & message) noexcept;
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param version версия протокола
 					 * @param message сообщение сервера
 					 */
 					Response(const double version, const string & message) noexcept;
 					/**
-					 * Response Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param version версия протокола
 					 * @param code    код ответа сервера
 					 * @param message сообщение сервера
@@ -286,7 +322,8 @@ namespace awh {
 					Response(const double version, const uint32_t code, const string & message) noexcept;
 				public:
 					/**
-					 * Response Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Response() noexcept {}
 			} res_t;
@@ -303,7 +340,8 @@ namespace awh {
 				STOP_BODY = 0x06  // Ожидание получения возврата каретки после получения тела чанка
 			};
 			/**
-			 * Chunk Структура собираемого чанка
+			 * @brief Структура собираемого чанка
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT Chunk {
 				public:
@@ -315,12 +353,14 @@ namespace awh {
 					vector <char> data;
 				public:
 					/**
-					 * clear Метод очистки данных чанка
+					 * @brief Метод очистки данных чанка
+					 *
 					 */
 					void clear() noexcept;
 				public:
 					/**
-					 * Chunk Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Chunk() noexcept : size(0), state(process_t::SIZE) {}
 			} chunk_t;
@@ -372,14 +412,16 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * parseBody Метод извлечения полезной нагрузки
+			 * @brief Метод извлечения полезной нагрузки
+			 *
 			 * @param buffer буфер данных для чтения
 			 * @param size   размер буфера данных для чтения
 			 * @return       размер обработанных данных
 			 */
 			size_t readPayload(const char * buffer, const size_t size) noexcept;
 			/**
-			 * readHeaders Метод извлечения заголовков
+			 * @brief Метод извлечения заголовков
+			 *
 			 * @param buffer буфер данных для чтения
 			 * @param size   размер буфера данных для чтения
 			 * @return       размер обработанных данных
@@ -387,7 +429,8 @@ namespace awh {
 			size_t readHeaders(const char * buffer, const size_t size) noexcept;
 		private:
 			/**
-			 * prepare Метод препарирования HTTP заголовков
+			 * @brief Метод препарирования HTTP заголовков
+			 *
 			 * @param buffer   буфер данных для парсинга
 			 * @param size     размер буфера данных для парсинга
 			 * @param callback функция обратного вызова
@@ -395,18 +438,21 @@ namespace awh {
 			void prepare(const char * buffer, const size_t size, function <void (const char *, const size_t, const size_t, const bool)> callback) noexcept;
 		public:
 			/**
-			 * dump Метод получения бинарного дампа
+			 * @brief Метод получения бинарного дампа
+			 *
 			 * @return бинарный дамп данных
 			 */
 			vector <char> dump() const noexcept;
 			/**
-			 * dump Метод установки бинарного дампа
+			 * @brief Метод установки бинарного дампа
+			 *
 			 * @param data бинарный дамп данных
 			 */
 			void dump(const vector <char> & data) noexcept;
 		public:
 			/**
-			 * parse Метод выполнения парсинга HTTP буфера данных
+			 * @brief Метод выполнения парсинга HTTP буфера данных
+			 *
 			 * @param buffer буфер данных для парсинга
 			 * @param size   размер буфера данных для парсинга
 			 * @return       размер обработанных данных
@@ -414,179 +460,211 @@ namespace awh {
 			size_t parse(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * clear Метод очистки собранных данных
+			 * @brief Метод очистки собранных данных
+			 *
 			 */
 			void clear() noexcept;
 			/**
-			 * reset Метод сброса стейтов парсера
+			 * @brief Метод сброса стейтов парсера
+			 *
 			 */
 			void reset() noexcept;
 		public:
 			/**
-			 * request Метод получения объекта запроса на сервер
+			 * @brief Метод получения объекта запроса на сервер
+			 *
 			 * @return объект запроса на сервер
 			 */
 			const req_t & request() const noexcept;
 			/**
-			 * request Метод установки объекта запроса на сервер
+			 * @brief Метод установки объекта запроса на сервер
+			 *
 			 * @param request объект запроса на сервер
 			 */
 			void request(req_t && request) noexcept;
 			/**
-			 * request Метод установки объекта запроса на сервер
+			 * @brief Метод установки объекта запроса на сервер
+			 *
 			 * @param request объект запроса на сервер
 			 */
 			void request(const req_t & request) noexcept;
 		public:
 			/**
-			 * response Метод получения объекта ответа сервера
+			 * @brief Метод получения объекта ответа сервера
+			 *
 			 * @return объект ответа сервера
 			 */
 			const res_t & response() const noexcept;
 			/**
-			 * response Метод установки объекта ответа сервера
+			 * @brief Метод установки объекта ответа сервера
+			 *
 			 * @param response объект ответа сервера
 			 */
 			void response(res_t && response) noexcept;
 			/**
-			 * response Метод установки объекта ответа сервера
+			 * @brief Метод установки объекта ответа сервера
+			 *
 			 * @param response объект ответа сервера
 			 */
 			void response(const res_t & response) noexcept;
 		public:
 			/**
-			 * isEnd Метод проверки завершения обработки
+			 * @brief Метод проверки завершения обработки
+			 *
 			 * @return результат проверки
 			 */
 			bool isEnd() const noexcept;
 			/**
-			 * isHeader Метод проверки существования заголовка
+			 * @brief Метод проверки существования заголовка
+			 *
 			 * @param key ключ заголовка для проверки
 			 * @return    результат проверки
 			 */
 			bool isHeader(const string & key) const noexcept;
 			/**
-			 * isStandard Проверка заголовка является ли он стандартным
+			 * @brief Проверка заголовка является ли он стандартным
+			 *
 			 * @param key ключ заголовка для проверки
 			 * @return    результат проверки
 			 */
 			bool isStandard(const string & key) const noexcept;
 		public:
 			/**
-			 * clearBody Метод очистки данных тела
+			 * @brief Метод очистки данных тела
+			 *
 			 */
 			void clearBody() noexcept;
 			/**
-			 * clearHeaders Метод очистки списка заголовков
+			 * @brief Метод очистки списка заголовков
+			 *
 			 */
 			void clearHeaders() noexcept;
 		public:
 			/**
-			 * body Метод получения данных тела запроса
+			 * @brief Метод получения данных тела запроса
+			 *
 			 * @return буфер данных тела запроса
 			 */
 			const vector <char> & body() const noexcept;
 			/**
-			 * body Метод добавления данных тела
+			 * @brief Метод добавления данных тела
+			 *
 			 * @param body буфер тела для добавления
 			 */
 			void body(const vector <char> & body) noexcept;
 			/**
-			 * body Метод добавления данных тела
+			 * @brief Метод добавления данных тела
+			 *
 			 * @param buffer буфер тела для добавления
 			 * @param size   размер буфера теля для добавления
 			 */
 			void body(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * upgrade Метод получение названия протокола для переключения
+			 * @brief Метод получение названия протокола для переключения
+			 *
 			 * @return название протокола для переключения
 			 */
 			const string & upgrade() const noexcept;
 			/**
-			 * upgrade Метод установки название протокола для переключения
+			 * @brief Метод установки название протокола для переключения
+			 *
 			 * @param upgrade название протокола для переключения
 			 */
 			void upgrade(const string & upgrade) noexcept;
 		public:
 			/**
-			 * proto Метод извлечения список протоколов к которому принадлежит заголовок
+			 * @brief Метод извлечения список протоколов к которому принадлежит заголовок
+			 *
 			 * @param key ключ заголовка
 			 * @return    список протоколов
 			 */
 			std::set <proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
-			 * delHeader Метод удаления заголовка
+			 * @brief Метод удаления заголовка
+			 *
 			 * @param key ключ заголовка
 			 */
 			void delHeader(const string & key) noexcept;
 			/**
-			 * header Метод получения данных заголовка
+			 * @brief Метод получения данных заголовка
+			 *
 			 * @param key ключ заголовка
 			 * @return    значение заголовка
 			 */
 			string header(const string & key) const noexcept;
 			/**
-			 * header Метод добавления заголовка
+			 * @brief Метод добавления заголовка
+			 *
 			 * @param key ключ заголовка
 			 * @param val значение заголовка
 			 */
 			void header(const string & key, const string & val) noexcept;
 		public:
 			/**
-			 * headers Метод получения списка заголовков
+			 * @brief Метод получения списка заголовков
+			 *
 			 * @return список существующих заголовков
 			 */
 			const std::unordered_multimap <string, string> & headers() const noexcept;
 			/**
-			 * headers Метод установки списка заголовков
+			 * @brief Метод установки списка заголовков
+			 *
 			 * @param headers список заголовков для установки
 			 */
 			void headers(const std::unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
-			 * id Метод получения идентификатора объекта
+			 * @brief Метод получения идентификатора объекта
+			 *
 			 * @return идентификатор объекта
 			 */
 			uint64_t id() const noexcept;
 			/**
-			 * id Метод установки идентификатора объекта
+			 * @brief Метод установки идентификатора объекта
+			 *
 			 * @param id идентификатор объекта
 			 */
 			void id(const uint64_t id) noexcept;
 		public:
 			/**
-			 * hid Метод вывода идентификатора модуля
+			 * @brief Метод вывода идентификатора модуля
+			 *
 			 * @return тип используемого HTTP-модуля
 			 */
 			const hid_t hid() const noexcept;
 			/**
-			 * hid Метод установки идентификатора модуля
+			 * @brief Метод установки идентификатора модуля
+			 *
 			 * @param hid тип используемого HTTP-модуля
 			 */
 			void hid(const hid_t hid) noexcept;
 		public:
-			/** 
-			 * state Метод установки стейта ожидания данных
+			/**
+			 * @brief Метод установки стейта ожидания данных
+			 *
 			 * @param state стейт ожидания данных для установки
 			 */
 			void state(const state_t state) noexcept;
 		public:
 			/**
-			 * callback Метод установки функций обратного вызова
+			 * @brief Метод установки функций обратного вызова
+			 *
 			 * @param callback функции обратного вызова
 			 */
 			void callback(const callback_t & callback) noexcept;
 		public:
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -600,13 +678,15 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -620,13 +700,15 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -640,14 +722,16 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param A    тип идентификатора функции
-			 * @param B    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam A    тип идентификатора функции
+			 * @tparam B    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename A, typename B, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -662,13 +746,15 @@ namespace awh {
 			}
 		public:
 			/**
-			 * Web Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Web(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Web Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Web() noexcept {}
 	} web_t;

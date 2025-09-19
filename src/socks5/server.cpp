@@ -40,7 +40,7 @@ void awh::server::Socks5::cmd(const rep_t rep) const noexcept {
 	// Если размер выделенной памяти выше максимального размера буфера
 	if(this->_buffer.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(this->_buffer);
+		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	// Если IP адрес или доменное имя установлены
 	if(!this->_url.ip.empty() || !this->_url.domain.empty() || !this->_url.host.empty()){
 		// Бинарные данные буфера
@@ -125,7 +125,7 @@ void awh::server::Socks5::method(const vector <uint8_t> & methods) const noexcep
 	// Если размер выделенной памяти выше максимального размера буфера
 	if(this->_buffer.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(this->_buffer);
+		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	// Увеличиваем память на 4 октета
 	this->_buffer.resize(sizeof(uint8_t) * 2, 0x00);
 	// Копируем в буфер нашу структуру ответа
@@ -155,7 +155,7 @@ void awh::server::Socks5::auth(const string & login, const string & password) co
 	// Если размер выделенной памяти выше максимального размера буфера
 	if(this->_buffer.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(this->_buffer);
+		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	// Увеличиваем память на 4 октета
 	this->_buffer.resize(sizeof(uint8_t) * 2, 0x00);
 	// Копируем в буфер нашу структуру ответа
@@ -172,7 +172,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 	// Если размер выделенной памяти выше максимального размера буфера
 	if(this->_buffer.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(this->_buffer);
+		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	// Если данные буфера переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Определяем текущий стейт
@@ -424,7 +424,7 @@ void awh::server::Socks5::reset() noexcept {
 	// Если размер выделенной памяти выше максимального размера буфера
 	if(this->_buffer.capacity() > AWH_BUFFER_SIZE)
 		// Выполняем очистку временного буфера данных
-		vector <char> ().swap(this->_buffer);
+		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	// Выполняем сброс стейта
 	this->_state = state_t::METHOD;
 }

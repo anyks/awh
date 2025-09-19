@@ -21,7 +21,8 @@
 #include "base.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -29,7 +30,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Event Класс события AWHEvent
+	 * @brief Класс события AWHEvent
+	 *
 	 */
 	typedef class Event {
 		public:
@@ -41,9 +43,7 @@ namespace awh {
 				EVENT = 0x01, // Тип события обычное
 				TIMER = 0x02  // Тип события таймер
 			};
-		private:
-			// Режим активации события
-			bool _mode;
+		
 		private:
 			// Флаг активации серийного таймера
 			bool _series;
@@ -61,7 +61,10 @@ namespace awh {
 			uint32_t _delay;
 		private:
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			std::mutex _mtx;
+		private:
+			// Режим активации события
+			std::atomic_bool _mode;
 		private:
 			// Функция обратного вызова
 			base_t::callback_t _callback;
@@ -75,23 +78,27 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * type Метод получения типа события
+			 * @brief Метод получения типа события
+			 *
 			 * @return установленный тип события
 			 */
 			type_t type() const noexcept;
 		public:
 			/**
-			 * set Метод установки базы событий
+			 * @brief Метод установки базы событий
+			 *
 			 * @param base база событий для установки
 			 */
 			void set(base_t * base) noexcept;
 			/**
-			 * set Метод установки файлового дескриптора
+			 * @brief Метод установки файлового дескриптора
+			 *
 			 * @param sock файловый дескриптор для установки
 			 */
 			void set(const SOCKET sock) noexcept;
 			/**
-			 * set Метод установки функции обратного вызова
+			 * @brief Метод установки функции обратного вызова
+			 *
 			 * @param callback функция обратного вызова
 			 */
 			void set(base_t::callback_t callback) noexcept;
@@ -103,14 +110,16 @@ namespace awh {
 			void del(const base_t::event_type_t type) noexcept;
 		public:
 			/**
-			 * timeout Метод установки задержки времени таймера
+			 * @brief Метод установки задержки времени таймера
+			 *
 			 * @param delay  задержка времени в миллисекундах
 			 * @param series флаг серийного таймаута
 			 */
 			void timeout(const uint32_t delay, const bool series = false) noexcept;
 		public:
 			/**
-			 * mode Метод установки режима работы модуля
+			 * @brief Метод установки режима работы модуля
+			 *
 			 * @param type тип событий модуля для которого требуется сменить режим работы
 			 * @param mode флаг режима работы модуля
 			 * @return     результат работы функции
@@ -118,48 +127,56 @@ namespace awh {
 			bool mode(const base_t::event_type_t type, const base_t::event_mode_t mode) noexcept;
 		public:
 			/**
-			 * stop Метод остановки работы события
+			 * @brief Метод остановки работы события
+			 *
 			 */
 			void stop() noexcept;
 			/**
-			 * start Метод запуска работы события
+			 * @brief Метод запуска работы события
+			 *
 			 */
 			void start() noexcept;
 		public:
 			/**
-			 * Оператор [=] для установки базы событий
+			 * @brief Оператор [=] для установки базы событий
+			 *
 			 * @param base база событий для установки
 			 * @return     текущий объект
 			 */
 			Event & operator = (base_t * base) noexcept;
 			/**
-			 * Оператор [=] для установки файлового дескриптора
+			 * @brief Оператор [=] для установки файлового дескриптора
+			 *
 			 * @param sock файловый дескриптор для установки
 			 * @return     текущий объект
 			 */
 			Event & operator = (const SOCKET sock) noexcept;
 			/**
-			 * Оператор [=] для установки задержки времени таймера
+			 * @brief Оператор [=] для установки задержки времени таймера
+			 *
 			 * @param delay задержка времени в миллисекундах
 			 * @return      текущий объект
 			 */
 			Event & operator = (const uint32_t delay) noexcept;
 			/**
-			 * Оператор [=] для установки функции обратного вызова
+			 * @brief Оператор [=] для установки функции обратного вызова
+			 *
 			 * @param callback функция обратного вызова
 			 * @return         текущий объект
 			 */
 			Event & operator = (base_t::callback_t callback) noexcept;
 		public:
 			/**
-			 * Event Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param type тип события
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
 			Event(const type_t type, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Event Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Event() noexcept;
 	} event_t;

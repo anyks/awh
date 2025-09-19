@@ -24,7 +24,8 @@
 #include "../../sys/threadpool.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -32,70 +33,84 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * client клиентское пространство имён
+	 * @brief клиентское пространство имён
+	 *
 	 */
 	namespace client {
 		/**
-		 * Http1 Прототип класса HTTP/1.1 клиента
+		 * @brief Прототип класса HTTP/1.1 клиента
+		 *
 		 */
 		class Http1;
 		/**
-		 * Http2 Прототип класса HTTP/2 клиента
+		 * @brief Прототип класса HTTP/2 клиента
+		 *
 		 */
 		class Http2;
 		/**
-		 * Websocket2 Прототип класса Websocket/2 клиента
+		 * @brief Прототип класса Websocket/2 клиента
+		 *
 		 */
 		class Websocket2;
 		/**
-		 * Websocket1 Класс Websocket-клиента
+		 * @brief Класс Websocket-клиента
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Websocket1 : public web_t {
 			private:
 				/**
-				 * Http1 Устанавливаем дружбу с классом HTTP/1.1 клиента
+				 * @brief Устанавливаем дружбу с классом HTTP/1.1 клиента
+				 *
 				 */
 				friend class Http1;
 				/**
-				 * Http2 Устанавливаем дружбу с классом HTTP/2 клиента
+				 * @brief Устанавливаем дружбу с классом HTTP/2 клиента
+				 *
 				 */
 				friend class Http2;
 				/**
-				 * Websocket2 Устанавливаем дружбу с классом Websocket/2 клиента
+				 * @brief Устанавливаем дружбу с классом Websocket/2 клиента
+				 *
 				 */
 				friend class Websocket2;
 			private:
 				/**
-				 * Allow Структура флагов разрешения обменом данных
+				 * @brief Структура флагов разрешения обменом данных
+				 *
 				 */
 				typedef struct Allow {
 					bool send;    // Флаг разрешения отправки данных
 					bool receive; // Флаг разрешения чтения данных
 					/**
-					 * Allow Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Allow() noexcept : send(true), receive(true) {}
 				} __attribute__((packed)) allow_t;
 				/**
-				 * Partner Структура партнёра
+				 * @brief Структура партнёра
+				 *
 				 */
 				typedef struct Partner {
 					int16_t wbit;  // Размер скользящего окна
 					bool takeover; // Флаг скользящего контекста сжатия
 					/**
-					 * Partner Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Partner() noexcept : wbit(0), takeover(false) {}
 				} __attribute__((packed)) partner_t;
 				/**
-				 * Frame Объект фрейма Websocket
+				 * @brief Объект фрейма Websocket
+				 *
 				 */
 				typedef struct Frame {
 					size_t size;                  // Минимальный размер сегмента
 					ws::frame_t methods;          // Методы работы с фреймом Websocket
 					ws::frame_t::opcode_t opcode; // Полученный опкод сообщения
 					/**
-					 * Frame Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
@@ -161,19 +176,22 @@ namespace awh {
 				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
-				 * connectEvent Метод обратного вызова при подключении к серверу
+				 * @brief Метод обратного вызова при подключении к серверу
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				void connectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * disconnectEvent Метод обратного вызова при отключении от сервера
+				 * @brief Метод обратного вызова при отключении от сервера
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				void disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * readEvent Метод обратного вызова при чтении сообщения с сервера
+				 * @brief Метод обратного вызова при чтении сообщения с сервера
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
@@ -181,7 +199,8 @@ namespace awh {
 				 */
 				void readEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * writeEvent Метод обратного вызова при записи сообщения на клиенте
+				 * @brief Метод обратного вызова при записи сообщения на клиенте
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
@@ -190,20 +209,23 @@ namespace awh {
 				void writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
-				 * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+				 * @brief Метод отлавливания событий контейнера функций обратного вызова
+				 *
 				 * @param event событие контейнера функций обратного вызова
 				 * @param fid   идентификатор функции обратного вызова
 				 */
 				void callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t &) noexcept;
 			private:
 				/**
-				 * redirect Метод выполнения редиректа если требуется
+				 * @brief Метод выполнения редиректа если требуется
+				 *
 				 * @return результат выполнения редиректа
 				 */
 				bool redirect() noexcept;
 			private:
 				/**
-				 * response Метод получения ответа сервера
+				 * @brief Метод получения ответа сервера
+				 *
 				 * @param bid     идентификатор брокера
 				 * @param code    код ответа сервера
 				 * @param message сообщение ответа сервера
@@ -211,14 +233,16 @@ namespace awh {
 				void response(const uint64_t bid, const uint32_t code, const string & message) noexcept;
 			private:
 				/**
-				 * header Метод получения заголовка
+				 * @brief Метод получения заголовка
+				 *
 				 * @param bid   идентификатор брокера
 				 * @param key   ключ заголовка
 				 * @param value значение заголовка
 				 */
 				void header(const uint64_t bid, const string & key, const string & value) noexcept;
 				/**
-				 * headers Метод получения заголовков
+				 * @brief Метод получения заголовков
+				 *
 				 * @param bid     идентификатор брокера
 				 * @param code    код ответа сервера
 				 * @param message сообщение ответа сервера
@@ -227,7 +251,8 @@ namespace awh {
 				void headers(const uint64_t bid, const uint32_t code, const string & message, const std::unordered_multimap <string, string> & headers) noexcept;
 			private:
 				/**
-				 * chunking Метод обработки получения чанков
+				 * @brief Метод обработки получения чанков
+				 *
 				 * @param bid   идентификатор брокера
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
@@ -235,31 +260,36 @@ namespace awh {
 				void chunking(const uint64_t bid, const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
-				 * flush Метод сброса параметров запроса
+				 * @brief Метод сброса параметров запроса
+				 *
 				 */
 				void flush() noexcept;
 			private:
 				/**
-				 * pinging Метод таймера выполнения пинга удалённого сервера
+				 * @brief Метод таймера выполнения пинга удалённого сервера
+				 *
 				 * @param tid идентификатор таймера
 				 */
 				void pinging(const uint16_t tid) noexcept;
 			private:
 				/**
-				 * ping Метод проверки доступности сервера
+				 * @brief Метод проверки доступности сервера
+				 *
 				 * @param buffer бинарный буфер отправляемого сообщения
 				 * @param size   размер бинарного буфера отправляемого сообщения
 				 */
 				void ping(const void * buffer = nullptr, const size_t size = 0) noexcept;
 				/**
-				 * pong Метод ответа на проверку о доступности сервера
+				 * @brief Метод ответа на проверку о доступности сервера
+				 *
 				 * @param buffer бинарный буфер отправляемого сообщения
 				 * @param size   размер бинарного буфера отправляемого сообщения
 				 */
 				void pong(const void * buffer = nullptr, const size_t size = 0) noexcept;
 			private:
 				/**
-				 * prepare Метод выполнения препарирования полученных данных
+				 * @brief Метод выполнения препарирования полученных данных
+				 *
 				 * @param sid идентификатор запроса
 				 * @param bid идентификатор брокера
 				 * @return    результат препарирования
@@ -267,32 +297,37 @@ namespace awh {
 				status_t prepare(const int32_t sid, const uint64_t bid) noexcept;
 			private:
 				/**
-				 * error Метод вывода сообщений об ошибках работы клиента
+				 * @brief Метод вывода сообщений об ошибках работы клиента
+				 *
 				 * @param message сообщение с описанием ошибки
 				 */
 				void error(const ws::mess_t & message) const noexcept;
 				/**
-				 * extraction Метод извлечения полученных данных
+				 * @brief Метод извлечения полученных данных
+				 *
 				 * @param buffer данные в чистом виде полученные с сервера
 				 * @param text   данные передаются в текстовом виде
 				 */
 				void extraction(const vector <char> & buffer, const bool text) noexcept;
 			public:
 				/**
-				 * sendError Метод отправки сообщения об ошибке
+				 * @brief Метод отправки сообщения об ошибке
+				 *
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const ws::mess_t & mess) noexcept;
 			public:
 				/**
-				 * sendMessage Метод отправки сообщения на сервер
+				 * @brief Метод отправки сообщения на сервер
+				 *
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
 				 * @return        результат отправки сообщения
 				 */
 				bool sendMessage(const vector <char> & message, const bool text = true) noexcept;
 				/**
-				 * sendMessage Метод отправки сообщения на сервер
+				 * @brief Метод отправки сообщения на сервер
+				 *
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param size    размер передаваемого сообещния
 				 * @param text    данные передаются в текстовом виде
@@ -301,7 +336,8 @@ namespace awh {
 				bool sendMessage(const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
-				 * send Метод отправки данных в бинарном виде серверу
+				 * @brief Метод отправки данных в бинарном виде серверу
+				 *
 				 * @param buffer буфер бинарных данных передаваемых серверу
 				 * @param size   размер сообщения в байтах
 				 * @return       результат отправки сообщения
@@ -309,102 +345,121 @@ namespace awh {
 				bool send(const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * pause Метод установки на паузу клиента
+				 * @brief Метод установки на паузу клиента
+				 *
 				 */
 				void pause() noexcept;
 				/**
-				 * stop Метод остановки клиента
+				 * @brief Метод остановки клиента
+				 *
 				 */
 				void stop() noexcept;
 				/**
-				 * start Метод запуска клиента
+				 * @brief Метод запуска клиента
+				 *
 				 */
 				void start() noexcept;
 			public:
 				/**
-				 * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+				 * @brief Метод установки времени ожидания ответа WebSocket-сервера
+				 *
 				 * @param sec время ожидания в секундах
 				 */
 				void waitPong(const uint16_t sec) noexcept;
 				/**
-				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @brief Метод установки интервала времени выполнения пингов
+				 *
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
 				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
+				 * @brief Метод установки функций обратного вызова
+				 *
 				 * @param callback функции обратного вызова
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * subprotocol Метод установки поддерживаемого сабпротокола
+				 * @brief Метод установки поддерживаемого сабпротокола
+				 *
 				 * @param subprotocol сабпротокол для установки
 				 */
 				void subprotocol(const string & subprotocol) noexcept;
 				/**
-				 * subprotocol Метод получения списка выбранных сабпротоколов
+				 * @brief Метод получения списка выбранных сабпротоколов
+				 *
 				 * @return список выбранных сабпротоколов
 				 */
 				const std::unordered_set <string> & subprotocols() const noexcept;
 				/**
-				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
+				 * @brief Метод установки списка поддерживаемых сабпротоколов
+				 *
 				 * @param subprotocols сабпротоколы для установки
 				 */
 				void subprotocols(const std::unordered_set <string> & subprotocols) noexcept;
 			public:
 				/**
-				 * extensions Метод извлечения списка расширений
+				 * @brief Метод извлечения списка расширений
+				 *
 				 * @return список поддерживаемых расширений
 				 */
 				const vector <vector <string>> & extensions() const noexcept;
 				/**
-				 * extensions Метод установки списка расширений
+				 * @brief Метод установки списка расширений
+				 *
 				 * @param extensions список поддерживаемых расширений
 				 */
 				void extensions(const vector <vector <string>> & extensions) noexcept;
 			public:
 				/**
-				 * chunk Метод установки размера чанка
+				 * @brief Метод установки размера чанка
+				 *
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
 				/**
-				 * segmentSize Метод установки размеров сегментов фрейма
+				 * @brief Метод установки размеров сегментов фрейма
+				 *
 				 * @param size минимальный размер сегмента
 				 */
 				void segmentSize(const size_t size) noexcept;
 				/**
-				 * core Метод установки сетевого ядра
+				 * @brief Метод установки сетевого ядра
+				 *
 				 * @param core объект сетевого ядра
 				 */
 				void core(const client::core_t * core) noexcept;
 				/**
-				 * mode Метод установки флагов настроек модуля
+				 * @brief Метод установки флагов настроек модуля
+				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
 				void mode(const std::set <flag_t> & flags) noexcept;
 				/**
-				 * user Метод установки параметров авторизации
+				 * @brief Метод установки параметров авторизации
+				 *
 				 * @param login    логин пользователя для авторизации на сервере
 				 * @param password пароль пользователя для авторизации на сервере
 				 */
 				void user(const string & login, const string & password) noexcept;
 			public:
 				/**
-				 * setHeaders Метод установки списка заголовков
+				 * @brief Метод установки списка заголовков
+				 *
 				 * @param headers список заголовков для установки
 				 */
 				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
-				 * userAgent Метод установки User-Agent для HTTP-запроса
+				 * @brief Метод установки User-Agent для HTTP-запроса
+				 *
 				 * @param userAgent агент пользователя для HTTP-запроса
 				 */
 				void userAgent(const string & userAgent) noexcept;
 				/**
-				 * ident Метод установки идентификации клиента
+				 * @brief Метод установки идентификации клиента
+				 *
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
@@ -412,50 +467,58 @@ namespace awh {
 				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
-				 * multiThreads Метод активации многопоточности
+				 * @brief Метод активации многопоточности
+				 *
 				 * @param count количество потоков для активации
 				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
 				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
-				 * proxy Метод активации/деактивации прокси-склиента
+				 * @brief Метод активации/деактивации прокси-склиента
+				 *
 				 * @param work флаг активации/деактивации прокси-клиента
 				 */
 				void proxy(const client::scheme_t::work_t work) noexcept;
 				/**
-				 * proxy Метод установки прокси-сервера
+				 * @brief Метод установки прокси-сервера
+				 *
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
 				 */
 				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * authType Метод установки типа авторизации
+				 * @brief Метод установки типа авторизации
+				 *
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
 				 */
 				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 				/**
-				 * authTypeProxy Метод установки типа авторизации прокси-сервера
+				 * @brief Метод установки типа авторизации прокси-сервера
+				 *
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest-авторизации
 				 */
 				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * crypted Метод получения флага шифрования
+				 * @brief Метод получения флага шифрования
+				 *
 				 * @return результат проверки
 				 */
 				bool crypted() const noexcept;
 			public:
 				/**
-				 * encryption Метод активации шифрования
+				 * @brief Метод активации шифрования
+				 *
 				 * @param mode флаг активации шифрования
 				 */
 				void encryption(const bool mode) noexcept;
 				/**
-				 * encryption Метод установки параметров шифрования
+				 * @brief Метод установки параметров шифрования
+				 *
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
@@ -463,20 +526,23 @@ namespace awh {
 				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * Websocket1 Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Websocket1(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * Websocket1 Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
 				Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Websocket1 Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Websocket1() noexcept;
 		} ws1_t;

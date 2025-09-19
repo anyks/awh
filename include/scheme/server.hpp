@@ -22,7 +22,8 @@
 #include "../net/engine.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -30,49 +31,55 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * Scheme Структура схемы сети сервера
+		 * @brief Структура схемы сети сервера
+		 *
 		 */
 		typedef struct AWHSHARED_EXPORT Scheme : public awh::scheme_t {
 			private:
 				/**
-				 * Server Core Устанавливаем дружбу с серверным классом ядра
+				 * @brief Core Устанавливаем дружбу с серверным классом ядра
+				 *
 				 */
 				friend class Core;
+			protected:
+				// Хост сервера
+				string _host;
+				// Порт сервера
+				uint32_t _port;
+			protected:
+				// Максимальное количество одновременных подключений
+				uint32_t _total;
 			protected:
 				// Контекст двигателя для работы с передачей данных
 				engine_t::ctx_t _ectx;
 				// Объект подключения
 				engine_t::addr_t _addr;
-			protected:
-				// Максимальное количество одновременных подключений
-				uint32_t _total;
-			protected:
-				// Порт сервера
-				uint32_t _port;
-				// Хост сервера
-				string _host;
 			public:
 				/**
-				 * clear Метод очистки
+				 * @brief Метод очистки
+				 *
 				 */
 				void clear() noexcept;
 			public:
 				/**
-				 * Scheme Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
 				 awh::scheme_t(fmk, log),
-				 _ectx(fmk, log), _addr(fmk, log),
+				 _host(SERVER_HOST), _port(SERVER_PORT),
 				 _total(SERVER_TOTAL_CONNECT),
-				 _port(SERVER_PORT), _host(SERVER_HOST) {}
+				 _ectx(fmk, log), _addr(fmk, log) {}
 				/**
-				 * ~Scheme Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Scheme() noexcept {}
 		} scheme_t;

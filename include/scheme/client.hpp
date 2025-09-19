@@ -23,7 +23,8 @@
 #include "../socks5/client.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -31,11 +32,13 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * client клиентское пространство имён
+	 * @brief клиентское пространство имён
+	 *
 	 */
 	namespace client {
 		/**
-		 * Proxy структура прокси-сервера
+		 * @brief структура прокси-сервера
+		 *
 		 */
 		typedef struct AWHSHARED_EXPORT Proxy {
 			public:
@@ -69,7 +72,8 @@ namespace awh {
 				client::http_t http;
 			public:
 				/**
-				 * Proxy Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
@@ -81,17 +85,20 @@ namespace awh {
 					this->http.identity(http_t::identity_t::PROXY);
 				}
 				/**
-				 * ~Proxy Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Proxy() noexcept {}
 		} proxy_t;
 		/**
-		 * Scheme Структура схемы сети клиента
+		 * @brief Структура схемы сети клиента
+		 *
 		 */
 		typedef struct AWHSHARED_EXPORT Scheme : public awh::scheme_t {
 			private:
 				/**
-				 * Client Core Устанавливаем дружбу с клиентским классом ядра
+				 * @brief Core Устанавливаем дружбу с клиентским классом ядра
+				 *
 				 */
 				friend class Core;
 			public:
@@ -120,19 +127,21 @@ namespace awh {
 				};
 			private:
 				/**
-				 * Status Структура статуса подключения
+				 * @brief Структура статуса подключения
+				 *
 				 */
 				typedef struct Status {
+					work_t work; // Статус разрешения на выполнение работы
 					mode_t wait; // Статус ожидание
 					mode_t real; // Статус действительность
-					work_t work; // Статус разрешения на выполнение работы
 					/**
-					 * Status Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Status() noexcept :
+					 work(work_t::ALLOW),
 					 real(mode_t::DISCONNECT),
-					 wait(mode_t::DISCONNECT),
-					 work(work_t::ALLOW) {}
+					 wait(mode_t::DISCONNECT) {}
 				} status_t;
 			public:
 				// Флаг получения данных
@@ -149,33 +158,39 @@ namespace awh {
 				connect_t _connect;
 			public:
 				/**
-				 * clear Метод очистки
+				 * @brief Метод очистки
+				 *
 				 */
 				void clear() noexcept;
 				/**
-				 * switchConnect Метод переключения типа подключения
+				 * @brief Метод переключения типа подключения
+				 *
 				 */
 				void switchConnect() noexcept;
 			public:
 				/**
-				 * isProxy Метод проверки на подключение к прокси-серверу
+				 * @brief Метод проверки на подключение к прокси-серверу
+				 *
 				 * @return результат проверки
 				 */
 				bool isProxy() const noexcept;
 				/**
-				 * bid Метод получения идентификатора брокера
+				 * @brief Метод получения идентификатора брокера
+				 *
 				 * @return идентификатор брокера
 				 */
 				uint64_t bid() const noexcept;
 			public:
 				/**
-				 * activateProxy Метод активации прокси-клиента
+				 * @brief Метод активации прокси-клиента
+				 *
 				 * @param work флаг активации
 				 */
 				void activateProxy(const work_t work) noexcept;
 			public:
 				/**
-				 * Scheme Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
@@ -183,7 +198,8 @@ namespace awh {
 				 awh::scheme_t(fmk, log), receiving(false),
 				 proxy(fmk, log), _connect(connect_t::SERVER) {}
 				/**
-				 * ~Scheme Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Scheme() noexcept {}
 		} scheme_t;

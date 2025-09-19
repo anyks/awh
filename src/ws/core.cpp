@@ -1847,3 +1847,11 @@ void awh::WCore::takeover(const web_t::hid_t hid, const bool flag) noexcept {
 		break;
 	}
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::WCore::WCore(const fmk_t * fmk, const log_t * log) noexcept :
+ http_t(fmk, log), _encryption(false), _key{""} {}

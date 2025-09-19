@@ -19,6 +19,7 @@
 #include <mutex>
 #include <thread>
 #include <chrono>
+#include <atomic>
 #include <iostream>
 #include <functional>
 #include <condition_variable>
@@ -29,7 +30,8 @@
 #include "global.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -37,28 +39,31 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Timeout Класс модуля таймера
+	 * @brief Класс модуля таймера
+	 *
 	 */
 	typedef class Timeout {
 		private:
 			/**
-			 * Worker Класс воркера
+			 * @brief Класс воркера
+			 *
 			 */
 			typedef struct Worker {
-				// Флаг остановки работы таймера
-				bool stop;
 				// Задержка времени таймера в миллисекундах
 				uint32_t delay;
 				// Мютекс для блокировки потока
-				std;:mutex mtx;
+				std::mutex mtx;
+				// Флаг остановки работы таймера
+				std::atomic_bool stop;
 				// Условная переменная, ожидания получения сигналов
 				std::condition_variable cv;
 				// Функция обратного вызова
 				function <void (void)> callback;
 				/**
-				 * Worker Конструктор
+				 * @brief Конструктор
+				 *
 				 */
-				Worker() noexcept : stop(false), delay(0), callback(nullptr) {}
+				Worker() noexcept : delay(0), stop(false), callback(nullptr) {}
 			} wrk_t;
 		private:
 			// Мютекс для блокировки потока
@@ -68,15 +73,14 @@ namespace awh {
 			std::map <uint32_t, std::unique_ptr <wrk_t>> _timers;
 		private:
 			/**
-			 * checkInputData Метод проверки на существование данных
+			 * @brief Метод проверки на существование данных
+			 *
 			 * @param tid идентификатор таймера
 			 * @return    результат проверки
 			 */
 			bool checkInputData(const uint32_t tid) const noexcept {
 				// Результат работы функции
 				bool result = true;
-				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx);
 				// Выполняем поиск идентификатор таймера
 				auto i = this->_timers.find(tid);
 				// Если идентификатор таймера в списке существует
@@ -88,7 +92,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * setTimeout Метод установки таймаута
+			 * @brief Метод установки таймаута
+			 *
 			 * @param callback функция обратного вызова
 			 * @param delay    интервал задержки времени в миллисекундах
 			 * @return         идентификатор таймаута
@@ -99,7 +104,7 @@ namespace awh {
 				// Выполняем блокировку потока
 				this->_mtx.lock();
 				// Выполняем добавление идентификатора таймера в список
-				auto ret = this->_timers.emplace(tid, std::unique_ptr <wrk_t> (new wrk_t));
+				auto ret = this->_timers.emplace(tid, std::make_unique <wrk_t> ());
 				// Выполняем разблокировку потока
 				this->_mtx.unlock();
 				// Выполняем установку задержки времени
@@ -119,7 +124,7 @@ namespace awh {
 							// Выполняем блокировку уникальным мютексом
 							unique_lock <std::mutex> lock(i->second->mtx);
 							// Выполняем ожидание на поступление новых заданий
-							i->second->cv.wait_for(lock, std::chrono::milliseconds(i->second->delay), std::bind(&Timer::checkInputData, this, tid));
+							i->second->cv.wait_for(lock, std::chrono::milliseconds(i->second->delay), std::bind(&Timeout::checkInputData, this, tid));
 						}{
 							// Выполняем поиск нашего таймера
 							auto i = this->_timers.find(tid);
@@ -163,7 +168,8 @@ namespace awh {
 				return tid;
 			}
 			/**
-			 * setInterval Метод установки таймаута
+			 * @brief Метод установки таймаута
+			 *
 			 * @param callback функция для вызова
 			 * @param interval интервал времени выполнения функции в миллисекундах
 			 * @return         идентификатор таймаута
@@ -174,7 +180,7 @@ namespace awh {
 				// Выполняем блокировку потока
 				this->_mtx.lock();
 				// Выполняем добавление идентификатора таймера в список
-				auto ret = this->_timers.emplace(tid, std::unique_ptr <wrk_t> (new wrk_t));
+				auto ret = this->_timers.emplace(tid, std::make_unique <wrk_t> ());
 				// Выполняем разблокировку потока
 				this->_mtx.unlock();
 				// Выполняем установку задержки времени
@@ -196,7 +202,7 @@ namespace awh {
 								// Выполняем блокировку уникальным мютексом
 								unique_lock <std::mutex> lock(i->second->mtx);
 								// Выполняем ожидание на поступление новых заданий
-								i->second->cv.wait_for(lock, std::chrono::milliseconds(i->second->delay), std::bind(&Timer::checkInputData, this, tid));
+								i->second->cv.wait_for(lock, std::chrono::milliseconds(i->second->delay), std::bind(&Timeout::checkInputData, this, tid));
 							}{
 								// Выполняем поиск идентификатор таймера
 								auto i = this->_timers.find(tid);
@@ -233,12 +239,11 @@ namespace awh {
 				return tid;
 			}
 			/**
-			 * stop Метод остановки работы таймера
+			 * @brief Метод остановки работы таймера
+			 *
 			 * @param tid идентификатор таймера
 			 */
 			void stop(const uint32_t tid) noexcept {
-				// Выполняем блокировку потока
-				const lock_guard <std::mutex> lock(this->_mtx);
 				// Выполняем поиск идентификатор таймера
 				auto i = this->_timers.find(tid);
 				// Если идентификатор таймера в списке существует
@@ -250,13 +255,15 @@ namespace awh {
 				}
 			}
 			/**
-			 * Timer Конструктор
+			 * @brief Конструктор
+			 *
 			 */
-			Timer() noexcept {}
+			Timeout() noexcept {}
 			/**
-			 * ~Timer Деструктор
+			 * @brief Деструктор
+			 *
 			 */
-			~Timer() noexcept {
+			~Timeout() noexcept {
 				// Если список активных таймеров не пустой
 				if(!this->_timers.empty()){
 					// Выполняем перебор всех активных таймеров

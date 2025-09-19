@@ -29,7 +29,8 @@
 #include "../socks5/server.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -37,43 +38,51 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * scheme серверное пространство имён
+		 * @brief серверное пространство имён
+		 *
 		 */
 		namespace scheme {
 			/**
-			 * Socks5 Структура схемы сети Socks5 сервера
+			 * @brief Структура схемы сети Socks5 сервера
+			 *
 			 */
 			typedef struct AWHSHARED_EXPORT Socks5 : public scheme_t {
 				public:
 					/**
-					 * Locker Структура локера
+					 * @brief Структура локера
+					 *
 					 */
 					typedef struct Locker {
 						bool mode;                // Флаг блокировки
 						std::recursive_mutex mtx; // Мютекс для блокировки потока
 						/**
-						 * Locker Конструктор
+						 * @brief Конструктор
+						 *
 						 */
 						Locker() noexcept : mode(false) {}
 					} locker_t;
 					/**
-					 * Allow Структура флагов разрешения обменом данных
+					 * @brief Структура флагов разрешения обменом данных
+					 *
 					 */
 					typedef struct Allow {
 						bool send;    // Флаг разрешения отправки данных
 						bool receive; // Флаг разрешения чтения данных
 						/**
-						 * Allow Конструктор
+						 * @brief Конструктор
+						 *
 						 */
 						Allow() noexcept : send(true), receive(true) {}
 					} allow_t;
 				public:
 					/**
-					 * Options Структура параметров активного клиента
+					 * @brief Структура параметров активного клиента
+					 *
 					 */
 					typedef struct Options {
 						uint64_t id;             // Идентификатор активного клиента
@@ -85,7 +94,8 @@ namespace awh {
 						client::scheme_t scheme; // Объект схемы сети клиента
 						server::socks5_t socks5; // Объект для работы с Socks5
 						/**
-						 * Options Конструктор
+						 * @brief Конструктор
+						 *
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
@@ -93,7 +103,8 @@ namespace awh {
 						 id(0), locked(false), connect(false),
 						 stopped(false), scheme(fmk, log), socks5(log) {}
 						/**
-						 * ~Options Деструктор
+						 * @brief Деструктор
+						 *
 						 */
 						~Options() noexcept {}
 					} options_t;
@@ -112,36 +123,42 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
-					 * clear Метод очистки
+					 * @brief Метод очистки
+					 *
 					 */
 					void clear() noexcept;
 				public:
 					/**
-					 * set Метод создания параметров активного клиента
+					 * @brief Метод создания параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void set(const uint64_t bid) noexcept;
 					/**
-					 * rm Метод удаления параметров активного клиента
+					 * @brief Метод удаления параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void rm(const uint64_t bid) noexcept;
 					/**
-					 * get Метод получения параметров активного клиента
+					 * @brief Метод получения параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
 					const options_t * get(const uint64_t bid) const noexcept;
 				public:
 					/**
-					 * Socks5 Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Socks5(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
-					 * ~Socks5 Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Socks5() noexcept {}
 			} socks5_t;

@@ -79,7 +79,8 @@
 #define MOD_GZIP_ZLIB_BSIZE 8096
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -87,12 +88,14 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Hash Класс хеширования данных
+	 * @brief Класс хеширования данных
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Hash {
 		public:
 			/**
-			 * State Стрейт шифрования
+			 * @brief Стрейт шифрования
+			 *
 			 */
 			typedef struct State {
 				// Количество обработанных байт
@@ -102,7 +105,8 @@ namespace awh {
 				// Буфер данных для шифрования
 				u_char ivec[AES_BLOCK_SIZE];
 				/**
-				 * State Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				State() noexcept : num(0), key{{0}, 0}, ivec{0} {}
 			} state_t;
@@ -191,30 +195,35 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * cipher Метод инициализации AES шифрования
+			 * @brief Метод инициализации AES шифрования
+			 *
 			 * @param cipher тип шифрования (AES128, AES192, AES256)
 			 * @return       результат инициализации
 			 */
 			bool cipher(const cipher_t cipher) noexcept;
 		public:
 			/**
-			 * rmTail Метод удаления хвостовых данных
+			 * @brief Метод удаления хвостовых данных
+			 *
 			 * @param buffer буфер для удаления хвоста
 			 */
 			void rmTail(vector <char> & buffer) const noexcept;
 			/**
-			 * setTail Метод добавления хвостовых данных
+			 * @brief Метод добавления хвостовых данных
+			 *
 			 * @param buffer буфер для добавления хвоста
 			 */
 			void setTail(vector <char> & buffer) const noexcept;
 		public:
 			/**
-			 * Шаблон метода хэширования текста
+			 * @brief Шаблон метода хэширования текста
+			 *
 			 * @tparam T тип возвращаемого результата
 			 */
 			template <typename T>
 			/**
-			 * hashing Метод хэширования текста
+			 * @brief Метод хэширования текста
+			 *
 			 * @param text текст для хэширования
 			 * @param type тип хэш-суммы
 			 * @return     результат хэширования
@@ -231,14 +240,16 @@ namespace awh {
 			}
 		public:
 			/**
-			 * hashing Метод хэширования текста
+			 * @brief Метод хэширования текста
+			 *
 			 * @param text   текст для хэширования
 			 * @param type   тип хэш-суммы
 			 * @param result строка куда следует положить результат
 			 */
 			void hashing(const string & text, const type_t type, string & result) const noexcept;
 			/**
-			 * hash Метод хэширования текста
+			 * @brief Метод хэширования текста
+			 *
 			 * @param text   текст для хэширования
 			 * @param type   тип хэш-суммы
 			 * @param result буфер куда следует положить результат
@@ -246,12 +257,14 @@ namespace awh {
 			void hashing(const string & text, const type_t type, vector <char> & result) const noexcept;
 		public:
 			/**
-			 * Шаблон метода хэширования текста с ключом
+			 * @brief Шаблон метода хэширования текста с ключом
+			 *
 			 * @tparam T тип возвращаемого результата
 			 */
 			template <typename T>
 			/**
-			 * hmac Метод хэширования текста с ключом
+			 * @brief Метод хэширования текста с ключом
+			 *
 			 * @param key  ключ для подписи
 			 * @param text текст для хэширования
 			 * @param type тип хэш-суммы
@@ -269,7 +282,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * hmac Метод хэширования текста с ключом
+			 * @brief Метод хэширования текста с ключом
+			 *
 			 * @param key    ключ для подписи
 			 * @param text   текст для хэширования
 			 * @param type   тип хэш-суммы
@@ -277,7 +291,8 @@ namespace awh {
 			 */
 			void hmac(const string & key, const string & text, const type_t type, string & result) const noexcept;
 			/**
-			 * hmac Метод хэширования текста с ключом
+			 * @brief Метод хэширования текста с ключом
+			 *
 			 * @param key    ключ для подписи
 			 * @param text   текст для хэширования
 			 * @param type   тип хэш-суммы
@@ -286,12 +301,14 @@ namespace awh {
 			void hmac(const string & key, const string & text, const type_t type, vector <char> & result) const noexcept;
 		public:
 			/**
-			 * Шаблон метода кодирования
+			 * @brief Шаблон метода кодирования
+			 *
 			 * @tparam T тип возвращаемого результата
 			 */
 			template <typename T>
 			/**
-			 * encode Метод кодирования
+			 * @brief Метод кодирования
+			 *
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -308,12 +325,14 @@ namespace awh {
 				return result;
 			}
 			/**
-			 * Шаблон метода декодирования
+			 * @brief Шаблон метода декодирования
+			 *
 			 * @tparam T тип возвращаемого результата
 			 */
 			template <typename T>
 			/**
-			 * decode Метод декодирования
+			 * @brief Метод декодирования
+			 *
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -331,7 +350,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * encode Метод кодирования
+			 * @brief Метод кодирования
+			 *
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -339,7 +359,8 @@ namespace awh {
 			 */
 			void encode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept;
 			/**
-			 * encode Метод кодирования
+			 * @brief Метод кодирования
+			 *
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -348,7 +369,8 @@ namespace awh {
 			void encode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
 		public:
 			/**
-			 * decode Метод декодирования
+			 * @brief Метод декодирования
+			 *
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -356,7 +378,8 @@ namespace awh {
 			 */
 			void decode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept;
 			/**
-			 * decode Метод декодирования
+			 * @brief Метод декодирования
+			 *
 			 * @param buffer буфер данных для шифрования
 			 * @param size   размер данных для шифрования
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -365,12 +388,14 @@ namespace awh {
 			void decode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
 		public:
 			/**
-			 * Шаблон метода декодирования
+			 * @brief Шаблон метода декодирования
+			 *
 			 * @tparam T тип возвращаемого результата
 			 */
 			template <typename T>
 			/**
-			 * compress Метод компрессии данных
+			 * @brief Метод компрессии данных
+			 *
 			 * @param buffer буфер данных для компрессии
 			 * @param size   размер данных для компрессии
 			 * @param method метод компрессии
@@ -387,12 +412,14 @@ namespace awh {
 				return result;
 			}
 			/**
-			 * Шаблон метода декодирования
+			 * @brief Шаблон метода декодирования
+			 *
 			 * @tparam T тип возвращаемого результата
 			 */
 			template <typename T>
 			/**
-			 * decompress Метод декомпрессии данных
+			 * @brief Метод декомпрессии данных
+			 *
 			 * @param buffer буфер данных для декомпрессии
 			 * @param size   размер данных для декомпрессии
 			 * @param method метод компрессии
@@ -410,7 +437,8 @@ namespace awh {
 			}
 		public:
 			/**
-			 * compress Метод компрессии данных
+			 * @brief Метод компрессии данных
+			 *
 			 * @param buffer буфер данных для компрессии
 			 * @param size   размер данных для компрессии
 			 * @param method метод компрессии
@@ -418,7 +446,8 @@ namespace awh {
 			 */
 			void compress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept;
 			/**
-			 * compress Метод компрессии данных
+			 * @brief Метод компрессии данных
+			 *
 			 * @param buffer буфер данных для компрессии
 			 * @param size   размер данных для компрессии
 			 * @param method метод компрессии
@@ -427,7 +456,8 @@ namespace awh {
 			void compress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept;
 		public:
 			/**
-			 * decompress Метод декомпрессии данных
+			 * @brief Метод декомпрессии данных
+			 *
 			 * @param buffer буфер данных для декомпрессии
 			 * @param size   размер данных для декомпрессии
 			 * @param method метод компрессии
@@ -435,7 +465,8 @@ namespace awh {
 			 */
 			void decompress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept;
 			/**
-			 * decompress Метод декомпрессии данных
+			 * @brief Метод декомпрессии данных
+			 *
 			 * @param buffer буфер данных для декомпрессии
 			 * @param size   размер данных для декомпрессии
 			 * @param method метод компрессии
@@ -444,54 +475,59 @@ namespace awh {
 			void decompress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept;
 		public:
 			/**
-			 * wbit Метод установки размера скользящего окна
+			 * @brief Метод установки размера скользящего окна
+			 *
 			 * @param wbit размер скользящего окна
 			 */
 			void wbit(const int16_t wbit) noexcept;
 			/**
-			 * round Метод установки количества раундов шифрования
+			 * @brief Метод установки количества раундов шифрования
+			 *
 			 * @param round количество раундов шифрования
 			 */
 			void round(const int32_t round) noexcept;
 			/**
-			 * level Метод установки уровня компрессии
+			 * @brief Метод установки уровня компрессии
+			 *
 			 * @param level уровень компрессии
 			 */
 			void level(const level_t level) noexcept;
 		public:
 			/**
-			 * salt Метод установки соли шифрования
+			 * @brief Метод установки соли шифрования
+			 *
 			 * @param salt соль для шифрования
 			 */
 			void salt(const string & salt) noexcept;
 			/**
-			 * password Метод установки пароля шифрования
+			 * @brief Метод установки пароля шифрования
+			 *
 			 * @param password пароль шифрования
 			 */
 			void password(const string & password) noexcept;
 		public:
 			/**
-			 * takeoverCompress Метод установки флага переиспользования контекста компрессии
+			 * @brief Метод установки флага переиспользования контекста компрессии
+			 *
 			 * @param flag флаг переиспользования контекста компрессии
 			 */
 			void takeoverCompress(const bool flag) noexcept;
 			/**
-			 * takeoverDecompress Метод установки флага переиспользования контекста декомпрессии
+			 * @brief Метод установки флага переиспользования контекста декомпрессии
+			 *
 			 * @param flag флаг переиспользования контекста декомпрессии
 			 */
 			void takeoverDecompress(const bool flag) noexcept;
 		public:
 			/**
-			 * Hash Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param log объект для работы с логами
 			 */
-			Hash(const log_t * log) noexcept :
-			 _wbit(MAX_WBITS), _rounds(5),
-			 _level{1, Z_DEFAULT_COMPRESSION, ZSTD_CLEVEL_DEFAULT},
-			 _salt{""}, _password{""}, _takeOverCompress(false), _takeOverDecompress(false),
-			 _btype{0x00, 0x00, 0xFF, 0xFF}, _zinf({0}), _zdef({0}), _log(log) {}
+			Hash(const log_t * log) noexcept;
 			/**
-			 * ~Hash Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Hash() noexcept;
 	} hash_t;

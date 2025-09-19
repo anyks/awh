@@ -21,7 +21,8 @@
 #include "core.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -29,16 +30,19 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * client клиентское пространство имён
+	 * @brief клиентское пространство имён
+	 *
 	 */
 	namespace client {
 		/**
-		 * AuthClient Класс работы с авторизацией клиента
+		 * @brief Класс работы с авторизацией клиента
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Auth : public auth_t {
 			public:
 				/**
-				 * Data Структура данных авторизации
+				 * @brief Структура данных авторизации
+				 *
 				 */
 				typedef struct Data {
 					const type_t * type;     // Тип авторизации
@@ -46,7 +50,8 @@ namespace awh {
 					const string * user;     // Логин пользователя
 					const string * pass;     // Пароль пользователя
 					/**
-					 * Data Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Data() noexcept :
 					 type(nullptr), digest(nullptr),
@@ -59,48 +64,56 @@ namespace awh {
 				string _pass;
 			public:
 				/**
-				 * data Метод извлечения данных авторизации
+				 * @brief Метод извлечения данных авторизации
+				 *
 				 * @return данные модуля авторизации
 				 */
 				data_t data() const noexcept;
 				/**
-				 * data Метод установки данных авторизации
+				 * @brief Метод установки данных авторизации
+				 *
 				 * @param data данные авторизации для установки
 				 */
 				void data(const data_t & data) noexcept;
 			public:
 				/**
-				 * uri Метод установки параметров HTTP запроса
+				 * @brief Метод установки параметров HTTP запроса
+				 *
 				 * @param uri строка параметров HTTP запроса
 				 */
 				void uri(const string & uri) noexcept;
 			public:
 				/**
-				 * user Метод установки логина пользователя
+				 * @brief Метод установки логина пользователя
+				 *
 				 * @param user логин пользователя для установки
 				 */
 				void user(const string & user) noexcept;
 				/**
-				 * pass Метод установки пароля пользователя
+				 * @brief Метод установки пароля пользователя
+				 *
 				 * @param pass пароль пользователя для установки
 				 */
 				void pass(const string & pass) noexcept;
 			public:
 				/**
-				 * header Метод установки параметров авторизации из заголовков
+				 * @brief Метод установки параметров авторизации из заголовков
+				 *
 				 * @param header заголовок HTTP с параметрами авторизации
 				 */
 				void header(const string & header) noexcept;
 			public:
 				/**
-				 * auth Метод получения строки авторизации HTTP-заголовка
+				 * @brief Метод получения строки авторизации HTTP-заголовка
+				 *
 				 * @param method метод HTTP-запроса
 				 * @return       строка авторизации
 				 */
 				string auth(const string & method) noexcept;
 			public:
 				/**
-				 * Auth Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */

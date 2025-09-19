@@ -266,12 +266,9 @@ void awh::Notifier::reset() noexcept {
  * init Метод инициализации уведомителя
  * @return содержимое сокета для извлечения
  */
-std::array <SOCKET, 2> awh::Notifier::init() noexcept {
+SOCKET awh::Notifier::init() noexcept {
 	// Результат работы функции
-	std::array <SOCKET, 2> result = {
-		INVALID_SOCKET,
-		INVALID_SOCKET
-	};
+	SOCKET result = INVALID_SOCKET;
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -308,13 +305,15 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_socks[0];
-			// Устанавливаем данные сокета на запись
-			result[1] = this->_socks[1];
+			result = this->_socks[0];
 			// Делаем сокет неблокирующим
-			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
+			this->_socket.blocking(this->_socks[0], socket_t::mode_t::DISABLED);
 			// Делаем блокирующим сокет на запись
-			this->_socket.blocking(result[1], socket_t::mode_t::ENABLED);
+			this->_socket.blocking(this->_socks[1], socket_t::mode_t::ENABLED);
+			// Устанавливаем размер буфера на чтение
+			this->_socket.bufferSize(this->_socks[0], 4096, socket_t::mode_t::READ);
+			// Устанавливаем размер буфера на запись
+			this->_socket.bufferSize(this->_socks[1], 4096, socket_t::mode_t::WRITE);
 		/**
 		 * Для операционной системы Linux
 		 */
@@ -341,9 +340,7 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_sock;
-			// Устанавливаем данные сокета на запись
-			result[1] = this->_sock;
+			result = this->_sock;
 		/**
 		 * Для операционной системы OpenBSD или Sun Solaris
 		 */
@@ -373,13 +370,11 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				} else ::fcntl(this->_socks[0], F_SETFL, O_NONBLOCK);
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_socks[0];
-			// Устанавливаем данные сокета на запись
-			result[1] = this->_socks[1];
+			result = this->_socks[0];
 			// Делаем сокет неблокирующим
-			this->_socket.blocking(result[0], socket_t::mode_t::DISABLED);
+			this->_socket.blocking(this->_socks[0], socket_t::mode_t::DISABLED);
 			// Делаем блокирующим сокет на запись
-			this->_socket.blocking(result[1], socket_t::mode_t::ENABLED);
+			this->_socket.blocking(this->_socks[1], socket_t::mode_t::ENABLED);
 		/**
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
@@ -431,9 +426,7 @@ std::array <SOCKET, 2> awh::Notifier::init() noexcept {
 				}
 			}
 			// Устанавливаем данные сокета на чтение
-			result[0] = this->_sock;
-			// Устанавливаем данные сокета на запись
-			result[1] = this->_sock;
+			result = this->_sock;
 		#endif
 	/**
 	 * Если возникает ошибка

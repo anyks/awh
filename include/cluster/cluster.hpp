@@ -49,7 +49,8 @@
 #include "../events/event.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -57,7 +58,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Cluster Класс работы с кластером
+	 * @brief Класс работы с кластером
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Cluster {
 		public:
@@ -95,7 +97,8 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Buffer Структура буфера
+			 * @brief Структура буфера
+			 *
 			 */
 			typedef struct Buffer {
 				// Размер бинарного буфера данных
@@ -103,12 +106,14 @@ namespace awh {
 				// Бинарный буфер полученных данных
 				std::unique_ptr <uint8_t []> data;
 				/**
-				 * Buffer Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Buffer() noexcept : size(0), data(nullptr) {}
 			} buffer_t;
 			/**
-			 * Worker Класс воркера
+			 * @brief Класс воркера
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT Worker {
 				private:
@@ -142,15 +147,17 @@ namespace awh {
 					 */
 					#if !_WIN32 && !_WIN64
 						/**
-						 * message Метод обратного вызова получении сообщений
-						 * @param fd    файловый дескриптор (сокет)
+						 * @brief Метод обратного вызова получении сообщений
+						 *
+						 * @param sock  сетевой сокет
 						 * @param event произошедшее событие
 						 */
-						void message(const SOCKET fd, const base_t::event_type_t event) noexcept;
+						void message(const SOCKET sock, const base_t::event_type_t event) noexcept;
 					#endif
 				public:
 					/**
-					 * Worker Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param wid идентификатор воркера
 					 * @param ctx родительский объект кластера
 					 * @param log объект для работы с логами
@@ -159,13 +166,15 @@ namespace awh {
 					 _working(false), _autoRestart(false),
 					 _wid(wid), _count(1), _log(log), _ctx(ctx) {}
 					/**
-					 * ~Worker Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Worker() noexcept {}
 			} worker_t;
 		private:
 			/**
-			 * Bandwidth Структура пропускной способности
+			 * @brief Структура пропускной способности
+			 *
 			 */
 			typedef struct Bandwidth {
 				// Размер буфера на чтение
@@ -173,14 +182,16 @@ namespace awh {
 				// Размер буфера на запись
 				size_t write;
 				/**
-				 * Bandwidth Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Bandwidth() noexcept :
 				 read(AWH_BUFFER_SIZE_RCV),
 				 write(AWH_BUFFER_SIZE_SND) {}
 			} __attribute__((packed)) bandwidth_t;
 			/**
-			 * Peer Структура подключения
+			 * @brief Структура подключения
+			 *
 			 */
 			typedef struct Peer {
 				// Размер объекта подключения
@@ -188,16 +199,18 @@ namespace awh {
 				// Параметры подключения
 				struct sockaddr_storage addr;
 				/**
-				 * Peer Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Peer() noexcept : size(0), addr{} {}
 			} peer_t;
 			/**
-			 * Client Структура клиента
+			 * @brief Структура клиента
+			 *
 			 */
 			typedef struct Client {
-				// Файловый дескриптор
-				SOCKET fd;
+				// Сетевой сокет
+				SOCKET sock;
 				// Идентификатор воркера
 				uint16_t wid;
 				// Объект подключения
@@ -205,19 +218,21 @@ namespace awh {
 				// Объект события
 				awh::event_t ev;
 				/**
-				 * Client Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Client(const fmk_t * fmk, const log_t * log) noexcept :
-				 fd(INVALID_SOCKET), wid(0), ev(awh::event_t::type_t::EVENT, fmk, log) {}
+				 sock(INVALID_SOCKET), wid(0), ev(awh::event_t::type_t::EVENT, fmk, log) {}
 			} client_t;
 			/**
-			 * Server Структура сервера
+			 * @brief Структура сервера
+			 *
 			 */
 			typedef struct Server {
-				// Файловый дескриптор
-				SOCKET fd;
+				// Сетевой сокет
+				SOCKET sock;
 				// Адрес unix-сокета
 				string ipc;
 				// Объект работы с файловой системой
@@ -229,12 +244,13 @@ namespace awh {
 				// Объект события на получения сообщений
 				awh::event_t ev;
 				/**
-				 * Server Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Server(const fmk_t * fmk, const log_t * log) noexcept :
-				 fd(INVALID_SOCKET), ipc{""}, fs(fmk, log),
+				 sock(INVALID_SOCKET), ipc{""}, fs(fmk, log),
 				 socket(fmk, log), ev(awh::event_t::type_t::EVENT, fmk, log) {}
 			} server_t;
 		private:
@@ -243,7 +259,8 @@ namespace awh {
 			 */
 			#if !_WIN32 && !_WIN64
 				/**
-				 * Broker Структура брокера
+				 * @brief Структура брокера
+				 *
 				 */
 				typedef struct Broker {
 					bool stop;          // Флаг завершения работы процессом
@@ -254,7 +271,8 @@ namespace awh {
 					awh::event_t read;  // Объект события на получения сообщений
 					awh::event_t write; // Объект события на запись сообщений
 					/**
-					 * Broker Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
@@ -265,7 +283,8 @@ namespace awh {
 					 read(awh::event_t::type_t::EVENT, fmk, log),
 					 write(awh::event_t::type_t::EVENT, fmk, log) {}
 					/**
-					 * ~Broker Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Broker() noexcept {}
 				} broker_t;
@@ -274,13 +293,15 @@ namespace awh {
 			 */
 			#else
 				/**
-				 * Broker Структура брокера
+				 * @brief Структура брокера
+				 *
 				 */
 				typedef struct Broker {
 					pid_t pid;     // Идентификатор активного процесса
 					uint64_t date; // Время начала жизни процесса
 					/**
-					 * Broker Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Broker() noexcept : pid(0), date(0) {}
 				} broker_t;
@@ -348,18 +369,21 @@ namespace awh {
 			 */
 			#if !_WIN32 && !_WIN64
 				/**
-				 * ipc Метод инициализации unix-сокета для обмены данными
+				 * @brief Метод инициализации unix-сокета для обмены данными
+				 *
 				 * @param family семейстов кластера
 				 */
 				void ipc(const family_t family) noexcept;
 				/**
-				 * process Метод перезапуска упавшего процесса
+				 * @brief Метод перезапуска упавшего процесса
+				 *
 				 * @param pid    идентификатор упавшего процесса
 				 * @param status статус остановившегося процесса
 				 */
 				void process(const pid_t pid, const int32_t status) noexcept;
 				/**
-				 * child Функция фильтр перехватчика сигналов
+				 * @brief Функция фильтр перехватчика сигналов
+				 *
 				 * @param signal номер сигнала полученного системой
 				 * @param info   объект информации полученный системой
 				 * @param ctx    передаваемый внутренний контекст
@@ -368,78 +392,90 @@ namespace awh {
 			#endif
 		private:
 			/**
-			 * list Метод активации прослушивания сокета
+			 * @brief Метод активации прослушивания сокета
+			 *
 			 * @return результат выполнения операции
 			 */
 			bool list() noexcept;
 			/**
-			 * connect Метод выполнения подключения
+			 * @brief Метод выполнения подключения
+			 *
 			 * @return результат выполнения операции
 			 */
 			bool connect() noexcept;
 			/**
-			 * accept Метод обратного вызова получении запроса на подключение
-			 * @param wid идентификатор воркера
-			 * @param fd  файловый дескриптор (сокет)
+			 * @brief Метод обратного вызова получении запроса на подключение
+			 *
+			 * @param wid  идентификатор воркера
+			 * @param sock сетевой сокет
 			 */
-			void accept(const uint16_t wid, const SOCKET fd, const base_t::event_type_t) noexcept;
+			void accept(const uint16_t wid, const SOCKET sock, const base_t::event_type_t) noexcept;
 		private:
 			/**
-			 * write Метод записи буфера данных в сокет
-			 * @param wid идентификатор воркера
-			 * @param pid идентификатор процесса для получения сообщения
-			 * @param fd  идентификатор файлового дескриптора
+			 * @brief Метод записи буфера данных в сокет
+			 *
+			 * @param wid  идентификатор воркера
+			 * @param pid  идентификатор процесса для получения сообщения
+			 * @param sock идентификатор сетевого сокета
 			 */
-			void write(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept;
+			void write(const uint16_t wid, const pid_t pid, const SOCKET sock) noexcept;
 		private:
 			/**
-			 * sending Метод обратного вызова получении сообщений готовности сокета на запись
-			 * @param wid идентификатор воркера
-			 * @param pid идентификатор процесса для отправки сообщения
-			 * @param fd  файловый дескриптор (сокет)
+			 * @brief Метод обратного вызова получении сообщений готовности сокета на запись
+			 *
+			 * @param wid  идентификатор воркера
+			 * @param pid  идентификатор процесса для отправки сообщения
+			 * @param sock сетевой сокет
 			 */
-			void sending(const uint16_t wid, const pid_t pid, const SOCKET fd) noexcept;
+			void sending(const uint16_t wid, const pid_t pid, const SOCKET sock) noexcept;
 		private:
 			/**
-			 * emplace Метод размещения нового дочернего процесса
+			 * @brief Метод размещения нового дочернего процесса
+			 *
 			 * @param wid идентификатор воркера
 			 * @param pid идентификатор предыдущего процесса
 			 */
 			void emplace(const uint16_t wid, const pid_t pid) noexcept;
 			/**
-			 * create Метод создания дочерних процессов при запуске кластера
+			 * @brief Метод создания дочерних процессов при запуске кластера
+			 *
 			 * @param wid   идентификатор воркера
 			 * @param index индекс инициализированного процесса
 			 */
 			void create(const uint16_t wid, const uint16_t index = 0) noexcept;
 		public:
 			/**
-			 * master Метод проверки является ли процесс родительским
+			 * @brief Метод проверки является ли процесс родительским
+			 *
 			 * @return результат проверки
 			 */
 			bool master() const noexcept;
 		public:
 			/**
-			 * working Метод проверки на запуск работы кластера
+			 * @brief Метод проверки на запуск работы кластера
+			 *
 			 * @param wid идентификатор воркера
 			 * @return    результат работы проверки
 			 */
 			bool working(const uint16_t wid) const noexcept;
 		public:
 			/**
-			 * pids Метод получения списка дочерних процессов
+			 * @brief Метод получения списка дочерних процессов
+			 *
 			 * @param wid идентификатор воркера
 			 * @return    список дочерних процессов
 			 */
 			std::set <pid_t> pids(const uint16_t wid) const noexcept;
 		public:
 			/**
-			 * send Метод отправки сообщения родительскому процессу
+			 * @brief Метод отправки сообщения родительскому процессу
+			 *
 			 * @param wid идентификатор воркера
 			 */
 			void send(const uint16_t wid) noexcept;
 			/**
-			 * send Метод отправки сообщения родительскому процессу
+			 * @brief Метод отправки сообщения родительскому процессу
+			 *
 			 * @param wid    идентификатор воркера
 			 * @param buffer бинарный буфер для отправки сообщения
 			 * @param size   размер бинарного буфера для отправки сообщения
@@ -447,13 +483,15 @@ namespace awh {
 			void send(const uint16_t wid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * send Метод отправки сообщения дочернему процессу
+			 * @brief Метод отправки сообщения дочернему процессу
+			 *
 			 * @param wid идентификатор воркера
 			 * @param pid идентификатор процесса для получения сообщения
 			 */
 			void send(const uint16_t wid, const pid_t pid) noexcept;
 			/**
-			 * send Метод отправки сообщения дочернему процессу
+			 * @brief Метод отправки сообщения дочернему процессу
+			 *
 			 * @param wid    идентификатор воркера
 			 * @param pid    идентификатор процесса для получения сообщения
 			 * @param buffer бинарный буфер для отправки сообщения
@@ -462,12 +500,14 @@ namespace awh {
 			void send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * broadcast Метод отправки сообщения всем дочерним процессам
+			 * @brief Метод отправки сообщения всем дочерним процессам
+			 *
 			 * @param wid идентификатор воркера
 			 */
 			void broadcast(const uint16_t wid) noexcept;
 			/**
-			 * broadcast Метод отправки сообщения всем дочерним процессам
+			 * @brief Метод отправки сообщения всем дочерним процессам
+			 *
 			 * @param wid    идентификатор воркера
 			 * @param buffer бинарный буфер для отправки сообщения
 			 * @param size   размер бинарного буфера для отправки сообщения
@@ -475,145 +515,169 @@ namespace awh {
 			void broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * clear Метод очистки всех выделенных ресурсов
+			 * @brief Метод очистки всех выделенных ресурсов
+			 *
 			 */
 			void clear() noexcept;
 		public:
 			/**
-			 * close Метод закрытия всех подключений
+			 * @brief Метод закрытия всех подключений
+			 *
 			 */
 			void close() noexcept;
 			/**
-			 * close Метод закрытия всех подключений
+			 * @brief Метод закрытия всех подключений
+			 *
 			 * @param wid идентификатор воркера
 			 */
 			void close(const uint16_t wid) noexcept;
 		private:
 			/**
-			 * close Метод закрытия файлового дескриптора
-			 * @param wid идентификатор воркера
-			 * @param fd  файловый дескриптор для закрытия
+			 * @brief Метод закрытия сетевого сокета
+			 *
+			 * @param wid  идентификатор воркера
+			 * @param sock сетевой сокет для закрытия
 			 */
-			void close(const uint16_t wid, const SOCKET fd) noexcept;
+			void close(const uint16_t wid, const SOCKET sock) noexcept;
 		public:
 			/**
-			 * stop Метод остановки кластера
+			 * @brief Метод остановки кластера
+			 *
 			 * @param wid идентификатор воркера
 			 */
 			void stop(const uint16_t wid) noexcept;
 			/**
-			 * start Метод запуска кластера
+			 * @brief Метод запуска кластера
+			 *
 			 * @param wid идентификатор воркера
 			 */
 			void start(const uint16_t wid) noexcept;
 		public:
 			/**
-			 * restart Метод установки флага перезапуска процессов
+			 * @brief Метод установки флага перезапуска процессов
+			 *
 			 * @param wid  идентификатор воркера
 			 * @param mode флаг перезапуска процессов
 			 */
 			void restart(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
-			 * base Метод установки сетевого ядра
+			 * @brief Метод установки сетевого ядра
+			 *
 			 * @param core сетевое ядро для установки
 			 */
 			void core(core_t * core) noexcept;
 		public:
 			/**
-			 * name Метод установки названия кластера
+			 * @brief Метод установки названия кластера
+			 *
 			 * @param name название кластера для установки
 			 */
 			void name(const string & name) noexcept;
 		public:
 			/**
-			 * transfer Метод установки режима передачи данных
+			 * @brief Метод установки режима передачи данных
+			 *
 			 * @param transfer режим передачи данных
 			 */
 			void transfer(const transfer_t transfer) noexcept;
 		public:
 			/**
-			 * salt Метод установки соли шифрования
+			 * @brief Метод установки соли шифрования
+			 *
 			 * @param salt соль для шифрования
 			 */
 			void salt(const string & salt) noexcept;
 			/**
-			 * password Метод установки пароля шифрования
+			 * @brief Метод установки пароля шифрования
+			 *
 			 * @param password пароль шифрования
 			 */
 			void password(const string & password) noexcept;
 		public:
 			/**
-			 * cipher Метод установки размера шифрования
+			 * @brief Метод установки размера шифрования
+			 *
 			 * @param cipher размер шифрования
 			 */
 			void cipher(const hash_t::cipher_t cipher) noexcept;
 			/**
-			 * compressor Метод установки метода компрессии
+			 * @brief Метод установки метода компрессии
+			 *
 			 * @param compressor метод компрессии для установки
 			 */
 			void compressor(const hash_t::method_t compressor) noexcept;
 		public:
 			/**
-			 * emplace Метод размещения нового дочернего процесса
+			 * @brief Метод размещения нового дочернего процесса
+			 *
 			 * @param wid идентификатор воркера
 			 */
 			void emplace(const uint16_t wid) noexcept;
 			/**
-			 * erase Метод удаления активного процесса
+			 * @brief Метод удаления активного процесса
+			 *
 			 * @param wid идентификатор воркера
 			 * @param pid идентификатор процесса
 			 */
 			void erase(const uint16_t wid, const pid_t pid) noexcept;
 		public:
 			/**
-			 * count Метод получения максимального количества процессов
+			 * @brief Метод получения максимального количества процессов
+			 *
 			 * @param wid идентификатор воркера
 			 * @return    максимальное количество процессов
 			 */
 			uint16_t count(const uint16_t wid) const noexcept;
 			/**
-			 * count Метод установки максимального количества процессов
+			 * @brief Метод установки максимального количества процессов
+			 *
 			 * @param wid   идентификатор воркера
 			 * @param count максимальное количество процессов
 			 */
 			void count(const uint16_t wid, const uint16_t count) noexcept;
 		public:
 			/**
-			 * autoRestart Метод установки флага разрешения перезапуска процессов
+			 * @brief Метод установки флага разрешения перезапуска процессов
+			 *
 			 * @param wid  идентификатор воркера
 			 * @param mode флаг перезапуска процессов
 			 */
 			void autoRestart(const uint16_t wid, const bool mode) noexcept;
 		public:
 			/**
-			 * init Метод инициализации воркера
+			 * @brief Метод инициализации воркера
+			 *
 			 * @param wid   идентификатор воркера
 			 * @param count максимальное количество процессов
 			 */
 			void init(const uint16_t wid, const uint16_t count = 1) noexcept;
 		public:
 			/**
-			 * bandwidth Метод установки пропускной способности сети
+			 * @brief Метод установки пропускной способности сети
+			 *
 			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
 			void bandwidth(const string & read = "", const string & write = "") noexcept;
 		public:
 			/**
-			 * callback Метод установки функций обратного вызова
+			 * @brief Метод установки функций обратного вызова
+			 *
 			 * @param callback функции обратного вызова
 			 */
 			void callback(const callback_t & callback) noexcept;
 		public:
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -627,13 +691,15 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -647,13 +713,15 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -667,14 +735,16 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param A    тип идентификатора функции
-			 * @param B    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam A    тип идентификатора функции
+			 * @tparam B    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename A, typename B, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -689,20 +759,23 @@ namespace awh {
 			}
 		public:
 			/**
-			 * Cluster Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * Cluster Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param core объект сетевого ядра
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
 			Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Cluster Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Cluster() noexcept;
 	} cluster_t;

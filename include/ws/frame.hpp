@@ -26,25 +26,14 @@
 #include <algorithm>
 
 /**
- * Для операционной системы OS Windows
- */
-#if _WIN32 || _WIN64
-	#include <winsock2.h>
-/**
- * Для операционной системы не являющейся OS Windows
- */
-#else
-	#include <arpa/inet.h>
-#endif
-
-/**
  * Наши модули
  */
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -52,11 +41,13 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * ws пространство имён
+	 * @brief пространство имён
+	 *
 	 */
 	namespace ws {
 		/**
-		 * Message Структура сообщений удалённой стороны
+		 * @brief Структура сообщений удалённой стороны
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Message {
 			public:
@@ -71,51 +62,65 @@ namespace awh {
 				std::map <uint16_t, pair <string, string>> _codes;
 			private:
 				/**
-				 * find Метод поиска типа сообщения
+				 * @brief Метод поиска типа сообщения
+				 *
 				 */
 				void find() noexcept;
 			private:
 				/**
-				 * init Метод инициализации модуля
+				 * @brief Метод инициализации модуля
+				 *
 				 */
 				void init() noexcept;
 			public:
 				/**
-				 * operator= Оператор установки текстового сообщения
+				 * @brief Оператор установки текстового сообщения
+				 *
 				 * @param text текст сообщения
 				 * @return     ссылка на контекст объекта
 				 */
 				Message & operator = (const string & text) noexcept;
 				/**
-				 * operator= Оператор установки кода сообщения
+				 * @brief Оператор установки кода сообщения
+				 *
 				 * @param code код сообщения
 				 * @return     ссылка на контекст объекта
 				 */
 				Message & operator = (const uint16_t code) noexcept;
 			public:
 				/**
-				 * Message Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Message() noexcept;
 				/**
-				 * Message Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param code код сообщения
 				 */
 				Message(const uint16_t code) noexcept;
 				/**
-				 * Message Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param text текст сообщения
 				 */
 				Message(const string & text) noexcept;
 				/**
-				 * Message Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param code код сообщения
 				 * @param text текст сообщения
 				 */
 				Message(const uint16_t code, const string & text) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~Message() noexcept {}
 		} mess_t;
 		/**
-		 * Frame Класс для работы с фреймом WebSocket
+		 * @brief Класс для работы с фреймом WebSocket
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Frame {
 			private:
@@ -145,7 +150,8 @@ namespace awh {
 				};
 			public:
 				/**
-				 * Header Структура шапки
+				 * @brief Структура шапки
+				 *
 				 */
 				typedef struct Header {
 					bool fin;         // Фрейм является финальным
@@ -157,7 +163,8 @@ namespace awh {
 					uint64_t payload; // Размер полезной нагрузки
 					opcode_t optcode; // Опциональные коды
 					/**
-					 * Header Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fin  флаг финального фрейма
 					 * @param mask флаг маскирования сообщения
 					 */
@@ -173,20 +180,23 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
-				 * message Метод создание фрейма сообщения
+				 * @brief Метод создание фрейма сообщения
+				 *
 				 * @param mess данные сообщения
 				 * @return     бинарные данные фрейма
 				 */
 				vector <char> message(const mess_t & mess) const noexcept;
 				/**
-				 * message Метод извлечения сообщения из фрейма
+				 * @brief Метод извлечения сообщения из фрейма
+				 *
 				 * @param buffer бинарные данные сообщения
 				 * @param size   размер буфера данных сообщения
 				 * @return       сообщение в текстовом виде
 				 */
 				mess_t message(const void * buffer, const size_t size) const noexcept;
 				/**
-				 * message Метод извлечения сообщения из заголовка фрейма
+				 * @brief Метод извлечения сообщения из заголовка фрейма
+				 *
 				 * @param head       заголовки фрейма
 				 * @param code       код сообщения
 				 * @param compressed флаг сжатых ожидаемых данных
@@ -195,14 +205,16 @@ namespace awh {
 				mess_t message(const head_t & head, const uint16_t code = 0, const bool compressed = false) const noexcept;
 			public:
 				/**
-				 * ping Метод создания фрейма пинга
+				 * @brief Метод создания фрейма пинга
+				 *
 				 * @param mess данные сообщения
 				 * @param mask флаг выполнения маскировки сообщения
 				 * @return     бинарные данные фрейма
 				 */
 				vector <char> ping(const string & mess, const bool mask = false) const noexcept;
 				/**
-				 * ping Метод создания фрейма пинга
+				 * @brief Метод создания фрейма пинга
+				 *
 				 * @param buffer бинарный буфер данных для создания фрейма
 				 * @param size   размер буфера данных для создания фрейма
 				 * @param mask   флаг выполнения маскировки сообщения
@@ -211,14 +223,16 @@ namespace awh {
 				vector <char> ping(const void * buffer, const size_t size, const bool mask = false) const noexcept;
 			public:
 				/**
-				 * pong Метод создания фрейма понга
+				 * @brief Метод создания фрейма понга
+				 *
 				 * @param mess данные сообщения
 				 * @param mask флаг выполнения маскировки сообщения
 				 * @return     бинарные данные фрейма
 				 */
 				vector <char> pong(const string & mess, const bool mask = false) const noexcept;
 				/**
-				 * pong Метод создания фрейма понга
+				 * @brief Метод создания фрейма понга
+				 *
 				 * @param buffer бинарный буфер данных для создания фрейма
 				 * @param size   размер буфера данных для создания фрейма
 				 * @param mask   флаг выполнения маскировки сообщения
@@ -227,7 +241,8 @@ namespace awh {
 				vector <char> pong(const void * buffer, const size_t size, const bool mask = false) const noexcept;
 			public:
 				/**
-				 * get Метод извлечения данных фрейма
+				 * @brief Метод извлечения данных фрейма
+				 *
 				 * @param head   заголовки фрейма
 				 * @param buffer бинарные данные фрейма для извлечения
 				 * @param size   размер передаваемого буфера
@@ -235,7 +250,8 @@ namespace awh {
 				 */
 				vector <char> get(head_t & head, const void * buffer, const size_t size) const noexcept;
 				/**
-				 * set Метод создания данных фрейма
+				 * @brief Метод создания данных фрейма
+				 *
 				 * @param head   заголовки фрейма
 				 * @param buffer бинарные данные полезной нагрузки
 				 * @param size   размер передаваемого буфера
@@ -244,7 +260,8 @@ namespace awh {
 				vector <char> set(const head_t & head, const void * buffer, const size_t size) const noexcept;
 			public:
 				/**
-				 * Frame Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */

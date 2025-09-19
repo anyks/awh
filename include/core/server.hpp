@@ -24,7 +24,8 @@
 #include "../cluster/cluster.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -32,11 +33,13 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * Core Класс серверного сетевого ядра
+		 * @brief Класс серверного сетевого ядра
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Core : public awh::node_t {
 			public:
@@ -70,7 +73,8 @@ namespace awh {
 				};
 			private:
 				/**
-				 * Mutex Объект основных мютексов
+				 * @brief Объект основных мютексов
+				 *
 				 */
 				typedef struct Mutex {
 					std::recursive_mutex main;    // Для установки системных параметров
@@ -114,44 +118,51 @@ namespace awh {
 				std::map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;
 			private:
 				/**
-				 * accept Метод вызова при подключении к серверу
-				 * @param fd  файловый дескриптор (сокет) подключившегося клиента
-				 * @param sid идентификатор схемы сети
+				 * @brief Метод вызова при подключении к серверу
+				 *
+				 * @param sock сетевой сокет подключившегося клиента
+				 * @param sid  идентификатор схемы сети
 				 */
-				void accept(const SOCKET fd, const uint16_t sid) noexcept;
+				void accept(const SOCKET sock, const uint16_t sid) noexcept;
 				/**
-				 * accept Метод вызова при активации DTLS-подключения
+				 * @brief Метод вызова при активации DTLS-подключения
+				 *
 				 * @param sid идентификатор схемы сети
 				 * @param bid идентификатор брокера
 				 */
 				void accept(const uint16_t sid, const uint64_t bid) noexcept;
 			private:
 				/**
-				 * launching Метод вызова при активации базы событий
+				 * @brief Метод вызова при активации базы событий
+				 *
 				 * @param mode   флаг работы с сетевым протоколом
 				 * @param status флаг вывода события статуса
 				 */
 				void launching(const bool mode, const bool status) noexcept;
 				/**
-				 * closedown Метод вызова при деакцтивации базы событий
+				 * @brief Метод вызова при деакцтивации базы событий
+				 *
 				 * @param mode   флаг работы с сетевым протоколом
 				 * @param status флаг вывода события статуса
 				 */
 				void closedown(const bool mode, const bool status) noexcept;
 			private:
 				/**
-				 * clearTimeout Метод удаления таймера ожидания получения данных
+				 * @brief Метод удаления таймера ожидания получения данных
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void clearTimeout(const uint64_t bid) noexcept;
 				/**
-				 * clearTimeout Метод удаления таймера подключения или переподключения
+				 * @brief Метод удаления таймера подключения или переподключения
+				 *
 				 * @param sid идентификатор схемы сети
 				 */
 				void clearTimeout(const uint16_t sid) noexcept;
 			private:
 				/**
-				 * createTimeout Метод создания таймаута подключения или переподключения
+				 * @brief Метод создания таймаута подключения или переподключения
+				 *
 				 * @param sid  идентификатор схемы сети
 				 * @param bid  идентификатор брокера
 				 * @param msec время ожидания получения данных в миллисекундах
@@ -160,34 +171,39 @@ namespace awh {
 				void createTimeout(const uint16_t sid, const uint64_t bid, const uint32_t msec, const mode_t mode) noexcept;
 			private:
 				/**
-				 * clusterReadyCallback Метод получения события подключения дочерних процессов
+				 * @brief Метод получения события подключения дочерних процессов
+				 *
 				 * @param sid идентификатор схемы сети
 				 * @param pid идентификатор процесса
 				 */
 				void clusterReadyCallback(const uint16_t sid, const pid_t pid) noexcept;
 				/**
-				 * clusterRebaseCallback Метод события пересоздании процесса
+				 * @brief Метод события пересоздании процесса
+				 *
 				 * @param sid  идентификатор схемы сети
 				 * @param pid  идентификатор процесса
 				 * @param opid идентификатор старого процесса
 				 */
 				void clusterRebaseCallback(const uint16_t sid, const pid_t pid, const pid_t opid) const noexcept;
 				/**
-				 * clusterExitCallback Метод события завершения работы процесса
+				 * @brief Метод события завершения работы процесса
+				 *
 				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса
 				 * @param status статус остановки работы процесса
 				 */
 				void clusterExitCallback(const uint16_t sid, const pid_t pid, const int32_t status) const noexcept;
 				/**
-				 * clusterEventsCallback Метод события ЗАПУСКА/ОСТАНОВКИ кластера
+				 * @brief Метод события ЗАПУСКА/ОСТАНОВКИ кластера
+				 *
 				 * @param sid   идентификатор схемы сети
 				 * @param pid   идентификатор процесса
 				 * @param event идентификатор события
 				 */
 				void clusterEventsCallback(const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
 				/**
-				 * clusterMessageCallback Метод получения сообщений от дочерних процессоров кластера
+				 * @brief Метод получения сообщений от дочерних процессоров кластера
+				 *
 				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса
 				 * @param buffer буфер бинарных данных
@@ -196,82 +212,96 @@ namespace awh {
 				void clusterMessageCallback(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * initDTLS Метод инициализации DTLS-брокера
+				 * @brief Метод инициализации DTLS-брокера
+				 *
 				 * @param sid идентификатор схемы сети
 				 */
 				void initDTLS(const uint16_t sid) noexcept;
 			public:
 				/**
-				 * stop Метод остановки клиента
+				 * @brief Метод остановки клиента
+				 *
 				 */
 				void stop() noexcept;
 				/**
-				 * start Метод запуска клиента
+				 * @brief Метод запуска клиента
+				 *
 				 */
 				void start() noexcept;
 			public:
 				/**
-				 * close Метод отключения всех брокеров
+				 * @brief Метод отключения всех брокеров
+				 *
 				 */
 				void close() noexcept;
 				/**
-				 * remove Метод удаления всех активных схем сети
+				 * @brief Метод удаления всех активных схем сети
+				 *
 				 */
 				void remove() noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения брокера
+				 * @brief Метод закрытия подключения брокера
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint64_t bid) noexcept;
 				/**
-				 * remove Метод удаления схемы сети
+				 * @brief Метод удаления схемы сети
+				 *
 				 * @param sid идентификатор схемы сети
 				 */
 				void remove(const uint16_t sid) noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения брокера по протоколу UDP
+				 * @brief Метод закрытия подключения брокера по протоколу UDP
+				 *
 				 * @param sid идентификатор схемы сети
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint16_t sid, const uint64_t bid) noexcept;
 			public:
 				/**
-				 * launch Метод запуска сервера
+				 * @brief Метод запуска сервера
+				 *
 				 * @param sid идентификатор схемы сети
 				 */
 				void launch(const uint16_t sid) noexcept;
 			private:
 				/**
-				 * create Метод создания сервера
+				 * @brief Метод создания сервера
+				 *
 				 * @param sid идентификатор схемы сети
 				 * @return    результат создания сервера
 				 */
 				bool create(const uint16_t sid) noexcept;
 			public:
 				/**
-				 * host Метод получения хоста сервера
+				 * @brief Метод получения хоста сервера
+				 *
 				 * @param sid идентификатор схемы сети
 				 * @return    хост на котором висит сервер
 				 */
 				string host(const uint16_t sid) const noexcept;
 				/**
-				 * port Метод получения порта сервера
+				 * @brief Метод получения порта сервера
+				 *
 				 * @param sid идентификатор схемы сети
 				 * @return    порт сервера который он прослушивает
 				 */
 				uint32_t port(const uint16_t sid) const noexcept;
 			public:
 				/**
-				 * workers Метод получения списка доступных воркеров
+				 * @brief Метод получения списка доступных воркеров
+				 *
 				 * @param sid идентификатор схемы сети
 				 * @return    список доступных воркеров
 				 */
 				std::set <pid_t> workers(const uint16_t sid) const noexcept;
 			public:
 				/**
-				 * send Метод асинхронной отправки буфера данных в сокет
+				 * @brief Метод асинхронной отправки буфера данных в сокет
+				 *
 				 * @param buffer буфер для записи данных
 				 * @param size   размер записываемых данных
 				 * @param bid    идентификатор брокера
@@ -280,12 +310,14 @@ namespace awh {
 				bool send(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			public:
 				/**
-				 * sendToProcess Метод отправки сообщения родительскому процессу
+				 * @brief Метод отправки сообщения родительскому процессу
+				 *
 				 * @param sid идентификатор схемы сети
 				 */
 				void sendToProcess(const uint16_t sid) noexcept;
 				/**
-				 * sendToProcess Метод отправки сообщения родительскому процессу
+				 * @brief Метод отправки сообщения родительскому процессу
+				 *
 				 * @param sid    идентификатор схемы сети
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
@@ -293,13 +325,15 @@ namespace awh {
 				void sendToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * sendToProcess Метод отправки сообщения дочернему процессу
+				 * @brief Метод отправки сообщения дочернему процессу
+				 *
 				 * @param sid идентификатор схемы сети
 				 * @param pid идентификатор процесса для получения сообщения
 				 */
 				void sendToProcess(const uint16_t sid, const pid_t pid) noexcept;
 				/**
-				 * sendToProcess Метод отправки сообщения дочернему процессу
+				 * @brief Метод отправки сообщения дочернему процессу
+				 *
 				 * @param sid    идентификатор схемы сети
 				 * @param pid    идентификатор процесса для получения сообщения
 				 * @param buffer бинарный буфер для отправки сообщения
@@ -308,12 +342,14 @@ namespace awh {
 				void sendToProcess(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * broadcastToProcess Метод отправки сообщения всем дочерним процессам
+				 * @brief Метод отправки сообщения всем дочерним процессам
+				 *
 				 * @param sid идентификатор схемы сети
 				 */
 				void broadcastToProcess(const uint16_t sid) noexcept;
 				/**
-				 * broadcastToProcess Метод отправки сообщения всем дочерним процессам
+				 * @brief Метод отправки сообщения всем дочерним процессам
+				 *
 				 * @param sid    идентификатор схемы сети
 				 * @param buffer бинарный буфер для отправки сообщения
 				 * @param size   размер бинарного буфера для отправки сообщения
@@ -321,18 +357,21 @@ namespace awh {
 				void broadcastToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * read Метод чтения данных для брокера
+				 * @brief Метод чтения данных для брокера
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void read(const uint64_t bid) noexcept;
 				/**
-				 * write Метод записи данных в брокер
+				 * @brief Метод записи данных в брокер
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void write(const uint64_t bid) noexcept;
 			public:
 				/**
-				 * write Метод записи буфера данных в сокет
+				 * @brief Метод записи буфера данных в сокет
+				 *
 				 * @param buffer буфер для записи данных
 				 * @param size   размер записываемых данных
 				 * @param bid    идентификатор брокера
@@ -341,7 +380,8 @@ namespace awh {
 				size_t write(const char * buffer, const size_t size, const uint64_t bid) noexcept;
 			private:
 				/**
-				 * work Метод активации параметров запуска сервера
+				 * @brief Метод активации параметров запуска сервера
+				 *
 				 * @param sid    идентификатор схемы сети
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
@@ -349,97 +389,113 @@ namespace awh {
 				void work(const uint16_t sid, const string & ip, const int32_t family) noexcept;
 			public:
 				/**
-				 * ipV6only Метод установки флага использования только сети IPv6
+				 * @brief Метод установки флага использования только сети IPv6
+				 *
 				 * @param mode флаг для установки
 				 */
 				void ipV6only(const bool mode) noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
+				 * @brief Метод установки функций обратного вызова
+				 *
 				 * @param callback функции обратного вызова
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * transferRule Метод установки правила передачи данных
+				 * @brief Метод установки правила передачи данных
+				 *
 				 * @param transfer правило передачи данных
 				 */
 				void transferRule(const transfer_t transfer) noexcept;
 			public:
 				/**
-				 * total Метод установки максимального количества одновременных подключений
+				 * @brief Метод установки максимального количества одновременных подключений
+				 *
 				 * @param sid   идентификатор схемы сети
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const uint16_t sid, const uint16_t total) noexcept;
 			public:
 				/**
-				 * clusterName Метод установки названия кластера
+				 * @brief Метод установки названия кластера
+				 *
 				 * @param name название кластера для установки
 				 */
 				void clusterName(const string & name) noexcept;
 			public:
 				/**
-				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * @brief Метод установки флага перезапуска процессов
+				 *
 				 * @param mode флаг перезапуска процессов
 				 */
 				void clusterAutoRestart(const bool mode) noexcept;
 			public:
 				/**
-				 * clusterSalt Метод установки соли шифрования
+				 * @brief Метод установки соли шифрования
+				 *
 				 * @param salt соль для шифрования
 				 */
 				void clusterSalt(const string & salt) noexcept;
 				/**
-				 * clusterPassword Метод установки пароля шифрования
+				 * @brief Метод установки пароля шифрования
+				 *
 				 * @param password пароль шифрования
 				 */
 				void clusterPassword(const string & password) noexcept;
 			public:
 				/**
-				 * clusterCipher Метод установки размера шифрования
+				 * @brief Метод установки размера шифрования
+				 *
 				 * @param cipher размер шифрования
 				 */
 				void clusterCipher(const hash_t::cipher_t cipher) noexcept;
 				/**
-				 * clusterCompressor Метод установки метода компрессии
+				 * @brief Метод установки метода компрессии
+				 *
 				 * @param compressor метод компрессии для установки
 				 */
 				void clusterCompressor(const hash_t::method_t compressor) noexcept;
 			public:
 				/**
-				 * clusterTransfer Метод установки режима передачи данных
+				 * @brief Метод установки режима передачи данных
+				 *
 				 * @param transfer режим передачи данных
 				 */
 				void clusterTransfer(const cluster_t::transfer_t transfer) noexcept;
 			public:
 				/**
-				 * clusterBandwidth Метод установки пропускной способности сети кластера
+				 * @brief Метод установки пропускной способности сети кластера
+				 *
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
 				void clusterBandwidth(const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
-				 * clusterFamily Меод получения семейства кластера
+				 * @brief Меод получения семейства кластера
+				 *
 				 * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
 				 */
 				cluster_t::family_t clusterFamily() const noexcept;
 			public:
 				/**
-				 * cluster Метод проверки активации кластера
+				 * @brief Метод проверки активации кластера
+				 *
 				 * @return режим активации кластера
 				 */
 				awh::scheme_t::mode_t cluster() const noexcept;
 				/**
-				 * cluster Метод установки количества процессов кластера
+				 * @brief Метод установки количества процессов кластера
+				 *
 				 * @param mode флаг активации/деактивации кластера
 				 * @param size количество рабочих процессов
 				 */
 				void cluster(const awh::scheme_t::mode_t mode, const int16_t size = 0) noexcept;
 			public:
 				/**
-				 * init Метод инициализации сервера
+				 * @brief Метод инициализации сервера
+				 *
 				 * @param sid  идентификатор схемы сети
 				 * @param port порт сервера
 				 * @param host хост сервера
@@ -447,7 +503,8 @@ namespace awh {
 				void init(const uint16_t sid, const uint32_t port, const string & host = "") noexcept;
 			public:
 				/**
-				 * bandwidth Метод установки пропускной способности сети
+				 * @brief Метод установки пропускной способности сети
+				 *
 				 * @param bid   идентификатор брокера
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
@@ -455,13 +512,15 @@ namespace awh {
 				void bandwidth(const uint64_t bid, const string & read = "", const string & write = "") noexcept;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
+				 * @brief Метод ожидания входящих сообщений
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sec интервал времени в секундах
 				 */
 				void waitMessage(const uint64_t bid, const uint16_t sec) noexcept;
 				/**
-				 * waitTimeDetect Метод детекции сообщений по количеству секунд
+				 * @brief Метод детекции сообщений по количеству секунд
+				 *
 				 * @param bid     идентификатор брокера
 				 * @param read    количество секунд для детекции по чтению
 				 * @param write   количество секунд для детекции по записи
@@ -470,20 +529,23 @@ namespace awh {
 				void waitTimeDetect(const uint64_t bid, const uint16_t read = READ_TIMEOUT, const uint16_t write = WRITE_TIMEOUT, const uint16_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
-				 * Core Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Core(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * Core Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param dns объект DNS-резолвера
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Core Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Core() noexcept {}
 		} core_t;

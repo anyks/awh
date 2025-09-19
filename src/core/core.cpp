@@ -268,20 +268,6 @@ void awh::Core::Dispatch::rate(const uint8_t msec) noexcept {
 	}
 }
 /**
- * @brief Максимальное количество поддерживаемых сокетов
- *
- * @param count максимальное количество поддерживаемых сокетов
- */
-void awh::Core::Dispatch::sockmax(const uint64_t count) noexcept {
-	// Если база событий проинициализированна
-	if(this->_init && (EventBase != nullptr)){
-		// Выполняем блокировку потока
-		const lock_guard <std::mutex> lock(this->_mtx);
-		// Устанавливаем максимальное количество поддерживаемых сокетов
-		EventBase->sockmax(count);
-	}
-}
-/**
  * @brief Метод установки функции обратного вызова
  *
  * @param status   статус которому соответствует функция
@@ -564,7 +550,7 @@ bool awh::Core::working() const noexcept {
  *
  * @return инициализированная база событий
  */
-awh::base_t * awh::Core::eventBase() noexcept {
+awh::base_t * awh::Core::base() noexcept {
 	// Выполняем получение базы событий
 	return EventBase;
 }
@@ -615,15 +601,6 @@ void awh::Core::verbose(const bool mode) noexcept {
 void awh::Core::rate(const uint8_t msec) noexcept {
 	// Устанавливаем частоту чтения базы событий
 	this->_dispatch.rate(msec);
-}
-/**
- * @brief Максимальное количество поддерживаемых сокетов
- *
- * @param count максимальное количество поддерживаемых сокетов
- */
-void awh::Core::sockmax(const uint64_t count) noexcept {
-	// Устанавливаем максимальное количество поддерживаемых сокетов
-	this->_dispatch.sockmax(count);
 }
 /**
  * @brief Метод активации перехвата сигналов

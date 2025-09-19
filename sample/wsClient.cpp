@@ -28,7 +28,8 @@ using namespace awh;
 using namespace placeholders;
 
 /**
- * Executor Класс объекта исполнителя
+ * @brief Класс объекта исполнителя
+ *
  */
 class Executor {
 	private:
@@ -41,7 +42,8 @@ class Executor {
 		std::map <uint64_t, std::queue <vector <char>>> _payloads;
 	public:
 		/**
-		 * status Метод статуса запуска/остановки сервера
+		 * @brief Метод статуса запуска/остановки сервера
+		 *
 		 * @param status статус события сервера
 		 */
 		void status(const awh::core_t::status_t status){
@@ -60,7 +62,8 @@ class Executor {
 			}
 		}
 		/**
-		 * available Метод получения событий освобождения памяти буфера полезной нагрузки
+		 * @brief Метод получения событий освобождения памяти буфера полезной нагрузки
+		 *
 		 * @param bid  идентификатор брокера
 		 * @param size размер буфера полезной нагрузки
 		 * @param core объект сетевого ядра
@@ -80,7 +83,8 @@ class Executor {
 			}
 		}
 		/**
-		 * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+		 * @brief Метод получения событий недоступности памяти буфера полезной нагрузки
+		 *
 		 * @param bid    идентификатор брокера
 		 * @param buffer буфер полезной нагрузки которую не получилось отправить
 		 * @param size   размер буфера полезной нагрузки
@@ -101,7 +105,8 @@ class Executor {
 			}
 		}
 		/**
-		 * handshake Метод рукопожатия
+		 * @brief Метод рукопожатия
+		 *
 		 * @param sid   идентификатор потока
 		 * @param rid   идентификатор запроса
 		 * @param agent идентификатор агента клиента
@@ -122,7 +127,8 @@ class Executor {
 		}
 	public:
 		/**
-		 * subscribe Метод подписки на сообщения логов
+		 * @brief Метод подписки на сообщения логов
+		 *
 		 * @param flag    флаг сообщения лога
 		 * @param message текст сообщения лога
 		 */
@@ -132,7 +138,8 @@ class Executor {
 		}
 	public:
 		/**
-		 * error Метод вывода ошибок Websocket клиента
+		 * @brief Метод вывода ошибок Websocket клиента
+		 *
 		 * @param code код ошибки
 		 * @param mess сообщение ошибки
 		 */
@@ -141,7 +148,8 @@ class Executor {
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 		/**
-		 * message Метод получения сообщений
+		 * @brief Метод получения сообщений
+		 *
 		 * @param buffer бинарный буфер сообщения
 		 * @param utf8   тип буфера сообщения
 		 * @param ws     объект websocket-клиента
@@ -164,7 +172,8 @@ class Executor {
 		}
 	public:
 		/**
-		 * Executor Конструктор
+		 * @brief Конструктор
+		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
 		 */
@@ -172,7 +181,8 @@ class Executor {
 };
 
 /**
- * main Главная функция приложения
+ * @brief Главная функция приложения
+ *
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения

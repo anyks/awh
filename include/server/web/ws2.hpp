@@ -26,7 +26,8 @@
 #include "../../sys/threadpool.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -34,20 +35,24 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * Http2 Прототип класса HTTP/2 сервера
+		 * @brief Прототип класса HTTP/2 сервера
+		 *
 		 */
 		class Http2;
 		/**
-		 * Websocket2 Класс Websocket-сервера
+		 * @brief Класс Websocket-сервера
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Websocket2 : public web2_t {
 			private:
 				/**
-				 * Http2 Устанавливаем дружбу с классом HTTP/2 сервера
+				 * @brief Устанавливаем дружбу с классом HTTP/2 сервера
+				 *
 				 */
 				friend class Http2;
 			private:
@@ -83,20 +88,23 @@ namespace awh {
 				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
-				 * connectEvents Метод обратного вызова при подключении к серверу
+				 * @brief Метод обратного вызова при подключении к серверу
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				void connectEvents(const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * disconnectEvents Метод обратного вызова при отключении клиента
+				 * @brief Метод обратного вызова при отключении клиента
+				 *
 				 * @param bid идентификатор брокера
 				 * @param sid идентификатор схемы сети
 				 */
 				void disconnectEvents(const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
-				 * readEvents Метод обратного вызова при чтении сообщения с клиента
+				 * @brief Метод обратного вызова при чтении сообщения с клиента
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param bid    идентификатор брокера
@@ -104,7 +112,8 @@ namespace awh {
 				 */
 				void readEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 				/**
-				 * writeEvents Метод обратного вызова при записи сообщение брокеру
+				 * @brief Метод обратного вызова при записи сообщение брокеру
+				 *
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param bid    идентификатор брокера
@@ -113,7 +122,8 @@ namespace awh {
 				void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
 			private:
 				/**
-				 * callbackEvents Метод отлавливания событий контейнера функций обратного вызова
+				 * @brief Метод отлавливания событий контейнера функций обратного вызова
+				 *
 				 * @param event событие контейнера функций обратного вызова
 				 * @param fid   идентификатор функции обратного вызова
 				 * @param fn    функция обратного вызова в чистом виде
@@ -121,14 +131,16 @@ namespace awh {
 				void callbackEvents(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept;
 			private:
 				/**
-				 * beginSignal Метод начала получения фрейма заголовков HTTP/2
+				 * @brief Метод начала получения фрейма заголовков HTTP/2
+				 *
 				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера
 				 * @return    статус полученных данных
 				 */
 				int32_t beginSignal(const int32_t sid, const uint64_t bid) noexcept;
 				/**
-				 * closedSignal Метод завершения работы потока
+				 * @brief Метод завершения работы потока
+				 *
 				 * @param sid   идентификатор потока
 				 * @param bid   идентификатор брокера
 				 * @param error флаг ошибки если присутствует
@@ -136,7 +148,8 @@ namespace awh {
 				 */
 				int32_t closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept;
 				/**
-				 * headerSignal Метод обратного вызова при получении заголовка HTTP/2
+				 * @brief Метод обратного вызова при получении заголовка HTTP/2
+				 *
 				 * @param sid идентификатор потока
 				 * @param bid идентификатор брокера
 				 * @param key данные ключа заголовка
@@ -145,7 +158,8 @@ namespace awh {
 				 */
 				int32_t headerSignal(const int32_t sid, const uint64_t bid, const string & key, const string & val) noexcept;
 				/**
-				 * chunkSignal Метод обратного вызова при получении чанка HTTP/2
+				 * @brief Метод обратного вызова при получении чанка HTTP/2
+				 *
 				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер данных который содержит полученный чанк
@@ -154,7 +168,8 @@ namespace awh {
 				 */
 				int32_t chunkSignal(const int32_t sid, const uint64_t bid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
-				 * frameSignal Метод обратного вызова при получении фрейма заголовков HTTP/2
+				 * @brief Метод обратного вызова при получении фрейма заголовков HTTP/2
+				 *
 				 * @param sid    идентификатор потока
 				 * @param bid    идентификатор брокера
 				 * @param direct направление передачи фрейма
@@ -165,13 +180,15 @@ namespace awh {
 				int32_t frameSignal(const int32_t sid, const uint64_t bid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept;
 			private:
 				/**
-				 * error Метод вывода сообщений об ошибках работы брокера
+				 * @brief Метод вывода сообщений об ошибках работы брокера
+				 *
 				 * @param bid     идентификатор брокера
 				 * @param message сообщение с описанием ошибки
 				 */
 				void error(const uint64_t bid, const ws::mess_t & message) const noexcept;
 				/**
-				 * extraction Метод извлечения полученных данных
+				 * @brief Метод извлечения полученных данных
+				 *
 				 * @param bid    идентификатор брокера
 				 * @param buffer данные в чистом виде полученные с сервера
 				 * @param text   данные передаются в текстовом виде
@@ -179,14 +196,16 @@ namespace awh {
 				void extraction(const uint64_t bid, const vector <char> & buffer, const bool text) noexcept;
 			private:
 				/**
-				 * ping Метод проверки доступности сервера
+				 * @brief Метод проверки доступности сервера
+				 *
 				 * @param bid    идентификатор брокера
 				 * @param buffer бинарный буфер отправляемого сообщения
 				 * @param size   размер бинарного буфера отправляемого сообщения
 				 */
 				void ping(const uint64_t bid, const void * buffer = nullptr, const size_t size = 0) noexcept;
 				/**
-				 * pong Метод ответа на проверку о доступности сервера
+				 * @brief Метод ответа на проверку о доступности сервера
+				 *
 				 * @param bid    идентификатор брокера
 				 * @param buffer бинарный буфер отправляемого сообщения
 				 * @param size   размер бинарного буфера отправляемого сообщения
@@ -194,30 +213,35 @@ namespace awh {
 				void pong(const uint64_t bid, const void * buffer = nullptr, const size_t size = 0) noexcept;
 			private:
 				/**
-				 * erase Метод удаления отключившихся брокеров
+				 * @brief Метод удаления отключившихся брокеров
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void erase(const uint64_t bid = 0) noexcept;
 				/**
-				 * disconnect Метод отключения брокера
+				 * @brief Метод отключения брокера
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void disconnect(const uint64_t bid) noexcept;
 			private:
 				/**
-				 * pinging Метод таймера выполнения пинга клиента
+				 * @brief Метод таймера выполнения пинга клиента
+				 *
 				 * @param tid идентификатор таймера
 				 */
 				void pinging(const uint16_t tid) noexcept;
 			public:
 				/**
-				 * init Метод инициализации Websocket-сервера
+				 * @brief Метод инициализации Websocket-сервера
+				 *
 				 * @param socket      unix-сокет для биндинга
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void init(const string & socket, const vector <http_t::compressor_t> & compressors = {http_t::compressor_t::DEFLATE}) noexcept;
 				/**
-				 * init Метод инициализации Websocket-сервера
+				 * @brief Метод инициализации Websocket-сервера
+				 *
 				 * @param port        порт сервера
 				 * @param host        хост сервера
 				 * @param compressors список поддерживаемых компрессоров
@@ -225,14 +249,16 @@ namespace awh {
 				void init(const uint32_t port, const string & host = "", const vector <http_t::compressor_t> & compressors = {http_t::compressor_t::DEFLATE}) noexcept;
 			public:
 				/**
-				 * sendError Метод отправки сообщения об ошибке
+				 * @brief Метод отправки сообщения об ошибке
+				 *
 				 * @param bid  идентификатор брокера
 				 * @param mess отправляемое сообщение об ошибке
 				 */
 				void sendError(const uint64_t bid, const ws::mess_t & mess) noexcept;
 			public:
 				/**
-				 * sendMessage Метод отправки сообщения клиенту
+				 * @brief Метод отправки сообщения клиенту
+				 *
 				 * @param bid     идентификатор брокера
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param text    данные передаются в текстовом виде
@@ -240,7 +266,8 @@ namespace awh {
 				 */
 				bool sendMessage(const uint64_t bid, const vector <char> & message, const bool text = true) noexcept;
 				/**
-				 * sendMessage Метод отправки сообщения на сервер
+				 * @brief Метод отправки сообщения на сервер
+				 *
 				 * @param bid     идентификатор брокера
 				 * @param message передаваемое сообщения в бинарном виде
 				 * @param size    размер передаваемого сообещния
@@ -250,7 +277,8 @@ namespace awh {
 				bool sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text = true) noexcept;
 			public:
 				/**
-				 * send Метод отправки данных в бинарном виде клиенту
+				 * @brief Метод отправки данных в бинарном виде клиенту
+				 *
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер бинарных данных передаваемых клиенту
 				 * @param size   размер сообщения в байтах
@@ -259,115 +287,135 @@ namespace awh {
 				bool send(const uint64_t bid, const char * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * callback Метод установки функций обратного вызова
+				 * @brief Метод установки функций обратного вызова
+				 *
 				 * @param callback функции обратного вызова
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * port Метод получения порта подключения брокера
+				 * @brief Метод получения порта подключения брокера
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    порт подключения брокера
 				 */
 				uint32_t port(const uint64_t bid) const noexcept;
 				/**
-				 * agent Метод извлечения агента клиента
+				 * @brief Метод извлечения агента клиента
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    агент к которому относится подключённый клиент
 				 */
 				agent_t agent(const uint64_t bid) const noexcept;
 				/**
-				 * ip Метод получения IP-адреса брокера
+				 * @brief Метод получения IP-адреса брокера
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес интернет подключения брокера
 				 */
 				const string & ip(const uint64_t bid) const noexcept;
 				/**
-				 * mac Метод получения MAC-адреса брокера
+				 * @brief Метод получения MAC-адреса брокера
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    адрес устройства брокера
 				 */
 				const string & mac(const uint64_t bid) const noexcept;
 			public:
 				/**
-				 * stop Метод остановки сервера
+				 * @brief Метод остановки сервера
+				 *
 				 */
 				void stop() noexcept;
 				/**
-				 * start Метод запуска сервера
+				 * @brief Метод запуска сервера
+				 *
 				 */
 				void start() noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения брокера
+				 * @brief Метод закрытия подключения брокера
+				 *
 				 * @param bid идентификатор брокера
 				 */
 				void close(const uint64_t bid) noexcept;
 			public:
 				/**
-				 * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+				 * @brief Метод установки времени ожидания ответа WebSocket-клиента
+				 *
 				 * @param sec время ожидания в секундах
 				 */
 				void waitPong(const uint16_t sec) noexcept;
 				/**
-				 * pingInterval Метод установки интервала времени выполнения пингов
+				 * @brief Метод установки интервала времени выполнения пингов
+				 *
 				 * @param sec интервал времени выполнения пингов в секундах
 				 */
 				void pingInterval(const uint16_t sec) noexcept;
 			public:
 				/**
-				 * subprotocol Метод установки поддерживаемого сабпротокола
+				 * @brief Метод установки поддерживаемого сабпротокола
+				 *
 				 * @param subprotocol сабпротокол для установки
 				 */
 				void subprotocol(const string & subprotocol) noexcept;
 				/**
-				 * subprotocols Метод установки списка поддерживаемых сабпротоколов
+				 * @brief Метод установки списка поддерживаемых сабпротоколов
+				 *
 				 * @param subprotocols сабпротоколы для установки
 				 */
 				void subprotocols(const std::unordered_set <string> & subprotocols) noexcept;
 				/**
-				 * subprotocol Метод получения списка выбранных сабпротоколов
+				 * @brief Метод получения списка выбранных сабпротоколов
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    список выбранных сабпротоколов
 				 */
 				const std::unordered_set <string> & subprotocols(const uint64_t bid) const noexcept;
 			public:
 				/**
-				 * extensions Метод установки списка расширений
+				 * @brief Метод установки списка расширений
+				 *
 				 * @param extensions список поддерживаемых расширений
 				 */
 				void extensions(const vector <vector <string>> & extensions) noexcept;
 				/**
-				 * extensions Метод извлечения списка расширений
+				 * @brief Метод извлечения списка расширений
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    список поддерживаемых расширений
 				 */
 				const vector <vector <string>> & extensions(const uint64_t bid) const noexcept;
 			public:
 				/**
-				 * multiThreads Метод активации многопоточности
+				 * @brief Метод активации многопоточности
+				 *
 				 * @param count количество потоков для активации
 				 * @param mode  флаг активации/деактивации мультипоточности
 				 */
 				void multiThreads(const uint16_t count = 0, const bool mode = true) noexcept;
 			public:
 				/**
-				 * total Метод установки максимального количества одновременных подключений
+				 * @brief Метод установки максимального количества одновременных подключений
+				 *
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const uint16_t total) noexcept;
 				/**
-				 * segmentSize Метод установки размеров сегментов фрейма
+				 * @brief Метод установки размеров сегментов фрейма
+				 *
 				 * @param size минимальный размер сегмента
 				 */
 				void segmentSize(const size_t size) noexcept;
 				/**
-				 * compressors Метод установки списка поддерживаемых компрессоров
+				 * @brief Метод установки списка поддерживаемых компрессоров
+				 *
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
 				/**
-				 * keepAlive Метод установки жизни подключения
+				 * @brief Метод установки жизни подключения
+				 *
 				 * @param cnt   максимальное количество попыток
 				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
 				 * @param intvl интервал времени в секундах между попытками
@@ -375,66 +423,77 @@ namespace awh {
 				void keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
-				 * mode Метод установки флагов настроек модуля
+				 * @brief Метод установки флагов настроек модуля
+				 *
 				 * @param flags список флагов настроек модуля для установки
 				 */
 				void mode(const std::set <flag_t> & flags) noexcept;
 			public:
 				/**
-				 * settings Модуль установки настроек протокола HTTP/2
+				 * @brief Модуль установки настроек протокола HTTP/2
+				 *
 				 * @param settings список настроек протокола HTTP/2
 				 */
 				void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
 			public:
 				/**
-				 * alive Метод установки долгоживущего подключения
+				 * @brief Метод установки долгоживущего подключения
+				 *
 				 * @param mode флаг долгоживущего подключения
 				 */
 				void alive(const bool mode) noexcept;
 			public:
 				/**
-				 * core Метод установки сетевого ядра
+				 * @brief Метод установки сетевого ядра
+				 *
 				 * @param core объект сетевого ядра
 				 */
 				void core(const server::core_t * core) noexcept;
 			public:
 				/**
-				 * setHeaders Метод установки списка заголовков
+				 * @brief Метод установки списка заголовков
+				 *
 				 * @param headers список заголовков для установки
 				 */
 				void setHeaders(const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
-				 * waitMessage Метод ожидания входящих сообщений
+				 * @brief Метод ожидания входящих сообщений
+				 *
 				 * @param sec интервал времени в секундах
 				 */
 				void waitMessage(const uint16_t sec) noexcept;
 				/**
-				 * waitTimeDetect Метод детекции сообщений по количеству секунд
+				 * @brief Метод детекции сообщений по количеству секунд
+				 *
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
 				 */
 				void waitTimeDetect(const uint16_t read, const uint16_t write) noexcept;
 			public:
 				/**
-				 * realm Метод установки название сервера
+				 * @brief Метод установки название сервера
+				 *
 				 * @param realm название сервера
 				 */
 				void realm(const string & realm) noexcept;
 				/**
-				 * opaque Метод установки временного ключа сессии сервера
+				 * @brief Метод установки временного ключа сессии сервера
+				 *
 				 * @param opaque временный ключ сессии сервера
 				 */
 				void opaque(const string & opaque) noexcept;
 			public:
 				/**
-				 * chunk Метод установки размера чанка
+				 * @brief Метод установки размера чанка
+				 *
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
 			public:
 				/**
-				 * ident Метод установки идентификации сервера
+				 * @brief Метод установки идентификации сервера
+				 *
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
@@ -442,32 +501,37 @@ namespace awh {
 				void ident(const string & id, const string & name, const string & ver) noexcept;
 			public:
 				/**
-				 * authType Метод установки типа авторизации
+				 * @brief Метод установки типа авторизации
+				 *
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest авторизации
 				 */
 				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * crypted Метод получения флага шифрования
+				 * @brief Метод получения флага шифрования
+				 *
 				 * @param bid идентификатор брокера
 				 * @return    результат проверки
 				 */
 				bool crypted(const uint64_t bid) const noexcept;
 				/**
-				 * encrypt Метод активации шифрования для клиента
+				 * @brief Метод активации шифрования для клиента
+				 *
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг активации шифрования
 				 */
 				void encrypt(const uint64_t bid, const bool mode) noexcept;
 			public:
 				/**
-				 * encryption Метод активации шифрования
+				 * @brief Метод активации шифрования
+				 *
 				 * @param mode флаг активации шифрования
 				 */
 				void encryption(const bool mode) noexcept;
 				/**
-				 * encryption Метод установки параметров шифрования
+				 * @brief Метод установки параметров шифрования
+				 *
 				 * @param pass   пароль шифрования передаваемых данных
 				 * @param salt   соль шифрования передаваемых данных
 				 * @param cipher размер шифрования передаваемых данных
@@ -475,20 +539,23 @@ namespace awh {
 				void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * Websocket2 Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Websocket2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * Websocket2 Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
 				Websocket2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Websocket2 Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Websocket2() noexcept;
 		} ws2_t;

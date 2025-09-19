@@ -257,7 +257,7 @@ void awh::Web::Chunk::clear() noexcept {
 	// Если размер выделенной памяти выше максимального размера чанка
 	if(this->data.capacity() > AWH_CHUNK_SIZE)
 		// Выполняем удаление памяти чанка
-		vector <char> ().swap(this->data);
+		vector <decltype(this->data)::value_type> ().swap(this->data);
 }
 /**
  * parseBody Метод извлечения полезной нагрузки
@@ -1352,11 +1352,11 @@ void awh::Web::clear() noexcept {
 	// Выполняем сброс списка трейлеров
 	this->_trailers.clear();
 	// Выполняем удаление памяти тела
-	vector <char> ().swap(this->_body);
+	vector <decltype(this->_body)::value_type> ().swap(this->_body);
 	// Выполняем удаление памяти списка трейлеров
-	std::unordered_set <string> ().swap(this->_trailers);
+	std::unordered_set <decltype(this->_trailers)::value_type> ().swap(this->_trailers);
 	// Выполняем удаление памяти полученных HTTP заголовков
-	std::unordered_multimap <string, string> ().swap(this->_headers);
+	std::unordered_multimap <decltype(this->_headers)::key_type, decltype(this->_headers)::mapped_type> ().swap(this->_headers);
 }
 /**
  * reset Метод сброса стейтов парсера

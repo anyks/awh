@@ -145,12 +145,6 @@ namespace awh {
 					 * @param msec время ожидания событий в миллисекундах
 					 */
 					void rate(const uint8_t msec = 10) noexcept;
-					/**
-					 * @brief Максимальное количество поддерживаемых сокетов
-					 *
-					 * @param count максимальное количество поддерживаемых сокетов
-					 */
-					void sockmax(const uint64_t count) noexcept;
 				public:
 					/**
 					 * @brief Метод установки функции обратного вызова
@@ -275,9 +269,10 @@ namespace awh {
 			virtual void callback(const callback_t & callback) noexcept;
 		public:
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
@@ -296,9 +291,10 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
@@ -317,9 +313,10 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
@@ -338,10 +335,11 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param A    тип идентификатора функции
-			 * @param B    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam A    тип идентификатора функции
+			 * @tparam B    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename A, typename B, class... Args>
 			/**
@@ -372,7 +370,7 @@ namespace awh {
 			 *
 			 * @return инициализированная база событий
 			 */
-			base_t * eventBase() noexcept;
+			base_t * base() noexcept;
 		public:
 			/**
 			 * @brief Метод активации простого режима чтения базы событий
@@ -399,12 +397,6 @@ namespace awh {
 			 * @param msec время ожидания событий в миллисекундах
 			 */
 			void rate(const uint8_t msec = 10) noexcept;
-			/**
-			 * @brief Максимальное количество поддерживаемых сокетов
-			 *
-			 * @param count максимальное количество поддерживаемых сокетов
-			 */
-			void sockmax(const uint64_t count) noexcept;
 		public:
 			/**
 			 * @brief Метод активации перехвата сигналов

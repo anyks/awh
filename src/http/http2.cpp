@@ -2003,7 +2003,7 @@ void awh::Http2::close() noexcept {
  * is Метод проверки инициализации модуля
  * @return результат проверки инициализации
  */
-bool awh::Http2::is() const noexcept {
+bool awh::Http2::initialized() const noexcept {
 	// Выводим результат проверки
 	return (this->_session != nullptr);
 }

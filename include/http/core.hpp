@@ -34,7 +34,8 @@
 #include "../auth/server.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -42,7 +43,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Http Класс для работы с REST
+	 * @brief Класс для работы с REST
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Http {
 		public:
@@ -109,7 +111,8 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Ident Структура идентификации сервиса
+			 * @brief Структура идентификации сервиса
+			 *
 			 */
 			typedef struct Ident {
 				// Идентификатор сервиса
@@ -119,7 +122,8 @@ namespace awh {
 				// Версия модуля приложения
 				string version;
 				/**
-				 * Ident Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Ident() noexcept :
 				 id{AWH_SHORT_NAME},
@@ -128,20 +132,23 @@ namespace awh {
 			} ident_t;
 		protected:
 			/**
-			 * TransferEncoding Параметры запроса для Transfer-Encoding
+			 * @brief Параметры запроса для Transfer-Encoding
+			 *
 			 */
 			typedef struct TransferEncoding {
 				bool enabled;  // Флаг активирования передачи ответа Transfer-Encoding
 				bool trailers; // Флаг разрешающий передавать трейлеры
 				bool chunking; // Флаг разрешающий передавать тело чанками
 				/**
-				 * TransferEncoding Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				TransferEncoding() noexcept :
 				 enabled(false), trailers(false), chunking(false) {}
 			} __attribute__((packed)) te_t;
 			/**
-			 * Compressor Структура параметров компрессора
+			 * @brief Структура параметров компрессора
+			 *
 			 */
 			typedef struct Compressor {
 				// Компрессор которым сжаты данные полезной нагрузки в настоящий момент времени
@@ -151,20 +158,23 @@ namespace awh {
 				// Список поддерживаемых компрессоров
 				std::map <float, compressor_t> supports;
 				/**
-				 * Compressor Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Compressor() noexcept :
 				 current(compressor_t::NONE),
 				 selected(compressor_t::NONE) {}
 			} compressors_t;
 			/**
-			 * Auth Структура объекта авторизации
+			 * @brief Структура объекта авторизации
+			 *
 			 */
 			typedef struct Auth {
 				client::auth_t client; // Объект для работы с клиентской авторизацией
 				server::auth_t server; // Объект для работы с серверной авторизацией
 				/**
-				 * Auth Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
@@ -236,7 +246,8 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * chunking Метод вывода полученных чанков полезной нагрузки
+			 * @brief Метод вывода полученных чанков полезной нагрузки
+			 *
 			 * @param id     идентификатор объекта
 			 * @param buffer буфер данных чанка полезной нагрузки
 			 * @param web    объект HTTP-парсера
@@ -244,56 +255,67 @@ namespace awh {
 			void chunking(const uint64_t id, const vector <char> & buffer, const web_t * web) noexcept;
 		protected:
 			/**
-			 * encrypt Метод выполнения шифрования полезной нагрузки
+			 * @brief Метод выполнения шифрования полезной нагрузки
+			 *
 			 */
 			void encrypt() noexcept;
 			/**
-			 * decrypt Метод выполнения дешифровани полезной нагрузки
+			 * @brief Метод выполнения дешифровани полезной нагрузки
+			 *
 			 */
 			void decrypt() noexcept;
 		protected:
 			/**
-			 * compress Метод выполнения декомпрессии полезной нагрузки
+			 * @brief Метод выполнения декомпрессии полезной нагрузки
+			 *
 			 */
 			void compress() noexcept;
 			/**
-			 * decompress Метод выполнения компрессии полезной нагрузки
+			 * @brief Метод выполнения компрессии полезной нагрузки
+			 *
 			 */
 			void decompress() noexcept;
 		public:
 			/**
-			 * commit Метод применения полученных результатов
+			 * @brief Метод применения полученных результатов
+			 *
 			 */
 			virtual void commit() noexcept;
 		protected:
 			/**
-			 * status Метод проверки текущего статуса
+			 * @brief Метод проверки текущего статуса
+			 *
 			 * @return результат проверки текущего статуса
 			 */
 			virtual status_t status() noexcept = 0;
 		public:
 			/**
-			 * precise Метод установки флага точной установки хоста
+			 * @brief Метод установки флага точной установки хоста
+			 *
 			 * @param mode флаг для установки
 			 */
 			void precise(const bool mode) noexcept;
 		public:
 			/**
-			 * clear Метод очистки собранных данных
+			 * @brief Метод очистки собранных данных
+			 *
 			 */
 			virtual void clear() noexcept;
 			/**
-			 * reset Метод сброса параметров запроса
+			 * @brief Метод сброса параметров запроса
+			 *
 			 */
 			virtual void reset() noexcept;
 			/**
-			 * clear Метод очистки данных HTTP-протокола
+			 * @brief Метод очистки данных HTTP-протокола
+			 *
 			 * @param suite тип набора к которому соответствует заголовок
 			 */
 			void clear(const suite_t suite) noexcept;
 		public:
 			/**
-			 * parse Метод парсинга сырых данных
+			 * @brief Метод парсинга сырых данных
+			 *
 			 * @param buffer буфер данных для обработки
 			 * @param size   размер буфера данных
 			 * @return       размер обработанных данных
@@ -301,112 +323,131 @@ namespace awh {
 			size_t parse(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * proto Метод извлечения список протоколов к которому принадлежит заголовок
+			 * @brief Метод извлечения список протоколов к которому принадлежит заголовок
+			 *
 			 * @param key ключ заголовка
 			 * @return    список протоколов
 			 */
 			std::set <web_t::proto_t> proto(const string & key) const noexcept;
 		public:
 			/**
-			 * payload Метод чтения чанка полезной нагрузки
+			 * @brief Метод чтения чанка полезной нагрузки
+			 *
 			 * @return текущий чанк полезной нагрузки
 			 */
 			const vector <char> payload() const noexcept;
 			/**
-			 * payload Метод установки чанка полезной нагрузки
+			 * @brief Метод установки чанка полезной нагрузки
+			 *
 			 * @param payload буфер чанка полезной нагрузки
 			 */
 			void payload(const vector <char> & payload) noexcept;
 		public:
 			/**
-			 * blacklist Метод добавления заголовка в чёрный список
+			 * @brief Метод добавления заголовка в чёрный список
+			 *
 			 * @param key ключ заголовка
 			 */
 			void blacklist(const string & key) noexcept;
 		public:
 			/**
-			 * body Метод получения данных тела запроса
+			 * @brief Метод получения данных тела запроса
+			 *
 			 * @return буфер данных тела запроса
 			 */
 			const vector <char> & body() const noexcept;
 			/**
-			 * body Метод добавления данных тела
+			 * @brief Метод добавления данных тела
+			 *
 			 * @param body буфер тела для добавления
 			 */
 			void body(const vector <char> & body) noexcept;
 			/**
-			 * body Метод добавления данных тела
+			 * @brief Метод добавления данных тела
+			 *
 			 * @param buffer буфер тела для добавления
 			 * @param size   размер буфера теля для добавления
 			 */
 			void body(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * upgrade Метод получение названия протокола для переключения
+			 * @brief Метод получение названия протокола для переключения
+			 *
 			 * @return название протокола для переключения
 			 */
 			const string & upgrade() const noexcept;
 			/**
-			 * upgrade Метод установки название протокола для переключения
+			 * @brief Метод установки название протокола для переключения
+			 *
 			 * @param upgrade название протокола для переключения
 			 */
 			void upgrade(const string & upgrade) noexcept;
 		public:
 			/**
-			 * trailers Метод получения списка установленных трейлеров
+			 * @brief Метод получения списка установленных трейлеров
+			 *
 			 * @return количество установленных трейлеров
 			 */
 			size_t trailers() const noexcept;
 			/**
-			 * trailer Метод установки трейлера
+			 * @brief Метод установки трейлера
+			 *
 			 * @param key ключ заголовка
 			 * @param val значение заголовка
 			 */
 			void trailer(const string & key, const string & val) noexcept;
 		public:
 			/**
-			 * header Метод получения данных заголовка
+			 * @brief Метод получения данных заголовка
+			 *
 			 * @param key ключ заголовка
 			 * @return    значение заголовка
 			 */
 			string header(const string & key) const noexcept;
 			/**
-			 * header Метод добавления заголовка
+			 * @brief Метод добавления заголовка
+			 *
 			 * @param key ключ заголовка
 			 * @param val значение заголовка
 			 */
 			void header(const string & key, const string & val) noexcept;
 		public:
 			/**
-			 * headers Метод получения списка заголовков
+			 * @brief Метод получения списка заголовков
+			 *
 			 * @return список существующих заголовков
 			 */
 			const std::unordered_multimap <string, string> & headers() const noexcept;
 			/**
-			 * headers Метод установки списка заголовков
+			 * @brief Метод установки списка заголовков
+			 *
 			 * @param headers список заголовков для установки
 			 */
 			void headers(const std::unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
-			 * header2 Метод добавления заголовка в формате HTTP/2
+			 * @brief Метод добавления заголовка в формате HTTP/2
+			 *
 			 * @param key ключ заголовка
 			 * @param val значение заголовка
 			 */
 			void header2(const string & key, const string & val) noexcept;
 			/**
-			 * headers2 Метод установки списка заголовков в формате HTTP/2
+			 * @brief Метод установки списка заголовков в формате HTTP/2
+			 *
 			 * @param headers список заголовков для установки
 			 */
 			void headers2(const vector <pair <string, string>> & headers) noexcept;
 		public:
 			/**
-			 * auth Метод проверки статуса авторизации
+			 * @brief Метод проверки статуса авторизации
+			 *
 			 * @return результат проверки
 			 */
 			status_t auth() const noexcept;
 			/**
-			 * auth Метод извлечения строки авторизации
+			 * @brief Метод извлечения строки авторизации
+			 *
 			 * @param flag флаг выполняемого процесса
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     строка авторизации на удалённом сервере
@@ -414,51 +455,60 @@ namespace awh {
 			string auth(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
 			/**
-			 * url Метод извлечения параметров запроса
+			 * @brief Метод извлечения параметров запроса
+			 *
 			 * @return установленные параметры запроса
 			 */
 			const uri_t::url_t & url() const noexcept;
 		public:
 			/**
-			 * compression Метод извлечения выбранного метода компрессии
+			 * @brief Метод извлечения выбранного метода компрессии
+			 *
 			 * @return метод компрессии
 			 */
 			compressor_t compression() const noexcept;
 			/**
-			 * compression Метод установки выбранного метода компрессии
+			 * @brief Метод установки выбранного метода компрессии
+			 *
 			 * @param compressor метод компрессии
 			 */
 			void compression(const compressor_t compressor) noexcept;
 			/**
-			 * compressors Метод установки списка поддерживаемых компрессоров
+			 * @brief Метод установки списка поддерживаемых компрессоров
+			 *
 			 * @param compressors методы компрессии данных полезной нагрузки
 			 */
 			void compressors(const vector <compressor_t> & compressors) noexcept;
 		public:
 			/**
-			 * dump Метод получения бинарного дампа
+			 * @brief Метод получения бинарного дампа
+			 *
 			 * @return бинарный дамп данных
 			 */
 			vector <char> dump() const noexcept;
 			/**
-			 * dump Метод установки бинарного дампа
+			 * @brief Метод установки бинарного дампа
+			 *
 			 * @param data бинарный дамп данных
 			 */
 			void dump(const vector <char> & data) noexcept;
 		public:
 			/**
-			 * empty Метод проверки существования данных
+			 * @brief Метод проверки существования данных
+			 *
 			 * @param suite тип набора к которому соответствует заголовок
 			 */
 			bool empty(const suite_t suite) const noexcept;
 		public:
 			/**
-			 * is Метод проверки активного состояния
+			 * @brief Метод проверки активного состояния
+			 *
 			 * @param state состояние которое необходимо проверить
 			 */
 			bool is(const state_t state) const noexcept;
 			/**
-			 * is Метод проверки существования заголовка
+			 * @brief Метод проверки существования заголовка
+			 *
 			 * @param suite тип набора к которому соответствует заголовок
 			 * @param key   ключ заголовка для проверки
 			 * @return      результат проверки
@@ -466,100 +516,116 @@ namespace awh {
 			bool is(const suite_t suite, const string & key) const noexcept;
 		public:
 			/**
-			 * rm Метод удаления установленных заголовков
+			 * @brief Метод удаления установленных заголовков
+			 *
 			 * @param suite тип набора к которому соответствует заголовок
 			 * @param key   ключ заголовка для удаления
 			 */
 			void rm(const suite_t suite, const string & key) const noexcept;
 		public:
 			/**
-			 * request Метод получения объекта запроса на сервер
+			 * @brief Метод получения объекта запроса на сервер
+			 *
 			 * @return объект запроса на сервер
 			 */
 			const web_t::req_t & request() const noexcept;
 			/**
-			 * request Метод добавления объекта запроса на сервер
+			 * @brief Метод добавления объекта запроса на сервер
+			 *
 			 * @param req объект запроса на сервер
 			 */
 			void request(const web_t::req_t & req) noexcept;
 		public:
 			/**
-			 * response Метод получения объекта ответа сервера
+			 * @brief Метод получения объекта ответа сервера
+			 *
 			 * @return объект ответа сервера
 			 */
 			const web_t::res_t & response() const noexcept;
 			/**
-			 * response Метод добавления объекта ответа сервера
+			 * @brief Метод добавления объекта ответа сервера
+			 *
 			 * @param res объект ответа сервера
 			 */
 			void response(const web_t::res_t & res) noexcept;
 		public:
 			/**
-			 * date Метод получения текущей даты для HTTP-запроса
+			 * @brief Метод получения текущей даты для HTTP-запроса
+			 *
 			 * @param date дата в формате UnixTimestamp
 			 * @return     штамп времени в текстовом виде
 			 */
 			string date(const uint64_t date = 0) const noexcept;
 			/**
-			 * message Метод получения HTTP сообщения
+			 * @brief Метод получения HTTP сообщения
+			 *
 			 * @param code код сообщения для получение
 			 * @return     соответствующее коду HTTP сообщение
 			 */
 			const string & message(const uint32_t code) const noexcept;
 		public:
 			/**
-			 * mapping Метод маппинга полученных данных
+			 * @brief Метод маппинга полученных данных
+			 *
 			 * @param flag флаг выполняемого процесса
 			 * @param http объект для маппинга
 			 */
 			void mapping(const process_t flag, Http & http) noexcept;
 		public:
 			/**
-			 * trailer Метод получения буфера отправляемого трейлера
+			 * @brief Метод получения буфера отправляемого трейлера
+			 *
 			 * @return буфер данных ответа в бинарном виде
 			 */
 			vector <char> trailer() const noexcept;
 			/**
-			 * trailers2 Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
+			 * @brief Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
+			 *
 			 * @return буфер данных ответа в бинарном виде
 			 */
 			vector <pair <string, string>> trailers2() const noexcept;
 		public:
 			/**
-			 * proxy Метод создания запроса для авторизации на прокси-сервере
+			 * @brief Метод создания запроса для авторизации на прокси-сервере
+			 *
 			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
 			virtual vector <char> proxy(const web_t::req_t & req) const noexcept;
 			/**
-			 * proxy2 Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
+			 * @brief Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
+			 *
 			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
 			virtual vector <pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
 		public:
 			/**
-			 * reject Метод создания отрицательного ответа
+			 * @brief Метод создания отрицательного ответа
+			 *
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
 			virtual vector <char> reject(const web_t::res_t & res) const noexcept;
 			/**
-			 * reject2 Метод создания отрицательного ответа (для протокола HTTP/2)
+			 * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
+			 *
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
 			virtual vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
-			 * process Метод создания выполняемого процесса в бинарном виде
+			 * @brief Метод создания выполняемого процесса в бинарном виде
+			 *
 			 * @param flag флаг выполняемого процесса
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     буфер данных в бинарном виде
 			 */
 			virtual vector <char> process(const process_t flag, const web_t::provider_t & prov) const noexcept;
 			/**
-			 * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+			 * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+			 *
 			 * @param flag флаг выполняемого процесса
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     буфер данных в бинарном виде
@@ -567,19 +633,22 @@ namespace awh {
 			virtual vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
 			/**
-			 * callback Метод установки функций обратного вызова
+			 * @brief Метод установки функций обратного вызова
+			 *
 			 * @param callback функции обратного вызова
 			 */
 			void callback(const callback_t & callback) noexcept;
 		public:
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -596,13 +665,15 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -619,13 +690,15 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -642,14 +715,16 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param A    тип идентификатора функции
-			 * @param B    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam A    тип идентификатора функции
+			 * @tparam B    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename A, typename B, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -667,47 +742,55 @@ namespace awh {
 			}
 		public:
 			/**
-			 * id Метод получения идентификатора объекта
+			 * @brief Метод получения идентификатора объекта
+			 *
 			 * @return идентификатор объекта
 			 */
 			uint64_t id() const noexcept;
 			/**
-			 * id Метод установки идентификатора объекта
+			 * @brief Метод установки идентификатора объекта
+			 *
 			 * @param id идентификатор объекта
 			 */
 			void id(const uint64_t id) noexcept;
 		public:
 			/**
-			 * identity Метод извлечения идентичности протокола модуля
+			 * @brief Метод извлечения идентичности протокола модуля
+			 *
 			 * @return флаг идентичности протокола модуля
 			 */
 			identity_t identity() const noexcept;
 			/**
-			 * identity Метод установки идентичности протокола модуля
+			 * @brief Метод установки идентичности протокола модуля
+			 *
 			 * @param identity идентичность протокола модуля
 			 */
 			void identity(const identity_t identity) noexcept;
 		public:
 			/**
-			 * chunk Метод установки размера чанка
+			 * @brief Метод установки размера чанка
+			 *
 			 * @param size размер чанка для установки
 			 */
 			void chunk(const size_t size) noexcept;
 		public:
 			/**
-			 * userAgent Метод установки User-Agent для HTTP-запроса
+			 * @brief Метод установки User-Agent для HTTP-запроса
+			 *
 			 * @param userAgent агент пользователя для HTTP-запроса
 			 */
 			void userAgent(const string & userAgent) noexcept;
 		public:
 			/**
-			 * ident Метод получения идентификации сервера
+			 * @brief Метод получения идентификации сервера
+			 *
 			 * @param flag флаг выполняемого процесса
 			 * @return     сформированный агент
 			 */
 			string ident(const process_t flag) const noexcept;
 			/**
-			 * ident Метод установки идентификации сервера
+			 * @brief Метод установки идентификации сервера
+			 *
 			 * @param id   идентификатор сервиса
 			 * @param name название сервиса
 			 * @param ver  версия сервиса
@@ -715,18 +798,21 @@ namespace awh {
 			void ident(const string & id, const string & name, const string & ver) noexcept;
 		public:
 			/**
-			 * crypted Метод проверки на зашифрованные данные
+			 * @brief Метод проверки на зашифрованные данные
+			 *
 			 * @return флаг проверки на зашифрованные данные
 			 */
 			virtual bool crypted() const noexcept;
 		public:
 			/**
-			 * encryption Метод активации шифрования
+			 * @brief Метод активации шифрования
+			 *
 			 * @param mode флаг активации шифрования
 			 */
 			virtual void encryption(const bool mode) noexcept;
 			/**
-			 * encryption Метод установки параметров шифрования
+			 * @brief Метод установки параметров шифрования
+			 *
 			 * @param pass   пароль шифрования передаваемых данных
 			 * @param salt   соль шифрования передаваемых данных
 			 * @param cipher размер шифрования передаваемых данных
@@ -734,13 +820,15 @@ namespace awh {
 			virtual void encryption(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 		public:
 			/**
-			 * Http Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Http(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Http Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			virtual ~Http() noexcept {}
 	} http_t;

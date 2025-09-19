@@ -50,7 +50,8 @@
 #include "log.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -58,7 +59,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Queue Класс создания очереди
+	 * @brief Класс создания очереди
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Queue {
 		public:
@@ -105,79 +107,92 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * alignment Метод выравнивания памяти
+			 * @brief Метод выравнивания памяти
+			 *
 			 * @param size необходимый размер
 			 */
 			void alignment(const size_t size = 0) noexcept;
 		public:
 			/**
-			 * clear Метод очистки всех данных очереди
+			 * @brief Метод очистки всех данных очереди
+			 *
 			 */
 			void clear() noexcept;
 		public:
 			/**
-			 * reset Метод очистки всех ресурсов
+			 * @brief Метод очистки всех ресурсов
+			 *
 			 */
 			void reset() noexcept;
 		public:
 			/**
-			 * empty Метод проверки на заполненность очереди
+			 * @brief Метод проверки на заполненность очереди
+			 *
 			 * @return результат проверки
 			 */
 			bool empty() const noexcept;
 		public:
 			/**
-			 * count Количество добавленных элементов
+			 * @brief Количество добавленных элементов
+			 *
 			 * @return количество добавленных элементов
 			 */
 			size_t count() const noexcept;
 		public:
 			/**
-			 * reserve Метод резервирования размера очереди
+			 * @brief Метод резервирования размера очереди
+			 *
 			 * @param count размер очереди для аллокации
 			 */
 			void reserve(const size_t count) noexcept;
 		public:
 			/**
-			 * pop Метод удаления записи в очереди
+			 * @brief Метод удаления записи в очереди
+			 *
 			 * @param pos позиция в очереди
 			 */
 			void pop(const pos_t pos = pos_t::FRONT) noexcept;
 		public:
 			/**
-			 * size Метод получения размера добавленных данных
+			 * @brief Метод получения размера добавленных данных
+			 *
 			 * @param pos позиция в очереди
 			 * @return    размер всех добавленных данных
 			 */
 			size_t size(const pos_t pos = pos_t::FRONT) const noexcept;
 		public:
 			/**
-			 * get Получения данных указанного элемента в очереди
+			 * @brief Получения данных указанного элемента в очереди
+			 *
 			 * @param pos позиция в очереди
 			 * @return    указатель на элемент очереди
 			 */
 			const void * get(const pos_t pos = pos_t::FRONT) const noexcept;
 		public:
 			/**
-			 * push Метод добавления бинарного буфера данных в очередь
+			 * @brief Метод добавления бинарного буфера данных в очередь
+			 *
 			 * @param buffer бинарный буфер для добавления
 			 * @param size   размер бинарного буфера
 			 */
 			void push(const void * buffer, const size_t size) noexcept;
 			/**
-			 * push Метод добавления бинарного буфера данных в очередь
+			 * @brief Метод добавления бинарного буфера данных в очередь
+			 *
 			 * @param buffers список бинарных буферов для добавления
 			 * @param size    общий размер добавляемых данных
 			 */
 			void push(const vector <buffer_t> & buffers, const size_t size) noexcept;
 		public:
 			/**
-			 * Queue Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param log объект для работы с логами
 			 */
 			Queue(const log_t * log) noexcept;
 			/**
-			 * ~Queue Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Queue() noexcept;
 	} queue_t;

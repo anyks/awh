@@ -191,13 +191,13 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 		// Выполняем подсчёт контрольной суммы
 		icmp.checksum = this->checksum(&icmp, sizeof(icmp));
 		// Если запрос на сервер успешно отправлен
-		if((result = static_cast <int64_t> (::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
+		if((result = static_cast <int64_t> (::sendto(this->_sock, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size))) > 0){
 			// Буфер для получения данных
 			array <char, 1024> buffer;
 			// Результат полученных данных
 			auto * icmpResponseHeader = reinterpret_cast <struct IcmpHeader *> (buffer.data());
 			// Выполняем чтение ответа сервера
-			result = static_cast <int64_t> (::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
+			result = static_cast <int64_t> (::recvfrom(this->_sock, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&this->_peer.server), &this->_peer.size));
 			// Если данные прочитать не удалось
 			if(result <= 0){
 				// Если сокет находится в блокирующем режиме
@@ -323,8 +323,8 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
  * close Метод закрытия подключения
  */
 void awh::Ping::close() noexcept {
-	// Если файловый дескриптор не закрыт
-	if(this->_fd != INVALID_SOCKET){
+	// Если сетевой сокет не закрыт
+	if(this->_sock != INVALID_SOCKET){
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		/**
@@ -332,16 +332,16 @@ void awh::Ping::close() noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
-			closesocket(this->_fd);
+			closesocket(this->_sock);
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
-			::close(this->_fd);
+			::close(this->_sock);
 		#endif
-		// Выполняем сброс файлового дескриптора
-		this->_fd = INVALID_SOCKET;
+		// Выполняем сброс сетевого сокета
+		this->_sock = INVALID_SOCKET;
 	}
 }
 /**
@@ -536,7 +536,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					 */
 					#if _WIN32 || _WIN64
 						// Создаём сокет подключения
-						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+						this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					/**
 					 * Для операционной системы не являющейся OS Windows
 					 */
@@ -544,9 +544,9 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 						// Если пользователь является привилигированным
 						if(::getuid())
 							// Создаём сокет подключения
-							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
+							this->_sock = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
 						// Создаём сокет подключения
-						else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+						else this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					#endif
 				} break;
 				// Для протокола IPv6
@@ -582,7 +582,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					 */
 					#if _WIN32 || _WIN64
 						// Создаём сокет подключения  (IPPROTO_ICMP6)
-						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+						this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					/**
 					 * Для операционной системы не являющейся OS Windows
 					 */
@@ -590,14 +590,14 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 						// Если пользователь является привилигированным
 						if(::getuid())
 							// Создаём сокет подключения
-							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
+							this->_sock = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
 						// Создаём сокет подключения
-						else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+						else this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					#endif
 				} break;
 			}
 			// Если сокет не создан создан и работа резолвера не остановлена
-			if(this->_mode && (this->_fd == INVALID_SOCKET)){
+			if(this->_mode && (this->_sock == INVALID_SOCKET)){
 				// Выполняем закрытие подключения
 				this->close();
 				// Если разрешено выводить информацию в лог
@@ -613,20 +613,20 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 				// Если операционная система не принадлежит к Sun Solaris
 				#if !__sun__
 					// Устанавливаем разрешение на повторное использование сокета
-					this->_socket.reuseable(this->_fd);
+					this->_socket.reuseable(this->_sock);
 				#endif
 				// Устанавливаем разрешение на закрытие сокета при неиспользовании
-				this->_socket.closeOnExec(this->_fd);
+				this->_socket.closeOnExec(this->_sock);
 				// Устанавливаем размер буфера передачи данных на чтение
-				// this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
+				// this->_socket.bufferSize(this->_sock, 1024, 1, socket_t::mode_t::READ);
 				// Устанавливаем размер буфера передачи данных на запись
-				// this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
+				// this->_socket.bufferSize(this->_sock, 1024, 1, socket_t::mode_t::WRITE);
 				// Устанавливаем таймаут на получение данных из сокета
-				this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
+				this->_socket.timeout(this->_sock, this->_timeoutRead, socket_t::mode_t::READ);
 				// Устанавливаем таймаут на запись данных в сокет
-				this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
+				this->_socket.timeout(this->_sock, this->_timeoutWrite, socket_t::mode_t::WRITE);
 				// Выполняем бинд на сокет
-				if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
+				if(::bind(this->_sock, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0){
 					// Выполняем закрытие подключения
 					this->close();
 					// Выводим в лог сообщение
@@ -707,7 +707,7 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					// Если работа резолвера ещё не остановлена
 					if(this->_mode){
 						// Устанавливаем время жизни сокета
-						// this->_socket.timeToLive(family, this->_fd, i + ((this->_shifting / 1000) * 2));
+						// this->_socket.timeToLive(family, this->_sock, i + ((this->_shifting / 1000) * 2));
 						// Замораживаем поток на период времени в ${_shifting}
 						std::this_thread::sleep_for(std::chrono::milliseconds(this->_shifting));
 						// Выполняем смещение индекса последовательности
@@ -906,7 +906,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					 */
 					#if _WIN32 || _WIN64
 						// Создаём сокет подключения
-						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+						this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					/**
 					 * Для операционной системы не являющейся OS Windows
 					 */
@@ -914,9 +914,9 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 						// Если пользователь является привилигированным
 						if(::getuid())
 							// Создаём сокет подключения
-							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
+							this->_sock = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
 						// Создаём сокет подключения
-						else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+						else this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					#endif
 				} break;
 				// Для протокола IPv6
@@ -952,7 +952,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					 */
 					#if _WIN32 || _WIN64
 						// Создаём сокет подключения (IPPROTO_ICMP6)
-						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+						this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					/**
 					 * Для операционной системы не являющейся OS Windows
 					 */
@@ -960,14 +960,14 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 						// Если пользователь является привилигированным
 						if(::getuid())
 							// Создаём сокет подключения
-							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
+							this->_sock = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
 						// Создаём сокет подключения
-						else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+						else this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					#endif
 				} break;
 			}
 			// Если сокет не создан создан и работа резолвера не остановлена
-			if(this->_mode && (this->_fd == INVALID_SOCKET)){
+			if(this->_mode && (this->_sock == INVALID_SOCKET)){
 				// Если разрешено выводить информацию в лог
 				if(this->_verb)
 					// Выводим в лог сообщение
@@ -979,20 +979,20 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 				// Если операционная система не принадлежит к Sun Solaris
 				#if !__sun__
 					// Устанавливаем разрешение на повторное использование сокета
-					this->_socket.reuseable(this->_fd);
+					this->_socket.reuseable(this->_sock);
 				#endif
 				// Устанавливаем разрешение на закрытие сокета при неиспользовании
-				this->_socket.closeOnExec(this->_fd);
+				this->_socket.closeOnExec(this->_sock);
 				// Устанавливаем размер буфера передачи данных на чтение
-				// this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
+				// this->_socket.bufferSize(this->_sock, 1024, 1, socket_t::mode_t::READ);
 				// Устанавливаем размер буфера передачи данных на запись
-				// this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
+				// this->_socket.bufferSize(this->_sock, 1024, 1, socket_t::mode_t::WRITE);
 				// Устанавливаем таймаут на получение данных из сокета
-				this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
+				this->_socket.timeout(this->_sock, this->_timeoutRead, socket_t::mode_t::READ);
 				// Устанавливаем таймаут на запись данных в сокет
-				this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
+				this->_socket.timeout(this->_sock, this->_timeoutWrite, socket_t::mode_t::WRITE);
 				// Выполняем бинд на сокет
-				if(::bind(this->_fd, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0)
+				if(::bind(this->_sock, reinterpret_cast <struct sockaddr *> (&this->_peer.client), this->_peer.size) < 0)
 					// Выводим в лог сообщение
 					this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				// Выполняем отправку указанного количества запросов
@@ -1065,7 +1065,7 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					// Если работа резолвера ещё не остановлена
 					if(this->_mode){
 						// Устанавливаем время жизни сокета
-						// this->_socket.timeToLive(family, this->_fd, i + ((this->_shifting / 1000) * 2));
+						// this->_socket.timeToLive(family, this->_sock, i + ((this->_shifting / 1000) * 2));
 						// Замораживаем поток на период времени в ${_shifting}
 						std::this_thread::sleep_for(chrono::milliseconds(this->_shifting));
 					}

@@ -15,19 +15,6 @@
 #ifndef __AWH_SOCKET__
 #define __AWH_SOCKET__
 
-#ifndef UNICODE
-	#define UNICODE
-#endif
-
-#ifndef WIN32_LEAN_AND_MEAN
-	#define WIN32_LEAN_AND_MEAN
-#endif
-
-/**
- * Максимальное количество доступных сокетов
- */
-#define AWH_MAX_SOCKETS 0x5F5E100
-
 /**
  * Для операционной системы не являющейся OS Windows
  */
@@ -90,7 +77,8 @@
 #include "../sys/log.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -98,7 +86,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Socket Класс работы с сетевыми сокетами
+	 * @brief Класс работы с сетевыми сокетами
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Socket {
 		public:
@@ -119,106 +108,121 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * noSigILL Метод блокировки сигнала SIGILL
+			 * @brief Метод блокировки сигнала SIGILL
+			 *
 			 * @return результат работы функции
 			 */
 			bool noSigILL() const noexcept;
 		public:
 			/**
-			 * events Метод активации получения событий SCTP для сокета
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
+			 * @brief Метод активации получения событий SCTP для сокета
+			 *
+			 * @param sock сетевой сокет
+			 * @return     результат работы функции
 			 */
-			bool events(const SOCKET fd) const noexcept;
+			bool events(const SOCKET sock) const noexcept;
 			/**
-			 * noSigPIPE Метод игнорирования отключения сигнала записи в убитый сокет
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
+			 * @brief Метод игнорирования отключения сигнала записи в убитый сокет
+			 *
+			 * @param sock сетевой сокет
+			 * @return     результат работы функции
 			 */
-			bool noSigPIPE(const SOCKET fd) const noexcept;
+			bool noSigPIPE(const SOCKET sock) const noexcept;
 			/**
-			 * reuseable Метод разрешающая повторно использовать сокет после его удаления
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
+			 * @brief Метод разрешающая повторно использовать сокет после его удаления
+			 *
+			 * @param sock сетевой сокет
+			 * @return     результат работы функции
 			 */
-			bool reuseable(const SOCKET fd) const noexcept;
+			bool reuseable(const SOCKET sock) const noexcept;
 			/**
-			 * closeOnExec Метод разрешения закрывать сокет, после запуска
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
+			 * @brief Метод разрешения закрывать сокет, после запуска
+			 *
+			 * @param sock сетевой сокет
+			 * @return     результат работы функции
 			 */
-			bool closeOnExec(const SOCKET fd) const noexcept;
+			bool closeOnExec(const SOCKET sock) const noexcept;
 		public:
 			/**
-			 * blocking Метод проверки сокета блокирующий режим
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
+			 * @brief Метод проверки сокета блокирующий режим
+			 *
+			 * @param sock сетевой сокет
+			 * @return     результат работы функции
 			 */
-			bool blocking(const SOCKET fd) const noexcept;
+			bool blocking(const SOCKET sock) const noexcept;
 			/**
-			 * blocking Метод установки блокирующего сокета
-			 * @param fd   файловый дескриптор (сокет)
+			 * @brief Метод установки блокирующего сокета
+			 *
+			 * @param sock сетевой сокет
 			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool blocking(const SOCKET fd, const mode_t mode) const noexcept;
+			bool blocking(const SOCKET sock, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * cork Метод активации TCP/CORK
-			 * @param fd   файловый дескриптор (сокет)
+			 * @brief Метод активации TCP/CORK
+			 *
+			 * @param sock сетевой сокет
 			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool cork(const SOCKET fd, const mode_t mode) const noexcept;
+			bool cork(const SOCKET sock, const mode_t mode) const noexcept;
 			/**
-			 * nodelay Метод отключения алгоритма Нейгла
-			 * @param fd   файловый дескриптор (сокет)
+			 * @brief Метод отключения алгоритма Нейгла
+			 *
+			 * @param sock сетевой сокет
 			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool nodelay(const SOCKET fd, const mode_t mode) const noexcept;
+			bool nodelay(const SOCKET sock, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * error Метод получения кода ошибки
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   код ошибки на сокете если присутствует
+			 * @brief Метод получения кода ошибки
+			 *
+			 * @param sock сетевой сокет
+			 * @return     код ошибки на сокете если присутствует
 			 */
-			int32_t error(const SOCKET fd) const noexcept;
+			int32_t error(const SOCKET sock) const noexcept;
 			/**
-			 * message Метод получения текста описания ошибки
+			 * @brief Метод получения текста описания ошибки
+			 *
 			 * @param code код ошибки для получения сообщения
 			 * @return     текст сообщения описания кода ошибки
 			 */
 			string message(const int32_t code = 0) const noexcept;
 		public:
 			/**
-			 * onlyIPv6 Метод включающая или отключающая режим отображения IPv4 на IPv6
-			 * @param fd   файловый дескриптор (сокет)
+			 * @brief Метод включающая или отключающая режим отображения IPv4 на IPv6
+			 *
+			 * @param sock сетевой сокет
 			 * @param mode режим активации или деактивации
 			 * @return     результат работы функции
 			 */
-			bool onlyIPv6(const SOCKET fd, const mode_t mode = mode_t::DISABLED) const noexcept;
+			bool onlyIPv6(const SOCKET sock, const mode_t mode = mode_t::DISABLED) const noexcept;
 		public:
 			/**
-			 * timeout Метод установки таймаута на чтение из сокета
-			 * @param fd   файловый дескриптор (сокет)
+			 * @brief Метод установки таймаута на чтение из сокета
+			 *
+			 * @param sock сетевой сокет
 			 * @param msec время таймаута в миллисекундах
 			 * @param mode режим установки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool timeout(const SOCKET fd, const uint32_t msec, const mode_t mode) const noexcept;
+			bool timeout(const SOCKET sock, const uint32_t msec, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * timeToLive Метод установки времени жизни сокета
+			 * @brief Метод установки времени жизни сокета
+			 *
 			 * @param family тип протокола интернета AF_INET или AF_INET6
-			 * @param fd     файловый дескриптор (сокет)
-			 * @param ttl    время жизни файлового дескриптора в секундах (сокета)
+			 * @param sock   сетевой сокет
+			 * @param ttl    время жизни сетевого сокета в секундах
 			 * @return       результат установки времени жизни
 			 */
-			bool timeToLive(const int32_t family, const SOCKET fd, const int32_t ttl) const noexcept;
+			bool timeToLive(const int32_t family, const SOCKET sock, const int32_t ttl) const noexcept;
 		public:
 			/**
-			 * isBind Метод проверки на занятость порта
+			 * @brief Метод проверки на занятость порта
+			 *
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @param type   тип сокета SOCK_DGRAM или SOCK_STREAM
 			 * @param port   номер порта для проверки
@@ -227,54 +231,61 @@ namespace awh {
 			bool isBind(const int32_t family, const int32_t type, const uint32_t port) const noexcept;
 		public:
 			/**
-			 * keepAlive Метод устанавливает постоянное подключение на сокет
-			 * @param fd    файловый дескриптор (сокет)
+			 * @brief Метод устанавливает постоянное подключение на сокет
+			 *
+			 * @param sock  сетевой сокет
 			 * @param cnt   максимальное количество попыток
 			 * @param idle  время через которое происходит проверка подключения
 			 * @param intvl время между попытками
 			 * @return      результат работы функции
 			 */
-			bool keepAlive(const SOCKET fd, const int32_t cnt = 0, const int32_t idle = 0, const int32_t intvl = 0) const noexcept;
+			bool keepAlive(const SOCKET sock, const int32_t cnt = 0, const int32_t idle = 0, const int32_t intvl = 0) const noexcept;
 		public:
 			/**
-			 * listen Метод проверки сокета на прослушиваемость
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат проверки сокета
+			 * @brief Метод проверки сокета на прослушиваемость
+			 *
+			 * @param sock сетевой сокет
+			 * @return     результат проверки сокета
 			 */
-			bool listen(const SOCKET fd) const noexcept;
+			bool listen(const SOCKET sock) const noexcept;
 		public:
 			/**
-			 * availability Метод проверки количества находящихся байт в сокете
-			 * @param fd   файловый дескриптор (сокет)
+			 * @brief Метод проверки количества находящихся байт в сокете
+			 *
+			 * @param sock сетевой сокет
 			 * @param mode режим проверки типа сокета
 			 * @return     запрашиваемый размер буфера
 			 */
-			u_long availability(const SOCKET fd, const mode_t mode) const noexcept;
+			u_long availability(const SOCKET sock, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * bufferSize Метод получения размера буфера
-			 * @param fd   файловый дескриптор (сокет)
+			 * @brief Метод получения размера буфера
+			 *
+			 * @param sock сетевой сокет
 			 * @param mode режим проверки типа сокета
 			 * @return     запрашиваемый размер буфера
 			 */
-			int32_t bufferSize(const SOCKET fd, const mode_t mode) const noexcept;
+			int32_t bufferSize(const SOCKET sock, const mode_t mode) const noexcept;
 			/**
-			 * bufferSize Метод установки размеров буфера
-			 * @param fd   файловый дескриптор (сокет)
+			 * @brief Метод установки размеров буфера
+			 *
+			 * @param sock сетевой сокет
 			 * @param size устанавливаемый размер буфера
 			 * @param mode режим проверки типа сокета
 			 * @return     результат работы функции
 			 */
-			bool bufferSize(const SOCKET fd, const int32_t size, const mode_t mode) const noexcept;
+			bool bufferSize(const SOCKET sock, const int32_t size, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * Socket Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 			/**
-			 * ~Socket Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Socket() noexcept {}
 	} socket_t;

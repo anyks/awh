@@ -18,6 +18,24 @@
 #include <ws/frame.hpp>
 
 /**
+ * Для операционной системы OS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Стандартная библиотека
+	 */
+	#include <winsock2.h>
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	/**
+	 * Стандартная библиотека
+	 */
+	#include <arpa/inet.h>
+#endif
+
+/**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
@@ -612,7 +630,7 @@ vector <char> awh::ws::Frame::get(head_t & head, const void * buffer, const size
 							// Очищаем результирующий буфер
 							result.clear();
 							// Выполняем очистку выделенной памяти
-							vector <char> ().swap(result);
+							vector <decltype(result)::value_type> ().swap(result);
 						}
 					}
 				// Устанавливаем статус битого фрейма

@@ -40,7 +40,8 @@
 #include "../sys/log.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -48,7 +49,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Net Класс для работы с сетями
+	 * @brief Класс для работы с сетями
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Net {
 		public:
@@ -107,7 +109,8 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Mutex структура рабочих мютексов
+			 * @brief структура рабочих мютексов
+			 *
 			 */
 			typedef struct Mutex {
 				// Мютекс контроля основной работы
@@ -116,7 +119,8 @@ namespace awh {
 				std::mutex match;
 			} mtx_t;
 			/**
-			 * LocalNet Структура локального адреса
+			 * @brief Структура локального адреса
+			 *
 			 */
 			typedef struct LocalNet {
 				bool reserved;               // Адрес является зарезервированным
@@ -124,7 +128,8 @@ namespace awh {
 				std::unique_ptr <Net> end;   // Конечный диапазон адреса
 				std::unique_ptr <Net> begin; // Начальный IP-адрес
 				/**
-				 * LocalNet Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param exp регулярное выражение для установки
 				 * @param log объект для работы с логами
 				 */
@@ -155,18 +160,21 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * initLocalNet Метод инициализации списка локальных адресов
+			 * @brief Метод инициализации списка локальных адресов
+			 *
 			 */
 			void initLocalNet() noexcept;
 		private:
 			/**
-			 * atoi Метод конвертации строковых чисел в десятичную систему счисления
+			 * @brief Метод конвертации строковых чисел в десятичную систему счисления
+			 *
 			 * @param value число для конвертации
 			 * @return      полученная строка в системе счисления
 			 */
 			int64_t atoi(const string & value) const noexcept;
 			/**
-			 * itoa Метод конвертации чисел в указанную систему счисления
+			 * @brief Метод конвертации чисел в указанную систему счисления
+			 *
 			 * @param value число для конвертации
 			 * @param radix система счисления
 			 * @return      полученная строка в системе счисления
@@ -174,7 +182,8 @@ namespace awh {
 			string itoa(const int64_t value, const uint8_t radix) const noexcept;
 		private:
 			/**
-			 * zerro Метод заполнения недостающих элементов нулями
+			 * @brief Метод заполнения недостающих элементов нулями
+			 *
 			 * @param num  число для заполнения нулями
 			 * @param size максимальная длина строки
 			 * @return     полученное число строки
@@ -182,7 +191,8 @@ namespace awh {
 			string && zerro(string && num, const uint8_t size = 3) const noexcept;
 		private:
 			/**
-			 * greater Метод проверки больше первое число второго или нет (бинарным методом)
+			 * @brief Метод проверки больше первое число второго или нет (бинарным методом)
+			 *
 			 * @param value1 значение первого числа в бинарном виде
 			 * @param value2 значение второго числа в бинарном виде
 			 * @param size   размер бинарного буфера числа
@@ -191,7 +201,8 @@ namespace awh {
 			bool greater(const void * value1, const void * value2, const size_t size) const noexcept;
 		private:
 			/**
-			 * split Метод разделения строк на составляющие
+			 * @brief Метод разделения строк на составляющие
+			 *
 			 * @param str    строка для поиска
 			 * @param delim  разделитель
 			 * @param result результирующий вектор
@@ -200,81 +211,94 @@ namespace awh {
 			vector <string> & split(const string & str, const string & delim, vector <string> & result) const noexcept;
 		public:
 			/**
-			 * clear Метод очистки данных IP-адреса
+			 * @brief Метод очистки данных IP-адреса
+			 *
 			 */
 			void clear() noexcept;
 		public:
 			/**
-			 * broadcastIPv6ToIPv4 Метод проверки соответствия адреса зеркалу IPv6 => IPv4
+			 * @brief Метод проверки соответствия адреса зеркалу IPv6 => IPv4
+			 *
 			 * @return результат проверки
 			 */
 			bool broadcastIPv6ToIPv4() const noexcept;
 		public:
 			/**
-			 * type Метод извлечения типа IP-адреса
+			 * @brief Метод извлечения типа IP-адреса
+			 *
 			 * @return тип IP-адреса
 			 */
 			type_t type() const noexcept;
 			/**
-			 * type Метод установки типа IP-адреса
+			 * @brief Метод установки типа IP-адреса
+			 *
 			 * @param type тип IP-адреса для установки
 			 */
 			void type(const type_t type) noexcept;
 		public:
 			/**
-			 * host Метод определения типа хоста
+			 * @brief Метод определения типа хоста
+			 *
 			 * @param host хост для определения
 			 * @return     определённый тип хоста
 			 */
 			type_t host(const string & host) const noexcept;
 		public:
 			/**
-			 * mac Метод извлечения аппаратного адреса в чистом виде
+			 * @brief Метод извлечения аппаратного адреса в чистом виде
+			 *
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 * @return       аппаратный адрес в чистом виде
 			 */
 			uint64_t mac(const endian_t endian = endian_t::LITTLE) const noexcept;
 			/**
-			 * mac Метод установки аппаратного адреса в чистом виде
+			 * @brief Метод установки аппаратного адреса в чистом виде
+			 *
 			 * @param addr   аппаратный адрес в чистом виде
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
 			void mac(const uint64_t addr, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
-			 * v4 Метод извлечения адреса IPv4 в чистом виде
+			 * @brief Метод извлечения адреса IPv4 в чистом виде
+			 *
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 * @return       адрес IPv4 в чистом виде
 			 */
 			uint32_t v4(const endian_t endian = endian_t::LITTLE) const noexcept;
 			/**
-			 * v4 Метод установки адреса IPv4 в чистом виде
+			 * @brief Метод установки адреса IPv4 в чистом виде
+			 *
 			 * @param addr   адрес IPv4 в чистом виде
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
 			void v4(const uint32_t addr, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
-			 * v6 Метод извлечения адреса IPv6 в чистом виде
+			 * @brief Метод извлечения адреса IPv6 в чистом виде
+			 *
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 * @return       адрес IPv6 в чистом виде
 			 */
 			array <uint64_t, 2> v6(const endian_t endian = endian_t::LITTLE) const noexcept;
 			/**
-			 * v6 Метод установки адреса IPv6 в чистом виде
+			 * @brief Метод установки адреса IPv6 в чистом виде
+			 *
 			 * @param addr   адрес IPv6 в чистом виде
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
 			void v6(const array <uint64_t, 2> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
-			 * impose Метод наложения маски сети
+			 * @brief Метод наложения маски сети
+			 *
 			 * @param mask маска сети для наложения
 			 * @param addr тип получаемого адреса
 			 */
 			void impose(const string & mask, const addr_t addr) noexcept;
 			/**
-			 * impose Метод наложения маски сети
+			 * @brief Метод наложения маски сети
+			 *
 			 * @param mask маска сети для наложения
 			 * @param addr тип получаемого адреса
 			 * @param type тип адреса аппаратного или интернет подключения
@@ -282,13 +306,15 @@ namespace awh {
 			void impose(const string & mask, const addr_t addr, const type_t type) noexcept;
 		public:
 			/**
-			 * impose Метод наложения префикса
+			 * @brief Метод наложения префикса
+			 *
 			 * @param prefix префикс для наложения
 			 * @param addr   тип получаемого адреса
 			 */
 			void impose(const uint8_t prefix, const addr_t addr) noexcept;
 			/**
-			 * impose Метод наложения префикса
+			 * @brief Метод наложения префикса
+			 *
 			 * @param prefix префикс для наложения
 			 * @param addr   тип получаемого адреса
 			 * @param type   тип адреса аппаратного или интернет подключения
@@ -296,13 +322,15 @@ namespace awh {
 			void impose(const uint8_t prefix, const addr_t addr, const type_t type) noexcept;
 		public:
 			/**
-			 * mask2Prefix Метод перевода маски сети в префикс адреса
+			 * @brief Метод перевода маски сети в префикс адреса
+			 *
 			 * @param mask маска сети для перевода
 			 * @return     полученный префикс адреса
 			 */
 			uint8_t mask2Prefix(const string & mask) const noexcept;
 			/**
-			 * mask2Prefix Метод перевода маски сети в префикс адреса
+			 * @brief Метод перевода маски сети в префикс адреса
+			 *
 			 * @param mask маска сети для перевода
 			 * @param type тип адреса аппаратного или интернет подключения
 			 * @return     полученный префикс адреса
@@ -310,13 +338,15 @@ namespace awh {
 			uint8_t mask2Prefix(const string & mask, const type_t type) const noexcept;
 		public:
 			/**
-			 * prefix2Mask Метод преобразования префикса адреса в маску сети
+			 * @brief Метод преобразования префикса адреса в маску сети
+			 *
 			 * @param prefix префикс адреса для преобразования
 			 * @return       полученная маска сети
 			 */
 			string prefix2Mask(const uint8_t prefix) const noexcept;
 			/**
-			 * prefix2Mask Метод преобразования префикса адреса в маску сети
+			 * @brief Метод преобразования префикса адреса в маску сети
+			 *
 			 * @param prefix префикс адреса для преобразования
 			 * @param type   тип адреса аппаратного или интернет подключения
 			 * @return       полученная маска сети
@@ -324,7 +354,8 @@ namespace awh {
 			string prefix2Mask(const uint8_t prefix, const type_t type) const noexcept;
 		public:
 			/**
-			 * range Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 *
 			 * @param begin начало диапазона адресов
 			 * @param end   конец диапазона адресов
 			 * @param mask  маска сети для перевода
@@ -332,7 +363,8 @@ namespace awh {
 			 */
 			bool range(const Net & begin, const Net & end, const string & mask) const noexcept;
 			/**
-			 * range Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 *
 			 * @param begin начало диапазона адресов
 			 * @param end   конец диапазона адресов
 			 * @param mask  маска сети для перевода
@@ -342,7 +374,8 @@ namespace awh {
 			bool range(const Net & begin, const Net & end, const string & mask, const type_t type) const noexcept;
 		public:
 			/**
-			 * range Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 *
 			 * @param begin  начало диапазона адресов
 			 * @param end    конец диапазона адресов
 			 * @param prefix префикс адреса для преобразования
@@ -350,7 +383,8 @@ namespace awh {
 			 */
 			bool range(const Net & begin, const Net & end, const uint8_t prefix) const noexcept;
 			/**
-			 * range Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 *
 			 * @param begin  начало диапазона адресов
 			 * @param end    конец диапазона адресов
 			 * @param prefix префикс адреса для преобразования
@@ -360,7 +394,8 @@ namespace awh {
 			bool range(const Net & begin, const Net & end, const uint8_t prefix, const type_t type) const noexcept;
 		public:
 			/**
-			 * range Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 *
 			 * @param begin начало диапазона адресов
 			 * @param end   конец диапазона адресов
 			 * @param mask  маска сети для перевода
@@ -368,7 +403,8 @@ namespace awh {
 			 */
 			bool range(const string & begin, const string & end, const string & mask) const noexcept;
 			/**
-			 * range Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 *
 			 * @param begin начало диапазона адресов
 			 * @param end   конец диапазона адресов
 			 * @param mask  маска сети для перевода
@@ -378,7 +414,8 @@ namespace awh {
 			bool range(const string & begin, const string & end, const string & mask, const type_t type) const noexcept;
 		public:
 			/**
-			 * range Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 *
 			 * @param begin  начало диапазона адресов
 			 * @param end    конец диапазона адресов
 			 * @param prefix префикс адреса для преобразования
@@ -386,7 +423,8 @@ namespace awh {
 			 */
 			bool range(const string & begin, const string & end, const uint8_t prefix) const noexcept;
 			/**
-			 * range Метод проверки вхождения IP-адреса в диапазон адресов
+			 * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+			 *
 			 * @param begin  начало диапазона адресов
 			 * @param end    конец диапазона адресов
 			 * @param prefix префикс адреса для преобразования
@@ -396,13 +434,15 @@ namespace awh {
 			bool range(const string & begin, const string & end, const uint8_t prefix, const type_t type) const noexcept;
 		public:
 			/**
-			 * mapping Метод проверки соотвествия IP-адреса указанной сети
+			 * @brief Метод проверки соотвествия IP-адреса указанной сети
+			 *
 			 * @param network сеть для проверки соответствия
 			 * @return        результат проверки
 			 */
 			bool mapping(const string & network) const noexcept;
 			/**
-			 * mapping Метод проверки соотвествия IP-адреса указанной сети
+			 * @brief Метод проверки соотвествия IP-адреса указанной сети
+			 *
 			 * @param network сеть для проверки соответствия
 			 * @param type    тип адреса аппаратного или интернет подключения
 			 * @return        результат проверки
@@ -410,7 +450,8 @@ namespace awh {
 			bool mapping(const string & network, const type_t type) const noexcept;
 		public:
 			/**
-			 * mapping Метод проверки соотвествия IP-адреса указанной сети
+			 * @brief Метод проверки соотвествия IP-адреса указанной сети
+			 *
 			 * @param network сеть для проверки соответствия
 			 * @param mask    маска сети для наложения
 			 * @param addr    тип получаемого адреса
@@ -418,7 +459,8 @@ namespace awh {
 			 */
 			bool mapping(const string & network, const string & mask, const addr_t addr) const noexcept;
 			/**
-			 * mapping Метод проверки соотвествия IP-адреса указанной сети
+			 * @brief Метод проверки соотвествия IP-адреса указанной сети
+			 *
 			 * @param network сеть для проверки соответствия
 			 * @param mask    маска сети для наложения
 			 * @param addr    тип получаемого адреса
@@ -428,7 +470,8 @@ namespace awh {
 			bool mapping(const string & network, const string & mask, const addr_t addr, const type_t type) const noexcept;
 		public:
 			/**
-			 * mapping Метод проверки соотвествия IP-адреса указанной сети
+			 * @brief Метод проверки соотвествия IP-адреса указанной сети
+			 *
 			 * @param network сеть для проверки соответствия
 			 * @param prefix  префикс для наложения
 			 * @param addr    тип получаемого адреса
@@ -436,7 +479,8 @@ namespace awh {
 			 */
 			bool mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept;
 			/**
-			 * mapping Метод проверки соотвествия IP-адреса указанной сети
+			 * @brief Метод проверки соотвествия IP-адреса указанной сети
+			 *
 			 * @param network сеть для проверки соответствия
 			 * @param prefix  префикс для наложения
 			 * @param addr    тип получаемого адреса
@@ -446,31 +490,36 @@ namespace awh {
 			bool mapping(const string & network, const uint8_t prefix, const addr_t addr, const type_t type) const noexcept;
 		public:
 			/**
-			 * mode Метод определения режима дислокации IP-адреса
+			 * @brief Метод определения режима дислокации IP-адреса
+			 *
 			 * @return режим дислокации
 			 */
 			mode_t mode() const noexcept;
 		public:
 			/**
-			 * arpa Получение записи в формате ARPA
+			 * @brief Получение записи в формате ARPA
+			 *
 			 * @return запись в формате ARPA
 			 */
 			string arpa() const noexcept;
 			/**
-			 * arpa Метод установки записи в формате ARPA
+			 * @brief Метод установки записи в формате ARPA
+			 *
 			 * @param addr адрес в формате ARPA (1.0.168.192.in-addr.arpa)
 			 * @return     результат установки записи
 			 */
 			bool arpa(const string & addr) noexcept;
 		public:
 			/**
-			 * parse Метод парсинга адреса
+			 * @brief Метод парсинга адреса
+			 *
 			 * @param addr адрес аппаратный или интернет подключения для парсинга
 			 * @return     результат работы парсинга
 			 */
 			bool parse(const string & addr) noexcept;
 			/**
-			 * parse Метод парсинга адреса
+			 * @brief Метод парсинга адреса
+			 *
 			 * @param addr адрес аппаратный или интернет подключения для парсинга
 			 * @param type тип адреса аппаратного или интернет подключения для парсинга
 			 * @return     результат работы парсинга
@@ -478,118 +527,137 @@ namespace awh {
 			bool parse(const string & addr, const type_t type) noexcept;
 		public:
 			/**
-			 * get Метод извлечения данных IP-адреса
+			 * @brief Метод извлечения данных IP-адреса
+			 *
 			 * @param format формат формирования IP-адреса
 			 * @return       сформированная строка IP-адреса
 			 */
 			string get(const format_t format = format_t::SHORT) const noexcept;
 		public:
 			/**
-			 * Оператор вывода IP-адреса в качестве строки
+			 * @brief Оператор вывода IP-адреса в качестве строки
+			 *
 			 * @return IP-адрес в качестве строки
 			 */
 			operator string() const noexcept;
 		public:
 			/**
-			 * Оператор [<] сравнения IP-адреса
+			 * @brief Оператор [<] сравнения IP-адреса
+			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator < (const Net & addr) const noexcept;
 			/**
-			 * Оператор [>] сравнения IP-адреса
+			 * @brief Оператор [>] сравнения IP-адреса
+			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator > (const Net & addr) const noexcept;
 			/**
-			 * Оператор [<=] сравнения IP-адреса
+			 * @brief Оператор [<=] сравнения IP-адреса
+			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator <= (const Net & addr) const noexcept;
 			/**
-			 * Оператор [>=] сравнения IP-адреса
+			 * @brief Оператор [>=] сравнения IP-адреса
+			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator >= (const Net & addr) const noexcept;
 			/**
-			 * Оператор [!=] сравнения IP-адреса
+			 * @brief Оператор [!=] сравнения IP-адреса
+			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator != (const Net & addr) const noexcept;
 			/**
-			 * Оператор [==] сравнения IP-адреса
+			 * @brief Оператор [==] сравнения IP-адреса
+			 *
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
 			bool operator == (const Net & addr) const noexcept;
 		public:
 			/**
-			 * Оператор [=] присвоения IP-адреса
+			 * @brief Оператор [=] присвоения IP-адреса
+			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Net & operator = (const Net & addr) noexcept;
 			/**
-			 * Оператор [=] присвоения IP-адреса
+			 * @brief Оператор [=] присвоения IP-адреса
+			 *
 			 * @param ip адрес для присвоения
 			 * @return   текущий объект
 			 */
 			Net & operator = (const string & ip) noexcept;
 			/**
-			 * Оператор [=] установки типа IP-адреса
+			 * @brief Оператор [=] установки типа IP-адреса
+			 *
 			 * @param type тип IP-адреса для установки
 			 * @return     текущий объект
 			 */
 			Net & operator = (const type_t type) noexcept;
 			/**
-			 * Оператор [=] присвоения IP-адреса
+			 * @brief Оператор [=] присвоения IP-адреса
+			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Net & operator = (const uint32_t addr) noexcept;
 			/**
-			 * Оператор [=] присвоения MAC-адреса
+			 * @brief Оператор [=] присвоения MAC-адреса
+			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Net & operator = (const uint64_t addr) noexcept;
 			/**
-			 * Оператор [=] присвоения IP-адреса
+			 * @brief Оператор [=] присвоения IP-адреса
+			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Net & operator = (const array <uint64_t, 2> & addr) noexcept;
 		public:
 			/**
-			 * Net конструктор
+			 * @brief конструктор
+			 *
 			 * @param log объект для работы с логами
 			 */
 			Net(const log_t * log) noexcept;
 		private:
 			/**
-			 * Net конструктор
+			 * @brief конструктор
+			 *
 			 * @param exp регулярное выражение для установки
 			 * @param log объект для работы с логами
 			 */
 			Net(const regexp_t::exp_t & exp, const log_t * log) noexcept;
 		public:
 			/**
-			 * ~Net деструктор
+			 * @brief деструктор
+			 *
 			 */
 			~Net() noexcept {}
 	} net_t;
 	/**
-	 * Оператор [>>] чтения из потока IP-адреса
+	 * @brief Оператор [>>] чтения из потока IP-адреса
+	 *
 	 * @param is   поток для чтения
 	 * @param addr адрес для присвоения
 	 */
 	AWHSHARED_EXPORT istream & operator >> (istream & is, net_t & addr) noexcept;
 	/**
-	 * Оператор [<<] вывода в поток IP-адреса
+	 * @brief Оператор [<<] вывода в поток IP-адреса
+	 *
 	 * @param os   поток куда нужно вывести данные
 	 * @param addr адрес для присвоения
 	 */

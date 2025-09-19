@@ -44,7 +44,7 @@ void awh::client::Http2::connectEvent(const uint64_t bid, const uint16_t sid) no
 		// Выполняем инициализацию сессии HTTP/2
 		web2_t::connectEvent(bid, sid);
 		// Если флаг инициализации сессии HTTP/2 не установлен
-		if(!this->_http2.is()){
+		if(!this->_http2.initialized()){
 			// Запоминаем идентификатор брокера
 			this->_http1._bid = this->_bid;
 			// Выполняем установку сетевого ядра
@@ -555,7 +555,7 @@ int32_t awh::client::Http2::closedSignal(const int32_t sid, const awh::http2_t::
 	// Если необходимый нам воркер найден
 	if(i != this->_workers.end()){
 		// Если флаг инициализации сессии HTTP/2 установлен
-		if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE) && this->_http2.is())
+		if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE) && this->_http2.initialized())
 			// Выполняем закрытие подключения
 			web2_t::close(this->_bid);
 		// Если функция обратного вызова активности потока установлена
@@ -791,7 +791,7 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 												// Если размер выделенной памяти выше максимального размера буфера
 												if(j->second->entity.capacity() > AWH_BUFFER_SIZE)
 													// Выполняем очистку временного буфера данных
-													vector <char> ().swap(j->second->entity);
+													vector <decltype(j->second->entity)::value_type> ().swap(j->second->entity);
 											}
 										}
 										// Выполняем установку следующего экшена на открытие подключения
@@ -865,7 +865,7 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 											// Если размер выделенной памяти выше максимального размера буфера
 											if(j->second->entity.capacity() > AWH_BUFFER_SIZE)
 												// Выполняем очистку временного буфера данных
-												vector <char> ().swap(j->second->entity);
+												vector <decltype(j->second->entity)::value_type> ().swap(j->second->entity);
 										}
 									}
 									// Выполняем установку следующего экшена на открытие подключения
@@ -1094,7 +1094,7 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 							// Если размер выделенной памяти выше максимального размера буфера
 							if(request.entity.capacity() > AWH_BUFFER_SIZE)
 								// Выполняем очистку временного буфера данных
-								vector <char> ().swap(request.entity);
+								vector <decltype(request.entity)::value_type> ().swap(request.entity);
 						}
 					}
 					// Выполняем извлечение полученных данных запроса
@@ -1340,7 +1340,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						// Выполняем функцию обратного вызова
 						web2_t::_callback.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::WARNING, http::error_t::HTTP1_SEND, "Websocket protocol is prohibited for connection");
 					// Если флаг инициализации сессии HTTP/2 установлен
-					if(this->_http2.is())
+					if(this->_http2.initialized())
 						// Выполняем закрытие подключения
 						web2_t::close(this->_bid);
 					// Выполняем отключение в обычном режиме
@@ -1354,7 +1354,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 				// Если протоколом агента является HTTP-клиент
 				case static_cast <uint8_t> (agent_t::HTTP): {
 					// Если флаг инициализации сессии HTTP/2 установлен
-					if(this->_http2.is()){
+					if(this->_http2.initialized()){
 						// Выполняем очистку параметров HTTP-запроса
 						this->_http.clear();
 						// Выполняем сброс состояния HTTP-парсера
@@ -1526,7 +1526,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						}
 					}
 					// Если флаг инициализации сессии HTTP/2 установлен
-					if(this->_http2.is()){
+					if(this->_http2.initialized()){
 						// Если протокол ещё не установлен
 						if(request.headers.find(":protocol") == request.headers.end())
 							// Выполняем установку протокола Websocket
@@ -1596,7 +1596,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Устанавливаем список поддерживаемых компрессоров
 					else ret.first->second->http.compressors(this->_compressors);
 					// Если флаг инициализации сессии HTTP/2 установлен
-					if(this->_http2.is())
+					if(this->_http2.initialized())
 						// Выполняем смену активного протокола на HTTP/2
 						ret.first->second->proto = engine_t::proto_t::HTTP2;
 					// Если размер одного чанка установлен
@@ -1629,7 +1629,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 				}
 			}
 			// Если идентификатор устаревшего запроса найден
-			if(((result > 0) && (sid > 0) && (result != sid)) && !this->_http2.is()){
+			if(((result > 0) && (sid > 0) && (result != sid)) && !this->_http2.initialized()){
 				// Выполняем удаление указанного воркера
 				this->_workers.erase(sid);
 				// Выполняем удаление параметра запроса
@@ -1672,7 +1672,7 @@ bool awh::client::Http2::send(const int32_t sid, const char * buffer, const size
 		// Если данные переданы верные
 		if((result = ((buffer != nullptr) && (size > 0)))){
 			// Если флаг инициализации сессии HTTP/2 установлен
-			if(this->_http2.is()){
+			if(this->_http2.initialized()){
 				// Тело WEB сообщения
 				vector <char> entity;
 				// Выполняем сброс данных тела
@@ -1723,7 +1723,7 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 		// Если заголовки запроса переданы
 		if(!headers.empty()){
 			// Если флаг инициализации сессии HTTP/2 установлен
-			if(this->_http2.is()){
+			if(this->_http2.initialized()){
 				// Выполняем очистку параметров HTTP-запроса
 				this->_http.clear();
 				// Выполняем сброс состояния HTTP-парсера
@@ -1784,7 +1784,7 @@ bool awh::client::Http2::send2(const int32_t sid, const char * buffer, const siz
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
-		if((buffer != nullptr) && (size > 0) && this->_http2.is())
+		if((buffer != nullptr) && (size > 0) && this->_http2.initialized())
 			// Выполняем отправку сообщения на сервер
 			return web2_t::send(sid, buffer, size, flag);
 	}
@@ -1804,7 +1804,7 @@ int32_t awh::client::Http2::send2(const int32_t sid, const vector <pair <string,
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::READ, event_t::CONNECT}, event_t::SEND)){
 		// Если заголовки запроса переданы и флаг инициализации сессии HTTP/2 установлен
-		if(!headers.empty() && this->_http2.is())
+		if(!headers.empty() && this->_http2.initialized())
 			// Выполняем отправку заголовков на сервер
 			return web2_t::send(sid, headers, flag);
 	}
@@ -2008,7 +2008,7 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 		// Если многопоточность активированна
 		if(this->_threads <= 0){
 			// Если многопоточность активированна
-			if(this->_ws2._thr.is() || this->_ws2._ws1._thr.is()){
+			if(this->_ws2._thr.initialized() || this->_ws2._ws1._thr.initialized()){
 				// Выполняем завершение всех активных потоков
 				this->_ws2._thr.stop();
 				// Выполняем завершение всех активных потоков
@@ -2268,7 +2268,7 @@ awh::client::Http2::~Http2() noexcept {
 	// Выполняем установку сессии HTTP/2
 	this->_ws2._http2 = nullptr;
 	// Если многопоточность активированна
-	if(this->_ws2._thr.is())
+	if(this->_ws2._thr.initialized())
 		// Выполняем завершение всех активных потоков
 		this->_ws2._thr.stop();
 }

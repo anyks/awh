@@ -42,6 +42,29 @@
 #endif
 
 /**
+ * Если максимальное количество файловых дескрипторов не передано
+ */
+#ifndef AWH_MAX_COUNT_FDS
+	/**
+	 * Для операционной системы OS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * Устанавливаем максимальное количество доступных файловых дескрипторов 16384
+		 */
+		#define AWH_MAX_COUNT_FDS 0x4000
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		/**
+		 * Устанавливаем максимальное количество доступных файловых дескрипторов 131072
+		 */
+		#define AWH_MAX_COUNT_FDS 0x20000
+	#endif
+#endif
+
+/**
  * Стандартные модули
  */
 #include <map>
@@ -58,7 +81,6 @@
  */
 #include "fds.hpp"
 #include "watch.hpp"
-#include "partners.hpp"
 #include "../net/socket.hpp"
 
 /**
@@ -92,7 +114,7 @@ namespace awh {
 			 */
 			enum class event_mode_t : uint8_t {
 				ENABLED  = 0x01, // Разрешено получение события
-				DISABLED = 0x00  // Запрещено получение события 
+				DISABLED = 0x00  // Запрещено получение события
 			};
 			/**
 			 * Тип активного события
@@ -105,24 +127,6 @@ namespace awh {
 				TIMER  = 0x04, // Событие таймера в миллисекундах
 				STREAM = 0x05  // Событие межпотоковое системное
 			};
-		private:
-			/**
-			 * Для операционной системы OS Windows
-			 */
-			#if _WIN32 || _WIN64
-				/**
-				 * Максимальное количество отслеживаемых сокетов
-				 */
-				static constexpr const uint64_t MAX_SOCKS = 0x4000;
-			/**
-			 * Для всех остальных операционных систем
-			 */
-			#else
-				/**
-				 * Максимальное количество отслеживаемых сокетов
-				 */
-				static constexpr const uint64_t MAX_SOCKS = 0x20000;
-			#endif
 		public:
 			/**
 			 * Создаём тип функции обратного вызова
@@ -134,8 +138,6 @@ namespace awh {
 			 *
 			 */
 			typedef struct Upstream {
-				// Дополнительный партнёрский сокет
-				SOCKET sock;
 				// Мютекс для блокировки потока
 				std::mutex mtx;
 				// Объект работы с уведомителем
@@ -149,7 +151,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Upstream(const fmk_t * fmk, const log_t * log) noexcept :
-				 sock(INVALID_SOCKET), notifier(fmk, log), callback(nullptr) {}
+				 notifier(fmk, log), callback(nullptr) {}
 			} upstream_t;
 			/**
 			 * @brief Структура участника
@@ -158,10 +160,10 @@ namespace awh {
 			typedef struct Peer {
 				// Идентификатор участника
 				uint64_t id;
+				// Отслеживаемый сокет
+				SOCKET sock;
 				// Флаг персистентного таймера
 				bool persist;
-				// Отслеживаемый сокет
-				SOCKET socks[2];
 				// Задержка времени таймера
 				uint32_t delay;
 				// Тип участника по умолчанию
@@ -175,8 +177,7 @@ namespace awh {
 				 *
 				 */
 				Peer() noexcept :
-				 id(0), persist(false),
-				 socks{INVALID_SOCKET, INVALID_SOCKET},
+				 id(0), sock(INVALID_SOCKET), persist(false),
 				 delay(0), type(event_type_t::NONE), callback(nullptr) {}
 			} peer_t;
 		private:
@@ -185,9 +186,6 @@ namespace awh {
 		private:
 			// Время блокировки базы событий в ожидании событий
 			std::atomic_int _rate;
-			// Максимальное количество обрабатываемых сокетов
-			std::atomic_ullong _sockmax;
-		private:
 			// Флаг запуска работы базы событий
 			std::atomic_bool _works;
 			// Флаг простого чтения базы событий
@@ -206,7 +204,7 @@ namespace awh {
 				// Флаг инициализации WinSocksAPI
 				bool _winSockInit;
 				// Список активных файловых дескрипторов
-				vector <WSAPOLLFD> _socks;
+				vector <WSAPOLLFD> _events;
 			/**
 			 * Для операционной системы Sun Solaris
 			 */
@@ -216,7 +214,7 @@ namespace awh {
 				// Список активных событий
 				struct dvpoll _dopoll;
 				// Список активных файловых дескрипторов
-				vector <struct pollfd> _socks;
+				vector <struct pollfd> _events;
 			/**
 			 * Для операционной системы Linux
 			 */
@@ -243,8 +241,6 @@ namespace awh {
 			fds_t _fds;
 			// Объект работы с часами
 			watch_t _watch;
-			// Объект работы с партнёрами
-			partners_t _partners;
 		private:
 			// Мютекс для блокировки потока
 			std::recursive_mutex _mtx;
@@ -389,13 +385,6 @@ namespace awh {
 			 * @param msec время ожидания событий в миллисекундах
 			 */
 			void rate(const uint32_t msec = 10) noexcept;
-		public:
-			/**
-			 * @brief Максимальное количество поддерживаемых сокетов
-			 *
-			 * @param count максимальное количество поддерживаемых сокетов
-			 */
-			void sockmax(const uint64_t count) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки сообщения между потоками

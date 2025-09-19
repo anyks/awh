@@ -21,7 +21,8 @@
 #include "core.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -29,12 +30,14 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Timer Класс таймера ядра биндинга
+	 * @brief Класс таймера ядра биндинга
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Timer : public awh::core_t {
 		private:
 			/**
-			 * Broker Класс брокера
+			 * @brief Класс брокера
+			 *
 			 */
 			typedef class Broker {
 				public:
@@ -45,14 +48,16 @@ namespace awh {
 					event_t event;
 				public:
 					/**
-					 * Broker Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Broker(const fmk_t * fmk, const log_t * log) noexcept :
 					 persist(false), event(event_t::type_t::TIMER, fmk, log) {}
 					/**
-					 * ~Broker Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Broker() noexcept {}
 			} broker_t;
@@ -66,43 +71,50 @@ namespace awh {
 			std::map <uint16_t, std::unique_ptr <broker_t>> _brokers;
 		private:
 			/**
-			 * launching Метод вызова при активации базы событий
+			 * @brief Метод вызова при активации базы событий
+			 *
 			 * @param mode   флаг работы с сетевым протоколом
 			 * @param status флаг вывода события статуса
 			 */
 			void launching(const bool mode, const bool status) noexcept;
 			/**
-			 * closedown Метод вызова при деакцтивации базы событий
+			 * @brief Метод вызова при деакцтивации базы событий
+			 *
 			 * @param mode   флаг работы с сетевым протоколом
 			 * @param status флаг вывода события статуса
 			 */
 			void closedown(const bool mode, const bool status) noexcept;
 		private:
 			/**
-			 * event Метод события таймера
+			 * @brief Метод события таймера
+			 *
 			 * @param tid   идентификатор таймера
-			 * @param fd    файловый дескриптор (сокет)
+			 * @param sock  сетевой сокет
 			 * @param event произошедшее событие
 			 */
-			void event(const uint16_t tid, const SOCKET fd, const base_t::event_type_t event) noexcept;
+			void event(const uint16_t tid, const SOCKET sock, const base_t::event_type_t event) noexcept;
 		public:
 			/**
-			 * clear Метод очистки всех таймеров
+			 * @brief Метод очистки всех таймеров
+			 *
 			 */
 			void clear() noexcept;
 			/**
-			 * clear Метод очистки таймера
+			 * @brief Метод очистки таймера
+			 *
 			 * @param tid идентификатор таймера для очистки
 			 */
 			void clear(const uint16_t tid) noexcept;
 		public:
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param tid  идентификатор таймера
 			 * @param args аргументы функции обратного вызова
 			 */
@@ -150,26 +162,30 @@ namespace awh {
 			}
 		public:
 			/**
-			 * timeout Метод создания таймаута
+			 * @brief Метод создания таймаута
+			 *
 			 * @param delay задержка времени в миллисекундах
 			 * @return      идентификатор таймера
 			 */
 			uint16_t timeout(const uint32_t delay) noexcept;
 			/**
-			 * interval Метод создания интервала
+			 * @brief Метод создания интервала
+			 *
 			 * @param delay задержка времени в миллисекундах
 			 * @return      идентификатор таймера
 			 */
 			uint16_t interval(const uint32_t delay) noexcept;
 		public:
 			/**
-			 * Timer Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Timer(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log) {}
 			/**
-			 * ~Timer Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Timer() noexcept;
 	} timer_t;

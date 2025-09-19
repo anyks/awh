@@ -21,7 +21,8 @@
 #include "core.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -29,11 +30,13 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * client клиентское пространство имён
+	 * @brief клиентское пространство имён
+	 *
 	 */
 	namespace client {
 		/**
-		 * Socks5 Класс клиента для работы с socks5 прокси-сервером
+		 * @brief Класс клиента для работы с socks5 прокси-сервером
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Socks5 : public awh::socks5_t {
 			private:
@@ -43,48 +46,57 @@ namespace awh {
 				string _login;
 			private:
 				/**
-				 * cmd Метод получения бинарного буфера запроса
+				 * @brief Метод получения бинарного буфера запроса
+				 *
 				 */
 				void cmd() const noexcept;
 				/**
-				 * auth Метод получения бинарного буфера авторизации на сервере
+				 * @brief Метод получения бинарного буфера авторизации на сервере
+				 *
 				 */
 				void auth() const noexcept;
 				/**
-				 * methods Метод получения бинарного буфера опроса методов подключения
+				 * @brief Метод получения бинарного буфера опроса методов подключения
+				 *
 				 */
 				void methods() const noexcept;
 			public:
 				/**
-				 * parse Метод парсинга входящих данных
+				 * @brief Метод парсинга входящих данных
+				 *
 				 * @param buffer бинарный буфер входящих данных
 				 * @param size   размер бинарного буфера входящих данных
 				 */
 				void parse(const char * buffer = nullptr, const size_t size = 0) noexcept;
 			public:
 				/**
-				 * reset Метод сброса собранных данных
+				 * @brief Метод сброса собранных данных
+				 *
 				 */
 				void reset() noexcept;
 			public:
 				/**
-				 * clearUser Метод очистки списка пользователей
+				 * @brief Метод очистки списка пользователей
+				 *
 				 */
 				void clearUser() noexcept;
 				/**
-				 * user Метод установки параметров авторизации
+				 * @brief Метод установки параметров авторизации
+				 *
 				 * @param login логин пользователя для авторизации на сервере
 				 * @param pass  пароль пользователя для авторизации на сервере
 				 */
 				void user(const string & login, const string & pass) noexcept;
 			public:
 				/**
-				 * Socks5 Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param log объект для работы с логами
 				 */
 				Socks5(const log_t * log) noexcept : awh::socks5_t(log), _pass{""}, _login{""} {}
 				/**
-				 * ~Socks5 Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Socks5() noexcept {}
 		} socks5_t;

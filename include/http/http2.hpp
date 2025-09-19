@@ -57,7 +57,8 @@
 #include <nghttp2/nghttp2.h>
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -65,7 +66,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Http2 Класс работы с фреймами Http2
+	 * @brief Класс работы с фреймами Http2
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Http2 {
 		public:
@@ -214,13 +216,15 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * debug Функция обратного вызова при получении отладочной информации
+			 * @brief Функция обратного вызова при получении отладочной информации
+			 *
 			 * @param format формат вывода отладочной информации
 			 * @param args   список аргументов отладочной информации
 			 */
 			static void debug(const char * format, va_list args) noexcept;
 			/**
-			 * begin Функция обратного вызова активации получения фрейма заголовков
+			 * @brief Функция обратного вызова активации получения фрейма заголовков
+			 *
 			 * @param session объект сессии
 			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
@@ -228,7 +232,8 @@ namespace awh {
 			 */
 			static int32_t begin(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
-			 * create Функция обратного вызова при создании фрейма
+			 * @brief Функция обратного вызова при создании фрейма
+			 *
 			 * @param session объект сессии
 			 * @param hd      параметры фрейма
 			 * @param ctx     передаваемый промежуточный контекст
@@ -236,7 +241,8 @@ namespace awh {
 			 */
 			static int32_t create(nghttp2_session * session, const nghttp2_frame_hd * hd, void * ctx) noexcept;
 			/**
-			 * frameRecv Функция обратного вызова при получении фрейма
+			 * @brief Функция обратного вызова при получении фрейма
+			 *
 			 * @param session объект сессии
 			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
@@ -244,7 +250,8 @@ namespace awh {
 			 */
 			static int32_t frameRecv(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
-			 * frameSend Функция обратного вызова при отправки фрейма
+			 * @brief Функция обратного вызова при отправки фрейма
+			 *
 			 * @param session объект сессии
 			 * @param frame   объект фрейма заголовков
 			 * @param ctx     передаваемый промежуточный контекст
@@ -252,7 +259,8 @@ namespace awh {
 			 */
 			static int32_t frameSend(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
 			/**
-			 * close Функция закрытия подключения
+			 * @brief Функция закрытия подключения
+			 *
 			 * @param session объект сессии
 			 * @param sid     идентификатор потока
 			 * @param error   флаг ошибки если присутствует
@@ -261,7 +269,8 @@ namespace awh {
 			 */
 			static int32_t close(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
 			/**
-			 * error Функция обратного вызова при получении ошибок
+			 * @brief Функция обратного вызова при получении ошибок
+			 *
 			 * @param session объект сессии
 			 * @param code    код полученной ошибки
 			 * @param msg     сообщение ошибки
@@ -271,7 +280,8 @@ namespace awh {
 			 */
 			static int32_t error(nghttp2_session * session, const int32_t code, const char * msg, const size_t size, void * ctx) noexcept;
 			/**
-			 * chunk Функция обратного вызова при получении чанка
+			 * @brief Функция обратного вызова при получении чанка
+			 *
 			 * @param session объект сессии
 			 * @param flags   флаги события для сессии
 			 * @param sid     идентификатор потока
@@ -282,7 +292,8 @@ namespace awh {
 			 */
 			static int32_t chunk(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
 			/**
-			 * header Функция обратного вызова при получении заголовка
+			 * @brief Функция обратного вызова при получении заголовка
+			 *
 			 * @param session объект сессии
 			 * @param frame   объект фрейма заголовков
 			 * @param key     данные ключа заголовка
@@ -296,7 +307,8 @@ namespace awh {
 			static int32_t header(nghttp2_session * session, const nghttp2_frame * frame, nghttp2_rcbuf * name, nghttp2_rcbuf * value, const uint8_t flags, void * ctx) noexcept;
 		private:
 			/**
-			 * send Функция обратного вызова при подготовки данных для отправки
+			 * @brief Функция обратного вызова при подготовки данных для отправки
+			 *
 			 * @param session объект сессии
 			 * @param buffer  буфер данных которые следует отправить
 			 * @param size    размер буфера данных для отправки
@@ -306,7 +318,8 @@ namespace awh {
 			 */
 			static ssize_t send(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int32_t flags, void * ctx) noexcept;
 			/**
-			 * send Функция отправки подготовленного буфера данных по сети
+			 * @brief Функция отправки подготовленного буфера данных по сети
+			 *
 			 * @param session объект сессии
 			 * @param sid     идентификатор потока
 			 * @param buffer  буфер данных которые следует отправить
@@ -319,35 +332,40 @@ namespace awh {
 			static ssize_t send(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 		private:
 			/**
-			 * available Метод проверки сколько байт доступно для отправки
+			 * @brief Метод проверки сколько байт доступно для отправки
+			 *
 			 * @param sid идентификатор потока
 			 * @return    количество байт доступных для отправки
 			 */
 			size_t available(const int32_t sid) const noexcept;
 		private:
 			/**
-			 * commit Метод применения изменений
+			 * @brief Метод применения изменений
+			 *
 			 * @param event событие которому соответствует фиксация
 			 * @return      результат отправки
 			 */
 			bool commit(const event_t event) noexcept;
 		private:
 			/**
-			 * completed Метод завершения выполнения операции
+			 * @brief Метод завершения выполнения операции
+			 *
 			 * @param event событие выполненной операции
 			 */
 			void completed(const event_t event) noexcept;
 		private:
 			/**
-			 * submit Метод подготовки отправки данных полезной нагрузки
-			 * @param sid  идентификатор потока 
+			 * @brief Метод подготовки отправки данных полезной нагрузки
+			 *
+			 * @param sid  идентификатор потока
 			 * @param flag флаг передаваемого потока по сети
 			 * @return     результат работы функции
 			 */
 			bool submit(const int32_t sid, const flag_t flag) noexcept;
 		private:
 			/**
-			 * windowUpdate Метод обновления размера окна фрейма
+			 * @brief Метод обновления размера окна фрейма
+			 *
 			 * @param sid  идентификатор потока
 			 * @param size размер нового окна
 			 * @return     результат установки размера офна фрейма
@@ -355,19 +373,22 @@ namespace awh {
 			bool windowUpdate(const int32_t sid, const int32_t size) noexcept;
 		public:
 			/**
-			 * ping Метод выполнения пинга
+			 * @brief Метод выполнения пинга
+			 *
 			 * @return результат работы пинга
 			 */
 			bool ping() noexcept;
 		public:
 			/**
-			 * shutdown Метод запрещения получения данных с клиента
+			 * @brief Метод запрещения получения данных с клиента
+			 *
 			 * @return результат выполнения операции
 			 */
 			bool shutdown() noexcept;
 		public:
 			/**
-			 * frame Метод чтения данных фрейма из бинарного буфера
+			 * @brief Метод чтения данных фрейма из бинарного буфера
+			 *
 			 * @param buffer буфер бинарных данных для чтения фрейма
 			 * @param size   размер буфера бинарных данных
 			 * @return       результат чтения данных фрейма
@@ -375,7 +396,8 @@ namespace awh {
 			bool frame(const uint8_t * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * reject Метод выполнения сброса подключения
+			 * @brief Метод выполнения сброса подключения
+			 *
 			 * @param sid   идентификатор потока
 			 * @param error код отправляемой ошибки
 			 * @return      результат отправки сообщения
@@ -383,24 +405,28 @@ namespace awh {
 			bool reject(const int32_t sid, const error_t error) noexcept;
 		private:
 			/**
-			 * sendOrigin Метод отправки списка разрешённых источников
+			 * @brief Метод отправки списка разрешённых источников
+			 *
 			 */
 			void sendOrigin() noexcept;
 			/**
-			 * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
+			 * @brief Метод отправки расширения альтернативного сервиса RFC7383
+			 *
 			 * @param sid идентификатор потока
 			 */
 			void sendAltSvc(const int32_t sid) noexcept;
 		public:
 			/**
-			 * sendTrailers Метод отправки трейлеров
+			 * @brief Метод отправки трейлеров
+			 *
 			 * @param id      идентификатор потока
 			 * @param headers заголовки отправляемые
 			 * @return        результат отправки данных фрейма
 			 */
 			bool sendTrailers(const int32_t id, const vector <pair <string, string>> & headers) noexcept;
 			/**
-			 * sendData Метод отправки бинарных данных
+			 * @brief Метод отправки бинарных данных
+			 *
 			 * @param id     идентификатор потока
 			 * @param buffer буфер бинарных данных передаваемых
 			 * @param size   размер передаваемых данных в байтах
@@ -410,7 +436,8 @@ namespace awh {
 			bool sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept;
 		public:
 			/**
-			 * sendPush Метод отправки push-уведомлений
+			 * @brief Метод отправки push-уведомлений
+			 *
 			 * @param id      идентификатор потока
 			 * @param headers заголовки отправляемые
 			 * @param flag    флаг передаваемого потока по сети
@@ -418,7 +445,8 @@ namespace awh {
 			 */
 			int32_t sendPush(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
 			/**
-			 * sendHeaders Метод отправки заголовков
+			 * @brief Метод отправки заголовков
+			 *
 			 * @param id      идентификатор потока
 			 * @param headers заголовки отправляемые
 			 * @param flag    флаг передаваемого потока по сети
@@ -427,7 +455,8 @@ namespace awh {
 			int32_t sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
 		public:
 			/**
-			 * goaway Метод отправки сообщения закрытия всех потоков
+			 * @brief Метод отправки сообщения закрытия всех потоков
+			 *
 			 * @param last   идентификатор последнего потока
 			 * @param error  код отправляемой ошибки
 			 * @param buffer буфер отправляемых данных если требуется
@@ -437,34 +466,40 @@ namespace awh {
 			bool goaway(const int32_t last, const error_t error, const uint8_t * buffer = nullptr, const size_t size = 0) noexcept;
 		public:
 			/**
-			 * free Метод очистки активной сессии
+			 * @brief Метод очистки активной сессии
+			 *
 			 */
 			void free() noexcept;
 			/**
-			 * close Метод закрытия подключения
+			 * @brief Метод закрытия подключения
+			 *
 			 */
 			void close() noexcept;
 		public:
 			/**
-			 * is Метод проверки инициализации модуля
+			 * @brief Метод проверки инициализации модуля
+			 *
 			 * @return результат проверки инициализации
 			 */
-			bool is() const noexcept;
+			bool initialized() const noexcept;
 		public:
 			/**
-			 * callback Метод установки функций обратного вызова
+			 * @brief Метод установки функций обратного вызова
+			 *
 			 * @param callback функции обратного вызова
 			 */
 			void callback(const callback_t & callback) noexcept;
 		public:
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -478,13 +513,15 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param name  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -498,13 +535,15 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param T    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam T    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -529,14 +568,16 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @tparam Шаблон метода подключения финкции обратного вызова
-			 * @param A    тип идентификатора функции
-			 * @param B    тип функции обратного вызова
-			 * @param Args аргументы функции обратного вызова
+			 * @brief Шаблон метода подключения финкции обратного вызова
+			 *
+			 * @tparam A    тип идентификатора функции
+			 * @tparam B    тип функции обратного вызова
+			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename A, typename B, class... Args>
 			/**
-			 * on Метод подключения финкции обратного вызова
+			 * @brief Метод подключения финкции обратного вызова
+			 *
 			 * @param fid  идентификатор функкции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     идентификатор добавленной функции обратного вызова
@@ -551,19 +592,22 @@ namespace awh {
 			}
 		public:
 			/**
-			 * origin Метод установки списка разрешённых источников
+			 * @brief Метод установки списка разрешённых источников
+			 *
 			 * @param origins список разрешённых источников
 			 */
 			void origin(const vector <string> & origins) noexcept;
 		public:
 			/**
-			 * altsvc Метод установки списка альтернативных сервисов
+			 * @brief Метод установки списка альтернативных сервисов
+			 *
 			 * @param origins список альтернативных сервисов
 			 */
 			void altsvc(const std::unordered_multimap <string, string> & origins) noexcept;
 		public:
 			/**
-			 * init Метод инициализации
+			 * @brief Метод инициализации
+			 *
 			 * @param mode     идентификатор сервиса
 			 * @param settings параметры настроек сессии
 			 * @return         результат выполнения инициализации
@@ -571,19 +615,22 @@ namespace awh {
 			bool init(const mode_t mode, const std::map <settings_t, uint32_t> & settings) noexcept;
 		public:
 			/**
-			 * Оператор [=] зануления фрейма Http2
+			 * @brief Оператор [=] зануления фрейма Http2
+			 *
 			 * @return сформированный объект Http2
 			 */
 			Http2 & operator = (nullptr_t) noexcept;
 			/**
-			 * Оператор [=] копирования объекта фрейма Http2
+			 * @brief Оператор [=] копирования объекта фрейма Http2
+			 *
 			 * @param ctx объект фрейма Http2
 			 * @return    сформированный объект Http2
 			 */
 			Http2 & operator = (const Http2 & ctx) noexcept;
 		public:
 			/**
-			 * Http2 Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
@@ -591,7 +638,8 @@ namespace awh {
 			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
 			 _socket(fmk, log), _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
-			 * ~Http2 Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Http2() noexcept;
 	} http2_t;

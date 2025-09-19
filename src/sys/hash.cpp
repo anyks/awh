@@ -32,12 +32,14 @@ static constexpr uint16_t DEFAULT_MEM_LEVEL = 4;
 static constexpr uint32_t CHUNK_BUFFER_SIZE = 0x4000;
 
 /**
- * Шаблон функции хэширования текста
+ * @brief Шаблон функции хэширования текста
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * hashing Функция хэширования текста
+ * @brief Функция хэширования текста
+ *
  * @param text   текст для хэширования
  * @param type   тип хэш-суммы
  * @param result результат хэширования
@@ -192,12 +194,14 @@ static void hashing(const string & text, const awh::hash_t::type_t type, T & res
 	}
 }
 /**
- * Шаблон функции хэширования текста с ключом
+ * @brief Шаблон функции хэширования текста с ключом
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * hmac Функция хэширования текста с ключом
+ * @brief Функция хэширования текста с ключом
+ *
  * @param key    ключ для подписи
  * @param text   текст для хэширования
  * @param type   тип хэш-суммы
@@ -303,12 +307,14 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 	}
 }
 /**
- * Шаблон функции хэширования данных
+ * @brief Шаблон функции хэширования данных
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * hashing Функция хэширования данных
+ * @brief Функция хэширования данных
+ *
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -439,12 +445,14 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 	}
 }
 /**
- * Шаблон функции работы с компрессором LZma
+ * @brief Шаблон функции работы с компрессором LZma
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * lzma Функция работы с компрессором LZma
+ * @brief Функция работы с компрессором LZma
+ *
  * @param buffer буфер данных для компрессии
  * @param size   размер данных для компрессии
  * @param event  событие выполнения операции
@@ -550,12 +558,14 @@ static void lzma(const char * buffer, const size_t size, const awh::hash_t::even
 	}
 }
 /**
- * Шаблон функции работы с компрессором BZip2
+ * @brief Шаблон функции работы с компрессором BZip2
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * bzip2 Функция работы с компрессором BZip2
+ * @brief Функция работы с компрессором BZip2
+ *
  * @param buffer буфер данных для компрессии
  * @param size   размер данных для компрессии
  * @param event  событие выполнения операции
@@ -677,12 +687,14 @@ static void bzip2(const char * buffer, const size_t size, const awh::hash_t::eve
 	}
 }
 /**
- * Шаблон функции работы с компрессором Brotli
+ * @brief Шаблон функции работы с компрессором Brotli
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * brotli Функция работы с компрессором Brotli
+ * @brief Функция работы с компрессором Brotli
+ *
  * @param buffer буфер данных для компрессии
  * @param size   размер данных для компрессии
  * @param event  событие выполнения операции
@@ -780,12 +792,14 @@ static void brotli(const char * buffer, const size_t size, const awh::hash_t::ev
 	}
 }
 /**
- * Шаблон функции работы с компрессором Lz4
+ * @brief Шаблон функции работы с компрессором Lz4
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * lz4 Функция работы с компрессором Lz4
+ * @brief Функция работы с компрессором Lz4
+ *
  * @param buffer буфер данных
  * @param size   размер данных
  * @param level  уровень компрессии
@@ -872,12 +886,14 @@ static void lz4(const char * buffer, const size_t size, const uint32_t level, co
 	}
 }
 /**
- * Шаблон функции работы с компрессором Zstandard
+ * @brief Шаблон функции работы с компрессором Zstandard
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * zstd Функция работы с компрессором Zstandard
+ * @brief Функция работы с компрессором Zstandard
+ *
  * @param buffer буфер данных
  * @param size   размер данных
  * @param level  уровень компрессии
@@ -1100,12 +1116,14 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 	}
 }
 /**
- * Шаблон функции работы с компрессором GZip
+ * @brief Шаблон функции работы с компрессором GZip
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * gzip Функция работы с компрессором GZip
+ * @brief Функция работы с компрессором GZip
+ *
  * @param buffer буфер данных
  * @param size   размер данных
  * @param level  уровень компрессии
@@ -1224,12 +1242,14 @@ static void gzip(const char * buffer, const size_t size, const uint32_t level, c
 	}
 }
 /**
- * Шаблон функции работы с компрессором Deflate
+ * @brief Шаблон функции работы с компрессором Deflate
+ *
  * @tparam T сигнатура функции
  */
 template <typename T>
 /**
- * deflate Функция работы с компрессором Deflate
+ * @brief Функция работы с компрессором Deflate
+ *
  * @param buffer   буфер данных для компрессии
  * @param size     размер данных для компрессии
  * @param level    уровень компрессии
@@ -1375,7 +1395,8 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
 	}
 }
 /**
- * cipher Метод инициализации AES шифрования
+ * @brief Метод инициализации AES шифрования
+ *
  * @param cipher тип шифрования (AES128, AES192, AES256)
  * @return       результат инициализации
  */
@@ -1458,7 +1479,8 @@ bool awh::Hash::cipher(const cipher_t cipher) noexcept {
 	return true;
 }
 /**
- * rmTail Метод удаления хвостовых данных
+ * @brief Метод удаления хвостовых данных
+ *
  * @param buffer буфер для удаления хвоста
  */
 void awh::Hash::rmTail(vector <char> & buffer) const noexcept {
@@ -1471,7 +1493,8 @@ void awh::Hash::rmTail(vector <char> & buffer) const noexcept {
 	}
 }
 /**
- * setTail Метод добавления хвостовых данных
+ * @brief Метод добавления хвостовых данных
+ *
  * @param buffer буфер для добавления хвоста
  */
 void awh::Hash::setTail(vector <char> & buffer) const noexcept {
@@ -1479,7 +1502,8 @@ void awh::Hash::setTail(vector <char> & buffer) const noexcept {
 	buffer.insert(buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
 }
 /**
- * hashing Метод хэширования текста
+ * @brief Метод хэширования текста
+ *
  * @param text   текст для хэширования
  * @param type   тип хэш-суммы
  * @param result строка куда следует положить результат
@@ -1496,7 +1520,8 @@ void awh::Hash::hashing(const string & text, const type_t type, string & result)
 	}
 }
 /**
- * hashing Метод хэширования текста
+ * @brief Метод хэширования текста
+ *
  * @param text   текст для хэширования
  * @param type   тип хэш-суммы
  * @param result буфер куда следует положить результат
@@ -1513,7 +1538,8 @@ void awh::Hash::hashing(const string & text, const type_t type, vector <char> & 
 	}
 }
 /**
- * hmac Метод хэширования текста с ключом
+ * @brief Метод хэширования текста с ключом
+ *
  * @param key    ключ для подписи
  * @param text   текст для хэширования
  * @param type   тип хэш-суммы
@@ -1531,7 +1557,8 @@ void awh::Hash::hmac(const string & key, const string & text, const type_t type,
 	}
 }
 /**
- * hmac Метод хэширования текста с ключом
+ * @brief Метод хэширования текста с ключом
+ *
  * @param key    ключ для подписи
  * @param text   текст для хэширования
  * @param type   тип хэш-суммы
@@ -1549,7 +1576,8 @@ void awh::Hash::hmac(const string & key, const string & text, const type_t type,
 	}
 }
 /**
- * encode Метод кодирования
+ * @brief Метод кодирования
+ *
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -1594,7 +1622,8 @@ void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t ci
 	}
 }
 /**
- * encode Метод кодирования
+ * @brief Метод кодирования
+ *
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -1639,7 +1668,8 @@ void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t ci
 	}
 }
 /**
- * decode Метод декодирования
+ * @brief Метод декодирования
+ *
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -1684,7 +1714,8 @@ void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t ci
 	}
 }
 /**
- * decode Метод декодирования
+ * @brief Метод декодирования
+ *
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования
  * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
@@ -1729,7 +1760,8 @@ void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t ci
 	}
 }
 /**
- * compress Метод компрессии данных
+ * @brief Метод компрессии данных
+ *
  * @param buffer буфер данных для компрессии
  * @param size   размер данных для компрессии
  * @param method метод компрессии
@@ -1812,7 +1844,8 @@ void awh::Hash::compress(const char * buffer, const size_t size, const method_t 
 	}
 }
 /**
- * compress Метод компрессии данных
+ * @brief Метод компрессии данных
+ *
  * @param buffer буфер данных для компрессии
  * @param size   размер данных для компрессии
  * @param method метод компрессии
@@ -1895,7 +1928,8 @@ void awh::Hash::compress(const char * buffer, const size_t size, const method_t 
 	}
 }
 /**
- * decompress Метод декомпрессии данных
+ * @brief Метод декомпрессии данных
+ *
  * @param buffer буфер данных для декомпрессии
  * @param size   размер данных для декомпрессии
  * @param method метод компрессии
@@ -1978,7 +2012,8 @@ void awh::Hash::decompress(const char * buffer, const size_t size, const method_
 	}
 }
 /**
- * decompress Метод декомпрессии данных
+ * @brief Метод декомпрессии данных
+ *
  * @param buffer буфер данных для декомпрессии
  * @param size   размер данных для декомпрессии
  * @param method метод компрессии
@@ -2061,7 +2096,8 @@ void awh::Hash::decompress(const char * buffer, const size_t size, const method_
 	}
 }
 /**
- * wbit Метод установки размера скользящего окна
+ * @brief Метод установки размера скользящего окна
+ *
  * @param wbit размер скользящего окна
  */
 void awh::Hash::wbit(const int16_t wbit) noexcept {
@@ -2073,7 +2109,8 @@ void awh::Hash::wbit(const int16_t wbit) noexcept {
 	this->takeoverDecompress(this->_takeOverDecompress);
 }
 /**
- * round Метод установки количества раундов шифрования
+ * @brief Метод установки количества раундов шифрования
+ *
  * @param round количество раундов шифрования
  */
 void awh::Hash::round(const int32_t round) noexcept {
@@ -2081,7 +2118,8 @@ void awh::Hash::round(const int32_t round) noexcept {
 	this->_rounds = round;
 }
 /**
- * level Метод установки уровня компрессии
+ * @brief Метод установки уровня компрессии
+ *
  * @param level уровень компрессии
  */
 void awh::Hash::level(const level_t level) noexcept {
@@ -2117,7 +2155,8 @@ void awh::Hash::level(const level_t level) noexcept {
 	}
 }
 /**
- * salt Метод установки соли шифрования
+ * @brief Метод установки соли шифрования
+ *
  * @param salt соль для шифрования
  */
 void awh::Hash::salt(const string & salt) noexcept {
@@ -2125,7 +2164,8 @@ void awh::Hash::salt(const string & salt) noexcept {
 	this->_salt = salt;
 }
 /**
- * password Метод установки пароля шифрования
+ * @brief Метод установки пароля шифрования
+ *
  * @param password пароль шифрования
  */
 void awh::Hash::password(const string & password) noexcept {
@@ -2133,7 +2173,8 @@ void awh::Hash::password(const string & password) noexcept {
 	this->_password = password;
 }
 /**
- * takeoverCompress Метод установки флага переиспользования контекста компрессии
+ * @brief Метод установки флага переиспользования контекста компрессии
+ *
  * @param flag флаг переиспользования контекста компрессии
  */
 void awh::Hash::takeoverCompress(const bool flag) noexcept {
@@ -2172,7 +2213,8 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 	this->_takeOverCompress = flag;
 }
 /**
- * takeoverDecompress Метод установки флага переиспользования контекста декомпрессии
+ * @brief Метод установки флага переиспользования контекста декомпрессии
+ *
  * @param flag флаг переиспользования контекста декомпрессии
  */
 void awh::Hash::takeoverDecompress(const bool flag) noexcept {
@@ -2213,7 +2255,18 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 	this->_takeOverDecompress = flag;
 }
 /**
- * ~Hash Деструктор
+ * @brief Конструктор
+ *
+ * @param log объект для работы с логами
+ */
+awh::Hash::Hash(const log_t * log) noexcept :
+ _wbit(MAX_WBITS), _rounds(5),
+ _level{1, Z_DEFAULT_COMPRESSION, ZSTD_CLEVEL_DEFAULT},
+ _salt{""}, _password{""}, _takeOverCompress(false), _takeOverDecompress(false),
+ _btype{0x00, 0x00, 0xFF, 0xFF}, _zinf({0}), _zdef({0}), _log(log) {}
+/**
+ * @brief Деструктор
+ *
  */
 awh::Hash::~Hash() noexcept {
 	// Очищаем выделенную память для компрессора

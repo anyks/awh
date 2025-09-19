@@ -769,7 +769,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Если размер выделенной памяти выше максимального размера буфера
 					if(options->buffer.fragments.capacity() > AWH_BUFFER_SIZE)
 						// Выполняем очистку временного буфера данных
-						vector <char> ().swap(options->buffer.fragments);
+						vector <decltype(options->buffer.fragments)::value_type> ().swap(options->buffer.fragments);
 					// Завершаем работу
 					return;
 				}
@@ -1551,7 +1551,7 @@ void awh::server::Http1::multiThreads(const uint16_t count, const bool mode) noe
 	// Если нужно активировать многопоточность
 	if(mode){
 		// Если многопоточность ещё не активированна
-		if(!this->_ws1._thr.is())
+		if(!this->_ws1._thr.initialized())
 			// Выполняем инициализацию пула потоков
 			this->_ws1._thr.init(count);
 		// Если многопоточность уже активированна
@@ -1663,7 +1663,7 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 		// Добавляем схемы сети в сетевое ядро
 		const_cast <server::core_t *> (this->_core)->scheme(&this->_scheme);
 		// Если многопоточность активированна
-		if(this->_ws1._thr.is())
+		if(this->_ws1._thr.initialized())
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
 		// Устанавливаем событие на запуск системы
@@ -1681,7 +1681,7 @@ void awh::server::Http1::core(const server::core_t * core) noexcept {
 	// Если объект сетевого ядра не передан но ранее оно было добавлено
 	} else if(this->_core != nullptr) {
 		// Если многопоточность активированна
-		if(this->_ws1._thr.is()){
+		if(this->_ws1._thr.initialized()){
 			// Выполняем завершение всех активных потоков
 			this->_ws1._thr.stop();
 			// Снимаем режим простого чтения базы событий

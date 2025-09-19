@@ -33,31 +33,37 @@
 #include "../events/event.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
-	 * client клиентское пространство имён
+	 * @brief клиентское пространство имён
+	 *
 	 */
 	namespace client {
 		/**
-		 * Core Прототип класса ядра биндинга TCP/IP
+		 * @brief Прототип класса ядра биндинга TCP/IP
+		 *
 		 */
 		class Core;
 	};
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * Core Прототип класса ядра биндинга TCP/IP
+		 * @brief Прототип класса ядра биндинга TCP/IP
+		 *
 		 */
 		class Core;
 	};
 }
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -65,20 +71,24 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Scheme Структура схемы сети
+	 * @brief Структура схемы сети
+	 *
 	 */
 	typedef struct AWHSHARED_EXPORT Scheme {
 		private:
 			/**
-			 * Node Core Устанавливаем дружбу с нодой сетевого ядра
+			 * @brief Core Устанавливаем дружбу с нодой сетевого ядра
+			 *
 			 */
 			friend class Node;
 			/**
-			 * Client Core Устанавливаем дружбу с клиентским классом ядра
+			 * @brief Core Устанавливаем дружбу с клиентским классом ядра
+			 *
 			 */
 			friend class client::Core;
 			/**
-			 * Server Core Устанавливаем дружбу с серверным классом ядра
+			 * @brief Core Устанавливаем дружбу с серверным классом ядра
+			 *
 			 */
 			friend class server::Core;
 		public:
@@ -109,7 +119,8 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Timeouts Структура таймаутов
+			 * @brief Структура таймаутов
+			 *
 			 */
 			typedef struct Timeouts {
 				uint16_t wait;    // Таймаут ожидания получения данных
@@ -117,7 +128,8 @@ namespace awh {
 				uint16_t write;   // Таймаут на запись в секундах
 				uint16_t connect; // Таймаут на подключение в секундах
 				/**
-				 * Timeouts Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Timeouts() noexcept :
 				 wait(0), read(READ_TIMEOUT),
@@ -125,23 +137,27 @@ namespace awh {
 				 connect(CONNECT_TIMEOUT) {}
 			} __attribute__((packed)) timeouts_t;
 			/**
-			 * Buffer Структура буфера полезной нагрузки
+			 * @brief Структура буфера полезной нагрузки
+			 *
 			 */
 			typedef struct Buffer {
 				size_t size;                    // Размер буфера
 				std::unique_ptr <char []> data; // Данные буфера
 				/**
-				 * Buffer Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Buffer() noexcept : size(0), data(nullptr) {}
 				/**
-				 * ~Buffer Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Buffer() noexcept {}
 			} buffer_t;
 		private:
 			/**
-			 * Broker Класс брокера подключения
+			 * @brief Класс брокера подключения
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT Broker {
 				private:
@@ -189,64 +205,75 @@ namespace awh {
 					base_t * _base;
 				public:
 					/**
-					 * id Метод извлечения идентификатора брокера
+					 * @brief Метод извлечения идентификатора брокера
+					 *
 					 * @return идентификатор брокера
 					 */
 					uint64_t id() const noexcept;
 				public:
 					/**
-					 * sid Метод извлечения идентификатора схемы сети
+					 * @brief Метод извлечения идентификатора схемы сети
+					 *
 					 * @return идентификатор схемы сети
 					 */
 					uint16_t sid() const noexcept;
 				public:
 					/**
-					 * port Метод извлечения порта подключения
+					 * @brief Метод извлечения порта подключения
+					 *
 					 * @return установленный порт подключения
 					 */
 					uint32_t port() const noexcept;
 					/**
-					 * port Метод установки порта подключения
+					 * @brief Метод установки порта подключения
+					 *
 					 * @param порт подключения для установки
 					 */
 					void port(const uint32_t port) noexcept;
 				public:
 					/**
-					 * ip Метод извлечения IP-адреса
+					 * @brief Метод извлечения IP-адреса
+					 *
 					 * @return установленный IP-адрес
 					 */
 					const string & ip() const noexcept;
 					/**
-					 * ip Метод установки IP-адреса
+					 * @brief Метод установки IP-адреса
+					 *
 					 * @param ip адрес для установки
 					 */
 					void ip(const string & ip) noexcept;
 				public:
 					/**
-					 * mac Метод извлечения MAC-адреса
+					 * @brief Метод извлечения MAC-адреса
+					 *
 					 * @return установленный MAC-адрес
 					 */
 					const string & mac() const noexcept;
 					/**
-					 * mac Метод установки MAC-адреса
+					 * @brief Метод установки MAC-адреса
+					 *
 					 * @param mac адрес для установки
 					 */
 					void mac(const string & mac) noexcept;
 				public:
 					/**
-					 * callback Метод установки функций обратного вызова
+					 * @brief Метод установки функций обратного вызова
+					 *
 					 * @param callback функции обратного вызова
 					 */
 					void callback(const callback_t & callback) noexcept;
 				public:
 					/**
-					 * @tparam Шаблон метода подключения финкции обратного вызова
-					 * @param T    тип функции обратного вызова
-					 * @param Args аргументы функции обратного вызова
+					 * @brief Шаблон метода подключения финкции обратного вызова
+					 *
+					 * @tparam T    тип функции обратного вызова
+					 * @tparam Args аргументы функции обратного вызова
 					 */
 					template <typename T, class... Args>
 					/**
-					 * on Метод подключения финкции обратного вызова
+					 * @brief Метод подключения финкции обратного вызова
+					 *
 					 * @param name  идентификатор функкции обратного вызова
 					 * @param args аргументы функции обратного вызова
 					 * @return     идентификатор добавленной функции обратного вызова
@@ -260,13 +287,15 @@ namespace awh {
 						return 0;
 					}
 					/**
-					 * @tparam Шаблон метода подключения финкции обратного вызова
-					 * @param T    тип функции обратного вызова
-					 * @param Args аргументы функции обратного вызова
+					 * @brief Шаблон метода подключения финкции обратного вызова
+					 *
+					 * @tparam T    тип функции обратного вызова
+					 * @tparam Args аргументы функции обратного вызова
 					 */
 					template <typename T, class... Args>
 					/**
-					 * on Метод подключения финкции обратного вызова
+					 * @brief Метод подключения финкции обратного вызова
+					 *
 					 * @param name  идентификатор функкции обратного вызова
 					 * @param args аргументы функции обратного вызова
 					 * @return     идентификатор добавленной функции обратного вызова
@@ -280,13 +309,15 @@ namespace awh {
 						return 0;
 					}
 					/**
-					 * @tparam Шаблон метода подключения финкции обратного вызова
-					 * @param T    тип функции обратного вызова
-					 * @param Args аргументы функции обратного вызова
+					 * @brief Шаблон метода подключения финкции обратного вызова
+					 *
+					 * @tparam T    тип функции обратного вызова
+					 * @tparam Args аргументы функции обратного вызова
 					 */
 					template <typename T, class... Args>
 					/**
-					 * on Метод подключения финкции обратного вызова
+					 * @brief Метод подключения финкции обратного вызова
+					 *
 					 * @param fid  идентификатор функкции обратного вызова
 					 * @param args аргументы функции обратного вызова
 					 * @return     идентификатор добавленной функции обратного вызова
@@ -300,14 +331,16 @@ namespace awh {
 						return 0;
 					}
 					/**
-					 * @tparam Шаблон метода подключения финкции обратного вызова
-					 * @param A    тип идентификатора функции
-					 * @param B    тип функции обратного вызова
-					 * @param Args аргументы функции обратного вызова
+					 * @brief Шаблон метода подключения финкции обратного вызова
+					 *
+					 * @tparam A    тип идентификатора функции
+					 * @tparam B    тип функции обратного вызова
+					 * @tparam Args аргументы функции обратного вызова
 					 */
 					template <typename A, typename B, class... Args>
 					/**
-					 * on Метод подключения финкции обратного вызова
+					 * @brief Метод подключения финкции обратного вызова
+					 *
 					 * @param fid  идентификатор функкции обратного вызова
 					 * @param args аргументы функции обратного вызова
 					 * @return     идентификатор добавленной функции обратного вызова
@@ -322,62 +355,72 @@ namespace awh {
 					}
 				private:
 					/**
-					 * sonet Метод установки типа сокета подключения
+					 * @brief Метод установки типа сокета подключения
+					 *
 					 * @param sonet тип сокета подключения
 					 */
 					void sonet(const sonet_t sonet) noexcept;
 				private:
 					/**
-					 * callback Метод вызова при получении события сокета
-					 * @param fd    файловый дескриптор (сокет)
+					 * @brief Метод вызова при получении события сокета
+					 *
+					 * @param sock  сетевой сокет
 					 * @param event произошедшее событие
 					 */
-					void callback(const SOCKET fd, const base_t::event_type_t event) noexcept;
+					void callback(const SOCKET sock, const base_t::event_type_t event) noexcept;
 				public:
 					/**
-					 * stop Метод остановки работы
+					 * @brief Метод остановки работы
+					 *
 					 */
 					void stop() noexcept;
 					/**
-					 * start Метод запуска работы
+					 * @brief Метод запуска работы
+					 *
 					 */
 					void start() noexcept;
 				public:
 					/**
-					 * events Метод активации/деактивации метода события сокета
+					 * @brief Метод активации/деактивации метода события сокета
+					 *
 					 * @param mode   сигнал активации сокета
 					 * @param method метод режима работы
 					 */
 					void events(const mode_t mode, const engine_t::method_t method) noexcept;
 					/**
-					 * timeout Метод установки таймаута ожидания появления данных
+					 * @brief Метод установки таймаута ожидания появления данных
+					 *
 					 * @param seconds время ожидания в секундах
 					 * @param method  метод режима работы
 					 */
 					void timeout(const uint16_t seconds, const engine_t::method_t method) noexcept;
 				public:
 					/**
-					 * base Метод установки базы событий
+					 * @brief Метод установки базы событий
+					 *
 					 * @param base база событий для установки
 					 */
 					void base(base_t * base) noexcept;
 				public:
 					/**
-					 * Оператор [=] установки базы событий
+					 * @brief Оператор [=] установки базы событий
+					 *
 					 * @param base база событий для установки
 					 * @return     текущий объект
 					 */
 					Broker & operator = (base_t * base) noexcept;
 				public:
 					/**
-					 * Broker Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param sid идентификатор схемы сети
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Broker(const uint16_t sid, const fmk_t * fmk, const log_t * log) noexcept;
 					/**
-					 * ~Broker Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Broker() noexcept;
 			} broker_t;
@@ -403,44 +446,51 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * clear Метод очистки
+			 * @brief Метод очистки
+			 *
 			 */
 			virtual void clear() noexcept;
 		public:
 			/**
-			 * socket Метод извлечения сокета брокера
+			 * @brief Метод извлечения сокета брокера
+			 *
 			 * @param bid идентификатор брокера
 			 * @return    активный сокет брокера
 			 */
 			SOCKET socket(const uint64_t bid) const noexcept;
 		public:
 			/**
-			 * port Метод получения порта подключения брокера
+			 * @brief Метод получения порта подключения брокера
+			 *
 			 * @param bid идентификатор брокера
 			 * @return   порт подключения брокера
 			 */
 			uint32_t port(const uint64_t bid) const noexcept;
 			/**
-			 * ip Метод получения IP-адреса брокера
+			 * @brief Метод получения IP-адреса брокера
+			 *
 			 * @param bid идентификатор брокера
 			 * @return    адрес интернет подключения брокера
 			 */
 			const string & ip(const uint64_t bid) const noexcept;
 			/**
-			 * mac Метод получения MAC-адреса брокера
+			 * @brief Метод получения MAC-адреса брокера
+			 *
 			 * @param bid идентификатор брокера
 			 * @return    адрес устройства брокера
 			 */
 			const string & mac(const uint64_t bid) const noexcept;
 		public:
 			/**
-			 * Scheme Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Scheme(const fmk_t * fmk, const log_t * log) noexcept : id(0), alive(false), _fmk(fmk), _log(log) {}
 			/**
-			 * ~Scheme Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			virtual ~Scheme() noexcept {}
 	} scheme_t;

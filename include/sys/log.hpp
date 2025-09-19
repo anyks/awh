@@ -56,7 +56,8 @@
 #include "screen.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -64,7 +65,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Log Класс работы с логами
+	 * @brief Класс работы с логами
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Log {
 		public:
@@ -109,7 +111,8 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Payload Класс полезной нагрузки
+			 * @brief Класс полезной нагрузки
+			 *
 			 */
 			typedef class AWHSHARED_EXPORT Payload {
 				public:
@@ -119,43 +122,50 @@ namespace awh {
 					string text;
 				public:
 					/**
-					 * Оператор [=] перемещения параметров полезной нагрузки
+					 * @brief Оператор [=] перемещения параметров полезной нагрузки
+					 *
 					 * @param payload объект полезной нагрузки для перемещения
 					 * @return        текущий объект полезной нагрузки
 					 */
 					Payload & operator = (Payload && payload) noexcept;
 					/**
-					 * Оператор [=] присванивания параметров полезной нагрузки
+					 * @brief Оператор [=] присванивания параметров полезной нагрузки
+					 *
 					 * @param payload объект полезной нагрузки для копирования
 					 * @return        текущий объект полезной нагрузки
 					 */
 					Payload & operator = (const Payload & payload) noexcept;
 				public:
 					/**
-					 * Оператор сравнения
+					 * @brief Оператор сравнения
+					 *
 					 * @param payload объект полезной нагрузки для сравнения
 					 * @return        результат сравнения
 					 */
 					bool operator == (const Payload & payload) noexcept;
 				public:
 					/**
-					 * Payload Конструктор перемещения
+					 * @brief Конструктор перемещения
+					 *
 					 * @param payload объект полезной нагрузки для перемещения
 					 */
 					Payload(Payload && payload) noexcept;
 					/**
-					 * Payload Конструктор копирования
+					 * @brief Конструктор копирования
+					 *
 					 * @param payload объект полезной нагрузки для копирования
 					 */
 					Payload(const Payload & payload) noexcept;
 				public:
 					/**
-					 * Payload Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Payload() noexcept;
 				public:
 					/**
-					 * ~Payload Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Payload() noexcept {}
 			} payload_t;
@@ -207,12 +217,14 @@ namespace awh {
 			const fmk_t * _fmk;
 		private:
 			/**
-			 * Шаблон типа аргументов
+			 * @brief Шаблон типа аргументов
+			 *
 			 * @tparam TupType тип аргументов
 			 */
 			template <typename TupType>
 			/**
-			 * count Метод определения количества аргументов
+			 * @brief Метод определения количества аргументов
+			 *
 			 * @param args аргументы для определения их количества
 			 * @return     количество найденных аргументов
 			 */
@@ -222,12 +234,14 @@ namespace awh {
 			}
 		private:
 			/**
-			 * Шаблон входных параметров для серриализатора
-			 * @param TupType тип аргументов
+			 * @brief Шаблон входных параметров для серриализатора
+			 *
+			 * @tclass TupType тип аргументов
 			 */
 			template <class TupType, size_t... I>
 			/**
-			 * formation Метод формирования строки аргументов
+			 * @brief Метод формирования строки аргументов
+			 *
 			 * @param args аргументы для формирования строки
 			 * @return     сформированная строка аргументов
 			 */
@@ -244,12 +258,14 @@ namespace awh {
 				return ss.str();
 			}
 			/**
-			 * Шаблон входных параметров для серриализатора
-			 * @param TupType тип аргументов
+			 * @brief Шаблон входных параметров для серриализатора
+			 *
+			 * @tclass TupType тип аргументов
 			 */
 			template <class... TupType>
 			/**
-			 * serialization Метод серриализации входных аргументов
+			 * @brief Метод серриализации входных аргументов
+			 *
 			 * @param args аргументы для серриализации
 			 * @return     сформированная строка аргументов
 			 */
@@ -259,38 +275,44 @@ namespace awh {
 			}
 		private:
 			/**
-			 * rotate Метод выполнения ротации логов
+			 * @brief Метод выполнения ротации логов
+			 *
 			 */
 			void rotate() const noexcept;
 		private:
 			/**
-			 * cleaner Метод очистки строки от символов форматирования
+			 * @brief Метод очистки строки от символов форматирования
+			 *
 			 * @param text текст для очистки
 			 * @return     ощиченный текста
 			 */
 			string & cleaner(string & text) const noexcept;
 		private:
 			/**
-			 * receiving Метод получения данных
+			 * @brief Метод получения данных
+			 *
 			 * @param payload объект полезной нагрузки
 			 */
 			void receiving(const payload_t & payload) const noexcept;
 		private:
 			/**
-			 * components Метод извлечения компонента адреса файла
+			 * @brief Метод извлечения компонента адреса файла
+			 *
 			 * @param filename адрес где находится файл
 			 * @return         параметры компонента (адрес, название файла без расширения)
 			 */
 			pair <string, string> components(const string & filename) const noexcept;
 		public:
 			/**
-			 * Шаблон входных аргументов функции
-			 * @tparam T    тип входных аргументов функции
+			 * @brief Шаблон входных аргументов функции
+			 *
+			 * @tclass T    тип входных аргументов функции
 			 * @tparam Args список входящих аргументов
 			 */
 			template <class... T, typename... Args>
 			/**
-			 * print Метод вывода текстовой информации в консоль или файл
+			 * @brief Метод вывода текстовой информации в консоль или файл
+			 *
 			 * @param format формат строки вывода
 			 * @param method название вызываемого метода
 			 * @param params параметры переданные в метод
@@ -326,12 +348,14 @@ namespace awh {
 				}
 			}
 			/**
-			 * Шаблон входных аргументов функции
-			 * @tparam T тип входных аргументов функции
+			 * @brief Шаблон входных аргументов функции
+			 *
+			 * @tclass T тип входных аргументов функции
 			 */
 			template <class... T>
 			/**
-			 * print Метод вывода текстовой информации в консоль или файл
+			 * @brief Метод вывода текстовой информации в консоль или файл
+			 *
 			 * @param format формат строки вывода
 			 * @param method название вызываемого метода
 			 * @param params параметры переданные в метод
@@ -368,13 +392,15 @@ namespace awh {
 			}
 		public:
 			/**
-			 * print Метод вывода текстовой информации в консоль или файл
+			 * @brief Метод вывода текстовой информации в консоль или файл
+			 *
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
 			 */
 			void print(const string & format, flag_t flag, ...) const noexcept;
 			/**
-			 * print Метод вывода текстовой информации в консоль или файл
+			 * @brief Метод вывода текстовой информации в консоль или файл
+			 *
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
@@ -382,77 +408,91 @@ namespace awh {
 			void print(const string & format, flag_t flag, const vector <string> & args) const noexcept;
 		public:
 			/**
-			 * mode Метод получения установленных режимов вывода логов
+			 * @brief Метод получения установленных режимов вывода логов
+			 *
 			 * @return список режимов вывода логов
 			 */
 			const std::set <mode_t> & mode() const noexcept;
 			/**
-			 * mode Метод добавления режимов вывода логов
+			 * @brief Метод добавления режимов вывода логов
+			 *
 			 * @param mode список режимов вывода логов
 			 */
 			void mode(const std::set <mode_t> & mode) noexcept;
 		public:
 			/**
-			 * format Метод извлечения установленного формата лога
+			 * @brief Метод извлечения установленного формата лога
+			 *
 			 * @return формат лога для извлечения
 			 */
 			const string & format() const noexcept;
 			/**
-			 * format Метод установки формата даты и времени для вывода лога
+			 * @brief Метод установки формата даты и времени для вывода лога
+			 *
 			 * @param format формат даты и времени для вывода лога
 			 */
 			void format(const string & format) noexcept;
 		public:
 			/**
-			 * async Метод установки флага асинхронного режима работы
+			 * @brief Метод установки флага асинхронного режима работы
+			 *
 			 * @param mode флаг асинхронного режима работы
 			 */
 			void async(const bool mode) noexcept;
 			/**
-			 * name Метод установки название сервиса для вывода лога
+			 * @brief Метод установки название сервиса для вывода лога
+			 *
 			 * @param name название сервиса для вывода лога
 			 */
 			void name(const string & name) noexcept;
 			/**
-			 * maxSize Метод установки максимального размера файла логов
+			 * @brief Метод установки максимального размера файла логов
+			 *
 			 * @param size максимальный размер файла логов
 			 */
 			void maxSize(const float size) noexcept;
 			/**
-			 * sepSize Метод установки размера текста для формирования разделителя
+			 * @brief Метод установки размера текста для формирования разделителя
+			 *
 			 * @param size размер текста для формирования разделителя
 			 */
 			void sepSize(const size_t size) noexcept;
 			/**
-			 * level Метод установки уровня логирования
+			 * @brief Метод установки уровня логирования
+			 *
 			 * @param level уровень логирования для установки
 			 */
 			void level(const level_t level) noexcept;
 			/**
-			 * separator Метод установки разделителя сообщений логирования
+			 * @brief Метод установки разделителя сообщений логирования
+			 *
 			 * @param sep разделитель для установки
 			 */
 			void separator(const separator_t sep) noexcept;
 			/**
-			 * filename Метод установки файла для сохранения логов
+			 * @brief Метод установки файла для сохранения логов
+			 *
 			 * @param filename адрес файла для сохранения логов
 			 */
 			void filename(const string & filename) noexcept;
 		public:
 			/**
-			 * subscribe Метод подписки на события логов
+			 * @brief Метод подписки на события логов
+			 *
 			 * @param callback функция обратного вызова
 			 */
 			void subscribe(function <void (const flag_t, const string &)> callback) noexcept;
 		public:
 			/**
-			 * Log Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
 			Log(const fmk_t * fmk, const string & filename = "") noexcept;
 			/**
-			 * ~Log Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Log() noexcept;
 	} log_t;

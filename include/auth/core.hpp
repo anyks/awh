@@ -28,7 +28,8 @@
 #include "../sys/hash.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -36,7 +37,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Authorization Класс работы с авторизацией
+	 * @brief Класс работы с авторизацией
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Authorization {
 		public:
@@ -61,7 +63,8 @@ namespace awh {
 			};
 		protected:
 			/**
-			 * Digest Структура параметров дайджест авторизации
+			 * @brief Структура параметров дайджест авторизации
+			 *
 			 */
 			typedef struct Digest {
 				hash_t hash;   // Алгоритм шифрования (MD5, SHA1, SHA256, SHA512)
@@ -75,7 +78,8 @@ namespace awh {
 				string opaque; // Временный ключ сессии сервера
 				string cnonce; // 16-й секретный код клиента
 				/**
-				 * Digest Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Digest() noexcept :
 				 nc{"00000000"}, uri{""}, qop{"auth"},
@@ -96,19 +100,22 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * digest Метод получения параметров Digest авторизации
+			 * @brief Метод получения параметров Digest авторизации
+			 *
 			 * @return параметры Digest авторизации
 			 */
 			const digest_t & digest() const noexcept;
 		public:
 			/**
-			 * header Метод установки параметров авторизации из заголовков
+			 * @brief Метод установки параметров авторизации из заголовков
+			 *
 			 * @param header заголовок HTTP с параметрами авторизации
 			 */
 			virtual void header(const string & header) noexcept = 0;
 		protected:
 			/**
-			 * response Метод создания ответа на дайджест авторизацию
+			 * @brief Метод создания ответа на дайджест авторизацию
+			 *
 			 * @param method метод HTTP запроса
 			 * @param user   логин пользователя для проверки
 			 * @param pass   пароль пользователя для проверки
@@ -118,26 +125,30 @@ namespace awh {
 			string response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept;
 		public:
 			/**
-			 * type Метод получени типа авторизации
+			 * @brief Метод получени типа авторизации
+			 *
 			 * @return тип авторизации
 			 */
 			type_t type() const noexcept;
 			/**
-			 * type Метод установки типа авторизации
+			 * @brief Метод установки типа авторизации
+			 *
 			 * @param type тип авторизации
 			 * @param hash алгоритм шифрования для Digest авторизации
 			 */
 			void type(const type_t type, const hash_t hash = hash_t::MD5) noexcept;
 		public:
 			/**
-			 * Authorization Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Authorization(const fmk_t * fmk, const log_t * log) noexcept :
 			 _type(type_t::NONE), _hash(log), _fmk(fmk), _log(log) {}
 			/*
-			 * ~Authorization Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			virtual ~Authorization() noexcept {}
 	} auth_t;

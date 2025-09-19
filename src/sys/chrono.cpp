@@ -7762,7 +7762,7 @@ void awh::Chrono::clearTimeZones() noexcept {
 		// Выполняем очистку списка временных зон
 		this->_timeZones.clear();
 		// Выполняем освобождение выделенной памяти
-		std::unordered_map <string, int32_t> ().swap(this->_timeZones);
+		std::unordered_map <decltype(this->_timeZones)::key_type, decltype(this->_timeZones)::mapped_type> ().swap(this->_timeZones);
 	/**
 	 * Если возникает ошибка
 	 */

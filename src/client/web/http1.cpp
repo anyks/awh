@@ -393,7 +393,7 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid) noexce
 								// Если размер выделенной памяти выше максимального размера буфера
 								if(request.entity.capacity() > AWH_BUFFER_SIZE)
 									// Выполняем очистку временного буфера данных
-									vector <char> ().swap(request.entity);
+									vector <decltype(request.entity)::value_type> ().swap(request.entity);
 							}
 							// Выполняем установку следующего экшена на открытие подключения
 							this->open();
@@ -1289,7 +1289,7 @@ void awh::client::Http1::core(const client::core_t * core) noexcept {
 		// Если многопоточность активированна
 		if(this->_threads <= 0){
 			// Если многопоточность активированна
-			if(this->_ws1._thr.is())
+			if(this->_ws1._thr.initialized())
 				// Выполняем завершение всех активных потоков
 				this->_ws1._thr.stop();
 			// Снимаем режим простого чтения базы событий
@@ -1519,7 +1519,7 @@ awh::client::Http1::~Http1() noexcept {
 	// Снимаем адрес сетевого ядра
 	this->_ws1._core = nullptr;
 	// Если многопоточность активированна
-	if(this->_ws1._thr.is())
+	if(this->_ws1._thr.initialized())
 		// Выполняем завершение всех активных потоков
 		this->_ws1._thr.stop();
 }

@@ -29,7 +29,8 @@
 #include "../sys/screen.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -37,12 +38,14 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Watch Класс для работы с часами
+	 * @brief Класс для работы с часами
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Watch {
 		private:
 			/**
-			 * Unit структура участника обмена данными
+			 * @brief структура участника обмена данными
+			 *
 			 */
 			typedef struct Unit {
 				// Файловый дескрипторв (сокет)
@@ -50,13 +53,14 @@ namespace awh {
 				// Время задержки работы таймера
 				uint64_t delay;
 				/**
-				 * Unit Конструктор
+				 * @brief Конструктор
+				 *
 				 */
 				Unit() noexcept : sock(INVALID_SOCKET), delay(0) {}
 			} __attribute__((packed)) unit_t;
 		private:
 			// Мютекс для блокировки потока
-			std::recursive_mutex _mtx;
+			std::mutex _mtx;
 		private:
 			// Объект экрана для работы в дочернем потоке
 			screen_t <unit_t> _screen;
@@ -72,57 +76,67 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * trigger Метод обработки событий триггера
+			 * @brief Метод обработки событий триггера
+			 *
 			 */
 			void trigger() noexcept;
 			/**
-			 * process Метод обработки процесса добавления таймеров
+			 * @brief Метод обработки процесса добавления таймеров
+			 *
 			 * @param unit параметры участника
 			 */
 			void process(const unit_t unit) noexcept;
 		public:
 			/**
-			 * stop Метод остановки работы таймера
+			 * @brief Метод остановки работы таймера
+			 *
 			 */
 			void stop() noexcept;
 			/**
-			 * start Метод запуска работы таймера
+			 * @brief Метод запуска работы таймера
+			 *
 			 */
 			void start() noexcept;
 		public:
 			/**
-			 * create Метод создания нового таймера
+			 * @brief Метод создания нового таймера
+			 *
 			 * @return файловый дескриптор для отслеживания
 			 */
-			std::array <SOCKET, 2> create() noexcept;
+			SOCKET create() noexcept;
 		public:
 			/**
-			 * event Метод извлечения идентификатора события
+			 * @brief Метод извлечения идентификатора события
+			 *
 			 * @param sock файловый дескриптор таймера
 			 * @return     идентификатор события
 			 */
 			uint64_t event(const SOCKET sock) noexcept;
 		public:
 			/**
-			 * away Метод убрать таймер из отслеживания
+			 * @brief Метод убрать таймер из отслеживания
+			 *
 			 * @param sock файловый дескриптор таймера
 			 */
 			void away(const SOCKET sock) noexcept;
 			/**
-			 * wait Метод ожидания указанного промежутка времени
+			 * @brief Метод ожидания указанного промежутка времени
+			 *
 			 * @param sock  файловый дескриптор таймера
 			 * @param delay задержка времени в миллисекундах
 			 */
 			void wait(const SOCKET sock, const uint32_t delay) noexcept;
 		public:
 			/**
-			 * Watch Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Watch(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Watch Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Watch() noexcept;
 	} watch_t;

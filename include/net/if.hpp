@@ -135,7 +135,8 @@
 #include "../sys/log.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -143,7 +144,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * IfNet Класс работы с сетевыми интерфейсами
+	 * @brief Класс работы с сетевыми интерфейсами
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT IfNet {
 		private:
@@ -154,10 +156,8 @@ namespace awh {
 			// Список интернет-адресов
 			std::unordered_map <string, string> _ips6;
 		private:
-			// Максимальная длина сетевого интерфейса
-			static constexpr uint16_t MAX_ADDRS = 32;
 			// Максимальный размер сетевого буфера
-			static constexpr uint16_t IF_BUFFER_SIZE = 4000;
+			static constexpr uint16_t IF_BUFFER_SIZE = 0xFA0;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -165,28 +165,32 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * getIPAddresses Метод извлечения IP-адресов
+			 * @brief Метод извлечения IP-адресов
+			 *
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void getIPAddresses(const int32_t family = AF_INET) noexcept;
 			/**
-			 * getHWAddresses Метод извлечения MAC-адресов
+			 * @brief Метод извлечения MAC-адресов
+			 *
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void getHWAddresses(const int32_t family = AF_INET) noexcept;
 		private:
 			/**
 			 * Метод закрытие подключения
-			 * @param fd файловый дескриптор (сокет)
+			 * @param sock сетевой сокет
 			 */
-			void close(const int32_t fd) const noexcept;
+			void close(const int32_t sock) const noexcept;
 		public:
 			/**
-			 * init Метод инициализации сбора информации
+			 * @brief Метод инициализации сбора информации
+			 *
 			 */
 			void init() noexcept;
 			/**
-			 * clear Метод очистки собранных данных
+			 * @brief Метод очистки собранных данных
+			 *
 			 */
 			void clear() noexcept;
 		public:
@@ -197,21 +201,24 @@ namespace awh {
 			const std::unordered_map <string, string> & hws() const noexcept;
 		public:
 			/**
-			 * name Метод запроса названия сетевого интерфейса
+			 * @brief Метод запроса названия сетевого интерфейса
+			 *
 			 * @param eth идентификатор сетевого интерфейса
 			 * @return    название сетевого интерфейса
 			 */
 			string name(const string & eth) const noexcept;
 		public:
 			/**
-			 * mac Метод получения MAC-адреса по IP-адресу клиента
+			 * @brief Метод получения MAC-адреса по IP-адресу клиента
+			 *
 			 * @param ip     адрес интернет-подключения клиента
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       аппаратный адрес сетевого интерфейса клиента
 			 */
 			string mac(const string & ip, const int32_t family = AF_INET) const noexcept;
 			/**
-			 * mac Метод определения мак адреса клиента
+			 * @brief Метод определения мак адреса клиента
+			 *
 			 * @param sin    объект подключения
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       данные мак адреса
@@ -219,19 +226,22 @@ namespace awh {
 			string mac(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
 		public:
 			/**
-			 * ip Метод получения основного IP-адреса на сервере
+			 * @brief Метод получения основного IP-адреса на сервере
+			 *
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			string ip(const int32_t family = AF_INET) const noexcept;
 			/**
-			 * ip Метод получения IP-адреса из подключения
+			 * @brief Метод получения IP-адреса из подключения
+			 *
 			 * @param sin    объект подключения
 			 * @param family тип интернет протокола
 			 * @return       данные ip адреса
 			 */
 			string ip(struct sockaddr * sin, const int32_t family = AF_INET) const noexcept;
 			/**
-			 * ip Метод вывода IP-адреса соответствующего сетевому интерфейсу
+			 * @brief Метод вывода IP-адреса соответствующего сетевому интерфейсу
+			 *
 			 * @param eth    идентификатор сетевого интерфейса
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       IP-адрес соответствующий сетевому интерфейсу
@@ -239,13 +249,15 @@ namespace awh {
 			const string & ip(const string & eth, const int32_t family = AF_INET) const noexcept;
 		public:
 			/**
-			 * IfNet Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			IfNet(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 			/**
-			 * ~IfNet Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~IfNet() noexcept {}
 	} ifnet_t;

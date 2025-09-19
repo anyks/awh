@@ -65,9 +65,9 @@ void awh::URI::URL::clear() noexcept {
 	// Выполняем освобождение памяти якоря URL-запроса
 	string().swap(this->anchor);
 	// Выполняем освобождение памяти пути URL-запроса
-	vector <string> ().swap(this->path);
+	vector <decltype(this->path)::value_type> ().swap(this->path);
 	// Выполняем освобождение памяти параметров URL-запроса
-	vector <pair <string, string>> ().swap(this->params);
+	vector <decltype(this->params)::value_type> ().swap(this->params);
 }
 /**
  * empty Метод проверки на существование данных

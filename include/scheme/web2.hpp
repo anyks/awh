@@ -28,7 +28,8 @@
 #include "../http/server.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -36,20 +37,24 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * scheme серверное пространство имён
+		 * @brief серверное пространство имён
+		 *
 		 */
 		namespace scheme {
 			/**
-			 * WEB2 Структура схемы сети WEB/2 сервера
+			 * @brief Структура схемы сети WEB/2 сервера
+			 *
 			 */
 			typedef struct AWHSHARED_EXPORT WEB2 : public scheme_t {
 				public:
 					/**
-					 * Stream Структура потока
+					 * @brief Структура потока
+					 *
 					 */
 					typedef struct Stream {
 						bool crypted;                    // Флаг шифрования сообщений
@@ -57,7 +62,8 @@ namespace awh {
 						http_t http;                     // Объект для работы с HTTP
 						http_t::compressor_t compressor; // Метод компрессии данных
 						/**
-						 * Stream Конструктор
+						 * @brief Конструктор
+						 *
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
@@ -66,7 +72,8 @@ namespace awh {
 						 compressor(awh::http_t::compressor_t::NONE) {}
 					} stream_t;
 					/**
-					 * Options Класс параметров активного клиента
+					 * @brief Класс параметров активного клиента
+					 *
 					 */
 					typedef class Options {
 						public:
@@ -85,7 +92,8 @@ namespace awh {
 							const log_t * log;
 						public:
 							/**
-							 * Options Конструктор
+							 * @brief Конструктор
+							 *
 							 * @param fmk объект фреймворка
 							 * @param log объект для работы с логами
 							 */
@@ -93,10 +101,11 @@ namespace awh {
 							 alive(false), close(false), stopped(false),
 							 requests(0), respPong(0), sendPing(0),
 							 proto(engine_t::proto_t::HTTP1_1), fmk(fmk), log(log) {}
-						/**
-						 * ~Options Деструктор
-						 */
-						~Options() noexcept {}
+							/**
+							 * @brief Деструктор
+							 *
+							 */
+							~Options() noexcept {}
 					} options_t;
 				public:
 					/**
@@ -116,48 +125,56 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
-					 * clear Метод очистки
+					 * @brief Метод очистки
+					 *
 					 */
 					void clear() noexcept;
 				public:
 					/**
-					 * set Метод создания параметров активного клиента
+					 * @brief Метод создания параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void set(const uint64_t bid) noexcept;
 					/**
-					 * rm Метод удаления параметров активного клиента
+					 * @brief Метод удаления параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void rm(const uint64_t bid) noexcept;
 				public:
 					/**
-					 * get Метод извлечения списка параметров активных клиентов
+					 * @brief Метод извлечения списка параметров активных клиентов
+					 *
 					 * @return список параметров активных клиентов
 					 */
 					const clients_t & get() const noexcept;
 					/**
-					 * get Метод получения параметров активного клиента
+					 * @brief Метод получения параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
 					const options_t * get(const uint64_t bid) const noexcept;
 				public:
 					/**
-					 * openStream Метод открытия потока
+					 * @brief Метод открытия потока
+					 *
 					 * @param sid идентификатор потока
 					 * @param bid идентификатор брокера
 					 */
 					void openStream(const int32_t sid, const uint64_t bid) noexcept;
 					/**
-					 * closeStream Метод закрытия потока
+					 * @brief Метод закрытия потока
+					 *
 					 * @param sid идентификатор потока
 					 * @param bid идентификатор брокера
 					 */
 					void closeStream(const int32_t sid, const uint64_t bid) noexcept;
 				public:
 					/**
-					 * getStream Метод извлечения данных потока
+					 * @brief Метод извлечения данных потока
+					 *
 					 * @param sid идентификатор потока
 					 * @param bid идентификатор брокера
 					 * @return    данные запрашиваемого потока
@@ -165,14 +182,16 @@ namespace awh {
 					const stream_t * getStream(const int32_t sid, const uint64_t bid) const noexcept;
 				public:
 					/**
-					 * WEB2 Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					WEB2(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
-					 * ~WEB2 Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~WEB2() noexcept {}
 			} web2_t;

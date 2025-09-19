@@ -40,9 +40,9 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
-		// Если файловый дескриптор не создан, выходим
-		if(fd == INVALID_SOCKET){
+		const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		// Если сетевой сокет не создан, выходим
+		if(sock == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
 			this->_log->print("Socket failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -53,9 +53,9 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 		// Устанавливаем максимальный размер буфера
 		ifc.ifc_len = IF_BUFFER_SIZE;
 		// Выполняем получение сетевых параметров
-		if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
+		if(::ioctl(sock, SIOCGIFCONF, &ifc) < 0){
 			// Закрываем сетевой сокет
-			this->close(fd);
+			this->close(sock);
 			// Выводим сообщение об ошибке
 			this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -78,7 +78,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			// Запоминаем текущее значение указателя
 			ifrc = (* ifr);
 			// Считываем флаги для сетевого интерфейса
-			::ioctl(fd, SIOCGIFFLAGS, &ifrc);
+			::ioctl(sock, SIOCGIFFLAGS, &ifrc);
 			// Если флаги не соответствуют, пропускаем
 			if((ifrc.ifr_flags & IFF_UP) == 0)
 				// Выполняем пропуск
@@ -104,7 +104,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			}
 		}
 		// Закрываем сетевой сокет
-		this->close(fd);
+		this->close(sock);
 	/**
 	 * Если операционной системой является Linux или Sun Solaris
 	 */
@@ -118,9 +118,9 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
-		// Если файловый дескриптор не создан, выходим
-		if(fd == INVALID_SOCKET){
+		const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		// Если сетевой сокет не создан, выходим
+		if(sock == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
 			this->_log->print("Socket failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -131,9 +131,9 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 		// Устанавливаем максимальный размер буфера
 		ifc.ifc_len = IF_BUFFER_SIZE;
 		// Выполняем получение сетевых параметров
-		if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
+		if(::ioctl(sock, SIOCGIFCONF, &ifc) < 0){
 			// Закрываем сетевой сокет
-			this->close(fd);
+			this->close(sock);
 			// Выводим сообщение об ошибке
 			this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -158,7 +158,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			// Запоминаем текущее значение указателя
 			ifrc = (* i);
 			// Считываем флаги для сетевого интерфейса
-			::ioctl(fd, SIOCGIFFLAGS, &ifrc);
+			::ioctl(sock, SIOCGIFFLAGS, &ifrc);
 			// Если флаги не соответствуют, пропускаем
 			if((ifrc.ifr_flags & IFF_UP) == 0)
 				// Выполняем пропуск
@@ -184,7 +184,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			}
 		}
 		// Закрываем сетевой сокет
-		this->close(fd);
+		this->close(sock);
 	/**
 	 * Устанавливаем настройки для OS Windows
 	 */
@@ -290,9 +290,9 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
-		// Если файловый дескриптор не создан, выходим
-		if(fd == INVALID_SOCKET){
+		const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		// Если сетевой сокет не создан, выходим
+		if(sock == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
 			this->_log->print("Socket failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -303,9 +303,9 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Устанавливаем максимальный размер буфера
 		ifc.ifc_len = IF_BUFFER_SIZE;
 		// Выполняем получение сетевых параметров
-		if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
+		if(::ioctl(sock, SIOCGIFCONF, &ifc) < 0){
 			// Закрываем сетевой сокет
-			this->close(fd);
+			this->close(sock);
 			// Выводим сообщение об ошибке
 			this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -340,7 +340,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			cp += (sizeof(ifr->ifr_name) + ::max(sizeof(ifr->ifr_addr), static_cast <size_t> (ifr->ifr_addr.sa_len)));
 		}
 		// Закрываем сетевой сокет
-		this->close(fd);
+		this->close(sock);
 	/**
 	 * Если операционной системой является Linux
 	 */
@@ -354,9 +354,9 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
-		// Если файловый дескриптор не создан, выходим
-		if(fd == INVALID_SOCKET){
+		const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		// Если сетевой сокет не создан, выходим
+		if(sock == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
 			this->_log->print("Socket failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -367,9 +367,9 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Устанавливаем максимальный размер буфера
 		ifc.ifc_len = IF_BUFFER_SIZE;
 		// Выполняем получение сетевых параметров
-		if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
+		if(::ioctl(sock, SIOCGIFCONF, &ifc) < 0){
 			// Закрываем сетевой сокет
-			this->close(fd);
+			this->close(sock);
 			// Выводим сообщение об ошибке
 			this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -386,11 +386,11 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			// Копируем название сетевого интерфейса
 			::strcpy(ifrc.ifr_name, i->ifr_name);
 			// Выполняем подключение к сокету
-			if(::ioctl(fd, SIOCGIFFLAGS, &ifrc) == 0){
+			if(::ioctl(sock, SIOCGIFFLAGS, &ifrc) == 0){
 				// Проверяем сетевой интерфейс (не loopback)
 				if(!(ifrc.ifr_flags & IFF_LOOPBACK)){
 					// Извлекаем аппаратный адрес сетевого интерфейса
-					if(::ioctl(fd, SIOCGIFHWADDR, &ifrc) == 0){
+					if(::ioctl(sock, SIOCGIFHWADDR, &ifrc) == 0){
 						// Создаём буфер MAC-адреса
 						uint8_t mac[6];
 						// Заполняем нуляем наши буферы
@@ -407,7 +407,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			} else this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 		}
 		// Закрываем сетевой сокет
-		this->close(fd);
+		this->close(sock);
 	/**
 	 * Если операционной системой является Sun Solaris
 	 */
@@ -421,9 +421,9 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Заполняем нуляем наши буферы
 		::memset(buffer, 0, sizeof(buffer));
 		// Выделяем сокет для подключения
-		const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
-		// Если файловый дескриптор не создан, выходим
-		if(fd == INVALID_SOCKET){
+		const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		// Если сетевой сокет не создан, выходим
+		if(sock == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
 			this->_log->print("Socket failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -434,9 +434,9 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Устанавливаем максимальный размер буфера
 		ifc.ifc_len = IF_BUFFER_SIZE;
 		// Выполняем получение сетевых параметров
-		if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
+		if(::ioctl(sock, SIOCGIFCONF, &ifc) < 0){
 			// Закрываем сетевой сокет
-			this->close(fd);
+			this->close(sock);
 			// Выводим сообщение об ошибке
 			this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 			// Выходим из функции
@@ -453,11 +453,11 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			// Копируем название сетевого интерфейса
 			::strcpy(ifrc.ifr_name, i->ifr_name);
 			// Выполняем подключение к сокету
-			if(::ioctl(fd, SIOCGIFFLAGS, &ifrc) == 0){
+			if(::ioctl(sock, SIOCGIFFLAGS, &ifrc) == 0){
 				// Проверяем сетевой интерфейс (не loopback)
 				if(!(ifrc.ifr_flags & IFF_LOOPBACK)){
 					// Извлекаем аппаратный адрес сетевого интерфейса
-					if(::ioctl(fd, SIOCGIFHWADDR, &ifrc) == 0){
+					if(::ioctl(sock, SIOCGIFHWADDR, &ifrc) == 0){
 						// Создаём буфер MAC-адреса
 						uint8_t mac[6];
 						// Заполняем нуляем наши буферы
@@ -474,7 +474,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			} else this->_log->print("IOCTL failed", log_t::flag_t::WARNING);
 		}
 		// Закрываем сетевой сокет
-		this->close(fd);
+		this->close(sock);
 	/**
 	 * Устанавливаем настройки для OS Windows
 	 */
@@ -546,23 +546,23 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 }
 /**
  * Метод закрытие подключения
- * @param fd файловый дескриптор (сокет)
+ * @param sock сетевой сокет
  */
-void awh::IfNet::close(const int32_t fd) const noexcept {
-	// Если файловый дескриптор подключён
-	if(fd != INVALID_SOCKET){
+void awh::IfNet::close(const int32_t sock) const noexcept {
+	// Если сетевой сокет подключён
+	if(sock != INVALID_SOCKET){
 		/**
 		 * Для операционной системы OS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
-			::closesocket(fd);
+			::closesocket(sock);
 		/**
 		 * Для операционной системы не являющейся OS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
-			::close(fd);
+			::close(sock);
 		#endif
 	}
 }
@@ -927,9 +927,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						return result;
 					}
 					// Выделяем сокет для подключения
-					const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
-					// Если файловый дескриптор не создан, выходим
-					if(fd == INVALID_SOCKET){
+					const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+					// Если сетевой сокет не создан, выходим
+					if(sock == INVALID_SOCKET){
 						// Выводим сообщение об ошибке
 						this->_log->print("Socket failed", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -964,7 +964,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 								// Копируем название сетевого интерфейса
 								::strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 								// Извлекаем аппаратный адрес сетевого интерфейса
-								if((found = (::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1)))
+								if((found = (::ioctl(sock, SIOCGIFHWADDR, &ifreq) != -1)))
 									// Копируем данные MAC-адреса
 									::memcpy(&mac, &ifreq.ifr_hwaddr, sizeof(mac));
 								// Выходим из цикла
@@ -979,7 +979,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 							// Копируем название сетевого интерфейса
 							::strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
 							// Подключаем сетевой интерфейс к сокету
-							if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
+							if(::ioctl(sock, SIOCGARP, &arpreq) == -1){
 								// Пропускаем если ошибка не значительная
 								if(AWH_ERROR() == ENXIO)
 									// Выполняем пропуск
@@ -1012,7 +1012,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						result = hardware;
 					}
 					// Закрываем сетевой сокет
-					this->close(fd);
+					this->close(sock);
 				} break;
 				// Если запрашиваемый адрес IPv6
 				case AF_INET6: {
@@ -1047,9 +1047,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						return result;
 					}
 					// Выделяем сокет для подключения
-					const SOCKET fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
-					// Если файловый дескриптор не создан, выходим
-					if(fd == INVALID_SOCKET){
+					const SOCKET sock = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
+					// Если сетевой сокет не создан, выходим
+					if(sock == INVALID_SOCKET){
 						// Выводим сообщение об ошибке
 						this->_log->print("Socket failed", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1086,7 +1086,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 							// Копируем название сетевого интерфейса
 							::strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 							// Извлекаем аппаратный адрес сетевого интерфейса
-							if(::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1){
+							if(::ioctl(sock, SIOCGIFHWADDR, &ifreq) != -1){
 								// Создаём объект MAC-адреса
 								struct sockaddr mac;
 								// Заполняем нулями структуру объекта MAC-адреса
@@ -1122,7 +1122,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Очищаем объект сетевой карты
 					::freeifaddrs(headIfa);
 					// Закрываем сетевой сокет
-					this->close(fd);
+					this->close(sock);
 				} break;
 			}
 		/**
@@ -1170,9 +1170,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						return result;
 					}
 					// Выделяем сокет для подключения
-					const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
-					// Если файловый дескриптор не создан, выходим
-					if(fd == INVALID_SOCKET){
+					const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+					// Если сетевой сокет не создан, выходим
+					if(sock == INVALID_SOCKET){
 						// Выводим сообщение об ошибке
 						this->_log->print("Socket failed", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1207,7 +1207,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 								// Копируем название сетевого интерфейса
 								::strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 								// Извлекаем аппаратный адрес сетевого интерфейса
-								if((found = (::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1)))
+								if((found = (::ioctl(sock, SIOCGIFHWADDR, &ifreq) != -1)))
 									// Копируем данные MAC-адреса
 									::memcpy(&mac, &ifreq.ifr_addr, sizeof(mac));
 								// Выходим из цикла
@@ -1220,7 +1220,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 							// Устанавливаем искомый IP-адрес
 							::memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 							// Подключаем сетевой интерфейс к сокету
-							if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
+							if(::ioctl(sock, SIOCGARP, &arpreq) == -1){
 								// Пропускаем если ошибка не значительная
 								if(AWH_ERROR() == ENXIO)
 									// Выполняем пропуск
@@ -1253,7 +1253,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						result = hardware;
 					}
 					// Закрываем сетевой сокет
-					this->close(fd);
+					this->close(sock);
 				} break;
 				// Если запрашиваемый адрес IPv6
 				case AF_INET6: {
@@ -1288,9 +1288,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 						return result;
 					}
 					// Выделяем сокет для подключения
-					const SOCKET fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
-					// Если файловый дескриптор не создан, выходим
-					if(fd == INVALID_SOCKET){
+					const SOCKET sock = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
+					// Если сетевой сокет не создан, выходим
+					if(sock == INVALID_SOCKET){
 						// Выводим сообщение об ошибке
 						this->_log->print("Socket failed", log_t::flag_t::WARNING);
 						// Выходим из функции
@@ -1327,7 +1327,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 							// Копируем название сетевого интерфейса
 							::strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 							// Извлекаем аппаратный адрес сетевого интерфейса
-							if(::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1){
+							if(::ioctl(sock, SIOCGIFHWADDR, &ifreq) != -1){
 								// Создаём объект MAC-адреса
 								struct sockaddr mac;
 								// Заполняем нулями структуру объекта MAC-адреса
@@ -1363,7 +1363,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Очищаем объект сетевой карты
 					::freeifaddrs(headIfa);
 					// Закрываем сетевой сокет
-					this->close(fd);
+					this->close(sock);
 				} break;
 			}
 		/**
@@ -1585,9 +1585,9 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 	// Результат рарботы функции
 	string result = "";
 	// Создаем сокет
-	const SOCKET fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+	const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если сокет создан
-	if(fd != INVALID_SOCKET){
+	if(sock != INVALID_SOCKET){
 		// Определяем тип интернет протокола
 		switch(family){
 			// Если это IPv4
@@ -1605,7 +1605,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 				// Указываем адрес DNS сервера
 				serv.sin_addr.s_addr = ::inet_addr(dns.front().c_str());
 				// Выполняем подключение к серверу
-				int32_t conn = ::connect(fd, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
+				int32_t conn = ::connect(sock, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
 				// Если подключение удачное
 				if(conn > -1){
 					// Создаем структуру имени
@@ -1613,7 +1613,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 					// Размер структуры
 					socklen_t size = sizeof(name);
 					// Запрашиваем имя сокета
-					conn = ::getsockname(fd, reinterpret_cast <sockaddr *> (&name), &size);
+					conn = ::getsockname(sock, reinterpret_cast <sockaddr *> (&name), &size);
 					// Если ошибки нет
 					if(conn > -1){
 						// Создаем буфер для получения ip адреса
@@ -1642,7 +1642,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 				// Указываем адреса
 				::inet_pton(family, dns.front().c_str(), &serv.sin6_addr);
 				// Выполняем подключение к серверу
-				int32_t conn = ::connect(fd, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
+				int32_t conn = ::connect(sock, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
 				// Если подключение удачное
 				if(conn > -1){
 					// Создаем структуру имени
@@ -1650,7 +1650,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 					// Размер структуры
 					socklen_t size = sizeof(name);
 					// Запрашиваем имя сокета
-					conn = ::getsockname(fd, reinterpret_cast <sockaddr *> (&name), &size);
+					conn = ::getsockname(sock, reinterpret_cast <sockaddr *> (&name), &size);
 					// Если ошибки нет
 					if(conn > -1){
 						// Создаем буфер для получения ip адреса
@@ -1666,7 +1666,7 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 			} break;
 		}
 		// Закрываем сетевой сокет
-		this->close(fd);
+		this->close(sock);
 	}
 	// Сообщаем что ничего не найдено
 	return result;

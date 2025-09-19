@@ -28,7 +28,8 @@ using namespace awh;
 using namespace placeholders;
 
 /**
- * Server Класс объекта исполнителя
+ * @brief Класс объекта исполнителя
+ *
  */
 class Server {
 	private:
@@ -38,7 +39,8 @@ class Server {
 		const log_t * _log;
 	public:
 		/**
-		 * accept Метод активации клиента на сервере
+		 * @brief Метод активации клиента на сервере
+		 *
 		 * @param ip   адрес интернет подключения
 		 * @param mac  аппаратный адрес подключения
 		 * @param port порт подключения
@@ -51,7 +53,8 @@ class Server {
 			return true;
 		}
 		/**
-		 * launched Метод получения события запуска сервера
+		 * @brief Метод получения события запуска сервера
+		 *
 		 * @param host хост запущенного сервера
 		 * @param port порт запущенного сервера
 		 */
@@ -60,7 +63,8 @@ class Server {
 			this->_log->print("Launched: HOST=%s, PORT=%d", log_t::flag_t::INFO, host.c_str(), port);
 		}
 		/**
-		 * active Метод идентификации активности на сервере
+		 * @brief Метод идентификации активности на сервере
+		 *
 		 * @param bid  идентификатор брокера
 		 * @param mode режим события подключения
 		 */
@@ -69,7 +73,8 @@ class Server {
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
-		 * message Метод получения сообщений
+		 * @brief Метод получения сообщений
+		 *
 		 * @param bid    идентификатор брокера
 		 * @param buffer буфер входящих данных
 		 * @param sample объект активного сервера
@@ -82,7 +87,8 @@ class Server {
 		}
 	public:
 		/**
-		 * Server Конструктор
+		 * @brief Конструктор
+		 *
 		 * @param fmk объект фреймворка
 		 * @param log объект логирования
 		 */
@@ -90,7 +96,8 @@ class Server {
 };
 
 /**
- * main Главная функция приложения
+ * @brief Главная функция приложения
+ *
  * @param argc длина массива параметров
  * @param argv массив параметров
  * @return     код выхода из приложения

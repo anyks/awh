@@ -70,7 +70,8 @@
 #include "global.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -78,23 +79,27 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Investigator Класс работы с дознователем
+	 * @brief Класс работы с дознователем
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Investigator {
 		public:
 			/**
-			 * inquiry Метод проведения дознания
+			 * @brief Метод проведения дознания
+			 *
 			 * @param pid идентификатор процесса
 			 * @return    название приложения которому принадлежит процесс
 			 */
 			string inquiry(const pid_t pid = ::getpid()) const noexcept;
 		public:
 			/**
-			 * Investigator Конструктор
+			 * @brief Конструктор
+			 *
 			 */
 			Investigator() noexcept {}
 			/**
-			 * ~Investigator Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Investigator() noexcept {}
 	} igtr_t;

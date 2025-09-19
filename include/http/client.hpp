@@ -22,7 +22,8 @@
 #include "../auth/client.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -30,52 +31,61 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * client клиентское пространство имён
+	 * @brief клиентское пространство имён
+	 *
 	 */
 	namespace client {
 		/**
-		 * Http Класс для работы с REST клиентом
+		 * @brief Класс для работы с REST клиентом
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Http : public awh::http_t {
 			private:
 				/**
-				 * status Метод проверки текущего статуса
+				 * @brief Метод проверки текущего статуса
+				 *
 				 * @return результат проверки текущего статуса
 				 */
 				status_t status() noexcept;
 			public:
 				/**
-				 * dataAuth Метод извлечения данных авторизации
+				 * @brief Метод извлечения данных авторизации
+				 *
 				 * @return данные модуля авторизации
 				 */
 				client::auth_t::data_t dataAuth() const noexcept;
 				/**
-				 * dataAuth Метод установки данных авторизации
+				 * @brief Метод установки данных авторизации
+				 *
 				 * @param data данные авторизации для установки
 				 */
 				void dataAuth(const client::auth_t::data_t & data) noexcept;
 			public:
 				/**
-				 * user Метод установки параметров авторизации
+				 * @brief Метод установки параметров авторизации
+				 *
 				 * @param user логин пользователя для авторизации на сервере
 				 * @param pass пароль пользователя для авторизации на сервере
 				 */
 				void user(const string & user, const string & pass) noexcept;
 				/**
-				 * authType Метод установки типа авторизации
+				 * @brief Метод установки типа авторизации
+				 *
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest авторизации
 				 */
 				void authType(const awh::auth_t::type_t type = awh::auth_t::type_t::BASIC, const awh::auth_t::hash_t hash = awh::auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * Http Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
 				Http(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Http Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Http() noexcept {}
 		} http_t;

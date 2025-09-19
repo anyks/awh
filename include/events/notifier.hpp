@@ -26,17 +26,13 @@
 #endif
 
 /**
- * Стандартные модули
- */
-#include <array>
-
-/**
  * Наши модули
  */
 #include "../net/socket.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -44,7 +40,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * Notifier Класс уведомителя событий
+	 * @brief Класс уведомителя событий
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT Notifier {
 		private:
@@ -87,36 +84,42 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * reset Метод сброса уведомителя
+			 * @brief Метод сброса уведомителя
+			 *
 			 */
 			void reset() noexcept;
 		public:
 			/**
-			 * init Метод инициализации уведомителя
+			 * @brief Метод инициализации уведомителя
+			 *
 			 * @return содержимое сокета для извлечения
 			 */
-			std::array <SOCKET, 2> init() noexcept;
+			SOCKET init() noexcept;
 		public:
 			/**
-			 * event Метод извлечения идентификатора события
+			 * @brief Метод извлечения идентификатора события
+			 *
 			 * @return идентификатор события
 			 */
 			uint64_t event() noexcept;
 		public:
 			/**
-			 * notify Метод отправки уведомления
+			 * @brief Метод отправки уведомления
+			 *
 			 * @param id идентификатор для отправки
 			 */
 			void notify(const uint64_t id) noexcept;
 		public:
 			/**
-			 * Notifier Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			Notifier(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Notifier Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Notifier() noexcept;
 	} notifier_t;

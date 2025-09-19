@@ -131,10 +131,10 @@ void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
 }
 /**
  * callback Метод вызова при получении события сокета
- * @param fd    файловый дескриптор (сокет)
+ * @param sock  сетевой сокет
  * @param event произошедшее событие
  */
-void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET fd, const base_t::event_type_t event) noexcept {
+void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET sock, const base_t::event_type_t event) noexcept {
 	// Определяем тип события
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие закрытие подключения
@@ -180,7 +180,7 @@ void awh::Scheme::Broker::start() noexcept {
 	// Устанавливаем базу данных событий
 	this->_event = this->_base;
 	// Устанавливаем тип события
-	this->_event = this->addr.fd;
+	this->_event = this->addr.sock;
 	// Устанавливаем функцию обратного вызова
 	this->_event = std::bind(static_cast <void (awh::scheme_t::broker_t::*)(const SOCKET, const base_t::event_type_t)> (&awh::scheme_t::broker_t::callback), this, _1, _2);
 	// Выполняем запуск работы события
@@ -195,7 +195,7 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если сокет подключения активен и база событий установлена и активна
-	if((this->addr.fd != INVALID_SOCKET) && (this->addr.fd < AWH_MAX_SOCKETS) && (this->_base != nullptr)){
+	if((this->addr.sock != INVALID_SOCKET) && (this->_base != nullptr)){
 		// Определяем метод события сокета
 		switch(static_cast <uint8_t> (method)){
 			// Если передано событие подписки на чтение
@@ -333,7 +333,7 @@ SOCKET awh::Scheme::socket(const uint64_t bid) const noexcept {
 		// Если брокер найден, выводим
 		if(i != this->_brokers.end())
 			// Выводим полученный сокет
-			return i->second->addr.fd;
+			return i->second->addr.sock;
 	}
 	// Выводим результат
 	return result;

@@ -28,7 +28,8 @@
 #include "global.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -41,7 +42,8 @@ namespace awh {
 	 */
 	template <typename T>
 	/**
-	 * Holder Класс холдера
+	 * @brief Класс холдера
+	 *
 	 */
 	class Holder {
 		private:
@@ -55,7 +57,8 @@ namespace awh {
 			std::stack <T> & _status;
 		public:
 			/**
-			 * access Метод проверки на разрешение выполнения операции
+			 * @brief Метод проверки на разрешение выполнения операции
+			 *
 			 * @param comp  статус сравнения
 			 * @param hold  статус установки
 			 * @param equal флаг эквивалентности
@@ -80,12 +83,14 @@ namespace awh {
 			}
 		public:
 			/**
-			 * Holder Конструктор
+			 * @brief Конструктор
+			 *
 			 * @param status объект статуса работы DNS-резолвера
 			 */
 			Holder(std::stack <T> & status) noexcept : _flag(false), _status(status) {}
 			/**
-			 * ~Holder Деструктор
+			 * @brief Деструктор
+			 *
 			 */
 			~Holder() noexcept {
 				// Если холдирование выполнено
@@ -98,11 +103,14 @@ namespace awh {
 			}
 	};
 	/**
-	 * Шаблон формата данных статусов холдера
+	 * @brief Шаблон формата данных статусов холдера
+	 *
 	 * @tclass T данные статусов холдера
 	 */
 	template <class T>
-	// Создаём тип данных работы с холдером
+	/**
+	 * Создаём тип данных работы с холдером
+	 */
 	using hold_t = Holder <T>;
 };
 

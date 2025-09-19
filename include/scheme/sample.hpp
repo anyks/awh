@@ -28,7 +28,8 @@
 #include "../http/server.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -36,32 +37,38 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * server серверное пространство имён
+	 * @brief серверное пространство имён
+	 *
 	 */
 	namespace server {
 		/**
-		 * scheme серверное пространство имён
+		 * @brief серверное пространство имён
+		 *
 		 */
 		namespace scheme {
 			/**
-			 * Sample Структура схемы сети SAMPLE сервера
+			 * @brief Структура схемы сети SAMPLE сервера
+			 *
 			 */
 			typedef struct AWHSHARED_EXPORT Sample : public scheme_t {
 				public:
 					/**
-					 * Allow Структура флагов разрешения обменом данных
+					 * @brief Структура флагов разрешения обменом данных
+					 *
 					 */
 					typedef struct Allow {
 						bool send;    // Флаг разрешения отправки данных
 						bool receive; // Флаг разрешения чтения данных
 						/**
-						 * Allow Конструктор
+						 * @brief Конструктор
+						 *
 						 */
 						Allow() noexcept : send(true), receive(true) {}
 					} allow_t;
 				public:
 					/**
-					 * Options Структура опций активного клиента
+					 * @brief Структура опций активного клиента
+					 *
 					 */
 					typedef struct Options {
 						bool alive;    // Флаг долгоживущего подключения
@@ -70,14 +77,16 @@ namespace awh {
 						allow_t allow; // Объект разрешения обмена данными
 						/**
 						/**
-						 * Options Конструктор
+						 * @brief Конструктор
+						 *
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
 						Options(const fmk_t * fmk, const log_t * log) noexcept :
 						 alive(false), close(false), stopped(false) {}
 						/**
-						 * ~Options Деструктор
+						 * @brief Деструктор
+						 *
 						 */
 						~Options() noexcept {}
 					} options_t;
@@ -96,42 +105,49 @@ namespace awh {
 					const log_t * _log;
 				public:
 					/**
-					 * clear Метод очистки
+					 * @brief Метод очистки
+					 *
 					 */
 					void clear() noexcept;
 				public:
 					/**
-					 * set Метод создания параметров активного клиента
+					 * @brief Метод создания параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void set(const uint64_t bid) noexcept;
 					/**
-					 * rm Метод удаления параметров активного клиента
+					 * @brief Метод удаления параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 */
 					void rm(const uint64_t bid) noexcept;
 				public:
 					/**
-					 * get Метод извлечения списка параметров активных клиентов
+					 * @brief Метод извлечения списка параметров активных клиентов
+					 *
 					 * @return список параметров активных клиентов
 					 */
 					const clients_t & get() const noexcept;
 					/**
-					 * get Метод получения параметров активного клиента
+					 * @brief Метод получения параметров активного клиента
+					 *
 					 * @param bid идентификатор брокера
 					 * @return    параметры активного клиента
 					 */
 					const options_t * get(const uint64_t bid) const noexcept;
 				public:
 					/**
-					 * Sample Конструктор
+					 * @brief Конструктор
+					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Sample(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
-					 * ~Sample Деструктор
+					 * @brief Деструктор
+					 *
 					 */
 					~Sample() noexcept {}
 			} sample_t;

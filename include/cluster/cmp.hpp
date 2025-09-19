@@ -34,7 +34,8 @@
 #include "../sys/buffer.hpp"
 
 /**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -42,7 +43,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * cmp пространство имён Cluster Message Protocol (CMP)
+	 * @brief пространство имён Cluster Message Protocol (CMP)
+	 *
 	 */
 	namespace cmp {
 		/**
@@ -50,7 +52,8 @@ namespace awh {
 		 */
 		static constexpr size_t CHUNK_SIZE = 0x1000;
 		/**
-		 * Header Структура работы с заголовком буфера данных
+		 * @brief Структура работы с заголовком буфера данных
+		 *
 		 */
 		typedef struct AWHSHARED_EXPORT Header {
 			// Идентификатор процесса
@@ -66,12 +69,14 @@ namespace awh {
 			// Метод компрессии
 			hash_t::method_t method;
 			/**
-			 * Header Конструктор
+			 * @brief Конструктор
+			 *
 			 */
 			Header() noexcept;
 		} __attribute__((packed)) header_t;
 		/**
-		 * Encoder Класс для работы с протоколом передачи данных
+		 * @brief Класс для работы с протоколом передачи данных
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Encoder {
 			private:
@@ -97,76 +102,89 @@ namespace awh {
 				const log_t * _log;
 			private:
 				/**
-				 * work Метод формирования новой записи
+				 * @brief Метод формирования новой записи
+				 *
 				 * @param buffer буфер данных для добавления
 				 * @param size   размер буфера данных
 				 */
 				void work(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * empty Метод проверки на пустоту контейнера
+				 * @brief Метод проверки на пустоту контейнера
+				 *
 				 * @return результат проверки
 				 */
 				bool empty() const noexcept;
 			public:
 				/**
-				 * size Метод получения размера бинарных данных буфера
+				 * @brief Метод получения размера бинарных данных буфера
+				 *
 				 * @return размер бинарных данных буфера
 				 */
 				size_t size() const noexcept;
 			public:
 				/**
-				 * clear Метод очистки данных
+				 * @brief Метод очистки данных
+				 *
 				 */
 				void clear() noexcept;
 			public:
 				/**
-				 * data Метод получения бинарных данных буфера
+				 * @brief Метод получения бинарных данных буфера
+				 *
 				 * @return бинарные данные буфера
 				 */
 				const void * data() const noexcept;
 			public:
 				/**
-				 * erase Метод удаления количества первых байт буфера
+				 * @brief Метод удаления количества первых байт буфера
+				 *
 				 * @param size размер данных для удаления
 				 */
 				void erase(const size_t size) noexcept;
 			public:
 				/**
-				 * chunkSize Метод извлечения размера установленного чанка
+				 * @brief Метод извлечения размера установленного чанка
+				 *
 				 * @return размер установленного чанка
 				 */
 				size_t chunkSize() const noexcept;
 				/**
-				 * chunkSize Метод установки максимального размера одного блока
+				 * @brief Метод установки максимального размера одного блока
+				 *
 				 * @param size размер блока данных
 				 */
 				void chunkSize(const size_t size) noexcept;
 			public:
 				/**
-				 * salt Метод установки соли шифрования
+				 * @brief Метод установки соли шифрования
+				 *
 				 * @param salt соль для шифрования
 				 */
 				void salt(const string & salt) noexcept;
 				/**
-				 * password Метод установки пароля шифрования
+				 * @brief Метод установки пароля шифрования
+				 *
 				 * @param password пароль шифрования
 				 */
 				void password(const string & password) noexcept;
 			public:
 				/**
-				 * cipher Метод установки размера шифрования
+				 * @brief Метод установки размера шифрования
+				 *
 				 * @param cipher размер шифрования
 				 */
 				void cipher(const hash_t::cipher_t cipher) noexcept;
 				/**
-				 * method Метод установки метода компрессии
+				 * @brief Метод установки метода компрессии
+				 *
 				 * @param method метод компрессии для установки
 				 */
 				void method(const hash_t::method_t method) noexcept;
 			public:
 				/**
-				 * push Метод добавления новой записи в протокол
+				 * @brief Метод добавления новой записи в протокол
+				 *
 				 * @param mid    идентификатор сообщения
 				 * @param buffer буфер данных для добавления
 				 * @param size   размер буфера данных
@@ -174,30 +192,35 @@ namespace awh {
 				void push(const uint8_t mid, const void * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * Оператор проверки на доступность данных в контейнере
+				 * @brief Оператор проверки на доступность данных в контейнере
+				 *
 				 * @return результат проверки
 				 */
 				operator bool() const noexcept;
 				/**
-				 * Оператор определения размера бинарных данных буфера
+				 * @brief Оператор определения размера бинарных данных буфера
+				 *
 				 * @return размер бинарных данных буфера
 				 */
 				operator size_t() const noexcept;
 				/**
-				 * Оператор получения бинарных данных буфера
+				 * @brief Оператор получения бинарных данных буфера
+				 *
 				 * @return бинарные данные буфера
 				 */
 				operator const void * () const noexcept;
 			public:
 				/**
-				 * Оператор [=] установки максимального размера одного блока
+				 * @brief Оператор [=] установки максимального размера одного блока
+				 *
 				 * @param size размер блока данных
 				 * @return     текущий объект протокола
 				 */
 				Encoder & operator = (const size_t size) noexcept;
 			public:
 				/**
-				 * Encoder Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param log объект для работы с логами
 				 */
 				Encoder(const log_t * log) noexcept :
@@ -206,24 +229,28 @@ namespace awh {
 				 _cipher(hash_t::cipher_t::NONE),
 				 _method(hash_t::method_t::NONE), _log(log) {}
 				/**
-				 * ~Encoder Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Encoder() noexcept {}
 		} encoder_t;
 		/**
-		 * Decoder Класс для работы с протоколом получения данных
+		 * @brief Класс для работы с протоколом получения данных
+		 *
 		 */
 		typedef class AWHSHARED_EXPORT Decoder {
 			public:
 				/**
-				 * Message Структура сообщения
+				 * @brief Структура сообщения
+				 *
 				 */
 				typedef struct Message {
 					uint8_t mid;         // Идентификатор сообщения
 					size_t size;         // Размер извлекаемого сообщения
 					const char * buffer; // данные сообщения
 					/**
-					 * Message Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Message() noexcept :
 					 mid(0), size(0), buffer(nullptr) {}
@@ -254,55 +281,64 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
-				 * pop Метод удаления первой записи протокола
+				 * @brief Метод удаления первой записи протокола
+				 *
 				 */
 				void pop() noexcept;
 			public:
 				/**
-				 * clear Метод очистки данных
+				 * @brief Метод очистки данных
+				 *
 				 */
 				void clear() noexcept;
 			public:
 				/**
-				 * pid Метод извлечения идентификатора процесса от которого пришло сообщение
+				 * @brief Метод извлечения идентификатора процесса от которого пришло сообщение
+				 *
 				 * @return идентификатор процесса
 				 */
 				pid_t pid() const noexcept;
 			public:
 				/**
-				 * empty Метод проверки на пустоту контейнера
+				 * @brief Метод проверки на пустоту контейнера
+				 *
 				 * @return результат проверки
 				 */
 				bool empty() const noexcept;
 			public:
 				/**
-				 * size Метод получения количества подготовленных буферов
+				 * @brief Метод получения количества подготовленных буферов
+				 *
 				 * @return количество подготовленных буферов
 				 */
 				size_t size() const noexcept;
 			public:
 				/**
-				 * get Метод получения сообщения
+				 * @brief Метод получения сообщения
+				 *
 				 * @return объект данных сообщения
 				 */
 				message_t get() const noexcept;
 			public:
 				/**
-				 * push Метод добавления новой записи в протокол
+				 * @brief Метод добавления новой записи в протокол
+				 *
 				 * @param buffer буфер данных для добавления
 				 * @param size   размер буфера данных
 				 */
 				void push(const void * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * process Метод извлечения данных из полученного буфера
+				 * @brief Метод извлечения данных из полученного буфера
+				 *
 				 * @param buffer буфер данных для препарирования
 				 * @param size   размер буфера данных для препарирования
 				 * @return       количество обработанных байт
 				 */
 				size_t process(const void * buffer, const size_t size) noexcept;
 				/**
-				 * prepare Метод препарирования полученных данных
+				 * @brief Метод препарирования полученных данных
+				 *
 				 * @param buffer буфер данных для препарирования
 				 * @param size   размер буфера данных для препарирования
 				 * @return       количество обработанных байт
@@ -310,54 +346,63 @@ namespace awh {
 				size_t prepare(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * chunkSize Метод извлечения размера установленного чанка
+				 * @brief Метод извлечения размера установленного чанка
+				 *
 				 * @return размер установленного чанка
 				 */
 				size_t chunkSize() const noexcept;
 				/**
-				 * chunkSize Метод установки максимального размера одного блока
+				 * @brief Метод установки максимального размера одного блока
+				 *
 				 * @param size размер блока данных
 				 */
 				void chunkSize(const size_t size) noexcept;
 			public:
 				/**
-				 * salt Метод установки соли шифрования
+				 * @brief Метод установки соли шифрования
+				 *
 				 * @param salt соль для шифрования
 				 */
 				void salt(const string & salt) noexcept;
 				/**
-				 * password Метод установки пароля шифрования
+				 * @brief Метод установки пароля шифрования
+				 *
 				 * @param password пароль шифрования
 				 */
 				void password(const string & password) noexcept;
 			public:
 				/**
-				 * Оператор проверки на доступность данных в контейнере
+				 * @brief Оператор проверки на доступность данных в контейнере
+				 *
 				 * @return результат проверки
 				 */
 				operator bool() const noexcept;
 				/**
-				 * Оператор получения количества записей
+				 * @brief Оператор получения количества записей
+				 *
 				 * @return количество записей в протоколе
 				 */
 				operator size_t() const noexcept;
 			public:
 				/**
-				 * Оператор [=] установки максимального размера одного блока
+				 * @brief Оператор [=] установки максимального размера одного блока
+				 *
 				 * @param size размер блока данных
 				 * @return     текущий объект протокола
 				 */
 				Decoder & operator = (const size_t size) noexcept;
 			public:
 				/**
-				 * Decoder Конструктор
+				 * @brief Конструктор
+				 *
 				 * @param log объект для работы с логами
 				 */
 				Decoder(const log_t * log) noexcept :
 				 _pid(0), _hash(log), _queue(log), _buffer(log),
 				 _chunkSize(CHUNK_SIZE), _tmp(2), _log(log) {}
 				/**
-				 * ~Encoder Деструктор
+				 * @brief Деструктор
+				 *
 				 */
 				~Decoder() noexcept {}
 		} decoder_t;

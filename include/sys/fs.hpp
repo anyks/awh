@@ -16,12 +16,23 @@
 #define __AWH_FS__
 
 /**
+ * Наши модули
+ */
+#include "os.hpp"
+#include "fmk.hpp"
+#include "log.hpp"
+
+/**
  * Для операционной системы OS Windows
  */
 #if _WIN32 || _WIN64
-	#include <windows.h>
+	/**
+	 * Подключаем стандартные модули
+	 */
 	#include <objbase.h>
 	#include <shlobj.h>
+	#include <tchar.h>
+	#include <strsafe.h>
 #endif
 
 /**
@@ -44,6 +55,9 @@
  * Если это clang v10 или выше
  */
 #if __AWH_EXPERIMENTAL__
+	/**
+	 * Подключаем стандартные модули
+	 */
 	#include <filesystem>
 #endif
 
@@ -51,12 +65,18 @@
  * Для операционной системы OS Windows
  */
 #if _WIN32 || _WIN64
+	/**
+	 * Подключаем стандартные модули
+	 */
 	#include <conio.h>
 	#include <direct.h>
 /**
  * Для операционной системы не являющейся OS Windows
  */
 #else
+	/**
+	 * Подключаем стандартные модули
+	 */
 	#include <sys/mman.h>
 #endif
 
@@ -64,26 +84,15 @@
  * Если операционной системой является MacOS X
  */
 #if __APPLE__ || __MACH__
+	/**
+	 * Подключаем стандартные модули
+	 */
 	#include <Carbon/Carbon.h>
 #endif
 
 /**
- * Наши модули
- */
-#include "os.hpp"
-#include "fmk.hpp"
-#include "log.hpp"
-
-/**
- * Для операционной системы OS Windows
- */
-#if _WIN32 || _WIN64
-	#include <tchar.h>
-	#include <strsafe.h>
-#endif
-
-/**
- * awh пространство имён
+ * @brief пространство имён
+ *
  */
 namespace awh {
 	/**
@@ -91,7 +100,8 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * FS Класс модуля работы с файловой системой
+	 * @brief Класс модуля работы с файловой системой
+	 *
 	 */
 	typedef class AWHSHARED_EXPORT FS {
 		public:
@@ -121,39 +131,45 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * message Метод получения текста описания ошибки
+			 * @brief Метод получения текста описания ошибки
+			 *
 			 * @param code код ошибки для получения сообщения
 			 * @return     текст сообщения описания кода ошибки
 			 */
 			string message(const int32_t code = 0) const noexcept;
 		public:
 			/**
-			 * isDir Метод проверяющий существование дирректории
+			 * @brief Метод проверяющий существование дирректории
+			 *
 			 * @param addr адрес дирректории
 			 * @return     результат проверки
 			 */
 			bool isDir(const string & addr) const noexcept;
 			/**
-			 * isFile Метод проверяющий существование файла
+			 * @brief Метод проверяющий существование файла
+			 *
 			 * @param addr адрес файла
 			 * @return     результат проверки
 			 */
 			bool isFile(const string & addr) const noexcept;
 			/**
-			 * isSock Метод проверки существования сокета
+			 * @brief Метод проверки существования сокета
+			 *
 			 * @param addr адрес сокета
 			 * @return     результат проверки
 			 */
 			bool isSock(const string & addr) const noexcept;
 			/**
-			 * isLink Метод проверки существования сокета
+			 * @brief Метод проверки существования сокета
+			 *
 			 * @param addr адрес сокета
 			 * @return     результат проверки
 			 */
 			bool isLink(const string & addr) const noexcept;
 		public:
 			/**
-			 * type Метод определяющая тип файловой системы по адресу
+			 * @brief Метод определяющая тип файловой системы по адресу
+			 *
 			 * @param addr   адрес дирректории
 			 * @param actual флаг формирования актуальных адресов
 			 * @return       тип файловой системы
@@ -161,7 +177,8 @@ namespace awh {
 			type_t type(const string & addr, const bool actual = true) const noexcept;
 		public:
 			/**
-			 * realPath Метод извлечения реального адреса
+			 * @brief Метод извлечения реального адреса
+			 *
 			 * @param path   путь который нужно определить
 			 * @param actual флаг формирования актуальных адресов
 			 * @return       полный путь
@@ -169,7 +186,8 @@ namespace awh {
 			string realPath(const string & path, const bool actual = true) const noexcept;
 		public:
 			/**
-			 * delPath Метод удаления полного пути
+			 * @brief Метод удаления полного пути
+			 *
 			 * @param path   полный путь для удаления
 			 * @param actual флаг формирования актуальных адресов
 			 * @return       количество дочерних элементов
@@ -177,25 +195,29 @@ namespace awh {
 			int32_t delPath(const string & path, const bool actual = true) const noexcept;
 		public:
 			/**
-			 * symLink Метод создания символьной ссылки
+			 * @brief Метод создания символьной ссылки
+			 *
 			 * @param addr1 адрес на который нужно сделать ссылку
 			 * @param addr2 адрес где должна быть создана ссылка
 			 */
 			void symLink(const string & addr1, const string & addr2) const noexcept;
 			/**
-			 * hardLink Метод создания жёстких ссылок
+			 * @brief Метод создания жёстких ссылок
+			 *
 			 * @param addr1 адрес на который нужно сделать ссылку
 			 * @param addr2 адрес где должна быть создана ссылка
 			 */
 			void hardLink(const string & addr1, const string & addr2) const noexcept;
 		public:
 			/**
-			 * makePath Метод рекурсивного создания пути
+			 * @brief Метод рекурсивного создания пути
+			 *
 			 * @param path полный путь для создания
 			 */
 			void makePath(const string & path) const noexcept;
 			/**
-			 * makeDir Метод создания каталога для хранения логов
+			 * @brief Метод создания каталога для хранения логов
+			 *
 			 * @param path  адрес для каталога
 			 * @param user  данные пользователя
 			 * @param group идентификатор группы
@@ -204,7 +226,8 @@ namespace awh {
 			bool makeDir(const string & path, const string & user, const string & group) const noexcept;
 		public:
 			/**
-			 * components Метод извлечения названия и расширения файла
+			 * @brief Метод извлечения названия и расширения файла
+			 *
 			 * @param addr   адрес файла для извлечения его параметров
 			 * @param actual флаг формирования актуальных адресов
 			 * @param before флаг определения первой точки расширения слева
@@ -212,13 +235,15 @@ namespace awh {
 			pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
 		public:
 			/**
-			 * chmod Метод получения прав доступа к файлу или каталогу
+			 * @brief Метод получения прав доступа к файлу или каталогу
+			 *
 			 * @param path полный путь к файлу или каталогу
 			 * @return     запрашиваемые метаданные
 			 */
 			mode_t chmod(const string & path) const noexcept;
 			/**
-			 * chmod Метод изменения прав доступа к файлу или каталогу
+			 * @brief Метод изменения прав доступа к файлу или каталогу
+			 *
 			 * @param path полный путь к файлу или каталогу
 			 * @param mode метаданные для установки
 			 * @return     результат работы функции
@@ -230,7 +255,8 @@ namespace awh {
 			 */
 			#if !_WIN32 && !_WIN64
 				/**
-				 * chown Метод установки владельца на файл или каталог
+				 * @brief Метод установки владельца на файл или каталог
+				 *
 				 * @param path  путь к файлу или каталогу для установки владельца
 				 * @param user  данные пользователя
 				 * @param group идентификатор группы
@@ -242,7 +268,8 @@ namespace awh {
 			 */
 			#else
 				/**
-				 * seek Метод установки позиции в файле
+				 * @brief Метод установки позиции в файле
+				 *
 				 * @param file     объект открытого файла
 				 * @param distance дистанцию на которую нужно переместить позицию
 				 * @param position текущая позиция в файле
@@ -252,7 +279,8 @@ namespace awh {
 			#endif
 		public:
 			/**
-			 * size Метод подсчёта размера файла/каталога
+			 * @brief Метод подсчёта размера файла/каталога
+			 *
 			 * @param path полный путь для подсчёта размера
 			 * @param ext  расширение файла если требуется фильтрация
 			 * @param rec  флаг рекурсивного перебора каталогов
@@ -260,7 +288,8 @@ namespace awh {
 			 */
 			uintmax_t size(const string & path, const string & ext = "", const bool rec = true) const noexcept;
 			/**
-			 * count Метод подсчёта количество файлов в каталоге
+			 * @brief Метод подсчёта количество файлов в каталоге
+			 *
 			 * @param path путь для подсчёта
 			 * @param ext  расширение файла если требуется фильтрация
 			 * @param rec  флаг рекурсивного перебора каталогов
@@ -269,21 +298,24 @@ namespace awh {
 			uintmax_t count(const string & path, const string & ext = "", const bool rec = true) const noexcept;
 		public:
 			/**
-			 * read Метод чтения данных из файла
+			 * @brief Метод чтения данных из файла
+			 *
 			 * @param filename адрес файла для чтения
 			 * @return         бинарный буфер с прочитанными данными
 			 */
 			vector <char> read(const string & filename) const noexcept;
 		public:
 			/**
-			 * write Метод записи в файл бинарных данных
+			 * @brief Метод записи в файл бинарных данных
+			 *
 			 * @param filename адрес файла в который необходимо выполнить запись
 			 * @param buffer   бинарный буфер который необходимо записать в файл
 			 * @param size     размер бинарного буфера для записи в файл
 			 */
 			void write(const string & filename, const char * buffer, const size_t size) const noexcept;
 			/**
-			 * append Метод добавления в файл бинарных данных
+			 * @brief Метод добавления в файл бинарных данных
+			 *
 			 * @param filename адрес файла в который необходимо выполнить запись
 			 * @param buffer   бинарный буфер который необходимо записать в файл
 			 * @param size     размер бинарного буфера для записи в файл
@@ -291,26 +323,30 @@ namespace awh {
 			void append(const string & filename, const char * buffer, const size_t size) const noexcept;
 		public:
 			/**
-			 * readFile Метод рекурсивного получения всех строк файла
+			 * @brief Метод рекурсивного получения всех строк файла
+			 *
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
 			 */
 			void readFile(const string & filename, function <void (const string &)> callback) const noexcept;
 			/**
-			 * readFile2 Метод рекурсивного получения всех строк файла (стандартным способом)
+			 * @brief Метод рекурсивного получения всех строк файла (стандартным способом)
+			 *
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
 			 */
 			void readFile2(const string & filename, function <void (const string &)> callback) const noexcept;
 			/**
-			 * readFile3 Метод рекурсивного получения всех строк файла (построчным методом)
+			 * @brief Метод рекурсивного получения всех строк файла (построчным методом)
+			 *
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
 			 */
 			void readFile3(const string & filename, function <void (const string &)> callback) const noexcept;
 		public:
 			/**
-			 * readDir Метод рекурсивного получения файлов во всех подкаталогах
+			 * @brief Метод рекурсивного получения файлов во всех подкаталогах
+			 *
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
 			 * @param rec      флаг рекурсивного перебора каталогов
@@ -319,7 +355,8 @@ namespace awh {
 			 */
 			void readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback, const bool actual = true) const noexcept;
 			/**
-			 * readPath Метод рекурсивного чтения файлов во всех подкаталогах
+			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах
+			 *
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
 			 * @param rec      флаг рекурсивного перебора каталогов
@@ -329,13 +366,15 @@ namespace awh {
 			void readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback, const bool actual = true) const noexcept;
 		public:
 			/**
-			 * FS конструктор
+			 * @brief конструктор
+			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
 			FS(const fmk_t * fmk, const log_t * log) noexcept : _pid(::getpid()), _fmk(fmk), _log(log) {}
 			/**
-			 * ~FS деструктор
+			 * @brief деструктор
+			 *
 			 */
 			~FS() noexcept {}
 	} fs_t;
