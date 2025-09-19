@@ -4210,7 +4210,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 				/**
 				 * Выполняем подключение UTF-8 в консоли
 				 */
-				InitAWHConsoleUTF8();
+				::InitAWHConsoleUTF8();
 			#endif
 		/**
 		 * Если возникает ошибка
