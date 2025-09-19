@@ -410,7 +410,7 @@ pair <string, string> awh::Log::components(const string & filename) const noexce
 		// Позиция разделителя каталога
 		size_t pos1 = 0, pos2 = 0;
 		// Выполняем поиск разделителя каталога
-		if((pos1 = filename.rfind(FS_SEPARATOR, filename.length() - 1)) != string::npos){
+		if((pos1 = filename.rfind(AWH_FS_SEPARATOR, filename.length() - 1)) != string::npos){
 			// Ищем расширение файла
 			if((pos2 = filename.find('.', pos1 + 1)) != string::npos){
 				// Устанавливаем адрес файла где хранится файл

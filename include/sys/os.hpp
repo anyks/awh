@@ -45,12 +45,6 @@
  */
 #if _WIN32 || _WIN64
 	/**
-	 * Удаляем устаревшие API
-	 */
-	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-	#endif
-	/**
 	 * Подключаем основные заголовочные файлы
 	 */
 	#include <windows.h>
@@ -61,24 +55,69 @@
 	 */
 	#define AWH_ERROR() (WSAGetLastError())
 	/**
-	 * Заменяем типы данных
-	 */
-	#define uid_t uint16_t       // unsigned short
-	#define gid_t uint16_t       // unsigned short
-	#define u_char unsigned char // unsigned char
-	/**
-	 * Заменяем вызов функции
-	 */
-	#define getpid _getpid
-	#define getppid GetCurrentProcessId
-	/**
 	 * Файловый разделитель Windows
 	 */
-	#define FS_SEPARATOR "\\"
+	#define AWH_FS_SEPARATOR "\\"
 	/**
-	 * Устанавливаем кодировку UTF-8
+	 * Устанавливаем тип данных uid_t
 	 */
-	#pragma execution_character_set("utf-8")
+	#ifndef uid_t
+		#define uid_t uint16_t
+	#endif
+	/**
+	 * Устанавливаем тип данных gid_t
+	 */
+	#ifndef gid_t
+		#define gid_t uint16_t
+	#endif
+	/**
+	 * Устанавливаем тип данных u_char
+	 */
+	#ifndef u_char
+		#define u_char unsigned char
+	#endif
+	/**
+	 * Устанавливаем функцию getpid
+	 */
+	#ifndef getpid
+		#define getpid _getpid
+	#endif
+	/**
+	 * Устанавливаем функцию getppid
+	 */
+	#ifndef getppid
+		#define getppid GetCurrentProcessId
+	#endif
+	/**
+	 * Только для MSVC (MinGW игнорирует или предупреждает)
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Устанавливаем кодировку UTF-8
+		 */
+		#pragma execution_character_set("utf-8")
+	/**
+	 * Для компилятора MinGW
+	 */
+	#else
+		// Параметры устанавливаемого шрифта
+		CONSOLE_FONT_INFOEX lpConsoleCurrentFontEx;
+		// Формируем параметры шрифта
+		lpConsoleCurrentFontEx.nFont        = 1;
+		lpConsoleCurrentFontEx.dwFontSize.X = 7;
+		lpConsoleCurrentFontEx.dwFontSize.Y = 12;
+		lpConsoleCurrentFontEx.FontWeight   = 500;
+		lpConsoleCurrentFontEx.FontFamily   = FF_DONTCARE;
+		lpConsoleCurrentFontEx.cbSize       = sizeof(CONSOLE_FONT_INFOEX);
+		// Выполняем установку шрифта Lucida Console
+		::lstrcpyW(lpConsoleCurrentFontEx.FaceName, L"Lucida Console");
+		// Выполняем установку шрифта консоли
+		::SetCurrentConsoleFontEx(::GetStdHandle(STD_OUTPUT_HANDLE), false, &lpConsoleCurrentFontEx);
+		// Устанавливаем кодировку ввода текстовых данных в консоле
+		::SetConsoleCP(CP_UTF8); // 65001
+		// Устанавливаем кодировку вывода текстовых данных из консоли
+		::SetConsoleOutputCP(CP_UTF8);
+	#endif
 /**
  * Для операционной системы не являющейся OS Windows
  */
@@ -95,7 +134,7 @@
 	/**
 	 * Файловый разделитель UNIX-подобных систем
 	 */
-	#define FS_SEPARATOR "/"
+	#define AWH_FS_SEPARATOR "/"
 #endif
 
 /**

@@ -3012,11 +3012,11 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						// Если путь и хост получен
 						if((params.count(uri_t::flag_t::HOST) > 0) && (params.count(uri_t::flag_t::PATH) > 0)){
 							// Выполняем сплит адреса
-							auto path = this->_uri->splitPath(params.at(uri_t::flag_t::PATH), FS_SEPARATOR[0]);
+							auto path = this->_uri->splitPath(params.at(uri_t::flag_t::PATH), AWH_FS_SEPARATOR[0]);
 							// Добавляем адрес файла в список
 							path.push_back(this->_cert.ca);
 							// Формируем полный адарес файла
-							string filename = this->_fmk->format("%s:%s", params.at(uri_t::flag_t::HOST).c_str(), this->_uri->joinPath(path, FS_SEPARATOR[0]).c_str());
+							string filename = this->_fmk->format("%s:%s", params.at(uri_t::flag_t::HOST).c_str(), this->_uri->joinPath(path, AWH_FS_SEPARATOR[0]).c_str());
 							// Выполняем проверку CRL-файла сертификата
 							if(!filename.empty()){
 								// Выполняем декодирование адреса файла
@@ -3037,11 +3037,11 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 					 */
 					#else
 						// Выполняем сплит адреса
-						auto path = this->_uri->splitPath(dir, FS_SEPARATOR[0]);
+						auto path = this->_uri->splitPath(dir, AWH_FS_SEPARATOR[0]);
 						// Добавляем адрес файла в список
 						path.push_back(this->_cert.ca);
 						// Формируем полный адарес файла
-						string filename = this->_uri->joinPath(path, FS_SEPARATOR[0]);
+						string filename = this->_uri->joinPath(path, AWH_FS_SEPARATOR[0]);
 						// Выполняем проверку CRL-файла сертификата
 						if(!filename.empty()){
 							// Выполняем декодирование адреса файла

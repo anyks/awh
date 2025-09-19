@@ -397,7 +397,7 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 			// Если актуальный путь выводить не нужно
 			} else {
 				// Если путь передан пустой или конеь адреса не указан
-				if(path.empty() || (path.front() != FS_SEPARATOR[0])){
+				if(path.empty() || (path.front() != AWH_FS_SEPARATOR[0])){
 					// Создаём буфер данных для получения адреса
 					char buffer[PATH_MAX];
 					// Выполняем получение адреса текущего каталога
@@ -416,7 +416,7 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 				// начало и конец диапазона строки
 				size_t begin = 0, end = 0;
 				// Выполняем перебор всего переданного адреса
-				while((end = path.find(FS_SEPARATOR, end)) != string::npos){
+				while((end = path.find(AWH_FS_SEPARATOR, end)) != string::npos){
 					// Получаем название текущего каталога
 					folder = path.substr(begin, end - begin);
 					// Если название каталога мы получили
@@ -424,7 +424,7 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 						// Если указан переход на уровень вверх
 						if(folder.compare("..") == 0){
 							// Выполняем поиск предыдущего каталога
-							size_t pos = result.rfind(FS_SEPARATOR);
+							size_t pos = result.rfind(AWH_FS_SEPARATOR);
 							// Если разделитель найден
 							if(pos != string::npos)
 								// Выполняем удаление предыдущего каталога
@@ -432,7 +432,7 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 						// Если мы получили название каталога, а не псевдоним текущего
 						} else if(folder.compare(".") != 0) {
 							// Добавляем разделитель адреса
-							result.append(FS_SEPARATOR);
+							result.append(AWH_FS_SEPARATOR);
 							// Добавляем название каталога
 							result.append(folder);
 						}
@@ -447,12 +447,12 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 				// Если последний элемент не является адресом текущего каталога
 				if(folder.compare(".") != 0){
 					// Добавляем разделитель адреса
-					result.append(FS_SEPARATOR);
+					result.append(AWH_FS_SEPARATOR);
 					// Добавляем название последнего элемента адреса
 					result.append(folder);
 				}
 				// Если последний символ является разделителем и адрес не состоит из одного символа
-				if((result.size() > 1) && (result.back() == FS_SEPARATOR[0]))
+				if((result.size() > 1) && (result.back() == AWH_FS_SEPARATOR[0]))
 					// Выполняем удаление последнего символа
 					result.pop_back();
 			}
@@ -567,7 +567,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 												// Выполняем пропуск каталога
 												continue;
 											// Получаем адрес в виде строки
-											const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
+											const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
 										/**
 										 * Для операционной системы не являющейся OS Windows
 										 */
@@ -577,7 +577,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 												// Выполняем пропуск каталога
 												continue;
 											// Получаем адрес каталога
-											const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+											const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 										#endif
 										/**
 										 * Для операционной системы OS Windows
@@ -935,7 +935,7 @@ void awh::FS::makePath(const string & path) const noexcept {
 				// Указатель на сепаратор
 				char * p = nullptr;
 				// Получаем сепаратор
-				const char sep = FS_SEPARATOR[0];
+				const char sep = AWH_FS_SEPARATOR[0];
 				// Создаём буфер входящих данных
 				std::unique_ptr <char []> buffer(new char [address.size() + 1]);
 				// Копируем переданный адрес в буфер
@@ -1082,9 +1082,9 @@ pair <string, string> awh::FS::components(const string & addr, const bool actual
 			// Позиция разделителя каталога
 			size_t pos = 0;
 			// Определяем флаг обратного смещения
-			const uint8_t offset = (filename.back() == FS_SEPARATOR[0] ? 2 : 1);
+			const uint8_t offset = (filename.back() == AWH_FS_SEPARATOR[0] ? 2 : 1);
 			// Выполняем поиск разделителя каталога
-			if((pos = filename.rfind(FS_SEPARATOR, filename.length() - static_cast <size_t> (offset))) != string::npos){
+			if((pos = filename.rfind(AWH_FS_SEPARATOR, filename.length() - static_cast <size_t> (offset))) != string::npos){
 				// Если переданный адрес является каталогом
 				if(this->type(filename) == type_t::DIR)
 					// Выполняем вывод названия каталога
@@ -1384,7 +1384,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 												// Выполняем пропуск каталога
 												continue;
 											// Получаем адрес в виде строки
-											const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
+											const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
 										/**
 										 * Для операционной системы не являющейся OS Windows
 										 */
@@ -1394,7 +1394,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 												// Выполняем пропуск каталога
 												continue;
 											// Получаем адрес в виде строки
-											const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+											const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 										#endif
 										/**
 										 * Для операционной системы OS Windows
@@ -1551,7 +1551,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 										// Выполняем пропуск каталога
 										continue;
 									// Получаем адрес в виде строки
-									const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
+									const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
 								/**
 								 * Для операционной системы не являющейся OS Windows
 								 */
@@ -1561,7 +1561,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 										// Выполняем пропуск каталога
 										continue;
 									// Получаем адрес в виде строки
-									const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+									const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 								#endif
 								/**
 								 * Для операционной системы OS Windows
@@ -2394,7 +2394,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 										// Выполняем пропуск каталога
 										continue;
 									// Получаем адрес в виде строки
-									const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
+									const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
 								/**
 								 * Для операционной системы не являющейся OS Windows
 								 */
@@ -2404,7 +2404,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 										// Выполняем пропуск каталога
 										continue;
 									// Получаем адрес в виде строки
-									const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+									const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 								#endif
 								/**
 								 * Для операционной системы OS Windows
