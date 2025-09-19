@@ -4203,6 +4203,15 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			// Устанавливаем локаль системы
 			// this->_locale = ::locale::global(loc);
 			this->_locale = ::locale(locale.c_str());
+			/**
+			 * Для операционной системы OS Windows
+			 */
+			#if _WIN32 || _WIN64
+				/**
+				 * Выполняем подключение UTF-8 в консоли
+				 */
+				InitAWHConsoleUTF8();
+			#endif
 		/**
 		 * Если возникает ошибка
 		 */

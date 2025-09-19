@@ -100,23 +100,29 @@
 	 * Для компилятора MinGW
 	 */
 	#else
-		// Параметры устанавливаемого шрифта
-		CONSOLE_FONT_INFOEX lpConsoleCurrentFontEx;
-		// Формируем параметры шрифта
-		lpConsoleCurrentFontEx.nFont        = 1;
-		lpConsoleCurrentFontEx.dwFontSize.X = 7;
-		lpConsoleCurrentFontEx.dwFontSize.Y = 12;
-		lpConsoleCurrentFontEx.FontWeight   = 500;
-		lpConsoleCurrentFontEx.FontFamily   = FF_DONTCARE;
-		lpConsoleCurrentFontEx.cbSize       = sizeof(CONSOLE_FONT_INFOEX);
-		// Выполняем установку шрифта Lucida Console
-		lstrcpyW(lpConsoleCurrentFontEx.FaceName, L"Lucida Console");
-		// Выполняем установку шрифта консоли
-		SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), false, &lpConsoleCurrentFontEx);
-		// Устанавливаем кодировку ввода текстовых данных в консоле
-		SetConsoleCP(CP_UTF8); // 65001
-		// Устанавливаем кодировку вывода текстовых данных из консоли
-		SetConsoleOutputCP(CP_UTF8);
+		/**
+		 * @brief Функция для инициализации консоли в MinGW
+		 * 
+		 */
+		static void InitAWHConsoleUTF8(){
+			// Параметры устанавливаемого шрифта
+			CONSOLE_FONT_INFOEX fontInfo = {0};
+			fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
+			// Формируем параметры шрифта
+			fontInfo.nFont = 1;
+			fontInfo.dwFontSize.X = 7;
+			fontInfo.dwFontSize.Y = 12;
+			fontInfo.FontWeight = 500;
+			fontInfo.FontFamily = FF_DONTCARE;
+			// Выполняем установку шрифта Lucida Console
+			::lstrcpyW(fontInfo.FaceName, L"Lucida Console");
+			// Применяем шрифт
+			::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &fontInfo);
+			// Устанавливаем кодировку ввода текстовых данных в консоле 65001
+			::SetConsoleCP(CP_UTF8);
+			// Устанавливаем кодировку вывода текстовых данных из консоли
+			::SetConsoleOutputCP(CP_UTF8);
+		}
 	#endif
 /**
  * Для операционной системы не являющейся OS Windows
