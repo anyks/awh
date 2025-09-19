@@ -2194,7 +2194,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 						// Выполняем чтение из файла в буфер данные
 						::ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
 						// Выполняем чтение данных из буфера
-						::readFn(buffer);
+						readFn(buffer);
 						// Выполняем закрытие файла
 						::CloseHandle(file);
 					}
