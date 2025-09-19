@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Оператор [=] перемещения параметров запроса
+ * @brief Оператор [=] перемещения параметров запроса
+ *
  * @param request объект параметров запроса
  * @return        объект текущего запроса
  */
@@ -51,7 +52,8 @@ awh::client::Web::Request & awh::client::Web::Request::operator = (request_t && 
 	return (* this);
 }
 /**
- * Оператор [=] присванивания параметров запроса
+ * @brief Оператор [=] присванивания параметров запроса
+ *
  * @param request объект параметров запроса
  * @return        объект текущего запроса
  */
@@ -74,7 +76,8 @@ awh::client::Web::Request & awh::client::Web::Request::operator = (const request
 	return (* this);
 }
 /**
- * Оператор сравнения
+ * @brief Оператор сравнения
+ *
  * @param request объект параметров запроса
  * @return        результат сравнения
  */
@@ -212,7 +215,9 @@ void awh::client::Web::openEvent(const uint16_t sid) noexcept {
  * @param status флаг запуска/остановки
  */
 void awh::client::Web::statusEvent(const awh::core_t::status_t status) noexcept {
-	// Определяем статус активности сетевого ядра
+	/**
+	 * Определяем статус активности сетевого ядра
+	 */
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
 		case static_cast <uint8_t> (awh::core_t::status_t::START): {
@@ -256,7 +261,9 @@ void awh::client::Web::proxyConnectEvent(const uint64_t bid, const uint16_t sid)
 		if(hold.access({event_t::OPEN, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::PROXY_CONNECT)){
 			// Запоминаем идентификатор брокера
 			this->_bid = bid;
-			// Определяем тип прокси-сервера
+			/**
+			 * Определяем тип прокси-сервера
+			 */
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5): {
@@ -307,11 +314,15 @@ void awh::client::Web::proxyConnectEvent(const uint64_t bid, const uint16_t sid)
 						this->_buffer.clear();
 						// Если защищённое подключение уже активированно
 						if(this->_scheme.proxy.type == client::proxy_t::type_t::HTTPS){
-							// Выполняем переключение на работу с сервером
+							/**
+							this->_scheme. * Выполняем переключение на работу с сервером
+							this->_scheme. */
 							this->_scheme.switchConnect();
 							// Выполняем запуск работы основного модуля
 							this->connectEvent(bid, sid);
-						// Выполняем переключение на работу с сервером
+						/**
+						} else const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
+						} else const_cast <client::core_t *> (this->_core)-> */
 						} else const_cast <client::core_t *> (this->_core)->switchProxy(bid);
 					}
 				} break;
@@ -337,7 +348,9 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 		if(hold.access({event_t::PROXY_CONNECT, event_t::PROXY_READ}, event_t::PROXY_READ)){
 			// Добавляем полученные данные в буфер
 			this->_buffer.push(buffer, size);
-			// Определяем тип прокси-сервера
+			/**
+			 * Определяем тип прокси-сервера
+			 */
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5): {
@@ -361,7 +374,9 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							this->_buffer.clear();
 							// Если рукопожатие выполнено
 							if(this->_scheme.proxy.socks5.is(socks5_t::state_t::HANDSHAKE)){
-								// Выполняем переключение на работу с сервером
+								/**
+								const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
+								const_cast <client::core_t *> (this->_core)-> */
 								const_cast <client::core_t *> (this->_core)->switchProxy(bid);
 								// Выполняем запуск работы основного модуля
 								this->connectEvent(bid, sid);
@@ -403,7 +418,9 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP):
 				// Если прокси-сервер является HTTPS
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTPS): {
-					// Выполняем обработку полученных данных
+					/**
+					 * Выполняем обработку полученных данных
+					 */
 					while(this->_reading){
 						// Выполняем парсинг полученных данных
 						const size_t bytes = this->_scheme.proxy.http.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
@@ -448,7 +465,9 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 							if(this->_callback.is("answer"))
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", 1, 0, status);
-							// Выполняем проверку авторизации
+							/**
+							 * Выполняем проверку авторизации
+							 */
 							switch(static_cast <uint8_t> (status)){
 								// Если нужно попытаться ещё раз
 								case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
@@ -473,9 +492,13 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 								case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 									// Если защищённое подключение уже активированно
 									if(this->_scheme.proxy.type == client::proxy_t::type_t::HTTPS)
-										// Выполняем переключение на работу с сервером
+										/**
+										this->_scheme. * Выполняем переключение на работу с сервером
+										this->_scheme. */
 										this->_scheme.switchConnect();
-									// Выполняем переключение на работу с сервером
+									/**
+									else const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
+									else const_cast <client::core_t *> (this->_core)-> */
 									else const_cast <client::core_t *> (this->_core)->switchProxy(bid);
 									// Выполняем запуск работы основного модуля
 									this->connectEvent(bid, sid);
@@ -586,10 +609,10 @@ void awh::client::Web::init(const string & dest, const vector <awh::http_t::comp
 		// Устанавливаем unix-сокет адрес в файловой системе
 		this->_scheme.url = this->_uri.parse(this->_fmk->format("unix:%s.sock", dest.c_str()));
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			// Выполняем установку unix-сокета 
+			// Выполняем установку unix-сокета
 			const_cast <client::core_t *> (this->_core)->sockname(dest);
 		#endif
 	// Выполняем установку unix-сокет

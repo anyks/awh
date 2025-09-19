@@ -130,7 +130,7 @@ namespace awh {
 			mutable mtx_t _mtx;
 		public:
 			// Кэш собранных регулярных выражений
-			mutable std::map <pair <int32_t, string>, exp_weak_t> _cache;
+			mutable std::map <std::pair <int32_t, string>, exp_weak_t> _cache;
 		public:
 			/**
 			 * @brief Метод извлечения текста ошибки регулярного выражения
@@ -182,7 +182,7 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
+			vector <std::pair <size_t, size_t>> match(const string & text, const exp_t & exp) const noexcept;
 			/**
 			 * @brief Метод выполнения регулярного выражения
 			 *
@@ -191,7 +191,7 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <pair <size_t, size_t>> match(const char * text, const size_t size, const exp_t & exp) const noexcept;
+			vector <std::pair <size_t, size_t>> match(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * @brief Метод сборки регулярного выражения

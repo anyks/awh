@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * crash Метод обработки вызова крашей в приложении
+ * @brief Метод обработки вызова крашей в приложении
+ *
  * @param sig номер сигнала операционной системы
  */
 void awh::server::ProxySocks5::crash(const int32_t sig) noexcept {
@@ -53,7 +54,8 @@ void awh::server::ProxySocks5::crash(const int32_t sig) noexcept {
 	}
 }
 /**
- * openEvents Метод обратного вызова при запуске работы
+ * @brief Метод обратного вызова при запуске работы
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::ProxySocks5::openEvents(const uint16_t sid) noexcept {
@@ -70,7 +72,8 @@ void awh::server::ProxySocks5::openEvents(const uint16_t sid) noexcept {
 	}
 }
 /**
- * launchedEvents Метод получения события запуска сервера
+ * @brief Метод получения события запуска сервера
+ *
  * @param host хост запущенного сервера
  * @param port порт запущенного сервера
  */
@@ -84,7 +87,8 @@ void awh::server::ProxySocks5::launchedEvents(const string & host, const uint32_
 	}
 }
 /**
- * acceptEvents Метод обратного вызова при проверке подключения клиента
+ * @brief Метод обратного вызова при проверке подключения клиента
+ *
  * @param ip   адрес интернет подключения клиента
  * @param mac  мак-адрес подключившегося клиента
  * @param port порт подключившегося брокера
@@ -103,7 +107,8 @@ bool awh::server::ProxySocks5::acceptEvents(const string & ip, const string & ma
 	return false;
 }
 /**
- * connectClientEvents Метод обратного вызова при подключении
+ * @brief Метод обратного вызова при подключении
+ *
  * @param broker брокер вызвавший событие
  * @param bid1   идентификатор брокера сервера
  * @param bid2   идентификатор брокера клиента
@@ -112,7 +117,9 @@ bool awh::server::ProxySocks5::acceptEvents(const string & ip, const string & ma
 void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((bid1 > 0) && (sid > 0)){
-		// Определяем тип активного брокера
+		/**
+		 * Определяем тип активного брокера
+		 */
 		switch(static_cast <uint8_t> (broker)){
 			// Если брокер является клиентом
 			case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -166,7 +173,9 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 						options->scheme.url.host = this->_socket;
 					// Если сервер слушает порт
 					} else {
-						// Определяем тип хоста сервера
+						/**
+						 * Определяем тип хоста сервера
+						 */
 						switch(static_cast <uint8_t> (this->_net.host(this->_host))){
 							// Если хост является адресом IPv4
 							case static_cast <uint8_t> (net_t::type_t::IPV4): {
@@ -235,7 +244,8 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 	}
 }
 /**
- * disconnectClientEvents Метод обратного вызова при отключении
+ * @brief Метод обратного вызова при отключении
+ *
  * @param broker брокер вызвавший событие
  * @param bid1   идентификатор брокера сервера
  * @param bid2   идентификатор брокера клиента
@@ -244,7 +254,9 @@ void awh::server::ProxySocks5::connectEvents(const broker_t broker, const uint64
 void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uint64_t bid1, const uint64_t bid2, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((sid > 0) && (bid1 > 0)){
-		// Определяем тип активного брокера
+		/**
+		 * Определяем тип активного брокера
+		 */
 		switch(static_cast <uint8_t> (broker)){
 			// Если брокер является клиентом
 			case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -280,7 +292,8 @@ void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uin
 	}
 }
 /**
- * readClientEvents Метод обратного вызова при чтении сообщения
+ * @brief Метод обратного вызова при чтении сообщения
+ *
  * @param broker брокер вызвавший событие
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
@@ -290,7 +303,9 @@ void awh::server::ProxySocks5::disconnectEvents(const broker_t broker, const uin
 void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы правильно
 	if((size > 0) && (bid > 0) && (sid > 0) && (buffer != nullptr)){
-		// Определяем тип активного брокера
+		/**
+		 * Определяем тип активного брокера
+		 */
 		switch(static_cast <uint8_t> (broker)){
 			// Если брокер является клиентом
 			case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -334,7 +349,9 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 								options->scheme.url.port = server.port;
 								// Устанавливаем хост сервера
 								options->scheme.url.host = server.host;
-								// Определяем тип передаваемого сервера
+								/**
+								 * Определяем тип передаваемого сервера
+								 */
 								switch(static_cast <uint8_t> (this->_net.host(server.host))){
 									// Если хост является доменом или IPv4 адресом
 									case static_cast <uint8_t> (net_t::type_t::IPV4):
@@ -398,7 +415,8 @@ void awh::server::ProxySocks5::readEvents(const broker_t broker, const char * bu
 	}
 }
 /**
- * writeServerEvents Метод обратного вызова при записи сообщения на клиенте
+ * @brief Метод обратного вызова при записи сообщения на клиенте
+ *
  * @param broker брокер вызвавший событие
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер записанных в сокет байт
@@ -420,7 +438,8 @@ void awh::server::ProxySocks5::writeEvents(const broker_t broker, const char * b
 	}
 }
 /**
- * available Метод получения событий освобождения памяти буфера полезной нагрузки
+ * @brief Метод получения событий освобождения памяти буфера полезной нагрузки
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param bid    идентификатор брокера
  * @param size   размер буфера полезной нагрузки
@@ -443,7 +462,9 @@ void awh::server::ProxySocks5::available(const broker_t broker, const uint64_t b
 					allow = this->_callback.call <bool (const broker_t, const uint64_t, const size_t)> ("available", broker, bid, size);
 				// Если разрешено добавить неотправленную запись во временный буфер полезной нагрузки
 				if(allow){
-					// Определяем переданного брокера
+					/**
+					 * Определяем переданного брокера
+					 */
 					switch(static_cast <uint8_t> (broker)){
 						// Если брокером является клиент
 						case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -467,7 +488,8 @@ void awh::server::ProxySocks5::available(const broker_t broker, const uint64_t b
 	}
 }
 /**
- * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+ * @brief Метод получения событий недоступности памяти буфера полезной нагрузки
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param bid    идентификатор брокера
  * @param buffer буфер полезной нагрузки которую не получилось отправить
@@ -522,7 +544,8 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 	}
 }
 /**
- * erase Метод удаления отключённых клиентов
+ * @brief Метод удаления отключённых клиентов
+ *
  * @param tid идентификатор таймера
  * @param bid идентификатор брокера
  */
@@ -552,12 +575,13 @@ void awh::server::ProxySocks5::erase([[maybe_unused]] const uint16_t tid, const 
 		this->_payloads.erase(j);
 }
 /**
- * init Метод инициализации брокера
+ * @brief Метод инициализации брокера
+ *
  * @param socket unix-сокет для биндинга
  */
 void awh::server::ProxySocks5::init(const string & socket) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Устанавливаем unix-сокет сервера
@@ -569,7 +593,8 @@ void awh::server::ProxySocks5::init(const string & socket) noexcept {
 	#endif
 }
 /**
- * init Метод инициализации брокера
+ * @brief Метод инициализации брокера
+ *
  * @param port порт сервера
  * @param host хост сервера
  */
@@ -579,7 +604,7 @@ void awh::server::ProxySocks5::init(const uint32_t port, const string & host) no
 	// Устанавливаем хост сервера
 	this->_host = host;
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Удаляем unix-сокет сервера
@@ -587,7 +612,8 @@ void awh::server::ProxySocks5::init(const uint32_t port, const string & host) no
 	#endif
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::server::ProxySocks5::callback(const callback_t & callback) noexcept {
@@ -617,7 +643,8 @@ void awh::server::ProxySocks5::callback(const callback_t & callback) noexcept {
 	this->_callback.set("clusterMessage", callback);
 }
 /**
- * port Метод получения порта подключения брокера
+ * @brief Метод получения порта подключения брокера
+ *
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
@@ -626,7 +653,8 @@ uint32_t awh::server::ProxySocks5::port(const uint64_t bid) const noexcept {
 	return this->_scheme.port(bid);
 }
 /**
- * ip Метод получения IP-адреса брокера
+ * @brief Метод получения IP-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
@@ -635,7 +663,8 @@ const string & awh::server::ProxySocks5::ip(const uint64_t bid) const noexcept {
 	return this->_scheme.ip(bid);
 }
 /**
- * mac Метод получения MAC-адреса брокера
+ * @brief Метод получения MAC-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
@@ -644,7 +673,8 @@ const string & awh::server::ProxySocks5::mac(const uint64_t bid) const noexcept 
 	return this->_scheme.mac(bid);
 }
 /**
- * host Метод получения хоста сервера
+ * @brief Метод получения хоста сервера
+ *
  * @param sid идентификатор схемы сети
  * @return    адрес интернет подключения сервера
  */
@@ -653,7 +683,8 @@ string awh::server::ProxySocks5::host(const uint16_t sid) const noexcept {
 	return this->_core.host(sid);
 }
 /**
- * port Метод получения порта сервера
+ * @brief Метод получения порта сервера
+ *
  * @param sid идентификатор схемы сети
  * @return    порт подключения сервера
  */
@@ -662,7 +693,8 @@ uint32_t awh::server::ProxySocks5::port(const uint16_t sid) const noexcept {
 	return this->_core.port(sid);
 }
 /**
- * stop Метод остановки сервера
+ * @brief Метод остановки сервера
+ *
  */
 void awh::server::ProxySocks5::stop() noexcept {
 	// Если подключение выполнено
@@ -674,7 +706,8 @@ void awh::server::ProxySocks5::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска сервера
+ * @brief Метод запуска сервера
+ *
  */
 void awh::server::ProxySocks5::start() noexcept {
 	// Если биндинг не запущен, выполняем запуск биндинга
@@ -708,7 +741,8 @@ void awh::server::ProxySocks5::start() noexcept {
 	}
 }
 /**
- * bind Метод подключения модуля ядра к текущей базе событий
+ * @brief Метод подключения модуля ядра к текущей базе событий
+ *
  * @param core модуль ядра для подключения
  */
 void awh::server::ProxySocks5::bind(awh::core_t * core) noexcept {
@@ -716,7 +750,8 @@ void awh::server::ProxySocks5::bind(awh::core_t * core) noexcept {
 	this->_core.bind(core);
 }
 /**
- * unbind Метод отключения модуля ядра от текущей базы событий
+ * @brief Метод отключения модуля ядра от текущей базы событий
+ *
  * @param core модуль ядра для отключения
  */
 void awh::server::ProxySocks5::unbind(awh::core_t * core) noexcept {
@@ -724,7 +759,8 @@ void awh::server::ProxySocks5::unbind(awh::core_t * core) noexcept {
 	this->_core.unbind(core);
 }
 /**
- * close Метод закрытия подключения
+ * @brief Метод закрытия подключения
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::ProxySocks5::close(const uint64_t bid) noexcept {
@@ -732,7 +768,8 @@ void awh::server::ProxySocks5::close(const uint64_t bid) noexcept {
 	this->_core.close(bid);
 }
 /**
- * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @brief Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ *
  * @return размер памяти для хранения полезной нагрузки всех брокеров
  */
 size_t awh::server::ProxySocks5::memoryAvailableSize() const noexcept {
@@ -740,7 +777,8 @@ size_t awh::server::ProxySocks5::memoryAvailableSize() const noexcept {
 	return this->_core.memoryAvailableSize();
 }
 /**
- * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @brief Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ *
  * @param size размер памяти для хранения полезной нагрузки всех брокеров
  */
 void awh::server::ProxySocks5::memoryAvailableSize(const size_t size) noexcept {
@@ -750,7 +788,8 @@ void awh::server::ProxySocks5::memoryAvailableSize(const size_t size) noexcept {
 	this->_core.memoryAvailableSize(size);
 }
 /**
- * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+ * @brief Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+ *
  * @return размер хранимой полезной нагрузки для одного брокера
  */
 size_t awh::server::ProxySocks5::brokerAvailableSize() const noexcept {
@@ -758,7 +797,8 @@ size_t awh::server::ProxySocks5::brokerAvailableSize() const noexcept {
 	return this->_core.brokerAvailableSize();
 }
 /**
- * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+ * @brief Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+ *
  * @param size размер хранимой полезной нагрузки для одного брокера
  */
 void awh::server::ProxySocks5::brokerAvailableSize(const size_t size) noexcept {
@@ -768,7 +808,8 @@ void awh::server::ProxySocks5::brokerAvailableSize(const size_t size) noexcept {
 	this->_core.brokerAvailableSize(static_cast <size_t> (size));
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param sec интервал времени в секундах
  */
 void awh::server::ProxySocks5::waitMessage(const uint16_t sec) noexcept {
@@ -776,7 +817,8 @@ void awh::server::ProxySocks5::waitMessage(const uint16_t sec) noexcept {
 	this->_scheme.timeouts.wait = sec;
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
@@ -787,7 +829,8 @@ void awh::server::ProxySocks5::waitTimeDetect(const uint16_t read, const uint16_
 	this->_scheme.timeouts.write = write;
 }
 /**
- * total Метод установки максимального количества одновременных подключений
+ * @brief Метод установки максимального количества одновременных подключений
+ *
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::ProxySocks5::total(const uint16_t total) noexcept {
@@ -795,7 +838,8 @@ void awh::server::ProxySocks5::total(const uint16_t total) noexcept {
 	this->_core.total(this->_scheme.id, total);
 }
 /**
- * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @brief Метод установки флага перезапуска процессов
+ *
  * @param mode флаг перезапуска процессов
  */
 void awh::server::ProxySocks5::clusterAutoRestart(const bool mode) noexcept {
@@ -803,7 +847,8 @@ void awh::server::ProxySocks5::clusterAutoRestart(const bool mode) noexcept {
 	this->_core.clusterAutoRestart(mode);
 }
 /**
- * cluster Метод установки количества процессов кластера
+ * @brief Метод установки количества процессов кластера
+ *
  * @param mode флаг активации/деактивации кластера
  * @param size количество рабочих процессов
  */
@@ -812,7 +857,8 @@ void awh::server::ProxySocks5::cluster(const awh::scheme_t::mode_t mode, const u
 	this->_core.cluster(mode, size);
 }
 /**
- * sendToProcess Метод отправки сообщения родительскому процессу
+ * @brief Метод отправки сообщения родительскому процессу
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::ProxySocks5::sendToProcess(const uint16_t sid) noexcept {
@@ -820,7 +866,8 @@ void awh::server::ProxySocks5::sendToProcess(const uint16_t sid) noexcept {
 	this->_core.sendToProcess(sid);
 }
 /**
- * sendToProcess Метод отправки сообщения родительскому процессу
+ * @brief Метод отправки сообщения родительскому процессу
+ *
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
@@ -830,7 +877,8 @@ void awh::server::ProxySocks5::sendToProcess(const uint16_t sid, const char * bu
 	this->_core.sendToProcess(sid, buffer, size);
 }
 /**
- * sendToProcess Метод отправки сообщения дочернему процессу
+ * @brief Метод отправки сообщения дочернему процессу
+ *
  * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса для получения сообщения
  */
@@ -839,7 +887,8 @@ void awh::server::ProxySocks5::sendToProcess(const uint16_t sid, const pid_t pid
 	this->_core.sendToProcess(sid, pid);
 }
 /**
- * sendToProcess Метод отправки сообщения дочернему процессу
+ * @brief Метод отправки сообщения дочернему процессу
+ *
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
@@ -850,7 +899,8 @@ void awh::server::ProxySocks5::sendToProcess(const uint16_t sid, const pid_t pid
 	this->_core.sendToProcess(sid, pid, buffer, size);
 }
 /**
- * broadcastToProcess Метод отправки сообщения всем дочерним процессам
+ * @brief Метод отправки сообщения всем дочерним процессам
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::ProxySocks5::broadcastToProcess(const uint16_t sid) noexcept {
@@ -858,7 +908,8 @@ void awh::server::ProxySocks5::broadcastToProcess(const uint16_t sid) noexcept {
 	this->_core.broadcastToProcess(sid);
 }
 /**
- * broadcastToProcess Метод отправки сообщения всем дочерним процессам
+ * @brief Метод отправки сообщения всем дочерним процессам
+ *
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
@@ -868,7 +919,8 @@ void awh::server::ProxySocks5::broadcastToProcess(const uint16_t sid, const char
 	this->_core.broadcastToProcess(sid, buffer, size);
 }
 /**
- * mode Метод установки флагов модуля
+ * @brief Метод установки флагов модуля
+ *
  * @param flags список флагов модуля для установки
  */
 void awh::server::ProxySocks5::mode(const std::set <flag_t> & flags) noexcept {
@@ -876,7 +928,8 @@ void awh::server::ProxySocks5::mode(const std::set <flag_t> & flags) noexcept {
 	this->_core.verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
- * hosts Метод загрузки файла со списком хостов
+ * @brief Метод загрузки файла со списком хостов
+ *
  * @param filename адрес файла для загрузки
  */
 void awh::server::ProxySocks5::hosts(const string & filename) noexcept {
@@ -884,7 +937,8 @@ void awh::server::ProxySocks5::hosts(const string & filename) noexcept {
 	this->_dns.hosts(filename);
 }
 /**
- * timeoutDNS Метод установки времени ожидания выполнения запроса
+ * @brief Метод установки времени ожидания выполнения запроса
+ *
  * @param sec интервал времени выполнения запроса в секундах
  */
 void awh::server::ProxySocks5::timeoutDNS(const uint8_t sec) noexcept {
@@ -892,7 +946,8 @@ void awh::server::ProxySocks5::timeoutDNS(const uint8_t sec) noexcept {
 	this->_dns.timeout(sec);
 }
 /**
- * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
+ * @brief Метод установки префикса переменной окружения для извлечения серверов имён
+ *
  * @param prefix префикс переменной окружения для установки
  */
 void awh::server::ProxySocks5::prefixDNS(const string & prefix) noexcept {
@@ -902,7 +957,8 @@ void awh::server::ProxySocks5::prefixDNS(const string & prefix) noexcept {
 		this->_dns.prefix(prefix);
 }
 /**
- * clearDNSBlackList Метод очистки чёрного списка
+ * @brief Метод очистки чёрного списка
+ *
  * @param domain доменное имя для которого очищается чёрный список
  */
 void awh::server::ProxySocks5::clearDNSBlackList(const string & domain) noexcept {
@@ -912,7 +968,8 @@ void awh::server::ProxySocks5::clearDNSBlackList(const string & domain) noexcept
 		this->_dns.clearBlackList(domain);
 }
 /**
- * delInDNSBlackList Метод удаления IP-адреса из чёрного списока
+ * @brief Метод удаления IP-адреса из чёрного списока
+ *
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для удаления из чёрного списка
  */
@@ -923,7 +980,8 @@ void awh::server::ProxySocks5::delInDNSBlackList(const string & domain, const st
 		this->_dns.delInBlackList(domain, ip);
 }
 /**
- * setToDNSBlackList Метод добавления IP-адреса в чёрный список
+ * @brief Метод добавления IP-адреса в чёрный список
+ *
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в чёрный список
  */
@@ -934,7 +992,8 @@ void awh::server::ProxySocks5::setToDNSBlackList(const string & domain, const st
 		this->_dns.setToBlackList(domain, ip);
 }
 /**
- * ipV6only Метод установки флага использования только сети IPv6
+ * @brief Метод установки флага использования только сети IPv6
+ *
  * @param mode флаг для установки
  */
 void awh::server::ProxySocks5::ipV6only(const bool mode) noexcept {
@@ -942,7 +1001,8 @@ void awh::server::ProxySocks5::ipV6only(const bool mode) noexcept {
 	this->_core.ipV6only(mode);
 }
 /**
- * sonet Метод установки типа сокета подключения
+ * @brief Метод установки типа сокета подключения
+ *
  * @param sonet тип сокета подключения (TCP / UDP / SCTP)
  */
 void awh::server::ProxySocks5::sonet(const scheme_t::sonet_t sonet) noexcept {
@@ -950,7 +1010,8 @@ void awh::server::ProxySocks5::sonet(const scheme_t::sonet_t sonet) noexcept {
 	this->_core.sonet(sonet);
 }
 /**
- * family Метод установки типа протокола интернета
+ * @brief Метод установки типа протокола интернета
+ *
  * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::server::ProxySocks5::family(const scheme_t::family_t family) noexcept {
@@ -958,7 +1019,8 @@ void awh::server::ProxySocks5::family(const scheme_t::family_t family) noexcept 
 	this->_core.family(family);
 }
 /**
- * keepAlive Метод установки жизни подключения
+ * @brief Метод установки жизни подключения
+ *
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
@@ -972,7 +1034,8 @@ void awh::server::ProxySocks5::keepAlive(const int32_t cnt, const int32_t idle, 
 	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
- * bandwidth Метод установки пропускной способности сети
+ * @brief Метод установки пропускной способности сети
+ *
  * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
@@ -982,7 +1045,8 @@ void awh::server::ProxySocks5::bandwidth(const uint64_t bid, const string & read
 	this->_core.bandwidth(bid, read, write);
 }
 /**
- * network Метод установки параметров сети
+ * @brief Метод установки параметров сети
+ *
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
  * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
@@ -997,7 +1061,8 @@ void awh::server::ProxySocks5::network(const vector <string> & ips, const vector
 	this->_settings.ips.assign(ips.begin(), ips.end());
 }
 /**
- * signalInterception Метод активации перехвата сигналов
+ * @brief Метод активации перехвата сигналов
+ *
  * @param mode флаг активации
  */
 void awh::server::ProxySocks5::signalInterception(const scheme_t::mode_t mode) noexcept {
@@ -1005,7 +1070,8 @@ void awh::server::ProxySocks5::signalInterception(const scheme_t::mode_t mode) n
 	this->_core.signalInterception(mode);
 }
 /**
- * ssl Метод установки параметров SSL-шифрования
+ * @brief Метод установки параметров SSL-шифрования
+ *
  * @param ssl объект параметров SSL-шифрования
  */
 void awh::server::ProxySocks5::ssl(const node_t::ssl_t & ssl) noexcept {
@@ -1022,7 +1088,8 @@ void awh::server::ProxySocks5::ssl(const node_t::ssl_t & ssl) noexcept {
 	}
 }
 /**
- * ProxySocks5 Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -1062,7 +1129,8 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	this->_core.bind(dynamic_cast <awh::core_t *> (&this->_timer));
 }
 /**
- * ~ProxySocks5 Деструктор
+ * @brief Деструктор
+ *
  */
 awh::server::ProxySocks5::~ProxySocks5() noexcept {
 	// Если подключение выполнено

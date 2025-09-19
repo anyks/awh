@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * trigger Метод обработки событий триггера
+ * @brief Метод обработки событий триггера
+ *
  */
 void awh::Watch::trigger() noexcept {
 	/**
@@ -90,7 +91,8 @@ void awh::Watch::trigger() noexcept {
 	}
 }
 /**
- * process Метод обработки процесса добавления таймеров
+ * @brief Метод обработки процесса добавления таймеров
+ *
  * @param unit параметры участника
  */
 void awh::Watch::process(const unit_t unit) noexcept {
@@ -155,21 +157,24 @@ void awh::Watch::process(const unit_t unit) noexcept {
 	}
 }
 /**
- * stop Метод остановки работы таймера
+ * @brief Метод остановки работы таймера
+ *
  */
 void awh::Watch::stop() noexcept {
 	// Выполняем остановку работы экрана
 	this->_screen.stop();
 }
 /**
- * start Метод запуска работы таймера
+ * @brief Метод запуска работы таймера
+ *
  */
 void awh::Watch::start() noexcept {
 	// Выполняем запуск работы экрана
 	this->_screen.start();
 }
 /**
- * create Метод создания нового таймера
+ * @brief Метод создания нового таймера
+ *
  * @return файловый дескриптор для отслеживания
  */
 SOCKET awh::Watch::create() noexcept {
@@ -212,7 +217,8 @@ SOCKET awh::Watch::create() noexcept {
 	return result;
 }
 /**
- * event Метод извлечения идентификатора события
+ * @brief Метод извлечения идентификатора события
+ *
  * @param sock файловый дескриптор таймера
  * @return     идентификатор события
  */
@@ -227,7 +233,8 @@ uint64_t awh::Watch::event(const SOCKET sock) noexcept {
 	return 0;
 }
 /**
- * away Метод убрать таймер из отслеживания
+ * @brief Метод убрать таймер из отслеживания
+ *
  * @param sock файловый дескриптор таймера
  */
 void awh::Watch::away(const SOCKET sock) noexcept {
@@ -262,7 +269,8 @@ void awh::Watch::away(const SOCKET sock) noexcept {
 	}
 }
 /**
- * wait Метод ожидания указанного промежутка времени
+ * @brief Метод ожидания указанного промежутка времени
+ *
  * @param sock  файловый дескриптор таймера
  * @param delay задержка времени в миллисекундах
  */
@@ -306,7 +314,8 @@ void awh::Watch::wait(const SOCKET sock, const uint32_t delay) noexcept {
 	}
 }
 /**
- * Watch Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -318,7 +327,8 @@ awh::Watch::Watch(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_screen = static_cast <function <void (const unit_t)>> (std::bind(&watch_t::process, this, _1));
 }
 /**
- * ~Watch Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Watch::~Watch() noexcept {
 	// Выполняем остановку работы экрана

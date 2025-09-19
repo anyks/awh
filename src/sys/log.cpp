@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Оператор [=] перемещения параметров полезной нагрузки
+ * @brief Оператор [=] перемещения параметров полезной нагрузки
+ *
  * @param payload объект полезной нагрузки для перемещения
  * @return        текущий объект полезной нагрузки
  */
@@ -41,7 +42,8 @@ awh::Log::Payload & awh::Log::Payload::operator = (payload_t && payload) noexcep
 	return (* this);
 }
 /**
- * Оператор [=] присванивания параметров полезной нагрузки
+ * @brief Оператор [=] присванивания параметров полезной нагрузки
+ *
  * @param payload объект полезной нагрузки для копирования
  * @return        текущий объект полезной нагрузки
  */
@@ -54,7 +56,8 @@ awh::Log::Payload & awh::Log::Payload::operator = (const payload_t & payload) no
 	return (* this);
 }
 /**
- * Оператор сравнения
+ * @brief Оператор сравнения
+ *
  * @param payload объект полезной нагрузки для сравнения
  * @return        результат сравнения
  */
@@ -66,7 +69,8 @@ bool awh::Log::Payload::operator == (const payload_t & payload) noexcept {
 	);
 }
 /**
- * Payload Конструктор перемещения
+ * @brief Конструктор перемещения
+ *
  * @param payload объект полезной нагрузки для перемещения
  */
 awh::Log::Payload::Payload(payload_t && payload) noexcept {
@@ -76,7 +80,8 @@ awh::Log::Payload::Payload(payload_t && payload) noexcept {
 	this->text = ::move(payload.text);
 }
 /**
- * Payload Конструктор копирования
+ * @brief Конструктор копирования
+ *
  * @param payload объект полезной нагрузки для копирования
  */
 awh::Log::Payload::Payload(const payload_t & payload) noexcept {
@@ -86,15 +91,17 @@ awh::Log::Payload::Payload(const payload_t & payload) noexcept {
 	this->text = payload.text;
 }
 /**
- * Payload Конструктор
+ * @brief Конструктор
+ *
  */
 awh::Log::Payload::Payload() noexcept : flag(flag_t::NONE), text{""} {}
 /**
- * rotate Метод выполнения ротации логов
+ * @brief Метод выполнения ротации логов
+ *
  */
 void awh::Log::rotate() const noexcept {
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		// Размер файла лога
@@ -102,13 +109,13 @@ void awh::Log::rotate() const noexcept {
 		// Получаем адрес файла для записи
 		const wstring & filename = this->_fmk->convert(this->_filename);
 		// Создаём объект работы с файлом
-		HANDLE file = CreateFileW(filename.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+		HANDLE file = ::CreateFileW(filename.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 		// Если открыть файл открыт нормально
 		if(file != INVALID_HANDLE_VALUE){
 			// Получаем размер файла лога
-			size = static_cast <uintmax_t> (GetFileSize(file, nullptr));
+			size = static_cast <uintmax_t> (::GetFileSize(file, nullptr));
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
 		// Структура проверка статистики
@@ -123,13 +130,13 @@ void awh::Log::rotate() const noexcept {
 				// Выполняем извлечение даты
 				const string & date = this->_chrono.format("_%m-%d-%Y_%H-%M-%S");
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Буфер данных для чтения
 					vector <char> buffer(size, 0);
 					// Выполняем чтение из файла в буфер данные
-					ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
+					::ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
 					// Если данные строки получены
 					if(!buffer.empty()){
 						// Получаем компоненты адреса
@@ -147,13 +154,13 @@ void awh::Log::rotate() const noexcept {
 							// Создаём буфер сообщения ошибки
 							wchar_t message[256] = {0};
 							// Выполняем формирование текста ошибки
-							FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, WSAGetLastError(), 0, message, 256, 0);
+							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
 							// Выводим текст полученной ошибки
 							::fprintf(stderr, "Log rotate: %s\n\n", this->_fmk->convert(message).c_str());
 						}
 					}
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем файл на чтение
@@ -188,19 +195,20 @@ void awh::Log::rotate() const noexcept {
 			}
 		}
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем закрытие файла
-			CloseHandle(file);
+			::CloseHandle(file);
 			// Если размер файла лога, превышает максимально-установленный
 			if(size >= this->_maxSize)
 				// Удаляем исходный файл логов
-				_wunlink(filename.c_str());
+				::_wunlink(filename.c_str());
 		#endif
 }
 /**
- * cleaner Метод очистки строки от символов форматирования
+ * @brief Метод очистки строки от символов форматирования
+ *
  * @param text текст для очистки
  * @return     ощиченный текста
  */
@@ -209,7 +217,9 @@ string & awh::Log::cleaner(string & text) const noexcept {
 	size_t pos = 0;
 	// Значение текущего символа
 	char letter = 0;
-	// Выполняем поиск символов экранирования
+	/**
+	 * Выполняем поиск символов экранирования
+	 */
 	while((pos = text.find("\x1B[", pos)) != string::npos){
 		// Выполняем поиск завершения блока экранирования
 		for(size_t i = (pos + 3); i < text.length(); i++){
@@ -234,7 +244,8 @@ string & awh::Log::cleaner(string & text) const noexcept {
 	return text;
 }
 /**
- * receiving Метод получения данных
+ * @brief Метод получения данных
+ *
  * @param payload объект полезной нагрузки
  */
 void awh::Log::receiving(const payload_t & payload) const noexcept {
@@ -256,7 +267,9 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end()){
 		// Если тип сообщение не является пустым
 		if(payload.flag != flag_t::NONE){
-			// Определяем флаг формирования разделителя
+			/**
+			 * Определяем флаг формирования разделителя
+			 */
 			switch(static_cast <uint8_t> (this->_sep)){
 				// Если разделитель нужно отобразить с учётом размера текста
 				case static_cast <uint8_t> (separator_t::SMART): {
@@ -272,7 +285,9 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 				break;
 			}
 		}
-		// Определяем тип сообщения
+		/**
+		 * Определяем тип сообщения
+		 */
 		switch(static_cast <uint8_t> (payload.flag)){
 			// Выводим сообщение так-как оно есть
 			case static_cast <uint8_t> (flag_t::NONE):
@@ -297,7 +312,9 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 		}
 		// Если тип сообщение не является пустым
 		if(payload.flag != flag_t::NONE){
-			// Определяем флаг формирования разделителя
+			/**
+			 * Определяем флаг формирования разделителя
+			 */
 			switch(static_cast <uint8_t> (this->_sep)){
 				// Если разделитель нужно отобразить с учётом размера текста
 				case static_cast <uint8_t> (separator_t::SMART): {
@@ -319,16 +336,18 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 		// Выполняем очистку от символов форматирования
 		this->cleaner(const_cast <string &> (payload.text));
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем открытие файла на запись
-			HANDLE file = CreateFileW(this->_fmk->convert(this->_filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+			HANDLE file = ::CreateFileW(this->_fmk->convert(this->_filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 			// Если открыть файл открыт нормально
 			if(file != INVALID_HANDLE_VALUE){
 				// Текст логирования для записи в файл лога
 				string logData = "";
-				// Определяем тип сообщения
+				/**
+				 * Определяем тип сообщения
+				 */
 				switch(static_cast <uint8_t> (payload.flag)){
 					// Выводим сообщение так-как оно есть
 					case static_cast <uint8_t> (flag_t::NONE):
@@ -352,21 +371,23 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 					break;
 				}
 				// Выполняем запись в файл
-				WriteFile(file, static_cast <LPCVOID> (logData.data()), static_cast <DWORD> (logData.size()), 0, nullptr);
+				::WriteFile(file, static_cast <LPCVOID> (logData.data()), static_cast <DWORD> (logData.size()), 0, nullptr);
 				// Выполняем закрытие файла
-				CloseHandle(file);
+				::CloseHandle(file);
 			}
 			// Выполняем ротацию логов
 			this->rotate();
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Открываем файл на запись
 			ofstream file(this->_filename, ios::out | ios::app);
 			// Если файл открыт
 			if(file.is_open()){
-				// Определяем тип сообщения
+				/**
+				 * Определяем тип сообщения
+				 */
 				switch(static_cast <uint8_t> (payload.flag)){
 					// Выводим сообщение так-как оно есть
 					case static_cast <uint8_t> (flag_t::NONE):
@@ -398,13 +419,14 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	}
 }
 /**
- * components Метод извлечения компонента адреса файла
+ * @brief Метод извлечения компонента адреса файла
+ *
  * @param filename адрес где находится файл
  * @return         параметры компонента (адрес, название файла без расширения)
  */
-pair <string, string> awh::Log::components(const string & filename) const noexcept {
+std::pair <string, string> awh::Log::components(const string & filename) const noexcept {
 	// Результат работы функции
-	pair <string, string> result;
+	std::pair <string, string> result;
 	// Если адрес передан
 	if(!filename.empty()){
 		// Позиция разделителя каталога
@@ -423,7 +445,7 @@ pair <string, string> awh::Log::components(const string & filename) const noexce
 			// Ищем расширение файла
 			if((pos2 = filename.find('.')) != string::npos){
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
 					// Устанавливаем адрес файла где хранится файл
@@ -438,7 +460,8 @@ pair <string, string> awh::Log::components(const string & filename) const noexce
 	return result;
 }
 /**
- * print Метод вывода текстовой информации в консоль или файл
+ * @brief Метод вывода текстовой информации в консоль или файл
+ *
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
  */
@@ -539,7 +562,8 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 	}
 }
 /**
- * print Метод вывода текстовой информации в консоль или файл
+ * @brief Метод вывода текстовой информации в консоль или файл
+ *
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
@@ -592,7 +616,8 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 	}
 }
 /**
- * mode Метод получения установленных режимов вывода логов
+ * @brief Метод получения установленных режимов вывода логов
+ *
  * @return список режимов вывода логов
  */
 const std::set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
@@ -600,7 +625,8 @@ const std::set <awh::Log::mode_t> & awh::Log::mode() const noexcept {
 	return this->_mode;
 }
 /**
- * mode Метод добавления режимов вывода логов
+ * @brief Метод добавления режимов вывода логов
+ *
  * @param mode список режимов вывода логов
  */
 void awh::Log::mode(const std::set <mode_t> & mode) noexcept {
@@ -608,7 +634,8 @@ void awh::Log::mode(const std::set <mode_t> & mode) noexcept {
 	this->_mode = mode;
 }
 /**
- * format Метод извлечения установленного формата лога
+ * @brief Метод извлечения установленного формата лога
+ *
  * @return формат лога для извлечения
  */
 const string & awh::Log::format() const noexcept {
@@ -616,7 +643,8 @@ const string & awh::Log::format() const noexcept {
 	return this->_format;
 }
 /**
- * format Метод установки формата даты и времени для вывода лога
+ * @brief Метод установки формата даты и времени для вывода лога
+ *
  * @param format формат даты и времени для вывода лога
  */
 void awh::Log::format(const string & format) noexcept {
@@ -624,7 +652,8 @@ void awh::Log::format(const string & format) noexcept {
 	this->_format = format;
 }
 /**
- * async Метод установки флага асинхронного режима работы
+ * @brief Метод установки флага асинхронного режима работы
+ *
  * @param mode флаг асинхронного режима работы
  */
 void awh::Log::async(const bool mode) noexcept {
@@ -632,7 +661,8 @@ void awh::Log::async(const bool mode) noexcept {
 	this->_async = mode;
 }
 /**
- * name Метод установки название сервиса для вывода лога
+ * @brief Метод установки название сервиса для вывода лога
+ *
  * @param name название сервиса для вывода лога
  */
 void awh::Log::name(const string & name) noexcept {
@@ -640,7 +670,8 @@ void awh::Log::name(const string & name) noexcept {
 	this->_name = name;
 }
 /**
- * maxSize Метод установки максимального размера файла логов
+ * @brief Метод установки максимального размера файла логов
+ *
  * @param size максимальный размер файла логов
  */
 void awh::Log::maxSize(const float size) noexcept {
@@ -648,7 +679,8 @@ void awh::Log::maxSize(const float size) noexcept {
 	this->_maxSize = size;
 }
 /**
- * sepSize Метод установки размера текста для формирования разделителя
+ * @brief Метод установки размера текста для формирования разделителя
+ *
  * @param size размер текста для формирования разделителя
  */
 void awh::Log::sepSize(const size_t size) noexcept {
@@ -656,7 +688,8 @@ void awh::Log::sepSize(const size_t size) noexcept {
 	this->_sepSize = size;
 }
 /**
- * level Метод установки уровня логирования
+ * @brief Метод установки уровня логирования
+ *
  * @param level уровень логирования для установки
  */
 void awh::Log::level(const level_t level) noexcept {
@@ -664,7 +697,8 @@ void awh::Log::level(const level_t level) noexcept {
 	this->_level = level;
 }
 /**
- * separator Метод установки разделителя сообщений логирования
+ * @brief Метод установки разделителя сообщений логирования
+ *
  * @param sep разделитель для установки
  */
 void awh::Log::separator(const separator_t sep) noexcept {
@@ -672,7 +706,8 @@ void awh::Log::separator(const separator_t sep) noexcept {
 	this->_sep = sep;
 }
 /**
- * filename Метод установки файла для сохранения логов
+ * @brief Метод установки файла для сохранения логов
+ *
  * @param filename адрес файла для сохранения логов
  */
 void awh::Log::filename(const string & filename) noexcept {
@@ -680,7 +715,8 @@ void awh::Log::filename(const string & filename) noexcept {
 	this->_filename = filename;
 }
 /**
- * subscribe Метод подписки на события логов
+ * @brief Метод подписки на события логов
+ *
  * @param callback функция обратного вызова
  */
 void awh::Log::subscribe(function <void (const flag_t, const string &)> callback) noexcept {
@@ -688,7 +724,8 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
 	this->_fn = callback;
 }
 /**
- * Log Конструктор
+ * @brief Конструктор
+ *
  * @param fmk      объект фреймворка
  * @param filename адрес файла для сохранения логов
  */
@@ -703,7 +740,8 @@ awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
 	this->_mode = {mode_t::FILE, mode_t::CONSOLE, mode_t::DEFERRED};
 }
 /**
- * ~Log Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Log::~Log() noexcept {
 	// Если объект работы с дочерним потоком создан, удаляем

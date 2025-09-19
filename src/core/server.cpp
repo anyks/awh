@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * accept Метод вызова при подключении к серверу
+ * @brief Метод вызова при подключении к серверу
+ *
  * @param sock сетевой сокет подключившегося клиента
  * @param sid  идентификатор схемы сети
  */
@@ -41,7 +42,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 		if(i != this->_schemes.end()){
 			// Получаем объект подключения
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
-			// Определяем тип сокета
+			/**
+			 * Определяем тип сокета
+			 */
 			switch(static_cast <uint8_t> (this->_settings.sonet)){
 				// Если тип сокета установлен как UDP
 				case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
@@ -49,7 +52,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 					 * Выполняем отлов ошибок
 					 */
 					try {
-						// Определяем члена семейства кластера
+						/**
+						 * Определяем члена семейства кластера
+						 */
 						switch(static_cast <uint8_t> (this->clusterFamily())){
 							// Если процесс является неустановленным процессом
 							case static_cast <uint8_t> (cluster_t::family_t::NONE):
@@ -66,7 +71,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 								broker->timeout(0, engine_t::method_t::READ);
 								// Отключаем таймаут на запись данных в сокет
 								broker->timeout(0, engine_t::method_t::WRITE);
-								// Определяем тип протокола подключения
+								/**
+								 * Определяем тип протокола подключения
+								 */
 								switch(static_cast <uint8_t> (this->_settings.family)){
 									// Если тип протокола подключения IPv4
 									case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
@@ -245,7 +252,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 						broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
 						// Устанавливаем таймаут на подключение к серверу
 						broker->timeout(shm->timeouts.connect, engine_t::method_t::CONNECT);
-						// Определяем тип сокета
+						/**
+						 * Определяем тип сокета
+						 */
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
 							/**
 							 * Если операционной системой является Linux или FreeBSD
@@ -286,7 +295,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 								if(this->_callback.is("accept") && !this->_callback.call <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
 									// Если порт установлен
 									if(broker->port() > 0){
-										// Определяем тип протокола подключения
+										/**
+										 * Определяем тип протокола подключения
+										 */
 										switch(static_cast <uint8_t> (this->_settings.family)){
 											// Если тип протокола подключения unix-сокет
 											case static_cast <uint8_t> (scheme_t::family_t::IPC): {
@@ -357,7 +368,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 										}
 									// Если порт не установлен
 									} else {
-										// Определяем тип протокола подключения
+										/**
+										 * Определяем тип протокола подключения
+										 */
 										switch(static_cast <uint8_t> (this->_settings.family)){
 											// Если тип протокола подключения unix-сокет
 											case static_cast <uint8_t> (scheme_t::family_t::IPC): {
@@ -475,7 +488,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 								if(this->_info){
 									// Если порт установлен
 									if(ret.first->second->port() > 0){
-										// Определяем тип протокола подключения
+										/**
+										 * Определяем тип протокола подключения
+										 */
 										switch(static_cast <uint8_t> (this->_settings.family)){
 											// Если тип протокола подключения unix-сокет
 											case static_cast <uint8_t> (scheme_t::family_t::IPC): {
@@ -511,7 +526,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 										}
 									// Если порт не установлен
 									} else {
-										// Определяем тип протокола подключения
+										/**
+										 * Определяем тип протокола подключения
+										 */
 										switch(static_cast <uint8_t> (this->_settings.family)){
 											// Если тип протокола подключения unix-сокет
 											case static_cast <uint8_t> (scheme_t::family_t::IPC): {
@@ -566,7 +583,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 							}
 						// Если подключение не установлено
 						} else {
-							// Определяем режим активации кластера
+							/**
+							 * Определяем режим активации кластера
+							 */
 							switch(static_cast <uint8_t> (this->_clusterMode)){
 								// Если кластер необходимо активировать
 								case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED):
@@ -627,7 +646,8 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 	}
 }
 /**
- * accept Метод вызова при активации DTLS-подключения
+ * @brief Метод вызова при активации DTLS-подключения
+ *
  * @param sid идентификатор схемы сети
  * @param bid идентификатор брокера
  */
@@ -678,7 +698,9 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							if(this->_callback.is("accept") && !this->_callback.call <bool (const string &, const string &, const uint32_t, const uint16_t)> ("accept", broker->ip(), broker->mac(), broker->port(), sid)){
 								// Если порт установлен
 								if(broker->port() > 0){
-									// Определяем тип протокола подключения
+									/**
+									 * Определяем тип протокола подключения
+									 */
 									switch(static_cast <uint8_t> (this->_settings.family)){
 										// Если тип протокола подключения unix-сокет
 										case static_cast <uint8_t> (scheme_t::family_t::IPC): {
@@ -749,7 +771,9 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 									}
 								// Если порт не установлен
 								} else {
-									// Определяем тип протокола подключения
+									/**
+									 * Определяем тип протокола подключения
+									 */
 									switch(static_cast <uint8_t> (this->_settings.family)){
 										// Если тип протокола подключения unix-сокет
 										case static_cast <uint8_t> (scheme_t::family_t::IPC): {
@@ -826,7 +850,9 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 							if(this->_info){
 								// Если порт установлен
 								if(broker->port() > 0){
-									// Определяем тип протокола подключения
+									/**
+									 * Определяем тип протокола подключения
+									 */
 									switch(static_cast <uint8_t> (this->_settings.family)){
 										// Если тип протокола подключения unix-сокет
 										case static_cast <uint8_t> (scheme_t::family_t::IPC): {
@@ -862,7 +888,9 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 									}
 								// Если порт не установлен
 								} else {
-									// Определяем тип протокола подключения
+									/**
+									 * Определяем тип протокола подключения
+									 */
 									switch(static_cast <uint8_t> (this->_settings.family)){
 										// Если тип протокола подключения unix-сокет
 										case static_cast <uint8_t> (scheme_t::family_t::IPC): {
@@ -937,7 +965,8 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 	}
 }
 /**
- * launching Метод вызова при активации базы событий
+ * @brief Метод вызова при активации базы событий
+ *
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
  */
@@ -960,7 +989,8 @@ void awh::server::Core::launching(const bool mode, const bool status) noexcept {
 	}
 }
 /**
- * closedown Метод вызова при деакцтивации базы событий
+ * @brief Метод вызова при деакцтивации базы событий
+ *
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
  */
@@ -973,7 +1003,8 @@ void awh::server::Core::closedown(const bool mode, const bool status) noexcept {
 	node_t::closedown(mode, status);
 }
 /**
- * clearTimeout Метод удаления таймера ожидания получения данных
+ * @brief Метод удаления таймера ожидания получения данных
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Core::clearTimeout(const uint64_t bid) noexcept {
@@ -992,7 +1023,8 @@ void awh::server::Core::clearTimeout(const uint64_t bid) noexcept {
 	}
 }
 /**
- * clearTimeout Метод удаления таймера подключения или переподключения
+ * @brief Метод удаления таймера подключения или переподключения
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Core::clearTimeout(const uint16_t sid) noexcept {
@@ -1011,7 +1043,8 @@ void awh::server::Core::clearTimeout(const uint16_t sid) noexcept {
 	}
 }
 /**
- * createTimeout Метод создания таймаута подключения или переподключения
+ * @brief Метод создания таймаута подключения или переподключения
+ *
  * @param sid  идентификатор схемы сети
  * @param bid  идентификатор брокера
  * @param msec время ожидания получения данных в миллисекундах
@@ -1033,7 +1066,9 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 			// Выполняем биндинг сетевого ядра таймера
 			this->bind(dynamic_cast <awh::core_t *> (this->_timer.get()));
 		}
-		// Определяем режим создания таймера
+		/**
+		 * Определяем режим создания таймера
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо создать таймер на чтение данных
 			case static_cast <uint8_t> (mode_t::READ): {
@@ -1114,7 +1149,8 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 	}
 }
 /**
- * clusterReadyCallback Метод получения события подключения дочерних процессов
+ * @brief Метод получения события подключения дочерних процессов
+ *
  * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса
  */
@@ -1125,7 +1161,8 @@ void awh::server::Core::clusterReadyCallback(const uint16_t sid, const pid_t pid
 		this->_callback.call <void (const uint16_t, const pid_t)> ("clusterReady", sid, pid);
 }
 /**
- * clusterRebaseCallback Метод события пересоздании процесса
+ * @brief Метод события пересоздании процесса
+ *
  * @param sid  идентификатор схемы сети
  * @param pid  идентификатор процесса
  * @param opid идентификатор старого процесса
@@ -1137,7 +1174,8 @@ void awh::server::Core::clusterRebaseCallback(const uint16_t sid, const pid_t pi
 		this->_callback.call <void (const uint16_t, const pid_t, const pid_t)> ("clusterRebase", sid, pid, opid);
 }
 /**
- * clusterExitCallback Метод события завершения работы процесса
+ * @brief Метод события завершения работы процесса
+ *
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса
  * @param status статус остановки работы процесса
@@ -1149,7 +1187,8 @@ void awh::server::Core::clusterExitCallback(const uint16_t sid, const pid_t pid,
 		this->_callback.call <void (const uint16_t, const pid_t, const int32_t)> ("clusterExit", sid, pid, status);
 }
 /**
- * clusterEventsCallback Метод события ЗАПУСКА/ОСТАНОВКИ кластера
+ * @brief Метод события ЗАПУСКА/ОСТАНОВКИ кластера
+ *
  * @param sid   идентификатор схемы сети
  * @param pid   идентификатор процесса
  * @param event идентификатор события
@@ -1163,11 +1202,15 @@ void awh::server::Core::clusterEventsCallback(const uint16_t sid, const pid_t pi
 		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 		// Определяем члена семейства кластера
 		const cluster_t::family_t family = this->clusterFamily();
-		// Выполняем тип возникшего события
+		/**
+		 * Выполняем тип возникшего события
+		 */
 		switch(static_cast <uint8_t> (event)){
 			// Если производится запуск процесса
 			case static_cast <uint8_t> (cluster_t::event_t::START): {
-				// Определяем члена семейства кластера
+				/**
+				 * Определяем члена семейства кластера
+				 */
 				switch(static_cast <uint8_t> (family)){
 					// Если процесс является родительским
 					case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
@@ -1187,7 +1230,9 @@ void awh::server::Core::clusterEventsCallback(const uint16_t sid, const pid_t pi
 					} break;
 					// Если процесс является дочерним
 					case static_cast <uint8_t> (cluster_t::family_t::CHILDREN): {
-						// Определяем тип сокета
+						/**
+						 * Определяем тип сокета
+						 */
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
 							// Если тип сокета установлен как UDP
 							case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
@@ -1293,7 +1338,8 @@ void awh::server::Core::clusterEventsCallback(const uint16_t sid, const pid_t pi
 	}
 }
 /**
- * clusterMessageCallback Метод получения сообщений от дочерних процессоров кластера
+ * @brief Метод получения сообщений от дочерних процессоров кластера
+ *
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса
  * @param buffer буфер бинарных данных
@@ -1306,7 +1352,8 @@ void awh::server::Core::clusterMessageCallback(const uint16_t sid, const pid_t p
 		this->_callback.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const char *, const size_t)> ("clusterMessage", this->clusterFamily(), sid, pid, buffer, size);
 }
 /**
- * initDTLS Метод инициализации DTLS-брокера
+ * @brief Метод инициализации DTLS-брокера
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
@@ -1395,14 +1442,17 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 	}
 }
 /**
- * stop Метод остановки клиента
+ * @brief Метод остановки клиента
+ *
  */
 void awh::server::Core::stop() noexcept {
 	// Если система уже запущена
 	if(this->working()){
 		// Выполняем закрытие подключения
 		this->close();
-		// Определяем режим активации кластера
+		/**
+		 * Определяем режим активации кластера
+		 */
 		switch(static_cast <uint8_t> (this->_clusterMode)){
 			// Если кластер необходимо активировать
 			case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
@@ -1422,7 +1472,8 @@ void awh::server::Core::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска клиента
+ * @brief Метод запуска клиента
+ *
  */
 void awh::server::Core::start() noexcept {
 	// Если система ещё не запущена
@@ -1431,7 +1482,8 @@ void awh::server::Core::start() noexcept {
 		node_t::start();
 }
 /**
- * close Метод отключения всех брокеров
+ * @brief Метод отключения всех брокеров
+ *
  */
 void awh::server::Core::close() noexcept {
 	// Если список схем сети активен
@@ -1501,7 +1553,8 @@ void awh::server::Core::close() noexcept {
 	}
 }
 /**
- * remove Метод удаления всех активных схем сети
+ * @brief Метод удаления всех активных схем сети
+ *
  */
 void awh::server::Core::remove() noexcept {
 	// Если список схем сети активен
@@ -1589,7 +1642,8 @@ void awh::server::Core::remove() noexcept {
 	}
 }
 /**
- * close Метод закрытия подключения брокера
+ * @brief Метод закрытия подключения брокера
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Core::close(const uint64_t bid) noexcept {
@@ -1597,7 +1651,9 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
 	// Выполняем удаление таймера ожидания получения данных
 	this->clearTimeout(bid);
-	// Определяем тип сокета
+	/**
+	 * Определяем тип сокета
+	 */
 	switch(static_cast <uint8_t> (this->_settings.sonet)){
 		// Если тип сокета установлен как DTLS
 		case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
@@ -1655,7 +1711,8 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 	}
 }
 /**
- * remove Метод удаления схемы сети
+ * @brief Метод удаления схемы сети
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Core::remove(const uint16_t sid) noexcept {
@@ -1737,7 +1794,8 @@ void awh::server::Core::remove(const uint16_t sid) noexcept {
 	}
 }
 /**
- * close Метод закрытия подключения брокера по протоколу UDP
+ * @brief Метод закрытия подключения брокера по протоколу UDP
+ *
  * @param sid идентификатор схемы сети
  * @param bid идентификатор брокера
  */
@@ -1746,7 +1804,9 @@ void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
 	// Выполняем удаление таймера ожидания получения данных
 	this->clearTimeout(bid);
-	// Определяем тип сокета
+	/**
+	 * Определяем тип сокета
+	 */
 	switch(static_cast <uint8_t> (this->_settings.sonet)){
 		// Если тип сокета установлен как UDP
 		case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
@@ -1849,7 +1909,8 @@ void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 	}
 }
 /**
- * launch Метод запуска сервера
+ * @brief Метод запуска сервера
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Core::launch(const uint16_t sid) noexcept {
@@ -1859,7 +1920,9 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 		auto i = this->_schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 		if(i != this->_schemes.end()){
-			// Определяем режим активации кластера
+			/**
+			 * Определяем режим активации кластера
+			 */
 			switch(static_cast <uint8_t> (this->_clusterMode)){
 				// Если кластер необходимо активировать
 				case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
@@ -1877,7 +1940,9 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 			if(shm->_host.empty()){
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet(this->_fmk, this->_log);
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет
 					case static_cast <uint8_t> (scheme_t::family_t::IPC):
@@ -1898,7 +1963,9 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 				}
 			// Если хост сервера является доменным именем
 			} else {
-				// Определяем тип передаваемого сервера
+				/**
+				 * Определяем тип передаваемого сервера
+				 */
 				switch(static_cast <uint8_t> (this->_net.host(shm->_host))){
 					// Если домен является IPv4-адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
@@ -1966,7 +2033,9 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 					case static_cast <uint8_t> (net_t::type_t::FQDN): {
 						// Если объект DNS-резолвера установлен
 						if(this->_dns != nullptr) {
-							// Определяем тип протокола подключения
+							/**
+							 * Определяем тип протокола подключения
+							 */
 							switch(static_cast <uint8_t> (this->_settings.family)){
 								// Если тип протокола подключения unix-сокет
 								case static_cast <uint8_t> (scheme_t::family_t::IPC):
@@ -2006,7 +2075,8 @@ void awh::server::Core::launch(const uint16_t sid) noexcept {
 	}
 }
 /**
- * create Метод создания сервера
+ * @brief Метод создания сервера
+ *
  * @param sid идентификатор схемы сети
  * @return    результат создания сервера
  */
@@ -2021,7 +2091,9 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 		if(i != this->_schemes.end()){
 			// Получаем объект схемы сети
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
-			// Определяем тип протокола подключения
+			/**
+			 * Определяем тип протокола подключения
+			 */
 			switch(static_cast <uint8_t> (this->_settings.family)){
 				// Если тип протокола подключения IPv4
 				case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
@@ -2044,7 +2116,9 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 					}
 				} break;
 			}
-			// Определяем тип сокета
+			/**
+			 * Определяем тип сокета
+			 */
 			switch(static_cast <uint8_t> (this->_settings.sonet)){
 				// Если тип сокета установлен как DTLS
 				case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
@@ -2086,12 +2160,15 @@ bool awh::server::Core::create(const uint16_t sid) noexcept {
 	return result;
 }
 /**
- * host Метод получения хоста сервера
+ * @brief Метод получения хоста сервера
+ *
  * @param sid идентификатор схемы сети
  * @return    хост на котором висит сервер
  */
 string awh::server::Core::host(const uint16_t sid) const noexcept {
-	// Определяем тип протокола подключения
+	/**
+	 * Определяем тип протокола подключения
+	 */
 	switch(static_cast <uint8_t> (this->_settings.family)){
 		// Если тип протокола подключения unix-сокет
 		case static_cast <uint8_t> (scheme_t::family_t::IPC):
@@ -2114,7 +2191,8 @@ string awh::server::Core::host(const uint16_t sid) const noexcept {
 	return "";
 }
 /**
- * port Метод получения порта сервера
+ * @brief Метод получения порта сервера
+ *
  * @param sid идентификатор схемы сети
  * @return    порт сервера который он прослушивает
  */
@@ -2132,7 +2210,8 @@ uint32_t awh::server::Core::port(const uint16_t sid) const noexcept {
 	return 0;
 }
 /**
- * workers Метод получения списка доступных воркеров
+ * @brief Метод получения списка доступных воркеров
+ *
  * @param sid идентификатор схемы сети
  * @return    список доступных воркеров
  */
@@ -2152,7 +2231,8 @@ std::set <pid_t> awh::server::Core::workers(const uint16_t sid) const noexcept {
 	return result;
 }
 /**
- * send Метод асинхронной отправки буфера данных в сокет
+ * @brief Метод асинхронной отправки буфера данных в сокет
+ *
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param bid    идентификатор брокера
@@ -2165,7 +2245,9 @@ bool awh::server::Core::send(const char * buffer, const size_t size, const uint6
 	if(this->working() && this->has(bid)){
 		// Флаг активация ожидания готовности сокета
 		bool waiting = false;
-		// Определяем режим отправки сообщений
+		/**
+		 * Определяем режим отправки сообщений
+		 */
 		switch(static_cast <uint8_t> (this->_sending)){
 			// Если установлен флаг отправки отложенных сообщений
 			case static_cast <uint8_t> (sending_t::DEFFER):
@@ -2207,11 +2289,14 @@ bool awh::server::Core::send(const char * buffer, const size_t size, const uint6
 	return result;
 }
 /**
- * sendToProcess Метод отправки сообщения родительскому процессу
+ * @brief Метод отправки сообщения родительскому процессу
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Core::sendToProcess(const uint16_t sid) noexcept {
-	// Определяем члена семейства кластера
+	/**
+	 * Определяем члена семейства кластера
+	 */
 	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
@@ -2230,13 +2315,16 @@ void awh::server::Core::sendToProcess(const uint16_t sid) noexcept {
 	}
 }
 /**
- * sendToProcess Метод отправки сообщения родительскому процессу
+ * @brief Метод отправки сообщения родительскому процессу
+ *
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
 void awh::server::Core::sendToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept {
-	// Определяем члена семейства кластера
+	/**
+	 * Определяем члена семейства кластера
+	 */
 	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER): {
@@ -2255,12 +2343,15 @@ void awh::server::Core::sendToProcess(const uint16_t sid, const char * buffer, c
 	}
 }
 /**
- * sendToProcess Метод отправки сообщения дочернему процессу
+ * @brief Метод отправки сообщения дочернему процессу
+ *
  * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса для получения сообщения
  */
 void awh::server::Core::sendToProcess(const uint16_t sid, const pid_t pid) noexcept {
-	// Определяем члена семейства кластера
+	/**
+	 * Определяем члена семейства кластера
+	 */
 	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
@@ -2279,14 +2370,17 @@ void awh::server::Core::sendToProcess(const uint16_t sid, const pid_t pid) noexc
 	}
 }
 /**
- * sendToProcess Метод отправки сообщения дочернему процессу
+ * @brief Метод отправки сообщения дочернему процессу
+ *
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
 void awh::server::Core::sendToProcess(const uint16_t sid, const pid_t pid, const char * buffer, const size_t size) noexcept {
-	// Определяем члена семейства кластера
+	/**
+	 * Определяем члена семейства кластера
+	 */
 	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
@@ -2305,11 +2399,14 @@ void awh::server::Core::sendToProcess(const uint16_t sid, const pid_t pid, const
 	}
 }
 /**
- * broadcastToProcess Метод отправки сообщения всем дочерним процессам
+ * @brief Метод отправки сообщения всем дочерним процессам
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Core::broadcastToProcess(const uint16_t sid) noexcept {
-	// Определяем члена семейства кластера
+	/**
+	 * Определяем члена семейства кластера
+	 */
 	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
@@ -2328,13 +2425,16 @@ void awh::server::Core::broadcastToProcess(const uint16_t sid) noexcept {
 	}
 }
 /**
- * broadcastToProcess Метод отправки сообщения всем дочерним процессам
+ * @brief Метод отправки сообщения всем дочерним процессам
+ *
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
 void awh::server::Core::broadcastToProcess(const uint16_t sid, const char * buffer, const size_t size) noexcept {
-	// Определяем члена семейства кластера
+	/**
+	 * Определяем члена семейства кластера
+	 */
 	switch(static_cast <uint8_t> (this->clusterFamily())){
 		// Если процесс является родительским
 		case static_cast <uint8_t> (cluster_t::family_t::MASTER):
@@ -2353,7 +2453,8 @@ void awh::server::Core::broadcastToProcess(const uint16_t sid, const char * buff
 	}
 }
 /**
- * read Метод чтения данных для брокера
+ * @brief Метод чтения данных для брокера
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Core::read(const uint64_t bid) noexcept {
@@ -2367,7 +2468,9 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 			auto i = this->_schemes.find(broker->sid());
 			// Если идентификатор схемы сети найден
 			if(i != this->_schemes.end()){
-				// Определяем тип сокета
+				/**
+				 * Определяем тип сокета
+				 */
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета установлен как TCP/IP
 					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -2376,13 +2479,13 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 					// Если тип сокета установлен как SCTP
 					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Переводим сокет в неблокирующий режим
 							broker->ectx.blocking(engine_t::mode_t::DISABLED);
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Если сокет находится в блокирующем режиме
@@ -2400,7 +2503,9 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				do {
 					// Если подключение выполнено и чтение данных разрешено
 					if(broker->buffer.size > 0){
-						// Определяем тип сокета
+						/**
+						 * Определяем тип сокета
+						 */
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
 							// Если тип сокета установлен как DTLS
 							case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
@@ -2443,7 +2548,9 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						}
 					// Если запись не выполнена, входим
 					} else break;
-				// Выполняем чтение до тех пор, пока всё не прочитаем
+				/**
+				 * Выполняем чтение до тех пор, пока всё не прочитаем
+				 */
 				} while(this->has(bid));
 				// Если подключение ещё не разорванно
 				if(this->has(bid)){
@@ -2477,7 +2584,8 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 	}
 }
 /**
- * write Метод записи данных в брокер
+ * @brief Метод записи данных в брокер
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Core::write(const uint64_t bid) noexcept {
@@ -2511,7 +2619,8 @@ void awh::server::Core::write(const uint64_t bid) noexcept {
 	}
 }
 /**
- * write Метод записи буфера данных в сокет
+ * @brief Метод записи буфера данных в сокет
+ *
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param bid    идентификатор брокера
@@ -2536,11 +2645,15 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 				const int32_t max = broker->ectx.buffer(engine_t::method_t::WRITE);
 				// Если в буфере нет места
 				if(max > 0){
-					// Определяем правило передачи данных
+					/**
+					 * Определяем правило передачи данных
+					 */
 					switch(static_cast <uint8_t> (this->_transfer)){
 						// Если передавать данные необходимо синхронно
 						case static_cast <uint8_t> (transfer_t::SYNC): {
-							// Определяем тип сокета
+							/**
+							 * Определяем тип сокета
+							 */
 							switch(static_cast <uint8_t> (this->_settings.sonet)){
 								// Если тип сокета установлен как TCP/IP
 								case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -2555,7 +2668,9 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 						} break;
 						// Если передавать данные необходимо асинхронно
 						case static_cast <uint8_t> (transfer_t::ASYNC): {
-							// Определяем тип сокета
+							/**
+							 * Определяем тип сокета
+							 */
 							switch(static_cast <uint8_t> (this->_settings.sonet)){
 								// Если тип сокета установлен как TCP/IP
 								case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -2564,13 +2679,13 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 								// Если тип сокета установлен как SCTP
 								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
 									/**
-									 * Для операционной системы OS Windows
+									 * Для операционной системы MS Windows
 									 */
 									#if _WIN32 || _WIN64
 										// Переводим сокет в неблокирующий режим
 										broker->ectx.blocking(engine_t::mode_t::DISABLED);
 									/**
-									 * Для операционной системы не являющейся OS Windows
+									 * Для операционной системы не являющейся MS Windows
 									 */
 									#else
 										// Если сокет находится в блокирующем режиме
@@ -2582,7 +2697,9 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 							}
 						} break;
 					}
-					// Определяем тип сокета
+					/**
+					 * Определяем тип сокета
+					 */
 					switch(static_cast <uint8_t> (this->_settings.sonet)){
 						// Если тип сокета установлен как TCP/IP
 						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -2608,11 +2725,15 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 						this->close(bid);
 					// Если дисконнекта не произошло
 					if(bytes != 0){
-						// Определяем правило передачи данных
+						/**
+						 * Определяем правило передачи данных
+						 */
 						switch(static_cast <uint8_t> (this->_transfer)){
 							// Если передавать данные необходимо синхронно
 							case static_cast <uint8_t> (transfer_t::SYNC): {
-								// Определяем тип сокета
+								/**
+								 * Определяем тип сокета
+								 */
 								switch(static_cast <uint8_t> (this->_settings.sonet)){
 									// Если тип сокета установлен как TCP/IP
 									case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -2657,7 +2778,8 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 	return result;
 }
 /**
- * work Метод активации параметров запуска сервера
+ * @brief Метод активации параметров запуска сервера
+ *
  * @param sid    идентификатор схемы сети
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
@@ -2676,7 +2798,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 				// sudo lsof -i -P | grep 1080
 				// Обновляем хост сервера
 				shm->_host = ip;
-				// Определяем тип сокета
+				/**
+				 * Определяем тип сокета
+				 */
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета установлен как UDP
 					case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
@@ -2689,7 +2813,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 							else this->_log->print("Server [%s:%u] has been started successfully", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 						}
-						// Определяем режим активации кластера
+						/**
+						 * Определяем режим активации кластера
+						 */
 						switch(static_cast <uint8_t> (this->_clusterMode)){
 							// Если кластер необходимо активировать
 							case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
@@ -2728,7 +2854,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 								else this->_log->print("Server [%s:%u] has been started successfully", log_t::flag_t::INFO, shm->_host.c_str(), shm->_port);
 							}
-							// Определяем режим активации кластера
+							/**
+							 * Определяем режим активации кластера
+							 */
 							switch(static_cast <uint8_t> (this->_clusterMode)){
 								// Если кластер необходимо активировать
 								case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
@@ -2796,7 +2924,9 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 								// Выполняем функцию обратного вызова
 								else this->_callback.call <void (const string &, const uint32_t)> ("launched", shm->_host, shm->_port);
 							}
-							// Определяем режим активации кластера
+							/**
+							 * Определяем режим активации кластера
+							 */
 							switch(static_cast <uint8_t> (this->_clusterMode)){
 								// Если кластер необходимо активировать
 								case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED):
@@ -2918,7 +3048,8 @@ void awh::server::Core::work(const uint16_t sid, const string & ip, const int32_
 	}
 }
 /**
- * ipV6only Метод установки флага использования только сети IPv6
+ * @brief Метод установки флага использования только сети IPv6
+ *
  * @param mode флаг для установки
  */
 void awh::server::Core::ipV6only(const bool mode) noexcept {
@@ -2926,7 +3057,8 @@ void awh::server::Core::ipV6only(const bool mode) noexcept {
 	this->_settings.ipV6only = mode;
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::server::Core::callback(const callback_t & callback) noexcept {
@@ -2966,7 +3098,8 @@ void awh::server::Core::callback(const callback_t & callback) noexcept {
 	this->_callback.set("clusterMessage", callback);
 }
 /**
- * transferRule Метод установки правила передачи данных
+ * @brief Метод установки правила передачи данных
+ *
  * @param transfer правило передачи данных
  */
 void awh::server::Core::transferRule(const transfer_t transfer) noexcept {
@@ -2976,7 +3109,8 @@ void awh::server::Core::transferRule(const transfer_t transfer) noexcept {
 	this->_transfer = transfer;
 }
 /**
- * total Метод установки максимального количества одновременных подключений
+ * @brief Метод установки максимального количества одновременных подключений
+ *
  * @param sid   идентификатор схемы сети
  * @param total максимальное количество одновременных подключений
  */
@@ -2994,12 +3128,13 @@ void awh::server::Core::total(const uint16_t sid, const uint16_t total) noexcept
 	}
 }
 /**
- * clusterName Метод установки названия кластера
+ * @brief Метод установки названия кластера
+ *
  * @param name название кластера для установки
  */
 void awh::server::Core::clusterName(const string & name) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
@@ -3007,7 +3142,7 @@ void awh::server::Core::clusterName(const string & name) noexcept {
 		// Выполняем установку названия кластера
 		this->_cluster.name(name);
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3019,12 +3154,13 @@ void awh::server::Core::clusterName(const string & name) noexcept {
 	#endif
 }
 /**
- * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @brief Метод установки флага перезапуска процессов
+ *
  * @param mode флаг перезапуска процессов
  */
 void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
@@ -3032,7 +3168,7 @@ void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 		// Разрешаем автоматический перезапуск упавших процессов
 		this->_clusterAutoRestart = mode;
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3044,12 +3180,13 @@ void awh::server::Core::clusterAutoRestart(const bool mode) noexcept {
 	#endif
 }
 /**
- * clusterSalt Метод установки соли шифрования
+ * @brief Метод установки соли шифрования
+ *
  * @param salt соль для шифрования
  */
 void awh::server::Core::clusterSalt(const string & salt) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
@@ -3057,7 +3194,7 @@ void awh::server::Core::clusterSalt(const string & salt) noexcept {
 		// Выполняем установку соли шифрования
 		this->_cluster.salt(salt);
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3069,12 +3206,13 @@ void awh::server::Core::clusterSalt(const string & salt) noexcept {
 	#endif
 }
 /**
- * clusterPassword Метод установки пароля шифрования
+ * @brief Метод установки пароля шифрования
+ *
  * @param password пароль шифрования
  */
 void awh::server::Core::clusterPassword(const string & password) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
@@ -3082,7 +3220,7 @@ void awh::server::Core::clusterPassword(const string & password) noexcept {
 		// Выполняем установку пароля шифрования
 		this->_cluster.password(password);
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3094,12 +3232,13 @@ void awh::server::Core::clusterPassword(const string & password) noexcept {
 	#endif
 }
 /**
- * clusterCipher Метод установки размера шифрования
+ * @brief Метод установки размера шифрования
+ *
  * @param cipher размер шифрования
  */
 void awh::server::Core::clusterCipher(const hash_t::cipher_t cipher) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
@@ -3107,7 +3246,7 @@ void awh::server::Core::clusterCipher(const hash_t::cipher_t cipher) noexcept {
 		// Выполняем установку размера шифрования
 		this->_cluster.cipher(cipher);
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3119,12 +3258,13 @@ void awh::server::Core::clusterCipher(const hash_t::cipher_t cipher) noexcept {
 	#endif
 }
 /**
- * clusterCompressor Метод установки метода компрессии
+ * @brief Метод установки метода компрессии
+ *
  * @param compressor метод компрессии для установки
  */
 void awh::server::Core::clusterCompressor(const hash_t::method_t compressor) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
@@ -3132,7 +3272,7 @@ void awh::server::Core::clusterCompressor(const hash_t::method_t compressor) noe
 		// Выполняем установку метода компрессии
 		this->_cluster.compressor(compressor);
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3144,12 +3284,13 @@ void awh::server::Core::clusterCompressor(const hash_t::method_t compressor) noe
 	#endif
 }
 /**
- * clusterTransfer Метод установки режима передачи данных
+ * @brief Метод установки режима передачи данных
+ *
  * @param transfer режим передачи данных
  */
 void awh::server::Core::clusterTransfer(const cluster_t::transfer_t transfer) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
@@ -3157,7 +3298,7 @@ void awh::server::Core::clusterTransfer(const cluster_t::transfer_t transfer) no
 		// Выполняем установку режима передачи данных
 		this->_cluster.transfer(transfer);
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3169,13 +3310,14 @@ void awh::server::Core::clusterTransfer(const cluster_t::transfer_t transfer) no
 	#endif
 }
 /**
- * clusterBandwidth Метод установки пропускной способности сети кластера
+ * @brief Метод установки пропускной способности сети кластера
+ *
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
 void awh::server::Core::clusterBandwidth(const string & read, const string & write) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
@@ -3183,7 +3325,7 @@ void awh::server::Core::clusterBandwidth(const string & read, const string & wri
 		// Выполняем установку пропускной способности сети кластера
 		this->_cluster.bandwidth(read, write);
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3195,11 +3337,14 @@ void awh::server::Core::clusterBandwidth(const string & read, const string & wri
 	#endif
 }
 /**
- * clusterFamily Меод получения семейства кластера
+ * @brief Меод получения семейства кластера
+ *
  * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
  */
 awh::cluster_t::family_t awh::server::Core::clusterFamily() const noexcept {
-	// Определяем режим активации кластера
+	/**
+	 * Определяем режим активации кластера
+	 */
 	switch(static_cast <uint8_t> (this->_clusterMode)){
 		// Если кластер активирован
 		case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
@@ -3215,7 +3360,8 @@ awh::cluster_t::family_t awh::server::Core::clusterFamily() const noexcept {
 	return cluster_t::family_t::NONE;
 }
 /**
- * cluster Метод проверки активации кластера
+ * @brief Метод проверки активации кластера
+ *
  * @return режим активации кластера
  */
 awh::scheme_t::mode_t awh::server::Core::cluster() const noexcept {
@@ -3223,20 +3369,23 @@ awh::scheme_t::mode_t awh::server::Core::cluster() const noexcept {
 	return this->_clusterMode;
 }
 /**
- * cluster Метод установки количества процессов кластера
+ * @brief Метод установки количества процессов кластера
+ *
  * @param mode флаг активации/деактивации кластера
  * @param size количество рабочих процессов
  */
 void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t size) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 		// Активируем режим работы кластера
 		this->_clusterMode = mode;
-		// Определяем режим активации кластера
+		/**
+		 * Определяем режим активации кластера
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если кластер необходимо активировать
 			case static_cast <uint8_t> (awh::scheme_t::mode_t::ENABLED): {
@@ -3260,7 +3409,7 @@ void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t 
 			break;
 		}
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим предупредительное сообщение в лог
@@ -3272,7 +3421,8 @@ void awh::server::Core::cluster(const awh::scheme_t::mode_t mode, const int16_t 
 	#endif
 }
 /**
- * init Метод инициализации сервера
+ * @brief Метод инициализации сервера
+ *
  * @param sid  идентификатор схемы сети
  * @param port порт сервера
  * @param host хост сервера
@@ -3292,13 +3442,17 @@ void awh::server::Core::init(const uint16_t sid, const uint32_t port, const stri
 			if(port > 0){
 				// Устанавливаем порт
 				shm->_port = port;
-				// Определяем тип сокета
+				/**
+				 * Определяем тип сокета
+				 */
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета установлен как UDP
 					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 					// Если тип сокета установлен как TCP/IP
 					case static_cast <uint8_t> (scheme_t::sonet_t::TCP): {
-						// Определяем тип установленного порта
+						/**
+						 * Определяем тип установленного порта
+						 */
 						switch(shm->_port){
 							// Если порт HTTP установлен незащищённый то исправляем его
 							case SERVER_SEC_PORT:
@@ -3318,7 +3472,9 @@ void awh::server::Core::init(const uint16_t sid, const uint32_t port, const stri
 					case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 					// Если тип сокета установлен как SCTP
 					case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
-						// Определяем тип установленного порта
+						/**
+						 * Определяем тип установленного порта
+						 */
 						switch(shm->_port){
 							// Если порт HTTP установлен незащищённый то исправляем его
 							case SERVER_PORT:
@@ -3335,7 +3491,9 @@ void awh::server::Core::init(const uint16_t sid, const uint32_t port, const stri
 				}
 			// Если порт сервера не установлен
 			} else {
-				// Определяем тип сокета
+				/**
+				 * Определяем тип сокета
+				 */
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета установлен как UDP
 					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
@@ -3363,7 +3521,9 @@ void awh::server::Core::init(const uint16_t sid, const uint32_t port, const stri
 			else {
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet(this->_fmk, this->_log);
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(static_cast <uint8_t> (this->_settings.family)){
 					// Если тип протокола подключения unix-сокет
 					case static_cast <uint8_t> (scheme_t::family_t::IPC):
@@ -3383,7 +3543,8 @@ void awh::server::Core::init(const uint16_t sid, const uint32_t port, const stri
 	}
 }
 /**
- * bandwidth Метод установки пропускной способности сети
+ * @brief Метод установки пропускной способности сети
+ *
  * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
@@ -3393,7 +3554,9 @@ void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const
 	if((bid > 0) && this->has(bid)){
 		// Создаём бъект активного брокера подключения
 		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
-		// Определяем тип сокета
+		/**
+		 * Определяем тип сокета
+		 */
 		switch(static_cast <uint8_t> (this->_settings.sonet)){
 			// Если тип сокета установлен как TCP/IP
 			case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -3429,7 +3592,8 @@ void awh::server::Core::bandwidth(const uint64_t bid, const string & read, const
 	}
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param bid идентификатор брокера
  * @param sec интервал времени в секундах
  */
@@ -3449,7 +3613,8 @@ void awh::server::Core::waitMessage(const uint64_t bid, const uint16_t sec) noex
 	}
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param bid     идентификатор брокера
  * @param read    количество секунд для детекции по чтению
  * @param write   количество секунд для детекции по записи
@@ -3476,7 +3641,8 @@ void awh::server::Core::waitTimeDetect(const uint64_t bid, const uint16_t read, 
 	}
 }
 /**
- * Core Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -3498,7 +3664,8 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_cluster.on <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", &core_t::clusterMessageCallback, this, _1, _2, _3, _4);
 }
 /**
- * Core Конструктор
+ * @brief Конструктор
+ *
  * @param dns объект DNS-резолвера
  * @param fmk объект фреймворка
  * @param log объект для работы с логами

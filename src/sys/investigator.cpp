@@ -27,7 +27,8 @@ using namespace std;
  */
 #if __NetBSD__ || __OpenBSD__
 	/**
-	 * readData Функция извлечения данных записи
+	 * @brief Функция извлечения данных записи
+	 *
 	 * @param filename адрес файла для извлечения
 	 * @return         содержимое файла
 	 */
@@ -83,7 +84,8 @@ using namespace std;
 #endif
 
 /**
- * inquiry Метод проведения дознания
+ * @brief Метод проведения дознания
+ *
  * @param pid идентификатор процесса
  * @return    название приложения которому принадлежит процесс
  */
@@ -95,7 +97,7 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 		/**
 		 * Для операционной системы Linux
 		 */
-		#ifdef __linux__
+		#if __linux__
 			// Создаём буфер строки
 			char buffer[1024];
 			// Заполняем нулями буфер данных
@@ -220,7 +222,7 @@ string awh::Investigator::inquiry(const pid_t pid) const noexcept {
 				result = info.pr_fname;
 			}
 		/**
-		 * Для операционной системы Windows
+		 * Для операционной системы MS Windows
 		 */
 		#elif _WIN32 || _WIN64
 			// Выполняем получение данных процесса

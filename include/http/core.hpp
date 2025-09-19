@@ -437,7 +437,7 @@ namespace awh {
 			 *
 			 * @param headers список заголовков для установки
 			 */
-			void headers2(const vector <pair <string, string>> & headers) noexcept;
+			void headers2(const vector <std::pair <string, string>> & headers) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки статуса авторизации
@@ -583,7 +583,7 @@ namespace awh {
 			 *
 			 * @return буфер данных ответа в бинарном виде
 			 */
-			vector <pair <string, string>> trailers2() const noexcept;
+			vector <std::pair <string, string>> trailers2() const noexcept;
 		public:
 			/**
 			 * @brief Метод создания запроса для авторизации на прокси-сервере
@@ -598,7 +598,7 @@ namespace awh {
 			 * @param req объект параметров REST-запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			virtual vector <pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
+			virtual vector <std::pair <string, string>> proxy2(const web_t::req_t & req) const noexcept;
 		public:
 			/**
 			 * @brief Метод создания отрицательного ответа
@@ -613,7 +613,7 @@ namespace awh {
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			virtual vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
+			virtual vector <std::pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
 			 * @brief Метод создания выполняемого процесса в бинарном виде
@@ -630,7 +630,7 @@ namespace awh {
 			 * @param prov параметры провайдера обмена сообщениями
 			 * @return     буфер данных в бинарном виде
 			 */
-			virtual vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
+			virtual vector <std::pair <string, string>> process2(const process_t flag, const web_t::provider_t & prov) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки функций обратного вызова

@@ -32,7 +32,8 @@ static constexpr uint8_t HEADER_SIGN[3] = {'A','W','H'};
 static constexpr size_t HEADER_SIZE = sizeof(awh::cmp::header_t);
 
 /**
- * Header Конструктор
+ * @brief Конструктор
+ *
  */
 awh::cmp::Header::Header() noexcept :
  pid(::getpid()), mid(0), size(0),
@@ -41,7 +42,8 @@ awh::cmp::Header::Header() noexcept :
 	::memcpy(this->sign, HEADER_SIGN, sizeof(HEADER_SIGN));
 }
 /**
- * work Метод формирования новой записи
+ * @brief Метод формирования новой записи
+ *
  * @param buffer буфер данных для добавления
  * @param size   размер буфера данных
  */
@@ -60,7 +62,9 @@ void awh::cmp::Encoder::work(const void * buffer, const size_t size) noexcept {
 			if((HEADER_SIZE + size) > this->_chunkSize){
 				// Смещение в буфере бинарных и размер одного чанка
 				size_t offset = 0, length = 0;
-				// Выполняем формирование буфера до тех пор пока все не добавим
+				/**
+				 * Выполняем формирование буфера до тех пор пока все не добавим
+				 */
 				while((size - offset) > 0){
 					// Если данные не помещаются в буфере
 					if((HEADER_SIZE + (size - offset)) > this->_chunkSize){
@@ -118,7 +122,8 @@ void awh::cmp::Encoder::work(const void * buffer, const size_t size) noexcept {
 	}
 }
 /**
- * empty Метод проверки на пустоту контейнера
+ * @brief Метод проверки на пустоту контейнера
+ *
  * @return результат проверки
  */
 bool awh::cmp::Encoder::empty() const noexcept {
@@ -126,7 +131,8 @@ bool awh::cmp::Encoder::empty() const noexcept {
 	return this->_buffer.empty();
 }
 /**
- * size Метод получения количества подготовленных буферов
+ * @brief Метод получения количества подготовленных буферов
+ *
  * @return количество подготовленных буферов
  */
 size_t awh::cmp::Encoder::size() const noexcept {
@@ -134,7 +140,8 @@ size_t awh::cmp::Encoder::size() const noexcept {
 	return this->_buffer.size();
 }
 /**
- * clear Метод очистки данных
+ * @brief Метод очистки данных
+ *
  */
 void awh::cmp::Encoder::clear() noexcept {
 	/**
@@ -165,7 +172,8 @@ void awh::cmp::Encoder::clear() noexcept {
 	}
 }
 /**
- * data Метод получения бинарных данных буфера
+ * @brief Метод получения бинарных данных буфера
+ *
  * @return бинарные данные буфера
  */
 const void * awh::cmp::Encoder::data() const noexcept {
@@ -173,7 +181,8 @@ const void * awh::cmp::Encoder::data() const noexcept {
 	return this->_buffer.get();
 }
 /**
- * erase Метод удаления количества первых байт буфера
+ * @brief Метод удаления количества первых байт буфера
+ *
  * @param size размер данных для удаления
  */
 void awh::cmp::Encoder::erase(const size_t size) noexcept {
@@ -205,7 +214,8 @@ void awh::cmp::Encoder::erase(const size_t size) noexcept {
 	}
 }
 /**
- * chunkSize Метод извлечения размера установленного чанка
+ * @brief Метод извлечения размера установленного чанка
+ *
  * @return размер установленного чанка
  */
 size_t awh::cmp::Encoder::chunkSize() const noexcept {
@@ -213,7 +223,8 @@ size_t awh::cmp::Encoder::chunkSize() const noexcept {
 	return this->_chunkSize;
 }
 /**
- * chunkSize Метод установки максимального размера одного блока
+ * @brief Метод установки максимального размера одного блока
+ *
  * @param size размер блока данных
  */
 void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
@@ -245,7 +256,8 @@ void awh::cmp::Encoder::chunkSize(const size_t size) noexcept {
 	}
 }
 /**
- * salt Метод установки соли шифрования
+ * @brief Метод установки соли шифрования
+ *
  * @param salt соль для шифрования
  */
 void awh::cmp::Encoder::salt(const string & salt) noexcept {
@@ -255,7 +267,8 @@ void awh::cmp::Encoder::salt(const string & salt) noexcept {
 	this->_hash.salt(salt);
 }
 /**
- * password Метод установки пароля шифрования
+ * @brief Метод установки пароля шифрования
+ *
  * @param password пароль шифрования
  */
 void awh::cmp::Encoder::password(const string & password) noexcept {
@@ -265,7 +278,8 @@ void awh::cmp::Encoder::password(const string & password) noexcept {
 	this->_hash.password(password);
 }
 /**
- * cipher Метод установки размера шифрования
+ * @brief Метод установки размера шифрования
+ *
  * @param cipher размер шифрования
  */
 void awh::cmp::Encoder::cipher(const hash_t::cipher_t cipher) noexcept {
@@ -275,7 +289,8 @@ void awh::cmp::Encoder::cipher(const hash_t::cipher_t cipher) noexcept {
 	this->_cipher = cipher;
 }
 /**
- * method Метод установки метода компрессии
+ * @brief Метод установки метода компрессии
+ *
  * @param method метод компрессии для установки
  */
 void awh::cmp::Encoder::method(const hash_t::method_t method) noexcept {
@@ -289,7 +304,8 @@ void awh::cmp::Encoder::method(const hash_t::method_t method) noexcept {
 		this->_hash.level(hash_t::level_t::SPEED);
 }
 /**
- * push Метод добавления новой записи в протокол
+ * @brief Метод добавления новой записи в протокол
+ *
  * @param mid    идентификатор сообщения
  * @param buffer буфер данных для добавления
  * @param size   размер буфера данных
@@ -380,7 +396,7 @@ void awh::cmp::Encoder::push(const uint8_t mid, const void * buffer, const size_
 						// Если шифрование не выполнено
 						} else this->work(buffer, size);
 					}
-				}	
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -453,7 +469,8 @@ awh::cmp::Encoder & awh::cmp::Encoder::operator = (const size_t size) noexcept {
 	return (* this);
 }
 /**
- * pop Метод удаления первой записи протокола
+ * @brief Метод удаления первой записи протокола
+ *
  */
 void awh::cmp::Decoder::pop() noexcept {
 	/**
@@ -490,7 +507,8 @@ void awh::cmp::Decoder::pop() noexcept {
 	}
 }
 /**
- * clear Метод очистки данных
+ * @brief Метод очистки данных
+ *
  */
 void awh::cmp::Decoder::clear() noexcept {
 	/**
@@ -527,7 +545,8 @@ void awh::cmp::Decoder::clear() noexcept {
 	}
 }
 /**
- * pid Метод извлечения идентификатора процесса от которого пришло сообщение
+ * @brief Метод извлечения идентификатора процесса от которого пришло сообщение
+ *
  * @return идентификатор процесса
  */
 pid_t awh::cmp::Decoder::pid() const noexcept {
@@ -535,7 +554,8 @@ pid_t awh::cmp::Decoder::pid() const noexcept {
 	return this->_pid;
 }
 /**
- * empty Метод проверки на пустоту контейнера
+ * @brief Метод проверки на пустоту контейнера
+ *
  * @return результат проверки
  */
 bool awh::cmp::Decoder::empty() const noexcept {
@@ -543,7 +563,8 @@ bool awh::cmp::Decoder::empty() const noexcept {
 	return this->_queue.empty();
 }
 /**
- * size Метод получения количества подготовленных буферов
+ * @brief Метод получения количества подготовленных буферов
+ *
  * @return количество подготовленных буферов
  */
 size_t awh::cmp::Decoder::size() const noexcept {
@@ -551,7 +572,8 @@ size_t awh::cmp::Decoder::size() const noexcept {
 	return this->_queue.size();
 }
 /**
- * get Метод получения сообщения
+ * @brief Метод получения сообщения
+ *
  * @return объект данных сообщения
  */
 awh::cmp::Decoder::message_t awh::cmp::Decoder::get() const noexcept {
@@ -574,7 +596,8 @@ awh::cmp::Decoder::message_t awh::cmp::Decoder::get() const noexcept {
 	return result;
 }
 /**
- * push Метод добавления новой записи в протокол
+ * @brief Метод добавления новой записи в протокол
+ *
  * @param buffer буфер данных для добавления
  * @param size   размер буфера данных
  */
@@ -642,7 +665,8 @@ void awh::cmp::Decoder::push(const void * buffer, const size_t size) noexcept {
 	}
 }
 /**
- * process Метод извлечения данных из полученного буфера
+ * @brief Метод извлечения данных из полученного буфера
+ *
  * @param buffer буфер данных для препарирования
  * @param size   размер буфера данных для препарирования
  * @return       количество обработанных байт
@@ -836,7 +860,8 @@ size_t awh::cmp::Decoder::process(const void * buffer, const size_t size) noexce
 	return result;
 }
 /**
- * prepare Метод препарирования полученных данных
+ * @brief Метод препарирования полученных данных
+ *
  * @param buffer буфер данных для препарирования
  * @param size   размер буфера данных для препарирования
  * @return       количество обработанных байт
@@ -858,7 +883,9 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 			do
 				// Выполняем извлечение данных из полученного буфера
 				result += bytes = this->process(reinterpret_cast <const uint8_t *> (buffer) + result, size - result);
-			// Если в буфере есть ещё данные продолжаем дальше
+			/**
+			 * Если в буфере есть ещё данные продолжаем дальше
+			 */
 			while((bytes > 0) && (size > result) && ((size - result) >= HEADER_SIZE));
 		/**
 		 * Если возникает ошибка
@@ -917,7 +944,8 @@ size_t awh::cmp::Decoder::prepare(const void * buffer, const size_t size) noexce
 	return result;
 }
 /**
- * chunkSize Метод извлечения размера установленного чанка
+ * @brief Метод извлечения размера установленного чанка
+ *
  * @return размер установленного чанка
  */
 size_t awh::cmp::Decoder::chunkSize() const noexcept {
@@ -925,7 +953,8 @@ size_t awh::cmp::Decoder::chunkSize() const noexcept {
 	return this->_chunkSize;
 }
 /**
- * chunkSize Метод установки максимального размера одного блока
+ * @brief Метод установки максимального размера одного блока
+ *
  * @param size размер блока данных
  */
 void awh::cmp::Decoder::chunkSize(const size_t size) noexcept {
@@ -957,7 +986,8 @@ void awh::cmp::Decoder::chunkSize(const size_t size) noexcept {
 	}
 }
 /**
- * salt Метод установки соли шифрования
+ * @brief Метод установки соли шифрования
+ *
  * @param salt соль для шифрования
  */
 void awh::cmp::Decoder::salt(const string & salt) noexcept {
@@ -967,7 +997,8 @@ void awh::cmp::Decoder::salt(const string & salt) noexcept {
 	this->_hash.salt(salt);
 }
 /**
- * password Метод установки пароля шифрования
+ * @brief Метод установки пароля шифрования
+ *
  * @param password пароль шифрования
  */
 void awh::cmp::Decoder::password(const string & password) noexcept {
@@ -977,7 +1008,8 @@ void awh::cmp::Decoder::password(const string & password) noexcept {
 	this->_hash.password(password);
 }
 /**
- * Оператор проверки на доступность данных в контейнере
+ * @brief Оператор проверки на доступность данных в контейнере
+ *
  * @return результат проверки
  */
 awh::cmp::Decoder::operator bool() const noexcept {
@@ -985,7 +1017,8 @@ awh::cmp::Decoder::operator bool() const noexcept {
 	return !this->empty();
 }
 /**
- * Оператор получения количества записей
+ * @brief Оператор получения количества записей
+ *
  * @return количество записей в протоколе
  */
 awh::cmp::Decoder::operator size_t() const noexcept {
@@ -993,7 +1026,8 @@ awh::cmp::Decoder::operator size_t() const noexcept {
 	return this->size();
 }
 /**
- * Оператор [=] установки максимального размера одного блока
+ * @brief Оператор [=] установки максимального размера одного блока
+ *
  * @param size размер блока данных
  * @return     текущий объект протокола
  */

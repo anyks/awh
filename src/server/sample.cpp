@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * openEvent Метод обратного вызова при запуске работы
+ * @brief Метод обратного вызова при запуске работы
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Sample::openEvent(const uint16_t sid) noexcept {
@@ -41,13 +42,16 @@ void awh::server::Sample::openEvent(const uint16_t sid) noexcept {
 	}
 }
 /**
- * statusEvent Метод обратного вызова при активации ядра сервера
+ * @brief Метод обратного вызова при активации ядра сервера
+ *
  * @param status флаг запуска/остановки
  */
 void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexcept {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
-		// Определяем статус активности сетевого ядра
+		/**
+		 * Определяем статус активности сетевого ядра
+		 */
 		switch(static_cast <uint8_t> (status)){
 			// Если система запущена
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
@@ -77,7 +81,8 @@ void awh::server::Sample::statusEvent(const awh::core_t::status_t status) noexce
 	}
 }
 /**
- * connectEvent Метод обратного вызова при подключении к серверу
+ * @brief Метод обратного вызова при подключении к серверу
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -93,7 +98,8 @@ void awh::server::Sample::connectEvent(const uint64_t bid, const uint16_t sid) n
 	}
 }
 /**
- * disconnectEvent Метод обратного вызова при отключении от сервера
+ * @brief Метод обратного вызова при отключении от сервера
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -109,7 +115,8 @@ void awh::server::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
 	}
 }
 /**
- * launchedEvent Метод получения события запуска сервера
+ * @brief Метод получения события запуска сервера
+ *
  * @param host хост запущенного сервера
  * @param port порт запущенного сервера
  */
@@ -123,7 +130,8 @@ void awh::server::Sample::launchedEvent(const string & host, const uint32_t port
 	}
 }
 /**
- * readEvent Метод обратного вызова при чтении сообщения с брокера
+ * @brief Метод обратного вызова при чтении сообщения с брокера
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
@@ -149,7 +157,8 @@ void awh::server::Sample::readEvent(const char * buffer, const size_t size, cons
 	}
 }
 /**
- * writeEvent Метод обратного вызова при записи сообщение брокеру
+ * @brief Метод обратного вызова при записи сообщение брокеру
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер записанных в сокет байт
  * @param bid    идентификатор брокера
@@ -173,7 +182,8 @@ void awh::server::Sample::writeEvent(const char * buffer, const size_t size, con
 	}
 }
 /**
- * acceptEvent Функция обратного вызова при проверке подключения брокера
+ * @brief Функция обратного вызова при проверке подключения брокера
+ *
  * @param ip   адрес интернет подключения брокера
  * @param mac  мак-адрес подключившегося брокера
  * @param port порт подключившегося брокера
@@ -194,7 +204,8 @@ bool awh::server::Sample::acceptEvent(const string & ip, const string & mac, con
 	return result;
 }
 /**
- * erase Метод удаления отключившихся клиентов
+ * @brief Метод удаления отключившихся клиентов
+ *
  * @param tid идентификатор таймера
  */
 void awh::server::Sample::erase(const uint16_t tid) noexcept {
@@ -222,7 +233,8 @@ void awh::server::Sample::erase(const uint16_t tid) noexcept {
 	}
 }
 /**
- * pinging Метод таймера выполнения пинга клиента
+ * @brief Метод таймера выполнения пинга клиента
+ *
  * @param tid идентификатор таймера
  */
 void awh::server::Sample::pinging(const uint16_t tid) noexcept {
@@ -241,12 +253,13 @@ void awh::server::Sample::pinging(const uint16_t tid) noexcept {
 	}
 }
 /**
- * init Метод инициализации Rest брокера
+ * @brief Метод инициализации Rest брокера
+ *
  * @param socket unix-сокет для биндинга
  */
 void awh::server::Sample::init(const string & socket) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если объект сетевого ядра установлен
@@ -256,7 +269,8 @@ void awh::server::Sample::init(const string & socket) noexcept {
 	#endif
 }
 /**
- * init Метод инициализации Rest брокера
+ * @brief Метод инициализации Rest брокера
+ *
  * @param port порт сервера
  * @param host хост сервера
  */
@@ -267,7 +281,8 @@ void awh::server::Sample::init(const uint32_t port, const string & host) noexcep
 	this->_host = host;
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::server::Sample::callback(const callback_t & callback) noexcept {
@@ -281,7 +296,8 @@ void awh::server::Sample::callback(const callback_t & callback) noexcept {
 	this->_callback.set("message", callback);
 }
 /**
- * response Метод отправки сообщения брокеру
+ * @brief Метод отправки сообщения брокеру
+ *
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных для отправки
  * @param size   размер бинарных данных для отправки
@@ -306,7 +322,8 @@ void awh::server::Sample::send(const uint64_t bid, const char * buffer, const si
 	}
 }
 /**
- * port Метод получения порта подключения брокера
+ * @brief Метод получения порта подключения брокера
+ *
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
@@ -315,7 +332,8 @@ uint32_t awh::server::Sample::port(const uint64_t bid) const noexcept {
 	return this->_scheme.port(bid);
 }
 /**
- * ip Метод получения IP-адреса брокера
+ * @brief Метод получения IP-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
@@ -324,7 +342,8 @@ const string & awh::server::Sample::ip(const uint64_t bid) const noexcept {
 	return this->_scheme.ip(bid);
 }
 /**
- * mac Метод получения MAC-адреса брокера
+ * @brief Метод получения MAC-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
@@ -333,7 +352,8 @@ const string & awh::server::Sample::mac(const uint64_t bid) const noexcept {
 	return this->_scheme.mac(bid);
 }
 /**
- * alive Метод установки долгоживущего подключения
+ * @brief Метод установки долгоживущего подключения
+ *
  * @param mode флаг долгоживущего подключения
  */
 void awh::server::Sample::alive(const bool mode) noexcept {
@@ -341,7 +361,8 @@ void awh::server::Sample::alive(const bool mode) noexcept {
 	this->_alive = mode;
 }
 /**
- * alive Метод установки долгоживущего подключения
+ * @brief Метод установки долгоживущего подключения
+ *
  * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
  */
@@ -354,7 +375,8 @@ void awh::server::Sample::alive(const uint64_t bid, const bool mode) noexcept {
 		options->alive = mode;
 }
 /**
- * stop Метод остановки сервера
+ * @brief Метод остановки сервера
+ *
  */
 void awh::server::Sample::stop() noexcept {
 	// Если объект сетевого ядра установлен
@@ -368,7 +390,8 @@ void awh::server::Sample::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска сервера
+ * @brief Метод запуска сервера
+ *
  */
 void awh::server::Sample::start() noexcept {
 	// Если биндинг не запущен, выполняем запуск биндинга
@@ -377,7 +400,8 @@ void awh::server::Sample::start() noexcept {
 		const_cast <server::core_t *> (this->_core)->start();
 }
 /**
- * close Метод закрытия подключения брокера
+ * @brief Метод закрытия подключения брокера
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Sample::close(const uint64_t bid) noexcept {
@@ -392,7 +416,8 @@ void awh::server::Sample::close(const uint64_t bid) noexcept {
 	}
 }
 /**
- * pingInterval Метод установки интервала времени выполнения пингов
+ * @brief Метод установки интервала времени выполнения пингов
+ *
  * @param sec интервал времени выполнения пингов в секундах
  */
 void awh::server::Sample::pingInterval(const uint16_t sec) noexcept {
@@ -400,7 +425,8 @@ void awh::server::Sample::pingInterval(const uint16_t sec) noexcept {
 	this->_pingInterval = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param sec интервал времени в секундах
  */
 void awh::server::Sample::waitMessage(const uint16_t sec) noexcept {
@@ -408,7 +434,8 @@ void awh::server::Sample::waitMessage(const uint16_t sec) noexcept {
 	this->_scheme.timeouts.wait = sec;
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
@@ -419,7 +446,8 @@ void awh::server::Sample::waitTimeDetect(const uint16_t read, const uint16_t wri
 	this->_scheme.timeouts.write = write;
 }
 /**
- * total Метод установки максимального количества одновременных подключений
+ * @brief Метод установки максимального количества одновременных подключений
+ *
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::Sample::total(const uint16_t total) noexcept {
@@ -429,7 +457,8 @@ void awh::server::Sample::total(const uint16_t total) noexcept {
 		const_cast <server::core_t *> (this->_core)->total(this->_scheme.id, total);
 }
 /**
- * mode Метод установки флага модуля
+ * @brief Метод установки флага модуля
+ *
  * @param flag флаг модуля для установки
  */
 void awh::server::Sample::mode(const std::set <flag_t> & flags) noexcept {
@@ -444,7 +473,8 @@ void awh::server::Sample::mode(const std::set <flag_t> & flags) noexcept {
 	}
 }
 /**
- * keepAlive Метод установки жизни подключения
+ * @brief Метод установки жизни подключения
+ *
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
@@ -458,7 +488,8 @@ void awh::server::Sample::keepAlive(const int32_t cnt, const int32_t idle, const
 	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
- * Sample Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами

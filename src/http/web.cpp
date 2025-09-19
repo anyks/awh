@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * Оператор [=] перемещения параметров запроса клиента
+ * @brief Оператор [=] перемещения параметров запроса клиента
+ *
  * @param request объект параметров запроса клиента
  * @return        текущие параметры запроса клиента
  */
@@ -38,7 +39,8 @@ awh::Web::Request & awh::Web::Request::operator = (req_t && request) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] присванивания параметров запроса клиента
+ * @brief Оператор [=] присванивания параметров запроса клиента
+ *
  * @param request объект параметров запроса клиента
  * @return        текущие параметры запроса клиента
  */
@@ -53,7 +55,8 @@ awh::Web::Request & awh::Web::Request::operator = (const req_t & request) noexce
 	return (* this);
 }
 /**
- * Оператор сравнения
+ * @brief Оператор сравнения
+ *
  * @param request объект параметров запроса клиента
  * @return        результат сравнения
  */
@@ -66,7 +69,8 @@ bool awh::Web::Request::operator == (const req_t & request) noexcept {
 	);
 }
 /**
- * Request Конструктор перемещения
+ * @brief Конструктор перемещения
+ *
  * @param request объект параметров запроса клиента
  */
 awh::Web::Request::Request(req_t && request) noexcept {
@@ -78,7 +82,8 @@ awh::Web::Request::Request(req_t && request) noexcept {
 	this->url = ::move(request.url);
 }
 /**
- * Request Конструктор копирования
+ * @brief Конструктор копирования
+ *
  * @param request объект параметров запроса клиента
  */
 awh::Web::Request::Request(const req_t & request) noexcept {
@@ -90,51 +95,60 @@ awh::Web::Request::Request(const req_t & request) noexcept {
 	this->version = request.version;
 }
 /**
- * Request Конструктор
+ * @brief Конструктор
+ *
  */
 awh::Web::Request::Request() noexcept : provider_t(), method(method_t::NONE) {}
 /**
- * Request Конструктор
+ * @brief Конструктор
+ *
  * @param method метод запроса клиента
  */
 awh::Web::Request::Request(const method_t method) noexcept : provider_t(), method(method) {}
 /**
- * Request Конструктор
+ * @brief Конструктор
+ *
  * @param version версия протокола
  */
 awh::Web::Request::Request(const double version) noexcept : provider_t(version), method(method_t::NONE) {}
 /**
- * Request Конструктор
+ * @brief Конструктор
+ *
  * @param url адрес URL-запроса
  */
 awh::Web::Request::Request(const uri_t::url_t & url) noexcept : provider_t(), method(method_t::NONE), url(url) {}
 /**
- * Request Конструктор
+ * @brief Конструктор
+ *
  * @param version версия протокола
  * @param method  метод запроса клиента
  */
 awh::Web::Request::Request(const double version, const method_t method) noexcept : provider_t(version), method(method) {}
 /**
- * Request Конструктор
+ * @brief Конструктор
+ *
  * @param method метод запроса клиента
  * @param url    адрес URL-запроса
  */
 awh::Web::Request::Request(const method_t method, const uri_t::url_t & url) noexcept : provider_t(), method(method), url(url) {}
 /**
- * Request Конструктор
+ * @brief Конструктор
+ *
  * @param version версия протокола
  * @param url     адрес URL-запроса
  */
 awh::Web::Request::Request(const double version, const uri_t::url_t & url) noexcept : provider_t(version), method(method_t::NONE), url(url) {}
 /**
- * Request Конструктор
+ * @brief Конструктор
+ *
  * @param version версия протокола
  * @param method  метод запроса клиента
  * @param url     адрес URL-запроса
  */
 awh::Web::Request::Request(const double version, const method_t method, const uri_t::url_t & url) noexcept : provider_t(version), method(method), url(url) {}
 /**
- * Оператор [=] перемещения параметров ответа сервера
+ * @brief Оператор [=] перемещения параметров ответа сервера
+ *
  * @param response объект параметров ответа сервера
  * @return         текущие параметры ответа сервера
  */
@@ -149,7 +163,8 @@ awh::Web::Response & awh::Web::Response::operator = (res_t && response) noexcept
 	return (* this);
 }
 /**
- * Оператор [=] присванивания параметров ответа сервера
+ * @brief Оператор [=] присванивания параметров ответа сервера
+ *
  * @param response объект параметров ответа сервера
  * @return         текущие параметры ответа сервера
  */
@@ -164,7 +179,8 @@ awh::Web::Response & awh::Web::Response::operator = (const res_t & response) noe
 	return (* this);
 }
 /**
- * Оператор сравнения
+ * @brief Оператор сравнения
+ *
  * @param response объект параметров ответа сервера
  * @return         результат сравнения
  */
@@ -177,7 +193,8 @@ bool awh::Web::Response::operator == (const res_t & response) noexcept {
 	);
 }
 /**
- * Response Конструктор перемещения
+ * @brief Конструктор перемещения
+ *
  * @param response объект параметров ответа сервера
  */
 awh::Web::Response::Response(res_t && response) noexcept {
@@ -189,7 +206,8 @@ awh::Web::Response::Response(res_t && response) noexcept {
 	this->message = ::move(response.message);
 }
 /**
- * Response Конструктор копирования
+ * @brief Конструктор копирования
+ *
  * @param response объект параметров ответа сервера
  */
 awh::Web::Response::Response(const res_t & response) noexcept {
@@ -201,51 +219,60 @@ awh::Web::Response::Response(const res_t & response) noexcept {
 	this->message = response.message;
 }
 /**
- * Response Конструктор
+ * @brief Конструктор
+ *
  */
 awh::Web::Response::Response() noexcept : provider_t(), code(0), message{""} {}
 /**
- * Response Конструктор
+ * @brief Конструктор
+ *
  * @param code код ответа сервера
  */
 awh::Web::Response::Response(const uint32_t code) noexcept : provider_t(), code(code), message{""} {}
 /**
- * Response Конструктор
+ * @brief Конструктор
+ *
  * @param version версия протокола
  */
 awh::Web::Response::Response(const double version) noexcept : provider_t(version), code(0), message{""} {}
 /**
- * Response Конструктор
+ * @brief Конструктор
+ *
  * @param message сообщение сервера
  */
 awh::Web::Response::Response(const string & message) noexcept : provider_t(), code(0), message(message) {}
 /**
- * Response Конструктор
+ * @brief Конструктор
+ *
  * @param version версия протокола
  * @param code    код ответа сервера
  */
 awh::Web::Response::Response(const double version, const uint32_t code) noexcept : provider_t(version), code(code), message{""} {}
 /**
- * Response Конструктор
+ * @brief Конструктор
+ *
  * @param code    код ответа сервера
  * @param message сообщение сервера
  */
 awh::Web::Response::Response(const uint32_t code, const string & message) noexcept : provider_t(), code(code), message(message) {}
 /**
- * Response Конструктор
+ * @brief Конструктор
+ *
  * @param version версия протокола
  * @param message сообщение сервера
  */
 awh::Web::Response::Response(const double version, const string & message) noexcept : provider_t(version), code(0), message(message) {}
 /**
- * Response Конструктор
+ * @brief Конструктор
+ *
  * @param version версия протокола
  * @param code    код ответа сервера
  * @param message сообщение сервера
  */
 awh::Web::Response::Response(const double version, const uint32_t code, const string & message) noexcept : provider_t(version), code(code), message(message) {}
 /**
- * clear Метод очистки данных чанка
+ * @brief Метод очистки данных чанка
+ *
  */
 void awh::Web::Chunk::clear() noexcept {
 	// Обнуляем размер чанка
@@ -260,7 +287,8 @@ void awh::Web::Chunk::clear() noexcept {
 		vector <decltype(this->data)::value_type> ().swap(this->data);
 }
 /**
- * parseBody Метод извлечения полезной нагрузки
+ * @brief Метод извлечения полезной нагрузки
+ *
  * @param buffer буфер данных для чтения
  * @param size   размер буфера данных для чтения
  * @return       размер обработанных данных
@@ -302,7 +330,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					if(this->_bodySize == this->_chunk.size){
 						// Очищаем собранные данные
 						this->_chunk.clear();
-						// Определяем тип HTTP-модуля
+						/**
+						 * Определяем тип HTTP-модуля
+						 */
 						switch(static_cast <uint8_t> (this->_hid)){
 							// Если мы работаем с клиентом
 							case static_cast <uint8_t> (hid_t::CLIENT): {
@@ -333,7 +363,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				size_t offset = 0;
 				// Переходим по всему буферу данных
 				for(size_t i = 0; i < size; i++){
-					// Определяем стейт чанка
+					/**
+					 * Определяем стейт чанка
+					 */
 					switch(static_cast <uint8_t> (this->_chunk.state)){
 						// Если мы собираем трейделы переданные сервером
 						case static_cast <uint8_t> (process_t::TRAILERS): {
@@ -565,7 +597,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				Stop:
 				// Выполняем очистку чанка
 				this->_chunk.clear();
-				// Определяем тип HTTP-модуля
+				/**
+				 * Определяем тип HTTP-модуля
+				 */
 				switch(static_cast <uint8_t> (this->_hid)){
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (hid_t::CLIENT): {
@@ -600,7 +634,8 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 	return result;
 }
 /**
- * readHeaders Метод извлечения заголовков
+ * @brief Метод извлечения заголовков
+ *
  * @param buffer буфер данных для чтения
  * @param size   размер буфера данных для чтения
  * @return       размер обработанных данных
@@ -612,7 +647,9 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 	if((buffer != nullptr) && (size > 0) && (this->_state != state_t::END)){
 		// Если мы собираем заголовки или стартовый запрос
 		if((this->_state == state_t::HEADERS) || (this->_state == state_t::QUERY)){
-			// Определяем статус режима работы
+			/**
+			 * Определяем статус режима работы
+			 */
 			switch(static_cast <uint8_t> (this->_state)){
 				// Если передан режим ожидания получения запроса
 				case static_cast <uint8_t> (state_t::QUERY):
@@ -641,7 +678,9 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					 * Выполняем отлов ошибок
 					 */
 					try {
-						// Определяем тип HTTP-модуля
+						/**
+						 * Определяем тип HTTP-модуля
+						 */
 						switch(static_cast <uint8_t> (this->_hid)){
 							// Если мы работаем с клиентом
 							case static_cast <uint8_t> (hid_t::CLIENT): {
@@ -721,11 +760,15 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					return;
 				// Если необходимо  получить оставшиеся данные
 				} else if((size > 0) && (this->_pos[0] > -1)) {
-					// Определяем статус режима работы
+					/**
+					 * Определяем статус режима работы
+					 */
 					switch(static_cast <uint8_t> (this->_state)){
 						// Если передан режим ожидания получения запроса
 						case static_cast <uint8_t> (state_t::QUERY): {
-							// Определяем тип HTTP-модуля
+							/**
+							 * Определяем тип HTTP-модуля
+							 */
 							switch(static_cast <uint8_t> (this->_hid)){
 								// Если мы работаем с клиентом
 								case static_cast <uint8_t> (hid_t::CLIENT): {
@@ -931,7 +974,9 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 													this->_request.url.schema = "https";
 											}
 										}
-										// Определяем тип домена
+										/**
+										 * Определяем тип домена
+										 */
 										switch(static_cast <uint8_t> (net.host(this->_request.url.host))){
 											// Если передан IP-адрес сети IPv4
 											case static_cast <uint8_t> (net_t::type_t::IPV4): {
@@ -1002,7 +1047,8 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 	return result;
 }
 /**
- * prepare Метод препарирования HTTP заголовков
+ * @brief Метод препарирования HTTP заголовков
+ *
  * @param buffer   буфер данных для парсинга
  * @param size     размер буфера данных для парсинга
  * @param callback функция обратного вызова
@@ -1077,7 +1123,8 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 	}
 }
 /**
- * dump Метод получения бинарного дампа
+ * @brief Метод получения бинарного дампа
+ *
  * @return бинарный дамп данных
  */
 vector <char> awh::Web::dump() const noexcept {
@@ -1168,7 +1215,8 @@ vector <char> awh::Web::dump() const noexcept {
 	return result;
 }
 /**
- * dump Метод установки бинарного дампа
+ * @brief Метод установки бинарного дампа
+ *
  * @param data бинарный дамп данных
  */
 void awh::Web::dump(const vector <char> & data) noexcept {
@@ -1302,7 +1350,8 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 	}
 }
 /**
- * parse Метод выполнения парсинга HTTP буфера данных
+ * @brief Метод выполнения парсинга HTTP буфера данных
+ *
  * @param buffer буфер данных для парсинга
  * @param size   размер буфера данных для парсинга
  * @return       размер обработанных данных
@@ -1312,7 +1361,9 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
 	size_t result = 0;
 	// Если данные переданы или обработка полностью выполнена
 	if((buffer != nullptr) && (size > 0) && (this->_state != state_t::END)){
-		// Определяем текущий стейт
+		/**
+		 * Определяем текущий стейт
+		 */
 		switch(static_cast <uint8_t> (this->_state)){
 			// Если установлен стейт чтения параметров запроса/ответа
 			case static_cast <uint8_t> (state_t::QUERY):
@@ -1336,7 +1387,8 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
 	return result;
 }
 /**
- * clear Метод очистки собранных данных
+ * @brief Метод очистки собранных данных
+ *
  */
 void awh::Web::clear() noexcept {
 	// Выполняем сброс параметров запроса
@@ -1359,7 +1411,8 @@ void awh::Web::clear() noexcept {
 	std::unordered_multimap <decltype(this->_headers)::key_type, decltype(this->_headers)::mapped_type> ().swap(this->_headers);
 }
 /**
- * reset Метод сброса стейтов парсера
+ * @brief Метод сброса стейтов парсера
+ *
  */
 void awh::Web::reset() noexcept {
 	// Выполняем сброс размера тела
@@ -1372,7 +1425,8 @@ void awh::Web::reset() noexcept {
 	::memset(this->_pos, -1, sizeof(this->_pos));
 }
 /**
- * request Метод получения объекта запроса на сервер
+ * @brief Метод получения объекта запроса на сервер
+ *
  * @return объект запроса на сервер
  */
 const awh::Web::req_t & awh::Web::request() const noexcept {
@@ -1380,7 +1434,8 @@ const awh::Web::req_t & awh::Web::request() const noexcept {
 	return this->_request;
 }
 /**
- * request Метод установки объекта запроса на сервер
+ * @brief Метод установки объекта запроса на сервер
+ *
  * @param request объект запроса на сервер
  */
 void awh::Web::request(req_t && request) noexcept {
@@ -1388,7 +1443,8 @@ void awh::Web::request(req_t && request) noexcept {
 	this->_request = ::move(request);
 }
 /**
- * request Метод установки объекта запроса на сервер
+ * @brief Метод установки объекта запроса на сервер
+ *
  * @param request объект запроса на сервер
  */
 void awh::Web::request(const req_t & request) noexcept {
@@ -1396,7 +1452,8 @@ void awh::Web::request(const req_t & request) noexcept {
 	this->_request = request;
 }
 /**
- * response Метод получения объекта ответа сервера
+ * @brief Метод получения объекта ответа сервера
+ *
  * @return объект ответа сервера
  */
 const awh::Web::res_t & awh::Web::response() const noexcept {
@@ -1404,7 +1461,8 @@ const awh::Web::res_t & awh::Web::response() const noexcept {
 	return this->_response;
 }
 /**
- * response Метод установки объекта ответа сервера
+ * @brief Метод установки объекта ответа сервера
+ *
  * @param response объект ответа сервера
  */
 void awh::Web::response(res_t && response) noexcept {
@@ -1412,7 +1470,8 @@ void awh::Web::response(res_t && response) noexcept {
 	this->_response = ::move(response);
 }
 /**
- * response Метод установки объекта ответа сервера
+ * @brief Метод установки объекта ответа сервера
+ *
  * @param response объект ответа сервера
  */
 void awh::Web::response(const res_t & response) noexcept {
@@ -1420,7 +1479,8 @@ void awh::Web::response(const res_t & response) noexcept {
 	this->_response = response;
 }
 /**
- * isEnd Метод проверки завершения обработки
+ * @brief Метод проверки завершения обработки
+ *
  * @return результат проверки
  */
 bool awh::Web::isEnd() const noexcept {
@@ -1428,7 +1488,8 @@ bool awh::Web::isEnd() const noexcept {
 	return (this->_state == state_t::END);
 }
 /**
- * isHeader Метод проверки существования заголовка
+ * @brief Метод проверки существования заголовка
+ *
  * @param key ключ заголовка для проверки
  * @return    результат проверки
  */
@@ -1449,7 +1510,8 @@ bool awh::Web::isHeader(const string & key) const noexcept {
 	return result;
 }
 /**
- * isStandard Проверка заголовка является ли он стандартным
+ * @brief Проверка заголовка является ли он стандартным
+ *
  * @param key ключ заголовка для проверки
  * @return    результат проверки
  */
@@ -1462,21 +1524,24 @@ bool awh::Web::isStandard(const string & key) const noexcept {
 	return false;
 }
 /**
- * clearBody Метод очистки данных тела
+ * @brief Метод очистки данных тела
+ *
  */
 void awh::Web::clearBody() noexcept {
 	// Выполняем очистку данных тела
 	this->_body.clear();
 }
 /**
- * clearHeaders Метод очистки списка заголовков
+ * @brief Метод очистки списка заголовков
+ *
  */
 void awh::Web::clearHeaders() noexcept {
 	// Выполняем очистку заголовков
 	this->_headers.clear();
 }
 /**
- * body Метод получения данных тела запроса
+ * @brief Метод получения данных тела запроса
+ *
  * @return буфер данных тела запроса
  */
 const vector <char> & awh::Web::body() const noexcept {
@@ -1484,7 +1549,8 @@ const vector <char> & awh::Web::body() const noexcept {
 	return this->_body;
 }
 /**
- * body Метод добавления данных тела
+ * @brief Метод добавления данных тела
+ *
  * @param body буфер тела для добавления
  */
 void awh::Web::body(const vector <char> & body) noexcept {
@@ -1494,7 +1560,8 @@ void awh::Web::body(const vector <char> & body) noexcept {
 		this->_body.insert(this->_body.end(), body.begin(), body.end());
 }
 /**
- * body Метод добавления данных тела
+ * @brief Метод добавления данных тела
+ *
  * @param buffer буфер тела для добавления
  * @param size   размер буфера теля для добавления
  */
@@ -1505,7 +1572,8 @@ void awh::Web::body(const char * buffer, const size_t size) noexcept {
 		this->_body.insert(this->_body.end(), buffer, buffer + size);
 }
 /**
- * upgrade Метод получение названия протокола для переключения
+ * @brief Метод получение названия протокола для переключения
+ *
  * @return название протокола для переключения
  */
 const string & awh::Web::upgrade() const noexcept {
@@ -1513,7 +1581,8 @@ const string & awh::Web::upgrade() const noexcept {
 	return this->_upgrade;
 }
 /**
- * upgrade Метод установки название протокола для переключения
+ * @brief Метод установки название протокола для переключения
+ *
  * @param upgrade название протокола для переключения
  */
 void awh::Web::upgrade(const string & upgrade) noexcept {
@@ -1521,7 +1590,8 @@ void awh::Web::upgrade(const string & upgrade) noexcept {
 	this->_upgrade = upgrade;
 }
 /**
- * proto Метод извлечения список протоколов к которому принадлежит заголовок
+ * @brief Метод извлечения список протоколов к которому принадлежит заголовок
+ *
  * @param key ключ заголовка
  * @return    список протоколов
  */
@@ -1539,7 +1609,8 @@ std::set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept 
 	return std::set <awh::Web::proto_t> ();
 }
 /**
- * delHeader Метод удаления заголовка
+ * @brief Метод удаления заголовка
+ *
  * @param key ключ заголовка
  */
 void awh::Web::delHeader(const string & key) noexcept {
@@ -1557,7 +1628,8 @@ void awh::Web::delHeader(const string & key) noexcept {
 	}
 }
 /**
- * header Метод получения данных заголовка
+ * @brief Метод получения данных заголовка
+ *
  * @param key ключ заголовка
  * @return    значение заголовка
  */
@@ -1576,7 +1648,8 @@ string awh::Web::header(const string & key) const noexcept {
 	return "";
 }
 /**
- * header Метод добавления заголовка
+ * @brief Метод добавления заголовка
+ *
  * @param key ключ заголовка
  * @param val значение заголовка
  */
@@ -1587,7 +1660,8 @@ void awh::Web::header(const string & key, const string & val) noexcept {
 		this->_headers.emplace(key, val);
 }
 /**
- * headers Метод получения списка заголовков
+ * @brief Метод получения списка заголовков
+ *
  * @return список существующих заголовков
  */
 const std::unordered_multimap <string, string> & awh::Web::headers() const noexcept {
@@ -1595,7 +1669,8 @@ const std::unordered_multimap <string, string> & awh::Web::headers() const noexc
 	return this->_headers;
 }
 /**
- * headers Метод установки списка заголовков
+ * @brief Метод установки списка заголовков
+ *
  * @param headers список заголовков для установки
  */
 void awh::Web::headers(const std::unordered_multimap <string, string> & headers) noexcept {
@@ -1603,7 +1678,8 @@ void awh::Web::headers(const std::unordered_multimap <string, string> & headers)
 	this->_headers = headers;
 }
 /**
- * id Метод получения идентификатора объекта
+ * @brief Метод получения идентификатора объекта
+ *
  * @return идентификатор объекта
  */
 uint64_t awh::Web::id() const noexcept {
@@ -1611,7 +1687,8 @@ uint64_t awh::Web::id() const noexcept {
 	return this->_id;
 }
 /**
- * id Метод установки идентификатора объекта
+ * @brief Метод установки идентификатора объекта
+ *
  * @param id идентификатор объекта
  */
 void awh::Web::id(const uint64_t id) noexcept {
@@ -1619,7 +1696,8 @@ void awh::Web::id(const uint64_t id) noexcept {
 	this->_id = id;
 }
 /**
- * hid Метод вывода идентификатора модуля
+ * @brief Метод вывода идентификатора модуля
+ *
  * @return тип используемого HTTP-модуля
  */
 const awh::Web::hid_t awh::Web::hid() const noexcept {
@@ -1627,15 +1705,17 @@ const awh::Web::hid_t awh::Web::hid() const noexcept {
 	return this->_hid;
 }
 /**
- * hid Метод установки идентификатора модуля
+ * @brief Метод установки идентификатора модуля
+ *
  * @param hid тип используемого HTTP-модуля
  */
 void awh::Web::hid(const hid_t hid) noexcept {
 	// Устанавливаем тип используемого HTTP-модуля
 	this->_hid = hid;
 }
-/** 
- * state Метод установки стейта ожидания данных
+/**
+ * @brief Метод установки стейта ожидания данных
+ *
  * @param state стейт ожидания данных для установки
  */
 void awh::Web::state(const state_t state) noexcept {
@@ -1643,7 +1723,8 @@ void awh::Web::state(const state_t state) noexcept {
 	this->_state = state;
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::Web::callback(const callback_t & callback) noexcept {
@@ -1665,7 +1746,8 @@ void awh::Web::callback(const callback_t & callback) noexcept {
 	this->_callback.set("headersResponse", callback);
 }
 /**
- * Web Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */

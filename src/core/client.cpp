@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * connect Метод создания подключения к удаленному серверу
+ * @brief Метод создания подключения к удаленному серверу
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::connect(const uint16_t sid) noexcept {
@@ -91,7 +92,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				broker->timeout(shm->timeouts.write, engine_t::method_t::WRITE);
 				// Устанавливаем таймаут на подключение к серверу
 				broker->timeout(shm->timeouts.connect, engine_t::method_t::CONNECT);
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(static_cast <uint8_t> (family)){
 					// Если тип протокола подключения IPv4
 					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
@@ -114,7 +117,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						}
 					} break;
 				}
-				// Определяем тип сокета
+				/**
+				 * Определяем тип сокета
+				 */
 				switch(static_cast <uint8_t> (this->_settings.sonet)){
 					// Если тип сокета UDP
 					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
@@ -155,7 +160,9 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				if(broker->addr.sock != INVALID_SOCKET){
 					// Выполняем установку желаемого протокола подключения
 					broker->ectx.proto(this->_settings.proto);
-					// Определяем тип сокета
+					/**
+					 * Определяем тип сокета
+					 */
 					switch(static_cast <uint8_t> (this->_settings.sonet)){
 						// Если тип сокета установлен как TCP/IP
 						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -302,12 +309,14 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						if(this->_dns != nullptr){
 							// Выполняем сброс кэша резолвера
 							const_cast <dns_t *> (this->_dns)->flush();
-							// Определяем тип подключения
+							/**
+							 * Определяем тип подключения
+							 */
 							switch(static_cast <uint8_t> (family)){
 								// Если тип протокола подключения IPv4
 								case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 									// Добавляем бракованный IPv4 адрес в список адресов
-									const_cast <dns_t *> (this->_dns)->setToBlackList(AF_INET, url.domain, url.ip); 
+									const_cast <dns_t *> (this->_dns)->setToBlackList(AF_INET, url.domain, url.ip);
 								break;
 								// Если тип протокола подключения IPv6
 								case static_cast <uint8_t> (scheme_t::family_t::IPV6):
@@ -413,12 +422,14 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					if(this->_dns != nullptr){
 						// Выполняем сброс кэша резолвера
 						const_cast <dns_t *> (this->_dns)->flush();
-						// Определяем тип подключения
+						/**
+						 * Определяем тип подключения
+						 */
 						switch(static_cast <uint8_t> (family)){
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 								// Добавляем бракованный IPv4 адрес в список адресов
-								const_cast <dns_t *> (this->_dns)->setToBlackList(AF_INET, url.domain, url.ip); 
+								const_cast <dns_t *> (this->_dns)->setToBlackList(AF_INET, url.domain, url.ip);
 							break;
 							// Если тип протокола подключения IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
@@ -477,7 +488,8 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 	}
 }
 /**
- * reconnect Метод восстановления подключения
+ * @brief Метод восстановления подключения
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::reconnect(const uint16_t sid) noexcept {
@@ -491,7 +503,9 @@ void awh::client::Core::reconnect(const uint16_t sid) noexcept {
 		if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 			// Получаем семейство интернет-протоколов
 			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->_settings.family);
-			// Определяем тип протокола подключения
+			/**
+			 * Определяем тип протокола подключения
+			 */
 			switch(static_cast <uint8_t> (family)){
 				// Если тип протокола подключения IPv4
 				case static_cast <uint8_t> (scheme_t::family_t::IPV4):
@@ -503,7 +517,9 @@ void awh::client::Core::reconnect(const uint16_t sid) noexcept {
 					const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
 					// Если IP-адрес не получен и объект DNS-резолвера установлен
 					if(url.ip.empty() && !url.domain.empty() && (this->_dns != nullptr)){
-						// Определяем тип протокола подключения
+						/**
+						 * Определяем тип протокола подключения
+						 */
 						switch(static_cast <uint8_t> (family)){
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
@@ -522,7 +538,9 @@ void awh::client::Core::reconnect(const uint16_t sid) noexcept {
 						}
 					// Выполняем запуск системы
 					} else if(!url.ip.empty()) {
-						// Определяем тип протокола подключения
+						/**
+						 * Определяем тип протокола подключения
+						 */
 						switch(static_cast <uint8_t> (family)){
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
@@ -547,7 +565,8 @@ void awh::client::Core::reconnect(const uint16_t sid) noexcept {
 	}
 }
 /**
- * launching Метод вызова при активации базы событий
+ * @brief Метод вызова при активации базы событий
+ *
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
  */
@@ -570,7 +589,8 @@ void awh::client::Core::launching(const bool mode, const bool status) noexcept {
 	}
 }
 /**
- * closedown Метод вызова при деакцтивации базы событий
+ * @brief Метод вызова при деакцтивации базы событий
+ *
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
  */
@@ -583,14 +603,17 @@ void awh::client::Core::closedown(const bool mode, const bool status) noexcept {
 	node_t::closedown(mode, status);
 }
 /**
- * timeout Метод вызова при срабатывании локального таймаута
+ * @brief Метод вызова при срабатывании локального таймаута
+ *
  * @param sid  идентификатор схемы сети
  * @param mode режим работы клиента
  */
 void awh::client::Core::timeout(const uint16_t sid, const scheme_t::mode_t mode) noexcept {
 	// Если идентификатор схемы сети найден
 	if(this->has(sid)){
-		// Определяем режим работы клиента
+		/**
+		 * Определяем режим работы клиента
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если режим работы клиента - это подключение
 			case static_cast <uint8_t> (scheme_t::mode_t::CONNECT):
@@ -615,7 +638,8 @@ void awh::client::Core::timeout(const uint16_t sid, const scheme_t::mode_t mode)
 	}
 }
 /**
- * clearTimeout Метод удаления таймера ожидания получения данных
+ * @brief Метод удаления таймера ожидания получения данных
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Core::clearTimeout(const uint64_t bid) noexcept {
@@ -632,7 +656,8 @@ void awh::client::Core::clearTimeout(const uint64_t bid) noexcept {
 	}
 }
 /**
- * clearTimeout Метод удаления таймера подключения или переподключения
+ * @brief Метод удаления таймера подключения или переподключения
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::clearTimeout(const uint16_t sid) noexcept {
@@ -649,7 +674,8 @@ void awh::client::Core::clearTimeout(const uint16_t sid) noexcept {
 	}
 }
 /**
- * createTimeout Метод создания таймаута ожидания получения данных
+ * @brief Метод создания таймаута ожидания получения данных
+ *
  * @param bid  идентификатор брокера
  * @param msec время ожидания получения данных в миллисекундах
  */
@@ -678,7 +704,8 @@ void awh::client::Core::createTimeout(const uint64_t bid, const uint32_t msec) n
 	}
 }
 /**
- * createTimeout Метод создания таймаута подключения или переподключения
+ * @brief Метод создания таймаута подключения или переподключения
+ *
  * @param sid  идентификатор схемы сети
  * @param mode режим работы клиента
  */
@@ -707,7 +734,8 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 	}
 }
 /**
- * stop Метод остановки клиента
+ * @brief Метод остановки клиента
+ *
  */
 void awh::client::Core::stop() noexcept {
 	// Если система уже запущена
@@ -719,7 +747,8 @@ void awh::client::Core::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска клиента
+ * @brief Метод запуска клиента
+ *
  */
 void awh::client::Core::start() noexcept {
 	// Если система ещё не запущена
@@ -728,7 +757,8 @@ void awh::client::Core::start() noexcept {
 		node_t::start();
 }
 /**
- * reset Метод принудительного сброса подключения
+ * @brief Метод принудительного сброса подключения
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Core::reset(const uint64_t bid) noexcept {
@@ -783,7 +813,8 @@ void awh::client::Core::reset(const uint64_t bid) noexcept {
 	}
 }
 /**
- * close Метод отключения всех брокеров
+ * @brief Метод отключения всех брокеров
+ *
  */
 void awh::client::Core::close() noexcept {
 	// Выполняем блокировку потока
@@ -820,7 +851,9 @@ void awh::client::Core::close() noexcept {
 				shm->status.real = scheme_t::mode_t::DISCONNECT;
 				// Если прокси-сервер активирован но уже переключён на работу с сервером
 				if((shm->proxy.type != proxy_t::type_t::NONE) && !shm->isProxy())
-					// Выполняем переключение обратно на прокси-сервер
+					/**
+					shm-> * Выполняем переключение обратно на прокси-сервер
+					shm-> */
 					shm->switchConnect();
 				// Переходим по всему списку брокера
 				for(auto i = shm->_brokers.begin(); i != shm->_brokers.end();){
@@ -866,7 +899,8 @@ void awh::client::Core::close() noexcept {
 	}
 }
 /**
- * remove Метод удаления всех схем сети
+ * @brief Метод удаления всех схем сети
+ *
  */
 void awh::client::Core::remove() noexcept {
 	// Выполняем блокировку потока
@@ -947,7 +981,8 @@ void awh::client::Core::remove() noexcept {
 	}
 }
 /**
- * open Метод открытия подключения
+ * @brief Метод открытия подключения
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::open(const uint16_t sid) noexcept {
@@ -961,7 +996,9 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
 		if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 			// Получаем семейство интернет-протоколов
 			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->_settings.family);
-			// Определяем тип протокола подключения
+			/**
+			 * Определяем тип протокола подключения
+			 */
 			switch(static_cast <uint8_t> (family)){
 				// Если тип протокола подключения IPv4
 				case static_cast <uint8_t> (scheme_t::family_t::IPV4):
@@ -973,7 +1010,9 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
 					const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
 					// Если IP-адрес не получен и объект DNS-резолвера установлен
 					if(url.ip.empty() && !url.domain.empty() && (this->_dns != nullptr)){
-						// Определяем тип протокола подключения
+						/**
+						 * Определяем тип протокола подключения
+						 */
 						switch(static_cast <uint8_t> (this->_settings.family)){
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
@@ -992,7 +1031,9 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
 						}
 					// Выполняем запуск системы
 					} else if(!url.ip.empty()) {
-						// Определяем тип протокола подключения
+						/**
+						 * Определяем тип протокола подключения
+						 */
 						switch(static_cast <uint8_t> (this->_settings.family)){
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
@@ -1021,7 +1062,8 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
 	}
 }
 /**
- * close Метод закрытия подключения
+ * @brief Метод закрытия подключения
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Core::close(const uint64_t bid) noexcept {
@@ -1053,7 +1095,9 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 				this->clearTimeout(i->first);
 				// Если прокси-сервер активирован но уже переключён на работу с сервером
 				if((shm->proxy.type != proxy_t::type_t::NONE) && !shm->isProxy())
-					// Выполняем переключение обратно на прокси-сервер
+					/**
+					shm-> * Выполняем переключение обратно на прокси-сервер
+					shm-> */
 					shm->switchConnect();
 				// Выполняем очистку контекста двигателя
 				broker->ectx.clear();
@@ -1091,7 +1135,8 @@ void awh::client::Core::close(const uint64_t bid) noexcept {
 	}
 }
 /**
- * remove Метод удаления схемы сети
+ * @brief Метод удаления схемы сети
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::client::Core::remove(const uint16_t sid) noexcept {
@@ -1165,11 +1210,14 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
 	}
 }
 /**
- * switchProxy Метод переключения с прокси-сервера
+ * @brief Метод переключения с прокси-сервера
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
-	// Определяем тип производимого подключения
+	/**
+	 * Определяем тип производимого подключения
+	 */
 	switch(static_cast <uint8_t> (this->_settings.sonet)){
 		// Если подключение производится по протоколу TCP
 		case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -1194,7 +1242,9 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 			// Если прокси-сервер активирован но ещё не переключён на работу с сервером
 			if((shm->proxy.type != proxy_t::type_t::NONE) && shm->isProxy()){
-				// Выполняем переключение на работу с сервером
+				/**
+				shm-> * Выполняем переключение на работу с сервером
+				shm-> */
 				shm->switchConnect();
 				// Хост сервера для подклчюения
 				const char * host = nullptr;
@@ -1245,7 +1295,8 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 	}
 }
 /**
- * connected Метод вызова при удачном подключении к серверу
+ * @brief Метод вызова при удачном подключении к серверу
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Core::connected(const uint64_t bid) noexcept {
@@ -1271,7 +1322,9 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 				this->clearTimeout(i->first);
 				// Получаем семейство интернет-протоколов
 				const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->_settings.family);
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(static_cast <uint8_t> (family)){
 					// Если тип протокола подключения IPv4
 					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
@@ -1358,7 +1411,8 @@ void awh::client::Core::connected(const uint64_t bid) noexcept {
 	}
 }
 /**
- * send Метод асинхронной отправки буфера данных в сокет
+ * @brief Метод асинхронной отправки буфера данных в сокет
+ *
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param bid    идентификатор брокера
@@ -1371,7 +1425,9 @@ bool awh::client::Core::send(const char * buffer, const size_t size, const uint6
 	if(this->working() && this->has(bid)){
 		// Флаг активация ожидания готовности сокета
 		bool waiting = false;
-		// Определяем режим отправки сообщений
+		/**
+		 * Определяем режим отправки сообщений
+		 */
 		switch(static_cast <uint8_t> (this->_sending)){
 			// Если установлен флаг отправки отложенных сообщений
 			case static_cast <uint8_t> (sending_t::DEFFER):
@@ -1413,7 +1469,8 @@ bool awh::client::Core::send(const char * buffer, const size_t size, const uint6
 	return result;
 }
 /**
- * read Метод чтения данных для брокера
+ * @brief Метод чтения данных для брокера
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Core::read(const uint64_t bid) noexcept {
@@ -1431,7 +1488,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если подключение установлено
 				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
-					// Определяем тип сокета
+					/**
+					 * Определяем тип сокета
+					 */
 					switch(static_cast <uint8_t> (this->_settings.sonet)){
 						// Если тип сокета установлен как TCP/IP
 						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -1440,13 +1499,13 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 						// Если тип сокета установлен как SCTP
 						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
 							/**
-							 * Для операционной системы OS Windows
+							 * Для операционной системы MS Windows
 							 */
 							#if _WIN32 || _WIN64
 								// Переводим сокет в неблокирующий режим
 								broker->ectx.blocking(engine_t::mode_t::DISABLED);
 							/**
-							 * Для операционной системы не являющейся OS Windows
+							 * Для операционной системы не являющейся MS Windows
 							 */
 							#else
 								// Если сокет находится в блокирующем режиме
@@ -1493,7 +1552,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 							}
 						// Если запись не выполнена, входим
 						} else break;
-					// Выполняем чтение до тех пор, пока всё не прочитаем
+					/**
+					 * Выполняем чтение до тех пор, пока всё не прочитаем
+					 */
 					} while(this->has(bid));
 					// Если подключение ещё не разорванно
 					if(this->has(bid)){
@@ -1536,7 +1597,8 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 	}
 }
 /**
- * write Метод записи данных в брокер
+ * @brief Метод записи данных в брокер
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Core::write(const uint64_t bid) noexcept {
@@ -1602,7 +1664,8 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 	}
 }
 /**
- * write Метод записи буфера данных в сокет
+ * @brief Метод записи буфера данных в сокет
+ *
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param bid    идентификатор брокера
@@ -1631,11 +1694,15 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 					const int32_t max = broker->ectx.buffer(engine_t::method_t::WRITE);
 					// Если в буфере нет места
 					if(max > 0){
-						// Определяем правило передачи данных
+						/**
+						 * Определяем правило передачи данных
+						 */
 						switch(static_cast <uint8_t> (this->_transfer)){
 							// Если передавать данные необходимо синхронно
 							case static_cast <uint8_t> (transfer_t::SYNC): {
-								// Определяем тип сокета
+								/**
+								 * Определяем тип сокета
+								 */
 								switch(static_cast <uint8_t> (this->_settings.sonet)){
 									// Если тип сокета установлен как TCP/IP
 									case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -1650,7 +1717,9 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 							} break;
 							// Если передавать данные необходимо асинхронно
 							case static_cast <uint8_t> (transfer_t::ASYNC): {
-								// Определяем тип сокета
+								/**
+								 * Определяем тип сокета
+								 */
 								switch(static_cast <uint8_t> (this->_settings.sonet)){
 									// Если тип сокета установлен как TCP/IP
 									case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -1659,13 +1728,13 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 									// Если тип сокета установлен как SCTP
 									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
 										/**
-										 * Для операционной системы OS Windows
+										 * Для операционной системы MS Windows
 										 */
 										#if _WIN32 || _WIN64
 											// Переводим сокет в неблокирующий режим
 											broker->ectx.blocking(engine_t::mode_t::DISABLED);
 										/**
-										 * Для операционной системы не являющейся OS Windows
+										 * Для операционной системы не являющейся MS Windows
 										 */
 										#else
 											// Если сокет находится в блокирующем режиме
@@ -1677,7 +1746,9 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 								}
 							} break;
 						}
-						// Определяем тип сокета
+						/**
+						 * Определяем тип сокета
+						 */
 						switch(static_cast <uint8_t> (this->_settings.sonet)){
 							// Если тип сокета установлен как TCP/IP
 							case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -1709,11 +1780,15 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 							this->close(bid);
 						// Если дисконнекта не произошло
 						if(bytes != 0){
-							// Определяем правило передачи данных
+							/**
+							 * Определяем правило передачи данных
+							 */
 							switch(static_cast <uint8_t> (this->_transfer)){
 								// Если передавать данные необходимо синхронно
 								case static_cast <uint8_t> (transfer_t::SYNC): {
-									// Определяем тип сокета
+									/**
+									 * Определяем тип сокета
+									 */
 									switch(static_cast <uint8_t> (this->_settings.sonet)){
 										// Если тип сокета установлен как TCP/IP
 										case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
@@ -1776,7 +1851,8 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 	return result;
 }
 /**
- * work Метод запуска работы подключения клиента
+ * @brief Метод запуска работы подключения клиента
+ *
  * @param sid    идентификатор схемы сети
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
@@ -1803,7 +1879,9 @@ void awh::client::Core::work(const uint16_t sid, const string & ip, const int32_
 				// Устанавливаем тип интернет-протокола AF_INET, AF_INET6
 				shm->url.family = family;
 			}
-			// Определяем режим работы клиента
+			/**
+			 * Определяем режим работы клиента
+			 */
 			switch(static_cast <uint8_t> (shm->status.wait)){
 				// Если режим работы клиента - это подключение
 				case static_cast <uint8_t> (scheme_t::mode_t::CONNECT):
@@ -1834,7 +1912,8 @@ void awh::client::Core::work(const uint16_t sid, const string & ip, const int32_
 	}
 }
 /**
- * transferRule Метод установки правила передачи данных
+ * @brief Метод установки правила передачи данных
+ *
  * @param transfer правило передачи данных
  */
 void awh::client::Core::transferRule(const transfer_t transfer) noexcept {
@@ -1842,7 +1921,8 @@ void awh::client::Core::transferRule(const transfer_t transfer) noexcept {
 	this->_transfer = transfer;
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param bid идентификатор брокера
  * @param sec интервал времени в секундах
  */
@@ -1862,7 +1942,8 @@ void awh::client::Core::waitMessage(const uint64_t bid, const uint16_t sec) noex
 	}
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param bid     идентификатор брокера
  * @param read    количество секунд для детекции по чтению
  * @param write   количество секунд для детекции по записи
@@ -1889,7 +1970,8 @@ void awh::client::Core::waitTimeDetect(const uint64_t bid, const uint16_t read, 
 	}
 }
 /**
- * Core Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -1903,7 +1985,8 @@ awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
 	this->bind(dynamic_cast <awh::core_t *> (&this->_timer));
 }
 /**
- * Core Конструктор
+ * @brief Конструктор
+ *
  * @param dns объект DNS-резолвера
  * @param fmk объект фреймворка
  * @param log объект для работы с логами

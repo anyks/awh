@@ -16,13 +16,13 @@
 #define __AWH_GLOBAL__
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _MSC_VER || WIN64 || _WIN64 || __WIN64__ || WIN32 || _WIN32 || __WIN32__ || __NT__
 	#define DECL_EXPORT __declspec(dllexport)
 	#define DECL_IMPORT __declspec(dllimport)
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	#define DECL_EXPORT __attribute__((visibility("default")))

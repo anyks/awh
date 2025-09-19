@@ -57,7 +57,9 @@ namespace awh {
 				std::atomic_bool stop;
 				// Условная переменная, ожидания получения сигналов
 				std::condition_variable cv;
-				// Функция обратного вызова
+				/**
+				 * Функция обратного вызова
+				 */
 				function <void (void)> callback;
 				/**
 				 * @brief Конструктор
@@ -274,7 +276,9 @@ namespace awh {
 						timer.second->cv.notify_one();
 					}
 				}
-				// Дожидаемся пока все таймеры будут удалены
+				/**
+				 * Дожидаемся пока все таймеры будут удалены
+				 */
 				while(!this->_timers.empty());
 			}
 	} timeout_t;

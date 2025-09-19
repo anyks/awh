@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * crash Метод обработки вызова крашей в приложении
+ * @brief Метод обработки вызова крашей в приложении
+ *
  * @param sig номер сигнала операционной системы
  */
 void awh::server::Proxy::crash(const int32_t sig) noexcept {
@@ -53,7 +54,8 @@ void awh::server::Proxy::crash(const int32_t sig) noexcept {
 	}
 }
 /**
- * launchedEvents Метод получения события запуска сервера
+ * @brief Метод получения события запуска сервера
+ *
  * @param host хост запущенного сервера
  * @param port порт запущенного сервера
  */
@@ -67,7 +69,8 @@ void awh::server::Proxy::launchedEvents(const string & host, const uint32_t port
 	}
 }
 /**
- * passwordEvents Метод извлечения пароля (для авторизации методом Digest)
+ * @brief Метод извлечения пароля (для авторизации методом Digest)
+ *
  * @param bid   идентификатор брокера (клиента)
  * @param login логин пользователя
  * @return      пароль пользователя хранящийся в базе данных
@@ -81,7 +84,8 @@ string awh::server::Proxy::passwordEvents(const uint64_t bid, const string & log
 	return "";
 }
 /**
- * authEvents Метод проверки авторизации пользователя (для авторизации методом Basic)
+ * @brief Метод проверки авторизации пользователя (для авторизации методом Basic)
+ *
  * @param bid      идентификатор брокера (клиента)
  * @param login    логин пользователя (от клиента)
  * @param password пароль пользователя (от клиента)
@@ -96,7 +100,8 @@ bool awh::server::Proxy::authEvents(const uint64_t bid, const string & login, co
 	return false;
 }
 /**
- * acceptEvents Метод активации клиента на сервере
+ * @brief Метод активации клиента на сервере
+ *
  * @param ip   адрес интернет подключения
  * @param mac  аппаратный адрес подключения
  * @param port порт подключения
@@ -111,12 +116,15 @@ bool awh::server::Proxy::acceptEvents(const string & ip, const string & mac, con
 	return false;
 }
 /**
- * callbackEvents Метод отлавливания событий контейнера функций обратного вызова
+ * @brief Метод отлавливания событий контейнера функций обратного вызова
+ *
  * @param event событие контейнера функций обратного вызова
  * @param fid   идентификатор функции обратного вызова
  */
 void awh::server::Proxy::callbackEvents(const callback_t::event_t event, const uint64_t fid, [[maybe_unused]] const callback_t::fn_t &) noexcept {
-	// Определяем входящее событие контейнера функций обратного вызова
+	/**
+	 * Определяем входящее событие контейнера функций обратного вызова
+	 */
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
 		case static_cast <uint8_t> (callback_t::event_t::SET): {
@@ -132,7 +140,8 @@ void awh::server::Proxy::callbackEvents(const callback_t::event_t event, const u
 	}
 }
 /**
- * available Метод получения событий освобождения памяти буфера полезной нагрузки
+ * @brief Метод получения событий освобождения памяти буфера полезной нагрузки
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param bid    идентификатор брокера
  * @param size   размер буфера полезной нагрузки
@@ -155,7 +164,9 @@ void awh::server::Proxy::available(const broker_t broker, const uint64_t bid, co
 					allow = this->_callback.call <bool (const broker_t, const uint64_t, const size_t)> ("available", broker, bid, size);
 				// Если разрешено добавить неотправленную запись во временный буфер полезной нагрузки
 				if(allow){
-					// Определяем переданного брокера
+					/**
+					 * Определяем переданного брокера
+					 */
 					switch(static_cast <uint8_t> (broker)){
 						// Если брокером является клиент
 						case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -179,7 +190,8 @@ void awh::server::Proxy::available(const broker_t broker, const uint64_t bid, co
 	}
 }
 /**
- * unavailable Метод получения событий недоступности памяти буфера полезной нагрузки
+ * @brief Метод получения событий недоступности памяти буфера полезной нагрузки
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param bid    идентификатор брокера
  * @param buffer буфер полезной нагрузки которую не получилось отправить
@@ -233,8 +245,9 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
 		}
 	}
 }
-/** 
- * eraseClient Метод удаления подключённого клиента
+/**
+ * @brief Метод удаления подключённого клиента
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Proxy::eraseClient(const uint64_t bid) noexcept {
@@ -256,7 +269,8 @@ void awh::server::Proxy::eraseClient(const uint64_t bid) noexcept {
 		this->_callback.call <void (const uint64_t)> ("erase", bid);
 }
 /**
- * endClient Метод завершения запроса клиента
+ * @brief Метод завершения запроса клиента
+ *
  * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param rid    идентификатор запроса
@@ -282,7 +296,8 @@ void awh::server::Proxy::endClient([[maybe_unused]] const int32_t sid, const uin
 	}
 }
 /**
- * responseClient Метод получения сообщения с удалённого сервера
+ * @brief Метод получения сообщения с удалённого сервера
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера (клиента)
  * @param rid     идентификатор запроса
@@ -300,12 +315,15 @@ void awh::server::Proxy::responseClient(const int32_t sid, const uint64_t bid, c
 		this->_callback.call <void (const int32_t, const uint64_t, const uint64_t, const uint32_t, const string &)> ("response", sid, bid, rid, code, message);
 }
 /**
- * activeServer Метод идентификации активности на Web сервере (для сервера)
+ * @brief Метод идентификации активности на Web сервере (для сервера)
+ *
  * @param bid  идентификатор брокера (клиента)
  * @param mode режим события подключения
  */
 void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::mode_t mode) noexcept {
-	// Определяем активность клиента
+	/**
+	 * Определяем активность клиента
+	 */
 	switch(static_cast <uint8_t> (mode)){
 		// Если производится подключение клиента к серверу
 		case static_cast <uint8_t> (server::web_t::mode_t::CONNECT): {
@@ -447,7 +465,8 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 		this->_callback.call <void (const uint64_t, const broker_t, const web_t::mode_t)> ("active", bid, broker_t::SERVER, mode);
 }
 /**
- * activeClient Метод идентификации активности на Web сервере (для клиента)
+ * @brief Метод идентификации активности на Web сервере (для клиента)
+ *
  * @param bid  идентификатор брокера (клиента)
  * @param mode режим события подключения
  */
@@ -456,13 +475,17 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 	auto i = this->_clients.find(bid);
 	// Если активный клиент найден
 	if(i != this->_clients.end()){
-		// Определяем активность клиента
+		/**
+		 * Определяем активность клиента
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если производится подключение клиента к серверу
 			case static_cast <uint8_t> (client::web_t::mode_t::CONNECT): {
 				// Снимаем флаг занятости сервера
 				i->second->busy = !i->second->busy;
-				// Определяем активный метод запроса клиента
+				/**
+				 * Определяем активный метод запроса клиента
+				 */
 				switch(static_cast <uint8_t> (i->second->request.params.method)){
 					// Если запрашивается клиентом метод GET
 					case static_cast <uint8_t> (awh::web_t::method_t::GET):
@@ -555,7 +578,9 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 	if(this->_callback.is("active")){
 		// Результат получения события
 		server::web_t::mode_t result;
-		// Определяем активность клиента
+		/**
+		 * Определяем активность клиента
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если производится подключение клиента к серверу
 			case static_cast <uint8_t> (client::web_t::mode_t::CONNECT):
@@ -573,7 +598,8 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 	}
 }
 /**
- * entityServer Метод получения тела запроса с клиента на сервере
+ * @brief Метод получения тела запроса с клиента на сервере
+ *
  * @param sid    идентификатор потока
  * @param bid    идентификатор брокера (клиента)
  * @param method метод запроса на уделённый сервер
@@ -605,7 +631,8 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
 	}
 }
 /**
- * entityClient Метод получения тела ответа с сервера клиенту
+ * @brief Метод получения тела ответа с сервера клиенту
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера (клиента)
  * @param rid     идентификатор запроса
@@ -649,7 +676,8 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 	}
 }
 /**
- * headersServer Метод получения заголовков запроса с клиента на сервере
+ * @brief Метод получения заголовков запроса с клиента на сервере
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера (клиента)
  * @param method  метод запроса на уделённый сервер
@@ -735,7 +763,8 @@ void awh::server::Proxy::headersServer(const int32_t sid, const uint64_t bid, co
 	}
 }
 /**
- * headersClient Метод получения заголовков ответа с сервера клиенту
+ * @brief Метод получения заголовков ответа с сервера клиенту
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера (клиента)
  * @param rid     идентификатор запроса
@@ -835,7 +864,9 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 				if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
 					// Флаг удачно-выполненного подключения
 					bool connected = false;
-					// Определяем протокола подключения
+					/**
+					 * Определяем протокола подключения
+					 */
 					switch(static_cast <uint8_t> (this->_core.proto(bid))){
 						// Если протокол подключения соответствует HTTP/1.1
 						case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1):
@@ -869,7 +900,8 @@ void awh::server::Proxy::headersClient(const int32_t sid, const uint64_t bid, co
 	}
 }
 /**
- * pushClient Метод получения заголовков выполненного запроса (PUSH HTTP/2)
+ * @brief Метод получения заголовков выполненного запроса (PUSH HTTP/2)
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера (клиента)
  * @param rid     идентификатор запроса
@@ -884,7 +916,8 @@ void awh::server::Proxy::pushClient(const int32_t sid, const uint64_t bid, const
 		this->_callback.call <void (const int32_t, const uint64_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("push", sid, bid, rid, method, url, headers);
 }
 /**
- * handshake Метод получения удачного запроса
+ * @brief Метод получения удачного запроса
+ *
  * @param sid   идентификатор потока
  * @param bid   идентификатор брокера
  * @param agent идентификатор агента клиента
@@ -902,7 +935,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 				if(this->_callback.is("handshake"))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const int32_t, const uint64_t, const engine_t::proto_t)> ("handshake", sid, bid, this->_core.proto(bid));
-				// Определяем тип активного сокета сервера
+				/**
+				 * Определяем тип активного сокета сервера
+				 */
 				switch(static_cast <uint8_t> (this->_core.sonet())){
 					// Если тип сокета установлен как TCP/IP
 					case static_cast <uint8_t> (awh::scheme_t::sonet_t::TCP): {
@@ -989,7 +1024,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 					} break;
 					// Если тип сокета установлен как TCP/IP TLS
 					case static_cast <uint8_t> (awh::scheme_t::sonet_t::TLS): {
-						// Определяем активный метод запроса клиента
+						/**
+						 * Определяем активный метод запроса клиента
+						 */
 						switch(static_cast <uint8_t> (i->second->request.params.method)){
 							// Если запрашивается клиентом метод GET
 							case static_cast <uint8_t> (awh::web_t::method_t::GET):
@@ -1171,7 +1208,8 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 	}
 }
 /**
- * raw Метод получения сырых данных с сервера и клиента
+ * @brief Метод получения сырых данных с сервера и клиента
+ *
  * @param bid    идентификатор брокера (клиента)
  * @param broker брокер получивший данные
  * @param buffer буфер бинарных данных
@@ -1191,7 +1229,9 @@ bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const ch
 			if(i->second->upgrade || (this->_core.sonet() == awh::scheme_t::sonet_t::TCP)){
 				// Если установлен метод CONNECT
 				if(!(result = (i->second->request.params.method != awh::web_t::method_t::CONNECT))){
-					// Определяем переданного брокера
+					/**
+					 * Определяем переданного брокера
+					 */
 					switch(static_cast <uint8_t> (broker)){
 						// Если брокером является клиент
 						case static_cast <uint8_t> (broker_t::CLIENT):
@@ -1212,7 +1252,8 @@ bool awh::server::Proxy::raw(const uint64_t bid, const broker_t broker, const ch
 	return result;
 }
 /**
- * via Метод генерации заголовка Via
+ * @brief Метод генерации заголовка Via
+ *
  * @param sid       идентификатор потока
  * @param bid       идентификатор брокера (клиента)
  * @param mediators список предыдущих посредников
@@ -1248,14 +1289,16 @@ string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vect
 			} else result.append(mediators.front());
 			// Добавляем сначала разделитель
 			result.append(", ");
-		} 
+		}
 		// Если unix-сокет активирован
 		if(this->_core.family() == scheme_t::family_t::IPC)
 			// Выполняем формирование заголовка
 			result.append(this->_fmk->format("HTTP/%.1f %s (%s)", 1.1f, host.c_str(), http->ident(awh::http_t::process_t::RESPONSE).c_str()));
 		// Если активирован хост и порт
 		else {
-			// Определяем протокола подключения
+			/**
+			 * Определяем протокола подключения
+			 */
 			switch(static_cast <uint8_t> (this->_core.proto(bid))){
 				// Если протокол подключения соответствует HTTP/1.1
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
@@ -1282,7 +1325,8 @@ string awh::server::Proxy::via(const int32_t sid, const uint64_t bid, const vect
 	return result;
 }
 /**
- * completed Метод завершения получения данных
+ * @brief Метод завершения получения данных
+ *
  * @param sid идентификатор потока
  * @param bid идентификатор брокера (клиента)
  */
@@ -1305,7 +1349,8 @@ void awh::server::Proxy::completed(const int32_t sid, const uint64_t bid) noexce
 	}
 }
 /**
- * proto Метод извлечения поддерживаемого протокола подключения
+ * @brief Метод извлечения поддерживаемого протокола подключения
+ *
  * @param bid идентификатор брокера
  * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
  */
@@ -1314,7 +1359,8 @@ awh::engine_t::proto_t awh::server::Proxy::proto(const uint64_t bid) const noexc
 	return this->_server.proto(bid);
 }
 /**
- * parser Метод извлечения объекта HTTP-парсера
+ * @brief Метод извлечения объекта HTTP-парсера
+ *
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @return    объект HTTP-парсера
@@ -1324,7 +1370,8 @@ const awh::http_t * awh::server::Proxy::parser(const int32_t sid, const uint64_t
 	return this->_server.parser(sid, bid);
 }
 /**
- * init Метод инициализации PROXY-сервера
+ * @brief Метод инициализации PROXY-сервера
+ *
  * @param socket     unix-сокет для биндинга
  * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
  */
@@ -1337,7 +1384,8 @@ void awh::server::Proxy::init(const string & socket, const http_t::compressor_t 
 	this->_core.family(scheme_t::family_t::IPC);
 }
 /**
- * init Метод инициализации PROXY-сервера
+ * @brief Метод инициализации PROXY-сервера
+ *
  * @param port       порт сервера
  * @param host       хост сервера
  * @param compressor поддерживаемый компрессор для рекомпрессии пересылаемых данных
@@ -1348,7 +1396,9 @@ void awh::server::Proxy::init(const uint32_t port, const string & host, const ht
 	this->_server.init(port, host);
 	// Устанавливаем компрессор для рекомпрессии пересылаемых данных
 	this->_compressor = compressor;
-	// Определяем тип интернет-протокола
+	/**
+	 * Определяем тип интернет-протокола
+	 */
 	switch(static_cast <uint8_t> (family)){
 		// Если активирован интернет-протокол IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
@@ -1362,7 +1412,8 @@ void awh::server::Proxy::init(const uint32_t port, const string & host, const ht
 	}
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::server::Proxy::callback(const callback_t & callback) noexcept {
@@ -1422,7 +1473,8 @@ void awh::server::Proxy::callback(const callback_t & callback) noexcept {
 		this->_server.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_callback.get <void (const uint64_t, const broker_t, const log_t::flag_t, const http::error_t, const string &)> ("error"), _1, broker_t::SERVER, _2, _3, _4);
 }
 /**
- * port Метод получения порта подключения брокера
+ * @brief Метод получения порта подключения брокера
+ *
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
@@ -1431,7 +1483,8 @@ uint32_t awh::server::Proxy::port(const uint64_t bid) const noexcept {
 	return this->_server.port(bid);
 }
 /**
- * ip Метод получения IP-адреса брокера
+ * @brief Метод получения IP-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
@@ -1440,7 +1493,8 @@ const string & awh::server::Proxy::ip(const uint64_t bid) const noexcept {
 	return this->_server.ip(bid);
 }
 /**
- * mac Метод получения MAC-адреса брокера
+ * @brief Метод получения MAC-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
@@ -1449,7 +1503,8 @@ const string & awh::server::Proxy::mac(const uint64_t bid) const noexcept {
 	return this->_server.mac(bid);
 }
 /**
- * host Метод получения хоста сервера
+ * @brief Метод получения хоста сервера
+ *
  * @param sid идентификатор схемы сети
  * @return    адрес интернет подключения сервера
  */
@@ -1458,7 +1513,8 @@ string awh::server::Proxy::host(const uint16_t sid) const noexcept {
 	return this->_core.host(sid);
 }
 /**
- * port Метод получения порта сервера
+ * @brief Метод получения порта сервера
+ *
  * @param sid идентификатор схемы сети
  * @return    порт подключения сервера
  */
@@ -1467,7 +1523,8 @@ uint32_t awh::server::Proxy::port(const uint16_t sid) const noexcept {
 	return this->_core.port(sid);
 }
 /**
- * stop Метод остановки сервера
+ * @brief Метод остановки сервера
+ *
  */
 void awh::server::Proxy::stop() noexcept {
 	// Запрещаем перехват сигналов
@@ -1476,7 +1533,8 @@ void awh::server::Proxy::stop() noexcept {
 	this->_server.stop();
 }
 /**
- * start Метод запуска сервера
+ * @brief Метод запуска сервера
+ *
  */
 void awh::server::Proxy::start() noexcept {
 	// Разрешаем перехват сигналов
@@ -1507,7 +1565,8 @@ void awh::server::Proxy::start() noexcept {
 	this->_server.start();
 }
 /**
- * bind Метод подключения модуля ядра к текущей базе событий
+ * @brief Метод подключения модуля ядра к текущей базе событий
+ *
  * @param core модуль ядра для подключения
  */
 void awh::server::Proxy::bind(awh::core_t * core) noexcept {
@@ -1515,7 +1574,8 @@ void awh::server::Proxy::bind(awh::core_t * core) noexcept {
 	this->_core.bind(core);
 }
 /**
- * unbind Метод отключения модуля ядра от текущей базы событий
+ * @brief Метод отключения модуля ядра от текущей базы событий
+ *
  * @param core модуль ядра для отключения
  */
 void awh::server::Proxy::unbind(awh::core_t * core) noexcept {
@@ -1523,7 +1583,8 @@ void awh::server::Proxy::unbind(awh::core_t * core) noexcept {
 	this->_core.unbind(core);
 }
 /**
- * close Метод закрытия подключения брокера
+ * @brief Метод закрытия подключения брокера
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Proxy::close(const uint64_t bid) noexcept {
@@ -1531,7 +1592,8 @@ void awh::server::Proxy::close(const uint64_t bid) noexcept {
 	this->_server.close(bid);
 }
 /**
- * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @brief Метод установки флага перезапуска процессов
+ *
  * @param mode флаг перезапуска процессов
  */
 void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
@@ -1539,7 +1601,8 @@ void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
 	this->_core.clusterAutoRestart(mode);
 }
 /**
- * cluster Метод установки количества процессов кластера
+ * @brief Метод установки количества процессов кластера
+ *
  * @param mode флаг активации/деактивации кластера
  * @param size количество рабочих процессов
  */
@@ -1548,7 +1611,8 @@ void awh::server::Proxy::cluster(const awh::scheme_t::mode_t mode, const uint16_
 	this->_core.cluster(mode, size);
 }
 /**
- * sendToProcess Метод отправки сообщения родительскому процессу
+ * @brief Метод отправки сообщения родительскому процессу
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Proxy::sendToProcess(const uint16_t sid) noexcept {
@@ -1556,7 +1620,8 @@ void awh::server::Proxy::sendToProcess(const uint16_t sid) noexcept {
 	this->_core.sendToProcess(sid);
 }
 /**
- * sendToProcess Метод отправки сообщения родительскому процессу
+ * @brief Метод отправки сообщения родительскому процессу
+ *
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
@@ -1566,7 +1631,8 @@ void awh::server::Proxy::sendToProcess(const uint16_t sid, const char * buffer, 
 	this->_core.sendToProcess(sid, buffer, size);
 }
 /**
- * sendToProcess Метод отправки сообщения дочернему процессу
+ * @brief Метод отправки сообщения дочернему процессу
+ *
  * @param sid идентификатор схемы сети
  * @param pid идентификатор процесса для получения сообщения
  */
@@ -1575,7 +1641,8 @@ void awh::server::Proxy::sendToProcess(const uint16_t sid, const pid_t pid) noex
 	this->_core.sendToProcess(sid, pid);
 }
 /**
- * sendToProcess Метод отправки сообщения дочернему процессу
+ * @brief Метод отправки сообщения дочернему процессу
+ *
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
@@ -1586,7 +1653,8 @@ void awh::server::Proxy::sendToProcess(const uint16_t sid, const pid_t pid, cons
 	this->_core.sendToProcess(sid, pid, buffer, size);
 }
 /**
- * broadcastToProcess Метод отправки сообщения всем дочерним процессам
+ * @brief Метод отправки сообщения всем дочерним процессам
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Proxy::broadcastToProcess(const uint16_t sid) noexcept {
@@ -1594,7 +1662,8 @@ void awh::server::Proxy::broadcastToProcess(const uint16_t sid) noexcept {
 	this->_core.broadcastToProcess(sid);
 }
 /**
- * broadcastToProcess Метод отправки сообщения всем дочерним процессам
+ * @brief Метод отправки сообщения всем дочерним процессам
+ *
  * @param sid    идентификатор схемы сети
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
@@ -1604,7 +1673,8 @@ void awh::server::Proxy::broadcastToProcess(const uint16_t sid, const char * buf
 	this->_core.broadcastToProcess(sid, buffer, size);
 }
 /**
- * total Метод установки максимального количества одновременных подключений
+ * @brief Метод установки максимального количества одновременных подключений
+ *
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::Proxy::total(const uint16_t total) noexcept {
@@ -1612,7 +1682,8 @@ void awh::server::Proxy::total(const uint16_t total) noexcept {
 	this->_server.total(total);
 }
 /**
- * mode Метод установки флагов настроек модуля
+ * @brief Метод установки флагов настроек модуля
+ *
  * @param flags список флагов настроек модуля для установки
  */
 void awh::server::Proxy::mode(const std::set <flag_t> & flags) noexcept {
@@ -1644,7 +1715,8 @@ void awh::server::Proxy::mode(const std::set <flag_t> & flags) noexcept {
 	this->_server.mode(server);
 }
 /**
- * addOrigin Метод добавления разрешённого источника
+ * @brief Метод добавления разрешённого источника
+ *
  * @param origin разрешённый источнико
  */
 void awh::server::Proxy::addOrigin(const string & origin) noexcept {
@@ -1652,7 +1724,8 @@ void awh::server::Proxy::addOrigin(const string & origin) noexcept {
 	this->_server.addOrigin(origin);
 }
 /**
- * setOrigin Метод установки списка разрешённых источников
+ * @brief Метод установки списка разрешённых источников
+ *
  * @param origins список разрешённых источников
  */
 void awh::server::Proxy::setOrigin(const vector <string> & origins) noexcept {
@@ -1660,7 +1733,8 @@ void awh::server::Proxy::setOrigin(const vector <string> & origins) noexcept {
 	this->_server.setOrigin(origins);
 }
 /**
- * addAltSvc Метод добавления альтернативного сервиса
+ * @brief Метод добавления альтернативного сервиса
+ *
  * @param origin название альтернативного сервиса
  * @param field  поле альтернативного сервиса
  */
@@ -1669,7 +1743,8 @@ void awh::server::Proxy::addAltSvc(const string & origin, const string & field) 
 	this->_server.addAltSvc(origin, field);
 }
 /**
- * setAltSvc Метод установки списка разрешённых источников
+ * @brief Метод установки списка разрешённых источников
+ *
  * @param origins список альтернативных сервисов
  */
 void awh::server::Proxy::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
@@ -1677,7 +1752,8 @@ void awh::server::Proxy::setAltSvc(const std::unordered_multimap <string, string
 	this->_server.setAltSvc(origins);
 }
 /**
- * settings Модуль установки настроек протокола HTTP/2
+ * @brief Модуль установки настроек протокола HTTP/2
+ *
  * @param settings список настроек протокола HTTP/2
  */
 void awh::server::Proxy::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
@@ -1685,7 +1761,8 @@ void awh::server::Proxy::settings(const std::map <awh::http2_t::settings_t, uint
 	this->_server.settings(settings);
 }
 /**
- * realm Метод установки название сервера
+ * @brief Метод установки название сервера
+ *
  * @param realm название сервера
  */
 void awh::server::Proxy::realm(const string & realm) noexcept {
@@ -1693,7 +1770,8 @@ void awh::server::Proxy::realm(const string & realm) noexcept {
 	this->_server.realm(realm);
 }
 /**
- * opaque Метод установки временного ключа сессии сервера
+ * @brief Метод установки временного ключа сессии сервера
+ *
  * @param opaque временный ключ сессии сервера
  */
 void awh::server::Proxy::opaque(const string & opaque) noexcept {
@@ -1701,7 +1779,8 @@ void awh::server::Proxy::opaque(const string & opaque) noexcept {
 	this->_server.opaque(opaque);
 }
 /**
- * maxRequests Метод установки максимального количества запросов
+ * @brief Метод установки максимального количества запросов
+ *
  * @param max максимальное количество запросов
  */
 void awh::server::Proxy::maxRequests(const uint32_t max) noexcept {
@@ -1709,7 +1788,8 @@ void awh::server::Proxy::maxRequests(const uint32_t max) noexcept {
 	this->_server.maxRequests(max);
 }
 /**
- * ssl Метод установки параметров SSL-шифрования
+ * @brief Метод установки параметров SSL-шифрования
+ *
  * @param ssl объект параметров SSL-шифрования
  */
 void awh::server::Proxy::ssl(const node_t::ssl_t & ssl) noexcept {
@@ -1726,7 +1806,8 @@ void awh::server::Proxy::ssl(const node_t::ssl_t & ssl) noexcept {
 	}
 }
 /**
- * attempts Метод установки общего количества попыток
+ * @brief Метод установки общего количества попыток
+ *
  * @param attempts общее количество попыток
  */
 void awh::server::Proxy::attempts(const uint8_t attempts) noexcept {
@@ -1734,7 +1815,8 @@ void awh::server::Proxy::attempts(const uint8_t attempts) noexcept {
 	this->_settings.attempts = attempts;
 }
 /**
- * alive Метод установки долгоживущего подключения
+ * @brief Метод установки долгоживущего подключения
+ *
  * @param mode флаг долгоживущего подключения
  */
 void awh::server::Proxy::alive(const bool mode) noexcept {
@@ -1742,7 +1824,8 @@ void awh::server::Proxy::alive(const bool mode) noexcept {
 	this->_server.alive(mode);
 }
 /**
- * alive Метод установки долгоживущего подключения
+ * @brief Метод установки долгоживущего подключения
+ *
  * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
  */
@@ -1751,7 +1834,8 @@ void awh::server::Proxy::alive(const uint64_t bid, const bool mode) noexcept {
 	this->_server.alive(bid, mode);
 }
 /**
- * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @brief Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ *
  * @return размер памяти для хранения полезной нагрузки всех брокеров
  */
 size_t awh::server::Proxy::memoryAvailableSize() const noexcept {
@@ -1759,7 +1843,8 @@ size_t awh::server::Proxy::memoryAvailableSize() const noexcept {
 	return this->_core.memoryAvailableSize();
 }
 /**
- * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @brief Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ *
  * @param size размер памяти для хранения полезной нагрузки всех брокеров
  */
 void awh::server::Proxy::memoryAvailableSize(const size_t size) noexcept {
@@ -1769,7 +1854,8 @@ void awh::server::Proxy::memoryAvailableSize(const size_t size) noexcept {
 	this->_core.memoryAvailableSize(size);
 }
 /**
- * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+ * @brief Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+ *
  * @return размер хранимой полезной нагрузки для одного брокера
  */
 size_t awh::server::Proxy::brokerAvailableSize() const noexcept {
@@ -1777,7 +1863,8 @@ size_t awh::server::Proxy::brokerAvailableSize() const noexcept {
 	return this->_core.brokerAvailableSize();
 }
 /**
- * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+ * @brief Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+ *
  * @param size размер хранимой полезной нагрузки для одного брокера
  */
 void awh::server::Proxy::brokerAvailableSize(const size_t size) noexcept {
@@ -1787,7 +1874,8 @@ void awh::server::Proxy::brokerAvailableSize(const size_t size) noexcept {
 	this->_core.brokerAvailableSize(static_cast <size_t> (size));
 }
 /**
- * ipV6only Метод установки флага использования только сети IPv6
+ * @brief Метод установки флага использования только сети IPv6
+ *
  * @param mode флаг для установки
  */
 void awh::server::Proxy::ipV6only(const bool mode) noexcept {
@@ -1795,7 +1883,8 @@ void awh::server::Proxy::ipV6only(const bool mode) noexcept {
 	this->_core.ipV6only(mode);
 }
 /**
- * bandwidth Метод установки пропускной способности сети
+ * @brief Метод установки пропускной способности сети
+ *
  * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
@@ -1805,12 +1894,15 @@ void awh::server::Proxy::bandwidth(const size_t bid, const string & read, const 
 	this->_core.bandwidth(bid, read, write);
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param size   размер чанка для установки
  */
 void awh::server::Proxy::chunk(const broker_t broker, const size_t size) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT):
@@ -1825,12 +1917,15 @@ void awh::server::Proxy::chunk(const broker_t broker, const size_t size) noexcep
 	}
 }
 /**
- * hosts Метод загрузки файла со списком хостов
+ * @brief Метод загрузки файла со списком хостов
+ *
  * @param broker   брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param filename адрес файла для загрузки
  */
 void awh::server::Proxy::hosts(const broker_t broker, const string & filename) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT):
@@ -1845,12 +1940,15 @@ void awh::server::Proxy::hosts(const broker_t broker, const string & filename) n
 	}
 }
 /**
- * compressors Метод установки списка поддерживаемых компрессоров
+ * @brief Метод установки списка поддерживаемых компрессоров
+ *
  * @param broker      брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::server::Proxy::compressors(const broker_t broker, const vector <http_t::compressor_t> & compressors) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT):
@@ -1865,14 +1963,17 @@ void awh::server::Proxy::compressors(const broker_t broker, const vector <http_t
 	}
 }
 /**
- * keepAlive Метод установки жизни подключения
+ * @brief Метод установки жизни подключения
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param cnt    максимальное количество попыток
  * @param idle   интервал времени в секундах через которое происходит проверка подключения
  * @param intvl  интервал времени в секундах между попытками
  */
 void awh::server::Proxy::keepAlive(const broker_t broker, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -1891,12 +1992,15 @@ void awh::server::Proxy::keepAlive(const broker_t broker, const int32_t cnt, con
 	}
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param sec    интервал времени в секундах
  */
 void awh::server::Proxy::waitMessage(const broker_t broker, const uint16_t sec) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT):
@@ -1911,14 +2015,17 @@ void awh::server::Proxy::waitMessage(const broker_t broker, const uint16_t sec) 
 	}
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param broker  брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param read    количество секунд для детекции по чтению
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для подключения к серверу
  */
 void awh::server::Proxy::waitTimeDetect(const broker_t broker, const uint16_t read, const uint16_t write, const uint16_t connect) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -1937,12 +2044,15 @@ void awh::server::Proxy::waitTimeDetect(const broker_t broker, const uint16_t re
 	}
 }
 /**
- * sonet Метод установки типа сокета подключения
+ * @brief Метод установки типа сокета подключения
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param sonet  тип сокета подключения (TCP / UDP / SCTP)
  */
 void awh::server::Proxy::sonet(const broker_t broker, const scheme_t::sonet_t sonet) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT):
@@ -1957,12 +2067,15 @@ void awh::server::Proxy::sonet(const broker_t broker, const scheme_t::sonet_t so
 	}
 }
 /**
- * family Метод установки типа протокола интернета
+ * @brief Метод установки типа протокола интернета
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::server::Proxy::family(const broker_t broker, const scheme_t::family_t family) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT):
@@ -1977,7 +2090,8 @@ void awh::server::Proxy::family(const broker_t broker, const scheme_t::family_t 
 	}
 }
 /**
- * network Метод установки параметров сети
+ * @brief Метод установки параметров сети
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
@@ -1985,7 +2099,9 @@ void awh::server::Proxy::family(const broker_t broker, const scheme_t::family_t 
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 void awh::server::Proxy::network(const broker_t broker, const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -2010,7 +2126,8 @@ void awh::server::Proxy::network(const broker_t broker, const vector <string> & 
 	}
 }
 /**
- * userAgent Метод установки User-Agent для HTTP-запроса
+ * @brief Метод установки User-Agent для HTTP-запроса
+ *
  * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::server::Proxy::userAgent(const string & userAgent) noexcept {
@@ -2020,7 +2137,8 @@ void awh::server::Proxy::userAgent(const string & userAgent) noexcept {
 		this->_settings.userAgent = userAgent;
 }
 /**
- * user Метод установки параметров авторизации
+ * @brief Метод установки параметров авторизации
+ *
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
@@ -2034,7 +2152,8 @@ void awh::server::Proxy::user(const string & login, const string & password) noe
 	}
 }
 /**
- * ident Метод установки идентификации клиента
+ * @brief Метод установки идентификации клиента
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -2050,7 +2169,8 @@ void awh::server::Proxy::ident(const string & id, const string & name, const str
 	this->_server.ident(id, name, ver);
 }
 /**
- * proxy Метод активации/деактивации прокси-склиента
+ * @brief Метод активации/деактивации прокси-склиента
+ *
  * @param work флаг активации/деактивации прокси-клиента
  */
 void awh::server::Proxy::proxy(const client::scheme_t::work_t work) noexcept {
@@ -2058,7 +2178,8 @@ void awh::server::Proxy::proxy(const client::scheme_t::work_t work) noexcept {
 	this->_settings.proxy.work = work;
 }
 /**
- * proxy Метод установки прокси-сервера
+ * @brief Метод установки прокси-сервера
+ *
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
@@ -2072,7 +2193,8 @@ void awh::server::Proxy::proxy(const string & uri, const scheme_t::family_t fami
 	}
 }
 /**
- * flushDNS Метод сброса кэша DNS-резолвера
+ * @brief Метод сброса кэша DNS-резолвера
+ *
  * @param bid идентификатор брокера
  * @return    результат работы функции
  */
@@ -2087,7 +2209,8 @@ bool awh::server::Proxy::flushDNS(const uint64_t bid) noexcept {
 	return false;
 }
 /**
- * timeoutDNS Метод установки времени ожидания выполнения запроса
+ * @brief Метод установки времени ожидания выполнения запроса
+ *
  * @param sec интервал времени выполнения запроса в секундах
  */
 void awh::server::Proxy::timeoutDNS(const uint8_t sec) noexcept {
@@ -2095,7 +2218,8 @@ void awh::server::Proxy::timeoutDNS(const uint8_t sec) noexcept {
 	this->_settings.dns.timeout = sec;
 }
 /**
- * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
+ * @brief Метод установки префикса переменной окружения для извлечения серверов имён
+ *
  * @param prefix префикс переменной окружения для установки
  */
 void awh::server::Proxy::prefixDNS(const string & prefix) noexcept {
@@ -2105,7 +2229,8 @@ void awh::server::Proxy::prefixDNS(const string & prefix) noexcept {
 		this->_settings.dns.prefix = prefix;
 }
 /**
- * clearDNSBlackList Метод очистки чёрного списка
+ * @brief Метод очистки чёрного списка
+ *
  * @param domain доменное имя для которого очищается чёрный список
  */
 void awh::server::Proxy::clearDNSBlackList(const string & domain) noexcept {
@@ -2115,7 +2240,8 @@ void awh::server::Proxy::clearDNSBlackList(const string & domain) noexcept {
 		this->_settings.dns.blacklist.erase(domain);
 }
 /**
- * delInDNSBlackList Метод удаления IP-адреса из чёрного списока
+ * @brief Метод удаления IP-адреса из чёрного списока
+ *
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для удаления из чёрного списка
  */
@@ -2134,7 +2260,8 @@ void awh::server::Proxy::delInDNSBlackList(const string & domain, const string &
 	}
 }
 /**
- * setToDNSBlackList Метод добавления IP-адреса в чёрный список
+ * @brief Метод добавления IP-адреса в чёрный список
+ *
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в чёрный список
  */
@@ -2145,14 +2272,17 @@ void awh::server::Proxy::setToDNSBlackList(const string & domain, const string &
 		this->_settings.dns.blacklist.emplace(domain, ip);
 }
 /**
- * cork Метод отключения/включения алгоритма TCP/CORK
+ * @brief Метод отключения/включения алгоритма TCP/CORK
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param bid    идентификатор брокера
  * @param mode   режим применимой операции
  * @return       результат выполенния операции
  */
 bool awh::server::Proxy::cork(const broker_t broker, const uint64_t bid, const engine_t::mode_t mode) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -2172,14 +2302,17 @@ bool awh::server::Proxy::cork(const broker_t broker, const uint64_t bid, const e
 	return false;
 }
 /**
- * nodelay Метод отключения/включения алгоритма Нейгла
+ * @brief Метод отключения/включения алгоритма Нейгла
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param bid    идентификатор брокера
  * @param mode   режим применимой операции
  * @return       результат выполенния операции
  */
 bool awh::server::Proxy::nodelay(const broker_t broker, const uint64_t bid, const engine_t::mode_t mode) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -2199,7 +2332,8 @@ bool awh::server::Proxy::nodelay(const broker_t broker, const uint64_t bid, cons
 	return false;
 }
 /**
- * authTypeProxy Метод установки типа авторизации прокси-сервера
+ * @brief Метод установки типа авторизации прокси-сервера
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
@@ -2210,13 +2344,16 @@ void awh::server::Proxy::authTypeProxy(const awh::auth_t::type_t type, const awh
 	this->_settings.proxy.auth.hash = hash;
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param type   тип авторизации
  * @param hash   алгоритм шифрования для Digest авторизации
  */
 void awh::server::Proxy::authType(const broker_t broker, const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -2233,14 +2370,17 @@ void awh::server::Proxy::authType(const broker_t broker, const awh::auth_t::type
 	}
 }
 /**
- * encrypt Метод активации шифрования для клиента
+ * @brief Метод активации шифрования для клиента
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param mode   флаг активации шифрования
  */
 void awh::server::Proxy::encrypt(const broker_t broker, const int32_t sid, const uint64_t bid, const bool mode) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -2259,12 +2399,15 @@ void awh::server::Proxy::encrypt(const broker_t broker, const int32_t sid, const
 	}
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param mode   флаг активации шифрования
  */
 void awh::server::Proxy::encryption(const broker_t broker, const bool mode) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT):
@@ -2279,14 +2422,17 @@ void awh::server::Proxy::encryption(const broker_t broker, const bool mode) noex
 	}
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param broker брокер для которого устанавливаются настройки (CLIENT/SERVER)
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
 void awh::server::Proxy::encryption(const broker_t broker, const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
-	// Определяем переданного брокера
+	/**
+	 * Определяем переданного брокера
+	 */
 	switch(static_cast <uint8_t> (broker)){
 		// Если брокером является клиент
 		case static_cast <uint8_t> (broker_t::CLIENT): {
@@ -2305,7 +2451,8 @@ void awh::server::Proxy::encryption(const broker_t broker, const string & pass, 
 	}
 }
 /**
- * Proxy Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -2349,7 +2496,8 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_server.on <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headers", &server::proxy_t::headersServer, this, _1, _2, _3, _4, _5);
 }
 /**
- * ~Proxy Деструктор
+ * @brief Деструктор
+ *
  */
 awh::server::Proxy::~Proxy() noexcept {
 	// Запрещаем перехват сигналов

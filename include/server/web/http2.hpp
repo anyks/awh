@@ -292,7 +292,7 @@ namespace awh {
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
+				bool send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки тела сообщения клиенту
@@ -380,7 +380,7 @@ namespace awh {
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				bool send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
+				bool send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept;
 				/**
 				 * @brief Метод HTTP/2 отправки сообщения клиенту
 				 *
@@ -401,7 +401,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * @brief Метод HTTP/2 отправки push-уведомлений
@@ -412,7 +412,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t push2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова

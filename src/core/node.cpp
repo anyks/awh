@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * Оператор [=] перемещения SSL-параметров
+ * @brief Оператор [=] перемещения SSL-параметров
+ *
  * @param ssl объект SSL-параметров
  * @return    объект текущий параметров
  */
@@ -46,7 +47,8 @@ awh::Node::SSL & awh::Node::SSL::operator = (ssl_t && ssl) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] присванивания SSL-параметров
+ * @brief Оператор [=] присванивания SSL-параметров
+ *
  * @param ssl объект SSL-параметров
  * @return    объект текущий параметров
  */
@@ -69,7 +71,8 @@ awh::Node::SSL & awh::Node::SSL::operator = (const ssl_t & ssl) noexcept {
 	return (* this);
 }
 /**
- * Оператор сравнения
+ * @brief Оператор сравнения
+ *
  * @param ssl объект SSL-параметров
  * @return    результат сравнения
  */
@@ -102,7 +105,8 @@ bool awh::Node::SSL::operator == (const ssl_t & ssl) noexcept {
 	return result;
 }
 /**
- * SSL Конструктор перемещения
+ * @brief Конструктор перемещения
+ *
  * @param ssl объект SSL-параметров
  */
 awh::Node::SSL::SSL(ssl_t && ssl) noexcept {
@@ -122,7 +126,8 @@ awh::Node::SSL::SSL(ssl_t && ssl) noexcept {
 	this->ciphers = ::move(ssl.ciphers);
 }
 /**
- * SSL Конструктор копирования
+ * @brief Конструктор копирования
+ *
  * @param ssl объект SSL-параметров
  */
 awh::Node::SSL::SSL(const ssl_t & ssl) noexcept {
@@ -142,11 +147,13 @@ awh::Node::SSL::SSL(const ssl_t & ssl) noexcept {
 	this->ciphers = ssl.ciphers;
 }
 /**
- * SSL Конструктор
+ * @brief Конструктор
+ *
  */
 awh::Node::SSL::SSL() noexcept : verify(true), key{""}, cert{""}, ca{""}, crl{""}, capath{""} {}
 /**
- * remove Метод удаления всех схем сети
+ * @brief Метод удаления всех схем сети
+ *
  */
 void awh::Node::remove() noexcept {
 	// Выполняем блокировку потока
@@ -162,7 +169,8 @@ void awh::Node::remove() noexcept {
 	this->_available.clear();
 }
 /**
- * remove Метод удаления схемы сети
+ * @brief Метод удаления схемы сети
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::Node::remove(const uint16_t sid) noexcept {
@@ -192,7 +200,8 @@ void awh::Node::remove(const uint16_t sid) noexcept {
 	}
 }
 /**
- * remove Метод удаления брокера подключения
+ * @brief Метод удаления брокера подключения
+ *
  * @param bid идентификатор брокера
  */
 void awh::Node::remove(const uint64_t bid) noexcept {
@@ -229,7 +238,8 @@ void awh::Node::remove(const uint64_t bid) noexcept {
 	}
 }
 /**
- * has Метод проверки существования схемы сети
+ * @brief Метод проверки существования схемы сети
+ *
  * @param sid идентификатор схемы сети
  * @return    результат проверки
  */
@@ -238,7 +248,8 @@ bool awh::Node::has(const uint16_t sid) const noexcept {
 	return (this->_schemes.find(sid) != this->_schemes.end());
 }
 /**
- * has Метод проверки существования брокера подключения
+ * @brief Метод проверки существования брокера подключения
+ *
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
@@ -247,7 +258,8 @@ bool awh::Node::has(const uint64_t bid) const noexcept {
 	return (this->_brokers.find(bid) != this->_brokers.end());
 }
 /**
- * sid Метод извлечения идентификатора схемы сети
+ * @brief Метод извлечения идентификатора схемы сети
+ *
  * @param bid идентификатор брокера
  * @return    идентификатор схемы сети
  */
@@ -265,7 +277,8 @@ uint16_t awh::Node::sid(const uint64_t bid) const noexcept {
 	return 0;
 }
 /**
- * initBuffer Метод инициализации буфера полезной нагрузки
+ * @brief Метод инициализации буфера полезной нагрузки
+ *
  * @param bid идентификатор брокера
  */
 void awh::Node::initBuffer(const uint64_t bid) noexcept {
@@ -338,7 +351,8 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 	}
 }
 /**
- * erase Метод освобождение памяти занятой для хранение полезной нагрузки брокера
+ * @brief Метод освобождение памяти занятой для хранение полезной нагрузки брокера
+ *
  * @param bid  идентификатор брокера
  * @param size размер байт удаляемых из буфера
  */
@@ -380,7 +394,8 @@ void awh::Node::erase(const uint64_t bid, const size_t size) noexcept {
 		this->_callback.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < amount) ? 0 : std::min(this->_brokerAvailableSize - amount, this->_memoryAvailableSize));
 }
 /**
- * broker Метод извлечения брокера подключения
+ * @brief Метод извлечения брокера подключения
+ *
  * @param bid идентификатор брокера
  * @return    объект брокера подключения
  */
@@ -395,7 +410,8 @@ const awh::scheme_t::broker_t * awh::Node::broker(const uint64_t bid) const noex
 	return nullptr;
 }
 /**
- * scheme Метод добавления схемы сети
+ * @brief Метод добавления схемы сети
+ *
  * @param scheme схема рабочей сети
  * @return       идентификатор схемы сети
  */
@@ -417,7 +433,8 @@ uint16_t awh::Node::scheme(const scheme_t * scheme) noexcept {
 	return result;
 }
 /**
- * ssl Метод установки SSL-параметров
+ * @brief Метод установки SSL-параметров
+ *
  * @param ssl параметры SSL для установки
  */
 void awh::Node::ssl(const ssl_t & ssl) noexcept {
@@ -435,7 +452,8 @@ void awh::Node::ssl(const ssl_t & ssl) noexcept {
 	this->_engine.certificate(ssl.cert, ssl.key);
 }
 /**
- * resolver Метод установки объекта DNS-резолвера
+ * @brief Метод установки объекта DNS-резолвера
+ *
  * @param dns объект DNS-резолвер
  */
 void awh::Node::resolver(const dns_t * dns) noexcept {
@@ -445,7 +463,8 @@ void awh::Node::resolver(const dns_t * dns) noexcept {
 	this->_dns = dns;
 }
 /**
- * sockname Метод установки названия unix-сокета
+ * @brief Метод установки названия unix-сокета
+ *
  * @param name название unix-сокета
  * @return     результат установки названия unix-сокета
  */
@@ -453,7 +472,7 @@ bool awh::Node::sockname(const string & name) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если название unix-сокета передано
@@ -468,7 +487,7 @@ bool awh::Node::sockname(const string & name) noexcept {
 			this->_fmk->transform(this->_settings.sockname, fmk_t::transform_t::LOWER);
 		}
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим в лог сообщение
@@ -480,7 +499,8 @@ bool awh::Node::sockname(const string & name) noexcept {
 	return !this->_settings.sockname.empty();
 }
 /**
- * sockpath Метод установки адреса каталога где хранится unix-сокет
+ * @brief Метод установки адреса каталога где хранится unix-сокет
+ *
  * @param path адрес каталога в файловой системе где хранится unix-сокет
  * @return     результат установки адреса каталога где хранится unix-сокет
  */
@@ -488,7 +508,7 @@ bool awh::Node::sockpath(const string & path) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если адрес каталога в файловой системе где хранится unix-сокет передан
@@ -501,7 +521,7 @@ bool awh::Node::sockpath(const string & path) noexcept {
 			this->_settings.sockpath = "/tmp";
 		}
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Выводим в лог сообщение
@@ -513,7 +533,8 @@ bool awh::Node::sockpath(const string & path) noexcept {
 	return !this->_settings.sockpath.empty();
 }
 /**
- * proto Метод извлечения поддерживаемого протокола подключения
+ * @brief Метод извлечения поддерживаемого протокола подключения
+ *
  * @return поддерживаемый протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
  */
 awh::engine_t::proto_t awh::Node::proto() const noexcept {
@@ -521,7 +542,8 @@ awh::engine_t::proto_t awh::Node::proto() const noexcept {
 	return this->_settings.proto;
 }
 /**
- * proto Метод извлечения активного протокола подключения
+ * @brief Метод извлечения активного протокола подключения
+ *
  * @param bid идентификатор брокера
  * @return    активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
  */
@@ -539,7 +561,8 @@ awh::engine_t::proto_t awh::Node::proto(const uint64_t bid) const noexcept {
 	return engine_t::proto_t::NONE;
 }
 /**
- * proto Метод установки поддерживаемого протокола подключения
+ * @brief Метод установки поддерживаемого протокола подключения
+ *
  * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
  */
 void awh::Node::proto(const engine_t::proto_t proto) noexcept {
@@ -549,7 +572,8 @@ void awh::Node::proto(const engine_t::proto_t proto) noexcept {
 	this->_settings.proto = proto;
 }
 /**
- * sonet Метод извлечения типа сокета подключения
+ * @brief Метод извлечения типа сокета подключения
+ *
  * @return тип сокета подключения (TCP / UDP / SCTP)
  */
 awh::scheme_t::sonet_t awh::Node::sonet() const noexcept {
@@ -557,7 +581,8 @@ awh::scheme_t::sonet_t awh::Node::sonet() const noexcept {
 	return this->_settings.sonet;
 }
 /**
- * sonet Метод установки типа сокета подключения
+ * @brief Метод установки типа сокета подключения
+ *
  * @param sonet тип сокета подключения (TCP / UDP / SCTP)
  */
 void awh::Node::sonet(const scheme_t::sonet_t sonet) noexcept {
@@ -579,7 +604,8 @@ void awh::Node::sonet(const scheme_t::sonet_t sonet) noexcept {
 	#endif
 }
 /**
- * family Метод извлечения типа протокола интернета
+ * @brief Метод извлечения типа протокола интернета
+ *
  * @return тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 awh::scheme_t::family_t awh::Node::family() const noexcept {
@@ -587,7 +613,8 @@ awh::scheme_t::family_t awh::Node::family() const noexcept {
 	return this->_settings.family;
 }
 /**
- * family Метод установки типа протокола интернета
+ * @brief Метод установки типа протокола интернета
+ *
  * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 void awh::Node::family(const scheme_t::family_t family) noexcept {
@@ -608,7 +635,7 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 			 (this->_type == engine_t::type_t::SERVER) &&
 			 (this->_settings.family != scheme_t::family_t::IPC)) {
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Выполняем блокировку потока
@@ -625,7 +652,8 @@ void awh::Node::family(const scheme_t::family_t family) noexcept {
 	}
 }
 /**
- * sending Метод получения режима отправки сообщений
+ * @brief Метод получения режима отправки сообщений
+ *
  * @return установленный режим отправки сообщений
  */
 awh::Node::sending_t awh::Node::sending() const noexcept {
@@ -633,7 +661,8 @@ awh::Node::sending_t awh::Node::sending() const noexcept {
 	return this->_sending;
 }
 /**
- * sending Метод установки режима отправки сообщений
+ * @brief Метод установки режима отправки сообщений
+ *
  * @param sending режим отправки сообщений для установки
  */
 void awh::Node::sending(const sending_t sending) noexcept {
@@ -643,7 +672,8 @@ void awh::Node::sending(const sending_t sending) noexcept {
 	this->_sending = sending;
 }
 /**
- * memoryAvailableSize Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @brief Метод получения максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ *
  * @return размер памяти для хранения полезной нагрузки всех брокеров
  */
 size_t awh::Node::memoryAvailableSize() const noexcept {
@@ -651,7 +681,8 @@ size_t awh::Node::memoryAvailableSize() const noexcept {
 	return this->_memoryAvailableSize;
 }
 /**
- * memoryAvailableSize Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ * @brief Метод установки максимального рамзера памяти для хранения полезной нагрузки всех брокеров
+ *
  * @param size размер памяти для хранения полезной нагрузки всех брокеров
  */
 void awh::Node::memoryAvailableSize(const size_t size) noexcept {
@@ -661,7 +692,8 @@ void awh::Node::memoryAvailableSize(const size_t size) noexcept {
 	this->_memoryAvailableSize = size;
 }
 /**
- * brokerAvailableSize Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+ * @brief Метод получения максимального размера хранимой полезной нагрузки для одного брокера
+ *
  * @return размер хранимой полезной нагрузки для одного брокера
  */
 size_t awh::Node::brokerAvailableSize() const noexcept {
@@ -669,7 +701,8 @@ size_t awh::Node::brokerAvailableSize() const noexcept {
 	return this->_brokerAvailableSize;
 }
 /**
- * brokerAvailableSize Метод получения размера хранимой полезной нагрузки для текущего брокера
+ * @brief Метод получения размера хранимой полезной нагрузки для текущего брокера
+ *
  * @param bid идентификатор брокера
  * @return    размер хранимой полезной нагрузки для текущего брокера
  */
@@ -684,7 +717,8 @@ size_t awh::Node::brokerAvailableSize(const uint64_t bid) const noexcept {
 	return 0;
 }
 /**
- * brokerAvailableSize Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+ * @brief Метод установки максимального размера хранимой полезной нагрузки для одного брокера
+ *
  * @param size размер хранимой полезной нагрузки для одного брокера
  */
 void awh::Node::brokerAvailableSize(const size_t size) noexcept {
@@ -694,7 +728,8 @@ void awh::Node::brokerAvailableSize(const size_t size) noexcept {
 	this->_brokerAvailableSize = size;
 }
 /**
- * cork Метод отключения/включения алгоритма TCP/CORK
+ * @brief Метод отключения/включения алгоритма TCP/CORK
+ *
  * @param bid  идентификатор брокера
  * @param mode режим применимой операции
  * @return     результат выполенния операции
@@ -716,7 +751,8 @@ bool awh::Node::cork(const uint64_t bid, const engine_t::mode_t mode) noexcept {
 	return false;
 }
 /**
- * nodelay Метод отключения/включения алгоритма Нейгла
+ * @brief Метод отключения/включения алгоритма Нейгла
+ *
  * @param bid  идентификатор брокера
  * @param mode режим применимой операции
  * @return     результат выполенния операции
@@ -738,7 +774,8 @@ bool awh::Node::nodelay(const uint64_t bid, const engine_t::mode_t mode) noexcep
 	return false;
 }
 /**
- * send Метод асинхронной отправки буфера данных в сокет
+ * @brief Метод асинхронной отправки буфера данных в сокет
+ *
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
  * @param bid    идентификатор брокера
@@ -840,7 +877,8 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 	return result;
 }
 /**
- * bandwidth Метод установки пропускной способности сети
+ * @brief Метод установки пропускной способности сети
+ *
  * @param bid   идентификатор брокера
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
@@ -860,7 +898,8 @@ void awh::Node::bandwidth(const uint64_t bid, const string & read, const string 
 	}
 }
 /**
- * events Метод активации/деактивации метода события сокета
+ * @brief Метод активации/деактивации метода события сокета
+ *
  * @param bid    идентификатор брокера
  * @param mode   сигнал активации сокета
  * @param method метод режима работы
@@ -877,7 +916,8 @@ void awh::Node::events(const uint64_t bid, const awh::scheme_t::mode_t mode, con
 	}
 }
 /**
- * network Метод установки параметров сети
+ * @brief Метод установки параметров сети
+ *
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  * @param sonet  тип сокета подключения (TCP / UDP)
@@ -902,7 +942,7 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 			 (this->_type == engine_t::type_t::SERVER) &&
 			 (this->_settings.family != scheme_t::family_t::IPC)) {
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Выполняем блокировку потока
@@ -927,7 +967,9 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 			const_cast <dns_t *> (this->_dns)->network(ips);
 		// Переходим по всему списку полученных адресов
 		for(auto & host : ips){
-			// Определяем к какому адресу относится полученный хост
+			/**
+			 * Определяем к какому адресу относится полученный хост
+			 */
 			switch(static_cast <uint8_t> (this->_net.host(host))){
 				// Если IP-адрес является IPv4 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
@@ -940,7 +982,9 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 				default: {
 					// Если объект DNS-резолвера установлен
 					if(this->_dns != nullptr){
-						// Определяем тип интернет-протокола
+						/**
+						 * Определяем тип интернет-протокола
+						 */
 						switch(static_cast <uint8_t> (family)){
 							// Если тип протокола интернета IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
@@ -968,7 +1012,8 @@ void awh::Node::network(const vector <string> & ips, const scheme_t::family_t fa
 	}
 }
 /**
- * operator Оператор извлечения поддерживаемого протокола подключения
+ * @brief Оператор извлечения поддерживаемого протокола подключения
+ *
  * @return поддерживаемый протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
  */
 awh::Node::operator awh::engine_t::proto_t() const noexcept {
@@ -976,7 +1021,8 @@ awh::Node::operator awh::engine_t::proto_t() const noexcept {
 	return this->_settings.proto;
 }
 /**
- * operator Оператор извлечения типа сокета подключения
+ * @brief Оператор извлечения типа сокета подключения
+ *
  * @return тип сокета подключения (TCP / UDP / SCTP)
  */
 awh::Node::operator awh::scheme_t::sonet_t() const noexcept {
@@ -984,7 +1030,8 @@ awh::Node::operator awh::scheme_t::sonet_t() const noexcept {
 	return this->_settings.sonet;
 }
 /**
- * operator Оператор извлечения типа протокола интернета
+ * @brief Оператор извлечения типа протокола интернета
+ *
  * @return тип протокола интернета (IPV4 / IPV6 / IPC)
  */
 awh::Node::operator awh::scheme_t::family_t() const noexcept {
@@ -992,7 +1039,8 @@ awh::Node::operator awh::scheme_t::family_t() const noexcept {
 	return this->_settings.family;
 }
 /**
- * Оператор [=] установки SSL-параметров
+ * @brief Оператор [=] установки SSL-параметров
+ *
  * @param ssl параметры SSL для установки
  * @return    текущий объект
  */
@@ -1003,7 +1051,8 @@ awh::Node & awh::Node::operator = (const ssl_t & ssl) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] установки объекта DNS-резолвера
+ * @brief Оператор [=] установки объекта DNS-резолвера
+ *
  * @param dns объект DNS-резолвер
  * @return    текущий объект
  */
@@ -1014,7 +1063,8 @@ awh::Node & awh::Node::operator = (const dns_t & dns) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] установки поддерживаемого протокола подключения
+ * @brief Оператор [=] установки поддерживаемого протокола подключения
+ *
  * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
  * @return      текущий объект
  */
@@ -1025,7 +1075,8 @@ awh::Node & awh::Node::operator = (const engine_t::proto_t proto) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] установки типа сокета подключения
+ * @brief Оператор [=] установки типа сокета подключения
+ *
  * @param sonet тип сокета подключения (TCP / UDP / SCTP)
  * @return      текущий объект
  */
@@ -1036,7 +1087,8 @@ awh::Node & awh::Node::operator = (const scheme_t::sonet_t sonet) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] установки типа протокола интернета
+ * @brief Оператор [=] установки типа протокола интернета
+ *
  * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
  * @return       текущий объект
  */
@@ -1047,7 +1099,8 @@ awh::Node & awh::Node::operator = (const scheme_t::family_t family) noexcept {
 	return (* this);
 }
 /**
- * ~Node Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Node::~Node() noexcept {
 	// Выполняем удаление всех созданных объектов
@@ -1059,7 +1112,7 @@ awh::Node::~Node() noexcept {
 	  (this->_type == engine_t::type_t::SERVER) &&
 	  (this->_settings.family == scheme_t::family_t::IPC)){
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Получаем адрес файла unix-сокет

@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * status Метод проверки текущего статуса
+ * @brief Метод проверки текущего статуса
+ *
  * @return результат проверки текущего статуса
  */
 awh::Http::status_t awh::server::Http::status() noexcept {
@@ -33,7 +34,9 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 	if(this->_auth.server.type() != awh::auth_t::type_t::NONE){
 		// Параметры авторизации
 		string auth = "";
-		// Определяем идентичность сервера
+		/**
+		 * Определяем идентичность сервера
+		 */
 		switch(static_cast <uint8_t> (this->_identity)){
 			// Если сервер соответствует WebSocket-серверу
 			case static_cast <uint8_t> (identity_t::WS):
@@ -54,7 +57,9 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 			string method = "";
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->_auth.server.header(auth);
-			// Определяем метод запроса
+			/**
+			 * Определяем метод запроса
+			 */
 			switch(static_cast <uint8_t> (this->_web.request().method)){
 				// Если метод запроса указан как GET
 				case static_cast <uint8_t> (web_t::method_t::GET):
@@ -113,7 +118,8 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 	return result;
 }
 /**
- * dataAuth Метод извлечения данных авторизации
+ * @brief Метод извлечения данных авторизации
+ *
  * @return данные модуля авторизации
  */
 awh::server::auth_t::data_t awh::server::Http::dataAuth() const noexcept {
@@ -121,7 +127,8 @@ awh::server::auth_t::data_t awh::server::Http::dataAuth() const noexcept {
 	return this->_auth.server.data();
 }
 /**
- * dataAuth Метод установки данных авторизации
+ * @brief Метод установки данных авторизации
+ *
  * @param data данные авторизации для установки
  */
 void awh::server::Http::dataAuth(const server::auth_t::data_t & data) noexcept {
@@ -129,7 +136,8 @@ void awh::server::Http::dataAuth(const server::auth_t::data_t & data) noexcept {
 	this->_auth.server.data(data);
 }
 /**
- * realm Метод установки название сервера
+ * @brief Метод установки название сервера
+ *
  * @param realm название сервера
  */
 void awh::server::Http::realm(const string & realm) noexcept {
@@ -139,7 +147,8 @@ void awh::server::Http::realm(const string & realm) noexcept {
 		this->_auth.server.realm(realm);
 }
 /**
- * opaque Метод установки временного ключа сессии сервера
+ * @brief Метод установки временного ключа сессии сервера
+ *
  * @param opaque временный ключ сессии сервера
  */
 void awh::server::Http::opaque(const string & opaque) noexcept {
@@ -149,7 +158,8 @@ void awh::server::Http::opaque(const string & opaque) noexcept {
 		this->_auth.server.opaque(opaque);
 }
 /**
- * extractPassCallback Метод добавления функции извлечения пароля
+ * @brief Метод добавления функции извлечения пароля
+ *
  * @param callback функция обратного вызова для извлечения пароля
  */
 void awh::server::Http::extractPassCallback(function <string (const string &)> callback) noexcept {
@@ -157,7 +167,8 @@ void awh::server::Http::extractPassCallback(function <string (const string &)> c
 	this->_auth.server.extractPassCallback(callback);
 }
 /**
- * authCallback Метод добавления функции обработки авторизации
+ * @brief Метод добавления функции обработки авторизации
+ *
  * @param callback функция обратного вызова для обработки авторизации
  */
 void awh::server::Http::authCallback(function <bool (const string &, const string &)> callback) noexcept {
@@ -165,7 +176,8 @@ void awh::server::Http::authCallback(function <bool (const string &, const strin
 	this->_auth.server.authCallback(callback);
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
@@ -174,7 +186,8 @@ void awh::server::Http::authType(const awh::auth_t::type_t type, const awh::auth
 	this->_auth.server.type(type, hash);
 }
 /**
- * Http Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */

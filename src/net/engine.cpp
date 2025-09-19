@@ -34,9 +34,13 @@
  */
 using namespace std;
 
-// Буфер секретного слова печенок
+/**
+ * Буфер секретного слова печенок
+ */
 uint8_t awh::Engine::_cookies[16];
-// Флаг инициализации куков
+/**
+ * Флаг инициализации куков
+ */
 bool awh::Engine::_cookieInit = false;
 
 /**
@@ -50,7 +54,7 @@ bool awh::Engine::Address::close() noexcept {
 	// Если сетевой сокет подключён
 	if((result = (this->sock != INVALID_SOCKET))){
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Если тип сокета не диграммы
@@ -60,7 +64,7 @@ bool awh::Engine::Address::close() noexcept {
 			// Выполняем закрытие сокета
 			::closesocket(this->sock);
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Если тип сокета не диграммы
@@ -81,7 +85,9 @@ bool awh::Engine::Address::close() noexcept {
  *
  */
 void awh::Engine::Address::client() noexcept {
-	// Определяем тип подключения
+	/**
+	 * Определяем тип подключения
+	 */
 	switch(this->_peer.client.ss_family){
 		// Для протокола IPv4
 		case AF_INET:
@@ -91,7 +97,9 @@ void awh::Engine::Address::client() noexcept {
 			char buffer[INET6_ADDRSTRLEN];
 			// Выполняем зануление буфера данных
 			::memset(buffer, 0, sizeof(buffer));
-			// Определяем тип протокола интернета
+			/**
+			 * Определяем тип протокола интернета
+			 */
 			switch(this->_peer.client.ss_family){
 				// Если протокол интернета IPv4
 				case AF_INET: {
@@ -120,7 +128,7 @@ void awh::Engine::Address::client() noexcept {
 			} else this->mac = this->_ifnet.mac(this->ip, this->_peer.client.ss_family);
 		} break;
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Для протокола unix-сокета
@@ -141,7 +149,9 @@ void awh::Engine::Address::client() noexcept {
 bool awh::Engine::Address::list() noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Определяем тип сокета
+	/**
+	 * Определяем тип сокета
+	 */
 	switch(this->_type){
 		// Если сокет установлен TCP/IP
 		case SOCK_STREAM: {
@@ -238,7 +248,9 @@ bool awh::Engine::Address::connect() noexcept {
 	this->status = status_t::DISCONNECTED;
 	// Если сокет установлен TCP/IP
 	if(this->_type == SOCK_STREAM){
-		// Определяем тип подключения
+		/**
+		 * Определяем тип подключения
+		 */
 		switch(this->_peer.server.ss_family){
 			// Для протокола IPv4
 			case AF_INET:
@@ -251,7 +263,7 @@ bool awh::Engine::Address::connect() noexcept {
 				this->_peer.size = sizeof(struct sockaddr_in6);
 			break;
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Для протокола unix-сокета
@@ -281,7 +293,9 @@ bool awh::Engine::Address::connect() noexcept {
 	} else if(this->_type == SOCK_DGRAM) {
 		// Если подключение зашифрованно, значит мы должны использовать DTLS
 		if(this->_encrypted){
-			// Определяем тип подключения
+			/**
+			 * Определяем тип подключения
+			 */
 			switch(this->_peer.server.ss_family){
 				// Для протокола IPv4
 				case AF_INET:
@@ -356,7 +370,9 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 	}
 	// Если IP-адрес не установлен
 	if(result.empty()){
-		// Определяем тип подключения
+		/**
+		 * Определяем тип подключения
+		 */
 		switch(family){
 			// Для протокола IPv6
 			case AF_INET6: return "::";
@@ -375,7 +391,9 @@ string awh::Engine::Address::host(const int32_t family) const noexcept {
 bool awh::Engine::Address::attach(Address & addr) noexcept {
 	// Устанавливаем статус отключения
 	this->status = status_t::DISCONNECTED;
-	// Определяем тип подключения
+	/**
+	 * Определяем тип подключения
+	 */
 	switch(addr._peer.server.ss_family){
 		// Для протокола IPv4
 		case AF_INET:
@@ -450,11 +468,15 @@ bool awh::Engine::Address::accept(const SOCKET sock, const int32_t family) noexc
 	this->status = status_t::DISCONNECTED;
 	// Заполняем структуру клиента нулями
 	::memset(&this->_peer.client, 0, sizeof(this->_peer.client));
-	// Определяем тип сокета
+	/**
+	 * Определяем тип сокета
+	 */
 	switch(this->_type){
 		// Если сокет установлен TCP/IP
 		case SOCK_STREAM: {
-			// Определяем тип подключения
+			/**
+			 * Определяем тип подключения
+			 */
 			switch(family){
 				// Для протокола IPv4
 				case AF_INET: {
@@ -483,7 +505,7 @@ bool awh::Engine::Address::accept(const SOCKET sock, const int32_t family) noexc
 					::memcpy(&this->_peer.client, &client, this->_peer.size);
 				} break;
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
 					// Для протокола unix-сокета
@@ -511,14 +533,16 @@ bool awh::Engine::Address::accept(const SOCKET sock, const int32_t family) noexc
 		// Если сокет установлен UDP
 		case SOCK_DGRAM: this->sock = sock; break;
 	}
-	// Определяем тип подключения
+	/**
+	 * Определяем тип подключения
+	 */
 	switch(this->_peer.client.ss_family){
 		// Для протокола IPv4
 		case AF_INET:
 		// Для протокола IPv6
 		case AF_INET6: {
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Выполняем игнорирование сигнала неверной инструкции процессора
@@ -544,7 +568,7 @@ bool awh::Engine::Address::accept(const SOCKET sock, const int32_t family) noexc
 					#endif
 				}
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				// Если сокет установлен TCP/IP
@@ -561,7 +585,7 @@ bool awh::Engine::Address::accept(const SOCKET sock, const int32_t family) noexc
 			}
 		} break;
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Для протокола unix-сокета
@@ -609,7 +633,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 	// Если unix-сокет передан
 	if(!unixsocket.empty()){
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Создаем сокет подключения
@@ -654,7 +678,9 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			::memset(&server, 0, sizeof(server));
 			// Устанавливаем размер объекта подключения
 			this->_peer.size = sizeof(struct sockaddr_un);
-			// Определяем тип сокета
+			/**
+			 * Определяем тип сокета
+			 */
 			switch(this->_type){
 				// Если сокет установлен TCP/IP
 				case SOCK_STREAM: {
@@ -696,7 +722,9 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 						const string & clientName = this->_fmk->format("%sc_%s", path.c_str(), name.c_str());
 						// Создаём адрес unix-сокета сервера
 						const string & serverName = this->_fmk->format("%ss_%s", path.c_str(), name.c_str());
-						// Определяем тип приложения
+						/**
+						 * Определяем тип приложения
+						 */
 						switch(static_cast <uint8_t> (type)){
 							// Если приложение является клиентом
 							case static_cast <uint8_t> (type_t::CLIENT): {
@@ -788,11 +816,15 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 		if((family == AF_INET) || (family == AF_INET6)){
 			// Получаем хост текущего компьютера
 			const string & host = this->host(family);
-			// Определяем тип подключения
+			/**
+			 * Определяем тип подключения
+			 */
 			switch(family){
 				// Для протокола IPv4
 				case AF_INET: {
-					// Определяем тип приложения
+					/**
+					 * Определяем тип приложения
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT): {
@@ -844,7 +876,9 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 				} break;
 				// Для протокола IPv6
 				case AF_INET6: {
-					// Определяем тип приложения
+					/**
+					 * Определяем тип приложения
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT): {
@@ -923,7 +957,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 				return;
 			}
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Выполняем игнорирование сигнала неверной инструкции процессора
@@ -957,7 +991,7 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 					#endif
 				}
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				// Если приложение является сервером
@@ -977,7 +1011,9 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 				this->_socket.blocking(this->sock, socket_t::mode_t::DISABLED);
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->sock);
-			// Определяем тип запускаемого приложения
+			/**
+			 * Определяем тип запускаемого приложения
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если приложение является сервером
 				case static_cast <uint8_t> (type_t::SERVER): {
@@ -1044,7 +1080,9 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 	if(this->_encrypted){
 		// Получаем данные описание ошибки
 		int32_t error = ::SSL_get_error(this->_ssl, status);
-		// Определяем тип полученной ошибки
+		/**
+		 * Определяем тип полученной ошибки
+		 */
 		switch(error){
 			// Если мы получили ошибку
 			case SSL_ERROR_SSL: {
@@ -1060,7 +1098,9 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 				do {
 					// Выводим в лог сообщение полученной ошибки
 					this->_log->print("%s: %s", log_t::flag_t::CRITICAL, state.c_str(), ::ERR_error_string(error, nullptr));
-				// Если ещё есть ошибки
+				/**
+				 * Если ещё есть ошибки
+				 */
 				} while((error = ::ERR_get_error()));
 			} break;
 			// Если мы получили ошибку системного вызова
@@ -1077,7 +1117,9 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 				do {
 					// Выводим в лог сообщение полученной ошибки
 					this->_log->print("%s: %s", log_t::flag_t::CRITICAL, state.c_str(), ::ERR_error_string(error, nullptr));
-				// Если ещё есть ошибки
+				/**
+				 * Если ещё есть ошибки
+				 */
 				} while((error = ::ERR_get_error()));
 				// Выводим в лог сообщение
 				this->_log->print("Engine: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
@@ -1109,12 +1151,14 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 		}
 	// Если произошла ошибка
 	} else if(status < 0) {
-		// Определяем тип ошибки
+		/**
+		 * Определяем тип ошибки
+		 */
 		switch(AWH_ERROR()){
 			// Если ошибка не обнаружена, выходим
 			case 0: break;
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Если произведена неудачная запись в PIPE
@@ -1127,7 +1171,7 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 					this->_log->print("Engine: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
 				} break;
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				// Если произведён сброс подключения
@@ -1300,7 +1344,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							this->info();
 						}
 					#endif
-					// Определяем сокет подключения
+					/**
+					 * Определяем сокет подключения
+					 */
 					switch(this->_addr->_type){
 						// Если сокет установлен как TCP/IP
 						case SOCK_STREAM:
@@ -1330,7 +1376,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			else if(this->_addr->_type == SOCK_DGRAM) {
 				// Создаём объект подключения
 				struct sockaddr * addr = nullptr;
-				// Определяем тип подключения
+				/**
+				 * Определяем тип подключения
+				 */
 				switch(static_cast <uint8_t> (this->_addr->status)){
 					// Если статус установлен как подключение клиентом
 					case static_cast <uint8_t> (addr_t::status_t::CONNECTED):
@@ -1353,7 +1401,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				 */
 				if(this->_type == type_t::CLIENT){
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Если нужно попытаться ещё раз получить сообщение
@@ -1361,7 +1409,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							// Повторяем попытку получить ещё раз
 							goto Read;
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Если нужно попытаться ещё раз получить сообщение
@@ -1374,7 +1422,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		}
 		// Если данные прочитать не удалось
 		if(result <= 0){
-			// Определяем тип ошибки
+			/**
+			 * Определяем тип ошибки
+			 */
 			switch(AWH_ERROR()){
 				// Если ошибка не обнаружена, выходим
 				case 0: break;
@@ -1386,7 +1436,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					case EOPNOTSUPP:
 				#endif
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
 					// Если сработало событие таймаута
@@ -1438,7 +1488,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Если протокол не поддерживается
 					case EPROTONOSUPPORT: {
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#else
 					// Если в буфере закончились данные
@@ -1500,7 +1550,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						// Иначе выводим сообщение об ошибке
 						else result = this->error(result);
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Если защищённый режим работы запрещён
@@ -1508,7 +1558,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							// Выполняем пропуск попытки
 							return -1;
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Если защищённый режим работы запрещён
@@ -1594,7 +1644,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							this->info();
 						}
 					#endif
-					// Определяем сокет подключения
+					/**
+					 * Определяем сокет подключения
+					 */
 					switch(this->_addr->_type){
 						// Если сокет установлен как TCP/IP
 						case SOCK_STREAM:
@@ -1624,14 +1676,16 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			else if(this->_addr->_type == SOCK_DGRAM) {
 				// Создаём объект подключения
 				struct sockaddr * addr = nullptr;
-				// Определяем тип подключения
+				/**
+				 * Определяем тип подключения
+				 */
 				switch(static_cast <uint8_t> (this->_addr->status)){
 					// Если статус установлен как подключение клиентом
 					case static_cast <uint8_t> (addr_t::status_t::CONNECTED): {
 						// Запоминаем полученную структуру
 						addr = reinterpret_cast <struct sockaddr *> (&this->_addr->_peer.server);
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#if !_WIN32 && !_WIN64
 							// Для протокола unix-сокета
@@ -1648,7 +1702,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						// Запоминаем полученную структуру
 						addr = reinterpret_cast <struct sockaddr *> (&this->_addr->_peer.client);
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#if !_WIN32 && !_WIN64
 							// Для протокола unix-сокета
@@ -1666,7 +1720,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Выполняем запись данных в сокет
 				result = ::sendto(this->_addr->sock, buffer, size, 0, addr, this->_addr->_peer.size);
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Если нужно попытаться ещё раз отправить сообщение
@@ -1674,7 +1728,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						// Повторяем попытку отправить ещё раз
 						goto Send;
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Если нужно попытаться ещё раз отправить сообщение
@@ -1686,7 +1740,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 		}
 		// Если данные записать не удалось
 		if(result <= 0){
-			// Определяем тип ошибки
+			/**
+			 * Определяем тип ошибки
+			 */
 			switch(AWH_ERROR()){
 				// Если ошибка не обнаружена, выходим
 				case 0: break;
@@ -1698,7 +1754,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					case EOPNOTSUPP:
 				#endif
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
 					// Если сработало событие таймаута
@@ -1750,7 +1806,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					// Если протокол не поддерживается
 					case EPROTONOSUPPORT: {
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#else
 					// Если в буфере закончились данные
@@ -1812,7 +1868,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						// Иначе выводим сообщение об ошибке
 						else result = this->error(result);
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Если защищённый режим работы запрещён
@@ -1820,7 +1876,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Выполняем пропуск попытки
 							return -1;
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Если защищённый режим работы запрещён
@@ -1844,7 +1900,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			#if (__linux__ || __FreeBSD__) && DEBUG_MODE
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (::SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
-					// Определяем тип подключения
+					/**
+					 * Определяем тип подключения
+					 */
 					switch(static_cast <uint8_t> (this->_addr->status)){
 						// Если статус установлен как подключение клиентом
 						case static_cast <uint8_t> (addr_t::status_t::CONNECTED): {
@@ -1900,7 +1958,9 @@ bool awh::Engine::Context::blocking(const mode_t mode) noexcept {
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
 		if(this->_addr->sock != INVALID_SOCKET){
-			// Определяем режим применяемой операции
+			/**
+			 * Определяем режим применяемой операции
+			 */
 			switch(static_cast <uint8_t> (mode)){
 				// Если необходимо перевести сокет в блокирующий режим
 				case static_cast <uint8_t> (mode_t::ENABLED): {
@@ -1964,7 +2024,9 @@ bool awh::Engine::Context::cork(const mode_t mode) noexcept {
 				#endif
 				// Если разрешено активировать алгоритм TCP/CORK
 				if(allow){
-					// Определяем режим применяемой операции
+					/**
+					 * Определяем режим применяемой операции
+					 */
 					switch(static_cast <uint8_t> (mode)){
 						// Если необходимо активировать алгоритм TCP/CORK
 						case static_cast <uint8_t> (mode_t::ENABLED): {
@@ -2018,7 +2080,9 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 				#endif
 				// Если разрешено активировать алгоритм Найгла
 				if(allow){
-					// Определяем режим применяемой операции
+					/**
+					 * Определяем режим применяемой операции
+					 */
 					switch(static_cast <uint8_t> (mode)){
 						// Если необходимо деактивировать алгоритм Нейгла
 						case static_cast <uint8_t> (mode_t::ENABLED): {
@@ -2080,7 +2144,9 @@ bool awh::Engine::Context::timeout(const uint32_t msec, const method_t method) n
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
 		if(this->_addr->sock != INVALID_SOCKET){
-			// Определяем тип метода
+			/**
+			 * Определяем тип метода
+			 */
 			switch(static_cast <uint8_t> (method)){
 				// Если установлен метод чтения
 				case static_cast <uint8_t> (method_t::READ):
@@ -2109,7 +2175,9 @@ int32_t awh::Engine::Context::buffer(const method_t method) const noexcept {
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
 		if(this->_addr->sock != INVALID_SOCKET){
-			// Определяем метод для работы с буфером
+			/**
+			 * Определяем метод для работы с буфером
+			 */
 			switch(static_cast <uint8_t> (method)){
 				// Если метод чтения
 				case static_cast <uint8_t> (method_t::READ):
@@ -2175,7 +2243,9 @@ int32_t awh::Engine::Context::availability(const method_t method) const noexcept
 	if(this->_addr != nullptr){
 		// Если защищённый режим работы разрешён
 		if(this->_addr->sock != INVALID_SOCKET){
-			// Определяем метод для работы с буфером
+			/**
+			 * Определяем метод для работы с буфером
+			 */
 			switch(static_cast <uint8_t> (method)){
 				// Если метод чтения
 				case static_cast <uint8_t> (method_t::READ):
@@ -2363,7 +2433,9 @@ bool awh::Engine::certHostcheck(const string & host, const string & patt) const 
 			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
 			// Создаём объект событий SCTP
 			union sctp_notification * snp = reinterpret_cast <union sctp_notification *> (buffer);
-			// Определяем тип события
+			/**
+			 * Определяем тип события
+			 */
 			switch(snp->sn_header.sn_type){
 				// Если произошло событие изменения ассоциации
 				case SCTP_ASSOC_CHANGE: {
@@ -2391,7 +2463,9 @@ bool awh::Engine::certHostcheck(const string & host, const string & patt) const 
 					// Устанавливаем новое значение подключения
 					// peer.ss = spc->spc_aaddr;
 					::memcpy(&peer.ss, &spc->spc_aaddr, sizeof(struct sockaddr_storage));
-					// Определяем семейство интернет-протокола
+					/**
+					 * Определяем семейство интернет-протокола
+					 */
 					switch(peer.ss.ss_family){
 						// Если подключение производится по IPv4
 						case AF_INET:
@@ -2532,7 +2606,9 @@ int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		if(ok){
 			// Выполняем проверку на соответствие хоста с данными хостов у сертификата
 			validate = verify->engine->validateHostname(verify->host.c_str(), cert);
-			// Определяем полученную ошибку
+			/**
+			 * Определяем полученную ошибку
+			 */
 			switch(static_cast <uint8_t> (validate)){
 				case static_cast <uint8_t> (engine_t::validate_t::MatchFound):           status = "MatchFound";           break;
 				case static_cast <uint8_t> (engine_t::validate_t::MatchNotFound):        status = "MatchNotFound";        break;
@@ -2691,7 +2767,9 @@ int32_t awh::Engine::generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size
 	}
 	// Выполняем чтение из подключения информации
 	BIO_dgram_get_peer(::SSL_get_rbio(ssl), &peer);
-	// Выполняем определение протокола интернета
+	/**
+	 * Выполняем определение протокола интернета
+	 */
 	switch(peer.ss.ss_family){
 		// Для протокола IPv4
 		case AF_INET:
@@ -2719,7 +2797,9 @@ int32_t awh::Engine::generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size
 		// Выходим и сообщаем, что генерация куков не удалась
 		return 0;
 	}
-	// Выполняем определение протокола интернета
+	/**
+	 * Выполняем определение протокола интернета
+	 */
 	switch(peer.ss.ss_family){
 		// Для протокола IPv4
 		case AF_INET: {
@@ -2774,7 +2854,9 @@ int32_t awh::Engine::verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t si
 		return 0;
 	// Выполняем чтение из подключения информации
 	BIO_dgram_get_peer(::SSL_get_rbio(ssl), &peer);
-	// Выполняем определение протокола интернета
+	/**
+	 * Выполняем определение протокола интернета
+	 */
 	switch(peer.ss.ss_family){
 		// Для протокола IPv4
 		case AF_INET:
@@ -2802,7 +2884,9 @@ int32_t awh::Engine::verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t si
 		// Выходим и сообщаем, что генерация куков не удалась
 		return 0;
 	}
-	// Выполняем определение протокола интернета
+	/**
+	 * Выполняем определение протокола интернета
+	 */
 	switch(peer.ss.ss_family){
 		// Для протокола IPv4
 		case AF_INET: {
@@ -3004,7 +3088,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 				// Если адрес существует
 				if(this->_fs.isDir(dir) && !this->_fs.isFile(this->_cert.ca)){
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Выполняем сплит адреса
@@ -3033,7 +3117,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						// Выполняем очистку адреса CRL-файла сертификата
 						this->_cert.ca.clear();
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Выполняем сплит адреса
@@ -3076,7 +3160,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Получаем данные стора
 			X509_STORE * store = ::SSL_CTX_get_cert_store(ctx);
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
 				/**
@@ -3102,7 +3186,9 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							// Выходим
 							return -1;
 						}
-						// Перебираем все сертификаты в системном сторе
+						/**
+						 * Перебираем все сертификаты в системном сторе
+						 */
 						while((ctx = ::CertEnumCertificatesInStore(sys, ctx))){
 							// Выполняем создание сертификата
 							X509 * cert = X509_new();
@@ -3186,7 +3272,9 @@ bool awh::Engine::storeCRL(SSL_CTX * ctx) const noexcept {
 						do {
 							// Выводим в лог сообщение
 							this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-						// Если ещё есть ошибки
+						/**
+						 * Если ещё есть ошибки
+						 */
 						} while((error = ::ERR_get_error()));
 					}
 					// Выходим из функции
@@ -3223,7 +3311,9 @@ bool awh::Engine::storeCRL(SSL_CTX * ctx) const noexcept {
  * @return       результат проверки
  */
 bool awh::Engine::wait(ctx_t & target) noexcept {
-	// Определяем тип входящего сокета
+	/**
+	 * Определяем тип входящего сокета
+	 */
 	switch(target._addr->_type){
 		// Если сокет установлен TCP/IP
 		case SOCK_STREAM:
@@ -3276,7 +3366,9 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 		result = target._proto;
 		// Если подключение выполнено
 		if(target._type == type_t::SERVER ? ::SSL_accept(target._ssl) : ::SSL_connect(target._ssl)){
-			// Определяет желаемый активный протокол
+			/**
+			 * Определяет желаемый активный протокол
+			 */
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует SPDY/1
 				case static_cast <uint8_t> (proto_t::SPDY1):
@@ -3307,7 +3399,9 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 					#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 					// Если тип протокола передачи данных получен
 					if(alpn != nullptr){
-						// Определяет желаемый активный протокол
+						/**
+						 * Определяет желаемый активный протокол
+						 */
 						switch(static_cast <uint8_t> (target._proto)){
 							// Если протокол соответствует SPDY/1
 							case static_cast <uint8_t> (proto_t::SPDY1): {
@@ -3358,7 +3452,9 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 		const string http1 = "http/1";
 		// Создаём идентификатор протокола HTTP/1.1
 		const string http1_1 = "http/1.1";
-		// Если протоколом является HTTP, выполняем переключение на него
+		/**
+		 * Если протоколом является HTTP, выполняем переключение на него
+		 */
 		switch(static_cast <uint8_t> (target._proto)){
 			// Если протокол соответствует SPDY/1
 			case static_cast <uint8_t> (proto_t::SPDY1): {
@@ -3437,7 +3533,9 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 			} break;
 		}
 	}
-	// Определяем тип приложения
+	/**
+	 * Определяем тип приложения
+	 */
 	switch(static_cast <uint8_t> (target._type)){
 		// Если приложение является клиентом
 		case static_cast <uint8_t> (type_t::CLIENT): {
@@ -3529,7 +3627,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 		target._addr = address;
 		// Устанавливаем тип приложения
 		target._type = type_t::SERVER;
-		// Проверяем семейство протоколов сервера
+		/**
+		 * Проверяем семейство протоколов сервера
+		 */
 		switch(target._addr->_peer.client.ss_family){
 			// Если семейство протоколов IPv4
 			case AF_INET:
@@ -3548,7 +3648,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			 * Для операционной системы Linux или FreeBSD
 			 */
 			#if __linux__ || __FreeBSD__
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
 					case IPPROTO_UDP:
@@ -3613,7 +3715,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			/**
 			 * Если версия OpenSSL ниже версии 3.0.0
 			 */
-			#else 
+			#else
 				{
 					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
 					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -3630,7 +3732,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 					::EC_KEY_free(ecdh);
 				}
 			#endif
-			// Если протоколом является HTTP, выполняем переключение на него
+			/**
+			 * Если протоколом является HTTP, выполняем переключение на него
+			 */
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует SPDY/1
 				case static_cast <uint8_t> (proto_t::SPDY1):
@@ -3747,7 +3851,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			 * Для операционной системы Linux или FreeBSD
 			 */
 			#if __linux__ || __FreeBSD__
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
 					case IPPROTO_UDP:
@@ -3814,11 +3920,15 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 		target._addr = address;
 		// Если объект фреймворка существует
 		if(target._addr->sock != INVALID_SOCKET){
-			// Определяем тип сокета
+			/**
+			 * Определяем тип сокета
+			 */
 			switch(target._addr->_type){
 				// Если тип сокета - диграммы
 				case SOCK_DGRAM: {
-					// Определяем тип активного приложения
+					/**
+					 * Определяем тип активного приложения
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT):
@@ -3834,7 +3944,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				} break;
 				// Если тип сокета - потоки
 				case SOCK_STREAM: {
-					// Определяем тип активного приложения
+					/**
+					 * Определяем тип активного приложения
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT):
@@ -3892,7 +4004,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			/**
 			 * Если версия OpenSSL ниже версии 3.0.0
 			 */
-			#else 
+			#else
 				{
 					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
 					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -3913,7 +4025,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			if(type == type_t::SERVER){
 				// Получаем идентификатор процесса
 				const pid_t pid = ::getpid();
-				// Если протоколом является HTTP, выполняем переключение на него
+				/**
+				 * Если протоколом является HTTP, выполняем переключение на него
+				 */
 				switch(static_cast <uint8_t> (target._proto)){
 					// Если протокол соответствует SPDY/1
 					case static_cast <uint8_t> (proto_t::SPDY1):
@@ -3936,7 +4050,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				}
 			// Если приложение является клиентом
 			} else {
-				// Если протоколом является HTTP, выполняем переключение на него
+				/**
+				 * Если протоколом является HTTP, выполняем переключение на него
+				 */
 				switch(static_cast <uint8_t> (target._proto)){
 					// Если протокол соответствует SPDY/1
 					case static_cast <uint8_t> (proto_t::SPDY1):
@@ -3986,7 +4102,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				::SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_OFF);
 			// Если цепочка сертификатов установлена
 			if(!this->_cert.pem.empty()){
-				// Определяем тип активного приложения
+				/**
+				 * Определяем тип активного приложения
+				 */
 				switch(static_cast <uint8_t> (type)){
 					// Если приложение является клиентом
 					case static_cast <uint8_t> (type_t::CLIENT):
@@ -4047,7 +4165,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			::SSL_CTX_set_read_ahead(target._ctx, 1);
 			// Если приложение является сервером
 			if(type == type_t::SERVER){
-				// Определяем тип сокета
+				/**
+				 * Определяем тип сокета
+				 */
 				switch(target._addr->_type){
 					// Если тип сокета - диграммы
 					case SOCK_DGRAM: {
@@ -4078,7 +4198,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			}
 			// Устанавливаем флаг активации TLS
 			target._addr->_encrypted = target._encrypted;
-			// Определяем тип сокета
+			/**
+			 * Определяем тип сокета
+			 */
 			switch(target._addr->_type){
 				// Если тип сокета - диграммы
 				case SOCK_DGRAM:
@@ -4095,7 +4217,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			if(target._bio != nullptr){
 				// Выполняем установку BIO SSL
 				::SSL_set_bio(target._ssl, target._bio, target._bio);
-				// Определяем тип активного приложения
+				/**
+				 * Определяем тип активного приложения
+				 */
 				switch(static_cast <uint8_t> (type)){
 					// Если приложение является клиентом
 					case static_cast <uint8_t> (type_t::CLIENT): {
@@ -4165,7 +4289,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			 * Для операционной системы Linux или FreeBSD
 			 */
 			#if __linux__ || __FreeBSD__
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
 					case IPPROTO_UDP:
@@ -4210,7 +4336,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			/**
 			 * Если версия OpenSSL ниже версии 3.0.0
 			 */
-			#else 
+			#else
 				{
 					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
 					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -4227,7 +4353,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 					::EC_KEY_free(ecdh);
 				}
 			#endif
-			// Если протоколом является HTTP, выполняем переключение на него
+			/**
+			 * Если протоколом является HTTP, выполняем переключение на него
+			 */
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует SPDY/1
 				case static_cast <uint8_t> (proto_t::SPDY1):
@@ -4362,7 +4490,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			 * Для операционной системы Linux или FreeBSD
 			 */
 			#if __linux__ || __FreeBSD__
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
 					case IPPROTO_UDP:
@@ -4505,7 +4635,7 @@ void awh::Engine::certificate(const string & pem, const string & key) noexcept {
 awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
  _verify(true), _fs(fmk, log), _cipher{""}, _crl(nullptr), _fmk(fmk), _uri(uri), _log(log) {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем игнорирование сигналов SIGPIPE

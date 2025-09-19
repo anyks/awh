@@ -23,7 +23,7 @@
 #include "log.hpp"
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -62,7 +62,7 @@
 #endif
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -71,7 +71,7 @@
 	#include <conio.h>
 	#include <direct.h>
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	/**
@@ -224,7 +224,7 @@ namespace awh {
 			 * @param actual флаг формирования актуальных адресов
 			 * @param before флаг определения первой точки расширения слева
 			 */
-			pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
+			std::pair <string, string> components(const string & addr, const bool actual = true, const bool before = false) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения прав доступа к файлу или каталогу
@@ -243,7 +243,7 @@ namespace awh {
 			bool chmod(const string & path, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				/**
@@ -256,7 +256,7 @@ namespace awh {
 				 */
 				bool chown(const string & path, const string & user, const string & group) const noexcept;
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				/**

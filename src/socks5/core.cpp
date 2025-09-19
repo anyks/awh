@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * ipToHex Метод конвертации IP адреса в бинарный буфер
+ * @brief Метод конвертации IP адреса в бинарный буфер
+ *
  * @param ip     индернет адрес в виде строки
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       бинарный буфер IP адреса
@@ -35,7 +36,9 @@ vector <char> awh::Socks5::ipToHex(const string & ip, const int32_t family) cons
 	if(!ip.empty()){
 		// Результат конвертации
 		int32_t conv = 0;
-		// Определяем тип подключения
+		/**
+		 * Определяем тип подключения
+		 */
 		switch(family){
 			// Если тип адреса IPv4
 			case AF_INET: {
@@ -74,7 +77,8 @@ vector <char> awh::Socks5::ipToHex(const string & ip, const int32_t family) cons
 	return result;
 }
 /**
- * hexToIp Метод конвертации бинарного буфера в IP адрес
+ * @brief Метод конвертации бинарного буфера в IP адрес
+ *
  * @param buffer бинарный буфер для конвертации
  * @param size   размер бинарного буфера
  * @param family тип протокола интернета AF_INET или AF_INET6
@@ -85,7 +89,9 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int32_
 	string result = "";
 	// Если бинарный буфер передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем тип подключения
+		/**
+		 * Определяем тип подключения
+		 */
 		switch(family){
 			// Если тип адреса IPv4
 			case AF_INET: {
@@ -115,7 +121,8 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int32_
 	return result;
 }
 /**
- * text Метод установки в буфер текстовых данных
+ * @brief Метод установки в буфер текстовых данных
+ *
  * @param text текст для установки
  * @return     текущее значение смещения
  */
@@ -133,7 +140,8 @@ uint16_t awh::Socks5::text(const string & text) const noexcept {
 	return result;
 }
 /**
- * text Метод извлечения текстовых данных из буфера
+ * @brief Метод извлечения текстовых данных из буфера
+ *
  * @param buffer буфер данных для извлечения текста
  * @param size   размер буфера данных
  * @return       текст содержащийся в буфере данных
@@ -156,7 +164,8 @@ string awh::Socks5::text(const char * buffer, const size_t size) const noexcept 
 	return result;
 }
 /**
- * octet Метод установки октета
+ * @brief Метод установки октета
+ *
  * @param octet  октет для установки
  * @param offset размер смещения в буфере
  * @return       текущее значение смещения
@@ -168,11 +177,14 @@ uint16_t awh::Socks5::octet(const uint8_t octet, const uint16_t offset) const no
 	return (offset + sizeof(octet));
 }
 /**
- * is Метод проверки активного состояния
+ * @brief Метод проверки активного состояния
+ *
  * @param state состояние которое необходимо проверить
  */
 bool awh::Socks5::is(const state_t state) const noexcept {
-	// Определяем запрашиваемое состояние
+	/**
+	 * Определяем запрашиваемое состояние
+	 */
 	switch(static_cast <uint8_t> (state)){
 		// Если проверяется режим завершения сбора данных
 		case static_cast <uint8_t> (state_t::END):
@@ -195,7 +207,8 @@ bool awh::Socks5::is(const state_t state) const noexcept {
 	return false;
 }
 /**
- * code Метод получения кода сообщения
+ * @brief Метод получения кода сообщения
+ *
  * @return код сообщения
  */
 uint8_t awh::Socks5::code() const noexcept {
@@ -203,7 +216,8 @@ uint8_t awh::Socks5::code() const noexcept {
 	return this->_code;
 }
 /**
- * message Метод получения сообщения
+ * @brief Метод получения сообщения
+ *
  * @param code код сообщения
  * @return     текстовое значение кода
  */
@@ -220,7 +234,8 @@ const string & awh::Socks5::message(const uint8_t code) const noexcept {
 	return result;
 }
 /**
- * get Метод извлечения буфера запроса/ответа
+ * @brief Метод извлечения буфера запроса/ответа
+ *
  * @return бинарный буфер
  */
 const vector <char> & awh::Socks5::get() const noexcept {
@@ -228,7 +243,8 @@ const vector <char> & awh::Socks5::get() const noexcept {
 	return this->_buffer;
 }
 /**
- * url Метод установки URL параметров REST запроса
+ * @brief Метод установки URL параметров REST запроса
+ *
  * @param url параметры REST запроса
  */
 void awh::Socks5::url(const uri_t::url_t & url) noexcept {
@@ -236,7 +252,8 @@ void awh::Socks5::url(const uri_t::url_t & url) noexcept {
 	this->_url = url;
 }
 /**
- * Socks5 Конструктор
+ * @brief Конструктор
+ *
  * @param log объект для работы с логами
  */
 awh::Socks5::Socks5(const log_t * log) noexcept :

@@ -761,7 +761,7 @@ namespace awh {
 				 * @param headers заголовки отправляемые
 				 * @return        результат отправки данных указанному клиенту
 				 */
-				bool send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept;
+				bool send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept;
 				/**
 				 * @brief Метод отправки сообщения клиенту
 				 *
@@ -783,7 +783,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки пуш-уведомлений
@@ -794,7 +794,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        флаг последнего сообщения после которого поток закрывается
 				 */
-				int32_t push(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
+				int32_t push(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления разрешённого источника

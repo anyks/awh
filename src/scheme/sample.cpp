@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * clear Метод очистки
+ * @brief Метод очистки
+ *
  */
 void awh::server::scheme::Sample::clear() noexcept {
 	// Очищаем данные вокера
@@ -34,7 +35,8 @@ void awh::server::scheme::Sample::clear() noexcept {
 	clients_t().swap(this->_clients);
 }
 /**
- * set Метод создания параметров активного клиента
+ * @brief Метод создания параметров активного клиента
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::scheme::Sample::set(const uint64_t bid) noexcept {
@@ -44,7 +46,8 @@ void awh::server::scheme::Sample::set(const uint64_t bid) noexcept {
 		this->_clients.emplace(bid, std::make_unique <options_t> (this->_fmk, this->_log));
 }
 /**
- * rm Метод удаления параметров активного клиента
+ * @brief Метод удаления параметров активного клиента
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::scheme::Sample::rm(const uint64_t bid) noexcept {
@@ -59,7 +62,8 @@ void awh::server::scheme::Sample::rm(const uint64_t bid) noexcept {
 	}
 }
 /**
- * get Метод извлечения списка параметров активных клиентов
+ * @brief Метод извлечения списка параметров активных клиентов
+ *
  * @return список параметров активных клиентов
  */
 const awh::server::scheme::Sample::clients_t & awh::server::scheme::Sample::get() const noexcept {
@@ -67,7 +71,8 @@ const awh::server::scheme::Sample::clients_t & awh::server::scheme::Sample::get(
 	return this->_clients;
 }
 /**
- * get Метод получения параметров активного клиента
+ * @brief Метод получения параметров активного клиента
+ *
  * @param bid идентификатор брокера
  * @return    параметры активного клиента
  */

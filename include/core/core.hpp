@@ -90,9 +90,13 @@ namespace awh {
 					// Флаг виртуальной базы данных
 					std::atomic_bool _virt;
 				private:
-					// Функция обратного вызова при запуске модуля
+					/**
+					 * Функция обратного вызова при запуске модуля
+					 */
 					function <void (const bool, const bool)> _launching;
-					// Функция обратного вызова при остановки модуля
+					/**
+					 * Функция обратного вызова при остановки модуля
+					 */
 					function <void (const bool, const bool)> _closedown;
 				private:
 					// Объект фреймворка

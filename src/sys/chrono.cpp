@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * Params Структура параметров даты
+ * @brief Структура параметров даты
+ *
  */
 static struct Params {
 	// Таблица множителей месяцев
@@ -31,13 +32,14 @@ static struct Params {
 	// Таблица количества дней в месяцах
 	vector <uint8_t> daysInMonths;
 	// Названия дней недели
-	vector <pair <string, string>> nameDays;
+	vector <std::pair <string, string>> nameDays;
 	// Названия месяцев
-	vector <pair <string, string>> nameMonths;
+	vector <std::pair <string, string>> nameMonths;
 	// Таблица множителей високосных годов
 	std::map <uint16_t, uint8_t> rateLeapYears;
 	/**
-	 * Params Конструктор
+	 * @brief Конструктор
+	 *
 	 */
 	Params() noexcept :
 	 rateMonths({
@@ -78,7 +80,8 @@ static struct Params {
 } params;
 
 /**
- * clear Метод очистку всех локальных данных
+ * @brief Метод очистку всех локальных данных
+ *
  */
 void awh::Chrono::clear() noexcept {
 	/**
@@ -86,13 +89,13 @@ void awh::Chrono::clear() noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Устанавливаем временную зону по умолчанию
-			_tzset();
+			::_tzset();
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Устанавливаем временную зону по умолчанию
@@ -138,7 +141,8 @@ void awh::Chrono::clear() noexcept {
 	}
 }
 /**
- * makeDate Метод получения штампа времени из объекта даты
+ * @brief Метод получения штампа времени из объекта даты
+ *
  * @param dt объект даты из которой необходимо получить штамп времени
  * @return   штамп времени в миллисекундах
  */
@@ -207,7 +211,8 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 	return result;
 }
 /**
- * makeDate Метод заполнения объекта даты из штампа времени
+ * @brief Метод заполнения объекта даты из штампа времени
+ *
  * @param date дата из которой необходимо заполнить объект
  * @param dt   объект даты который необходимо заполнить
  */
@@ -310,7 +315,8 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 	} else dt = dt_t();
 }
 /**
- * compile Метод компиляции регулярных выражений
+ * @brief Метод компиляции регулярных выражений
+ *
  * @param expression регулярное выражение для компиляции
  * @param format     формат к которому относится регулярное выражение
  */
@@ -356,7 +362,8 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 	}
 }
 /**
- * prepare Функция заполнения объекта даты и времени
+ * @brief Функция заполнения объекта даты и времени
+ *
  * @param dt     объект даты и времени для заполнения
  * @param text   текст в котором производится поиск
  * @param format формат выполнения поиска
@@ -370,7 +377,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 	if(!text.empty() && (pos < text.size()) && (format != format_t::NONE)){
 		// Запоминаем оригинальное значение формата
 		const format_t fmt = format;
-		// Определяем нужный нам формат
+		/**
+		 * Определяем нужный нам формат
+		 */
 		switch(static_cast <uint8_t> (format)){
 			// Если формат получен как %w
 			case static_cast <uint8_t> (format_t::w):
@@ -420,7 +429,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 			const int32_t error = ::pcre2_regexec(&i->second, text.c_str() + pos, i->second.re_nsub + 1, match, REG_NOTEMPTY);
 			// Если ошибок не получено
 			if(error == 0){
-				// Определяем нужный нам формат
+				/**
+				 * Определяем нужный нам формат
+				 */
 				switch(static_cast <uint8_t> (format)){
 					// Если формат получен как %u
 					case static_cast <uint8_t> (format_t::u):
@@ -448,7 +459,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 							if(match[j].rm_eo > match[j].rm_so){
 								// Получаем смещение в тексте
 								result = static_cast <ssize_t> (pos + match[j].rm_eo);
-								// Определяем тип входящих данных
+								/**
+								 * Определяем тип входящих данных
+								 */
 								switch(static_cast <uint8_t> (fmt)){
 									// Если мы определяем номер дня недели %w
 									case static_cast <uint8_t> (format_t::w): {
@@ -889,13 +902,14 @@ ssize_t awh::Chrono::prepare(dt_t & dt, const string & text, const format_t form
 	return result;
 }
 /**
- * abbreviation Метод перевода времени в аббревиатуру
+ * @brief Метод перевода времени в аббревиатуру
+ *
  * @param date дата в UnixTimestamp
  * @return     сформированная аббревиатура даты
  */
-pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t date) const noexcept {
+std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t date) const noexcept {
 	// Результат работы функции
-	pair <type_t, double> result = {type_t::MILLISECONDS, 0.};
+	std::pair <type_t, double> result = {type_t::MILLISECONDS, 0.};
 	// Если число передано
 	if(date > 0){
 		/**
@@ -955,7 +969,8 @@ pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t date
 	return result;
 }
 /**
- * end Метод получения конца позиции указанной даты
+ * @brief Метод получения конца позиции указанной даты
+ *
  * @param date дата для которой необходимо получить позицию
  * @param type тип единиц измерений даты
  * @return     конец указанной даты в формате UnixTimestamp
@@ -969,7 +984,9 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип единиц измерений
+			/**
+			 * Определяем тип единиц измерений
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если нам нужно получить конец года
 				case static_cast <uint8_t> (type_t::YEAR): {
@@ -1081,7 +1098,8 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 	return result;
 }
 /**
- * end Метод получения конца позиции текущей даты
+ * @brief Метод получения конца позиции текущей даты
+ *
  * @param type    тип единиц измерений даты
  * @param storage хранение значение времени
  * @return        конец текущей даты в формате UnixTimestamp
@@ -1091,7 +1109,8 @@ uint64_t awh::Chrono::end(const type_t type, const storage_t storage) const noex
 	return this->end(this->timestamp(type_t::MILLISECONDS, storage), type);
 }
 /**
- * begin Метод получения начала позиции указанной даты
+ * @brief Метод получения начала позиции указанной даты
+ *
  * @param date дата для которой необходимо получить позицию
  * @param type тип единиц измерений даты
  * @return     начало указанной даты в формате UnixTimestamp
@@ -1105,7 +1124,9 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип единиц измерений
+			/**
+			 * Определяем тип единиц измерений
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если нам нужно получить начало года
 				case static_cast <uint8_t> (type_t::YEAR): {
@@ -1259,7 +1280,8 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 	return result;
 }
 /**
- * begin Метод получения начала позиции текущей даты
+ * @brief Метод получения начала позиции текущей даты
+ *
  * @param type    тип единиц измерений даты
  * @param storage хранение значение времени
  * @return        начало текущей даты в формате UnixTimestamp
@@ -1269,7 +1291,8 @@ uint64_t awh::Chrono::begin(const type_t type, const storage_t storage) const no
 	return this->begin(this->timestamp(type_t::MILLISECONDS, storage), type);
 }
 /**
- * actual Метод актуализации прошедшего и оставшегося времени
+ * @brief Метод актуализации прошедшего и оставшегося времени
+ *
  * @param date   дата относительно которой производятся расчёты
  * @param value  тип определяемых единиц измерений времени
  * @param type   тип единиц измерений даты
@@ -1285,15 +1308,21 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем направление актуализации
+			/**
+			 * Определяем направление актуализации
+			 */
 			switch(static_cast <uint8_t> (actual)){
 				// Если нужно определить сколько осталось времени
 				case static_cast <uint8_t> (actual_t::LEFT): {
-					// Определяем тип единиц измерений
+					/**
+					 * Определяем тип единиц измерений
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если нам нужно получить количество оставшего времени в году
 						case static_cast <uint8_t> (type_t::YEAR): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся месяцев
 								case static_cast <uint8_t> (type_t::MONTH): {
@@ -1542,7 +1571,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество оставшего времени в месяце
 						case static_cast <uint8_t> (type_t::MONTH): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся недель
 								case static_cast <uint8_t> (type_t::WEEK): {
@@ -1941,7 +1972,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество оставшего времени в неделе
 						case static_cast <uint8_t> (type_t::WEEK): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся дней
 								case static_cast <uint8_t> (type_t::DAY): {
@@ -1996,7 +2029,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество оставшего времени в дне
 						case static_cast <uint8_t> (type_t::DAY): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся часов
 								case static_cast <uint8_t> (type_t::HOUR): {
@@ -2044,7 +2079,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество оставшего времени в часе
 						case static_cast <uint8_t> (type_t::HOUR): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
@@ -2085,7 +2122,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество оставшего времени в минуте
 						case static_cast <uint8_t> (type_t::MINUTES): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
@@ -2119,7 +2158,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество оставшего времени в секунде
 						case static_cast <uint8_t> (type_t::SECONDS): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2148,11 +2189,15 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 				} break;
 				// Если нужно определить сколько прошло времени
 				case static_cast <uint8_t> (actual_t::PASSED): {
-					// Определяем тип единиц измерений
+					/**
+					 * Определяем тип единиц измерений
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если нам нужно получить количество прошедшего времени в году
 						case static_cast <uint8_t> (type_t::YEAR): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших месяцев
 								case static_cast <uint8_t> (type_t::MONTH): {
@@ -2351,7 +2396,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество прошедшего времени в месяце
 						case static_cast <uint8_t> (type_t::MONTH): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших недель
 								case static_cast <uint8_t> (type_t::WEEK): {
@@ -2711,7 +2758,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество прошедшего времени в неделе
 						case static_cast <uint8_t> (type_t::WEEK): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших дней
 								case static_cast <uint8_t> (type_t::DAY): {
@@ -2766,7 +2815,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество прошедшего времени в дне
 						case static_cast <uint8_t> (type_t::DAY): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших часов
 								case static_cast <uint8_t> (type_t::HOUR): {
@@ -2814,7 +2865,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество прошедшего времени в часе
 						case static_cast <uint8_t> (type_t::HOUR): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
@@ -2855,7 +2908,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество прошедшего времени в минуте
 						case static_cast <uint8_t> (type_t::MINUTES): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
@@ -2889,7 +2944,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 						} break;
 						// Если нам нужно получить количество прошедшего времени в секунде
 						case static_cast <uint8_t> (type_t::SECONDS): {
-							// Определяем тип определяемых единиц измерений
+							/**
+							 * Определяем тип определяемых единиц измерений
+							 */
 							switch(static_cast <uint8_t> (value)){
 								// Если нам нужно получить количество прошедших миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
@@ -2940,7 +2997,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 	return result;
 }
 /**
- * actual Метод актуализации прошедшего и оставшегося времени
+ * @brief Метод актуализации прошедшего и оставшегося времени
+ *
  * @param value   тип определяемых единиц измерений времени
  * @param type    тип единиц измерений даты
  * @param actual  направление актуализации
@@ -2952,7 +3010,8 @@ uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual
 	return this->actual(this->timestamp(type_t::MILLISECONDS, storage), value, type, actual);
 }
 /**
- * offset Метод смещения на указанное количество единиц времени
+ * @brief Метод смещения на указанное количество единиц времени
+ *
  * @param date   дата относительно которой производится смещение
  * @param value  значение на которое производится смещение
  * @param type   тип единиц измерений даты
@@ -2968,11 +3027,15 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем направление смещения
+			/**
+			 * Определяем направление смещения
+			 */
 			switch(static_cast <uint8_t> (offset)){
 				// Если необходимо выполнить инкремент
 				case static_cast <uint8_t> (offset_t::INCREMENT): {
-					// Определяем тип единиц измерений
+					/**
+					 * Определяем тип единиц измерений
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если нам нужно получить начало года
 						case static_cast <uint8_t> (type_t::YEAR): {
@@ -3138,7 +3201,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 				} break;
 				// Если необходимо выполнить декремент
 				case static_cast <uint8_t> (offset_t::DECREMENT): {
-					// Определяем тип единиц измерений
+					/**
+					 * Определяем тип единиц измерений
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если нам нужно получить начало года
 						case static_cast <uint8_t> (type_t::YEAR): {
@@ -3326,7 +3391,8 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 	return result;
 }
 /**
- * offset Метод смещения текущей даты на указанное количество единиц времени
+ * @brief Метод смещения текущей даты на указанное количество единиц времени
+ *
  * @param value   значение на которое производится смещение
  * @param type    тип единиц измерений даты
  * @param offset  направление смещения
@@ -3338,7 +3404,8 @@ uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offs
 	return this->offset(this->timestamp(type_t::MILLISECONDS, storage), value, type, offset);
 }
 /**
- * seconds Метод получения текстового значения времени
+ * @brief Метод получения текстового значения времени
+ *
  * @param seconds количество секунд для конвертации
  * @return        обозначение времени с указанием размерности
  */
@@ -3429,7 +3496,8 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 	return result;
 }
 /**
- * seconds Метод получения размера в секундах из строки
+ * @brief Метод получения размера в секундах из строки
+ *
  * @param value строка обозначения размерности (s, m, h, d, w, M, y)
  * @return      размер в секундах
  */
@@ -3462,7 +3530,9 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 					for(uint8_t j = 1; j < static_cast <uint8_t> (i->second.re_nsub + 1); j++){
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so){
-							// Определяем номер найденного элемента
+							/**
+							 * Определяем номер найденного элемента
+							 */
 							switch(j){
 								// Если мы получили само число
 								case 1:
@@ -3536,7 +3606,8 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 	return result;
 }
 /**
- * h12 Метод извлечения статуса 12-и часового формата времени
+ * @brief Метод извлечения статуса 12-и часового формата времени
+ *
  * @param date дата для проверки
  */
 awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
@@ -3575,7 +3646,8 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 	return h12_t::AM;
 }
 /**
- * h12 Метод извлечения текущего статуса 12-и часового формата времени
+ * @brief Метод извлечения текущего статуса 12-и часового формата времени
+ *
  * @param storage хранение значение времени
  * @return        текущее установленное значение статуса 12-и часового формата времени
  */
@@ -3586,7 +3658,9 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL):
@@ -3621,7 +3695,8 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 	return result;
 }
 /**
- * year Метод извлечения значения года
+ * @brief Метод извлечения значения года
+ *
  * @param date дата для извлечения года
  */
 uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
@@ -3678,7 +3753,8 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 	return result;
 }
 /**
- * year Метод получение текущего значения года
+ * @brief Метод получение текущего значения года
+ *
  * @param storage хранение значение времени
  * @return        текущее значение года
  */
@@ -3689,7 +3765,9 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL):
@@ -3724,7 +3802,8 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 	return result;
 }
 /**
- * dst Метод проверки принадлежит ли дата к лету
+ * @brief Метод проверки принадлежит ли дата к лету
+ *
  * @param date дата для проверки
  * @return     результат проверки
  */
@@ -3794,7 +3873,8 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 	return false;
 }
 /**
- * dst Метод проверки стоит ли на дворе лето
+ * @brief Метод проверки стоит ли на дворе лето
+ *
  * @param storage хранение значение времени
  * @return        результат проверки
  */
@@ -3803,7 +3883,8 @@ bool awh::Chrono::dst(const storage_t storage) const noexcept {
 	return this->dst(this->timestamp(type_t::MILLISECONDS, storage));
 }
 /**
- * leap Метод проверки является ли год високосным
+ * @brief Метод проверки является ли год високосным
+ *
  * @param year год для проверки
  * @return     результат проверки
  */
@@ -3839,7 +3920,8 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 	return false;
 }
 /**
- * leap Метод проверки является ли год високосным
+ * @brief Метод проверки является ли год високосным
+ *
  * @param date дата для проверки
  * @return     результат проверки
  */
@@ -3875,7 +3957,8 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 	return false;
 }
 /**
- * leap Метод проверки является ли текущий год високосным
+ * @brief Метод проверки является ли текущий год високосным
+ *
  * @param storage хранение значение времени
  * @return        результат проверки
  */
@@ -3884,7 +3967,8 @@ bool awh::Chrono::leap(const storage_t storage) const noexcept {
 	return this->leap(this->timestamp(type_t::MILLISECONDS, storage));
 }
 /**
- * set Метод установки данных даты и времени
+ * @brief Метод установки данных даты и времени
+ *
  * @param buffer бинарный буфер данных
  * @param size   размер бинарного буфера
  * @param unit   элементы данных для установки
@@ -3899,7 +3983,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 		try {
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx.date);
-			// Определяем элементы устанавливаемых данных
+			/**
+			 * Определяем элементы устанавливаемых данных
+			 */
 			switch(static_cast <uint8_t> (unit)){
 				// Если требуется установить номер текущего дня недели от 1 до 7
 				case static_cast <uint8_t> (unit_t::DAY): {
@@ -4310,7 +4396,8 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 	}
 }
 /**
- * get Метод извлечения данных даты и времени
+ * @brief Метод извлечения данных даты и времени
+ *
  * @param buffer бинарный буфер данных
  * @param size   размер бинарного буфера
  * @param date   дата для обработки
@@ -4324,7 +4411,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем элементы устанавливаемых данных
+			/**
+			 * Определяем элементы устанавливаемых данных
+			 */
 			switch(static_cast <uint8_t> (unit)){
 				// Если требуется установить номер текущего дня недели от 1 до 7
 				case static_cast <uint8_t> (unit_t::DAY): {
@@ -4632,7 +4721,8 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 	}
 }
 /**
- * get Метод извлечения данных даты и времени
+ * @brief Метод извлечения данных даты и времени
+ *
  * @param buffer  бинарный буфер данных
  * @param size    размер бинарного буфера
  * @param unit    элементы данных для установки
@@ -4646,7 +4736,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем элементы устанавливаемых данных
+			/**
+			 * Определяем элементы устанавливаемых данных
+			 */
 			switch(static_cast <uint8_t> (unit)){
 				// Если требуется установить номер текущего дня недели от 1 до 7
 				case static_cast <uint8_t> (unit_t::DAY): {
@@ -4654,7 +4746,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -4673,7 +4767,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 						}
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -4703,7 +4799,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -4726,7 +4824,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							result->insert(result->begin(), 1, '0');
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -4756,7 +4856,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -4775,7 +4877,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 						}
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -4805,7 +4909,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -4828,7 +4934,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							result->insert(result->begin(), 1, '0');
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -4858,7 +4966,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -4881,7 +4991,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							result->insert(result->begin(), 1, '0');
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -4911,7 +5023,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем название месяца
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -4930,7 +5044,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 						}
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -4960,7 +5076,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -4979,7 +5097,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 						}
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -5009,7 +5129,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -5028,7 +5150,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 						}
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -5058,7 +5182,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -5081,7 +5207,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							result->insert(result->begin(), 1, '0');
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -5111,7 +5239,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -5134,7 +5264,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							result->insert(result->begin(), 1, '0');
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -5164,7 +5296,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -5199,7 +5333,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							result->insert(result->begin(), 1, '0');
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -5227,7 +5363,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -5250,7 +5388,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							result->insert(result->begin(), 1, '0');
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -5278,7 +5418,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 					if(text){
 						// Получаем номер текущего дня недели
 						string * result = reinterpret_cast <string *> (buffer);
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
@@ -5305,7 +5447,9 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							result->insert(result->begin(), 1, '0');
 					// Если данные переданы в виде числа
 					} else {
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -5351,7 +5495,8 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 	}
 }
 /**
- * setTimeZone Метод установки временной зоны
+ * @brief Метод установки временной зоны
+ *
  * @param zone смещение временной зоны для установки (в секундах)
  */
 void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
@@ -5365,7 +5510,8 @@ void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	this->makeDate(this->makeDate(this->_dt), this->_dt);
 }
 /**
- * setTimeZone Метод установки временной зоны
+ * @brief Метод установки временной зоны
+ *
  * @param zone временная зона для установки
  */
 void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
@@ -5379,7 +5525,8 @@ void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
 	this->makeDate(this->makeDate(this->_dt), this->_dt);
 }
 /**
- * setTimeZone Метод установки временной зоны
+ * @brief Метод установки временной зоны
+ *
  * @param zone временная зона для установки
  */
 void awh::Chrono::setTimeZone(const string & zone) noexcept {
@@ -5393,7 +5540,8 @@ void awh::Chrono::setTimeZone(const string & zone) noexcept {
 	this->makeDate(this->makeDate(this->_dt), this->_dt);
 }
 /**
- * matchTimeZone Метод выполнения матчинга временной зоны
+ * @brief Метод выполнения матчинга временной зоны
+ *
  * @param zone временная зона для конвертации
  * @return     определённая временная зона
  */
@@ -6193,7 +6341,8 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 	return result;
 }
 /**
- * matchTimeZone Метод выполнения матчинга временной зоны
+ * @brief Метод выполнения матчинга временной зоны
+ *
  * @param storage хранение значение времени
  * @return        определённая временная зона
  */
@@ -6204,7 +6353,9 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL):
@@ -6239,12 +6390,15 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 	return result;
 }
 /**
- * getTimeZone Метод перевода временной зоны в смещение
+ * @brief Метод перевода временной зоны в смещение
+ *
  * @param zone временная зона для конвертации
  * @return     смещение временной зоны в секундах
  */
 int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
-	// Определяем временную зону
+	/**
+	 * Определяем временную зону
+	 */
 	switch(static_cast <uint8_t> (zone)){
 		// Если временная зона не установлена
 		case static_cast <uint8_t> (zone_t::NONE):
@@ -6729,7 +6883,8 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
 	return this->_dt.offset;
 }
 /**
- * getTimeZone Метод перевода временной зоны в смещение
+ * @brief Метод перевода временной зоны в смещение
+ *
  * @param zone временная зона для конвертации
  * @return     смещение временной зоны в секундах
  */
@@ -7631,7 +7786,8 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 	return result;
 }
 /**
- * getTimeZone Метод определения текущей временной зоны относительно летнего времени
+ * @brief Метод определения текущей временной зоны относительно летнего времени
+ *
  * @param std временная зона стандартного времени
  * @param sum временная зона летнего времени
  * @return    смещение временной зоны в секундах
@@ -7675,7 +7831,8 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 	return this->_dt.offset;
 }
 /**
- * getTimeZone Метод получения установленной временной зоны
+ * @brief Метод получения установленной временной зоны
+ *
  * @param storage хранение значение времени
  * @return        смещение временной зоны в секундах
  */
@@ -7686,7 +7843,9 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL):
@@ -7696,11 +7855,11 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Устанавливаем временную зону по умолчанию
-					_tzset();
+					::_tzset();
 					// Получаем глобальное значение временной зоны в секундах
 					result = static_cast <int32_t> (_timezone * -1);
 				/**
@@ -7750,7 +7909,8 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 	return result;
 }
 /**
- * clearTimeZones Метод очистки списка временных зон
+ * @brief Метод очистки списка временных зон
+ *
  */
 void awh::Chrono::clearTimeZones() noexcept {
 	/**
@@ -7783,7 +7943,8 @@ void awh::Chrono::clearTimeZones() noexcept {
 	}
 }
 /**
- * addTimeZone Метод добавления собственной временной зоны
+ * @brief Метод добавления собственной временной зоны
+ *
  * @param name   название временной зоны
  * @param offset смещение времени в секундах
  */
@@ -7816,7 +7977,8 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 	}
 }
 /**
- * setTimeZones Метод установки своего списка временных зон
+ * @brief Метод установки своего списка временных зон
+ *
  * @param zones список временных зон для установки
  */
 void awh::Chrono::setTimeZones(const std::unordered_map <string, int32_t> & zones) noexcept {
@@ -7833,7 +7995,8 @@ void awh::Chrono::setTimeZones(const std::unordered_map <string, int32_t> & zone
 	}
 }
 /**
- * timestamp Метод установки штампа времени в указанных единицах измерения
+ * @brief Метод установки штампа времени в указанных единицах измерения
+ *
  * @param date дата для установки
  * @param type единицы измерения штампа времени
  */
@@ -7846,7 +8009,9 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 		try {
 			// Текущий штамп времени
 			uint64_t stamp = 0;
-			// Определяем единицы измерения штампа времени
+			/**
+			 * Определяем единицы измерения штампа времени
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если единицы измерения штампа времени требуется установить в годах
 				case static_cast <uint8_t> (type_t::YEAR):
@@ -7928,7 +8093,8 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 	}
 }
 /**
- * timestamp Метод получения штампа времени в указанных единицах измерения
+ * @brief Метод получения штампа времени в указанных единицах измерения
+ *
  * @param type    единицы измерения штампа времени
  * @param storage хранение значение времени
  * @return        штамп времени в указанных единицах измерения
@@ -7940,11 +8106,15 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем единицы измерения штампа времени
+		/**
+		 * Определяем единицы измерения штампа времени
+		 */
 		switch(static_cast <uint8_t> (type)){
 			// Если единицы измерения штампа времени требуется получить в годы
 			case static_cast <uint8_t> (type_t::YEAR): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -7962,7 +8132,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в месяцах
 			case static_cast <uint8_t> (type_t::MONTH): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -7980,7 +8152,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в неделях
 			case static_cast <uint8_t> (type_t::WEEK): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -7998,7 +8172,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в днях
 			case static_cast <uint8_t> (type_t::DAY): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -8016,7 +8192,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в часах
 			case static_cast <uint8_t> (type_t::HOUR): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -8034,7 +8212,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в минутах
 			case static_cast <uint8_t> (type_t::MINUTES): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -8052,7 +8232,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в секундах
 			case static_cast <uint8_t> (type_t::SECONDS): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -8070,7 +8252,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в миллисекундах
 			case static_cast <uint8_t> (type_t::MILLISECONDS): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -8088,7 +8272,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в микросекундах
 			case static_cast <uint8_t> (type_t::MICROSECONDS): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -8106,7 +8292,9 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 			} break;
 			// Если единицы измерения штампа времени требуется получить в наносекундах
 			case static_cast <uint8_t> (type_t::NANOSECONDS): {
-				// Определяем хранилизе значение времени
+				/**
+				 * Определяем хранилизе значение времени
+				 */
 				switch(static_cast <uint8_t> (storage)){
 					// Если хранилизе локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
@@ -8145,7 +8333,8 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 	return result;
 }
 /**
- * parse Метод парсинга строки даты и времени в UnixTimestamp
+ * @brief Метод парсинга строки даты и времени в UnixTimestamp
+ *
  * @param date    строка даты
  * @param format  формат даты
  * @param storage хранение значение времени
@@ -8175,7 +8364,9 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 			false, // Флаг установки секунд
 			false  // Флаг установки миллисекунд
 		};
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -8206,7 +8397,9 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
 			letter = format.at(i);
-			// Определяем символ парсинга
+			/**
+			 * Определяем символ парсинга
+			 */
 			switch(letter){
 				// Если мы нашли идентификатор переменной
 				case '%': mode = true; break;
@@ -8280,13 +8473,17 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 				case 'Z': {
 					// Если мы ищем переменную
 					if(mode){
-						// Определяем хранилизе значение времени
+						/**
+						 * Определяем хранилизе значение времени
+						 */
 						switch(static_cast <uint8_t> (storage)){
 							// Если хранилизе локальное
 							case static_cast <uint8_t> (storage_t::LOCAL): {
 								// Выполняем блокировку потока
 								const lock_guard <std::mutex> lock(this->_mtx.date);
-								// Определяем символ парсинга
+								/**
+								 * Определяем символ парсинга
+								 */
 								switch(letter){
 									// Если мы нашли переменную (y)
 									case 'y':
@@ -8486,7 +8683,9 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 							} break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
-								// Определяем символ парсинга
+								/**
+								 * Определяем символ парсинга
+								 */
 								switch(letter){
 									// Если мы нашли переменную (y)
 									case 'y':
@@ -8699,7 +8898,9 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 				default: mode = false;
 			}
 		}
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -8786,7 +8987,8 @@ uint64_t awh::Chrono::parse(const string & date, const string & format, const st
 	return result;
 }
 /**
- * format Метод форматирования временной зоны
+ * @brief Метод форматирования временной зоны
+ *
  * @param zone временная зона (в секундах) в которой нужно получить результат
  * @return     строковое обозначение временной зоны
  */
@@ -8847,7 +9049,8 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 	return result;
 }
 /**
- * format Метод форматирования временной зоны
+ * @brief Метод форматирования временной зоны
+ *
  * @param zone временная зона в которой нужно получить результат
  * @return     строковое обозначение временной зоны
  */
@@ -8856,7 +9059,9 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем временную зону
+		/**
+		 * Определяем временную зону
+		 */
 		switch(static_cast <uint8_t> (zone)){
 			// Если временная зона не установлена
 			case static_cast <uint8_t> (zone_t::NONE):
@@ -9702,7 +9907,8 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 	return "UTC";
 }
 /**
- * format Метод формирования объекта даты и времени
+ * @brief Метод формирования объекта даты и времени
+ *
  * @param dt     объект даты и времени
  * @param format формат даты
  * @return       строка содержащая дату
@@ -9720,7 +9926,9 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
 			letter = format.at(i);
-			// Определяем символ парсинга
+			/**
+			 * Определяем символ парсинга
+			 */
 			switch(letter){
 				// Если мы нашли идентификатор переменной
 				case '%': mode = true; break;
@@ -9794,7 +10002,9 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 				case 'Z': {
 					// Если мы ищем переменную
 					if(mode){
-						// Определяем символ парсинга
+						/**
+						 * Определяем символ парсинга
+						 */
 						switch(letter){
 							// Если мы нашли переменную (y)
 							case 'y':
@@ -10260,7 +10470,8 @@ string awh::Chrono::format(const dt_t & dt, const string & format) const noexcep
 	return result;
 }
 /**
- * format Метод формирования UnixTimestamp без учёта временной зоны
+ * @brief Метод формирования UnixTimestamp без учёта временной зоны
+ *
  * @param date   дата в UnixTimestamp
  * @param format формат даты
  * @return       строка содержащая дату
@@ -10288,7 +10499,8 @@ string awh::Chrono::format(const uint64_t date, const string & format) const noe
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp с учётом временной зоны
+ * @brief Метод формирования UnixTimestamp с учётом временной зоны
+ *
  * @param date   дата в UnixTimestamp
  * @param zone   временная зона в которой нужно получить дату (в секундах)
  * @param format формат даты
@@ -10317,7 +10529,8 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, const string
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp с учётом временной зоны
+ * @brief Метод формирования UnixTimestamp с учётом временной зоны
+ *
  * @param date   дата в UnixTimestamp
  * @param zone   временная зона в которой нужно получить дату
  * @param format формат даты
@@ -10348,7 +10561,8 @@ string awh::Chrono::format(const uint64_t date, const zone_t zone, const string 
 	return "";
 }
 /**
- * format Метод формирования UnixTimestamp с учётом временной зоны
+ * @brief Метод формирования UnixTimestamp с учётом временной зоны
+ *
  * @param date   дата в UnixTimestamp
  * @param zone   временная зона в которой нужно получить дату
  * @param format формат даты
@@ -10379,7 +10593,8 @@ string awh::Chrono::format(const uint64_t date, const string & zone, const strin
 	return "";
 }
 /**
- * format Метод формирования текущей даты без учёта временной зоны
+ * @brief Метод формирования текущей даты без учёта временной зоны
+ *
  * @param format  формат даты
  * @param storage хранение значение времени
  * @return        строка содержащая дату
@@ -10387,7 +10602,9 @@ string awh::Chrono::format(const uint64_t date, const string & zone, const strin
 string awh::Chrono::format(const string & format, const storage_t storage) const noexcept {
 	// Если формат даты передан
 	if(!format.empty()){
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -10423,7 +10640,8 @@ string awh::Chrono::format(const string & format, const storage_t storage) const
 	return "";
 }
 /**
- * format Метод формирования текущей даты с учётом временной зоны
+ * @brief Метод формирования текущей даты с учётом временной зоны
+ *
  * @param zone    временная зона в которой нужно получить дату (в секундах)
  * @param format  формат даты
  * @param storage хранение значение времени
@@ -10432,7 +10650,9 @@ string awh::Chrono::format(const string & format, const storage_t storage) const
 string awh::Chrono::format(const int32_t zone, const string & format, const storage_t storage) const noexcept {
 	// Если формат даты передан
 	if(!format.empty()){
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -10468,7 +10688,8 @@ string awh::Chrono::format(const int32_t zone, const string & format, const stor
 	return "";
 }
 /**
- * format Метод формирования текущей даты с учётом временной зоны
+ * @brief Метод формирования текущей даты с учётом временной зоны
+ *
  * @param zone    временная зона в которой нужно получить дату
  * @param format  формат даты
  * @param storage хранение значение времени
@@ -10477,7 +10698,9 @@ string awh::Chrono::format(const int32_t zone, const string & format, const stor
 string awh::Chrono::format(const zone_t zone, const string & format, const storage_t storage) const noexcept {
 	// Если формат даты передан
 	if(!format.empty()){
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -10517,7 +10740,8 @@ string awh::Chrono::format(const zone_t zone, const string & format, const stora
 	return "";
 }
 /**
- * format Метод формирования текущей даты с учётом временной зоны
+ * @brief Метод формирования текущей даты с учётом временной зоны
+ *
  * @param zone    временная зона в которой нужно получить дату
  * @param format  формат даты
  * @param storage хранение значение времени
@@ -10526,7 +10750,9 @@ string awh::Chrono::format(const zone_t zone, const string & format, const stora
 string awh::Chrono::format(const string & zone, const string & format, const storage_t storage) const noexcept {
 	// Если формат даты передан
 	if(!format.empty()){
-		// Определяем хранилизе значение времени
+		/**
+		 * Определяем хранилизе значение времени
+		 */
 		switch(static_cast <uint8_t> (storage)){
 			// Если хранилизе локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
@@ -10566,7 +10792,8 @@ string awh::Chrono::format(const string & zone, const string & format, const sto
 	return "";
 }
 /**
- * strip Метод преобразования даты из оного формата в другой
+ * @brief Метод преобразования даты из оного формата в другой
+ *
  * @param date    строка даты для преобразования
  * @param format1 формат даты из которой нужно получить дату
  * @param format2 формат даты в который нужно перевести дату
@@ -10609,7 +10836,8 @@ string awh::Chrono::strip(const string & date, const string & format1, const str
 	return "";
 }
 /**
- * Chrono Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  */
 awh::Chrono::Chrono(const fmk_t * fmk) noexcept : _fmk(fmk) {
@@ -10636,7 +10864,8 @@ awh::Chrono::Chrono(const fmk_t * fmk) noexcept : _fmk(fmk) {
 	this->compile("([A-Z][a-z]{2})\\s+([A-Z][a-z]{2})\\s+(\\d{1,2})\\s+(\\d{1,2})\\:(\\d{1,2})\\:(\\d{1,2})\\s+(\\d{4})", format_t::c);
 }
 /**
- * ~Chrono Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Chrono::~Chrono() noexcept {
 	// Выполняем перебор всего списка скомпилированных регулярных выражений

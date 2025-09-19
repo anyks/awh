@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * initLocalNet Метод инициализации списка локальных адресов
+ * @brief Метод инициализации списка локальных адресов
+ *
  */
 void awh::Net::initLocalNet() noexcept {
 	/**
@@ -396,7 +397,8 @@ void awh::Net::initLocalNet() noexcept {
 	}
 }
 /**
- * atoi Метод конвертации строковых чисел в десятичную систему счисления
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
  * @param value число для конвертации
  * @return      полученная строка в системе счисления
  */
@@ -438,7 +440,8 @@ int64_t awh::Net::atoi(const string & value) const noexcept {
 	return result;
 }
 /**
- * itoa Метод конвертации чисел в указанную систему счисления
+ * @brief Метод конвертации чисел в указанную систему счисления
+ *
  * @param value число для конвертации
  * @param radix система счисления
  * @return      полученная строка в системе счисления
@@ -462,7 +465,9 @@ string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
 			if(num == 0)
 				// Выполняем установку начальных нолей
 				result.insert(result.begin(), digits[0]);
-			// Раскладываем число на цифры (младшими разрядами вперёд)
+			/**
+			 * Раскладываем число на цифры (младшими разрядами вперёд)
+			 */
 			while(num != 0){
 				// Добавляем идентификатор числа
 				result.insert(result.begin(), digits[num % radix]);
@@ -496,7 +501,8 @@ string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
 	return result;
 }
 /**
- * zerro Метод заполнения недостающих элементов нулями
+ * @brief Метод заполнения недостающих элементов нулями
+ *
  * @param num  число для заполнения нулями
  * @param size максимальная длина строки
  * @return     полученное число строки
@@ -535,7 +541,8 @@ string && awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 	return ::move(num);
 }
 /**
- * greater Метод проверки больше первое число второго или нет (бинарным методом)
+ * @brief Метод проверки больше первое число второго или нет (бинарным методом)
+ *
  * @param value1 значение первого числа в бинарном виде
  * @param value2 значение второго числа в бинарном виде
  * @param size   размер бинарного буфера числа
@@ -554,7 +561,9 @@ bool awh::Net::greater(const void * value1, const void * value2, const size_t si
 			bitset <8> num1(0), num2(0);
 			// Индекс перебора всех бит числа
 			uint8_t count = 0, index = static_cast <uint8_t> (size);
-			// Выполняем перебор всех байт буфера
+			/**
+			 * Выполняем перебор всех байт буфера
+			 */
 			while(index--){
 				// Получаем значение числа в виде первого байта
 				num1 = reinterpret_cast <const uint8_t *> (value1)[index];
@@ -562,7 +571,9 @@ bool awh::Net::greater(const void * value1, const void * value2, const size_t si
 				num2 = reinterpret_cast <const uint8_t *> (value2)[index];
 				// Получаем первоначальное значение индексов
 				count = static_cast <uint8_t> (num1.size());
-				// Выполняем перебор всей строки
+				/**
+				 * Выполняем перебор всей строки
+				 */
 				while(count--){
 					// Если первый байт больше второго
 					if((result = (num1.test(count) && !num2.test(count))) || (!num1.test(count) && num2.test(count)))
@@ -593,7 +604,8 @@ bool awh::Net::greater(const void * value1, const void * value2, const size_t si
 	return result;
 }
 /**
- * split Метод разделения строк на составляющие
+ * @brief Метод разделения строк на составляющие
+ *
  * @param str    строка для поиска
  * @param delim  разделитель
  * @param result результирующий вектор
@@ -601,7 +613,8 @@ bool awh::Net::greater(const void * value1, const void * value2, const size_t si
  */
 vector <string> & awh::Net::split(const string & str, const string & delim, vector <string> & result) const noexcept {
 	/**
-	 * trimFn Метод удаления пробелов вначале и конце текста
+	 * @brief Метод удаления пробелов вначале и конце текста
+	 *
 	 * @param text текст для удаления пробелов
 	 * @return     результат работы функции
 	 */
@@ -651,7 +664,9 @@ vector <string> & awh::Net::split(const string & str, const string & delim, vect
 		result.clear();
 		// Получаем счётчики перебора
 		size_t i = 0, j = str.find(delim);
-		// Выполняем разбиение строк
+		/**
+		 * Выполняем разбиение строк
+		 */
 		while(j != string::npos){
 			// Вставляем полученный результат в контейнер
 			result.insert(result.end(), trimFn(str.substr(i, j - i)));
@@ -690,7 +705,8 @@ vector <string> & awh::Net::split(const string & str, const string & delim, vect
 	return result;
 }
 /**
- * clear Метод очистки данных IP-адреса
+ * @brief Метод очистки данных IP-адреса
+ *
  */
 void awh::Net::clear() noexcept {
 	// Выполняем сброс буфера данных
@@ -699,7 +715,8 @@ void awh::Net::clear() noexcept {
 	this->_type = type_t::NONE;
 }
 /**
- * broadcastIPv6ToIPv4 Метод проверки соответствия адреса зеркалу IPv6 => IPv4
+ * @brief Метод проверки соответствия адреса зеркалу IPv6 => IPv4
+ *
  * @return результат проверки
  */
 bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
@@ -740,7 +757,8 @@ bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
 	return result;
 }
 /**
- * type Метод извлечения типа IP-адреса
+ * @brief Метод извлечения типа IP-адреса
+ *
  * @return тип IP-адреса
  */
 awh::Net::type_t awh::Net::type() const noexcept {
@@ -748,7 +766,8 @@ awh::Net::type_t awh::Net::type() const noexcept {
 	return this->_type;
 }
 /**
- * type Метод установки типа IP-адреса
+ * @brief Метод установки типа IP-адреса
+ *
  * @param type тип IP-адреса для установки
  */
 void awh::Net::type(const type_t type) noexcept {
@@ -758,7 +777,8 @@ void awh::Net::type(const type_t type) noexcept {
 	this->_type = type;
 }
 /**
- * host Метод определения типа хоста
+ * @brief Метод определения типа хоста
+ *
  * @param host хост для определения
  * @return     определённый тип хоста
  */
@@ -781,7 +801,9 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 				for(uint8_t i = 0; i < static_cast <uint8_t> (match.size()); i++){
 					// Если данные получены
 					if(!match[i].empty()){
-						// Определяем тип хоста
+						/**
+						 * Определяем тип хоста
+						 */
 						switch(i){
 							// Если мы определили MAC-адрес
 							case 1: return type_t::MAC;
@@ -824,7 +846,8 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 	return result;
 }
 /**
- * mac Метод извлечения аппаратного адреса в чистом виде
+ * @brief Метод извлечения аппаратного адреса в чистом виде
+ *
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  * @return       аппаратный адрес в чистом виде
  */
@@ -837,13 +860,17 @@ uint64_t awh::Net::mac(const endian_t endian) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем какой порядок следования байт установлен
+			/**
+			 * Определяем какой порядок следования байт установлен
+			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG): {
 					// Получаем буфер данных IP-адреса
 					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
-					// Выполняем перебор всех октетов адреса
+					/**
+					 * Выполняем перебор всех октетов адреса
+					 */
 					while(i--){
 						// Выполняем установку байт в обратном порядке
 						::memcpy(reinterpret_cast <uint8_t *> (&result) + j, this->_buffer.data() + i, 1);
@@ -880,7 +907,8 @@ uint64_t awh::Net::mac(const endian_t endian) const noexcept {
 	return result;
 }
 /**
- * mac Метод установки аппаратного адреса в чистом виде
+ * @brief Метод установки аппаратного адреса в чистом виде
+ *
  * @param addr   аппаратный адрес в чистом виде
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
@@ -897,7 +925,9 @@ void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
 			this->_buffer.resize(6);
 			// Устанавливаем тип MAC адреса
 			this->_type = type_t::MAC;
-			// Определяем какой порядок следования байт установлен
+			/**
+			 * Определяем какой порядок следования байт установлен
+			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG): {
@@ -905,7 +935,9 @@ void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
 					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
 					// Получаем буфер данных переданного IP-адреса
 					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (&addr);
-					// Выполняем перебор всех октетов адреса
+					/**
+					 * Выполняем перебор всех октетов адреса
+					 */
 					while(i--){
 						// Выполняем установку байт в обратном порядке
 						::memcpy(this->_buffer.data() + j, buffer + i, 1);
@@ -940,7 +972,8 @@ void awh::Net::mac(const uint64_t addr, const endian_t endian) noexcept {
 	}
 }
 /**
- * v4 Извлечения адреса IPv4 в чистом виде
+ * @brief Извлечения адреса IPv4 в чистом виде
+ *
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  * @return       адрес IPv4 в чистом виде
  */
@@ -953,13 +986,17 @@ uint32_t awh::Net::v4(const endian_t endian) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем какой порядок следования байт установлен
+			/**
+			 * Определяем какой порядок следования байт установлен
+			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG): {
 					// Получаем буфер данных IP-адреса
 					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
-					// Выполняем перебор всех октетов адреса
+					/**
+					 * Выполняем перебор всех октетов адреса
+					 */
 					while(i--){
 						// Выполняем установку байт в обратном порядке
 						::memcpy(reinterpret_cast <uint8_t *> (&result) + j, this->_buffer.data() + i, 1);
@@ -996,7 +1033,8 @@ uint32_t awh::Net::v4(const endian_t endian) const noexcept {
 	return result;
 }
 /**
- * v4 Метод установки адреса IPv4 в чистом виде
+ * @brief Метод установки адреса IPv4 в чистом виде
+ *
  * @param addr   адрес IPv4 в чистом виде
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
@@ -1013,7 +1051,9 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 			this->_buffer.resize(4);
 			// Устанавливаем тип IP-адреса
 			this->_type = type_t::IPV4;
-			// Определяем какой порядок следования байт установлен
+			/**
+			 * Определяем какой порядок следования байт установлен
+			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG): {
@@ -1021,7 +1061,9 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 					uint8_t i = static_cast <uint8_t> (sizeof(addr)), j = 0;
 					// Получаем буфер данных переданного IP-адреса
 					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (&addr);
-					// Выполняем перебор всех октетов адреса
+					/**
+					 * Выполняем перебор всех октетов адреса
+					 */
 					while(i--){
 						// Выполняем установку байт в обратном порядке
 						::memcpy(this->_buffer.data() + j, buffer + i, 1);
@@ -1056,7 +1098,8 @@ void awh::Net::v4(const uint32_t addr, const endian_t endian) noexcept {
 	}
 }
 /**
- * v6 Извлечения адреса IPv6 в чистом виде
+ * @brief Извлечения адреса IPv6 в чистом виде
+ *
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  * @return       адрес IPv6 в чистом виде
  */
@@ -1069,7 +1112,9 @@ array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем какой порядок следования байт установлен
+			/**
+			 * Определяем какой порядок следования байт установлен
+			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG): {
@@ -1077,7 +1122,9 @@ array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
 					uint8_t i = static_cast <uint8_t> (this->_buffer.size()), j = 0;
 					// Получаем буфер данных переданного IP-адреса
 					uint8_t * buffer = reinterpret_cast <uint8_t *> (result.data());
-					// Выполняем перебор всех октетов адреса
+					/**
+					 * Выполняем перебор всех октетов адреса
+					 */
 					while(i--){
 						// Выполняем установку байт в обратном порядке
 						::memcpy(buffer + j, this->_buffer.data() + i, 1);
@@ -1114,7 +1161,8 @@ array <uint64_t, 2> awh::Net::v6(const endian_t endian) const noexcept {
 	return result;
 }
 /**
- * v6 Метод установки адреса IPv6 в чистом виде
+ * @brief Метод установки адреса IPv6 в чистом виде
+ *
  * @param addr   адрес IPv6 в чистом виде
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
@@ -1131,7 +1179,9 @@ void awh::Net::v6(const array <uint64_t, 2> & addr, const endian_t endian) noexc
 			this->_buffer.resize(16);
 			// Устанавливаем тип IP-адреса
 			this->_type = type_t::IPV6;
-			// Определяем какой порядок следования байт установлен
+			/**
+			 * Определяем какой порядок следования байт установлен
+			 */
 			switch(static_cast <uint8_t> (endian)){
 				// Если установлен порядок следования байт от старшего к младшему
 				case static_cast <uint8_t> (endian_t::BIG): {
@@ -1139,7 +1189,9 @@ void awh::Net::v6(const array <uint64_t, 2> & addr, const endian_t endian) noexc
 					uint8_t i = static_cast <uint8_t> (sizeof(addr)), j = 0;
 					// Получаем буфер данных переданного IP-адреса
 					const uint8_t * buffer = reinterpret_cast <const uint8_t *> (addr.data());
-					// Выполняем перебор всех октетов адреса
+					/**
+					 * Выполняем перебор всех октетов адреса
+					 */
 					while(i--){
 						// Выполняем установку байт в обратном порядке
 						::memcpy(this->_buffer.data() + j, buffer + i, 1);
@@ -1174,7 +1226,8 @@ void awh::Net::v6(const array <uint64_t, 2> & addr, const endian_t endian) noexc
 	}
 }
 /**
- * impose Метод наложения маски сети
+ * @brief Метод наложения маски сети
+ *
  * @param mask маска сети для наложения
  * @param addr тип получаемого адреса
  */
@@ -1183,7 +1236,8 @@ void awh::Net::impose(const string & mask, const addr_t addr) noexcept {
 	this->impose(mask, addr, this->_type);
 }
 /**
- * impose Метод наложения маски сети
+ * @brief Метод наложения маски сети
+ *
  * @param mask маска сети для наложения
  * @param addr тип получаемого адреса
  * @param type тип адреса аппаратного или интернет подключения
@@ -1200,7 +1254,8 @@ void awh::Net::impose(const string & mask, const addr_t addr, const type_t type)
 	}
 }
 /**
- * impose Метод наложения префикса
+ * @brief Метод наложения префикса
+ *
  * @param prefix префикс для наложения
  * @param addr тип получаемого адреса
  */
@@ -1209,7 +1264,8 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 	this->impose(prefix, addr, this->_type);
 }
 /**
- * impose Метод наложения префикса
+ * @brief Метод наложения префикса
+ *
  * @param prefix префикс для наложения
  * @param addr   тип получаемого адреса
  * @param type   тип адреса аппаратного или интернет подключения
@@ -1223,7 +1279,9 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 		try {
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx.main);
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4): {
@@ -1231,7 +1289,9 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 					if(prefix <= 32){
 						// Определяем номер октета
 						const uint8_t num = static_cast <uint8_t> (::ceil(static_cast <double> (prefix / 8)));
-						// Определяем тип получаемого адреса
+						/**
+						 * Определяем тип получаемого адреса
+						 */
 						switch(static_cast <uint8_t> (addr)){
 							// Если мы хотим получить адрес хоста
 							case static_cast <uint8_t> (addr_t::HOST): {
@@ -1290,7 +1350,9 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 					if(prefix <= 128){
 						// Определяем номер хексета
 						const uint8_t num = static_cast <uint8_t> (::ceil(static_cast <double> (prefix / 16)));
-						// Определяем тип получаемого адреса
+						/**
+						 * Определяем тип получаемого адреса
+						 */
 						switch(static_cast <uint8_t> (addr)){
 							// Если мы хотим получить адрес хоста
 							case static_cast <uint8_t> (addr_t::HOST): {
@@ -1365,7 +1427,8 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr, const type_t type
 	}
 }
 /**
- * mask2Prefix Метод перевода маски сети в префикс адреса
+ * @brief Метод перевода маски сети в префикс адреса
+ *
  * @param mask маска сети для перевода
  * @return     полученный префикс адреса
  */
@@ -1374,7 +1437,8 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 	return this->mask2Prefix(mask, this->_type);
 }
 /**
- * mask2Prefix Метод перевода маски сети в префикс адреса
+ * @brief Метод перевода маски сети в префикс адреса
+ *
  * @param mask маска сети для перевода
  * @param type тип адреса аппаратного или интернет подключения
  * @return     полученный префикс адреса
@@ -1394,7 +1458,9 @@ uint8_t awh::Net::mask2Prefix(const string & mask, const type_t type) const noex
 			if(net.parse(mask) && (type == net.type())){
 				// Бинарный контейнер
 				bitset <8> bits;
-				// Определяем тип IP-адреса
+				/**
+				 * Определяем тип IP-адреса
+				 */
 				switch(static_cast <uint8_t> (type)){
 					// Если IP-адрес определён как IPv4
 					case static_cast <uint8_t> (type_t::IPV4): {
@@ -1445,7 +1511,8 @@ uint8_t awh::Net::mask2Prefix(const string & mask, const type_t type) const noex
 	return result;
 }
 /**
- * prefix2Mask Метод преобразования префикса адреса в маску сети
+ * @brief Метод преобразования префикса адреса в маску сети
+ *
  * @param prefix префикс адреса для преобразования
  * @return       полученная маска сети
  */
@@ -1454,7 +1521,8 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 	return this->prefix2Mask(prefix, this->_type);
 }
 /**
- * prefix2Mask Метод преобразования префикса адреса в маску сети
+ * @brief Метод преобразования префикса адреса в маску сети
+ *
  * @param prefix префикс адреса для преобразования
  * @param type   тип адреса аппаратного или интернет подключения
  * @return       полученная маска сети
@@ -1470,7 +1538,9 @@ string awh::Net::prefix2Mask(const uint8_t prefix, const type_t type) const noex
 		try {
 			// Создаём объкт для работы с адресами
 			net_t net(this->_exp, this->_log);
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4): {
@@ -1522,7 +1592,8 @@ string awh::Net::prefix2Mask(const uint8_t prefix, const type_t type) const noex
 	return result;
 }
 /**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+ *
  * @param begin начало диапазона адресов
  * @param end   конец диапазона адресов
  * @param mask  маска сети для перевода
@@ -1533,7 +1604,8 @@ bool awh::Net::range(const Net & begin, const Net & end, const string & mask) co
 	return this->range(begin, end, mask, this->_type);
 }
 /**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+ *
  * @param begin начало диапазона адресов
  * @param end   конец диапазона адресов
  * @param mask  маска сети для перевода
@@ -1556,7 +1628,8 @@ bool awh::Net::range(const Net & begin, const Net & end, const string & mask, co
 	return result;
 }
 /**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+ *
  * @param begin  начало диапазона адресов
  * @param end    конец диапазона адресов
  * @param prefix префикс адреса для преобразования
@@ -1567,7 +1640,8 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) c
 	return this->range(begin, end, prefix, this->_type);
 }
 /**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+ *
  * @param begin  начало диапазона адресов
  * @param end    конец диапазона адресов
  * @param prefix префикс адреса для преобразования
@@ -1587,7 +1661,9 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix, c
 			net_t net1(this->_exp, this->_log),
 			      net2(this->_exp, this->_log),
 			      net3(this->_exp, this->_log);
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4): {
@@ -1639,7 +1715,8 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix, c
 	return result;
 }
 /**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+ *
  * @param begin начало диапазона адресов
  * @param end   конец диапазона адресов
  * @param mask  маска сети для перевода
@@ -1650,7 +1727,8 @@ bool awh::Net::range(const string & begin, const string & end, const string & ma
 	return this->range(begin, end, mask, this->_type);
 }
 /**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+ *
  * @param begin начало диапазона адресов
  * @param end   конец диапазона адресов
  * @param mask  маска сети для перевода
@@ -1673,7 +1751,8 @@ bool awh::Net::range(const string & begin, const string & end, const string & ma
 	return result;
 }
 /**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+ *
  * @param begin  начало диапазона адресов
  * @param end    конец диапазона адресов
  * @param prefix префикс адреса для преобразования
@@ -1684,7 +1763,8 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 	return this->range(begin, end, prefix, this->_type);
 }
 /**
- * range Метод проверки вхождения IP-адреса в диапазон адресов
+ * @brief Метод проверки вхождения IP-адреса в диапазон адресов
+ *
  * @param begin  начало диапазона адресов
  * @param end    конец диапазона адресов
  * @param prefix префикс адреса для преобразования
@@ -1706,7 +1786,9 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 			      net3(this->_exp, this->_log);
 			// Устанавливаем новое значение адреса для начала и конца диапазона адресов
 			net2 = begin; net3 = end;
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если IP-адрес определён как IPv4
 				case static_cast <uint8_t> (type_t::IPV4):
@@ -1753,7 +1835,8 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 	return result;
 }
 /**
- * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @brief Метод проверки соотвествия IP-адреса указанной сети
+ *
  * @param network сеть для проверки соответствия
  * @return        результат проверки
  */
@@ -1762,7 +1845,8 @@ bool awh::Net::mapping(const string & network) const noexcept {
 	return this->mapping(network, this->_type);
 }
 /**
- * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @brief Метод проверки соотвествия IP-адреса указанной сети
+ *
  * @param network сеть для проверки соответствия
  * @param type    тип адреса аппаратного или интернет подключения
  * @return        результат проверки
@@ -1782,7 +1866,9 @@ bool awh::Net::mapping(const string & network, const type_t type) const noexcept
 			if((result = net.parse(network))){
 				// Если сеть и IP-адрес принадлежат одной версии сети
 				if((result = (type == net.type()))){
-					// Определяем тип IP-адреса
+					/**
+					 * Определяем тип IP-адреса
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если IP-адрес определён как IPv4
 						case static_cast <uint8_t> (type_t::IPV4): {
@@ -1854,7 +1940,8 @@ bool awh::Net::mapping(const string & network, const type_t type) const noexcept
 	return result;
 }
 /**
- * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @brief Метод проверки соотвествия IP-адреса указанной сети
+ *
  * @param network сеть для проверки соответствия
  * @param mask    маска сети для наложения
  * @param addr    тип получаемого адреса
@@ -1865,7 +1952,8 @@ bool awh::Net::mapping(const string & network, const string & mask, const addr_t
 	return this->mapping(network, mask, addr, this->_type);
 }
 /**
- * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @brief Метод проверки соотвествия IP-адреса указанной сети
+ *
  * @param network сеть для проверки соответствия
  * @param mask    маска сети для наложения
  * @param addr    тип получаемого адреса
@@ -1888,7 +1976,8 @@ bool awh::Net::mapping(const string & network, const string & mask, const addr_t
 	return result;
 }
 /**
- * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @brief Метод проверки соотвествия IP-адреса указанной сети
+ *
  * @param network сеть для проверки соответствия
  * @param prefix  префикс для наложения
  * @param addr    тип получаемого адреса
@@ -1899,7 +1988,8 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 	return this->mapping(network, prefix, addr, this->_type);
 }
 /**
- * mapping Метод проверки соотвествия IP-адреса указанной сети
+ * @brief Метод проверки соотвествия IP-адреса указанной сети
+ *
  * @param network сеть для проверки соответствия
  * @param prefix  префикс для наложения
  * @param addr    тип получаемого адреса
@@ -1921,7 +2011,9 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 			if((result = net.parse(network))){
 				// Если сеть и IP-адрес принадлежат одной версии сети
 				if((result = (type == net.type()))){
-					// Определяем тип IP-адреса
+					/**
+					 * Определяем тип IP-адреса
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если IP-адрес определён как IPv4
 						case static_cast <uint8_t> (type_t::IPV4): {
@@ -1973,7 +2065,8 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 	return result;
 }
 /**
- * mode Метод определения режима дислокации IP-адреса
+ * @brief Метод определения режима дислокации IP-адреса
+ *
  * @return режим дислокации
  */
 awh::Net::mode_t awh::Net::mode() const noexcept {
@@ -1993,7 +2086,9 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 			auto ret = this->_localsNet.equal_range(this->_type);
 			// Перебираем все локальные адреса
 			for(auto i = ret.first; i != ret.second; ++i){
-				// Определяем тип IP-адреса
+				/**
+				 * Определяем тип IP-адреса
+				 */
 				switch(static_cast <uint8_t> (this->_type)){
 					// Если IP-адрес определён как IPv4
 					case static_cast <uint8_t> (type_t::IPV4): {
@@ -2084,7 +2179,8 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 	return result;
 }
 /**
- * arpa Получение записи в формате ARPA
+ * @brief Получение записи в формате ARPA
+ *
  * @return запись в формате ARPA
  */
 string awh::Net::arpa() const noexcept {
@@ -2094,7 +2190,9 @@ string awh::Net::arpa() const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем тип IP-адреса
+		/**
+		 * Определяем тип IP-адреса
+		 */
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP-адрес определён как IPv4
 			case static_cast <uint8_t> (type_t::IPV4): {
@@ -2158,7 +2256,8 @@ string awh::Net::arpa() const noexcept {
 	return result;
 }
 /**
- * arpa Метод установки записи в формате ARPA
+ * @brief Метод установки записи в формате ARPA
+ *
  * @param addr адрес в формате ARPA (1.0.168.192.in-addr.arpa)
  * @return     результат установки записи
  */
@@ -2185,7 +2284,9 @@ bool awh::Net::arpa(const string & addr) noexcept {
 				size_t start = 0, stop = 0, index = 3;
 				// Получаем адрес для парсинга
 				const string ip = addr.substr(0, addr.length() - 13);
-				// Выполняем поиск разделителя
+				/**
+				 * Выполняем поиск разделителя
+				 */
 				while((stop = ip.find('.', start)) != string::npos){
 					// Извлекаем полученное число
 					this->_buffer[index] = static_cast <uint8_t> (::stoi(ip.substr(start, stop - start)));
@@ -2221,7 +2322,8 @@ bool awh::Net::arpa(const string & addr) noexcept {
 			 */
 			try {
 				/**
-				 * Buffer Структура бинарного буфера
+				 * @brief Структура бинарного буфера
+				 *
 				 */
 				struct Buffer {
 					// Временный буфер хексета
@@ -2229,7 +2331,8 @@ bool awh::Net::arpa(const string & addr) noexcept {
 					// Результирующий буфер данных
 					uint16_t address[8];
 					/**
-					 * Buffer Конструктор
+					 * @brief Конструктор
+					 *
 					 */
 					Buffer() noexcept : hexset{0,0,0,0}, address{0,0,0,0,0,0,0,0} {}
 				} __attribute__((packed)) buffer;
@@ -2245,7 +2348,9 @@ bool awh::Net::arpa(const string & addr) noexcept {
 				uint8_t index1 = 4, index2 = 8;
 				// Получаем адрес для парсинга
 				const string ip = addr.substr(0, addr.length() - 9);
-				// Выполняем поиск разделителя
+				/**
+				 * Выполняем поиск разделителя
+				 */
 				while((stop = ip.find('.', start)) != string::npos){
 					// Выполняем установку хексета
 					buffer.hexset[--index1] = static_cast <uint8_t> (ip.at(start));
@@ -2291,7 +2396,8 @@ bool awh::Net::arpa(const string & addr) noexcept {
 	return result;
 }
 /**
- * parse Метод парсинга адреса
+ * @brief Метод парсинга адреса
+ *
  * @param addr адрес аппаратный или интернет подключения для парсинга
  * @return     результат работы парсинга
  */
@@ -2300,7 +2406,8 @@ bool awh::Net::parse(const string & addr) noexcept {
 	return this->parse(addr, this->host(addr));
 }
 /**
- * parse Метод парсинга адреса
+ * @brief Метод парсинга адреса
+ *
  * @param addr адрес аппаратный или интернет подключения для парсинга
  * @param type тип адреса аппаратного или интернет подключения для парсинга
  * @return     результат работы парсинга
@@ -2318,7 +2425,9 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 			const lock_guard <std::mutex> lock(this->_mtx.main);
 			// Устанавливаем тип адреса
 			this->_type = type;
-			// Определяем тип переданного адреса
+			/**
+			 * Определяем тип переданного адреса
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если - это не IP-адрес, а MAC-адрес
 				case static_cast <uint8_t> (type_t::MAC): {
@@ -2350,7 +2459,9 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					this->_buffer.resize(4);
 					// Позиция разделителя
 					size_t start = 0, stop = 0, index = 0;
-					// Выполняем поиск разделителя
+					/**
+					 * Выполняем поиск разделителя
+					 */
 					while((stop = addr.find('.', start)) != string::npos){
 						// Извлекаем полученное число
 						this->_buffer[index] = static_cast <uint8_t> (::stoi(addr.substr(start, stop - start)));
@@ -2399,7 +2510,9 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								index = 12;
 								// Получаем IP-адрес
 								const string & addr = data.back();
-								// Выполняем поиск разделителя
+								/**
+								 * Выполняем поиск разделителя
+								 */
 								while((stop = addr.find('.', start)) != string::npos){
 									// Извлекаем полученное число
 									this->_buffer[index] = static_cast <uint8_t> (::stoi(addr.substr(start, stop - start)));
@@ -2483,7 +2596,8 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 	return result;
 }
 /**
- * get Метод извлечения данных IP-адреса
+ * @brief Метод извлечения данных IP-адреса
+ *
  * @param format формат формирования IP-адреса
  * @return       сформированная строка IP-адреса
  */
@@ -2496,7 +2610,9 @@ string awh::Net::get(const format_t format) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если - это не IP-адрес, а MAC-адрес
 				case static_cast <uint8_t> (type_t::MAC): {
@@ -2664,7 +2780,8 @@ string awh::Net::get(const format_t format) const noexcept {
 	return result;
 }
 /**
- * Оператор вывода IP-адреса в качестве строки
+ * @brief Оператор вывода IP-адреса в качестве строки
+ *
  * @return IP-адрес в качестве строки
  */
 awh::Net::operator string() const noexcept {
@@ -2672,7 +2789,8 @@ awh::Net::operator string() const noexcept {
 	return this->get();
 }
 /**
- * Оператор [<] сравнения IP-адреса
+ * @brief Оператор [<] сравнения IP-адреса
+ *
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
@@ -2685,7 +2803,9 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если MAC-адрес определён
 				case static_cast <uint8_t> (type_t::MAC):
@@ -2730,7 +2850,8 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 	return result;
 }
 /**
- * Оператор [>] сравнения IP-адреса
+ * @brief Оператор [>] сравнения IP-адреса
+ *
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
@@ -2743,7 +2864,9 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если MAC-адрес определён
 				case static_cast <uint8_t> (type_t::MAC):
@@ -2788,7 +2911,8 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 	return result;
 }
 /**
- * Оператор [<=] сравнения IP-адреса
+ * @brief Оператор [<=] сравнения IP-адреса
+ *
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
@@ -2801,7 +2925,9 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если MAC-адрес определён
 				case static_cast <uint8_t> (type_t::MAC):
@@ -2850,7 +2976,8 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 	return result;
 }
 /**
- * Оператор [>=] сравнения IP-адреса
+ * @brief Оператор [>=] сравнения IP-адреса
+ *
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
@@ -2863,7 +2990,9 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если MAC-адрес определён
 				case static_cast <uint8_t> (type_t::MAC):
@@ -2912,7 +3041,8 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 	return result;
 }
 /**
- * Оператор [!=] сравнения IP-адреса
+ * @brief Оператор [!=] сравнения IP-адреса
+ *
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
@@ -2923,7 +3053,9 @@ bool awh::Net::operator != (const net_t & addr) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем тип IP-адреса
+		/**
+		 * Определяем тип IP-адреса
+		 */
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если MAC-адрес определён
 			case static_cast <uint8_t> (type_t::MAC):
@@ -2967,7 +3099,8 @@ bool awh::Net::operator != (const net_t & addr) const noexcept {
 	return result;
 }
 /**
- * Оператор [==] сравнения IP-адреса
+ * @brief Оператор [==] сравнения IP-адреса
+ *
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
@@ -2980,7 +3113,9 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип IP-адреса
+			/**
+			 * Определяем тип IP-адреса
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если MAC-адрес определён
 				case static_cast <uint8_t> (type_t::MAC):
@@ -3025,7 +3160,8 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
 	return result;
 }
 /**
- * Оператор [=] присвоения IP-адреса
+ * @brief Оператор [=] присвоения IP-адреса
+ *
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
@@ -3034,7 +3170,9 @@ awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем тип IP-адреса
+		/**
+		 * Определяем тип IP-адреса
+		 */
 		switch(static_cast <uint8_t> (addr.type())){
 			// Если MAC-адрес определён
 			case static_cast <uint8_t> (type_t::MAC):
@@ -3074,7 +3212,8 @@ awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] присвоения IP-адреса
+ * @brief Оператор [=] присвоения IP-адреса
+ *
  * @param ip адрес для присвоения
  * @return   текущий объект
  */
@@ -3085,7 +3224,8 @@ awh::Net & awh::Net::operator = (const string & ip) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] установки типа IP-адреса
+ * @brief Оператор [=] установки типа IP-адреса
+ *
  * @param type тип IP-адреса для установки
  * @return     текущий объект
  */
@@ -3096,7 +3236,8 @@ awh::Net & awh::Net::operator = (const type_t type) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] присвоения IP-адреса
+ * @brief Оператор [=] присвоения IP-адреса
+ *
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
@@ -3107,7 +3248,8 @@ awh::Net & awh::Net::operator = (const uint32_t addr) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] присвоения MAC-адреса
+ * @brief Оператор [=] присвоения MAC-адреса
+ *
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
@@ -3118,7 +3260,8 @@ awh::Net & awh::Net::operator = (const uint64_t addr) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] присвоения IP-адреса
+ * @brief Оператор [=] присвоения IP-адреса
+ *
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
@@ -3129,7 +3272,8 @@ awh::Net & awh::Net::operator = (const array <uint64_t, 2> & addr) noexcept {
 	return (* this);
 }
 /**
- * Net конструктор
+ * @brief конструктор
+ *
  * @param log объект для работы с логами
  */
 awh::Net::Net(const log_t * log) noexcept : _type(type_t::NONE), _log(log) {
@@ -3152,7 +3296,8 @@ awh::Net::Net(const log_t * log) noexcept : _type(type_t::NONE), _log(log) {
 	);
 }
 /**
- * Net конструктор
+ * @brief конструктор
+ *
  * @param exp регулярное выражение для установки
  * @param log объект для работы с логами
  */
@@ -3161,7 +3306,8 @@ awh::Net::Net(const regexp_t::exp_t & exp, const log_t * log) noexcept : _type(t
 	this->_exp = exp;
 }
 /**
- * Оператор [>>] чтения из потока IP-адреса
+ * @brief Оператор [>>] чтения из потока IP-адреса
+ *
  * @param is   поток для чтения
  * @param addr адрес для присвоения
  */
@@ -3178,7 +3324,8 @@ istream & awh::operator >> (istream & is, net_t & addr) noexcept {
 	return is;
 }
 /**
- * Оператор [<<] вывода в поток IP-адреса
+ * @brief Оператор [<<] вывода в поток IP-адреса
+ *
  * @param os   поток куда нужно вывести данные
  * @param addr адрес для присвоения
  */

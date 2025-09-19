@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * connectEvent Метод обратного вызова при подключении к серверу
+ * @brief Метод обратного вызова при подключении к серверу
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -117,7 +118,8 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 	}
 }
 /**
- * disconnectEvent Метод обратного вызова при отключении от сервера
+ * @brief Метод обратного вызова при отключении от сервера
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -159,7 +161,8 @@ void awh::client::Websocket1::disconnectEvent(const uint64_t bid, const uint16_t
 		web_t::_callback.call <void (const mode_t)> ("active", mode_t::DISCONNECT);
 }
 /**
- * readEvent Метод обратного вызова при чтении сообщения с сервера
+ * @brief Метод обратного вызова при чтении сообщения с сервера
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
@@ -232,7 +235,9 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 								}
 							}
 						#endif
-						// Выполняем препарирование полученных данных
+						/**
+						 * Выполняем препарирование полученных данных
+						 */
 						switch(static_cast <uint8_t> (this->prepare(this->_sid, bid))){
 							// Если необходимо выполнить остановку обработки
 							case static_cast <uint8_t> (status_t::STOP): {
@@ -289,7 +294,8 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 	}
 }
 /**
- * writeEvent Метод обратного вызова при записи сообщения на клиенте
+ * @brief Метод обратного вызова при записи сообщения на клиенте
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
@@ -312,12 +318,15 @@ void awh::client::Websocket1::writeEvent(const char * buffer, const size_t size,
 	}
 }
 /**
- * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+ * @brief Метод отлавливания событий контейнера функций обратного вызова
+ *
  * @param event событие контейнера функций обратного вызова
  * @param fid   идентификатор функции обратного вызова
  */
 void awh::client::Websocket1::callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t &) noexcept {
-	// Определяем входящее событие контейнера функций обратного вызова
+	/**
+	 * Определяем входящее событие контейнера функций обратного вызова
+	 */
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
 		case static_cast <uint8_t> (callback_t::event_t::SET): {
@@ -329,7 +338,8 @@ void awh::client::Websocket1::callbackEvent(const callback_t::event_t event, con
 	}
 }
 /**
- * redirect Метод выполнения редиректа если требуется
+ * @brief Метод выполнения редиректа если требуется
+ *
  * @return результат выполнения редиректа
  */
 bool awh::client::Websocket1::redirect() noexcept {
@@ -350,7 +360,9 @@ bool awh::client::Websocket1::redirect() noexcept {
 			// Завершаем работу
 			return result;
 		}
-		// Выполняем определение ответа сервера
+		/**
+		 * Выполняем определение ответа сервера
+		 */
 		switch(response.code){
 			// Если ответ сервера: Moved Permanently
 			case 301:
@@ -382,7 +394,8 @@ bool awh::client::Websocket1::redirect() noexcept {
 	return result;
 }
 /**
- * response Метод получения ответа сервера
+ * @brief Метод получения ответа сервера
+ *
  * @param bid     идентификатор брокера
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
@@ -394,7 +407,8 @@ void awh::client::Websocket1::response([[maybe_unused]] const uint64_t bid, cons
 		web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &)> ("response", this->_sid, this->_rid, code, message);
 }
 /**
- * header Метод получения заголовка
+ * @brief Метод получения заголовка
+ *
  * @param bid   идентификатор брокера
  * @param key   ключ заголовка
  * @param value значение заголовка
@@ -406,7 +420,8 @@ void awh::client::Websocket1::header([[maybe_unused]] const uint64_t bid, const 
 		web_t::_callback.call <void (const int32_t, const uint64_t, const string &, const string &)> ("header", this->_sid, this->_rid, key, value);
 }
 /**
- * headers Метод получения заголовков
+ * @brief Метод получения заголовков
+ *
  * @param bid     идентификатор брокера
  * @param code    код ответа сервера
  * @param message сообщение ответа сервера
@@ -419,7 +434,8 @@ void awh::client::Websocket1::headers([[maybe_unused]] const uint64_t bid, const
 		web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headers", this->_sid, this->_rid, code, message, this->_http.headers());
 }
 /**
- * chunking Метод обработки получения чанков
+ * @brief Метод обработки получения чанков
+ *
  * @param bid   идентификатор брокера
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
@@ -443,7 +459,8 @@ void awh::client::Websocket1::chunking([[maybe_unused]] const uint64_t bid, cons
 	}
 }
 /**
- * flush Метод сброса параметров запроса
+ * @brief Метод сброса параметров запроса
+ *
  */
 void awh::client::Websocket1::flush() noexcept {
 	// Снимаем флаг отключения
@@ -462,7 +479,8 @@ void awh::client::Websocket1::flush() noexcept {
 		vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 }
 /**
- * pinging Метод таймера выполнения пинга удалённого сервера
+ * @brief Метод таймера выполнения пинга удалённого сервера
+ *
  * @param tid идентификатор таймера
  */
 void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
@@ -493,7 +511,8 @@ void awh::client::Websocket1::pinging(const uint16_t tid) noexcept {
 	}
 }
 /**
- * ping Метод проверки доступности сервера
+ * @brief Метод проверки доступности сервера
+ *
  * @param buffer бинарный буфер отправляемого сообщения
  * @param size   размер бинарного буфера отправляемого сообщения
  */
@@ -515,7 +534,8 @@ void awh::client::Websocket1::ping(const void * buffer, const size_t size) noexc
 	}
 }
 /**
- * pong Метод ответа на проверку о доступности сервера
+ * @brief Метод ответа на проверку о доступности сервера
+ *
  * @param buffer бинарный буфер отправляемого сообщения
  * @param size   размер бинарного буфера отправляемого сообщения
  */
@@ -534,7 +554,8 @@ void awh::client::Websocket1::pong(const void * buffer, const size_t size) noexc
 	}
 }
 /**
- * prepare Метод выполнения препарирования полученных данных
+ * @brief Метод выполнения препарирования полученных данных
+ *
  * @param sid идентификатор запроса
  * @param bid идентификатор брокера
  * @return    результат препарирования
@@ -544,7 +565,9 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 	if(!this->_shake){
 		// Получаем параметры запроса
 		auto response = this->_http.response();
-		// Выполняем проверку авторизации
+		/**
+		 * Выполняем проверку авторизации
+		 */
 		switch(static_cast <uint8_t> (this->_http.auth())){
 			// Если нужно попытаться ещё раз
 			case static_cast <uint8_t> (http_t::status_t::RETRY): {
@@ -750,13 +773,17 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 		bool receive = false;
 		// Создаём объект шапки фрейма
 		ws::frame_t::head_t head;
-		// Выполняем обработку полученных данных
+		/**
+		 * Выполняем обработку полученных данных
+		 */
 		while(!this->_close && this->_allow.receive && !this->_buffer.empty()){
 			// Выполняем чтение фрейма Websocket
 			const auto & payload = this->_frame.methods.get(head, reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
 			// Если буфер данных получен
 			if(!payload.empty() || (head.optcode == ws::frame_t::opcode_t::PING) || (head.optcode == ws::frame_t::opcode_t::PONG) || (head.optcode == ws::frame_t::opcode_t::CLOSE)){
-				// Определяем тип ответа
+				/**
+				 * Определяем тип ответа
+				 */
 				switch(static_cast <uint8_t> (head.optcode)){
 					// Если ответом является PING
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::PING): {
@@ -934,7 +961,8 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 	return status_t::STOP;
 }
 /**
- * error Метод вывода сообщений об ошибках работы клиента
+ * @brief Метод вывода сообщений об ошибках работы клиента
+ *
  * @param message сообщение с описанием ошибки
  */
 void awh::client::Websocket1::error(const ws::mess_t & message) const noexcept {
@@ -968,7 +996,8 @@ void awh::client::Websocket1::error(const ws::mess_t & message) const noexcept {
 	}
 }
 /**
- * extraction Метод извлечения полученных данных
+ * @brief Метод извлечения полученных данных
+ *
  * @param buffer данные в чистом виде полученные с сервера
  * @param text   данные передаются в текстовом виде
  */
@@ -983,7 +1012,9 @@ void awh::client::Websocket1::extraction(const vector <char> & buffer, const boo
 			result = this->_hash.decode <vector <char>> (result.data(), result.size(), this->_cipher);
 		// Если данные пришли в сжатом виде
 		if(this->_inflate && (this->_compressor != http_t::compressor_t::NONE)){
-			// Определяем метод компрессии
+			/**
+			 * Определяем метод компрессии
+			 */
 			switch(static_cast <uint8_t> (this->_compressor)){
 				// Если метод компрессии выбран LZ4
 				case static_cast <uint8_t> (http_t::compressor_t::LZ4):
@@ -1042,7 +1073,8 @@ void awh::client::Websocket1::extraction(const vector <char> & buffer, const boo
 	}
 }
 /**
- * sendError Метод отправки сообщения об ошибке
+ * @brief Метод отправки сообщения об ошибке
+ *
  * @param mess отправляемое сообщение об ошибке
  */
 void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
@@ -1088,7 +1120,8 @@ void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
 	}
 }
 /**
- * sendMessage Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  * @return        результат отправки сообщения
@@ -1098,7 +1131,8 @@ bool awh::client::Websocket1::sendMessage(const vector <char> & message, const b
 	return this->sendMessage(message.data(), message.size(), text);
 }
 /**
- * sendMessage Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param message передаваемое сообщения в бинарном виде
  * @param size    размер передаваемого сообещния
  * @param text    данные передаются в текстовом виде
@@ -1140,7 +1174,9 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
 				head.rsv[0] = ((size >= 1024) && (this->_compressor != http_t::compressor_t::NONE));
 				// Если необходимо сжимать сообщение перед отправкой
 				if(head.rsv[0]){
-					// Определяем метод компрессии
+					/**
+					 * Определяем метод компрессии
+					 */
 					switch(static_cast <uint8_t> (this->_compressor)){
 						// Если метод компрессии выбран LZ4
 						case static_cast <uint8_t> (http_t::compressor_t::LZ4):
@@ -1199,7 +1235,9 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
 				if(buffer.size() > this->_frame.size){
 					// Смещение в бинарном буфере и актуальный размер блока
 					size_t offset = 0, actual = 0;
-					// Выполняем разбивку полезной нагрузки на сегменты
+					/**
+					 * Выполняем разбивку полезной нагрузки на сегменты
+					 */
 					while(offset < buffer.size()){
 						// Поулчаем количество оставшихся байт в буфере
 						actual = (buffer.size() - offset);
@@ -1242,7 +1280,8 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
 	return result;
 }
 /**
- * send Метод отправки данных в бинарном виде серверу
+ * @brief Метод отправки данных в бинарном виде серверу
+ *
  * @param buffer буфер бинарных данных передаваемых серверу
  * @param size   размер сообщения в байтах
  * @return       результат отправки сообщения
@@ -1256,14 +1295,16 @@ bool awh::client::Websocket1::send(const char * buffer, const size_t size) noexc
 	return false;
 }
 /**
- * pause Метод установки на паузу клиента
+ * @brief Метод установки на паузу клиента
+ *
  */
 void awh::client::Websocket1::pause() noexcept {
 	// Ставим работу клиента на паузу
 	this->_freeze = true;
 }
 /**
- * stop Метод остановки клиента
+ * @brief Метод остановки клиента
+ *
  */
 void awh::client::Websocket1::stop() noexcept {
 	// Запрещаем чтение данных из буфера
@@ -1298,7 +1339,8 @@ void awh::client::Websocket1::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска клиента
+ * @brief Метод запуска клиента
+ *
  */
 void awh::client::Websocket1::start() noexcept {
 	// Разрешаем чтение данных из буфера
@@ -1318,7 +1360,8 @@ void awh::client::Websocket1::start() noexcept {
 	this->_freeze = false;
 }
 /**
- * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+ * @brief Метод установки времени ожидания ответа WebSocket-сервера
+ *
  * @param sec время ожидания в секундах
  */
 void awh::client::Websocket1::waitPong(const uint16_t sec) noexcept {
@@ -1326,7 +1369,8 @@ void awh::client::Websocket1::waitPong(const uint16_t sec) noexcept {
 	this->_waitPong = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
- * pingInterval Метод установки интервала времени выполнения пингов
+ * @brief Метод установки интервала времени выполнения пингов
+ *
  * @param sec интервал времени выполнения пингов в секундах
  */
 void awh::client::Websocket1::pingInterval(const uint16_t sec) noexcept {
@@ -1334,7 +1378,8 @@ void awh::client::Websocket1::pingInterval(const uint16_t sec) noexcept {
 	this->_pingInterval = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::client::Websocket1::callback(const callback_t & callback) noexcept {
@@ -1348,7 +1393,8 @@ void awh::client::Websocket1::callback(const callback_t & callback) noexcept {
 	else this->_http.on <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", &ws1_t::chunking, this, _1, _2, _3);
 }
 /**
- * subprotocol Метод установки поддерживаемого сабпротокола
+ * @brief Метод установки поддерживаемого сабпротокола
+ *
  * @param subprotocol сабпротокол для установки
  */
 void awh::client::Websocket1::subprotocol(const string & subprotocol) noexcept {
@@ -1358,7 +1404,8 @@ void awh::client::Websocket1::subprotocol(const string & subprotocol) noexcept {
 		this->_http.subprotocol(subprotocol);
 }
 /**
- * subprotocol Метод получения списка выбранных сабпротоколов
+ * @brief Метод получения списка выбранных сабпротоколов
+ *
  * @return список выбранных сабпротоколов
  */
 const std::unordered_set <string> & awh::client::Websocket1::subprotocols() const noexcept {
@@ -1366,7 +1413,8 @@ const std::unordered_set <string> & awh::client::Websocket1::subprotocols() cons
 	return this->_http.subprotocols();
 }
 /**
- * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @brief Метод установки списка поддерживаемых сабпротоколов
+ *
  * @param subprotocols сабпротоколы для установки
  */
 void awh::client::Websocket1::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
@@ -1376,7 +1424,8 @@ void awh::client::Websocket1::subprotocols(const std::unordered_set <string> & s
 		this->_http.subprotocols(subprotocols);
 }
 /**
- * extensions Метод извлечения списка расширений
+ * @brief Метод извлечения списка расширений
+ *
  * @return список поддерживаемых расширений
  */
 const vector <vector <string>> & awh::client::Websocket1::extensions() const noexcept {
@@ -1384,7 +1433,8 @@ const vector <vector <string>> & awh::client::Websocket1::extensions() const noe
 	return this->_http.extensions();
 }
 /**
- * extensions Метод установки списка расширений
+ * @brief Метод установки списка расширений
+ *
  * @param extensions список поддерживаемых расширений
  */
 void awh::client::Websocket1::extensions(const vector <vector <string>> & extensions) noexcept {
@@ -1392,7 +1442,8 @@ void awh::client::Websocket1::extensions(const vector <vector <string>> & extens
 	this->_http.extensions(extensions);
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param size размер чанка для установки
  */
 void awh::client::Websocket1::chunk(const size_t size) noexcept {
@@ -1400,7 +1451,8 @@ void awh::client::Websocket1::chunk(const size_t size) noexcept {
 	this->_http.chunk(size);
 }
 /**
- * segmentSize Метод установки размеров сегментов фрейма
+ * @brief Метод установки размеров сегментов фрейма
+ *
  * @param size минимальный размер сегмента
  */
 void awh::client::Websocket1::segmentSize(const size_t size) noexcept {
@@ -1412,7 +1464,8 @@ void awh::client::Websocket1::segmentSize(const size_t size) noexcept {
 	else this->_frame.size = AWH_CHUNK_SIZE;
 }
 /**
- * core Метод установки сетевого ядра
+ * @brief Метод установки сетевого ядра
+ *
  * @param core объект сетевого ядра
  */
 void awh::client::Websocket1::core(const client::core_t * core) noexcept {
@@ -1440,7 +1493,8 @@ void awh::client::Websocket1::core(const client::core_t * core) noexcept {
 	}
 }
 /**
- * mode Метод установки флагов настроек модуля
+ * @brief Метод установки флагов настроек модуля
+ *
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Websocket1::mode(const std::set <flag_t> & flags) noexcept {
@@ -1468,7 +1522,8 @@ void awh::client::Websocket1::mode(const std::set <flag_t> & flags) noexcept {
 		const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
- * user Метод установки параметров авторизации
+ * @brief Метод установки параметров авторизации
+ *
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
@@ -1477,7 +1532,8 @@ void awh::client::Websocket1::user(const string & login, const string & password
 	this->_http.user(login, password);
 }
 /**
- * setHeaders Метод установки списка заголовков
+ * @brief Метод установки списка заголовков
+ *
  * @param headers список заголовков для установки
  */
 void awh::client::Websocket1::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
@@ -1485,7 +1541,8 @@ void awh::client::Websocket1::setHeaders(const std::unordered_multimap <string, 
 	this->_headers = headers;
 }
 /**
- * userAgent Метод установки User-Agent для HTTP-запроса
+ * @brief Метод установки User-Agent для HTTP-запроса
+ *
  * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Websocket1::userAgent(const string & userAgent) noexcept {
@@ -1498,7 +1555,8 @@ void awh::client::Websocket1::userAgent(const string & userAgent) noexcept {
 	}
 }
 /**
- * ident Метод установки идентификации клиента
+ * @brief Метод установки идентификации клиента
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -1513,7 +1571,8 @@ void awh::client::Websocket1::ident(const string & id, const string & name, cons
 	}
 }
 /**
- * multiThreads Метод активации многопоточности
+ * @brief Метод активации многопоточности
+ *
  * @param count количество потоков для активации
  * @param mode  флаг активации/деактивации мультипоточности
  */
@@ -1539,7 +1598,8 @@ void awh::client::Websocket1::multiThreads(const uint16_t count, const bool mode
 	} else this->_thr.stop();
 }
 /**
- * proxy Метод активации/деактивации прокси-склиента
+ * @brief Метод активации/деактивации прокси-склиента
+ *
  * @param work флаг активации/деактивации прокси-клиента
  */
 void awh::client::Websocket1::proxy(const client::scheme_t::work_t work) noexcept {
@@ -1547,7 +1607,8 @@ void awh::client::Websocket1::proxy(const client::scheme_t::work_t work) noexcep
 	web_t::proxy(work);
 }
 /**
- * proxy Метод установки прокси-сервера
+ * @brief Метод установки прокси-сервера
+ *
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
@@ -1556,7 +1617,8 @@ void awh::client::Websocket1::proxy(const string & uri, const scheme_t::family_t
 	web_t::proxy(uri, family);
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
@@ -1565,7 +1627,8 @@ void awh::client::Websocket1::authType(const auth_t::type_t type, const auth_t::
 	this->_http.authType(type, hash);
 }
 /**
- * authTypeProxy Метод установки типа авторизации прокси-сервера
+ * @brief Метод установки типа авторизации прокси-сервера
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
@@ -1574,7 +1637,8 @@ void awh::client::Websocket1::authTypeProxy(const auth_t::type_t type, const aut
 	web_t::authTypeProxy(type, hash);
 }
 /**
- * crypted Метод получения флага шифрования
+ * @brief Метод получения флага шифрования
+ *
  * @return результат проверки
  */
 bool awh::client::Websocket1::crypted() const noexcept {
@@ -1582,7 +1646,8 @@ bool awh::client::Websocket1::crypted() const noexcept {
 	return this->_http.crypted();
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param mode флаг активации шифрования
  */
 void awh::client::Websocket1::encryption(const bool mode) noexcept {
@@ -1592,7 +1657,8 @@ void awh::client::Websocket1::encryption(const bool mode) noexcept {
 	this->_http.encryption(mode);
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
@@ -1604,7 +1670,8 @@ void awh::client::Websocket1::encryption(const string & pass, const string & sal
 	this->_http.encryption(pass, salt, cipher);
 }
 /**
- * Websocket1 Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -1625,7 +1692,8 @@ awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
 	this->_http.on <void (const uint64_t, const uint32_t, const string &, const std::unordered_multimap <string, string> &)> ("headersResponse", &ws1_t::headers, this, _1, _2, _3, _4);
 }
 /**
- * Websocket1 Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
@@ -1649,7 +1717,8 @@ awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * f
 	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &ws1_t::writeEvent, this, _1, _2, _3, _4);
 }
 /**
- * ~Websocket1 Деструктор
+ * @brief Деструктор
+ *
  */
 awh::client::Websocket1::~Websocket1() noexcept {
 	// Если многопоточность активированна

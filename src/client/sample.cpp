@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * openEvent Метод обратного вызова при запуске работы
+ * @brief Метод обратного вызова при запуске работы
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::client::Sample::openEvent(const uint16_t sid) noexcept {
@@ -52,7 +53,8 @@ void awh::client::Sample::openEvent(const uint16_t sid) noexcept {
 	}
 }
 /**
- * statusEvent Метод обратного вызова при активации ядра сервера
+ * @brief Метод обратного вызова при активации ядра сервера
+ *
  * @param status флаг запуска/остановки
  */
 void awh::client::Sample::statusEvent(const awh::core_t::status_t status) noexcept {
@@ -62,7 +64,8 @@ void awh::client::Sample::statusEvent(const awh::core_t::status_t status) noexce
 		this->_callback.call <void (const awh::core_t::status_t)> ("status", status);
 }
 /**
- * connectEvent Метод обратного вызова при подключении к серверу
+ * @brief Метод обратного вызова при подключении к серверу
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -83,7 +86,8 @@ void awh::client::Sample::connectEvent(const uint64_t bid, const uint16_t sid) n
 	}
 }
 /**
- * disconnectEvent Метод обратного вызова при отключении от сервера
+ * @brief Метод обратного вызова при отключении от сервера
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -106,7 +110,8 @@ void awh::client::Sample::disconnectEvent(const uint64_t bid, const uint16_t sid
 	}
 }
 /**
- * readEvent Метод обратного вызова при чтении сообщения с сервера
+ * @brief Метод обратного вызова при чтении сообщения с сервера
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
@@ -127,7 +132,8 @@ void awh::client::Sample::readEvent(const char * buffer, const size_t size, cons
 	}
 }
 /**
- * enableSSLEvent Метод активации зашифрованного канала SSL
+ * @brief Метод активации зашифрованного канала SSL
+ *
  * @param url адрес сервера для которого выполняется активация зашифрованного канала SSL
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
@@ -145,7 +151,8 @@ bool awh::client::Sample::enableSSLEvent([[maybe_unused]] const uri_t::url_t & u
 	return false;
 }
 /**
- * chunking Метод обработки получения чанков
+ * @brief Метод обработки получения чанков
+ *
  * @param bid   идентификатор брокера
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
@@ -157,7 +164,8 @@ void awh::client::Sample::chunking([[maybe_unused]] const uint64_t bid, const ve
 		const_cast <awh::http_t *> (http)->body(chunk);
 }
 /**
- * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
+ * @brief Метод обратного вызова при подключении к прокси-серверу
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -170,7 +178,9 @@ void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t s
 		if(hold.access({event_t::OPEN, event_t::PROXY_READ, event_t::PROXY_CONNECT}, event_t::PROXY_CONNECT)){
 			// Запоминаем идентификатор брокера
 			this->_bid = bid;
-			// Определяем тип прокси-сервера
+			/**
+			 * Определяем тип прокси-сервера
+			 */
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5): {
@@ -219,7 +229,8 @@ void awh::client::Sample::proxyConnectEvent(const uint64_t bid, const uint16_t s
 	}
 }
 /**
- * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
+ * @brief Метод обратного вызова при чтении сообщения с прокси-сервера
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
@@ -234,7 +245,9 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 		if(hold.access({event_t::PROXY_CONNECT, event_t::PROXY_READ}, event_t::PROXY_READ)){
 			// Добавляем полученные данные в буфер
 			this->_buffer.push(buffer, size);
-			// Определяем тип прокси-сервера
+			/**
+			 * Определяем тип прокси-сервера
+			 */
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является Socks5
 				case static_cast <uint8_t> (client::proxy_t::type_t::SOCKS5): {
@@ -258,7 +271,9 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 							this->_buffer.clear();
 							// Если рукопожатие выполнено
 							if(this->_scheme.proxy.socks5.is(socks5_t::state_t::HANDSHAKE)){
-								// Выполняем переключение на работу с сервером
+								/**
+								const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
+								const_cast <client::core_t *> (this->_core)-> */
 								const_cast <client::core_t *> (this->_core)->switchProxy(bid);
 								// Выполняем запуск функции подключения
 								this->connectEvent(bid, sid);
@@ -294,7 +309,9 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 				} break;
 				// Если прокси-сервер является HTTP
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP): {
-					// Выполняем обработку полученных данных
+					/**
+					 * Выполняем обработку полученных данных
+					 */
 					while(this->_reading){
 						// Выполняем парсинг полученных данных
 						const size_t bytes = this->_scheme.proxy.http.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
@@ -335,7 +352,9 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 									// Запрещаем выполнять редирект
 									status = awh::http_t::status_t::GOOD;
 							}
-							// Выполняем проверку авторизации
+							/**
+							 * Выполняем проверку авторизации
+							 */
 							switch(static_cast <uint8_t> (status)){
 								// Если нужно попытаться ещё раз
 								case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
@@ -358,7 +377,9 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 								} break;
 								// Если запрос выполнен удачно
 								case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
-									// Выполняем переключение на работу с сервером
+									/**
+									const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
+									const_cast <client::core_t *> (this->_core)-> */
 									const_cast <client::core_t *> (this->_core)->switchProxy(bid);
 									// Выполняем запуск функции подключения
 									this->connectEvent(bid, sid);
@@ -396,7 +417,8 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 	}
 }
 /**
- * stop Метод остановки клиента
+ * @brief Метод остановки клиента
+ *
  */
 void awh::client::Sample::stop() noexcept {
 	// Запрещаем чтение данных из буфера
@@ -429,7 +451,8 @@ void awh::client::Sample::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска клиента
+ * @brief Метод запуска клиента
+ *
  */
 void awh::client::Sample::start() noexcept {
 	// Если объект сетевого ядра установлен
@@ -447,7 +470,8 @@ void awh::client::Sample::start() noexcept {
 	}
 }
 /**
- * close Метод закрытия подключения клиента
+ * @brief Метод закрытия подключения клиента
+ *
  */
 void awh::client::Sample::close() noexcept {
 	// Если подключение выполнено
@@ -456,7 +480,8 @@ void awh::client::Sample::close() noexcept {
 		const_cast <client::core_t *> (this->_core)->close(this->_bid);
 }
 /**
- * init Метод инициализации Rest брокера
+ * @brief Метод инициализации Rest брокера
+ *
  * @param socket unix-сокет для биндинга
  */
 void awh::client::Sample::init(const string & socket) noexcept {
@@ -467,7 +492,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
 		// Устанавливаем URL адрес запроса (как заглушка)
 		this->_scheme.url = this->_uri.parse("http://unixsocket");
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Выполняем установку unix-сокет
@@ -476,7 +501,8 @@ void awh::client::Sample::init(const string & socket) noexcept {
 	}
 }
 /**
- * init Метод инициализации Rest брокера
+ * @brief Метод инициализации Rest брокера
+ *
  * @param port порт сервера
  * @param host хост сервера
  */
@@ -489,7 +515,9 @@ void awh::client::Sample::init(const uint32_t port, const string & host) noexcep
 		this->_scheme.url.port = port;
 		// Устанавливаем хост сервера
 		this->_scheme.url.host = host;
-		// Определяем тип передаваемого сервера
+		/**
+		 * Определяем тип передаваемого сервера
+		 */
 		switch(static_cast <uint8_t> (this->_net.host(host))){
 			// Если хост является доменом или IPv4-адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
@@ -512,7 +540,8 @@ void awh::client::Sample::init(const uint32_t port, const string & host) noexcep
 	}
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::client::Sample::callback(const callback_t & callback) noexcept {
@@ -524,7 +553,8 @@ void awh::client::Sample::callback(const callback_t & callback) noexcept {
 	this->_callback.set("message", callback);
 }
 /**
- * mode Метод установки флагов настроек модуля
+ * @brief Метод установки флагов настроек модуля
+ *
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Sample::mode(const std::set <flag_t> & flags) noexcept {
@@ -539,7 +569,8 @@ void awh::client::Sample::mode(const std::set <flag_t> & flags) noexcept {
 	}
 }
 /**
- * cork Метод отключения/включения алгоритма TCP/CORK
+ * @brief Метод отключения/включения алгоритма TCP/CORK
+ *
  * @param mode режим применимой операции
  * @return     результат выполенния операции
  */
@@ -552,7 +583,8 @@ bool awh::client::Sample::cork(const engine_t::mode_t mode) noexcept {
 	return false;
 }
 /**
- * nodelay Метод отключения/включения алгоритма Нейгла
+ * @brief Метод отключения/включения алгоритма Нейгла
+ *
  * @param mode режим применимой операции
  * @return     результат выполенния операции
  */
@@ -565,7 +597,8 @@ bool awh::client::Sample::nodelay(const engine_t::mode_t mode) noexcept {
 	return false;
 }
 /**
- * response Метод отправки сообщения брокеру
+ * @brief Метод отправки сообщения брокеру
+ *
  * @param buffer буфер бинарных данных для отправки
  * @param size   размер бинарных данных для отправки
  */
@@ -589,7 +622,8 @@ void awh::client::Sample::send(const char * buffer, const size_t size) noexcept 
 	}
 }
 /**
- * bandwidth Метод установки пропускной способности сети
+ * @brief Метод установки пропускной способности сети
+ *
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
@@ -600,7 +634,8 @@ void awh::client::Sample::bandwidth(const string & read, const string & write) n
 		const_cast <client::core_t *> (this->_core)->bandwidth(this->_bid, read, write);
 }
 /**
- * keepAlive Метод установки жизни подключения
+ * @brief Метод установки жизни подключения
+ *
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
@@ -614,7 +649,8 @@ void awh::client::Sample::keepAlive(const int32_t cnt, const int32_t idle, const
 	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param sec интервал времени в секундах
  */
 void awh::client::Sample::waitMessage(const uint16_t sec) noexcept {
@@ -622,7 +658,8 @@ void awh::client::Sample::waitMessage(const uint16_t sec) noexcept {
 	this->_scheme.timeouts.wait = sec;
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param read    количество секунд для детекции по чтению
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
@@ -636,7 +673,8 @@ void awh::client::Sample::waitTimeDetect(const uint16_t read, const uint16_t wri
 	this->_scheme.timeouts.connect = connect;
 }
 /**
- * userAgentProxy Метод установки User-Agent для HTTP-запроса прокси-сервера
+ * @brief Метод установки User-Agent для HTTP-запроса прокси-сервера
+ *
  * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Sample::userAgentProxy(const string & userAgent) noexcept {
@@ -646,7 +684,8 @@ void awh::client::Sample::userAgentProxy(const string & userAgent) noexcept {
 		this->_scheme.proxy.http.userAgent(userAgent);
 }
 /**
- * identProxy Метод установки идентификации клиента прокси-сервера
+ * @brief Метод установки идентификации клиента прокси-сервера
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -656,7 +695,8 @@ void awh::client::Sample::identProxy(const string & id, const string & name, con
 	this->_scheme.proxy.http.ident(id, name, ver);
 }
 /**
- * proxy Метод активации/деактивации прокси-склиента
+ * @brief Метод активации/деактивации прокси-склиента
+ *
  * @param work флаг активации/деактивации прокси-клиента
  */
 void awh::client::Sample::proxy(const client::scheme_t::work_t work) noexcept {
@@ -668,7 +708,8 @@ void awh::client::Sample::proxy(const client::scheme_t::work_t work) noexcept {
 	else this->_scheme.proxy.mode = false;
 }
 /**
- * proxy Метод установки прокси-сервера
+ * @brief Метод установки прокси-сервера
+ *
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
@@ -702,7 +743,8 @@ void awh::client::Sample::proxy(const string & uri, const scheme_t::family_t fam
 	}
 }
 /**
- * authTypeProxy Метод установки типа авторизации прокси-сервера
+ * @brief Метод установки типа авторизации прокси-сервера
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
@@ -711,7 +753,8 @@ void awh::client::Sample::authTypeProxy(const auth_t::type_t type, const auth_t:
 	this->_scheme.proxy.http.authType(type, hash);
 }
 /**
- * Sample Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами

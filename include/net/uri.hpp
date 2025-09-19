@@ -29,13 +29,13 @@
 #include <functional>
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	#include <sys/socket.h>
@@ -119,9 +119,11 @@ namespace awh {
 					// Путь URL-запроса
 					vector <string> path;
 					// Параметры URL-запроса
-					vector <pair <string, string>> params;
+					vector <std::pair <string, string>> params;
 				public:
-					// Функция выполняемая при генерации URL адреса
+					/**
+					 * Функция выполняемая при генерации URL адреса
+					 */
 					function <string (const URL *, const URI *)> callback;
 				public:
 					/**
@@ -303,7 +305,7 @@ namespace awh {
 			 * @param uri строка URI для сплита
 			 * @return    параметры полученные при сплите
 			 */
-			vector <pair <string, string>> splitParams(const string & uri) const noexcept;
+			vector <std::pair <string, string>> splitParams(const string & uri) const noexcept;
 			/**
 			 * @brief Метод выполнения сплита пути
 			 *
@@ -319,7 +321,7 @@ namespace awh {
 			 * @param uri параметры URI для сборки
 			 * @return    строка полученная при сборке параметров URI
 			 */
-			string joinParams(const vector <pair <string, string>> & uri) const noexcept;
+			string joinParams(const vector <std::pair <string, string>> & uri) const noexcept;
 			/**
 			 * @brief Метод сборки пути запроса
 			 *

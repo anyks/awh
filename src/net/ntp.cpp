@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * host Метод извлечения хоста компьютера
+ * @brief Метод извлечения хоста компьютера
+ *
  * @return хост компьютера с которого производится запрос
  */
 string awh::NTP::Worker::host() const noexcept {
@@ -73,7 +74,9 @@ string awh::NTP::Worker::host() const noexcept {
 	}
 	// Если IP-адрес не установлен
 	if(result.empty()){
-		// Определяем тип подключения
+		/**
+		 * Определяем тип подключения
+		 */
 		switch(this->_family){
 			// Для протокола IPv6
 			case AF_INET6: return "::";
@@ -85,19 +88,20 @@ string awh::NTP::Worker::host() const noexcept {
 	return result;
 }
 /**
- * close Метод закрытия подключения
+ * @brief Метод закрытия подключения
+ *
  */
 void awh::NTP::Worker::close() noexcept {
 	// Если сетевой сокет не закрыт
 	if(this->_sock != INVALID_SOCKET){
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
-			closesocket(this->_sock);
+			::closesocket(this->_sock);
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
@@ -108,7 +112,8 @@ void awh::NTP::Worker::close() noexcept {
 	}
 }
 /**
- * cancel Метод отмены выполнения запроса
+ * @brief Метод отмены выполнения запроса
+ *
  */
 void awh::NTP::Worker::cancel() noexcept {
 	// Если работа NTP-клиента запущена
@@ -120,7 +125,8 @@ void awh::NTP::Worker::cancel() noexcept {
 	}
 }
 /**
- * request Метод выполнения запроса
+ * @brief Метод выполнения запроса
+ *
  * @return полученный UnixTimeStamp
  */
 uint64_t awh::NTP::Worker::request() noexcept {
@@ -130,7 +136,9 @@ uint64_t awh::NTP::Worker::request() noexcept {
 	const string & host = this->host();
 	// Выполняем пересортировку серверов NTP
 	const_cast <ntp_t *> (this->_self)->shuffle(this->_family);
-	// Определяем тип подключения
+	/**
+	 * Определяем тип подключения
+	 */
 	switch(this->_family){
 		// Для протокола IPv4
 		case AF_INET: {
@@ -290,12 +298,14 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 				if(bytes <= 0){
 					// Если сокет находится в блокирующем режиме
 					if(bytes < 0){
-						// Определяем тип ошибки
+						/**
+						 * Определяем тип ошибки
+						 */
 						switch(AWH_ERROR()){
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
 							/**
-							 * Для операционной системы не являющейся OS Windows
+							 * Для операционной системы не являющейся MS Windows
 							 */
 							#if !_WIN32 && !_WIN64
 								// Если произведена неудачная запись в PIPE
@@ -309,7 +319,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 									self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 								break;
 							/**
-							 * Для операционной системы OS Windows
+							 * Для операционной системы MS Windows
 							 */
 							#else
 								// Если произведён сброс подключения
@@ -359,12 +369,14 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 				this->close();
 				// Если сокет находится в блокирующем режиме
 				if(bytes < 0){
-					// Определяем тип ошибки
+					/**
+					 * Определяем тип ошибки
+					 */
 					switch(AWH_ERROR()){
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
 						/**
-						 *  Для операционной системы не являющейся OS Windows
+						 *  Для операционной системы не являющейся MS Windows
 						 */
 						#if !_WIN32 && !_WIN64
 							// Если произведена неудачная запись в PIPE
@@ -378,7 +390,7 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 								this->_self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 							break;
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#else
 							// Если произведён сброс подключения
@@ -400,14 +412,16 @@ uint64_t awh::NTP::Worker::send(const string & from, const string & to) noexcept
 	return result;
 }
 /**
- * ~Worker Деструктор
+ * @brief Деструктор
+ *
  */
 awh::NTP::Worker::~Worker() noexcept {
 	// Выполняем закрытие файлового дерскриптора (сокета)
 	this->close();
 }
 /**
- * clear Метод очистки данных NTP-клиента
+ * @brief Метод очистки данных NTP-клиента
+ *
  * @return результат работы функции
  */
 bool awh::NTP::clear() noexcept {
@@ -430,13 +444,16 @@ bool awh::NTP::clear() noexcept {
 	return result;
 }
 /**
- * cancel Метод отмены выполнения запроса
+ * @brief Метод отмены выполнения запроса
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
 void awh::NTP::cancel(const int32_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx);
-	// Определяем тип протокола подключения
+	/**
+	 * Определяем тип протокола подключения
+	 */
 	switch(family){
 		// Если тип протокола подключения IPv4
 		case static_cast <int32_t> (AF_INET):
@@ -451,7 +468,8 @@ void awh::NTP::cancel(const int32_t family) noexcept {
 	}
 }
 /**
- * shuffle Метод пересортировки серверов NTP
+ * @brief Метод пересортировки серверов NTP
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
 void awh::NTP::shuffle(const int32_t family) noexcept {
@@ -463,7 +481,9 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
 		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Выбираем стаднарт рандомайзера
 		mt19937 generator(this->_randev());
-		// Определяем тип протокола подключения
+		/**
+		 * Определяем тип протокола подключения
+		 */
 		switch(family){
 			// Если тип протокола подключения IPv4
 			case static_cast <int32_t> (AF_INET):
@@ -496,7 +516,8 @@ void awh::NTP::shuffle(const int32_t family) noexcept {
 	}
 }
 /**
- * timeout Метод установки времени ожидания выполнения запроса
+ * @brief Метод установки времени ожидания выполнения запроса
+ *
  * @param sec интервал времени выполнения запроса в секундах
  */
 void awh::NTP::timeout(const uint8_t sec) noexcept {
@@ -506,7 +527,8 @@ void awh::NTP::timeout(const uint8_t sec) noexcept {
 	this->_timeout = sec;
 }
 /**
- * ns Метод добавления DNS-серверов
+ * @brief Метод добавления DNS-серверов
+ *
  * @param servers адреса DNS-серверов
  */
 void awh::NTP::ns(const vector <string> & servers) noexcept {
@@ -519,7 +541,8 @@ void awh::NTP::ns(const vector <string> & servers) noexcept {
 	}
 }
 /**
- * server Метод получения данных NTP-сервера
+ * @brief Метод получения данных NTP-сервера
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @return       запрошенный NTP-сервер
  */
@@ -534,7 +557,9 @@ string awh::NTP::server(const int32_t family) noexcept {
 		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Подключаем устройство генератора
 		mt19937 generator(this->_randev());
-		// Определяем тип протокола подключения
+		/**
+		 * Определяем тип протокола подключения
+		 */
 		switch(family){
 			// Если тип протокола подключения IPv4
 			case static_cast <int32_t> (AF_INET): {
@@ -593,13 +618,16 @@ string awh::NTP::server(const int32_t family) noexcept {
 	return result;
 }
 /**
- * server Метод добавления NTP-сервера
+ * @brief Метод добавления NTP-сервера
+ *
  * @param server адрес NTP-сервера
  */
 void awh::NTP::server(const string & server) noexcept {
 	// Если адрес сервера передан
 	if(!server.empty()){
-		// Определяем тип передаваемого IP-адреса
+		/**
+		 * Определяем тип передаваемого IP-адреса
+		 */
 		switch(static_cast <uint8_t> (this->_net.host(server))){
 			// Если IP-адрес является IPv4 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
@@ -615,7 +643,8 @@ void awh::NTP::server(const string & server) noexcept {
 	}
 }
 /**
- * server Метод добавления NTP-сервера
+ * @brief Метод добавления NTP-сервера
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param server адрес NTP-сервера
  */
@@ -632,7 +661,9 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 			string host = "";
 			// Выполняем блокировку потока
 			const lock_guard <std::recursive_mutex> lock(this->_mtx);
-			// Определяем тип передаваемого сервера
+			/**
+			 * Определяем тип передаваемого сервера
+			 */
 			switch(static_cast <uint8_t> (this->_net.host(server))){
 				// Если домен является адресом в файловой системе
 				case static_cast <uint8_t> (net_t::type_t::FS):
@@ -757,7 +788,9 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 			}
 			// Если NTP-сервер имён получен
 			if(!host.empty()){
-				// Определяем тип протокола подключения
+				/**
+				 * Определяем тип протокола подключения
+				 */
 				switch(family){
 					// Если тип протокола подключения IPv4
 					case static_cast <int32_t> (AF_INET): {
@@ -818,7 +851,8 @@ void awh::NTP::server(const int32_t family, const string & server) noexcept {
 	}
 }
 /**
- * servers Метод добавления NTP-серверов
+ * @brief Метод добавления NTP-серверов
+ *
  * @param servers адреса NTP-серверов
  */
 void awh::NTP::servers(const vector <string> & servers) noexcept {
@@ -832,7 +866,9 @@ void awh::NTP::servers(const vector <string> & servers) noexcept {
 			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Переходим по всем нейм серверам и добавляем их
 			for(auto & server : servers){
-				// Определяем тип передаваемого IP-адреса
+				/**
+				 * Определяем тип передаваемого IP-адреса
+				 */
 				switch(static_cast <uint8_t> (this->_net.host(server))){
 					// Если домен является адресом в файловой системе
 					case static_cast <uint8_t> (net_t::type_t::FS):
@@ -865,7 +901,8 @@ void awh::NTP::servers(const vector <string> & servers) noexcept {
 	}
 }
 /**
- * servers Метод добавления NTP-серверов
+ * @brief Метод добавления NTP-серверов
+ *
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param servers адреса NTP-серверов
  */
@@ -884,7 +921,8 @@ void awh::NTP::servers(const int32_t family, const vector <string> & servers) no
 	}
 }
 /**
- * replace Метод замены существующих NTP-серверов
+ * @brief Метод замены существующих NTP-серверов
+ *
  * @param servers адреса NTP-серверов
  */
 void awh::NTP::replace(const vector <string> & servers) noexcept {
@@ -898,7 +936,9 @@ void awh::NTP::replace(const vector <string> & servers) noexcept {
 		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : servers){
-			// Определяем тип передаваемого IP-адреса
+			/**
+			 * Определяем тип передаваемого IP-адреса
+			 */
 			switch(static_cast <uint8_t> (this->_net.host(server))){
 				// Если домен является адресом в файловой системе
 				case static_cast <uint8_t> (net_t::type_t::FS):
@@ -934,7 +974,8 @@ void awh::NTP::replace(const vector <string> & servers) noexcept {
 	}
 }
 /**
- * replace Метод замены существующих NTP-серверов
+ * @brief Метод замены существующих NTP-серверов
+ *
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param servers адреса NTP-серверов
  */
@@ -945,7 +986,9 @@ void awh::NTP::replace(const int32_t family, const vector <string> & servers) no
 	if(hold.access({status_t::REQUEST}, status_t::NTSS_REP)){
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx);
-		// Определяем тип подключения
+		/**
+		 * Определяем тип подключения
+		 */
 		switch(family){
 			// Для протокола IPv4
 			case static_cast <int32_t> (AF_INET):
@@ -966,7 +1009,9 @@ void awh::NTP::replace(const int32_t family, const vector <string> & servers) no
 		else {
 			// Список серверов
 			vector <string> servers;
-			// Определяем тип подключения
+			/**
+			 * Определяем тип подключения
+			 */
 			switch(family){
 				// Для протокола IPv4
 				case static_cast <int32_t> (AF_INET):
@@ -985,7 +1030,8 @@ void awh::NTP::replace(const int32_t family, const vector <string> & servers) no
 	}
 }
 /**
- * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ * @brief Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ *
  * @param network IP-адреса сетевых плат
  */
 void awh::NTP::network(const vector <string> & network) noexcept {
@@ -1001,7 +1047,9 @@ void awh::NTP::network(const vector <string> & network) noexcept {
 			this->_dns.network(network);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
-				// Определяем к какому адресу относится полученный хост
+				/**
+				 * Определяем к какому адресу относится полученный хост
+				 */
 				switch(static_cast <uint8_t> (this->_net.host(host))){
 					// Если домен является адресом в файловой системе
 					case static_cast <uint8_t> (net_t::type_t::FS):
@@ -1047,7 +1095,8 @@ void awh::NTP::network(const vector <string> & network) noexcept {
 	}
 }
 /**
- * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ * @brief Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ *
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param network IP-адреса сетевых плат
  */
@@ -1064,7 +1113,9 @@ void awh::NTP::network(const int32_t family, const vector <string> & network) no
 			this->_dns.network(family, network);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
-				// Определяем тип передаваемого IP-адреса
+				/**
+				 * Определяем тип передаваемого IP-адреса
+				 */
 				switch(family){
 					// Если IP-адрес является IPv4 адресом
 					case static_cast <int32_t> (AF_INET):
@@ -1082,7 +1133,8 @@ void awh::NTP::network(const int32_t family, const vector <string> & network) no
 	}
 }
 /**
- * request Метод выполнение получения времени с NTP-сервера
+ * @brief Метод выполнение получения времени с NTP-сервера
+ *
  * @return полученный UnixTimeStamp
  */
 uint64_t awh::NTP::request() noexcept {
@@ -1096,7 +1148,8 @@ uint64_t awh::NTP::request() noexcept {
 	return result;
 }
 /**
- * request Метод выполнение получения времени с NTP-сервера
+ * @brief Метод выполнение получения времени с NTP-сервера
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @return       полученный UnixTimeStamp
  */
@@ -1107,7 +1160,9 @@ uint64_t awh::NTP::request(const int32_t family) noexcept {
 	if(hold.access({}, status_t::REQUEST)){
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx);
-		// Определяем тип протокола подключения
+		/**
+		 * Определяем тип протокола подключения
+		 */
 		switch(family){
 			// Если тип протокола подключения IPv4
 			case static_cast <int32_t> (AF_INET): {
@@ -1133,7 +1188,8 @@ uint64_t awh::NTP::request(const int32_t family) noexcept {
 	return 0;
 }
 /**
- * NTP Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -1146,7 +1202,8 @@ awh::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_workerIPv6 = std::make_unique <worker_t> (AF_INET6, this);
 }
 /**
- * ~NTP Деструктор
+ * @brief Деструктор
+ *
  */
 awh::NTP::~NTP() noexcept {
 	// Выполняем очистку модуля NTP-клиента

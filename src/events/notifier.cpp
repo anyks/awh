@@ -56,11 +56,12 @@
 using namespace std;
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
-	 * socketpair Метод создания пары сокетов
+	 * @brief Метод создания пары сокетов
+	 *
 	 * @param socks      список сокетов которые будут инициализированы
 	 * @param overlapped флаг установки использования перекрывающихся операций ввода-вывода
 	 * @return           результат выполнения операции
@@ -124,7 +125,7 @@ using namespace std;
 			 * Win32 GetockName может установить только номер порта, p = 0,0005.
 			 * ( http://msdn.microsoft.com/library/ms738543.aspx )
 			 */
-			// Устанавливаем семейство IPv4-адресов 
+			// Устанавливаем семейство IPv4-адресов
 			a.inaddr.sin_family = AF_INET;
 			// Устанавливаем петлевой сетевой интерфейс (127.0.0.1)
 			a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -171,7 +172,8 @@ using namespace std;
 #endif
 
 /**
- * reset Метод сброса уведомителя
+ * @brief Метод сброса уведомителя
+ *
  */
 void awh::Notifier::reset() noexcept {
 	/**
@@ -179,7 +181,7 @@ void awh::Notifier::reset() noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
@@ -263,7 +265,8 @@ void awh::Notifier::reset() noexcept {
 	}
 }
 /**
- * init Метод инициализации уведомителя
+ * @brief Метод инициализации уведомителя
+ *
  * @return содержимое сокета для извлечения
  */
 SOCKET awh::Notifier::init() noexcept {
@@ -274,7 +277,7 @@ SOCKET awh::Notifier::init() noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокеты ещё не инициализированны
@@ -450,7 +453,8 @@ SOCKET awh::Notifier::init() noexcept {
 	return result;
 }
 /**
- * event Метод извлечения идентификатора события
+ * @brief Метод извлечения идентификатора события
+ *
  * @return идентификатор события
  */
 uint64_t awh::Notifier::event() noexcept {
@@ -461,7 +465,7 @@ uint64_t awh::Notifier::event() noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
@@ -472,7 +476,9 @@ uint64_t awh::Notifier::event() noexcept {
 				int8_t size = 0;
 				// Количество прочитанных данных
 				int8_t bytes = 0;
-				// Выполняем чтение данных пока не прочитаем все
+				/**
+				 * Выполняем чтение данных пока не прочитаем все
+				 */
 				while(size < 8){
 					// Выполняем чтение данных
 					bytes = static_cast <int8_t> (::recv(this->_socks[0], buffer + size, 8, 0));
@@ -496,7 +502,9 @@ uint64_t awh::Notifier::event() noexcept {
 				int8_t size = 0;
 				// Количество прочитанных данных
 				int8_t bytes = 0;
-				// Выполняем чтение данных пока не прочитаем все
+				/**
+				 * Выполняем чтение данных пока не прочитаем все
+				 */
 				while(size < 8){
 					// Выполняем чтение данных
 					bytes = static_cast <int8_t> (::read(this->_sock, buffer + size, 8));
@@ -520,7 +528,9 @@ uint64_t awh::Notifier::event() noexcept {
 				int8_t size = 0;
 				// Количество прочитанных данных
 				int8_t bytes = 0;
-				// Выполняем чтение данных пока не прочитаем все
+				/**
+				 * Выполняем чтение данных пока не прочитаем все
+				 */
 				while(size < 8){
 					// Выполняем чтение данных
 					bytes = static_cast <int8_t> (::read(this->_socks[0], buffer + size, 8));
@@ -533,7 +543,7 @@ uint64_t awh::Notifier::event() noexcept {
 				::memcpy(&result, buffer, size);
 			}
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD 
+		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Создаём объект события
@@ -574,7 +584,8 @@ uint64_t awh::Notifier::event() noexcept {
 	return result;
 }
 /**
- * notify Метод отправки уведомления
+ * @brief Метод отправки уведомления
+ *
  * @param id идентификатор для отправки
  */
 void awh::Notifier::notify(const uint64_t id) noexcept {
@@ -583,7 +594,7 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Если сокет ещё не закрыт
@@ -709,11 +720,12 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 	}
 }
 /**
- * Для операционной системы OS Windows, OpenBSD или Sun Solaris
+ * Для операционной системы MS Windows, OpenBSD или Sun Solaris
  */
 #if _WIN32 || _WIN64 || __OpenBSD__ || __sun__
 	/**
-	 * Notifier Конструктор
+	 * @brief Конструктор
+	 *
 	 * @param fmk объект фреймворка
 	 * @param log объект для работы с логами
 	 */
@@ -723,14 +735,15 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
  */
 #else
 	/**
-	 * Notifier Конструктор
+	 * @brief Конструктор
+	 *
 	 * @param fmk объект фреймворка
 	 * @param log объект для работы с логами
 	 */
 	awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 #endif
 		/**
-		 * Для операционной системы OS Windows или OpenBSD или Sun Solaris
+		 * Для операционной системы MS Windows или OpenBSD или Sun Solaris
 		 */
 		#if _WIN32 || _WIN64 || __OpenBSD__ || __sun__
 			// Сбрасываем значение сокета на чтение
@@ -746,7 +759,8 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		#endif
 	}
 /**
- * ~Notifier Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Notifier::~Notifier() noexcept {
 	// Выполняем сброс всех параметров

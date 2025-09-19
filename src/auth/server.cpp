@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * data Метод извлечения данных авторизации
+ * @brief Метод извлечения данных авторизации
+ *
  * @return данные модуля авторизации
  */
 awh::server::Auth::data_t awh::server::Auth::data() const noexcept {
@@ -43,7 +44,8 @@ awh::server::Auth::data_t awh::server::Auth::data() const noexcept {
 	return result;
 }
 /**
- * data Метод установки данных авторизации
+ * @brief Метод установки данных авторизации
+ *
  * @param data данные авторизации для установки
  */
 void awh::server::Auth::data(const data_t & data) noexcept {
@@ -62,14 +64,17 @@ void awh::server::Auth::data(const data_t & data) noexcept {
 	}
 }
 /**
- * check Метод проверки авторизации
+ * @brief Метод проверки авторизации
+ *
  * @param method метод HTTP запроса
  * @return       результат проверки авторизации
  */
 bool awh::server::Auth::check(const string & method) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Определяем тип авторизации
+	/**
+	 * Определяем тип авторизации
+	 */
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип авторизации - Базовая
 		case static_cast <uint8_t> (type_t::BASIC): {
@@ -112,7 +117,8 @@ bool awh::server::Auth::check(const string & method) noexcept {
 	return result;
 }
 /**
- * realm Метод установки название сервера
+ * @brief Метод установки название сервера
+ *
  * @param realm название сервера
  */
 void awh::server::Auth::realm(const string & realm) noexcept {
@@ -122,7 +128,8 @@ void awh::server::Auth::realm(const string & realm) noexcept {
 		this->_digest.realm = realm;
 }
 /**
- * opaque Метод установки временного ключа сессии сервера
+ * @brief Метод установки временного ключа сессии сервера
+ *
  * @param opaque временный ключ сессии сервера
  */
 void awh::server::Auth::opaque(const string & opaque) noexcept {
@@ -132,7 +139,8 @@ void awh::server::Auth::opaque(const string & opaque) noexcept {
 		this->_digest.opaque = opaque;
 }
 /**
- * extractPassCallback Метод добавления функции извлечения пароля
+ * @brief Метод добавления функции извлечения пароля
+ *
  * @param callback функция обратного вызова для извлечения пароля
  */
 void awh::server::Auth::extractPassCallback(function <string (const string &)> callback) noexcept {
@@ -140,7 +148,8 @@ void awh::server::Auth::extractPassCallback(function <string (const string &)> c
 	this->_callback.on <string (const string &)> ("extract", callback);
 }
 /**
- * authCallback Метод добавления функции обработки авторизации
+ * @brief Метод добавления функции обработки авторизации
+ *
  * @param callback функция обратного вызова для обработки авторизации
  */
 void awh::server::Auth::authCallback(function <bool (const string &, const string &)> callback) noexcept {
@@ -148,13 +157,16 @@ void awh::server::Auth::authCallback(function <bool (const string &, const strin
 	this->_callback.on <bool (const string &, const string &)> ("auth", callback);
 }
 /**
- * header Метод установки параметров авторизации из заголовков
+ * @brief Метод установки параметров авторизации из заголовков
+ *
  * @param header заголовок HTTP с параметрами авторизации
  */
 void awh::server::Auth::header(const string & header) noexcept {
 	// Если заголовок передан
 	if(!header.empty() && (this->_fmk != nullptr)){
-		// Определяем тип авторизации
+		/**
+		 * Определяем тип авторизации
+		 */
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если тип авторизации Digest
 			case static_cast <uint8_t> (type_t::DIGEST): {
@@ -270,7 +282,8 @@ void awh::server::Auth::header(const string & header) noexcept {
 	}
 }
 /**
- * Оператор вывода строки авторизации
+ * @brief Оператор вывода строки авторизации
+ *
  * @return строка авторизации
  */
 awh::server::Auth::operator string() noexcept {
@@ -282,7 +295,9 @@ awh::server::Auth::operator string() noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип авторизации
+			/**
+			 * Определяем тип авторизации
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если тип авторизации Digest
 				case static_cast <uint8_t> (type_t::DIGEST): {
@@ -303,7 +318,9 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем установку полученного значения
 							stale = "TRUE";
 					}
-					// Определяем алгоритм шифрования
+					/**
+					 * Определяем алгоритм шифрования
+					 */
 					switch(static_cast <uint16_t> (this->_digest.hash)){
 						// Если алгоритм шифрования MD5
 						case static_cast <uint16_t> (hash_t::MD5): {

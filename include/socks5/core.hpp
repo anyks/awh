@@ -25,12 +25,12 @@
 #include <cstdlib>
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	#include <ws2tcpip.h>
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	#include <arpa/inet.h>

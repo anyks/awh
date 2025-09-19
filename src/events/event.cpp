@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * type Метод получения типа события
+ * @brief Метод получения типа события
+ *
  * @return установленный тип события
  */
 awh::Event::type_t awh::Event::type() const noexcept {
@@ -36,7 +37,8 @@ awh::Event::type_t awh::Event::type() const noexcept {
 	return this->_type;
 }
 /**
- * set Метод установки базы событий
+ * @brief Метод установки базы событий
+ *
  * @param base база событий для установки
  */
 void awh::Event::set(base_t * base) noexcept {
@@ -46,7 +48,8 @@ void awh::Event::set(base_t * base) noexcept {
 	this->_base = base;
 }
 /**
- * set Метод установки файлового дескриптора
+ * @brief Метод установки файлового дескриптора
+ *
  * @param sock файловый дескриптор для установки
  */
 void awh::Event::set(const SOCKET sock) noexcept {
@@ -56,7 +59,9 @@ void awh::Event::set(const SOCKET sock) noexcept {
 	if(restart)
 		// Выполняем остановку работы события
 		this->stop();
-	// Определяем тип установленного события
+	/**
+	 * Определяем тип установленного события
+	 */
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием
 		case static_cast <uint8_t> (type_t::EVENT): {
@@ -77,7 +82,8 @@ void awh::Event::set(const SOCKET sock) noexcept {
 		this->start();
 }
 /**
- * set Метод установки функции обратного вызова
+ * @brief Метод установки функции обратного вызова
+ *
  * @param callback функция обратного вызова
  */
 void awh::Event::set(base_t::callback_t callback) noexcept {
@@ -104,12 +110,15 @@ void awh::Event::del(const base_t::event_type_t type) noexcept {
 	}
 }
 /**
- * timeout Метод установки задержки времени таймера
+ * @brief Метод установки задержки времени таймера
+ *
  * @param delay  задержка времени в миллисекундах
  * @param series флаг серийного таймаута
  */
 void awh::Event::timeout(const uint32_t delay, const bool series) noexcept {
-	// Определяем тип установленного события
+	/**
+	 * Определяем тип установленного события
+	 */
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием
 		case static_cast <uint8_t> (type_t::EVENT):
@@ -128,7 +137,8 @@ void awh::Event::timeout(const uint32_t delay, const bool series) noexcept {
 	}
 }
 /**
- * mode Метод установки режима работы модуля
+ * @brief Метод установки режима работы модуля
+ *
  * @param type тип событий модуля для которого требуется сменить режим работы
  * @param mode флаг режима работы модуля
  * @return     результат работы функции
@@ -145,7 +155,8 @@ bool awh::Event::mode(const base_t::event_type_t type, const base_t::event_mode_
 	return false;
 }
 /**
- * stop Метод остановки работы события
+ * @brief Метод остановки работы события
+ *
  */
 void awh::Event::stop() noexcept {
 	// Если работа события запущена
@@ -163,7 +174,8 @@ void awh::Event::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска работы события
+ * @brief Метод запуска работы события
+ *
  */
 void awh::Event::start() noexcept {
 	// Если работа события ещё не запущена
@@ -174,7 +186,9 @@ void awh::Event::start() noexcept {
 			this->_mode = !this->_mode;
 			// Выполняем генерацию идентификатора записи
 			this->_id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
-			// Определяем тип установленного события
+			/**
+			 * Определяем тип установленного события
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если тип является обычным событием
 				case static_cast <uint8_t> (type_t::EVENT): {
@@ -200,7 +214,8 @@ void awh::Event::start() noexcept {
 	}
 }
 /**
- * Оператор [=] для установки базы событий
+ * @brief Оператор [=] для установки базы событий
+ *
  * @param base база событий для установки
  * @return     текущий объект
  */
@@ -211,7 +226,8 @@ awh::Event & awh::Event::operator = (base_t * base) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] для установки файлового дескриптора
+ * @brief Оператор [=] для установки файлового дескриптора
+ *
  * @param sock файловый дескриптор для установки
  * @return     текущий объект
  */
@@ -222,12 +238,15 @@ awh::Event & awh::Event::operator = (const SOCKET sock) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] для установки задержки времени таймера
+ * @brief Оператор [=] для установки задержки времени таймера
+ *
  * @param delay задержка времени в миллисекундах
  * @return      текущий объект
  */
 awh::Event & awh::Event::operator = (const uint32_t delay) noexcept {
-	// Определяем тип установленного события
+	/**
+	 * Определяем тип установленного события
+	 */
 	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип является обычным событием
 		case static_cast <uint8_t> (type_t::EVENT):
@@ -246,7 +265,8 @@ awh::Event & awh::Event::operator = (const uint32_t delay) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] для установки функции обратного вызова
+ * @brief Оператор [=] для установки функции обратного вызова
+ *
  * @param callback функция обратного вызова
  * @return         текущий объект
  */
@@ -257,7 +277,8 @@ awh::Event & awh::Event::operator = (base_t::callback_t callback) noexcept {
 	return (* this);
 }
 /**
- * Event Конструктор
+ * @brief Конструктор
+ *
  * @param type тип события
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
@@ -266,7 +287,8 @@ awh::Event::Event(const type_t type, const fmk_t * fmk, const log_t * log) noexc
  _series(false), _sock(INVALID_SOCKET), _id(0), _type(type), _delay(0),
  _mode(false), _callback(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 /**
- * ~Event Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Event::~Event() noexcept {
 	// Выполняем остановку работы события

@@ -16,7 +16,7 @@
 #define __AWH_SOCKET__
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	#define SOCKET int32_t
@@ -32,7 +32,7 @@
 #include <cstdlib>
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	#include <winsock2.h>
@@ -42,7 +42,7 @@
 	// Используем библиотеку ws2_32.lib
 	#pragma comment(lib, "Ws2_32.lib")
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	#include <vector>

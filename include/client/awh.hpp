@@ -167,7 +167,7 @@ namespace awh {
 				 * @param flag    флаг передаваемого потока по сети
 				 * @return        идентификатор нового запроса
 				 */
-				int32_t send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
+				int32_t send2(const int32_t sid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept;
 			public:
 				/**
 				 * @brief Метод установки на паузу клиента Websocket

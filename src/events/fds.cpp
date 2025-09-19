@@ -13,7 +13,7 @@
  */
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -23,7 +23,7 @@
 #endif
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -55,13 +55,13 @@ using namespace std;
 
 /**
  * @brief Метод вывода в лог справочной помощи
- * 
+ *
  * @param actual  текущее значение установленных файловых дескрипторов
  * @param desired желаемое значение для установки файловых дескрипторов
  */
 void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcept {
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		// Выполняем формирование лога
@@ -276,13 +276,13 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 }
 /**
  * @brief Метод установки нужного количества файловых дескрипторов
- * 
+ *
  * @param limit желаемое количество файловых дескрипторов
  * @return      результат установки
  */
 bool awh::FDS::limit(const uint64_t limit) const noexcept {
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		// SetHandleCount — рекомендация системе, не гарантирует лимит
@@ -426,14 +426,14 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 }
 /**
  * @brief Метод получения лимита файловых дескрипторов установленных в операционной системе
- * 
+ *
  * @return количество файловых дескрипторов установленных в файловой системе
  */
 std::pair <uint64_t, uint64_t> awh::FDS::limit() const noexcept {
 	// Результат работы функции
 	std::pair <uint64_t, uint64_t> result = {0, 0};
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		/**

@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * id Метод извлечения идентификатора брокера
+ * @brief Метод извлечения идентификатора брокера
+ *
  * @return идентификатор брокера
  */
 uint64_t awh::Scheme::Broker::id() const noexcept {
@@ -36,7 +37,8 @@ uint64_t awh::Scheme::Broker::id() const noexcept {
 	return this->_id;
 }
 /**
- * sid Метод извлечения идентификатора схемы сети
+ * @brief Метод извлечения идентификатора схемы сети
+ *
  * @return идентификатор схемы сети
  */
 uint16_t awh::Scheme::Broker::sid() const noexcept {
@@ -44,7 +46,8 @@ uint16_t awh::Scheme::Broker::sid() const noexcept {
 	return this->_sid;
 }
 /**
- * port Метод извлечения порта подключения
+ * @brief Метод извлечения порта подключения
+ *
  * @return установленный порт подключения
  */
 uint32_t awh::Scheme::Broker::port() const noexcept {
@@ -52,7 +55,8 @@ uint32_t awh::Scheme::Broker::port() const noexcept {
 	return this->_port;
 }
 /**
- * port Метод установки порта подключения
+ * @brief Метод установки порта подключения
+ *
  * @param порт подключения для установки
  */
 void awh::Scheme::Broker::port(const uint32_t port) noexcept {
@@ -64,7 +68,8 @@ void awh::Scheme::Broker::port(const uint32_t port) noexcept {
 		this->_port = port;
 }
 /**
- * ip Метод извлечения IP-адреса
+ * @brief Метод извлечения IP-адреса
+ *
  * @return установленный IP-адрес
  */
 const string & awh::Scheme::Broker::ip() const noexcept {
@@ -72,7 +77,8 @@ const string & awh::Scheme::Broker::ip() const noexcept {
 	return this->_ip;
 }
 /**
- * ip Метод установки IP-адреса
+ * @brief Метод установки IP-адреса
+ *
  * @param ip адрес для установки
  */
 void awh::Scheme::Broker::ip(const string & ip) noexcept {
@@ -84,7 +90,8 @@ void awh::Scheme::Broker::ip(const string & ip) noexcept {
 		this->_ip = ip;
 }
 /**
- * mac Метод извлечения MAC-адреса
+ * @brief Метод извлечения MAC-адреса
+ *
  * @return установленный MAC-адрес
  */
 const string & awh::Scheme::Broker::mac() const noexcept {
@@ -92,7 +99,8 @@ const string & awh::Scheme::Broker::mac() const noexcept {
 	return this->_mac;
 }
 /**
- * mac Метод установки MAC-адреса
+ * @brief Метод установки MAC-адреса
+ *
  * @param mac адрес для установки
  */
 void awh::Scheme::Broker::mac(const string & mac) noexcept {
@@ -104,7 +112,8 @@ void awh::Scheme::Broker::mac(const string & mac) noexcept {
 		this->_mac = mac;
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::Scheme::Broker::callback(const callback_t & callback) noexcept {
@@ -120,7 +129,8 @@ void awh::Scheme::Broker::callback(const callback_t & callback) noexcept {
 	this->_callback.set("timeout", callback);
 }
 /**
- * sonet Метод установки типа сокета подключения
+ * @brief Метод установки типа сокета подключения
+ *
  * @param sonet тип сокета подключения
  */
 void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
@@ -130,12 +140,15 @@ void awh::Scheme::Broker::sonet(const sonet_t sonet) noexcept {
 	this->_sonet = sonet;
 }
 /**
- * callback Метод вызова при получении события сокета
+ * @brief Метод вызова при получении события сокета
+ *
  * @param sock  сетевой сокет
  * @param event произошедшее событие
  */
 void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET sock, const base_t::event_type_t event) noexcept {
-	// Определяем тип события
+	/**
+	 * Определяем тип события
+	 */
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие закрытие подключения
 		case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
@@ -163,7 +176,8 @@ void awh::Scheme::Broker::callback([[maybe_unused]] const SOCKET sock, const bas
 	}
 }
 /**
- * stop Метод остановки работы
+ * @brief Метод остановки работы
+ *
  */
 void awh::Scheme::Broker::stop() noexcept {
 	// Выполняем блокировку потока
@@ -172,7 +186,8 @@ void awh::Scheme::Broker::stop() noexcept {
 	this->_event.stop();
 }
 /**
- * start Метод запуска работы
+ * @brief Метод запуска работы
+ *
  */
 void awh::Scheme::Broker::start() noexcept {
 	// Выполняем блокировку потока
@@ -187,7 +202,8 @@ void awh::Scheme::Broker::start() noexcept {
 	this->_event.start();
 }
 /**
- * events Метод активации/деактивации метода события сокета
+ * @brief Метод активации/деактивации метода события сокета
+ *
  * @param mode   сигнал активации сокета
  * @param method метод режима работы
  */
@@ -196,11 +212,15 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 	const lock_guard <std::recursive_mutex> lock(this->_mtx);
 	// Если сокет подключения активен и база событий установлена и активна
 	if((this->addr.sock != INVALID_SOCKET) && (this->_base != nullptr)){
-		// Определяем метод события сокета
+		/**
+		 * Определяем метод события сокета
+		 */
 		switch(static_cast <uint8_t> (method)){
 			// Если передано событие подписки на чтение
 			case static_cast <uint8_t> (engine_t::method_t::READ): {
-				// Определяем сигнал сокета
+				/**
+				 * Определяем сигнал сокета
+				 */
 				switch(static_cast <uint8_t> (mode)){
 					// Если установлен сигнал активации сокета
 					case static_cast <uint8_t> (mode_t::ENABLED): {
@@ -220,7 +240,9 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 			} break;
 			// Если передано событие подписки на запись
 			case static_cast <uint8_t> (engine_t::method_t::WRITE): {
-				// Определяем сигнал сокета
+				/**
+				 * Определяем сигнал сокета
+				 */
 				switch(static_cast <uint8_t> (mode)){
 					// Если установлен сигнал активации сокета
 					case static_cast <uint8_t> (mode_t::ENABLED): {
@@ -242,14 +264,17 @@ void awh::Scheme::Broker::events(const mode_t mode, const engine_t::method_t met
 	}
 }
 /**
- * timeout Метод установки таймаута ожидания появления данных
+ * @brief Метод установки таймаута ожидания появления данных
+ *
  * @param seconds время ожидания в секундах
  * @param method  метод режима работы
  */
 void awh::Scheme::Broker::timeout(const uint16_t seconds, const engine_t::method_t method) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx);
-	// Определяем метод режима работы
+	/**
+	 * Определяем метод режима работы
+	 */
 	switch(static_cast <uint8_t> (method)){
 		// Режим работы ЧТЕНИЕ
 		case static_cast <uint8_t> (engine_t::method_t::READ):
@@ -269,7 +294,8 @@ void awh::Scheme::Broker::timeout(const uint16_t seconds, const engine_t::method
 	}
 }
 /**
- * base Метод установки базы событий
+ * @brief Метод установки базы событий
+ *
  * @param base база событий для установки
  */
 void awh::Scheme::Broker::base(base_t * base) noexcept {
@@ -279,7 +305,8 @@ void awh::Scheme::Broker::base(base_t * base) noexcept {
 	this->_base = base;
 }
 /**
- * Оператор [=] установки базы событий
+ * @brief Оператор [=] установки базы событий
+ *
  * @param base база событий для установки
  * @return     текущий объект
  */
@@ -292,7 +319,8 @@ awh::Scheme::Broker & awh::Scheme::Broker::operator = (base_t * base) noexcept {
 	return (* this);
 }
 /**
- * Broker Конструктор
+ * @brief Конструктор
+ *
  * @param sid идентификатор схемы сети
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -305,21 +333,24 @@ awh::Scheme::Broker::Broker(const uint16_t sid, const fmk_t * fmk, const log_t *
 	this->_id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
 }
 /**
- * ~Broker Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Scheme::Broker::~Broker() noexcept {
 	// Выполняем остановку работы события
 	this->_event.stop();
 }
 /**
- * clear Метод очистки
+ * @brief Метод очистки
+ *
  */
 void awh::Scheme::clear() noexcept {
 	// Выполняем очистку списка брокеров
 	this->_brokers.clear();
 }
 /**
- * socket Метод извлечения сокета брокера
+ * @brief Метод извлечения сокета брокера
+ *
  * @param bid идентификатор брокера
  * @return    активный сокет брокера
  */
@@ -339,7 +370,8 @@ SOCKET awh::Scheme::socket(const uint64_t bid) const noexcept {
 	return result;
 }
 /**
- * port Метод получения порта подключения брокера
+ * @brief Метод получения порта подключения брокера
+ *
  * @param bid идентификатор брокера
  * @return   порт подключения брокера
  */
@@ -359,7 +391,8 @@ uint32_t awh::Scheme::port(const uint64_t bid) const noexcept {
 	return result;
 }
 /**
- * ip Метод получения IP-адреса брокера
+ * @brief Метод получения IP-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
@@ -379,7 +412,8 @@ const string & awh::Scheme::ip(const uint64_t bid) const noexcept {
 	return result;
 }
 /**
- * mac Метод получения MAC-адреса брокера
+ * @brief Метод получения MAC-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */

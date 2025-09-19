@@ -16,14 +16,14 @@
 #define __AWH_LOG__
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	// Формируем переносы строк лога
 	#define AWH_STRING_BREAK "\r\n"
 	#define AWH_STRING_BREAKS AWH_STRING_BREAK""AWH_STRING_BREAK
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	// Формируем переносы строк лога
@@ -210,7 +210,9 @@ namespace awh {
 			// Объект работы с дочерними потоками
 			mutable screen_t <payload_t> _screen;
 		private:
-			// Функция обратного вызова которая срабатывает при появлении лога
+			/**
+			 * Функция обратного вызова которая срабатывает при появлении лога
+			 */
 			function <void (const flag_t, const string &)> _fn;
 		private:
 			// Объект фреймворка
@@ -301,7 +303,7 @@ namespace awh {
 			 * @param filename адрес где находится файл
 			 * @return         параметры компонента (адрес, название файла без расширения)
 			 */
-			pair <string, string> components(const string & filename) const noexcept;
+			std::pair <string, string> components(const string & filename) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон входных аргументов функции

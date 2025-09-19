@@ -19,7 +19,6 @@
  * Стандартные модули
  */
 #include <stack>
-#include <functional>
 
 /**
  * Наши модули

@@ -256,7 +256,7 @@ namespace awh {
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			vector <pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
+			vector <std::pair <string, string>> reject2(const web_t::res_t & res) const noexcept;
 		public:
 			/**
 			 * @brief Метод создания выполняемого процесса в бинарном виде
@@ -273,7 +273,7 @@ namespace awh {
 			 * @param provider параметры провайдера обмена сообщениями
 			 * @return         буфер данных в бинарном виде
 			 */
-			vector <pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
+			vector <std::pair <string, string>> process2(const process_t flag, const web_t::provider_t & provider) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки поддерживаемого сабпротокола

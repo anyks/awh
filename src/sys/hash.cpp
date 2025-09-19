@@ -55,7 +55,9 @@ static void hashing(const string & text, const awh::hash_t::type_t type, T & res
 			result.clear();
 			// Буфер промежуточных значений
 			vector <u_char> digest;
-			// Определяем тип хэш-суммы
+			/**
+			 * Определяем тип хэш-суммы
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если тип хэш-суммы указан как MD5
 				case static_cast <uint8_t> (awh::hash_t::type_t::MD5): {
@@ -216,7 +218,9 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 		try {
 			// Выполняем очистку блока с результатом
 			result.clear();
-			// Определяем тип хэш-суммы
+			/**
+			 * Определяем тип хэш-суммы
+			 */
 			switch(static_cast <uint8_t> (type)){
 				// Если тип хэш-суммы указан как HMAC_MD5
 				case static_cast <uint8_t> (awh::hash_t::type_t::MD5): {
@@ -330,7 +334,9 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 		try {
 			// Выполняем очистку блока с результатом
 			result.clear();
-			// Определяем тип шифрования
+			/**
+			 * Определяем тип шифрования
+			 */
 			switch(static_cast <uint8_t> (cipher)){
 				// Если производится работы с BASE64
 				case static_cast <uint8_t> (awh::hash_t::cipher_t::BASE64): {
@@ -348,7 +354,9 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 							::BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
 							// Записываем параметры
 							::BIO_push(b64, bio);
-							// Определяем событие кодирование или декодирование
+							/**
+							 * Определяем событие кодирование или декодирование
+							 */
 							switch(static_cast <uint8_t> (event)){
 								// Если производится кодирование данных
 								case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
@@ -412,7 +420,9 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 					do {
 						// Максимальный размер считываемых данных
 						length = (actual > AES_BLOCK_SIZE ? AES_BLOCK_SIZE : actual);
-						// Определяем событие кодирование или декодирование
+						/**
+						 * Определяем событие кодирование или декодирование
+						 */
 						switch(static_cast <uint8_t> (event)){
 							// Если производится кодирование данных
 							case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE):
@@ -431,7 +441,9 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 						actual -= length;
 						// Выполняем добавление полученных данных
 						result.insert(result.end(), output.data(), output.data() + length);
-					// Если данные ещё не зашифрованны
+					/**
+					 * Если данные ещё не зашифрованны
+					 */
 					} while(actual > 0);
 				} break;
 			}
@@ -467,7 +479,9 @@ static void lzma(const char * buffer, const size_t size, const awh::hash_t::even
 		try {
 			// Выполняем очистку блока с результатом
 			result.clear();
-			// Определяем событие выполнения операции
+			/**
+			 * Определяем событие выполнения операции
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если необходимо выполнить компрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
@@ -588,7 +602,9 @@ static void bzip2(const char * buffer, const size_t size, const awh::hash_t::eve
 			stream.bzfree  = nullptr;
 			stream.opaque  = nullptr;
 			stream.bzalloc = nullptr;
-			// Определяем событие выполнения операции
+			/**
+			 * Определяем событие выполнения операции
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если необходимо выполнить компрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
@@ -609,7 +625,9 @@ static void bzip2(const char * buffer, const size_t size, const awh::hash_t::eve
 					stream.next_out = result.data();
 					// Устанавливаем максимальный размер буфера
 					stream.avail_out = static_cast <uint32_t> (result.size());
-					// Выполняем компрессию буфера бинарных данных
+					/**
+					 * Выполняем компрессию буфера бинарных данных
+					 */
 					while((rv = ::BZ2_bzCompress(&stream, BZ_FINISH)) != BZ_STREAM_END){
 						// Выполняем ещё одну попытку компрессии
 						rv = ::BZ2_bzCompress(&stream, BZ_FINISH);
@@ -665,7 +683,9 @@ static void bzip2(const char * buffer, const size_t size, const awh::hash_t::eve
 						if((rv == BZ_STREAM_END) || (rv == BZ_FINISH_OK))
 							// Выходим из цикла
 							break;
-					// Если данные ещё не извлечены
+					/**
+					 * Если данные ещё не извлечены
+					 */
 					} while(rv == BZ_OK);
 					// Если данные обработаны удачно
 					if((rv == BZ_FINISH_OK) || (rv == BZ_STREAM_END))
@@ -715,13 +735,17 @@ static void brotli(const char * buffer, const size_t size, const awh::hash_t::ev
 			vector <uint8_t> data(CHUNK_BUFFER_SIZE, 0);
 			// Получаем бинарный буфер входящих данных
 			const uint8_t * nextInput = reinterpret_cast <const uint8_t *> (buffer);
-			// Определяем событие выполнения операции
+			/**
+			 * Определяем событие выполнения операции
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если необходимо выполнить компрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
 					// Инициализируем стейт энкодера Brotli
 					BrotliEncoderState * encoder = ::BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
-					// Выполняем сжатие данных
+					/**
+					 * Выполняем сжатие данных
+					 */
 					while(!::BrotliEncoderIsFinished(encoder)){
 						// Получаем размер буфера закодированных бинарных данных
 						size_t sizeOutput = data.size();
@@ -752,7 +776,9 @@ static void brotli(const char * buffer, const size_t size, const awh::hash_t::ev
 					BrotliDecoderResult rbr = BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT;
 					// Инициализируем стейт декодера Brotli
 					BrotliDecoderState * decoder = ::BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
-					// Если декодеру есть с чем работать
+					/**
+					 * Если декодеру есть с чем работать
+					 */
 					while(rbr == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT){
 						// Получаем размер буфера декодированных бинарных данных
 						size_t sizeOutput = data.size();
@@ -815,7 +841,9 @@ static void lz4(const char * buffer, const size_t size, const uint32_t level, co
 		try {
 			// Выполняем очистку блока с результатом
 			result.clear();
-			// Определяем событие выполнения операции
+			/**
+			 * Определяем событие выполнения операции
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если необходимо выполнить компрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
@@ -909,7 +937,9 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 		try {
 			// Выполняем очистку блока с результатом
 			result.clear();
-			// Определяем событие выполнения операции
+			/**
+			 * Определяем событие выполнения операции
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если необходимо выполнить компрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
@@ -943,13 +973,17 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					const auto data = std::make_unique <char []> (length);
 					// Выполняем создание буфера исходящих данных
 					ZSTD_outBuffer output = {data.get(), length, 0};
-					// Выполняем обработку всех входящих данных
+					/**
+					 * Выполняем обработку всех входящих данных
+					 */
 					while(offset < size){
 						// Определяем актуальный размер данных
 						actual = (((size - offset) > static_cast <size_t> (::ZSTD_CStreamInSize())) ? static_cast <size_t> (::ZSTD_CStreamInSize()) : (size - offset));
 						// Выполняем создание буфера данных для входящих сжатых данных
 						ZSTD_inBuffer input = {buffer + offset, actual, 0};
-						// Выполняем обработку до тех пор пока все не обработаем
+						/**
+						 * Выполняем обработку до тех пор пока все не обработаем
+						 */
 						while(input.pos < input.size){
 							// Сбрасываем позицию буфера
 							output.pos = 0;
@@ -1050,13 +1084,17 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					const auto data = std::make_unique <char []> (length);
 					// Выполняем создание буфера исходящих данных
 					ZSTD_outBuffer output = {data.get(), length, 0};
-					// Выполняем обработку всех входящих данных
+					/**
+					 * Выполняем обработку всех входящих данных
+					 */
 					while(offset < size){
 						// Определяем актуальный размер данных
 						actual = (((size - offset) > static_cast <size_t> (::ZSTD_DStreamInSize())) ? static_cast <size_t> (::ZSTD_DStreamInSize()) : (size - offset));
 						// Выполняем создание буфера данных для входящих сжатых данных
 						ZSTD_inBuffer input = {buffer + offset, actual, 0};
-						// Выполняем обработку до тех пор пока все не обработаем
+						/**
+						 * Выполняем обработку до тех пор пока все не обработаем
+						 */
 						while(input.pos < input.size){
 							// Сбрасываем позицию буфера
 							output.pos = 0;
@@ -1144,7 +1182,9 @@ static void gzip(const char * buffer, const size_t size, const uint32_t level, c
 			z_stream zs;
 			// Заполняем его нулями
 			::memset(&zs, 0, sizeof(zs));
-			// Определяем событие выполнения операции
+			/**
+			 * Определяем событие выполнения операции
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если необходимо выполнить компрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
@@ -1172,7 +1212,9 @@ static void gzip(const char * buffer, const size_t size, const uint32_t level, c
 							if((rv != Z_OK) && (rv != Z_STREAM_END))
 								// Выходим из цикла
 								break;
-						// Если данные ещё не сжаты
+						/**
+						 * Если данные ещё не сжаты
+						 */
 						} while(rv == Z_OK);
 					}
 					// Если данные обработаны удачно
@@ -1219,7 +1261,9 @@ static void gzip(const char * buffer, const size_t size, const uint32_t level, c
 							if(rv == Z_STREAM_END)
 								// Выходим из цикла
 								break;
-						// Если данные ещё не извлечены
+						/**
+						 * Если данные ещё не извлечены
+						 */
 						} while(rv == Z_OK);
 					}
 					// Если данные обработаны удачно
@@ -1278,7 +1322,9 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
 			zs.opaque = Z_NULL;
 			// Буфер выходных данных
 			vector <Bytef> tmp(size, 0);
-			// Определяем событие выполнения операции
+			/**
+			 * Определяем событие выполнения операции
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если необходимо выполнить компрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
@@ -1324,7 +1370,9 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
 								result.insert(result.end(), tmp.begin(), tmp.begin() + (static_cast <uint32_t> (tmp.size()) - (!takeOver ? zs.avail_out : stream.avail_out)));
 							// Если данные не могут быть обработанны, то выходим
 							else break;
-						// Если ещё не все данные сжаты
+						/**
+						 * Если ещё не все данные сжаты
+						 */
 						} while(rv != Z_STREAM_END);
 						// Закрываем поток
 						if(!takeOver)
@@ -1376,7 +1424,9 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
 								result.insert(result.end(), tmp.begin(), tmp.begin() + (static_cast <uint32_t> (tmp.size()) - (!takeOver ? zs.avail_out : stream.avail_out)));
 							// Если данные не могут быть обработанны, то выходим
 							else break;
-						// Если ещё не все данные извлечены
+						/**
+						 * Если ещё не все данные извлечены
+						 */
 						} while(rv != Z_STREAM_END);
 						// Очищаем выделенную память для декомпрессора
 						if(!takeOver)
@@ -1405,7 +1455,9 @@ bool awh::Hash::cipher(const cipher_t cipher) noexcept {
 	vector <u_char> iv, key;
 	// Создаем тип шифрования
 	const EVP_CIPHER * evp = EVP_enc_null();
-	// Определяем длину шифрования
+	/**
+	 * Определяем длину шифрования
+	 */
 	switch(static_cast <uint16_t> (cipher)){
 		// Устанавливаем шифрование в 128
 		case static_cast <uint16_t> (cipher_t::AES128): {
@@ -1586,7 +1638,9 @@ void awh::Hash::hmac(const string & key, const string & text, const type_t type,
 void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем тип шифрования
+		/**
+		 * Определяем тип шифрования
+		 */
 		switch(static_cast <uint8_t> (cipher)){
 			// Если производится работы с BASE64
 			case static_cast <uint8_t> (hash_t::cipher_t::BASE64): {
@@ -1632,7 +1686,9 @@ void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t ci
 void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем тип шифрования
+		/**
+		 * Определяем тип шифрования
+		 */
 		switch(static_cast <uint8_t> (cipher)){
 			// Если производится работы с BASE64
 			case static_cast <uint8_t> (hash_t::cipher_t::BASE64): {
@@ -1678,7 +1734,9 @@ void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t ci
 void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t cipher, string & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем тип шифрования
+		/**
+		 * Определяем тип шифрования
+		 */
 		switch(static_cast <uint8_t> (cipher)){
 			// Если производится работы с BASE64
 			case static_cast <uint8_t> (hash_t::cipher_t::BASE64): {
@@ -1724,7 +1782,9 @@ void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t ci
 void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем тип шифрования
+		/**
+		 * Определяем тип шифрования
+		 */
 		switch(static_cast <uint8_t> (cipher)){
 			// Если производится работы с BASE64
 			case static_cast <uint8_t> (hash_t::cipher_t::BASE64): {
@@ -1770,7 +1830,9 @@ void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t ci
 void awh::Hash::compress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем метод компрессии данных
+		/**
+		 * Определяем метод компрессии данных
+		 */
 		switch(static_cast <uint8_t> (method)){
 			// Если метод компрессии установлен Lz4
 			case static_cast <uint8_t> (method_t::LZ4): {
@@ -1854,7 +1916,9 @@ void awh::Hash::compress(const char * buffer, const size_t size, const method_t 
 void awh::Hash::compress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем метод компрессии данных
+		/**
+		 * Определяем метод компрессии данных
+		 */
 		switch(static_cast <uint8_t> (method)){
 			// Если метод компрессии установлен Lz4
 			case static_cast <uint8_t> (method_t::LZ4): {
@@ -1938,7 +2002,9 @@ void awh::Hash::compress(const char * buffer, const size_t size, const method_t 
 void awh::Hash::decompress(const char * buffer, const size_t size, const method_t method, string & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем метод декомпрессии данных
+		/**
+		 * Определяем метод декомпрессии данных
+		 */
 		switch(static_cast <uint8_t> (method)){
 			// Если метод декомпрессии установлен Lz4
 			case static_cast <uint8_t> (method_t::LZ4): {
@@ -2022,7 +2088,9 @@ void awh::Hash::decompress(const char * buffer, const size_t size, const method_
 void awh::Hash::decompress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем метод декомпрессии данных
+		/**
+		 * Определяем метод декомпрессии данных
+		 */
 		switch(static_cast <uint8_t> (method)){
 			// Если метод декомпрессии установлен Lz4
 			case static_cast <uint8_t> (method_t::LZ4): {
@@ -2123,7 +2191,9 @@ void awh::Hash::round(const int32_t round) noexcept {
  * @param level уровень компрессии
  */
 void awh::Hash::level(const level_t level) noexcept {
-	// Определяем переданный уровень компрессии
+	/**
+	 * Определяем переданный уровень компрессии
+	 */
 	switch(static_cast <uint8_t> (level)){
 		// Выполняем установку максимального уровня компрессии
 		case static_cast <uint8_t> (level_t::BEST): {
@@ -2195,13 +2265,13 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Выходим из приложения
 				::raise(SIGINT);
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				// Выходим из приложения
@@ -2237,13 +2307,13 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Выходим из приложения
 				::raise(SIGINT);
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				// Выходим из приложения

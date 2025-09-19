@@ -27,12 +27,11 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
-#include <functional>
 #include <unordered_set>
 #include <unordered_map>
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	#define SOCKET int32_t
@@ -40,13 +39,13 @@
 #endif
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	#include <netdb.h>

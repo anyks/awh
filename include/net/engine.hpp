@@ -47,7 +47,7 @@
 #include <sys/types.h>
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	#include <sys/un.h>
@@ -225,7 +225,7 @@ namespace awh {
 					const log_t * _log;
 				private:
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Объект данных запроса

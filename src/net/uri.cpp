@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * clear Метод очистки
+ * @brief Метод очистки
+ *
  */
 void awh::URI::URL::clear() noexcept {
 	// Выполняем сброс порта
@@ -70,7 +71,8 @@ void awh::URI::URL::clear() noexcept {
 	vector <decltype(this->params)::value_type> ().swap(this->params);
 }
 /**
- * empty Метод проверки на существование данных
+ * @brief Метод проверки на существование данных
+ *
  * @return результат проверки
  */
 bool awh::URI::URL::empty() const noexcept {
@@ -83,7 +85,8 @@ bool awh::URI::URL::empty() const noexcept {
 	);
 }
 /**
- * Оператор [=] перемещения параметров URL-адреса
+ * @brief Оператор [=] перемещения параметров URL-адреса
+ *
  * @param url объект URL-адреса для получения параметров
  * @return    параметры URL-адреса
  */
@@ -191,7 +194,8 @@ awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] присванивания параметров URL-адреса
+ * @brief Оператор [=] присванивания параметров URL-адреса
+ *
  * @param url объект URL-адреса для получения параметров
  * @return    параметры URL-адреса
  */
@@ -299,7 +303,8 @@ awh::URI::URL & awh::URI::URL::operator = (const url_t & url) noexcept {
 	return (* this);
 }
 /**
- * Оператор сравнения
+ * @brief Оператор сравнения
+ *
  * @param url параметры URL-адреса
  * @return    результат сравнения
  */
@@ -352,7 +357,8 @@ bool awh::URI::URL::operator == (const url_t & url) noexcept {
 	return result;
 }
 /**
- * URL Конструктор перемещения
+ * @brief Конструктор перемещения
+ *
  * @param url параметры URL-адреса
  */
 awh::URI::URL::URL(url_t && url) noexcept {
@@ -457,7 +463,8 @@ awh::URI::URL::URL(url_t && url) noexcept {
 	}
 }
 /**
- * URL Конструктор копирования
+ * @brief Конструктор копирования
+ *
  * @param url параметры URL-адреса
  */
 awh::URI::URL::URL(const url_t & url) noexcept {
@@ -562,14 +569,16 @@ awh::URI::URL::URL(const url_t & url) noexcept {
 	}
 }
 /**
- * URL Конструктор
+ * @brief Конструктор
+ *
  */
 awh::URI::URL::URL() noexcept :
  port(0), family(AF_INET), ip{""}, host{""},
  user{""}, pass{""}, domain{""}, schema{""},
  anchor{""}, callback(nullptr) {}
 /**
- * parse Метод получения параметров URL-запроса
+ * @brief Метод получения параметров URL-запроса
+ *
  * @param url строка URL-запроса для получения параметров
  * @return    параметры URL-запроса
  */
@@ -657,7 +666,9 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 				if(i != uri.end()){
 					// Выполняем извлечение хоста запроса
 					result.host = ::move(i->second);
-					// Определяем тип домена
+					/**
+					 * Определяем тип домена
+					 */
 					switch(static_cast <uint8_t> (this->_net.host(result.host))){
 						// Если домен является адресом в файловой системе
 						case static_cast <uint8_t> (net_t::type_t::FS):
@@ -718,7 +729,8 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 	return result;
 }
 /**
- * etag Метод генерации ETag хэша текста
+ * @brief Метод генерации ETag хэша текста
+ *
  * @param text текст для перевода в строку
  * @return     хэш etag
  */
@@ -765,7 +777,8 @@ string awh::URI::etag(const string & text) const noexcept {
 	return result;
 }
 /**
- * encode Метод кодирования строки в URL-адресе
+ * @brief Метод кодирования строки в URL-адресе
+ *
  * @param text строка текста для кодирования
  * @return     результат кодирования
  */
@@ -829,7 +842,8 @@ string awh::URI::encode(const string & text) const noexcept {
 	return result;
 }
 /**
- * decode Метод декодирования строки в URL-адресе
+ * @brief Метод декодирования строки в URL-адресе
+ *
  * @param text строка текста для декодирования
  * @return     результат декодирования
  */
@@ -899,7 +913,8 @@ string awh::URI::decode(const string & text) const noexcept {
 	return result;
 }
 /**
- * url Метод создания строки URL-запросы из параметров
+ * @brief Метод создания строки URL-запросы из параметров
+ *
  * @param url параметры URL-запроса
  * @return    URL-запрос в виде строки
  */
@@ -924,7 +939,9 @@ string awh::URI::url(const url_t & url) const noexcept {
 				string host = url.domain, auth = "";
 				// Если хост не существует
 				if(host.empty()){
-					// Определяем тип хоста
+					/**
+					 * Определяем тип хоста
+					 */
 					switch(url.family){
 						// Если мы получили IPv4
 						case AF_INET: host = url.ip; break;
@@ -938,7 +955,9 @@ string awh::URI::url(const url_t & url) const noexcept {
 					auth = (!url.pass.empty() ? this->_fmk->format("%s:%s@", url.user.c_str(), url.pass.c_str()) : this->_fmk->format("%s@", url.user.c_str()));
 				// Порт сервера для URL-запроса
 				uint32_t port = url.port;
-				// Определяем указанный порт
+				/**
+				 * Определяем указанный порт
+				 */
 				switch(port){
 					// Если указан 25 порт
 					case 25:
@@ -988,7 +1007,8 @@ string awh::URI::url(const url_t & url) const noexcept {
 	return result;
 }
 /**
- * query Метод создания строки запроса из параметров
+ * @brief Метод создания строки запроса из параметров
+ *
  * @param url параметры URL-запроса
  * @return    URL-запрос в виде строки
  */
@@ -1034,7 +1054,8 @@ string awh::URI::query(const url_t & url) const noexcept {
 	return result;
 }
 /**
- * origin Метод создания заголовка [origin], для HTTP запроса
+ * @brief Метод создания заголовка [origin], для HTTP запроса
+ *
  * @param url параметры URL-запроса
  * @return    заголовок [origin]
  */
@@ -1051,7 +1072,9 @@ string awh::URI::origin(const url_t & url) const noexcept {
 			string host = url.domain;
 			// Если IP-адрес существует
 			if(host.empty()){
-				// Определяем тип хоста
+				/**
+				 * Определяем тип хоста
+				 */
 				switch(url.family){
 					// Если мы получили IPv4
 					case AF_INET: host = url.ip; break;
@@ -1061,7 +1084,9 @@ string awh::URI::origin(const url_t & url) const noexcept {
 			}
 			// Порт сервера для URL-запроса
 			uint32_t port = url.port;
-			// Определяем указанный порт
+			/**
+			 * Определяем указанный порт
+			 */
 			switch(port){
 				// Если указан 25 порт
 				case 25:
@@ -1108,7 +1133,8 @@ string awh::URI::origin(const url_t & url) const noexcept {
 	return result;
 }
 /**
- * create Метод создания полного адреса
+ * @brief Метод создания полного адреса
+ *
  * @param dest адрес места назначения
  * @param src  исходный адрес для объединения
  */
@@ -1187,7 +1213,8 @@ void awh::URI::create(url_t & dest, const url_t & src) const noexcept {
 	}
 }
 /**
- * combine Метод комбинации двух адресов
+ * @brief Метод комбинации двух адресов
+ *
  * @param dest адрес места назначения
  * @param src  исходный адрес для объединения
  */
@@ -1264,7 +1291,8 @@ void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
 	}
 }
 /**
- * append Метод добавления к URL адресу параметров запроса
+ * @brief Метод добавления к URL адресу параметров запроса
+ *
  * @param url    параметры URL-запроса
  * @param params параметры для добавления
  */
@@ -1324,7 +1352,8 @@ void awh::URI::append(url_t & url, const string & params) const noexcept {
 	}
 }
 /**
- * concat Объединение двух адресов путём создания третьего
+ * @brief Объединение двух адресов путём создания третьего
+ *
  * @param dest адрес назначения
  * @param src  исходный адрес для объединения
  * @return     результирующий адрес
@@ -1338,7 +1367,8 @@ awh::URI::URL awh::URI::concat(const url_t & dest, const url_t & src) const noex
 	return result;
 }
 /**
- * split Метод сплита URI на составные части
+ * @brief Метод сплита URI на составные части
+ *
  * @param uri строка URI для сплита
  * @return    список полученных частей URI
  */
@@ -1361,7 +1391,9 @@ std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const no
 					for(size_t i = 0; i < match.size(); i++){
 						// Если запись получена
 						if(!match[i].empty()){
-							// Определяем тип записи
+							/**
+							 * Определяем тип записи
+							 */
 							switch(i){
 								// Если типом записи является доменным именем
 								case 4: result.emplace(flag_t::HOST, match[i]); break;
@@ -1421,7 +1453,9 @@ std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const no
 									break;
 								}
 							}
-							// Определяем тип записи
+							/**
+							 * Определяем тип записи
+							 */
 							switch(i){
 								// Если типом записи является доменным именем
 								case 2: result.emplace(flag_t::HOST, match[i]); break;
@@ -1452,7 +1486,9 @@ std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const no
 									result.emplace(flag_t::PORT, data);
 								// Иначе если хост не установлен
 								else if(result.count(flag_t::HOST) < 1) {
-									// Определяем тип домена
+									/**
+									 * Определяем тип домена
+									 */
 									switch(static_cast <uint8_t> (this->_net.host(data))){
 										// Если мы получили IP-адрес сети IPv4
 										case static_cast <uint8_t> (net_t::type_t::IPV4):
@@ -1607,13 +1643,14 @@ std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const no
 	return result;
 }
 /**
- * splitParams Метод выполнения сплита параметров URI
+ * @brief Метод выполнения сплита параметров URI
+ *
  * @param uri строка URI для сплита
  * @return    параметры полученные при сплите
  */
-vector <pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
+vector <std::pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
 	// Результат работы функции
-	vector <pair <string, string>> result;
+	vector <std::pair <string, string>> result;
 	// Если URI передано
 	if(!uri.empty()){
 		/**
@@ -1683,7 +1720,8 @@ vector <pair <string, string>> awh::URI::splitParams(const string & uri) const n
 	return result;
 }
 /**
- * splitPath Метод выполнения сплита пути
+ * @brief Метод выполнения сплита пути
+ *
  * @param path  путь для выполнения сплита
  * @param delim сепаратор-разделитель для сплита
  * @return      список параметров пути
@@ -1711,7 +1749,9 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 			for(size_t i = 0; i < path.length(); i++){
 				// Получаем текущее смещение в текстовом буфере
 				offset = (path.c_str() + i);
-				// Определяем текущий символ
+				/**
+				 * Определяем текущий символ
+				 */
 				switch(offset[0]){
 					// Если символом является знак процента %
 					case '%': {
@@ -1774,11 +1814,12 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 	return result;
 }
 /**
- * joinParams Метод сборки параметров URI
+ * @brief Метод сборки параметров URI
+ *
  * @param uri параметры URI для сборки
  * @return    строка полученная при сборке параметров URI
  */
-string awh::URI::joinParams(const vector <pair <string, string>> & uri) const noexcept {
+string awh::URI::joinParams(const vector <std::pair <string, string>> & uri) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если параметры URI переданы
@@ -1825,7 +1866,8 @@ string awh::URI::joinParams(const vector <pair <string, string>> & uri) const no
 	return result;
 }
 /**
- * joinPath Метод сборки пути запроса
+ * @brief Метод сборки пути запроса
+ *
  * @param path  список параметров пути запроса
  * @param delim сепаратор-разделитель для сплита
  * @return      строка собранного пути
@@ -1873,7 +1915,8 @@ string awh::URI::joinPath(const vector <string> & path, const char delim) const 
 	return result;
 }
 /**
- * params Метод получения параметров URI
+ * @brief Метод получения параметров URI
+ *
  * @param uri    URI для получения параметров
  * @param schema протокол передачи данных
  * @return       параметры полученные из URI
@@ -1989,7 +2032,8 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 	return result;
 }
 /**
- * Оператор [=] получения параметров URL-запроса
+ * @brief Оператор [=] получения параметров URL-запроса
+ *
  * @param url строка URL-запроса для получения параметров
  * @return    параметры URL-запроса
  */
@@ -1998,7 +2042,8 @@ awh::URI::url_t awh::URI::operator = (const string & url) const noexcept {
 	return this->parse(url);
 }
 /**
- * Оператор [=] создания строки URL-запросы из параметров
+ * @brief Оператор [=] создания строки URL-запросы из параметров
+ *
  * @param url параметры URL-запроса
  * @return    URL-запрос в виде строки
  */
@@ -2007,7 +2052,8 @@ string awh::URI::operator = (const url_t & url) const noexcept {
 	return this->url(url);
 }
 /**
- * URI Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -2024,7 +2070,8 @@ awh::URI::URI(const fmk_t * fmk, const log_t * log) noexcept : _net(log), _hash(
 	this->_params = this->_regexp.build("^(?:(?:(.+)\\:)?(?:(.+)\\@))?((?:[^\\:]+|(?:\\[?(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]?)))(?:\\:(\\d+))?$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 }
 /**
- * Оператор [<<] вывода в поток IP адреса
+ * @brief Оператор [<<] вывода в поток IP адреса
+ *
  * @param os  поток куда нужно вывести данные
  * @param url параметры URL-запроса
  */

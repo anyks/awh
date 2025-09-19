@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * proto Метод извлечения поддерживаемого протокола подключения
+ * @brief Метод извлечения поддерживаемого протокола подключения
+ *
  * @param bid идентификатор брокера
  * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
  */
@@ -32,7 +33,8 @@ awh::engine_t::proto_t awh::server::AWH::proto(const uint64_t bid) const noexcep
 	return this->_http.proto(bid);
 }
 /**
- * parser Метод извлечения объекта HTTP-парсера
+ * @brief Метод извлечения объекта HTTP-парсера
+ *
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @return    объект HTTP-парсера
@@ -42,7 +44,8 @@ const awh::http_t * awh::server::AWH::parser(const int32_t sid, const uint64_t b
 	return this->_http.parser(sid, bid);
 }
 /**
- * trailers Метод получения запроса на передачу трейлеров
+ * @brief Метод получения запроса на передачу трейлеров
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор потока
  * @return    флаг запроса клиентом передачи трейлеров
@@ -52,7 +55,8 @@ bool awh::server::AWH::trailers(const int32_t sid, const uint64_t bid) const noe
 	return this->_http.trailers(sid, bid);
 }
 /**
- * trailer Метод установки трейлера
+ * @brief Метод установки трейлера
+ *
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @param key ключ заголовка
@@ -63,7 +67,8 @@ void awh::server::AWH::trailer(const int32_t sid, const uint64_t bid, const stri
 	this->_http.trailer(sid, bid, key, val);
 }
 /**
- * init Метод инициализации WEB-сервера
+ * @brief Метод инициализации WEB-сервера
+ *
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
@@ -72,7 +77,8 @@ void awh::server::AWH::init(const string & socket, const vector <http_t::compres
 	this->_http.init(socket, compressors);
 }
 /**
- * init Метод инициализации WEB-сервера
+ * @brief Метод инициализации WEB-сервера
+ *
  * @param port        порт сервера
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
@@ -82,7 +88,8 @@ void awh::server::AWH::init(const uint32_t port, const string & host, const vect
 	this->_http.init(port, host, compressors);
 }
 /**
- * sendError Метод отправки сообщения об ошибке
+ * @brief Метод отправки сообщения об ошибке
+ *
  * @param bid  идентификатор брокера
  * @param mess отправляемое сообщение об ошибке
  */
@@ -91,7 +98,8 @@ void awh::server::AWH::sendError(const uint64_t bid, const ws::mess_t & mess) no
 	this->_http.sendError(bid, mess);
 }
 /**
- * sendMessage Метод отправки сообщения клиенту
+ * @brief Метод отправки сообщения клиенту
+ *
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
@@ -102,7 +110,8 @@ bool awh::server::AWH::sendMessage(const uint64_t bid, const vector <char> & mes
 	return this->_http.sendMessage(bid, message, text);
 }
 /**
- * sendMessage Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param size    размер передаваемого сообещния
@@ -114,7 +123,8 @@ bool awh::server::AWH::sendMessage(const uint64_t bid, const char * message, con
 	return this->_http.sendMessage(bid, message, size, text);
 }
 /**
- * send Метод отправки данных в бинарном виде клиенту
+ * @brief Метод отправки данных в бинарном виде клиенту
+ *
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
  * @param size   размер сообщения в байтах
@@ -125,7 +135,8 @@ bool awh::server::AWH::send(const uint64_t bid, const char * buffer, const size_
 	return this->_http.send(bid, buffer, size);
 }
 /**
- * send Метод отправки тела сообщения на клиенту
+ * @brief Метод отправки тела сообщения на клиенту
+ *
  * @param sid    идентификатор потока HTTP
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых клиенту
@@ -138,7 +149,8 @@ bool awh::server::AWH::send(const int32_t sid, const uint64_t bid, const char * 
 	return this->_http.send(sid, bid, buffer, size, end);
 }
 /**
- * send Метод отправки заголовков на клиенту
+ * @brief Метод отправки заголовков на клиенту
+ *
  * @param sid     идентификатор потока HTTP
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
@@ -152,7 +164,8 @@ int32_t awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint
 	return this->_http.send(sid, bid, code, mess, headers, end);
 }
 /**
- * send Метод отправки сообщения брокеру
+ * @brief Метод отправки сообщения брокеру
+ *
  * @param sid     идентификатор потока HTTP
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
@@ -166,7 +179,8 @@ void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_
 	this->_http.send(sid, bid, code, mess, buffer, size, headers);
 }
 /**
- * send Метод отправки сообщения брокеру
+ * @brief Метод отправки сообщения брокеру
+ *
  * @param sid     идентификатор потока HTTP
  * @param bid     идентификатор брокера
  * @param code    код сообщения для брокера
@@ -179,7 +193,8 @@ void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_
 	this->_http.send(sid, bid, code, mess, entity, headers);
 }
 /**
- * shutdown2 Метод HTTP/2 отправки клиенту сообщения корректного завершения
+ * @brief Метод HTTP/2 отправки клиенту сообщения корректного завершения
+ *
  * @param bid идентификатор брокера
  * @return    результат выполнения операции
  */
@@ -188,7 +203,8 @@ bool awh::server::AWH::shutdown2(const uint64_t bid) noexcept {
 	return this->_http.shutdown2(bid);
 }
 /**
- * reject2 Метод HTTP/2 выполнения сброса подключения
+ * @brief Метод HTTP/2 выполнения сброса подключения
+ *
  * @param sid   идентификатор потока
  * @param bid   идентификатор брокера
  * @param error код отправляемой ошибки
@@ -199,7 +215,8 @@ bool awh::server::AWH::reject2(const int32_t sid, const uint64_t bid, const awh:
 	return this->_http.reject2(sid, bid, error);
 }
 /**
- * goaway2 Метод HTTP/2 отправки сообщения закрытия всех потоков
+ * @brief Метод HTTP/2 отправки сообщения закрытия всех потоков
+ *
  * @param last   идентификатор последнего потока
  * @param bid    идентификатор брокера
  * @param error  код отправляемой ошибки
@@ -212,18 +229,20 @@ bool awh::server::AWH::goaway2(const int32_t last, const uint64_t bid, const awh
 	return this->_http.goaway2(last, bid, error, buffer, size);
 }
 /**
- * send2 HTTP/2 Метод отправки трейлеров
+ * @brief HTTP/2 Метод отправки трейлеров
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept {
 	// Выполняем отправку трейлеров
 	return this->_http.send2(sid, bid, headers);
 }
 /**
- * send2 HTTP/2 Метод отправки сообщения клиенту
+ * @brief HTTP/2 Метод отправки сообщения клиенту
+ *
  * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых
@@ -236,31 +255,34 @@ bool awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const char *
 	return this->_http.send2(sid, bid, buffer, size, flag);
 }
 /**
- * send2 HTTP/2 Метод отправки заголовков
+ * @brief HTTP/2 Метод отправки заголовков
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::AWH::send2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку заголовков
 	return this->_http.send2(sid, bid, headers, flag);
 }
 /**
- * push2 HTTP/2 Метод отправки пуш-уведомлений
+ * @brief HTTP/2 Метод отправки пуш-уведомлений
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::AWH::push2(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::server::AWH::push2(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Выполняем отправку пуш-уведомлений
 	return this->_http.push2(sid, bid, headers, flag);
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::server::AWH::callback(const callback_t & callback) noexcept {
@@ -268,7 +290,8 @@ void awh::server::AWH::callback(const callback_t & callback) noexcept {
 	this->_http.callback(callback);
 }
 /**
- * port Метод получения порта подключения брокера
+ * @brief Метод получения порта подключения брокера
+ *
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
@@ -277,7 +300,8 @@ uint32_t awh::server::AWH::port(const uint64_t bid) const noexcept {
 	return this->_http.port(bid);
 }
 /**
- * agent Метод извлечения агента клиента
+ * @brief Метод извлечения агента клиента
+ *
  * @param bid идентификатор брокера
  * @return    агент к которому относится подключённый клиент
  */
@@ -286,7 +310,8 @@ awh::server::web_t::agent_t awh::server::AWH::agent(const uint64_t bid) const no
 	return this->_http.agent(bid);
 }
 /**
- * ip Метод получения IP-адреса брокера
+ * @brief Метод получения IP-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
@@ -295,7 +320,8 @@ const string & awh::server::AWH::ip(const uint64_t bid) const noexcept {
 	return this->_http.ip(bid);
 }
 /**
- * mac Метод получения MAC-адреса брокера
+ * @brief Метод получения MAC-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
@@ -304,21 +330,24 @@ const string & awh::server::AWH::mac(const uint64_t bid) const noexcept {
 	return this->_http.mac(bid);
 }
 /**
- * stop Метод остановки сервера
+ * @brief Метод остановки сервера
+ *
  */
 void awh::server::AWH::stop() noexcept {
 	// Выполняем остановку сервера
 	this->_http.stop();
 }
 /**
- * start Метод запуска сервера
+ * @brief Метод запуска сервера
+ *
  */
 void awh::server::AWH::start() noexcept {
 	// Выполняем запуск сервера
 	this->_http.start();
 }
 /**
- * close Метод закрытия подключения брокера
+ * @brief Метод закрытия подключения брокера
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::AWH::close(const uint64_t bid) noexcept {
@@ -326,7 +355,8 @@ void awh::server::AWH::close(const uint64_t bid) noexcept {
 	this->_http.close(bid);
 }
 /**
- * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+ * @brief Метод установки времени ожидания ответа WebSocket-клиента
+ *
  * @param sec время ожидания в секундах
  */
 void awh::server::AWH::waitPong(const uint16_t sec) noexcept {
@@ -334,7 +364,8 @@ void awh::server::AWH::waitPong(const uint16_t sec) noexcept {
 	this->_http.waitPong(sec);
 }
 /**
- * pingInterval Метод установки интервала времени выполнения пингов
+ * @brief Метод установки интервала времени выполнения пингов
+ *
  * @param sec интервал времени выполнения пингов в секундах
  */
 void awh::server::AWH::pingInterval(const uint16_t sec) noexcept {
@@ -342,7 +373,8 @@ void awh::server::AWH::pingInterval(const uint16_t sec) noexcept {
 	this->_http.pingInterval(sec);
 }
 /**
- * subprotocol Метод установки поддерживаемого сабпротокола
+ * @brief Метод установки поддерживаемого сабпротокола
+ *
  * @param subprotocol сабпротокол для установки
  */
 void awh::server::AWH::subprotocol(const string & subprotocol) noexcept {
@@ -350,7 +382,8 @@ void awh::server::AWH::subprotocol(const string & subprotocol) noexcept {
 	this->_http.subprotocol(subprotocol);
 }
 /**
- * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @brief Метод установки списка поддерживаемых сабпротоколов
+ *
  * @param subprotocols сабпротоколы для установки
  */
 void awh::server::AWH::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
@@ -358,7 +391,8 @@ void awh::server::AWH::subprotocols(const std::unordered_set <string> & subproto
 	this->_http.subprotocols(subprotocols);
 }
 /**
- * subprotocol Метод получения списка выбранных сабпротоколов
+ * @brief Метод получения списка выбранных сабпротоколов
+ *
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
@@ -367,7 +401,8 @@ const std::unordered_set <string> & awh::server::AWH::subprotocols(const uint64_
 	return this->_http.subprotocols(bid);
 }
 /**
- * extensions Метод установки списка расширений
+ * @brief Метод установки списка расширений
+ *
  * @param extensions список поддерживаемых расширений
  */
 void awh::server::AWH::extensions(const vector <vector <string>> & extensions) noexcept {
@@ -375,7 +410,8 @@ void awh::server::AWH::extensions(const vector <vector <string>> & extensions) n
 	this->_http.extensions(extensions);
 }
 /**
- * extensions Метод извлечения списка поддерживаемых расширений
+ * @brief Метод извлечения списка поддерживаемых расширений
+ *
  * @param bid идентификатор брокера
  * @return    список поддерживаемых расширений
  */
@@ -384,7 +420,8 @@ const vector <vector <string>> & awh::server::AWH::extensions(const uint64_t bid
 	return this->_http.extensions(bid);
 }
 /**
- * total Метод установки максимального количества одновременных подключений
+ * @brief Метод установки максимального количества одновременных подключений
+ *
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::AWH::total(const uint16_t total) noexcept {
@@ -392,7 +429,8 @@ void awh::server::AWH::total(const uint16_t total) noexcept {
 	this->_http.total(total);
 }
 /**
- * segmentSize Метод установки размеров сегментов фрейма
+ * @brief Метод установки размеров сегментов фрейма
+ *
  * @param size минимальный размер сегмента
  */
 void awh::server::AWH::segmentSize(const size_t size) noexcept {
@@ -400,7 +438,8 @@ void awh::server::AWH::segmentSize(const size_t size) noexcept {
 	this->_http.segmentSize(size);
 }
 /**
- * hosts Метод загрузки файла со списком хостов
+ * @brief Метод загрузки файла со списком хостов
+ *
  * @param filename адрес файла для загрузки
  */
 void awh::server::AWH::hosts(const string & filename) noexcept {
@@ -410,7 +449,8 @@ void awh::server::AWH::hosts(const string & filename) noexcept {
 		this->_dns.hosts(filename);
 }
 /**
- * compressors Метод установки списка поддерживаемых компрессоров
+ * @brief Метод установки списка поддерживаемых компрессоров
+ *
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::server::AWH::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
@@ -418,7 +458,8 @@ void awh::server::AWH::compressors(const vector <http_t::compressor_t> & compres
 	this->_http.compressors(compressors);
 }
 /**
- * keepAlive Метод установки жизни подключения
+ * @brief Метод установки жизни подключения
+ *
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
@@ -428,7 +469,8 @@ void awh::server::AWH::keepAlive(const int32_t cnt, const int32_t idle, const in
 	this->_http.keepAlive(cnt, idle, intvl);
 }
 /**
- * mode Метод установки флагов настроек модуля
+ * @brief Метод установки флагов настроек модуля
+ *
  * @param flags список флагов настроек модуля для установки
  */
 void awh::server::AWH::mode(const std::set <web_t::flag_t> & flags) noexcept {
@@ -436,7 +478,8 @@ void awh::server::AWH::mode(const std::set <web_t::flag_t> & flags) noexcept {
 	this->_http.mode(flags);
 }
 /**
- * addOrigin Метод добавления разрешённого источника
+ * @brief Метод добавления разрешённого источника
+ *
  * @param origin разрешённый источнико
  */
 void awh::server::AWH::addOrigin(const string & origin) noexcept {
@@ -444,7 +487,8 @@ void awh::server::AWH::addOrigin(const string & origin) noexcept {
 	this->_http.addOrigin(origin);
 }
 /**
- * setOrigin Метод установки списка разрешённых источников
+ * @brief Метод установки списка разрешённых источников
+ *
  * @param origins список разрешённых источников
  */
 void awh::server::AWH::setOrigin(const vector <string> & origins) noexcept {
@@ -452,7 +496,8 @@ void awh::server::AWH::setOrigin(const vector <string> & origins) noexcept {
 	this->_http.setOrigin(origins);
 }
 /**
- * addAltSvc Метод добавления альтернативного сервиса
+ * @brief Метод добавления альтернативного сервиса
+ *
  * @param origin название альтернативного сервиса
  * @param field  поле альтернативного сервиса
  */
@@ -461,7 +506,8 @@ void awh::server::AWH::addAltSvc(const string & origin, const string & field) no
 	this->_http.addAltSvc(origin, field);
 }
 /**
- * setAltSvc Метод установки списка разрешённых источников
+ * @brief Метод установки списка разрешённых источников
+ *
  * @param origins список альтернативных сервисов
  */
 void awh::server::AWH::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
@@ -469,7 +515,8 @@ void awh::server::AWH::setAltSvc(const std::unordered_multimap <string, string> 
 	this->_http.setAltSvc(origins);
 }
 /**
- * settings Модуль установки настроек протокола HTTP/2
+ * @brief Модуль установки настроек протокола HTTP/2
+ *
  * @param settings список настроек протокола HTTP/2
  */
 void awh::server::AWH::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
@@ -477,7 +524,8 @@ void awh::server::AWH::settings(const std::map <awh::http2_t::settings_t, uint32
 	this->_http.settings(settings);
 }
 /**
- * realm Метод установки название сервера
+ * @brief Метод установки название сервера
+ *
  * @param realm название сервера
  */
 void awh::server::AWH::realm(const string & realm) noexcept {
@@ -485,7 +533,8 @@ void awh::server::AWH::realm(const string & realm) noexcept {
 	this->_http.realm(realm);
 }
 /**
- * opaque Метод установки временного ключа сессии сервера
+ * @brief Метод установки временного ключа сессии сервера
+ *
  * @param opaque временный ключ сессии сервера
  */
 void awh::server::AWH::opaque(const string & opaque) noexcept {
@@ -493,7 +542,8 @@ void awh::server::AWH::opaque(const string & opaque) noexcept {
 	this->_http.opaque(opaque);
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param size размер чанка для установки
  */
 void awh::server::AWH::chunk(const size_t size) noexcept {
@@ -501,7 +551,8 @@ void awh::server::AWH::chunk(const size_t size) noexcept {
 	this->_http.chunk(size);
 }
 /**
- * maxRequests Метод установки максимального количества запросов
+ * @brief Метод установки максимального количества запросов
+ *
  * @param max максимальное количество запросов
  */
 void awh::server::AWH::maxRequests(const uint32_t max) noexcept {
@@ -509,7 +560,8 @@ void awh::server::AWH::maxRequests(const uint32_t max) noexcept {
 	this->_http.maxRequests(max);
 }
 /**
- * alive Метод установки долгоживущего подключения
+ * @brief Метод установки долгоживущего подключения
+ *
  * @param mode флаг долгоживущего подключения
  */
 void awh::server::AWH::alive(const bool mode) noexcept {
@@ -517,7 +569,8 @@ void awh::server::AWH::alive(const bool mode) noexcept {
 	this->_http.alive(mode);
 }
 /**
- * alive Метод установки долгоживущего подключения
+ * @brief Метод установки долгоживущего подключения
+ *
  * @param bid  идентификатор брокера
  * @param mode флаг долгоживущего подключения
  */
@@ -526,7 +579,8 @@ void awh::server::AWH::alive(const uint64_t bid, const bool mode) noexcept {
 	this->_http.alive(bid, mode);
 }
 /**
- * identity Метод установки идентичности протокола модуля
+ * @brief Метод установки идентичности протокола модуля
+ *
  * @param identity идентичность протокола модуля
  */
 void awh::server::AWH::identity(const http_t::identity_t identity) noexcept {
@@ -534,7 +588,8 @@ void awh::server::AWH::identity(const http_t::identity_t identity) noexcept {
 	this->_http.identity(identity);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param sec интервал времени в секундах
  */
 void awh::server::AWH::waitMessage(const uint16_t sec) noexcept {
@@ -542,7 +597,8 @@ void awh::server::AWH::waitMessage(const uint16_t sec) noexcept {
 	this->_http.waitMessage(sec);
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
@@ -551,7 +607,8 @@ void awh::server::AWH::waitTimeDetect(const uint16_t read, const uint16_t write)
 	this->_http.waitTimeDetect(read, write);
 }
 /**
- * ident Метод установки идентификации сервера
+ * @brief Метод установки идентификации сервера
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -561,7 +618,8 @@ void awh::server::AWH::ident(const string & id, const string & name, const strin
 	this->_http.ident(id, name, ver);
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
@@ -570,7 +628,8 @@ void awh::server::AWH::authType(const auth_t::type_t type, const auth_t::hash_t 
 	this->_http.authType(type, hash);
 }
 /**
- * crypted Метод получения флага шифрования
+ * @brief Метод получения флага шифрования
+ *
  * @param sid идентификатор потока HTTP
  * @param bid идентификатор брокера
  * @return    результат проверки
@@ -580,7 +639,8 @@ bool awh::server::AWH::crypted(const int32_t sid, const uint64_t bid) const noex
 	return this->_http.crypted(sid, bid);
 }
 /**
- * encrypt Метод активации шифрования для клиента
+ * @brief Метод активации шифрования для клиента
+ *
  * @param sid  идентификатор потока HTTP
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
@@ -590,7 +650,8 @@ void awh::server::AWH::encrypt(const int32_t sid, const uint64_t bid, const bool
 	this->_http.encrypt(sid, bid, mode);
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param mode флаг активации шифрования
  */
 void awh::server::AWH::encryption(const bool mode) noexcept {
@@ -598,7 +659,8 @@ void awh::server::AWH::encryption(const bool mode) noexcept {
 	this->_http.encryption(mode);
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
@@ -608,7 +670,8 @@ void awh::server::AWH::encryption(const string & pass, const string & salt, cons
 	this->_http.encryption(pass, salt, cipher);
 }
 /**
- * AWH Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами

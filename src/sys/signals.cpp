@@ -13,7 +13,7 @@
  */
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
@@ -42,7 +42,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Self Структура глобального объекта
+ * @brief Структура глобального объекта
+ *
  */
 static struct Self {
 	// Объект фреймворка
@@ -52,17 +53,19 @@ static struct Self {
 	// Функция обратного вызова при получении сигнала
 	function <void (const int32_t)> callback;
 	/**
-	 * Self Конструктор
+	 * @brief Конструктор
+	 *
 	 */
 	Self() noexcept : fmk(nullptr), log(nullptr), callback(nullptr) {}
 } self;
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
-	 * signalHandler Функция фильтр перехватчика сигналов
+	 * @brief Функция фильтр перехватчика сигналов
+	 *
 	 * @param signal номер сигнала полученного системой
 	 * @param info   объект информации полученный системой
 	 * @param ctx    передаваемый внутренний контекст
@@ -107,11 +110,12 @@ static struct Self {
 		}
 	}
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #else
 	/**
-	 * signalHandler Функция фильтр перехватчика сигналов
+	 * @brief Функция фильтр перехватчика сигналов
+	 *
 	 * @param signal номер сигнала полученного системой
 	 */
 	static void signalHandler(int32_t signal) noexcept {
@@ -123,7 +127,8 @@ static struct Self {
 #endif
 
 /**
- * callback Функция обратного вызова
+ * @brief Функция обратного вызова
+ *
  * @param sig идентификатор сигнала
  */
 void awh::Signals::callback(const int32_t sig) noexcept {
@@ -135,7 +140,8 @@ void awh::Signals::callback(const int32_t sig) noexcept {
 		this->_callback(sig);
 }
 /**
- * stop Метод остановки обработки сигналов
+ * @brief Метод остановки обработки сигналов
+ *
  */
 void awh::Signals::stop() noexcept {
 	// Если отслеживание сигналов уже запущено
@@ -143,7 +149,7 @@ void awh::Signals::stop() noexcept {
 		// Снимаем флаг запуска отслеживания сигналов
 		this->_mode = !this->_mode;
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Устанавливаем функцию перехвадчика событий
@@ -163,26 +169,27 @@ void awh::Signals::stop() noexcept {
 			::sigaction(SIGTERM, &this->_ev.sigTerm, nullptr);
 			::sigaction(SIGSEGV, &this->_ev.sigSegv, nullptr);
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#else
 			// Создаём обработчик сигнала для SIGINT
-			this->_ev.sigInt = signal(SIGINT, nullptr);
+			this->_ev.sigInt = ::signal(SIGINT, nullptr);
 			// Создаём обработчик сигнала для SIGFPE
-			this->_ev.sigFpe = signal(SIGFPE, nullptr);
+			this->_ev.sigFpe = ::signal(SIGFPE, nullptr);
 			// Создаём обработчик сигнала для SIGILL
-			this->_ev.sigIll = signal(SIGILL, nullptr);
+			this->_ev.sigIll = ::signal(SIGILL, nullptr);
 			// Создаём обработчик сигнала для SIGABRT
-			this->_ev.sigAbrt = signal(SIGABRT, nullptr);
+			this->_ev.sigAbrt = ::signal(SIGABRT, nullptr);
 			// Создаём обработчик сигнала для SIGTERM
-			this->_ev.sigTerm = signal(SIGTERM, nullptr);
+			this->_ev.sigTerm = ::signal(SIGTERM, nullptr);
 			// Создаём обработчик сигнала для SIGSEGV
-			this->_ev.sigSegv = signal(SIGSEGV, nullptr);
+			this->_ev.sigSegv = ::signal(SIGSEGV, nullptr);
 		#endif
 	}
 }
 /**
- * start Метод запуска обработки сигналов
+ * @brief Метод запуска обработки сигналов
+ *
  */
 void awh::Signals::start() noexcept {
 	// Если отслеживание сигналов ещё не запущено
@@ -190,7 +197,7 @@ void awh::Signals::start() noexcept {
 		// Устанавливаем флаг запуска отслеживания сигналов
 		this->_mode = !this->_mode;
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Выполняем игнорирование сигналов SIGPIPE
@@ -238,26 +245,27 @@ void awh::Signals::start() noexcept {
 			// Отправка сигнала для теста
 			// ::raise(SIGABRT);
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#else
 			// Создаём обработчик сигнала для SIGINT
-			this->_ev.sigInt = signal(SIGINT, signalHandler);
+			this->_ev.sigInt = ::signal(SIGINT, signalHandler);
 			// Создаём обработчик сигнала для SIGFPE
-			this->_ev.sigFpe = signal(SIGFPE, signalHandler);
+			this->_ev.sigFpe = ::signal(SIGFPE, signalHandler);
 			// Создаём обработчик сигнала для SIGILL
-			this->_ev.sigIll = signal(SIGILL, signalHandler);
+			this->_ev.sigIll = ::signal(SIGILL, signalHandler);
 			// Создаём обработчик сигнала для SIGABRT
-			this->_ev.sigAbrt = signal(SIGABRT, signalHandler);
+			this->_ev.sigAbrt = ::signal(SIGABRT, signalHandler);
 			// Создаём обработчик сигнала для SIGTERM
-			this->_ev.sigTerm = signal(SIGTERM, signalHandler);
+			this->_ev.sigTerm = ::signal(SIGTERM, signalHandler);
 			// Создаём обработчик сигнала для SIGSEGV
-			this->_ev.sigSegv = signal(SIGSEGV, signalHandler);
+			this->_ev.sigSegv = ::signal(SIGSEGV, signalHandler);
 		#endif
 	}
 }
 /**
- * on Метод установки функции обратного вызова, которая должна сработать при получении сигнала
+ * @brief Метод установки функции обратного вызова, которая должна сработать при получении сигнала
+ *
  * @param callback функция обратного вызова
  */
 void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
@@ -267,7 +275,8 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 	self.callback = std::bind(&sig_t::callback, this, _1);
 }
 /**
- * Signals Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -278,7 +287,8 @@ awh::Signals::Signals(const fmk_t * fmk, const log_t * log) noexcept : _mode(fal
 	self.log = log;
 }
 /**
- * ~Signals Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Signals::~Signals() noexcept {
 	// Останавливаем работу отслеживания событий

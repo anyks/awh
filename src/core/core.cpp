@@ -274,7 +274,9 @@ void awh::Core::Dispatch::rate(const uint8_t msec) noexcept {
  * @param callback функция обратного вызова
  */
 void awh::Core::Dispatch::on(const status_t status, function <void (const bool, const bool)> callback) noexcept {
-	// Определяем статус которому соответствует функции
+	/**
+	 * Определяем статус которому соответствует функции
+	 */
 	switch(static_cast <uint8_t> (status)){
 		// Если статус функции соответствует запуску базы событий
 		case static_cast <uint8_t> (status_t::START):
@@ -325,7 +327,9 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 void awh::Core::signal(const int32_t signal) noexcept {
 	// Если процесс является дочерним
 	if(this->_pid != ::getpid()){
-		// Определяем тип сигнала
+		/**
+		 * Определяем тип сигнала
+		 */
 		switch(signal){
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
@@ -612,7 +616,9 @@ void awh::Core::signalInterception(const scheme_t::mode_t mode) noexcept {
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
 	// Если флаг активации отличается
 	if(this->_signals != mode){
-		// Определяем флаг активации
+		/**
+		 * Определяем флаг активации
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если передан флаг активации перехвата сигналов
 			case static_cast <uint8_t> (scheme_t::mode_t::ENABLED): {

@@ -17,7 +17,7 @@
  * Linux:
  * # (где 0 и 0 - это UID и GID в операционной системе)
  * $ sysctl -w net.ipv4.ping_group_range="0 0"
- * 
+ *
  * FreeBSD:
  * # Нужно сменить владельца приложения на root и разрешить запуск остальным пользователям, где ./app/ping - ваше приложение
  * $ sudo chown root:wheel ./app/ping
@@ -36,7 +36,8 @@
 using namespace std;
 
 /**
- * host Метод извлечения хоста компьютера
+ * @brief Метод извлечения хоста компьютера
+ *
  * @param family семейство сокета (AF_INET / AF_INET6)
  * @return       хост компьютера с которого производится запрос
  */
@@ -45,7 +46,9 @@ string awh::Ping::host(const int32_t family) const noexcept {
 	string result = "";
 	// Список адресов сетевых карт
 	const vector <string> * network = nullptr;
-	// Определяем тип подключения
+	/**
+	 * Определяем тип подключения
+	 */
 	switch(family){
 		// Для протокола IPv4
 		case AF_INET:
@@ -97,7 +100,9 @@ string awh::Ping::host(const int32_t family) const noexcept {
 	}
 	// Если IP-адрес не установлен
 	if(result.empty()){
-		// Определяем тип подключения
+		/**
+		 * Определяем тип подключения
+		 */
 		switch(family){
 			// Для протокола IPv6
 			case AF_INET6: return "::";
@@ -109,7 +114,8 @@ string awh::Ping::host(const int32_t family) const noexcept {
 	return result;
 }
 /**
- * checksum Метод подсчёта контрольной суммы
+ * @brief Метод подсчёта контрольной суммы
+ *
  * @param buffer буфер данных для подсчёта
  * @param size   размер данных для подсчёта
  * @return       подсчитанная контрольная сумма
@@ -131,7 +137,9 @@ uint16_t awh::Ping::checksum(const void * buffer, const size_t size) noexcept {
 			sum = reinterpret_cast <const uint8_t *> (data)[length - 1];
 		// Делим длину байт пополам
 		length /= 2;
-		// Выполняем перебор буфера байт
+		/**
+		 *  Выполняем перебор буфера байт
+		 */
 		while(length--){
 			// Выполняем расчёт контрольной суммы
 			sum += * data++;
@@ -147,7 +155,8 @@ uint16_t awh::Ping::checksum(const void * buffer, const size_t size) noexcept {
 	return result;
 }
 /**
- * send Метод отправки запроса на сервер
+ * @brief Метод отправки запроса на сервер
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param index  индекс последовательности
  * @return       количество прочитанных байт
@@ -165,7 +174,9 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 		uniform_int_distribution <mt19937::result_type> dist6(0, numeric_limits <uint32_t>::max() - 1);
 		// Создаём объект заголовков
 		struct IcmpHeader icmp{};
-		// Определяем тип подключения
+		/**
+		 * Определяем тип подключения
+		 */
 		switch(family){
 			// Для протокола IPv4
 			case AF_INET:
@@ -202,12 +213,14 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 			if(result <= 0){
 				// Если сокет находится в блокирующем режиме
 				if(result < 0){
-					// Определяем тип ошибки
+					/**
+					 * Определяем тип ошибки
+					 */
 					switch(AWH_ERROR()){
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#if !_WIN32 && !_WIN64
 							// Если произведена неудачная запись в PIPE
@@ -225,7 +238,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 									this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
 							} break;
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#else
 							// Если произведён сброс подключения
@@ -252,12 +265,14 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 		} else if(result <= 0) {
 			// Если сокет находится в блокирующем режиме
 			if(result < 0){
-				// Определяем тип ошибки
+				/**
+				 * Определяем тип ошибки
+				 */
 				switch(AWH_ERROR()){
 					// Если ошибка не обнаружена, выходим
 					case 0: break;
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#if !_WIN32 && !_WIN64
 						// Если произведена неудачная запись в PIPE
@@ -275,7 +290,7 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 								this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
 						} break;
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#else
 						// Если произведён сброс подключения
@@ -320,7 +335,8 @@ int64_t awh::Ping::send(const int32_t family, const size_t index) noexcept {
 	return result;
 }
 /**
- * close Метод закрытия подключения
+ * @brief Метод закрытия подключения
+ *
  */
 void awh::Ping::close() noexcept {
 	// Если сетевой сокет не закрыт
@@ -328,13 +344,13 @@ void awh::Ping::close() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx);
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
-			closesocket(this->_sock);
+			::closesocket(this->_sock);
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
@@ -345,7 +361,8 @@ void awh::Ping::close() noexcept {
 	}
 }
 /**
- * cancel Метод остановки запущенной работы
+ * @brief Метод остановки запущенной работы
+ *
  */
 void awh::Ping::cancel() noexcept {
 	// Выполняем блокировку потока
@@ -359,7 +376,8 @@ void awh::Ping::cancel() noexcept {
 	}
 }
 /**
- * working Метод проверки запуска работы модуля
+ * @brief Метод проверки запуска работы модуля
+ *
  * @return результат работы
  */
 bool awh::Ping::working() const noexcept {
@@ -367,7 +385,8 @@ bool awh::Ping::working() const noexcept {
 	return this->_mode;
 }
 /**
- * ping Метод запуска пинга хоста в асинхронном режиме
+ * @brief Метод запуска пинга хоста в асинхронном режиме
+ *
  * @param host хост для выполнения пинга
  */
 void awh::Ping::ping(const string & host) noexcept {
@@ -432,7 +451,8 @@ void awh::Ping::ping(const string & host) noexcept {
 	}
 }
 /**
- * ping Метод запуска пинга хоста в синхронном режиме
+ * @brief Метод запуска пинга хоста в синхронном режиме
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param host   хост для выполнения пинга
  */
@@ -484,7 +504,8 @@ void awh::Ping::ping(const int32_t family, const string & host) noexcept {
 	}
 }
 /**
- * _work Метод запуска пинга IP-адреса в асинхронном режиме
+ * @brief Метод запуска пинга IP-адреса в асинхронном режиме
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param ip     адрес для выполнения пинга
  */
@@ -499,7 +520,9 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Получаем хост текущего компьютера
 			const string & host = this->host(family);
-			// Определяем тип подключения
+			/**
+			 * Определяем тип подключения
+			 */
 			switch(family){
 				// Для протокола IPv4
 				case AF_INET: {
@@ -532,13 +555,13 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					// Обнуляем серверную структуру
 					::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Создаём сокет подключения
 						this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Если пользователь является привилигированным
@@ -578,13 +601,13 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Создаём сокет подключения  (IPPROTO_ICMP6)
 						this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Если пользователь является привилигированным
@@ -632,7 +655,9 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 					// Выводим в лог сообщение
 					this->_log->print("Bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				}
-				// Выполняем отправку отправку запросов до тех пор пока не остановят
+				/**
+				 * Выполняем отправку отправку запросов до тех пор пока не остановят
+				 */
 				while(this->_mode){
 					// Запоминаем текущее значение времени в миллисекундах
 					const uint64_t mseconds = this->_chrono.timestamp(chrono_t::type_t::MILLISECONDS);
@@ -653,7 +678,9 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 						string label = "";
 						// Получаем аббревиатуру даты
 						const auto & abbr = this->_chrono.abbreviation(timeShifting);
-						// Определяем тип аббревиатуры
+						/**
+						 * Определяем тип аббревиатуры
+						 */
 						switch(static_cast <uint8_t> (abbr.first)){
 							// Если мы получили год
 							case static_cast <uint8_t> (chrono_t::type_t::YEAR):
@@ -721,7 +748,8 @@ void awh::Ping::_work(const int32_t family, const string & ip) noexcept {
 	}
 }
 /**
- * ping Метод запуска пинга хоста в синхронном режиме
+ * @brief Метод запуска пинга хоста в синхронном режиме
+ *
  * @param host  хост для выполнения пинга
  * @param count количество итераций
  * @return      количество миллисекунд ответа хоста
@@ -792,7 +820,8 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 	return result;
 }
 /**
- * ping Метод запуска пинга хоста в синхронном режиме
+ * @brief Метод запуска пинга хоста в синхронном режиме
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param host   хост для выполнения пинга
  * @param count  количество итераций
@@ -850,7 +879,8 @@ double awh::Ping::ping(const int32_t family, const string & host, const uint16_t
 	return result;
 }
 /**
- * _ping Метод запуска пинга IP-адреса в синхронном режиме
+ * @brief Метод запуска пинга IP-адреса в синхронном режиме
+ *
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param ip     адрес для выполнения пинга
  * @param count  количество итераций
@@ -869,7 +899,9 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Получаем хост текущего компьютера
 			const string & host = this->host(family);
-			// Определяем тип подключения
+			/**
+			 * Определяем тип подключения
+			 */
 			switch(family){
 				// Для протокола IPv4
 				case AF_INET: {
@@ -902,13 +934,13 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					// Обнуляем серверную структуру
 					::memset(&(reinterpret_cast <struct sockaddr_in *> (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Создаём сокет подключения
 						this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Если пользователь является привилигированным
@@ -948,13 +980,13 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					// Выполняем копирование объекта подключения сервера
 					::memcpy(&this->_peer.server, &server, this->_peer.size);
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Создаём сокет подключения (IPPROTO_ICMP6)
 						this->_sock = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Если пользователь является привилигированным
@@ -1013,7 +1045,9 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 						string label = "";
 						// Получаем аббревиатуру даты
 						const auto & abbr = this->_chrono.abbreviation(timeShifting);
-						// Определяем тип аббревиатуры
+						/**
+						 * Определяем тип аббревиатуры
+						 */
 						switch(static_cast <uint8_t> (abbr.first)){
 							// Если мы получили год
 							case static_cast <uint8_t> (chrono_t::type_t::YEAR):
@@ -1082,7 +1116,9 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 					string label = "";
 					// Получаем аббревиатуру даты
 					const auto & abbr = this->_chrono.abbreviation(result);
-					// Определяем тип аббревиатуры
+					/**
+					 * Определяем тип аббревиатуры
+					 */
 					switch(static_cast <uint8_t> (abbr.first)){
 						// Если мы получили год
 						case static_cast <uint8_t> (chrono_t::type_t::YEAR):
@@ -1139,7 +1175,8 @@ double awh::Ping::_ping(const int32_t family, const string & ip, const uint16_t 
 	return result;
 }
 /**
- * verbose Метод разрешающий/запрещающий выводить информационных сообщений
+ * @brief Метод разрешающий/запрещающий выводить информационных сообщений
+ *
  * @param mode флаг для установки
  */
 void awh::Ping::verbose(const bool mode) noexcept {
@@ -1149,7 +1186,8 @@ void awh::Ping::verbose(const bool mode) noexcept {
 	this->_verb = mode;
 }
 /**
- * shifting Метод установки сдвига по времени выполнения пинга в миллисекундах
+ * @brief Метод установки сдвига по времени выполнения пинга в миллисекундах
+ *
  * @param msec сдвиг по времени в миллисекундах
  */
 void awh::Ping::shifting(const uint64_t msec) noexcept {
@@ -1159,7 +1197,8 @@ void awh::Ping::shifting(const uint64_t msec) noexcept {
 	this->_shifting = msec;
 }
 /**
- * ns Метод добавления серверов DNS
+ * @brief Метод добавления серверов DNS
+ *
  * @param servers параметры DNS-серверов
  */
 void awh::Ping::ns(const vector <string> & servers) noexcept {
@@ -1172,7 +1211,8 @@ void awh::Ping::ns(const vector <string> & servers) noexcept {
 	}
 }
 /**
- * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ * @brief Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ *
  * @param network IP-адреса сетевых плат
  */
 void awh::Ping::network(const vector <string> & network) noexcept {
@@ -1236,7 +1276,8 @@ void awh::Ping::network(const vector <string> & network) noexcept {
 	}
 }
 /**
- * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ * @brief Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ *
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param network IP-адреса сетевых плат
  */
@@ -1251,7 +1292,9 @@ void awh::Ping::network(const int32_t family, const vector <string> & network) n
 			const lock_guard <std::recursive_mutex> lock(this->_mtx);
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
-				// Определяем тип передаваемого IP-адреса
+				/**
+				 * Определяем тип передаваемого IP-адреса
+				 */
 				switch(family){
 					// Если IP-адрес является IPv4 адресом
 					case static_cast <int32_t> (AF_INET):
@@ -1269,7 +1312,8 @@ void awh::Ping::network(const int32_t family, const vector <string> & network) n
 	}
 }
 /**
- * timeout Метод установки таймаутов в миллисекундах
+ * @brief Метод установки таймаутов в миллисекундах
+ *
  * @param read  таймаут на чтение
  * @param write таймаут на запись
  */
@@ -1282,7 +1326,8 @@ void awh::Ping::timeout(const uint32_t read, const uint32_t write) noexcept {
 	this->_timeoutWrite = write;
 }
 /**
- * on Метод установки функции обратного вызова, для работы в асинхронном режиме
+ * @brief Метод установки функции обратного вызова, для работы в асинхронном режиме
+ *
  * @param callback функция обратного вызова
  */
 void awh::Ping::on(function <void (const uint64_t, const string &, Ping *)> callback) noexcept {

@@ -23,14 +23,17 @@
 using namespace std;
 
 /**
- * debug Функция обратного вызова при получении отладочной информации
+ * @brief Функция обратного вызова при получении отладочной информации
+ *
  * @param format формат вывода отладочной информации
  * @param args   список аргументов отладочной информации
  */
 void awh::Http2::debug(const char * format, va_list args) noexcept {
 	// Буфер данных для логирования
 	string buffer(1024, '\0');
-	// Выполняем перебор всех аргументов
+	/**
+	 * Выполняем перебор всех аргументов
+	 */
 	while(true){
 		// Создаем список аргументов
 		va_list args2;
@@ -68,11 +71,23 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
 		// Завершаем список локальных аргументов
 		va_end(args2);
 	}
-	// Выводим отладочную информацию
-	std::cout << " \x1B[36m\x1B[1mDebug:\x1B[0m " << buffer << std::endl << std::flush;
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Выводим сообщение об ошибке
+		::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, buffer.c_str());
+	/**
+	* Если режим отладки не включён
+	*/
+	#else
+		// Выводим сообщение об ошибке
+		::fprintf(stderr, "Debug:%s\n\n", buffer.c_str());
+	#endif
 }
 /**
- * begin Функция обратного вызова активации получения фрейма заголовков
+ * @brief Функция обратного вызова активации получения фрейма заголовков
+ *
  * @param session объект сессии
  * @param frame   объект фрейма заголовков
  * @param ctx     передаваемый промежуточный контекст
@@ -83,7 +98,9 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("begin")){
-		// Выполняем определение типа фрейма
+		/**
+		 * Выполняем определение типа фрейма
+		 */
 		switch(frame->hd.type){
 			// Если мы получили входящие данные push-уведомления
 			case NGHTTP2_PUSH_PROMISE: {
@@ -106,7 +123,9 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 			case NGHTTP2_HEADERS: {
 				// Получаем объект родительского объекта
 				http2_t * self = reinterpret_cast <http2_t *> (ctx);
-				// Определяем идентификатор сервиса
+				/**
+				 * Определяем идентификатор сервиса
+				 */
 				switch(static_cast <uint8_t> (self->_mode)){
 					// Если сервис идентифицирован как клиент
 					case static_cast <uint8_t> (mode_t::CLIENT): {
@@ -150,7 +169,8 @@ int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nght
 	return 0;
 }
 /**
- * create Функция обратного вызова при создании фрейма
+ * @brief Функция обратного вызова при создании фрейма
+ *
  * @param session объект сессии
  * @param hd      параметры фрейма
  * @param ctx     передаваемый промежуточный контекст
@@ -161,7 +181,9 @@ int32_t awh::Http2::create([[maybe_unused]] nghttp2_session * session, const ngh
 	frame_t type = frame_t::NONE;
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
-	// Определяем тип фрейма
+	/**
+	 * Определяем тип фрейма
+	 */
 	switch(static_cast <uint8_t> (hd->type)){
 		// Если мы получили фрейм данных
 		case static_cast <uint8_t> (NGHTTP2_DATA):
@@ -250,7 +272,8 @@ int32_t awh::Http2::create([[maybe_unused]] nghttp2_session * session, const ngh
 	return 0;
 }
 /**
- * frameRecv Функция обратного вызова при получении фрейма
+ * @brief Функция обратного вызова при получении фрейма
+ *
  * @param session объект сессии
  * @param frame   объект фрейма заголовков
  * @param ctx     передаваемый промежуточный контекст
@@ -283,7 +306,9 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 		if(frame->hd.flags & NGHTTP2_FLAG_END_HEADERS)
 			// Выполняем установку флага
 			flags.emplace(flag_t::END_HEADERS);
-		// Определяем тип фрейма
+		/**
+		 * Определяем тип фрейма
+		 */
 		switch(static_cast <uint8_t> (frame->hd.type)){
 			// Если мы получили фрейм данных
 			case static_cast <uint8_t> (NGHTTP2_DATA):
@@ -369,7 +394,9 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 					if(sid == 0){
 						// Выполняем перебор всего списка записей
 						for(auto & record : self->_records){
-							// Выполняем перебор всего списка записей для которых есть неотправленные данные
+							/**
+							 * Выполняем перебор всего списка записей для которых есть неотправленные данные
+							 */
 							while(!record.second.empty()){
 								// Если на принимаемой стороне достаточно памяти для получения данных
 								if(self->available(record.first) >= record.second.front().first)
@@ -385,7 +412,9 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 						auto i = self->_records.find(sid);
 						// Если список неотправленных записей для потока существуют
 						if((i != self->_records.end()) && !i->second.empty()){
-							// Выполняем перебор всего списка записей которые ещё не отправленны
+							/**
+							 * Выполняем перебор всего списка записей которые ещё не отправленны
+							 */
 							while(!i->second.empty()){
 								// Если на принимаемой стороне достаточно памяти для получения данных
 								if(self->available(i->first) >= i->second.front().first)
@@ -411,7 +440,8 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 	return 0;
 }
 /**
- * frameSend Функция обратного вызова при отправки фрейма
+ * @brief Функция обратного вызова при отправки фрейма
+ *
  * @param session объект сессии
  * @param frame   объект фрейма заголовков
  * @param ctx     передаваемый промежуточный контекст
@@ -442,7 +472,9 @@ int32_t awh::Http2::frameSend([[maybe_unused]] nghttp2_session * session, const 
 		if(frame->hd.flags & NGHTTP2_FLAG_END_HEADERS)
 			// Выполняем установку флага
 			flags.emplace(flag_t::END_HEADERS);
-		// Определяем тип фрейма
+		/**
+		 * Определяем тип фрейма
+		 */
 		switch(static_cast <uint8_t> (frame->hd.type)){
 			// Если мы получили фрейм данных
 			case static_cast <uint8_t> (NGHTTP2_DATA):
@@ -517,7 +549,8 @@ int32_t awh::Http2::frameSend([[maybe_unused]] nghttp2_session * session, const 
 	return 0;
 }
 /**
- * close Функция закрытия подключения
+ * @brief Функция закрытия подключения
+ *
  * @param session объект сессии
  * @param sid     идентификатор потока
  * @param error   флаг ошибки если присутствует
@@ -540,7 +573,9 @@ int32_t awh::Http2::close(nghttp2_session * session, const int32_t sid, const ui
 	#endif
 	// Определяем код ошибки
 	error_t code = error_t::NONE;
-	// Определяем тип получаемой ошибки
+	/**
+	 * Определяем тип получаемой ошибки
+	 */
 	switch(error){
 		// Если получена ошибка протокола
 		case NGHTTP2_PROTOCOL_ERROR: {
@@ -694,7 +729,8 @@ int32_t awh::Http2::close(nghttp2_session * session, const int32_t sid, const ui
 	return 0;
 }
 /**
- * error Функция обратного вызова при получении ошибок
+ * @brief Функция обратного вызова при получении ошибок
+ *
  * @param session объект сессии
  * @param code    код полученной ошибки
  * @param msg     сообщение ошибки
@@ -715,7 +751,8 @@ int32_t awh::Http2::error(nghttp2_session * session, const int32_t code, const c
 	return 0;
 }
 /**
- * chunk Функция обратного вызова при получении чанка
+ * @brief Функция обратного вызова при получении чанка
+ *
  * @param session объект сессии
  * @param flags   флаги события для сессии
  * @param sid     идентификатор потока
@@ -757,7 +794,8 @@ int32_t awh::Http2::chunk([[maybe_unused]] nghttp2_session * session, [[maybe_un
 	return result;
 }
 /**
- * header Функция обратного вызова при получении заголовка
+ * @brief Функция обратного вызова при получении заголовка
+ *
  * @param session объект сессии
  * @param frame   объект фрейма заголовков
  * @param key     данные ключа заголовка
@@ -777,7 +815,9 @@ int32_t awh::Http2::header([[maybe_unused]] nghttp2_session * session, const ngh
 		auto nameBuffer = nghttp2_rcbuf_get_buf(name);
 		// Получаем буфер значения заголовка
 		auto valueBuffer = nghttp2_rcbuf_get_buf(value);
-		// Выполняем определение типа фрейма
+		/**
+		 * Выполняем определение типа фрейма
+		 */
 		switch(frame->hd.type){
 			// Если мы получили push-уведомление
 			case NGHTTP2_PUSH_PROMISE: {
@@ -788,11 +828,15 @@ int32_t awh::Http2::header([[maybe_unused]] nghttp2_session * session, const ngh
 			} break;
 			// Если мы получили входящие данные заголовков ответа
 			case NGHTTP2_HEADERS: {
-				// Определяем идентификатор сервиса
+				/**
+				 * Определяем идентификатор сервиса
+				 */
 				switch(static_cast <uint8_t> (self->_mode)){
 					// Если сервис идентифицирован как клиент
 					case static_cast <uint8_t> (mode_t::CLIENT): {
-						// Определяем флаг ответа сервера
+						/**
+						 * Определяем флаг ответа сервера
+						 */
 						switch(static_cast <uint8_t> (frame->headers.cat)){
 							// Если мы получили сырые заголовки с сервера
 							case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
@@ -806,7 +850,9 @@ int32_t awh::Http2::header([[maybe_unused]] nghttp2_session * session, const ngh
 					} break;
 					// Если сервис идентифицирован как сервер
 					case static_cast <uint8_t> (mode_t::SERVER): {
-						// Если мы получили запрос клиента
+						/**
+						 * Если мы получили запрос клиента
+						 */
 						switch(static_cast <uint8_t> (frame->headers.cat)){
 							// Если мы получили сырые заголовки с клиента
 							case static_cast <uint8_t> (NGHTTP2_HCAT_HEADERS):
@@ -824,7 +870,8 @@ int32_t awh::Http2::header([[maybe_unused]] nghttp2_session * session, const ngh
 	return 0;
 }
 /**
- * send Функция обратного вызова при подготовки данных для отправки
+ * @brief Функция обратного вызова при подготовки данных для отправки
+ *
  * @param session объект сессии
  * @param buffer  буфер данных которые следует отправить
  * @param size    размер буфера данных для отправки
@@ -843,7 +890,8 @@ ssize_t awh::Http2::send([[maybe_unused]] nghttp2_session * session, const uint8
 	return static_cast <ssize_t> (size);
 }
 /**
- * send Функция отправки подготовленного буфера данных по сети
+ * @brief Функция отправки подготовленного буфера данных по сети
+ *
  * @param session объект сессии
  * @param sid     идентификатор потока
  * @param buffer  буфер данных которые следует отправить
@@ -903,7 +951,8 @@ ssize_t awh::Http2::send([[maybe_unused]] nghttp2_session * session, const int32
 	} else return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 }
 /**
- * available Метод проверки сколько байт доступно для отправки
+ * @brief Метод проверки сколько байт доступно для отправки
+ *
  * @param sid идентификатор потока
  * @return    количество байт доступных для отправки
  */
@@ -929,7 +978,8 @@ size_t awh::Http2::available(const int32_t sid) const noexcept {
 	return result;
 }
 /**
- * commit Метод применения изменений
+ * @brief Метод применения изменений
+ *
  * @param event событие которому соответствует фиксация
  * @return      результат отправки
  */
@@ -956,7 +1006,8 @@ bool awh::Http2::commit(const event_t event) noexcept {
 	return true;
 }
 /**
- * completed Метод завершения выполнения операции
+ * @brief Метод завершения выполнения операции
+ *
  * @param event событие выполненной операции
  */
 void awh::Http2::completed(const event_t event) noexcept {
@@ -978,8 +1029,9 @@ void awh::Http2::completed(const event_t event) noexcept {
 	}
 }
 /**
- * submit Метод подготовки отправки данных полезной нагрузки
- * @param sid  идентификатор потока 
+ * @brief Метод подготовки отправки данных полезной нагрузки
+ *
+ * @param sid  идентификатор потока
  * @param flag флаг передаваемого потока по сети
  * @return     результат работы функции
  */
@@ -1038,7 +1090,8 @@ bool awh::Http2::submit(const int32_t sid, const flag_t flag) noexcept {
 	return false;
 }
 /**
- * windowUpdate Метод обновления размера окна фрейма
+ * @brief Метод обновления размера окна фрейма
+ *
  * @param sid  идентификатор потока
  * @param size размер нового окна
  * @return     результат установки размера офна фрейма
@@ -1082,7 +1135,8 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
 	return false;
 }
 /**
- * ping Метод выполнения пинга
+ * @brief Метод выполнения пинга
+ *
  * @return результат работы пинга
  */
 bool awh::Http2::ping() noexcept {
@@ -1126,7 +1180,8 @@ bool awh::Http2::ping() noexcept {
 	return true;
 }
 /**
- * shutdown Метод запрещения получения данных с клиента
+ * @brief Метод запрещения получения данных с клиента
+ *
  * @return результат выполнения операции
  */
 bool awh::Http2::shutdown() noexcept {
@@ -1170,7 +1225,8 @@ bool awh::Http2::shutdown() noexcept {
 	return true;
 }
 /**
- * frame Метод чтения данных фрейма из бинарного буфера
+ * @brief Метод чтения данных фрейма из бинарного буфера
+ *
  * @param buffer буфер бинарных данных для чтения фрейма
  * @param size   размер буфера бинарных данных
  * @return       результат чтения данных фрейма
@@ -1217,7 +1273,8 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 	return false;
 }
 /**
- * reject Метод выполнения сброса подключения
+ * @brief Метод выполнения сброса подключения
+ *
  * @param sid   идентификатор потока
  * @param error код отправляемой ошибки
  * @return      результат отправки сообщения
@@ -1225,7 +1282,9 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_REJECT;
-	// Определяем идентификатор сервиса
+	/**
+	 * Определяем идентификатор сервиса
+	 */
 	switch(static_cast <uint8_t> (this->_mode)){
 		// Если сервис идентифицирован как клиент
 		case static_cast <uint8_t> (mode_t::CLIENT): {
@@ -1242,7 +1301,9 @@ bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
 			if(this->_session != nullptr){
 				// Создаём код передаваемой ошибки
 				uint32_t code = NGHTTP2_NO_ERROR;
-				// Определяем тип переданной ошибки
+				/**
+				 * Определяем тип переданной ошибки
+				 */
 				switch(static_cast <uint8_t> (error)){
 					// Требование выполнения отмены запроса
 					case static_cast <uint8_t> (error_t::CANCEL):
@@ -1342,14 +1403,17 @@ bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
 	return false;
 }
 /**
- * sendOrigin Метод отправки списка разрешённых источников
+ * @brief Метод отправки списка разрешённых источников
+ *
  */
 void awh::Http2::sendOrigin() noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_ORIGIN;
 	// Если список источников передан
 	if(!this->_origins.empty()){
-		// Определяем идентификатор сервиса
+		/**
+		 * Определяем идентификатор сервиса
+		 */
 		switch(static_cast <uint8_t> (this->_mode)){
 			// Если сервис идентифицирован как клиент
 			case static_cast <uint8_t> (mode_t::CLIENT): {
@@ -1395,7 +1459,8 @@ void awh::Http2::sendOrigin() noexcept {
 	this->completed(event_t::SEND_ORIGIN);
 }
 /**
- * sendAltSvc Метод отправки расширения альтернативного сервиса RFC7383
+ * @brief Метод отправки расширения альтернативного сервиса RFC7383
+ *
  * @param sid идентификатор потока
  */
 void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
@@ -1403,7 +1468,9 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 	this->_event = event_t::SEND_ALTSVC;
 	// Если список альтернативных сервисов не пустой
 	if(!this->_altsvc.empty()){
-		// Определяем идентификатор сервиса
+		/**
+		 * Определяем идентификатор сервиса
+		 */
 		switch(static_cast <uint8_t> (this->_mode)){
 			// Если сервис идентифицирован как клиент
 			case static_cast <uint8_t> (mode_t::CLIENT): {
@@ -1418,7 +1485,9 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 			case static_cast <uint8_t> (mode_t::SERVER): {
 				// Если сессия инициализированна
 				if(this->_session != nullptr){
-					// Определяем идентификатор потока
+					/**
+					 * Определяем идентификатор потока
+					 */
 					switch(sid){
 						// Если фрейм является системным
 						case 0: {
@@ -1474,17 +1543,20 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 	this->completed(event_t::SEND_ALTSVC);
 }
 /**
- * sendTrailers Метод отправки трейлеров
+ * @brief Метод отправки трейлеров
+ *
  * @param id      идентификатор потока
  * @param headers заголовки отправляемые
  * @return        результат отправки данных фрейма
  */
-bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, string>> & headers) noexcept {
+bool awh::Http2::sendTrailers(const int32_t id, const vector <std::pair <string, string>> & headers) noexcept {
 	// Выполняем установку активного события
 	this->_event = event_t::SEND_TRAILERS;
 	// Если заголовки для отправки переданы и сессия инициализированна
 	if(!headers.empty() && (this->_session != nullptr)){
-		// Определяем идентификатор сервиса
+		/**
+		 * Определяем идентификатор сервиса
+		 */
 		switch(static_cast <uint8_t> (this->_mode)){
 			// Если сервис идентифицирован как клиент
 			case static_cast <uint8_t> (mode_t::CLIENT): {
@@ -1546,7 +1618,8 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <pair <string, stri
 	return false;
 }
 /**
- * sendData Метод отправки бинарных данных
+ * @brief Метод отправки бинарных данных
+ *
  * @param id     идентификатор потока
  * @param buffer буфер бинарных данных передаваемых
  * @param size   размер передаваемых данных в байтах
@@ -1588,7 +1661,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					// Выполняем создание нового списка записей для потока
 					else {
 						// Выполняем создание нового списка записей для потока
-						auto ret = this->_records.emplace(id, std::queue <pair <size_t, flag_t>> ());
+						auto ret = this->_records.emplace(id, std::queue <std::pair <size_t, flag_t>> ());
 						// Выполняем добавление новой записи
 						ret.first->second.push(std::make_pair(size, flag));
 					}
@@ -1602,7 +1675,9 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					auto i = this->_records.find(id);
 					// Если список неотправленных записей для потока существуют
 					if((i != this->_records.end()) && !i->second.empty()){
-						// Выполняем перебор всего списка записей которые ещё не отправленны
+						/**
+						 * Выполняем перебор всего списка записей которые ещё не отправленны
+						 */
 						while(!i->second.empty()){
 							// Если на принимаемой стороне достаточно памяти для получения данных
 							if(this->available(i->first) >= i->second.front().first)
@@ -1672,13 +1747,14 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	return false;
 }
 /**
- * sendPush Метод отправки push-уведомлений
+ * @brief Метод отправки push-уведомлений
+ *
  * @param id      идентификатор потока
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг завершения потока передачи данных
  */
-int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept {
+int32_t awh::Http2::sendPush(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Выполняем установку активного события
@@ -1700,7 +1776,9 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 		}
 		// Флаги фрейма передаваемого по сети
 		uint8_t flags = NGHTTP2_FLAG_NONE;
-		// Определяем флаг переданный в запросе
+		/**
+		 * Определяем флаг переданный в запросе
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если требуется завершить передачу заголовков
 			case static_cast <uint8_t> (flag_t::END_HEADERS):
@@ -1749,13 +1827,14 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <pair <string, strin
 	return result;
 }
 /**
- * sendHeaders Метод отправки заголовков
+ * @brief Метод отправки заголовков
+ *
  * @param id      идентификатор потока
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг завершения потока передачи данных
  */
-int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept {
+int32_t awh::Http2::sendHeaders(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Выполняем установку активного события
@@ -1777,7 +1856,9 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 		}
 		// Флаги фрейма передаваемого по сети
 		uint8_t flags = NGHTTP2_FLAG_NONE;
-		// Определяем флаг переданный в запросе
+		/**
+		 * Определяем флаг переданный в запросе
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если требуется завершить передачу заголовков
 			case static_cast <uint8_t> (flag_t::END_HEADERS):
@@ -1826,7 +1907,8 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <pair <string, st
 	return result;
 }
 /**
- * goaway Метод отправки сообщения закрытия всех потоков
+ * @brief Метод отправки сообщения закрытия всех потоков
+ *
  * @param last   идентификатор последнего потока
  * @param error  код отправляемой ошибки
  * @param buffer буфер отправляемых данных если требуется
@@ -1838,7 +1920,9 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 	this->_event = event_t::SEND_GOAWAY;
 	// Если размер окна фрейма передан
 	if(last > 0){
-		// Определяем идентификатор сервиса
+		/**
+		 * Определяем идентификатор сервиса
+		 */
 		switch(static_cast <uint8_t> (this->_mode)){
 			// Если сервис идентифицирован как клиент
 			case static_cast <uint8_t> (mode_t::CLIENT): {
@@ -1855,7 +1939,9 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 				if(this->_session != nullptr){
 					// Создаём код передаваемой ошибки
 					uint32_t code = NGHTTP2_NO_ERROR;
-					// Определяем тип переданной ошибки
+					/**
+					 * Определяем тип переданной ошибки
+					 */
 					switch(static_cast <uint8_t> (error)){
 						// Требование выполнения отмены запроса
 						case static_cast <uint8_t> (error_t::CANCEL):
@@ -1956,7 +2042,8 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 	return false;
 }
 /**
- * free Метод очистки активной сессии
+ * @brief Метод очистки активной сессии
+ *
  */
 void awh::Http2::free() noexcept {
 	// Если сессия создана удачно
@@ -1976,7 +2063,8 @@ void awh::Http2::free() noexcept {
 		this->_records.clear();
 }
 /**
- * close Метод закрытия подключения
+ * @brief Метод закрытия подключения
+ *
  */
 void awh::Http2::close() noexcept {
 	// Если активное событие не установлено
@@ -2000,7 +2088,8 @@ void awh::Http2::close() noexcept {
 	}
 }
 /**
- * is Метод проверки инициализации модуля
+ * @brief Метод проверки инициализации модуля
+ *
  * @return результат проверки инициализации
  */
 bool awh::Http2::initialized() const noexcept {
@@ -2008,7 +2097,8 @@ bool awh::Http2::initialized() const noexcept {
 	return (this->_session != nullptr);
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::Http2::callback(const callback_t & callback) noexcept {
@@ -2045,7 +2135,8 @@ void awh::Http2::callback(const callback_t & callback) noexcept {
 	}
 }
 /**
- * origin Метод установки списка разрешённых источников
+ * @brief Метод установки списка разрешённых источников
+ *
  * @param origins список разрешённых источников
  */
 void awh::Http2::origin(const vector <string> & origins) noexcept {
@@ -2053,7 +2144,8 @@ void awh::Http2::origin(const vector <string> & origins) noexcept {
 	this->_origins.assign(origins.begin(), origins.end());
 }
 /**
- * altsvc Метод установки списка альтернативных сервисов
+ * @brief Метод установки списка альтернативных сервисов
+ *
  * @param origins список альтернативных сервисов
  */
 void awh::Http2::altsvc(const std::unordered_multimap <string, string> & origins) noexcept {
@@ -2061,7 +2153,8 @@ void awh::Http2::altsvc(const std::unordered_multimap <string, string> & origins
 	this->_altsvc = origins;
 }
 /**
- * init Метод инициализации
+ * @brief Метод инициализации
+ *
  * @param mode     идентификатор сервиса
  * @param settings параметры настроек сессии
  * @return         результат выполнения инициализации
@@ -2106,7 +2199,9 @@ bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> &
 		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callback, &http2_t::chunk);
 		// Создаём параметры сессии и активируем запрет использования той самой неудачной системы приоритизации из первой итерации HTTP/2.
 		vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES, 1}};
-		// Определяем идентификатор сервиса
+		/**
+		 * Определяем идентификатор сервиса
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если сервис идентифицирован как клиент
 			case static_cast <uint8_t> (mode_t::CLIENT): {
@@ -2127,7 +2222,9 @@ bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> &
 				nghttp2_option_set_no_auto_window_update(option, 1);
 				// Выполняем перебор полученных настроек
 				for(auto & item : settings){
-					// Определяем код параметра настроек
+					/**
+					 * Определяем код параметра настроек
+					 */
 					switch(static_cast <uint8_t> (item.first)){
 						// Если разрешено передавать расширения ALTSVC
 						case static_cast <uint8_t> (settings_t::ENABLE_ALTSVC):
@@ -2205,7 +2302,9 @@ bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> &
 				nghttp2_option_set_no_auto_window_update(option, 1);
 				// Выполняем переход по всему списку настроек
 				for(auto & item : settings){
-					// Определяем тип настройки
+					/**
+					 * Определяем тип настройки
+					 */
 					switch(static_cast <uint8_t> (item.first)){
 						// Если мы получили разрешение присылать push-уведомления
 						case static_cast <uint8_t> (settings_t::ENABLE_PUSH):
@@ -2308,7 +2407,8 @@ bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> &
 	return result;
 }
 /**
- * Оператор [=] зануления фрейма Http2
+ * @brief Оператор [=] зануления фрейма Http2
+ *
  * @return сформированный объект Http2
  */
 awh::Http2 & awh::Http2::operator = (nullptr_t) noexcept {
@@ -2318,7 +2418,8 @@ awh::Http2 & awh::Http2::operator = (nullptr_t) noexcept {
 	return (* this);
 }
 /**
- * Оператор [=] копирования объекта фрейма Http2
+ * @brief Оператор [=] копирования объекта фрейма Http2
+ *
  * @param ctx объект фрейма Http2
  * @return    сформированный объект Http2
  */
@@ -2329,7 +2430,8 @@ awh::Http2 & awh::Http2::operator = (const http2_t & ctx) noexcept {
 	return (* this);
 }
 /**
- * ~Http2 Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Http2::~Http2() noexcept {
 	// Если сессия создана удачно

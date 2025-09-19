@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * commit Метод применения полученных результатов
+ * @brief Метод применения полученных результатов
+ *
  */
 void awh::server::WS::commit() noexcept {
 	// Если данные ещё не зафиксированы
@@ -130,7 +131,9 @@ void awh::server::WS::commit() noexcept {
 						string extension = "";
 						// Выполняем перебор записи расширения
 						for(auto & letter : header.second){
-							// Определяем чему соответствует буква
+							/**
+							 * Определяем чему соответствует буква
+							 */
 							switch(letter){
 								// Если буква соответствует разделителю расширения
 								case ';': {
@@ -179,7 +182,9 @@ void awh::server::WS::commit() noexcept {
 							 * Выполняем отлов ошибок
 							 */
 							try {
-								// Определяем размер шифрования
+								/**
+								 * Определяем размер шифрования
+								 */
 								switch(static_cast <uint16_t> (::stoi(header.second))){
 									// Если шифрование произведено 128 битным ключём
 									case 128: this->_cipher = hash_t::cipher_t::AES128; break;
@@ -228,7 +233,8 @@ void awh::server::WS::commit() noexcept {
 	}
 }
 /**
- * status Метод проверки текущего статуса
+ * @brief Метод проверки текущего статуса
+ *
  * @return результат проверки текущего статуса
  */
 awh::Http::status_t awh::server::WS::status() noexcept {
@@ -248,7 +254,9 @@ awh::Http::status_t awh::server::WS::status() noexcept {
 				string method = "";
 				// Устанавливаем заголовок HTTP в параметры авторизации
 				this->_auth.server.header(auth);
-				// Определяем метод запроса
+				/**
+				 * Определяем метод запроса
+				 */
 				switch(static_cast <uint8_t> (this->_web.request().method)){
 					// Если метод запроса указан как GET
 					case static_cast <uint8_t> (web_t::method_t::GET):
@@ -294,7 +302,8 @@ awh::Http::status_t awh::server::WS::status() noexcept {
 	return result;
 }
 /**
- * check Метод проверки шагов рукопожатия
+ * @brief Метод проверки шагов рукопожатия
+ *
  * @param flag флаг выполнения проверки
  * @return     результат проверки соответствия
  */
@@ -303,7 +312,9 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем флаг выполнения проверки
+		/**
+		 * Определяем флаг выполнения проверки
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если требуется выполнить проверку соответствие ключа
 			case static_cast <uint8_t> (flag_t::KEY): {
@@ -365,7 +376,8 @@ bool awh::server::WS::check(const flag_t flag) noexcept {
 	return false;
 }
 /**
- * realm Метод установки название сервера
+ * @brief Метод установки название сервера
+ *
  * @param realm название сервера
  */
 void awh::server::WS::realm(const string & realm) noexcept {
@@ -375,7 +387,8 @@ void awh::server::WS::realm(const string & realm) noexcept {
 		this->_auth.server.realm(realm);
 }
 /**
- * opaque Метод установки временного ключа сессии сервера
+ * @brief Метод установки временного ключа сессии сервера
+ *
  * @param opaque временный ключ сессии сервера
  */
 void awh::server::WS::opaque(const string & opaque) noexcept {
@@ -385,7 +398,8 @@ void awh::server::WS::opaque(const string & opaque) noexcept {
 		this->_auth.server.opaque(opaque);
 }
 /**
- * dataAuth Метод извлечения данных авторизации
+ * @brief Метод извлечения данных авторизации
+ *
  * @return данные модуля авторизации
  */
 awh::server::auth_t::data_t awh::server::WS::dataAuth() const noexcept {
@@ -393,7 +407,8 @@ awh::server::auth_t::data_t awh::server::WS::dataAuth() const noexcept {
 	return this->_auth.server.data();
 }
 /**
- * dataAuth Метод установки данных авторизации
+ * @brief Метод установки данных авторизации
+ *
  * @param data данные авторизации для установки
  */
 void awh::server::WS::dataAuth(const server::auth_t::data_t & data) noexcept {
@@ -401,7 +416,8 @@ void awh::server::WS::dataAuth(const server::auth_t::data_t & data) noexcept {
 	this->_auth.server.data(data);
 }
 /**
- * extractPassCallback Метод добавления функции извлечения пароля
+ * @brief Метод добавления функции извлечения пароля
+ *
  * @param callback функция обратного вызова для извлечения пароля
  */
 void awh::server::WS::extractPassCallback(function <string (const string &)> callback) noexcept {
@@ -409,7 +425,8 @@ void awh::server::WS::extractPassCallback(function <string (const string &)> cal
 	this->_auth.server.extractPassCallback(callback);
 }
 /**
- * authCallback Метод добавления функции обработки авторизации
+ * @brief Метод добавления функции обработки авторизации
+ *
  * @param callback функция обратного вызова для обработки авторизации
  */
 void awh::server::WS::authCallback(function <bool (const string &, const string &)> callback) noexcept {
@@ -417,7 +434,8 @@ void awh::server::WS::authCallback(function <bool (const string &, const string 
 	this->_auth.server.authCallback(callback);
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
@@ -426,7 +444,8 @@ void awh::server::WS::authType(const awh::auth_t::type_t type, const awh::auth_t
 	this->_auth.server.type(type, hash);
 }
 /**
- * WS Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */

@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * proto Метод извлечения поддерживаемого протокола подключения
+ * @brief Метод извлечения поддерживаемого протокола подключения
+ *
  * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
  */
 awh::engine_t::proto_t awh::client::Websocket::proto() const noexcept {
@@ -31,7 +32,8 @@ awh::engine_t::proto_t awh::client::Websocket::proto() const noexcept {
 	return this->_ws.proto();
 }
 /**
- * sendError Метод отправки сообщения об ошибке на сервер
+ * @brief Метод отправки сообщения об ошибке на сервер
+ *
  * @param mess отправляемое сообщение об ошибке
  */
 void awh::client::Websocket::sendError(const ws::mess_t & mess) noexcept {
@@ -39,7 +41,8 @@ void awh::client::Websocket::sendError(const ws::mess_t & mess) noexcept {
 	this->_ws.sendError(mess);
 }
 /**
- * sendMessage Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  * @return        результат отправки сообщения
@@ -49,7 +52,8 @@ bool awh::client::Websocket::sendMessage(const vector <char> & message, const bo
 	return this->_ws.sendMessage(message, text);
 }
 /**
- * sendMessage Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param message передаваемое сообщения в бинарном виде
  * @param size    размер передаваемого сообещния
  * @param text    данные передаются в текстовом виде
@@ -60,14 +64,16 @@ bool awh::client::Websocket::sendMessage(const char * message, const size_t size
 	return this->_ws.sendMessage(message, size, text);
 }
 /**
- * pause Метод установки на паузу клиента
+ * @brief Метод установки на паузу клиента
+ *
  */
 void awh::client::Websocket::pause() noexcept {
 	// Выполняем постановку клиента на паузу
 	this->_ws.pause();
 }
 /**
- * init Метод инициализации клиента
+ * @brief Метод инициализации клиента
+ *
  * @param dest        адрес назначения удалённого сервера
  * @param compressors список поддерживаемых компрессоров
  */
@@ -76,35 +82,40 @@ void awh::client::Websocket::init(const string & dest, const vector <awh::http_t
 	this->_ws.init(dest, compressors);
 }
 /**
- * open Метод открытия подключения
+ * @brief Метод открытия подключения
+ *
  */
 void awh::client::Websocket::open() noexcept {
 	// Выполняем открытие подключения
 	this->_ws.open();
 }
 /**
- * reset Метод принудительного сброса подключения
+ * @brief Метод принудительного сброса подключения
+ *
  */
 void awh::client::Websocket::reset() noexcept {
 	// Выполняем отправку сигнала таймаута
 	this->_ws.reset();
 }
 /**
- * stop Метод остановки клиента
+ * @brief Метод остановки клиента
+ *
  */
 void awh::client::Websocket::stop() noexcept {
 	// Выполняем остановку работы модуля
 	this->_ws.stop();
 }
 /**
- * start Метод запуска клиента
+ * @brief Метод запуска клиента
+ *
  */
 void awh::client::Websocket::start() noexcept {
 	// Выполняем запуск работы модуля
 	this->_ws.start();
 }
 /**
- * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+ * @brief Метод установки времени ожидания ответа WebSocket-сервера
+ *
  * @param sec время ожидания в секундах
  */
 void awh::client::Websocket::waitPong(const uint16_t sec) noexcept {
@@ -112,7 +123,8 @@ void awh::client::Websocket::waitPong(const uint16_t sec) noexcept {
 	this->_ws.waitPong(sec);
 }
 /**
- * pingInterval Метод установки интервала времени выполнения пингов
+ * @brief Метод установки интервала времени выполнения пингов
+ *
  * @param sec интервал времени выполнения пингов в секундах
  */
 void awh::client::Websocket::pingInterval(const uint16_t sec) noexcept {
@@ -120,7 +132,8 @@ void awh::client::Websocket::pingInterval(const uint16_t sec) noexcept {
 	this->_ws.pingInterval(sec);
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::client::Websocket::callback(const callback_t & callback) noexcept {
@@ -128,7 +141,8 @@ void awh::client::Websocket::callback(const callback_t & callback) noexcept {
 	this->_ws.callback(callback);
 }
 /**
- * subprotocol Метод установки поддерживаемого сабпротокола
+ * @brief Метод установки поддерживаемого сабпротокола
+ *
  * @param subprotocol сабпротокол для установки
  */
 void awh::client::Websocket::subprotocol(const string & subprotocol) noexcept {
@@ -136,7 +150,8 @@ void awh::client::Websocket::subprotocol(const string & subprotocol) noexcept {
 	this->_ws.subprotocol(subprotocol);
 }
 /**
- * subprotocol Метод получения списка выбранных сабпротоколов
+ * @brief Метод получения списка выбранных сабпротоколов
+ *
  * @return список выбранных сабпротоколов
  */
 const std::unordered_set <string> & awh::client::Websocket::subprotocols() const noexcept {
@@ -144,7 +159,8 @@ const std::unordered_set <string> & awh::client::Websocket::subprotocols() const
 	return this->_ws.subprotocols();
 }
 /**
- * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @brief Метод установки списка поддерживаемых сабпротоколов
+ *
  * @param subprotocols сабпротоколы для установки
  */
 void awh::client::Websocket::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
@@ -152,7 +168,8 @@ void awh::client::Websocket::subprotocols(const std::unordered_set <string> & su
 	this->_ws.subprotocols(subprotocols);
 }
 /**
- * extensions Метод извлечения списка расширений Websocket
+ * @brief Метод извлечения списка расширений Websocket
+ *
  * @return список поддерживаемых расширений
  */
 const vector <vector <string>> & awh::client::Websocket::extensions() const noexcept {
@@ -160,7 +177,8 @@ const vector <vector <string>> & awh::client::Websocket::extensions() const noex
 	return this->_ws.extensions();
 }
 /**
- * extensions Метод установки списка расширений Websocket
+ * @brief Метод установки списка расширений Websocket
+ *
  * @param extensions список поддерживаемых расширений
  */
 void awh::client::Websocket::extensions(const vector <vector <string>> & extensions) noexcept {
@@ -168,7 +186,8 @@ void awh::client::Websocket::extensions(const vector <vector <string>> & extensi
 	this->_ws.extensions(extensions);
 }
 /**
- * bandwidth Метод установки пропускной способности сети
+ * @brief Метод установки пропускной способности сети
+ *
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
@@ -177,7 +196,8 @@ void awh::client::Websocket::bandwidth(const string & read, const string & write
 	this->_ws.bandwidth(read, write);
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param size размер чанка для установки
  */
 void awh::client::Websocket::chunk(const size_t size) noexcept {
@@ -185,7 +205,8 @@ void awh::client::Websocket::chunk(const size_t size) noexcept {
 	this->_ws.chunk(size);
 }
 /**
- * segmentSize Метод установки размеров сегментов фрейма Websocket
+ * @brief Метод установки размеров сегментов фрейма Websocket
+ *
  * @param size минимальный размер сегмента
  */
 void awh::client::Websocket::segmentSize(const size_t size) noexcept {
@@ -193,7 +214,8 @@ void awh::client::Websocket::segmentSize(const size_t size) noexcept {
 	this->_ws.segmentSize(size);
 }
 /**
- * attempts Метод установки общего количества попыток
+ * @brief Метод установки общего количества попыток
+ *
  * @param attempts общее количество попыток
  */
 void awh::client::Websocket::attempts(const uint8_t attempts) noexcept {
@@ -201,7 +223,8 @@ void awh::client::Websocket::attempts(const uint8_t attempts) noexcept {
 	this->_ws.attempts(attempts);
 }
 /**
- * hosts Метод загрузки файла со списком хостов
+ * @brief Метод загрузки файла со списком хостов
+ *
  * @param filename адрес файла для загрузки
  */
 void awh::client::Websocket::hosts(const string & filename) noexcept {
@@ -211,7 +234,8 @@ void awh::client::Websocket::hosts(const string & filename) noexcept {
 		this->_dns.hosts(filename);
 }
 /**
- * mode Метод установки флагов настроек модуля
+ * @brief Метод установки флагов настроек модуля
+ *
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Websocket::mode(const std::set <web_t::flag_t> & flags) noexcept {
@@ -219,7 +243,8 @@ void awh::client::Websocket::mode(const std::set <web_t::flag_t> & flags) noexce
 	this->_ws.mode(flags);
 }
 /**
- * user Метод установки параметров авторизации
+ * @brief Метод установки параметров авторизации
+ *
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
@@ -228,7 +253,8 @@ void awh::client::Websocket::user(const string & login, const string & password)
 	this->_ws.user(login, password);
 }
 /**
- * compressors Метод установки списка поддерживаемых компрессоров
+ * @brief Метод установки списка поддерживаемых компрессоров
+ *
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::client::Websocket::compressors(const vector <awh::http_t::compressor_t> & compressors) noexcept {
@@ -236,7 +262,8 @@ void awh::client::Websocket::compressors(const vector <awh::http_t::compressor_t
 	this->_ws.compressors(compressors);
 }
 /**
- * keepAlive Метод установки жизни подключения
+ * @brief Метод установки жизни подключения
+ *
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
@@ -246,7 +273,8 @@ void awh::client::Websocket::keepAlive(const int32_t cnt, const int32_t idle, co
 	this->_ws.keepAlive(cnt, idle, intvl);
 }
 /**
- * multiThreads Метод активации многопоточности в Websocket
+ * @brief Метод активации многопоточности в Websocket
+ *
  * @param count количество потоков для активации
  * @param mode  флаг активации/деактивации мультипоточности
  */
@@ -255,7 +283,8 @@ void awh::client::Websocket::multiThreads(const uint16_t count, const bool mode)
 	this->_ws.multiThreads(count, mode);
 }
 /**
- * setHeaders Метод установки списка заголовков
+ * @brief Метод установки списка заголовков
+ *
  * @param headers список заголовков для установки
  */
 void awh::client::Websocket::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
@@ -263,7 +292,8 @@ void awh::client::Websocket::setHeaders(const std::unordered_multimap <string, s
 	this->_ws.setHeaders(headers);
 }
 /**
- * userAgent Метод установки User-Agent для HTTP-запроса
+ * @brief Метод установки User-Agent для HTTP-запроса
+ *
  * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Websocket::userAgent(const string & userAgent) noexcept {
@@ -271,7 +301,8 @@ void awh::client::Websocket::userAgent(const string & userAgent) noexcept {
 	this->_ws.userAgent(userAgent);
 }
 /**
- * ident Метод установки идентификации клиента
+ * @brief Метод установки идентификации клиента
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -281,7 +312,8 @@ void awh::client::Websocket::ident(const string & id, const string & name, const
 	this->_ws.ident(id, name, ver);
 }
 /**
- * proxy Метод активации/деактивации прокси-склиента
+ * @brief Метод активации/деактивации прокси-склиента
+ *
  * @param work флаг активации/деактивации прокси-клиента
  */
 void awh::client::Websocket::proxy(const client::scheme_t::work_t work) noexcept {
@@ -289,7 +321,8 @@ void awh::client::Websocket::proxy(const client::scheme_t::work_t work) noexcept
 	this->_ws.proxy(work);
 }
 /**
- * proxy Метод установки прокси-сервера
+ * @brief Метод установки прокси-сервера
+ *
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
@@ -298,7 +331,8 @@ void awh::client::Websocket::proxy(const string & uri, const scheme_t::family_t 
 	this->_ws.proxy(uri, family);
 }
 /**
- * flushDNS Метод сброса кэша DNS-резолвера
+ * @brief Метод сброса кэша DNS-резолвера
+ *
  * @return результат работы функции
  */
 bool awh::client::Websocket::flushDNS() noexcept {
@@ -306,7 +340,8 @@ bool awh::client::Websocket::flushDNS() noexcept {
 	return this->_dns.flush();
 }
 /**
- * timeoutDNS Метод установки времени ожидания выполнения запроса
+ * @brief Метод установки времени ожидания выполнения запроса
+ *
  * @param sec интервал времени выполнения запроса в секундах
  */
 void awh::client::Websocket::timeoutDNS(const uint8_t sec) noexcept {
@@ -316,7 +351,8 @@ void awh::client::Websocket::timeoutDNS(const uint8_t sec) noexcept {
 		this->_dns.timeout(sec);
 }
 /**
- * prefixDNS Метод установки префикса переменной окружения для извлечения серверов имён
+ * @brief Метод установки префикса переменной окружения для извлечения серверов имён
+ *
  * @param prefix префикс переменной окружения для установки
  */
 void awh::client::Websocket::prefixDNS(const string & prefix) noexcept {
@@ -326,7 +362,8 @@ void awh::client::Websocket::prefixDNS(const string & prefix) noexcept {
 		this->_dns.prefix(prefix);
 }
 /**
- * clearDNSBlackList Метод очистки чёрного списка
+ * @brief Метод очистки чёрного списка
+ *
  * @param domain доменное имя для которого очищается чёрный список
  */
 void awh::client::Websocket::clearDNSBlackList(const string & domain) noexcept {
@@ -336,7 +373,8 @@ void awh::client::Websocket::clearDNSBlackList(const string & domain) noexcept {
 		this->_dns.clearBlackList(domain);
 }
 /**
- * delInDNSBlackList Метод удаления IP-адреса из чёрного списока
+ * @brief Метод удаления IP-адреса из чёрного списока
+ *
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для удаления из чёрного списка
  */
@@ -347,7 +385,8 @@ void awh::client::Websocket::delInDNSBlackList(const string & domain, const stri
 		this->_dns.delInBlackList(domain, ip);
 }
 /**
- * setToDNSBlackList Метод добавления IP-адреса в чёрный список
+ * @brief Метод добавления IP-адреса в чёрный список
+ *
  * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в чёрный список
  */
@@ -358,7 +397,8 @@ void awh::client::Websocket::setToDNSBlackList(const string & domain, const stri
 		this->_dns.setToBlackList(domain, ip);
 }
 /**
- * cork Метод отключения/включения алгоритма TCP/CORK
+ * @brief Метод отключения/включения алгоритма TCP/CORK
+ *
  * @param mode режим применимой операции
  * @return     результат выполенния операции
  */
@@ -367,7 +407,8 @@ bool awh::client::Websocket::cork(const engine_t::mode_t mode) noexcept {
 	return this->_ws.cork(mode);
 }
 /**
- * nodelay Метод отключения/включения алгоритма Нейгла
+ * @brief Метод отключения/включения алгоритма Нейгла
+ *
  * @param mode режим применимой операции
  * @return     результат выполенния операции
  */
@@ -376,7 +417,8 @@ bool awh::client::Websocket::nodelay(const engine_t::mode_t mode) noexcept {
 	return this->_ws.nodelay(mode);
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param mode флаг активации шифрования
  */
 void awh::client::Websocket::encryption(const bool mode) noexcept {
@@ -384,7 +426,8 @@ void awh::client::Websocket::encryption(const bool mode) noexcept {
 	this->_ws.encryption(mode);
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
@@ -394,7 +437,8 @@ void awh::client::Websocket::encryption(const string & pass, const string & salt
 	this->_ws.encryption(pass, salt, cipher);
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
@@ -403,7 +447,8 @@ void awh::client::Websocket::authType(const auth_t::type_t type, const auth_t::h
 	this->_ws.authType(type, hash);
 }
 /**
- * authTypeProxy Метод установки типа авторизации прокси-сервера
+ * @brief Метод установки типа авторизации прокси-сервера
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
@@ -412,7 +457,8 @@ void awh::client::Websocket::authTypeProxy(const auth_t::type_t type, const auth
 	this->_ws.authTypeProxy(type, hash);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param sec интервал времени в секундах
  */
 void awh::client::Websocket::waitMessage(const uint16_t sec) noexcept {
@@ -420,7 +466,8 @@ void awh::client::Websocket::waitMessage(const uint16_t sec) noexcept {
 	this->_ws.waitMessage(sec);
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param read    количество секунд для детекции по чтению
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
@@ -430,7 +477,8 @@ void awh::client::Websocket::waitTimeDetect(const uint16_t read, const uint16_t 
 	this->_ws.waitTimeDetect(read, write, connect);
 }
 /**
- * network Метод установки параметров сети
+ * @brief Метод установки параметров сети
+ *
  * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
  * @param family тип протокола интернета (IPV4 / IPV6 / IPC)
@@ -438,7 +486,9 @@ void awh::client::Websocket::waitTimeDetect(const uint16_t read, const uint16_t 
 void awh::client::Websocket::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family) noexcept {
 	// Если список IP-адресов передан
 	if(!ips.empty()){
-		// Определяем тип протокола интернета
+		/**
+		 * Определяем тип протокола интернета
+		 */
 		switch(static_cast <uint8_t> (family)){
 			// Если протокол интернета соответствует IPv4
 			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
@@ -456,7 +506,9 @@ void awh::client::Websocket::network(const vector <string> & ips, const vector <
 	}
 	// Если список DNS-серверов передан
 	if(!ns.empty()){
-		// Определяем тип протокола интернета
+		/**
+		 * Определяем тип протокола интернета
+		 */
 		switch(static_cast <uint8_t> (family)){
 			// Если протокол интернета соответствует IPv4
 			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
@@ -472,7 +524,8 @@ void awh::client::Websocket::network(const vector <string> & ips, const vector <
 	}
 }
 /**
- * Websocket Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами

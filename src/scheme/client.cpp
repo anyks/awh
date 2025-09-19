@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * clear Метод очистки
+ * @brief Метод очистки
+ *
  */
 void awh::client::Scheme::clear() noexcept {
 	// Выполняем очистку объекта запроса
@@ -34,12 +35,15 @@ void awh::client::Scheme::clear() noexcept {
 	this->_connect = (this->proxy.mode ? connect_t::PROXY : connect_t::SERVER);
 }
 /**
- * switchConnect Метод переключения типа подключения
+ * @brief Метод переключения типа подключения
+ *
  */
 void awh::client::Scheme::switchConnect() noexcept {
 	// Если работа с прокси-сервером активированна
 	if(this->proxy.mode){
-		// Определяем тип подключения
+		/**
+		 *  Определяем тип подключения
+		 */
 		switch(static_cast <uint8_t> (this->_connect)){
 			// Если подключение выполняется через прокси-сервер
 			case static_cast <uint8_t> (connect_t::PROXY):
@@ -56,7 +60,8 @@ void awh::client::Scheme::switchConnect() noexcept {
 	} else this->_connect = connect_t::SERVER;
 }
 /**
- * isProxy Метод проверки на подключение к прокси-серверу
+ * @brief Метод проверки на подключение к прокси-серверу
+ *
  * @return результат проверки
  */
 bool awh::client::Scheme::isProxy() const noexcept {
@@ -64,7 +69,8 @@ bool awh::client::Scheme::isProxy() const noexcept {
 	return (this->_connect == connect_t::PROXY);
 }
 /**
- * bid Метод получения идентификатора брокера
+ * @brief Метод получения идентификатора брокера
+ *
  * @return идентификатор брокера
  */
 uint64_t awh::client::Scheme::bid() const noexcept {
@@ -81,11 +87,14 @@ uint64_t awh::client::Scheme::bid() const noexcept {
 	return result;
 }
 /**
- * activateProxy Метод активации прокси-клиента
+ * @brief Метод активации прокси-клиента
+ *
  * @param work флаг активации
  */
 void awh::client::Scheme::activateProxy(const work_t work) noexcept {
-	// Определяем флаг активации
+	/**
+	 * Определяем флаг активации
+	 */
 	switch(static_cast <uint8_t> (work)){
 		// Если необходимо активировать прокси-сервер
 		case static_cast <uint8_t> (work_t::ALLOW): {

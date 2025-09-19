@@ -34,7 +34,7 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -44,7 +44,8 @@ using namespace placeholders;
 #endif
 
 /**
- * chunking Метод вывода полученных чанков полезной нагрузки
+ * @brief Метод вывода полученных чанков полезной нагрузки
+ *
  * @param id     идентификатор объекта
  * @param buffer буфер данных чанка полезной нагрузки
  * @param web    объект HTTP-парсера
@@ -56,7 +57,8 @@ void awh::Http::chunking(const uint64_t id, const vector <char> & buffer, const 
 		this->_callback.call <void (const uint64_t, const vector <char> &, const http_t *)> ("chunking", id, buffer, this);
 }
 /**
- * encrypt Метод выполнения шифрования полезной нагрузки
+ * @brief Метод выполнения шифрования полезной нагрузки
+ *
  */
 void awh::Http::encrypt() noexcept {
 	// Если полезная нагрузка не зашифрована
@@ -112,7 +114,8 @@ void awh::Http::encrypt() noexcept {
 	}
 }
 /**
- * decrypt Метод выполнения дешифровани полезной нагрузки
+ * @brief Метод выполнения дешифровани полезной нагрузки
+ *
  */
 void awh::Http::decrypt() noexcept {
 	// Если полезная нагрузка зашифрованна
@@ -168,7 +171,8 @@ void awh::Http::decrypt() noexcept {
 	}
 }
 /**
- * compress Метод выполнения компрессии полезной нагрузки
+ * @brief Метод выполнения компрессии полезной нагрузки
+ *
  */
 void awh::Http::compress() noexcept {
 	// Если полезную нагрузку необходимо сжать
@@ -181,7 +185,9 @@ void awh::Http::compress() noexcept {
 			const auto & body = this->_web.body();
 			// Если тело сообщения получено
 			if(!body.empty()){
-				// Определяем метод компрессии полезной нагрузки
+				/**
+				 * Определяем метод компрессии полезной нагрузки
+				 */
 				switch(static_cast <uint8_t> (this->_compressors.selected)){
 					// Если полезную нагрузку необходимо сжать методом LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
@@ -366,7 +372,8 @@ void awh::Http::compress() noexcept {
 	}
 }
 /**
- * decompress Метод выполнения декомпрессии полезной нагрузки
+ * @brief Метод выполнения декомпрессии полезной нагрузки
+ *
  */
 void awh::Http::decompress() noexcept {
 	// Если полезную нагрузку необходимо извлечь
@@ -379,7 +386,9 @@ void awh::Http::decompress() noexcept {
 			const auto & body = this->_web.body();
 			// Если тело сообщения получено
 			if(!body.empty()){
-				// Определяем метод компрессии полезной нагрузки
+				/**
+				 * Определяем метод компрессии полезной нагрузки
+				 */
 				switch(static_cast <uint8_t> (this->_compressors.current)){
 					// Если полезную нагрузку нужно извлечь методом LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
@@ -484,7 +493,9 @@ void awh::Http::decompress() noexcept {
 						}
 					} break;
 				}
-				// Определяем метод компрессии полезной нагрузки
+				/**
+				 * Определяем метод компрессии полезной нагрузки
+				 */
 				switch(static_cast <uint8_t> (this->_compressors.current)){
 					// Если метод компрессии не изменился и остался LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
@@ -576,7 +587,8 @@ void awh::Http::decompress() noexcept {
 	}
 }
 /**
- * commit Метод применения полученных результатов
+ * @brief Метод применения полученных результатов
+ *
  */
 void awh::Http::commit() noexcept {
 	// Если данные ещё не зафиксированы
@@ -601,7 +613,9 @@ void awh::Http::commit() noexcept {
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Определяем размер шифрования
+					/**
+					 * Определяем размер шифрования
+					 */
 					switch(static_cast <uint16_t> (::stoi(encrypt))){
 						// Если шифрование произведено 128 битным ключём
 						case 128: this->_cipher = hash_t::cipher_t::AES128; break;
@@ -627,7 +641,8 @@ void awh::Http::commit() noexcept {
 				// Если список заголовков получен
 				if(!headers.empty()){
 					/**
-					 * extractFn Функция выбора типа компрессора
+					 * @brief Функция выбора типа компрессора
+					 *
 					 * @param compressor название компрессора в текстовом виде
 					 */
 					auto extractFn = [this](const string & compressor) noexcept -> void {
@@ -694,7 +709,9 @@ void awh::Http::commit() noexcept {
 					}
 				}
 			}
-			// Определяем к какому сервису относится модуль
+			/**
+			 * Определяем к какому сервису относится модуль
+			 */
 			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если модуль соответствует клиенту
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -705,7 +722,8 @@ void awh::Http::commit() noexcept {
 						// Если список заголовков получен
 						if(!headers.empty()){
 							/**
-							 * extractFn Функция выбора типа компрессора
+							 * @brief Функция выбора типа компрессора
+							 *
 							 * @param compressor название компрессора в текстовом виде
 							 */
 							auto extractFn = [this](const string & compressor) noexcept -> bool {
@@ -1151,7 +1169,8 @@ void awh::Http::commit() noexcept {
 	}
 }
 /**
- * precise Метод установки флага точной установки хоста
+ * @brief Метод установки флага точной установки хоста
+ *
  * @param mode флаг для установки
  */
 void awh::Http::precise(const bool mode) noexcept {
@@ -1159,7 +1178,8 @@ void awh::Http::precise(const bool mode) noexcept {
 	this->_precise = mode;
 }
 /**
- * clear Метод очистки собранных данных
+ * @brief Метод очистки собранных данных
+ *
  */
 void awh::Http::clear() noexcept {
 	// Выполняем очистку данных парсера
@@ -1176,7 +1196,8 @@ void awh::Http::clear() noexcept {
 	this->_compressors.current = compressor_t::NONE;
 }
 /**
- * reset Метод сброса параметров запроса
+ * @brief Метод сброса параметров запроса
+ *
  */
 void awh::Http::reset() noexcept {
 	// Выполняем сброс данных парсера
@@ -1187,11 +1208,14 @@ void awh::Http::reset() noexcept {
 	this->_status = status_t::NONE;
 }
 /**
- * clear Метод очистки данных HTTP-протокола
+ * @brief Метод очистки данных HTTP-протокола
+ *
  * @param suite тип набора к которому соответствует заголовок
  */
 void awh::Http::clear(const suite_t suite) noexcept {
-	// Определяем запрашиваемый набор к которому принадлежит заголовок
+	/**
+	 * Определяем запрашиваемый набор к которому принадлежит заголовок
+	 */
 	switch(static_cast <uint8_t> (suite)){
 		// Если набор соответствует телу сообщения
 		case static_cast <uint8_t> (suite_t::BODY): {
@@ -1212,7 +1236,8 @@ void awh::Http::clear(const suite_t suite) noexcept {
 	}
 }
 /**
- * parse Метод парсинга сырых данных
+ * @brief Метод парсинга сырых данных
+ *
  * @param buffer буфер данных для обработки
  * @param size   размер буфера данных
  * @return       размер обработанных данных
@@ -1233,7 +1258,8 @@ size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
 	return result;
 }
 /**
- * proto Метод извлечения список протоколов к которому принадлежит заголовок
+ * @brief Метод извлечения список протоколов к которому принадлежит заголовок
+ *
  * @param key ключ заголовка
  * @return    список протоколов
  */
@@ -1242,7 +1268,8 @@ std::set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexce
 	return this->_web.proto(key);
 }
 /**
- * payload Метод чтения чанка полезной нагрузки
+ * @brief Метод чтения чанка полезной нагрузки
+ *
  * @return текущий чанк полезной нагрузки
  */
 const vector <char> awh::Http::payload() const noexcept {
@@ -1262,7 +1289,9 @@ const vector <char> awh::Http::payload() const noexcept {
 		if(!body->empty()){
 			// Версия протокола HTTP
 			double version = 1.1;
-			// Определяем тип HTTP-модуля
+			/**
+			 * Определяем тип HTTP-модуля
+			 */
 			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если мы работаем с клиентом
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -1320,7 +1349,9 @@ const vector <char> awh::Http::payload() const noexcept {
 						chunk.append("\r\n");
 						// Формируем тело чанка
 						chunk.insert(chunk.end(), body->begin(), body->end());
-						// Определяем тип HTTP-модуля
+						/**
+						 * Определяем тип HTTP-модуля
+						 */
 						switch(static_cast <uint8_t> (this->_web.hid())){
 							// Если мы работаем с клиентом
 							case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -1400,7 +1431,8 @@ const vector <char> awh::Http::payload() const noexcept {
 	return result;
 }
 /**
- * payload Метод установки чанка полезной нагрузки
+ * @brief Метод установки чанка полезной нагрузки
+ *
  * @param payload буфер чанка полезной нагрузки
  */
 void awh::Http::payload(const vector <char> & payload) noexcept {
@@ -1408,7 +1440,8 @@ void awh::Http::payload(const vector <char> & payload) noexcept {
 	this->_web.body(payload);
 }
 /**
- * blacklist Метод добавления заголовка в чёрный список
+ * @brief Метод добавления заголовка в чёрный список
+ *
  * @param key ключ заголовка
  */
 void awh::Http::blacklist(const string & key) noexcept {
@@ -1418,7 +1451,8 @@ void awh::Http::blacklist(const string & key) noexcept {
 		this->_blacklist.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
 }
 /**
- * body Метод получения данных тела запроса
+ * @brief Метод получения данных тела запроса
+ *
  * @return буфер данных тела запроса
  */
 const vector <char> & awh::Http::body() const noexcept {
@@ -1430,7 +1464,8 @@ const vector <char> & awh::Http::body() const noexcept {
 	return this->_web.body();
 }
 /**
- * body Метод добавления данных тела
+ * @brief Метод добавления данных тела
+ *
  * @param body буфер тела для добавления
  */
 void awh::Http::body(const vector <char> & body) noexcept {
@@ -1442,7 +1477,8 @@ void awh::Http::body(const vector <char> & body) noexcept {
 	this->_web.body(body);
 }
 /**
- * body Метод добавления данных тела
+ * @brief Метод добавления данных тела
+ *
  * @param buffer буфер тела для добавления
  * @param size   размер буфера теля для добавления
  */
@@ -1455,7 +1491,8 @@ void awh::Http::body(const char * buffer, const size_t size) noexcept {
 	this->_web.body(buffer, size);
 }
 /**
- * upgrade Метод получение названия протокола для переключения
+ * @brief Метод получение названия протокола для переключения
+ *
  * @return название протокола для переключения
  */
 const string & awh::Http::upgrade() const noexcept {
@@ -1463,7 +1500,8 @@ const string & awh::Http::upgrade() const noexcept {
 	return this->_web.upgrade();
 }
 /**
- * upgrade Метод установки название протокола для переключения
+ * @brief Метод установки название протокола для переключения
+ *
  * @param upgrade название протокола для переключения
  */
 void awh::Http::upgrade(const string & upgrade) noexcept {
@@ -1471,7 +1509,8 @@ void awh::Http::upgrade(const string & upgrade) noexcept {
 	this->_web.upgrade(upgrade);
 }
 /**
- * trailers Метод получения списка установленных трейлеров
+ * @brief Метод получения списка установленных трейлеров
+ *
  * @return количество установленных трейлеров
  */
 size_t awh::Http::trailers() const noexcept {
@@ -1479,7 +1518,8 @@ size_t awh::Http::trailers() const noexcept {
 	return this->_trailers.size();
 }
 /**
- * trailer Метод установки трейлера
+ * @brief Метод установки трейлера
+ *
  * @param key ключ заголовка
  * @param val значение заголовка
  */
@@ -1490,7 +1530,9 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем тип HTTP-модуля
+			/**
+			 * Определяем тип HTTP-модуля
+			 */
 			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если мы работаем с клиентом
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -1545,7 +1587,8 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 	}
 }
 /**
- * header Метод получения данных заголовка
+ * @brief Метод получения данных заголовка
+ *
  * @param key ключ заголовка
  * @return    значение заголовка
  */
@@ -1554,7 +1597,8 @@ string awh::Http::header(const string & key) const noexcept {
 	return this->_web.header(key);
 }
 /**
- * header Метод добавления заголовка
+ * @brief Метод добавления заголовка
+ *
  * @param key ключ заголовка
  * @param val значение заголовка
  */
@@ -1565,7 +1609,8 @@ void awh::Http::header(const string & key, const string & val) noexcept {
 		this->_web.header(key, val);
 }
 /**
- * headers Метод получения списка заголовков
+ * @brief Метод получения списка заголовков
+ *
  * @return список существующих заголовков
  */
 const std::unordered_multimap <string, string> & awh::Http::headers() const noexcept {
@@ -1573,7 +1618,8 @@ const std::unordered_multimap <string, string> & awh::Http::headers() const noex
 	return this->_web.headers();
 }
 /**
- * headers Метод установки списка заголовков
+ * @brief Метод установки списка заголовков
+ *
  * @param headers список заголовков для установки
  */
 void awh::Http::headers(const std::unordered_multimap <string, string> & headers) noexcept {
@@ -1596,7 +1642,8 @@ void awh::Http::headers(const std::unordered_multimap <string, string> & headers
 	}
 }
 /**
- * header2 Метод добавления заголовка в формате HTTP/2
+ * @brief Метод добавления заголовка в формате HTTP/2
+ *
  * @param key ключ заголовка
  * @param val значение заголовка
  */
@@ -1659,7 +1706,9 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			this->_web.request(::move(request));
 		// Если ключ заголовка соответствует протоколу подключения
 		} else if(this->_fmk->compare(key, ":protocol")) {
-			// Определяем тип HTTP-модуля
+			/**
+			 * Определяем тип HTTP-модуля
+			 */
 			switch(static_cast <uint8_t> (this->_web.hid())){
 				// Если мы работаем с клиентом
 				case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -1684,7 +1733,9 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			request.url.schema = val;
 			// Если протокол подключения защищённый а порт установлен неправильный
 			if(this->_fmk->compare(val, "https")){
-				// Определяем тип установленного порта
+				/**
+				 * Определяем тип установленного порта
+				 */
 				switch(request.url.port){
 					// Если порт не установлен
 					case 0:
@@ -1742,7 +1793,9 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 					}
 				}
 			}
-			// Определяем тип домена
+			/**
+			 * Определяем тип домена
+			 */
 			switch(static_cast <uint8_t> (net.host(request.url.host))){
 				// Если передан IP-адрес сети IPv4
 				case static_cast <uint8_t> (net_t::type_t::IPV4): {
@@ -1823,10 +1876,11 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 	}
 }
 /**
- * headers2 Метод установки списка заголовков в формате HTTP/2
+ * @brief Метод установки списка заголовков в формате HTTP/2
+ *
  * @param headers список заголовков для установки
  */
-void awh::Http::headers2(const vector <pair <string, string>> & headers) noexcept {
+void awh::Http::headers2(const vector <std::pair <string, string>> & headers) noexcept {
 	// Если список заголовков не пустой
 	if(!headers.empty()){
 		// Переходим по всему списку заголовков
@@ -1836,7 +1890,8 @@ void awh::Http::headers2(const vector <pair <string, string>> & headers) noexcep
 	}
 }
 /**
- * auth Метод проверки статуса авторизации
+ * @brief Метод проверки статуса авторизации
+ *
  * @return результат проверки
  */
 awh::Http::status_t awh::Http::auth() const noexcept {
@@ -1844,7 +1899,8 @@ awh::Http::status_t awh::Http::auth() const noexcept {
 	return this->_status;
 }
 /**
- * auth Метод извлечения строки авторизации
+ * @brief Метод извлечения строки авторизации
+ *
  * @param flag флаг выполняемого процесса
  * @param prov параметры провайдера обмена сообщениями
  * @return     строка авторизации на удалённом сервере
@@ -1854,7 +1910,9 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) con
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем флаг выполняемого процесса
+		/**
+		 * Определяем флаг выполняемого процесса
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если нужно сформировать данные запроса
 			case static_cast <uint8_t> (process_t::REQUEST): {
@@ -1864,7 +1922,9 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) con
 				if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
 					// Устанавливаем параметры REST-запроса
 					this->_auth.client.uri(this->_uri.url(req.url));
-					// Определяем метод запроса
+					/**
+					 * Определяем метод запроса
+					 */
 					switch(static_cast <uint8_t> (req.method)){
 						// Если метод запроса указан как GET
 						case static_cast <uint8_t> (web_t::method_t::GET):
@@ -1936,7 +1996,8 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) con
 	return "";
 }
 /**
- * url Метод извлечения параметров запроса
+ * @brief Метод извлечения параметров запроса
+ *
  * @return установленные параметры запроса
  */
 const awh::uri_t::url_t & awh::Http::url() const noexcept {
@@ -1944,7 +2005,8 @@ const awh::uri_t::url_t & awh::Http::url() const noexcept {
 	return this->_web.request().url;
 }
 /**
- * compression Метод извлечения выбранного метода компрессии
+ * @brief Метод извлечения выбранного метода компрессии
+ *
  * @return метод компрессии
  */
 awh::Http::compressor_t awh::Http::compression() const noexcept {
@@ -1952,7 +2014,8 @@ awh::Http::compressor_t awh::Http::compression() const noexcept {
 	return this->_compressors.selected;
 }
 /**
- * compression Метод установки выбранного метода компрессии
+ * @brief Метод установки выбранного метода компрессии
+ *
  * @param compressor метод компрессии
  */
 void awh::Http::compression(const compressor_t compressor) noexcept {
@@ -1960,7 +2023,8 @@ void awh::Http::compression(const compressor_t compressor) noexcept {
 	this->_compressors.selected = compressor;
 }
 /**
- * compressors Метод установки списка поддерживаемых компрессоров
+ * @brief Метод установки списка поддерживаемых компрессоров
+ *
  * @param compressors методы компрессии данных полезной нагрузки
  */
 void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept {
@@ -2006,7 +2070,8 @@ void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept 
 	}
 }
 /**
- * dump Метод получения бинарного дампа
+ * @brief Метод получения бинарного дампа
+ *
  * @return бинарный дамп данных
  */
 vector <char> awh::Http::dump() const noexcept {
@@ -2119,7 +2184,8 @@ vector <char> awh::Http::dump() const noexcept {
 	return result;
 }
 /**
- * dump Метод установки бинарного дампа
+ * @brief Метод установки бинарного дампа
+ *
  * @param data бинарный дамп данных
  */
 void awh::Http::dump(const vector <char> & data) noexcept {
@@ -2312,11 +2378,14 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 	}
 }
 /**
- * empty Метод проверки существования данных
+ * @brief Метод проверки существования данных
+ *
  * @param suite тип набора к которому соответствует заголовок
  */
 bool awh::Http::empty(const suite_t suite) const noexcept {
-	// Определяем запрашиваемый набор к которому принадлежит заголовок
+	/**
+	 * Определяем запрашиваемый набор к которому принадлежит заголовок
+	 */
 	switch(static_cast <uint8_t> (suite)){
 		// Если набор соответствует телу сообщения
 		case static_cast <uint8_t> (suite_t::BODY):
@@ -2339,7 +2408,8 @@ bool awh::Http::empty(const suite_t suite) const noexcept {
 	return false;
 }
 /**
- * is Метод проверки активного состояния
+ * @brief Метод проверки активного состояния
+ *
  * @param state состояние которое необходимо проверить
  */
 bool awh::Http::is(const state_t state) const noexcept {
@@ -2347,7 +2417,9 @@ bool awh::Http::is(const state_t state) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем запрашиваемое состояние
+		/**
+		 * Определяем запрашиваемое состояние
+		 */
 		switch(static_cast <uint8_t> (state)){
 			// Если проверяется режим завершения сбора данных
 			case static_cast <uint8_t> (state_t::END):
@@ -2363,7 +2435,9 @@ bool awh::Http::is(const state_t state) const noexcept {
 				return (this->_state == state_t::GOOD);
 			// Если проверяется режим уставновки постоянного подключения
 			case static_cast <uint8_t> (state_t::ALIVE): {
-				// Определяем идентичность сервера
+				/**
+				 * Определяем идентичность сервера
+				 */
 				switch(static_cast <uint8_t> (this->_identity)){
 					// Если сервер соответствует Websocket-серверу
 					case static_cast <uint8_t> (identity_t::WS):
@@ -2448,7 +2522,8 @@ bool awh::Http::is(const state_t state) const noexcept {
 	return false;
 }
 /**
- * is Метод проверки существования заголовка
+ * @brief Метод проверки существования заголовка
+ *
  * @param suite тип набора к которому соответствует заголовок
  * @param key   ключ заголовка для проверки
  * @return      результат проверки
@@ -2456,7 +2531,9 @@ bool awh::Http::is(const state_t state) const noexcept {
 bool awh::Http::is(const suite_t suite, const string & key) const noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
-		// Определяем запрашиваемый набор к которому принадлежит заголовок
+		/**
+		 * Определяем запрашиваемый набор к которому принадлежит заголовок
+		 */
 		switch(static_cast <uint8_t> (suite)){
 			// Если набор соответствует заголовку чёрного списка
 			case static_cast <uint8_t> (suite_t::BLACK):
@@ -2476,14 +2553,17 @@ bool awh::Http::is(const suite_t suite, const string & key) const noexcept {
 	return false;
 }
 /**
- * rm Метод удаления установленных заголовков
+ * @brief Метод удаления установленных заголовков
+ *
  * @param suite тип набора к которому соответствует заголовок
  * @param key   ключ заголовка для удаления
  */
 void awh::Http::rm(const suite_t suite, const string & key) const noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
-		// Определяем запрашиваемый набор к которому принадлежит заголовок
+		/**
+		 * Определяем запрашиваемый набор к которому принадлежит заголовок
+		 */
 		switch(static_cast <uint8_t> (suite)){
 			// Если набор соответствует заголовку чёрного списка
 			case static_cast <uint8_t> (suite_t::BLACK):
@@ -2499,7 +2579,8 @@ void awh::Http::rm(const suite_t suite, const string & key) const noexcept {
 	}
 }
 /**
- * request Метод получения объекта запроса на сервер
+ * @brief Метод получения объекта запроса на сервер
+ *
  * @return объект запроса на сервер
  */
 const awh::web_t::req_t & awh::Http::request() const noexcept {
@@ -2507,7 +2588,8 @@ const awh::web_t::req_t & awh::Http::request() const noexcept {
 	return this->_web.request();
 }
 /**
- * request Метод добавления объекта запроса на сервер
+ * @brief Метод добавления объекта запроса на сервер
+ *
  * @param req объект запроса на сервер
  */
 void awh::Http::request(const web_t::req_t & req) noexcept {
@@ -2515,7 +2597,8 @@ void awh::Http::request(const web_t::req_t & req) noexcept {
 	this->_web.request(req);
 }
 /**
- * response Метод получения объекта ответа сервера
+ * @brief Метод получения объекта ответа сервера
+ *
  * @return объект ответа сервера
  */
 const awh::web_t::res_t & awh::Http::response() const noexcept {
@@ -2523,7 +2606,8 @@ const awh::web_t::res_t & awh::Http::response() const noexcept {
 	return this->_web.response();
 }
 /**
- * response Метод добавления объекта ответа сервера
+ * @brief Метод добавления объекта ответа сервера
+ *
  * @param res объект ответа сервера
  */
 void awh::Http::response(const web_t::res_t & res) noexcept {
@@ -2531,7 +2615,8 @@ void awh::Http::response(const web_t::res_t & res) noexcept {
 	this->_web.response(res);
 }
 /**
- * date Метод получения текущей даты для HTTP-запроса
+ * @brief Метод получения текущей даты для HTTP-запроса
+ *
  * @param date дата в формате UnixTimestamp
  * @return     штамп времени в текстовом виде
  */
@@ -2563,7 +2648,7 @@ string awh::Http::date(const uint64_t date) const noexcept {
 		// Формируем локальное время
 		gmtime_r(&value, &tm);
 		// Выполняем извлечение даты
-		ss << put_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+		ss << ::put_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
 		// Выводим полученное значение даты
 		return ss.str();
 	/**
@@ -2588,7 +2673,8 @@ string awh::Http::date(const uint64_t date) const noexcept {
 	return result;
 }
 /**
- * message Метод получения HTTP сообщения
+ * @brief Метод получения HTTP сообщения
+ *
  * @param code код сообщения для получение
  * @return     соответствующее коду HTTP сообщение
  */
@@ -2608,7 +2694,8 @@ const string & awh::Http::message(const uint32_t code) const noexcept {
 	return result;
 }
 /**
- * mapping Метод маппинга полученных данных
+ * @brief Метод маппинга полученных данных
+ *
  * @param flag флаг выполняемого процесса
  * @param http объект для маппинга
  */
@@ -2655,7 +2742,9 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 			const web_t::res_t & response = this->_web.response();
 			// Если авторизация установлена как Digest
 			if(this->_auth.client.type() == awh::auth_t::type_t::DIGEST){
-				// Проверяем код ответа
+				/**
+				 * Проверяем код ответа
+				 */
 				switch(response.code){
 					// Если требуется авторизация для сервера
 					case 401: {
@@ -2677,7 +2766,9 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 					} break;
 				}
 			}
-			// Проверяем код ответа
+			/**
+			 * Проверяем код ответа
+			 */
 			switch(response.code){
 				// Если нужно произвести редирект
 				case 201:
@@ -2724,7 +2815,8 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 	}
 }
 /**
- * trailer Метод получения буфера отправляемого трейлера
+ * @brief Метод получения буфера отправляемого трейлера
+ *
  * @return буфер данных ответа в бинарном виде
  */
 vector <char> awh::Http::trailer() const noexcept {
@@ -2782,12 +2874,13 @@ vector <char> awh::Http::trailer() const noexcept {
 	return result;
 }
 /**
- * trailers2 Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
+ * @brief Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
+ *
  * @return буфер данных ответа в бинарном виде
  */
-vector <pair <string, string>> awh::Http::trailers2() const noexcept {
+vector <std::pair <string, string>> awh::Http::trailers2() const noexcept {
 	// Результат работы функции
-	vector <pair <string, string>> result;
+	vector <std::pair <string, string>> result;
 	// Если разрешено добавление трейлеров
 	if(this->_te.trailers){
 		/**
@@ -2831,7 +2924,8 @@ vector <pair <string, string>> awh::Http::trailers2() const noexcept {
 	return result;
 }
 /**
- * proxy Метод создания запроса для авторизации на прокси-сервере
+ * @brief Метод создания запроса для авторизации на прокси-сервере
+ *
  * @param req объект параметров REST-запроса
  * @return    буфер данных запроса в бинарном виде
  */
@@ -2889,11 +2983,12 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 	return vector <char> ();
 }
 /**
- * proxy2 Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
+ * @brief Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
+ *
  * @param req объект параметров REST-запроса
  * @return    буфер данных запроса в бинарном виде
  */
-vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const noexcept {
+vector <std::pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const noexcept {
 	// Если хост сервера получен
 	if(!req.url.host.empty() && (req.url.port > 0) && (req.method == web_t::method_t::CONNECT)){
 		// Добавляем в чёрный список заголовок Accept
@@ -2912,10 +3007,11 @@ vector <pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) const
 		return this->process2(process_t::REQUEST, dynamic_cast <const web_t::provider_t &> (req));
 	}
 	// Выводим результат
-	return vector <pair <string, string>> ();
+	return vector <std::pair <string, string>> ();
 }
 /**
- * reject Метод создания отрицательного ответа
+ * @brief Метод создания отрицательного ответа
+ *
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
@@ -2930,7 +3026,9 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 			const_cast <web_t::res_t &> (res).message = this->message(res.code);
 		// Если сообщение получено
 		if(!res.message.empty()){
-			// Определяем код ответа авторизационных данных
+			/**
+			 * Определяем код ответа авторизационных данных
+			 */
 			switch(res.code){
 				// Если код ответа соответствует авторизации на HTTP-сервере
 				case 401: {
@@ -2952,7 +3050,9 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 				} break;
 				// Для всех остальных кодов ответа
 				default: {
-					// Определяем идентичность сервера
+					/**
+					 * Определяем идентичность сервера
+					 */
 					switch(static_cast <uint8_t> (this->_identity)){
 						// Если сервер соответствует Websocket-серверу
 						case static_cast <uint8_t> (identity_t::WS):
@@ -3029,11 +3129,12 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 	return vector <char> ();
 }
 /**
- * reject2 Метод создания отрицательного ответа (для протокола HTTP/2)
+ * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
+ *
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) const noexcept {
+vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res) const noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -3046,7 +3147,9 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 		if(!res.message.empty()){
 			// Выполняем очистку списка установленных заголовков
 			this->_web.clearHeaders();
-			// Определяем код ответа авторизационных данных
+			/**
+			 * Определяем код ответа авторизационных данных
+			 */
 			switch(res.code){
 				// Если код ответа соответствует авторизации на HTTP-сервере
 				case 401:
@@ -3062,7 +3165,9 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 				} break;
 				// Для всех остальных кодов ответа
 				default: {
-					// Определяем идентичность сервера
+					/**
+					 * Определяем идентичность сервера
+					 */
 					switch(static_cast <uint8_t> (this->_identity)){
 						// Если сервер соответствует Websocket-серверу
 						case static_cast <uint8_t> (identity_t::WS):
@@ -3128,10 +3233,11 @@ vector <pair <string, string>> awh::Http::reject2(const web_t::res_t & res) cons
 		#endif
 	}
 	// Выводим результат
-	return vector <pair <string, string>> ();
+	return vector <std::pair <string, string>> ();
 }
 /**
- * process Метод создания выполняемого процесса в бинарном виде
+ * @brief Метод создания выполняемого процесса в бинарном виде
+ *
  * @param flag флаг выполняемого процесса
  * @param prov параметры провайдера обмена сообщениями
  * @return     буфер данных в бинарном виде
@@ -3143,7 +3249,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем флаг выполняемого процесса
+		/**
+		 * Определяем флаг выполняемого процесса
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если нужно сформировать данные запроса
 			case static_cast <uint8_t> (process_t::REQUEST): {
@@ -3153,7 +3261,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
 					// Данные REST-запроса
 					string request = "";
-					// Определяем метод запроса
+					/**
+					 * Определяем метод запроса
+					 */
 					switch(static_cast <uint8_t> (req.method)){
 						// Если метод запроса указан как GET
 						case static_cast <uint8_t> (web_t::method_t::GET):
@@ -3201,7 +3311,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							request = this->_fmk->format("CONNECT %s HTTP/%s\r\n", this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port).c_str(), this->_fmk->noexp(req.version, true).c_str());
 						} break;
 					}
-					// Определяем тип HTTP-модуля
+					/**
+					 * Определяем тип HTTP-модуля
+					 */
 					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -3243,7 +3355,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									if(available[i])
 										// Продолжаем поиск дальше
 										continue;
-									// Выполняем првоерку заголовка
+									/**
+									 * Выполняем првоерку заголовка
+									 */
 									switch(i){
 										case 0:  available[i] = this->_fmk->compare(header.first, "te");                  break;
 										case 1:  available[i] = this->_fmk->compare(header.first, "host");                break;
@@ -3282,7 +3396,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									}
 									// Если заголовок разрешён для вывода
 									if(allow){
-										// Выполняем првоерку заголовка
+										/**
+										 * Выполняем првоерку заголовка
+										 */
 										switch(i){
 											case 0:
 											case 5:
@@ -3362,7 +3478,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							if(!available[9] && (req.method != web_t::method_t::CONNECT) && (!this->_compressors.supports.empty() || (this->_compressors.selected != compressor_t::NONE)) && !this->is(suite_t::BLACK, "Accept-Encoding")){
 								// Если компрессор уже выбран
 								if(this->_compressors.selected != compressor_t::NONE){
-									// Определяем метод сжатия который поддерживает клиент
+									/**
+									 * Определяем метод сжатия который поддерживает клиент
+									 */
 									switch(static_cast <uint8_t> (this->_compressors.selected)){
 										// Если клиент поддерживает методот сжатия LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
@@ -3410,7 +3528,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										if(!compressors.empty())
 											// Выполняем добавление разделителя
 											compressors.append(", ");
-										// Определяем метод сжатия который поддерживает клиент
+										/**
+										 * Определяем метод сжатия который поддерживает клиент
+										 */
 										switch(static_cast <uint8_t> (i->second)){
 											// Если клиент поддерживает методот сжатия LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
@@ -3461,7 +3581,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								if(this->_fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
 									// Название операционной системы
 									const char * os = nullptr;
-									// Определяем название операционной системы
+									/**
+									 * Определяем название операционной системы
+									 */
 									switch(static_cast <uint8_t> (this->_os.type())){
 										// Если операционной системой является Unix
 										case static_cast <uint8_t> (os_t::type_t::UNIX): os = "Unix"; break;
@@ -3493,7 +3615,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							if(!available[13] && (this->_identity != identity_t::PROXY)){
 								// Метод HTTP-запроса
 								string method = "";
-								// Определяем метод запроса
+								/**
+								 * Определяем метод запроса
+								 */
 								switch(static_cast <uint8_t> (req.method)){
 									// Если метод запроса указан как GET
 									case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
@@ -3528,7 +3652,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 							if(!available[14] && (this->_identity == identity_t::PROXY)){
 								// Метод HTTP-запроса
 								string method = "";
-								// Определяем метод запроса
+								/**
+								 * Определяем метод запроса
+								 */
 								switch(static_cast <uint8_t> (req.method)){
 									// Если метод запроса указан как GET
 									case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
@@ -3606,7 +3732,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									if(this->_crypted)
 										// Устанавливаем X-AWH-Encryption
 										request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_cipher)));
-									// Определяем метод компрессии полезной нагрузки
+									/**
+									 * Определяем метод компрессии полезной нагрузки
+									 */
 									switch(static_cast <uint8_t> (this->_compressors.current)){
 										// Если нужно сжать тело методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
@@ -3662,7 +3790,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_cipher)));
 									// Устанавливаем Content-Encoding если не передан
 									if(!this->is(suite_t::BLACK, "Content-Encoding")){
-										// Определяем метод компрессии полезной нагрузки
+										/**
+										 * Определяем метод компрессии полезной нагрузки
+										 */
 										switch(static_cast <uint8_t> (this->_compressors.selected)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
@@ -3718,7 +3848,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									request.append(this->_fmk->format("X-AWH-Encryption: %u\r\n", static_cast <uint16_t> (this->_cipher)));
 								// Устанавливаем Content-Encoding если заголовок есть в запросе
 								if(available[10] && !this->is(suite_t::BLACK, "Content-Encoding")){
-									// Определяем метод компрессии полезной нагрузки
+									/**
+									 * Определяем метод компрессии полезной нагрузки
+									 */
 									switch(static_cast <uint8_t> (this->_compressors.selected)){
 										// Если полезная нагрузка сжата методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
@@ -3799,7 +3931,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 				if(!res.message.empty()){
 					// Данные REST-ответа
 					string response = this->_fmk->format("HTTP/%s %u %s\r\n", this->_fmk->noexp(res.version, true).c_str(), res.code, res.message.c_str());
-					// Определяем тип HTTP-модуля
+					/**
+					 * Определяем тип HTTP-модуля
+					 */
 					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -3850,7 +3984,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									if(available[i])
 										// Продолжаем поиск дальше
 										continue;
-									// Выполняем првоерку заголовка
+									/**
+									 * Выполняем првоерку заголовка
+									 */
 									switch(i){
 										case 0:  available[i] = this->_fmk->compare(header.first, "date");               break;
 										case 1:  available[i] = this->_fmk->compare(header.first, "server");             break;
@@ -3886,7 +4022,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									}
 									// Если заголовок разрешён для вывода
 									if(allow){
-										// Выполняем првоерку заголовка
+										/**
+										 * Выполняем првоерку заголовка
+										 */
 										switch(i){
 											case 6:
 											case 7:
@@ -3895,7 +4033,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 										}
 										// Если ответ является информационным
 										if((((res.code >= 100) && (res.code < 200)) || (res.code == 204)) && available[i]){
-											// Запрещяем указанным заголовкам формирование
+											/**
+											 * Запрещяем указанным заголовкам формирование
+											 */
 											switch(i){
 												case 0:
 												case 5:
@@ -3948,7 +4088,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 								const string & auth = this->_auth.server;
 								// Если параметры авторизации получены
 								if(!auth.empty()){
-									// Определяем код авторизации
+									/**
+									 * Определяем код авторизации
+									 */
 									switch(res.code){
 										// Если авторизация производится для Web-Сервера
 										case 401: {
@@ -4006,7 +4148,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									{
 										// Название компрессора
 										string compressor = "";
-										// Определяем метод компрессии полезной нагрузки
+										/**
+										 * Определяем метод компрессии полезной нагрузки
+										 */
 										switch(static_cast <uint8_t> (this->_compressors.current)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
@@ -4086,7 +4230,9 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 									{
 										// Название компрессора
 										string compressor = "";
-										// Определяем метод компрессии полезной нагрузки
+										/**
+										 * Определяем метод компрессии полезной нагрузки
+										 */
 										switch(static_cast <uint8_t> (this->_compressors.selected)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
@@ -4191,19 +4337,22 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 	return result;
 }
 /**
- * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+ * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+ *
  * @param flag флаг выполняемого процесса
  * @param prov параметры провайдера обмена сообщениями
  * @return     буфер данных в бинарном виде
  */
-vector <pair <string, string>> awh::Http::process2(const process_t flag, const web_t::provider_t & prov) const noexcept {
+vector <std::pair <string, string>> awh::Http::process2(const process_t flag, const web_t::provider_t & prov) const noexcept {
 	// Результат работы функции
-	vector <pair <string, string>> result;
+	vector <std::pair <string, string>> result;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем флаг выполняемого процесса
+		/**
+		 * Определяем флаг выполняемого процесса
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если нужно сформировать данные запроса
 			case static_cast <uint8_t> (process_t::REQUEST): {
@@ -4211,7 +4360,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 				const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
 				// Если параметры запроса получены
 				if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
-					// Определяем метод запроса
+					/**
+					 * Определяем метод запроса
+					 */
 					switch(static_cast <uint8_t> (req.method)){
 						// Если метод запроса указан как GET
 						case static_cast <uint8_t> (web_t::method_t::GET):
@@ -4276,7 +4427,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							// Формируем строку запроса
 							result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 					}
-					// Определяем тип HTTP-модуля
+					/**
+					 * Определяем тип HTTP-модуля
+					 */
 					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -4318,7 +4471,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										if(available[i])
 											// Продолжаем поиск дальше
 											continue;
-										// Выполняем првоерку заголовка
+										/**
+										 * Выполняем првоерку заголовка
+										 */
 										switch(i){
 											case 0:  available[i] = this->_fmk->compare(header.first, "te");                  break;
 											case 1:  available[i] = this->_fmk->compare(header.first, "host");                break;
@@ -4338,7 +4493,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										}
 										// Если заголовок разрешён для вывода
 										if(allow){
-											// Выполняем првоерку заголовка
+											/**
+											 * Выполняем првоерку заголовка
+											 */
 											switch(i){
 												case 0:
 												case 1:
@@ -4373,7 +4530,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							if(!available[9] && (req.method != web_t::method_t::CONNECT) && (!this->_compressors.supports.empty() || (this->_compressors.selected != compressor_t::NONE)) && !this->is(suite_t::BLACK, "accept-encoding")){
 								// Если компрессор уже выбран
 								if(this->_compressors.selected != compressor_t::NONE){
-									// Определяем метод сжатия который поддерживает клиент
+									/**
+									 * Определяем метод сжатия который поддерживает клиент
+									 */
 									switch(static_cast <uint8_t> (this->_compressors.selected)){
 										// Если клиент поддерживает методот сжатия LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
@@ -4421,7 +4580,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										if(!compressors.empty())
 											// Выполняем добавление разделителя
 											compressors.append(", ");
-										// Определяем метод сжатия который поддерживает клиент
+										/**
+										 * Определяем метод сжатия который поддерживает клиент
+										 */
 										switch(static_cast <uint8_t> (i->second)){
 											// Если клиент поддерживает методот сжатия LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
@@ -4472,7 +4633,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								if(this->_fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
 									// Название операционной системы
 									const char * os = nullptr;
-									// Определяем название операционной системы
+									/**
+									 * Определяем название операционной системы
+									 */
 									switch(static_cast <uint8_t> (this->_os.type())){
 										// Если операционной системой является Unix
 										case static_cast <uint8_t> (os_t::type_t::UNIX): os = "Unix"; break;
@@ -4504,7 +4667,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							if(!available[13] && (this->_identity != identity_t::PROXY)){
 								// Метод HTTP-запроса
 								string method = "";
-								// Определяем метод запроса
+								/**
+								 * Определяем метод запроса
+								 */
 								switch(static_cast <uint8_t> (req.method)){
 									// Если метод запроса указан как GET
 									case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
@@ -4539,7 +4704,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 							if(!available[14] && (this->_identity == identity_t::PROXY)){
 								// Метод HTTP-запроса
 								string method = "";
-								// Определяем метод запроса
+								/**
+								 * Определяем метод запроса
+								 */
 								switch(static_cast <uint8_t> (req.method)){
 									// Если метод запроса указан как GET
 									case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
@@ -4592,7 +4759,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									if(this->_crypted)
 										// Устанавливаем X-AWH-Encryption
 										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
-									// Определяем метод компрессии полезной нагрузки
+									/**
+									 * Определяем метод компрессии полезной нагрузки
+									 */
 									switch(static_cast <uint8_t> (this->_compressors.current)){
 										// Если нужно сжать тело методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
@@ -4640,7 +4809,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 									// Устанавливаем Content-Encoding если не передан
 									if(!this->is(suite_t::BLACK, "content-encoding")){
-										// Определяем метод компрессии полезной нагрузки
+										/**
+										 * Определяем метод компрессии полезной нагрузки
+										 */
 										switch(static_cast <uint8_t> (this->_compressors.selected)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
@@ -4688,7 +4859,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 								// Устанавливаем Content-Encoding если заголовок есть в запросе
 								if(available[10] && !this->is(suite_t::BLACK, "content-encoding")){
-									// Определяем метод компрессии полезной нагрузки
+									/**
+									 * Определяем метод компрессии полезной нагрузки
+									 */
 									switch(static_cast <uint8_t> (this->_compressors.selected)){
 										// Если полезная нагрузка сжата методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
@@ -4758,7 +4931,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 				if(!res.message.empty()){
 					// Данные REST ответа
 					result.push_back(std::make_pair(":status", std::to_string(res.code)));
-					// Определяем тип HTTP-модуля
+					/**
+					 * Определяем тип HTTP-модуля
+					 */
 					switch(static_cast <uint8_t> (this->_web.hid())){
 						// Если мы работаем с клиентом
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
@@ -4800,7 +4975,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									if(available[i])
 										// Продолжаем поиск дальше
 										continue;
-									// Выполняем првоерку заголовка
+									/**
+									 * Выполняем првоерку заголовка
+									 */
 									switch(i){
 										case 0:  available[i] = this->_fmk->compare(header.first, "date");               break;
 										case 1:  available[i] = this->_fmk->compare(header.first, "server");             break;
@@ -4817,7 +4994,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									}
 									// Если заголовок разрешён для вывода
 									if(allow){
-										// Выполняем првоерку заголовка
+										/**
+										 * Выполняем првоерку заголовка
+										 */
 										switch(i){
 											case 2:
 											case 3:
@@ -4828,7 +5007,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										}
 										// Если ответ является информационным
 										if((((res.code >= 100) && (res.code < 200)) || (res.code == 204)) && available[i]){
-											// Запрещяем указанным заголовкам формирование
+											/**
+											 * Запрещяем указанным заголовкам формирование
+											 */
 											switch(i){
 												case 0:
 												case 5:
@@ -4865,7 +5046,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 								const string & auth = this->_auth.server;
 								// Если параметры авторизации получены
 								if(!auth.empty()){
-									// Определяем код авторизации
+									/**
+									 * Определяем код авторизации
+									 */
 									switch(res.code){
 										// Если авторизация производится для Web-Сервера
 										case 401: {
@@ -4916,7 +5099,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 									if(this->_crypted)
 										// Устанавливаем X-AWH-Encryption
 										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
-									// Определяем метод компрессии полезной нагрузки
+									/**
+									 * Определяем метод компрессии полезной нагрузки
+									 */
 									switch(static_cast <uint8_t> (this->_compressors.current)){
 										// Если полезная нагрузка сжата методом LZ4
 										case static_cast <uint8_t> (compressor_t::LZ4):
@@ -4968,7 +5153,9 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 										result.push_back(std::make_pair("x-awh-encryption", std::to_string(static_cast <uint16_t> (this->_cipher))));
 									// Устанавливаем Content-Encoding если не передан
 									if(!this->is(suite_t::BLACK, "content-encoding")){
-										// Определяем метод компрессии полезной нагрузки
+										/**
+										 * Определяем метод компрессии полезной нагрузки
+										 */
 										switch(static_cast <uint8_t> (this->_compressors.selected)){
 											// Если полезная нагрузка сжата методом LZ4
 											case static_cast <uint8_t> (compressor_t::LZ4):
@@ -5041,7 +5228,8 @@ vector <pair <string, string>> awh::Http::process2(const process_t flag, const w
 	return result;
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::Http::callback(const callback_t & callback) noexcept {
@@ -5051,7 +5239,8 @@ void awh::Http::callback(const callback_t & callback) noexcept {
 	this->_web.callback(callback);
 }
 /**
- * id Метод получения идентификатора объекта
+ * @brief Метод получения идентификатора объекта
+ *
  * @return идентификатор объекта
  */
 uint64_t awh::Http::id() const noexcept {
@@ -5059,7 +5248,8 @@ uint64_t awh::Http::id() const noexcept {
 	return this->_web.id();
 }
 /**
- * id Метод установки идентификатора объекта
+ * @brief Метод установки идентификатора объекта
+ *
  * @param id идентификатор объекта
  */
 void awh::Http::id(const uint64_t id) noexcept {
@@ -5067,7 +5257,8 @@ void awh::Http::id(const uint64_t id) noexcept {
 	this->_web.id(id);
 }
 /**
- * identity Метод извлечения идентичности протокола модуля
+ * @brief Метод извлечения идентичности протокола модуля
+ *
  * @return флаг идентичности протокола модуля
  */
 awh::Http::identity_t awh::Http::identity() const noexcept {
@@ -5075,7 +5266,8 @@ awh::Http::identity_t awh::Http::identity() const noexcept {
 	return this->_identity;
 }
 /**
- * identity Метод установки идентичности протокола модуля
+ * @brief Метод установки идентичности протокола модуля
+ *
  * @param identity идентичность протокола модуля
  */
 void awh::Http::identity(const identity_t identity) noexcept {
@@ -5083,7 +5275,8 @@ void awh::Http::identity(const identity_t identity) noexcept {
 	this->_identity = identity;
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param size размер чанка для установки
  */
 void awh::Http::chunk(const size_t size) noexcept {
@@ -5093,7 +5286,8 @@ void awh::Http::chunk(const size_t size) noexcept {
 		this->_chunk = size;
 }
 /**
- * userAgent Метод установки User-Agent для HTTP-запроса
+ * @brief Метод установки User-Agent для HTTP-запроса
+ *
  * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::Http::userAgent(const string & userAgent) noexcept {
@@ -5103,20 +5297,25 @@ void awh::Http::userAgent(const string & userAgent) noexcept {
 		this->_userAgent = userAgent;
 }
 /**
- * ident Метод получения идентификации сервера
+ * @brief Метод получения идентификации сервера
+ *
  * @param flag флаг выполняемого процесса
  * @return     сформированный агент
  */
 string awh::Http::ident(const process_t flag) const noexcept {
 	// Результат работы функции
 	string result = "";
-	// Определяем флаг выполняемого процесса
+	/**
+	 * Определяем флаг выполняемого процесса
+	 */
 	switch(static_cast <uint8_t> (flag)){
 		// Если нужно сформировать данные запроса
 		case static_cast <uint8_t> (process_t::REQUEST): {
 			// Название операционной системы
 			const char * os = nullptr;
-			// Определяем название операционной системы
+			/**
+			 * Определяем название операционной системы
+			 */
 			switch(static_cast <uint8_t> (this->_os.type())){
 				// Если операционной системой является Unix
 				case static_cast <uint8_t> (os_t::type_t::UNIX): os = "Unix"; break;
@@ -5151,7 +5350,8 @@ string awh::Http::ident(const process_t flag) const noexcept {
 	return result;
 }
 /**
- * ident Метод установки идентификации сервера
+ * @brief Метод установки идентификации сервера
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -5171,7 +5371,8 @@ void awh::Http::ident(const string & id, const string & name, const string & ver
 		this->_ident.version = ver;
 }
 /**
- * crypted Метод проверки на зашифрованные данные
+ * @brief Метод проверки на зашифрованные данные
+ *
  * @return флаг проверки на зашифрованные данные
  */
 bool awh::Http::crypted() const noexcept {
@@ -5179,7 +5380,8 @@ bool awh::Http::crypted() const noexcept {
 	return this->_crypted;
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param mode флаг активации шифрования
  */
 void awh::Http::encryption(const bool mode) noexcept {
@@ -5187,7 +5389,8 @@ void awh::Http::encryption(const bool mode) noexcept {
 	this->_encryption = mode;
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
@@ -5204,7 +5407,8 @@ void awh::Http::encryption(const string & pass, const string & salt, const hash_
 	}
 }
 /**
- * Http Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */

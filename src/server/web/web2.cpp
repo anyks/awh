@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * session Метод инициализации сессии
+ * @brief Метод инициализации сессии
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  * @return    результат инициализации сессии
@@ -91,7 +92,8 @@ bool awh::server::Web2::session(const uint64_t bid, const uint16_t sid) noexcept
 	return result;
 }
 /**
- * statusEvents Метод обратного вызова при активации ядра сервера
+ * @brief Метод обратного вызова при активации ядра сервера
+ *
  * @param status флаг запуска/остановки
  */
 void awh::server::Web2::statusEvents(const awh::core_t::status_t status) noexcept {
@@ -106,7 +108,8 @@ void awh::server::Web2::statusEvents(const awh::core_t::status_t status) noexcep
 	web_t::statusEvents(status);
 }
 /**
- * sendSignal Метод обратного вызова при отправки данных HTTP/2
+ * @brief Метод обратного вызова при отправки данных HTTP/2
+ *
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных
  * @param size   размер буфера данных для отправки
@@ -118,7 +121,8 @@ void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, c
 		const_cast <server::core_t *> (this->_core)->send(reinterpret_cast <const char *> (buffer), size, bid);
 }
 /**
- * close Метод выполнения закрытия подключения
+ * @brief Метод выполнения закрытия подключения
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Web2::close(const uint64_t bid) noexcept {
@@ -135,7 +139,8 @@ void awh::server::Web2::close(const uint64_t bid) noexcept {
 	}
 }
 /**
- * ping Метод выполнения пинга клиента
+ * @brief Метод выполнения пинга клиента
+ *
  * @param bid идентификатор брокера
  * @return    результат работы пинга
  */
@@ -150,7 +155,8 @@ bool awh::server::Web2::ping(const uint64_t bid) noexcept {
 	return false;
 }
 /**
- * shutdown Метод отправки клиенту сообщения корректного завершения
+ * @brief Метод отправки клиенту сообщения корректного завершения
+ *
  * @param bid идентификатор брокера
  * @return    результат выполнения операции
  */
@@ -176,7 +182,8 @@ bool awh::server::Web2::shutdown(const uint64_t bid) noexcept {
 	return result;
 }
 /**
- * reject Метод выполнения сброса подключения
+ * @brief Метод выполнения сброса подключения
+ *
  * @param sid   идентификатор потока
  * @param bid   идентификатор брокера
  * @param error код отправляемой ошибки
@@ -204,7 +211,8 @@ bool awh::server::Web2::reject(const int32_t sid, const uint64_t bid, const http
 	return result;
 }
 /**
- * goaway Метод отправки сообщения закрытия всех потоков
+ * @brief Метод отправки сообщения закрытия всех потоков
+ *
  * @param last   идентификатор последнего потока
  * @param bid    идентификатор брокера
  * @param error  код отправляемой ошибки
@@ -234,13 +242,14 @@ bool awh::server::Web2::goaway(const int32_t last, const uint64_t bid, const htt
 	return result;
 }
 /**
- * send Метод отправки трейлеров
+ * @brief Метод отправки трейлеров
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @return        результат отправки данных указанному клиенту
  */
-bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers) noexcept {
+bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -262,7 +271,8 @@ bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector
 	return result;
 }
 /**
- * send Метод отправки сообщения клиенту
+ * @brief Метод отправки сообщения клиенту
+ *
  * @param sid    идентификатор потока
  * @param bid    идентификатор брокера
  * @param buffer буфер бинарных данных передаваемых
@@ -292,14 +302,15 @@ bool awh::server::Web2::send(const int32_t sid, const uint64_t bid, const char *
 	return result;
 }
 /**
- * send Метод отправки заголовков
+ * @brief Метод отправки заголовков
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -321,14 +332,15 @@ int32_t awh::server::Web2::send(const int32_t sid, const uint64_t bid, const vec
 	return result;
 }
 /**
- * push Метод отправки push-уведомлений
+ * @brief Метод отправки push-уведомлений
+ *
  * @param sid     идентификатор потока
  * @param bid     идентификатор брокера
  * @param headers заголовки отправляемые
  * @param flag    флаг передаваемого потока по сети
  * @return        флаг последнего сообщения после которого поток закрывается
  */
-int32_t awh::server::Web2::push(const int32_t sid, const uint64_t bid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::server::Web2::push(const int32_t sid, const uint64_t bid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если флаг инициализации сессии HTTP/2 установлен и подключение выполнено
@@ -347,7 +359,8 @@ int32_t awh::server::Web2::push(const int32_t sid, const uint64_t bid, const vec
 	return result;
 }
 /**
- * addOrigin Метод добавления разрешённого источника
+ * @brief Метод добавления разрешённого источника
+ *
  * @param origin разрешённый источнико
  */
 void awh::server::Web2::addOrigin(const string & origin) noexcept {
@@ -357,7 +370,8 @@ void awh::server::Web2::addOrigin(const string & origin) noexcept {
 		this->_origins.push_back(origin);
 }
 /**
- * setOrigin Метод установки списка разрешённых источников
+ * @brief Метод установки списка разрешённых источников
+ *
  * @param origins список разрешённых источников
  */
 void awh::server::Web2::setOrigin(const vector <string> & origins) noexcept {
@@ -365,7 +379,8 @@ void awh::server::Web2::setOrigin(const vector <string> & origins) noexcept {
 	this->_origins.assign(origins.begin(), origins.end());
 }
 /**
- * addAltSvc Метод добавления альтернативного сервиса
+ * @brief Метод добавления альтернативного сервиса
+ *
  * @param origin название альтернативного сервиса
  * @param field  поле альтернативного сервиса
  */
@@ -376,7 +391,8 @@ void awh::server::Web2::addAltSvc(const string & origin, const string & field) n
 		this->_altsvc.emplace(origin, field);
 }
 /**
- * setAltSvc Метод установки списка альтернативных сервисов
+ * @brief Метод установки списка альтернативных сервисов
+ *
  * @param origins список альтернативных сервисов
  */
 void awh::server::Web2::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
@@ -384,7 +400,8 @@ void awh::server::Web2::setAltSvc(const std::unordered_multimap <string, string>
 	this->_altsvc = origins;
 }
 /**
- * settings Модуль установки настроек протокола HTTP/2
+ * @brief Модуль установки настроек протокола HTTP/2
+ *
  * @param settings список настроек протокола HTTP/2
  */
 void awh::server::Web2::settings(const std::map <http2_t::settings_t, uint32_t> & settings) noexcept {
@@ -431,7 +448,8 @@ void awh::server::Web2::settings(const std::map <http2_t::settings_t, uint32_t> 
 		this->_settings.emplace(http2_t::settings_t::ENABLE_PUSH, 0);
 }
 /**
- * Web2 Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -440,7 +458,8 @@ awh::server::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept : web_t(f
 	this->settings();
 }
 /**
- * Web2 Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами

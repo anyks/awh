@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * decimalPlaces Функция определения количества знаков после запятой
+ * @brief Функция определения количества знаков после запятой
+ *
  * @param number число в котором нужно определить количество знаков
  * @return       количество знаков после запятой
  */
@@ -40,7 +41,9 @@ static uint8_t decimalPlaces(double number) noexcept {
 		if(::modf(number, &intpart) > 0){
 			// Получаем остаток от деления
 			int64_t remainder = -1, item = 0;
-			// Если у числа есть дробная часть
+			/**
+			 * Если у числа есть дробная часть
+			 */
 			while((::modf(number, &intpart) > 0) && (result < 15)){
 				// Если остаток от деления совпадает
 				if(((item = (static_cast <int64_t> (intpart) % 10L)) == remainder) && (remainder != 0))
@@ -55,7 +58,9 @@ static uint8_t decimalPlaces(double number) noexcept {
 				// Считаем количество чисел
 				result++;
 			}
-			// Если собранное число больше нуля
+			/**
+			 * Если собранное число больше нуля
+			 */
 			while(intpart > 0){
 				// Если последний символ нулевой
 				if((result > 0) && ((static_cast <uint64_t> (intpart) % 10L) == 0)){
@@ -92,7 +97,7 @@ static uint8_t decimalPlaces(double number) noexcept {
 }
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
@@ -100,7 +105,8 @@ static uint8_t decimalPlaces(double number) noexcept {
 	 */
 	#if AWH_IDN
 		/**
-		 * convertEncoding Функция конвертирования из одной кодировки в другую
+		 * @brief Функция конвертирования из одной кодировки в другую
+		 *
 		 * @param data данные для конвертирования
 		 * @param from название кодировки из которой необходимо выполнить конвертирование
 		 * @param to   название кодировки в которую необходимо выпоолнить конвертацию
@@ -116,11 +122,11 @@ static uint8_t decimalPlaces(double number) noexcept {
 				 */
 				try {
 					// Выполняем инициализацию конвертера
-					iconv_t convert = iconv_open(to.c_str(), from.c_str());
+					iconv_t convert = ::iconv_open(to.c_str(), from.c_str());
 					// Если инициализировать конвертер не вышло
 					if(convert == (iconv_t)(-1))
 						// Выполняем генерацию ошибки
-						throw logic_error("Unable to create convertion descriptor");
+						throw ::logic_error("Unable to create convertion descriptor");
 					// Получаем размер входящей строки
 					size_t size = data.size();
 					// Выполняем получение указатель на входящую строку
@@ -132,9 +138,9 @@ static uint8_t decimalPlaces(double number) noexcept {
 					// Получаем длину результирующего буфера
 					size_t length = result.size();
 					// Выполняем конвертацию текста из одной кодировки в другую
-					const size_t status = iconv(convert, &ptr, &size, &output, &length);
+					const size_t status = ::iconv(convert, &ptr, &size, &output, &length);
 					// Выполняем закрытие конвертера
-					iconv_close(convert);
+					::iconv_close(convert);
 					// Если конвертация не выполнена
 					if(status == static_cast <size_t> (-1)){
 						// Выполняем очистку полученного результата
@@ -147,7 +153,7 @@ static uint8_t decimalPlaces(double number) noexcept {
 						result.append(" to ");
 						result.append(to);
 						// Выполняем генерацию ошибки
-						throw logic_error(result);
+						throw ::logic_error(result);
 					}
 					// Выполняем коррекцию полученной длины строки
 					result.resize(result.size() - length);
@@ -181,7 +187,8 @@ static uint8_t decimalPlaces(double number) noexcept {
  */
 template <typename T>
 /**
- * split Функция разделения строк на составляющие
+ * @brief Функция разделения строк на составляющие
+ *
  * @param str       строка для поиска
  * @param delim     разделитель
  * @param container контенер содержащий данные
@@ -189,7 +196,8 @@ template <typename T>
  */
 static T & split(const string & str, const string & delim, T & container) noexcept {
 	/**
-	 * trimFn Функция удаления пробелов вначале и конце текста
+	 * @brief Функция удаления пробелов вначале и конце текста
+	 *
 	 * @param text текст для удаления пробелов
 	 * @return     результат работы функции
 	 */
@@ -239,7 +247,9 @@ static T & split(const string & str, const string & delim, T & container) noexce
 		string result = "";
 		// Получаем счётчики перебора
 		size_t index = 0, pos = str.find(delim);
-		// Выполняем разбиение строк
+		/**
+		 * Выполняем разбиение строк
+		 */
 		while(pos != string::npos){
 			// Получаем полученный текст
 			result = str.substr(index, pos - index);
@@ -290,7 +300,8 @@ static T & split(const string & str, const string & delim, T & container) noexce
  */
 template <typename T>
 /**
- * split Функция разделения строк на составляющие
+ * @brief Функция разделения строк на составляющие
+ *
  * @param str       строка для поиска
  * @param delim     разделитель
  * @param container контенер содержащий данные
@@ -298,7 +309,8 @@ template <typename T>
  */
 static T & split(const wstring & str, const wstring & delim, T & container) noexcept {
 	/**
-	 * trimFn Функция удаления пробелов вначале и конце текста
+	 * @brief Функция удаления пробелов вначале и конце текста
+	 *
 	 * @param text текст для удаления пробелов
 	 * @return     результат работы функции
 	 */
@@ -348,7 +360,9 @@ static T & split(const wstring & str, const wstring & delim, T & container) noex
 		wstring result = L"";
 		// Получаем счётчики перебора
 		size_t index = 0, pos = str.find(delim);
-		// Выполняем разбиение строк
+		/**
+		 * Выполняем разбиение строк
+		 */
 		while(pos != wstring::npos){
 			// Получаем полученный текст
 			result = str.substr(index, pos - index);
@@ -396,7 +410,8 @@ static T & split(const wstring & str, const wstring & delim, T & container) noex
 }
 
 /**
- * RomanNumerals структура Римских чисел
+ * @brief структура Римских чисел
+ *
  */
 static struct RomanNumerals {
 	// Шаблоны римских форматов
@@ -406,7 +421,8 @@ static struct RomanNumerals {
 	const wstring c[10] = {L"", L"C", L"CC", L"CCC", L"CD", L"D", L"DC", L"DCC", L"DCCC", L"CM"};
 } romanNumerals;
 /**
- * Symbols Класс основных символов
+ * @brief Класс основных символов
+ *
  */
 static class Symbols {
 	private:
@@ -426,7 +442,8 @@ static class Symbols {
 		std::map <wchar_t, uint8_t> _wideArabics;
 	public:
 		/**
-		 * isRome Метод проверки соответствия римской цифре
+		 * @brief Метод проверки соответствия римской цифре
+		 *
 		 * @param num римская цифра для проверки
 		 * @return    результат проверки
 		 */
@@ -435,7 +452,8 @@ static class Symbols {
 			return (this->_romes.find(::toupper(num)) != this->_romes.end());
 		}
 		/**
-		 * isRome Метод проверки соответствия римской цифре
+		 * @brief Метод проверки соответствия римской цифре
+		 *
 		 * @param num римская цифра для проверки
 		 * @return    результат проверки
 		 */
@@ -445,7 +463,8 @@ static class Symbols {
 		}
 	public:
 		/**
-		 * isArabic Метод проверки соответствия арабской цифре
+		 * @brief Метод проверки соответствия арабской цифре
+		 *
 		 * @param num арабская цифра для проверки
 		 * @return    результат проверки
 		 */
@@ -454,7 +473,8 @@ static class Symbols {
 			return ::isdigit(static_cast <int32_t> (num));
 		}
 		/**
-		 * isArabic Метод проверки соответствия арабской цифре
+		 * @brief Метод проверки соответствия арабской цифре
+		 *
 		 * @param num арабская цифра для проверки
 		 * @return    результат проверки
 		 */
@@ -464,7 +484,8 @@ static class Symbols {
 		}
 	public:
 		/**
-		 * isLetter Метод проверки соответствия латинской букве
+		 * @brief Метод проверки соответствия латинской букве
+		 *
 		 * @param letter латинская буква для проверки
 		 * @return       результат проверки
 		 */
@@ -473,7 +494,8 @@ static class Symbols {
 			return (this->_letters.find(::tolower(letter)) != this->_letters.end());
 		}
 		/**
-		 * isLetter Метод проверки соответствия латинской букве
+		 * @brief Метод проверки соответствия латинской букве
+		 *
 		 * @param letter латинская буква для проверки
 		 * @return       результат проверки
 		 */
@@ -483,7 +505,8 @@ static class Symbols {
 		}
 	public:
 		/**
-		 * getRome Метод извлечения римской цифры
+		 * @brief Метод извлечения римской цифры
+		 *
 		 * @param num римская цифра для извлечения
 		 * @return    арабская цифрва в виде числа
 		 */
@@ -500,7 +523,8 @@ static class Symbols {
 			return result;
 		}
 		/**
-		 * getRome Метод извлечения римской цифры
+		 * @brief Метод извлечения римской цифры
+		 *
 		 * @param num римская цифра для извлечения
 		 * @return    арабская цифрва в виде числа
 		 */
@@ -518,7 +542,8 @@ static class Symbols {
 		}
 	public:
 		/**
-		 * getArabic Метод извлечения арабской цифры
+		 * @brief Метод извлечения арабской цифры
+		 *
 		 * @param num арабская цифра для извлечения
 		 * @return    арабская цифрва в виде числа
 		 */
@@ -535,7 +560,8 @@ static class Symbols {
 			return result;
 		}
 		/**
-		 * getArabic Метод извлечения арабской цифры
+		 * @brief Метод извлечения арабской цифры
+		 *
 		 * @param num арабская цифра для извлечения
 		 * @return    арабская цифрва в виде числа
 		 */
@@ -553,7 +579,8 @@ static class Symbols {
 		}
 	public:
 		/**
-		 * getLetter Метод извлечения латинской буквы
+		 * @brief Метод извлечения латинской буквы
+		 *
 		 * @param letter латинская буква для извлечения
 		 * @return       латинская буква в виде символа
 		 */
@@ -570,7 +597,8 @@ static class Symbols {
 			return result;
 		}
 		/**
-		 * getLetter Метод извлечения латинской буквы
+		 * @brief Метод извлечения латинской буквы
+		 *
 		 * @param letter латинская буква для извлечения
 		 * @return       латинская буква в виде символа
 		 */
@@ -588,7 +616,8 @@ static class Symbols {
 		}
 	public:
 		/**
-		 * Symbols Конструктор
+		 * @brief Конструктор
+		 *
 		 */
 		Symbols() noexcept {
 			/**
@@ -669,7 +698,8 @@ static class Symbols {
 } standardSymbols;
 
 /**
- * is Метод проверки текста на соответствие флагу
+ * @brief Метод проверки текста на соответствие флагу
+ *
  * @param text текст для проверки
  * @param flag флаг проверки
  * @return     результат проверки
@@ -683,7 +713,9 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем определение флага проверки
+			/**
+			 * Выполняем определение флага проверки
+			 */
 			switch(static_cast <uint8_t> (flag)){
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT):
@@ -744,7 +776,8 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 	return result;
 }
 /**
- * is Метод проверки текста на соответствие флагу
+ * @brief Метод проверки текста на соответствие флагу
+ *
  * @param text текст для проверки
  * @param flag флаг проверки
  * @return     результат проверки
@@ -758,7 +791,9 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем определение флага проверки
+			/**
+			 * Выполняем определение флага проверки
+			 */
 			switch(static_cast <uint8_t> (flag)){
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT):
@@ -819,7 +854,8 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 	return result;
 }
 /**
- * is Метод проверки текста на соответствие флагу
+ * @brief Метод проверки текста на соответствие флагу
+ *
  * @param text текст для проверки
  * @param flag флаг проверки
  * @return     результат проверки
@@ -835,7 +871,9 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем определение флага проверки
+			/**
+			 * Выполняем определение флага проверки
+			 */
 			switch(static_cast <uint8_t> (flag)){
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
@@ -897,7 +935,8 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					// Если длина слова больше 1-го символа
 					if(text.length() > 1){
 						/**
-						 * checkFn Функция проверки на валидность символа
+						 * @brief Функция проверки на валидность символа
+						 *
 						 * @param text  текст для проверки
 						 * @param index индекс буквы в слове
 						 * @return      результат проверки
@@ -952,7 +991,9 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 					uint8_t num = 0;
 					// Получаем байты для сравнения
 					const u_char * bytes = reinterpret_cast <const u_char *> (text.c_str());
-					// Выполняем перебор всех символов
+					/**
+					 * Выполняем перебор всех символов
+					 */
 					while((* bytes) != 0x00){
 						// Выполняем проверку первой позиции
 						if(((* bytes) & 0x80) == 0x00){
@@ -1132,7 +1173,8 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 	return result;
 }
 /**
- * is Метод проверки текста на соответствие флагу
+ * @brief Метод проверки текста на соответствие флагу
+ *
  * @param text текст для проверки
  * @param flag флаг проверки
  * @return     результат проверки
@@ -1148,7 +1190,9 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем определение флага проверки
+			/**
+			 * Выполняем определение флага проверки
+			 */
 			switch(static_cast <uint8_t> (flag)){
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
@@ -1210,7 +1254,8 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					// Если длина слова больше 1-го символа
 					if(text.length() > 1){
 						/**
-						 * checkFn Функция проверки на валидность символа
+						 * @brief Функция проверки на валидность символа
+						 *
 						 * @param text  текст для проверки
 						 * @param index индекс буквы в слове
 						 * @return      результат проверки
@@ -1265,7 +1310,9 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 					uint8_t num = 0;
 					// Получаем байты для сравнения
 					const wchar_t * bytes = reinterpret_cast <const wchar_t *> (text.c_str());
-					// Выполняем перебор всех символов
+					/**
+					 * Выполняем перебор всех символов
+					 */
 					while((* bytes) != 0x00){
 						// Выполняем проверку первой позиции
 						if(((* bytes) & 0x80) == 0x00){
@@ -1445,7 +1492,8 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 	return result;
 }
 /**
- * compare Метод сравнения двух строк без учёта регистра
+ * @brief Метод сравнения двух строк без учёта регистра
+ *
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
@@ -1458,7 +1506,8 @@ bool awh::Framework::compare(const string & first, const string & second) const 
     }) : false);
 }
 /**
- * compare Метод сравнения двух строк без учёта регистра
+ * @brief Метод сравнения двух строк без учёта регистра
+ *
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
@@ -1471,7 +1520,8 @@ bool awh::Framework::compare(const wstring & first, const wstring & second) cons
     }) : false);
 }
 /**
- * timestamp Метод получения штампа времени в указанных единицах измерения
+ * @brief Метод получения штампа времени в указанных единицах измерения
+ *
  * @param buffer буфер бинарных данных для установки штампа времени
  * @param size   размер бинарных данных штампа времени
  * @param type   тип формируемого штампа времени
@@ -1486,7 +1536,9 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 		try {
 			// Если данные извлекаются в текстовом виде
 			if(text){
-				// Определяем единицы измерения штампа времени
+				/**
+				 * Определяем единицы измерения штампа времени
+				 */
 				switch(static_cast <uint8_t> (type)){
 					// Если единицы измерения штампа времени требуется получить в годы
 					case static_cast <uint8_t> (chrono_t::YEAR): {
@@ -1563,7 +1615,9 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 			} else {
 				// Результат работы функции
 				uint64_t result = 0;
-				// Определяем единицы измерения штампа времени
+				/**
+				 * Определяем единицы измерения штампа времени
+				 */
 				switch(static_cast <uint8_t> (type)){
 					// Если единицы измерения штампа времени требуется получить в годы
 					case static_cast <uint8_t> (chrono_t::YEAR): {
@@ -1636,7 +1690,9 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 						result = static_cast <uint64_t> (nanoseconds.count());
 					} break;
 				}
-				// Определяем размер буфера данных
+				/**
+				 * Определяем размер буфера данных
+				 */
 				switch(size){
 					// Если размер данных 1 байт
 					case 1: {
@@ -1729,7 +1785,8 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 	}
 }
 /**
- * iconv Метод конвертирования строки кодировки
+ * @brief Метод конвертирования строки кодировки
+ *
  * @param text     текст для конвертирования
  * @param codepage кодировка в которую необходимо сконвертировать текст
  * @return         сконвертированный текст в требуемой кодировке
@@ -1744,10 +1801,12 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 		 */
 		try {
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
-				// Определяем кодировку в которую нам нужно сконвертировать текст
+				/**
+				 * Определяем кодировку в которую нам нужно сконвертировать текст
+				 */
 				switch(static_cast <uint8_t> (codepage)){
 					// Если требуется выполнить кодировку в автоматическом режиме
 					case static_cast <uint8_t> (codepage_t::AUTO): {
@@ -1761,21 +1820,21 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 					// Если требуется выполнить кодировку в UTF-8
 					case static_cast <uint8_t> (codepage_t::CP1251_UTF8): {
 						// Выполняем получение размера буфера данных
-						int32_t size = MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int32_t> (text.size()), 0, 0);
+						int32_t size = ::MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int32_t> (text.size()), 0, 0);
 						// Если размер буфера данных получен
 						if(size > 0){
 							// Создаём буфер данных
 							vector <wchar_t> buffer(static_cast <size_t> (size), 0);
 							// Если конвертация в CP1251 выполнена удачно
-							if(MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
+							if(::MultiByteToWideChar(1251, 0, text.c_str(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
 								// Получаем размер результирующего буфера данных в кодировке UTF-8
-								size = WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
+								size = ::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
 								// Если размер буфера данных получен
 								if(size > 0){
 									// Выделяем данные для результирующего буфера данных
 									result.resize(static_cast <size_t> (size), 0);
 									// Если конвертация буфера текстовых данных в UTF-8 не выполнена
-									if(!WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
+									if(!::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
 										// Выполняем удаление результирующего буфера данных
 										result.clear();
 										// Выполняем удаление выделенной памяти
@@ -1788,21 +1847,21 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 					// Если требуется выполнить кодировку в CP1251
 					case static_cast <uint8_t> (codepage_t::UTF8_CP1251): {
 						// Выполняем получение размера буфера данных
-						int32_t size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int32_t> (text.size()), 0, 0);
+						int32_t size = ::MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int32_t> (text.size()), 0, 0);
 						// Если размер буфера данных получен
 						if(size > 0){
 							// Создаём буфер данных
 							vector <wchar_t> buffer(static_cast <size_t> (size), 0);
 							// Если конвертация в UTF-8 выполнена удачно
-							if(MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
+							if(::MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast <int32_t> (text.size()), buffer.data(), static_cast <int32_t> (buffer.size()))){
 								// Получаем размер результирующего буфера данных в кодировке CP1251
-								size = WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
+								size = ::WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
 								// Если размер буфера данных получен
 								if(size > 0){
 									// Выделяем данные для результирующего буфера данных
 									result.resize(static_cast <size_t> (size), 0);
 									// Если конвертация буфера текстовых данных в CP1251 не выполнена
-									if(!WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
+									if(!::WideCharToMultiByte(1251, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
 										// Выполняем удаление результирующего буфера данных
 										result.clear();
 										// Выполняем удаление выделенной памяти
@@ -1816,14 +1875,16 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 					default: return text;
 				}
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#else
 				/**
 				 * Если используется модуль IDN
 				 */
 				#if AWH_IDN
-					// Определяем кодировку в которую нам нужно сконвертировать текст
+					/**
+					 * Определяем кодировку в которую нам нужно сконвертировать текст
+					 */
 					switch(static_cast <uint8_t> (codepage)){
 						// Если требуется выполнить кодировку в автоматическом режиме
 						case static_cast <uint8_t> (codepage_t::AUTO): {
@@ -1837,11 +1898,11 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 						// Если требуется выполнить кодировку в UTF-8
 						case static_cast <uint8_t> (codepage_t::CP1251_UTF8):
 							// Выполняем конвертирование строки из CP1251 в UTF-8
-							return convertEncoding(text, "CP1251", "UTF-8");
+							return ::convertEncoding(text, "CP1251", "UTF-8");
 						// Если требуется выполнить кодировку в CP1251
 						case static_cast <uint8_t> (codepage_t::UTF8_CP1251):
 							// Выполняем конвертирование строки из UTF-8 в CP1251
-							return convertEncoding(text, "UTF-8", "CP1251");
+							return ::convertEncoding(text, "UTF-8", "CP1251");
 						// Если кодировка не установлена
 						default: return text;
 					}
@@ -1876,13 +1937,16 @@ string awh::Framework::iconv(const string & text, const codepage_t codepage) con
 	return result;
 }
 /**
- * transform Метод трансформации одного символа
+ * @brief Метод трансформации одного символа
+ *
  * @param letter символ для трансформации
  * @param flag   флаг трансформации
  * @return       трансформированный символ
  */
 char awh::Framework::transform(char letter, const transform_t flag) const noexcept {
-	// Определяем алгоритм трансформации
+	/**
+	 * Определяем алгоритм трансформации
+	 */
 	switch(static_cast <uint8_t> (flag)){
 		// Если передан флаг перевода строки в верхний регистр
 		case static_cast <uint8_t> (transform_t::UPPER): {
@@ -1899,13 +1963,16 @@ char awh::Framework::transform(char letter, const transform_t flag) const noexce
 	return letter;
 }
 /**
- * transform Метод трансформации одного символа
+ * @brief Метод трансформации одного символа
+ *
  * @param letter символ для трансформации
  * @param flag   флаг трансформации
  * @return       трансформированный символ
  */
 wchar_t awh::Framework::transform(wchar_t letter, const transform_t flag) const noexcept {
-	// Определяем алгоритм трансформации
+	/**
+	 * Определяем алгоритм трансформации
+	 */
 	switch(static_cast <uint8_t> (flag)){
 		// Если передан флаг перевода строки в верхний регистр
 		case static_cast <uint8_t> (transform_t::UPPER): {
@@ -1922,7 +1989,8 @@ wchar_t awh::Framework::transform(wchar_t letter, const transform_t flag) const 
 	return letter;
 }
 /**
- * transform Метод трансформации строки
+ * @brief Метод трансформации строки
+ *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
@@ -1934,7 +2002,9 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем алгоритм трансформации
+			/**
+			 * Определяем алгоритм трансформации
+			 */
 			switch(static_cast <uint8_t> (flag)){
 				// Если передан флаг удаления пробелов
 				case static_cast <uint8_t> (transform_t::TRIM): {
@@ -2009,7 +2079,8 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 	return text;
 }
 /**
- * transform Метод трансформации строки
+ * @brief Метод трансформации строки
+ *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
@@ -2021,7 +2092,9 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем алгоритм трансформации
+			/**
+			 * Определяем алгоритм трансформации
+			 */
 			switch(static_cast <uint8_t> (flag)){
 				// Если передан флаг удаления пробелов
 				case static_cast <uint8_t> (transform_t::TRIM): {
@@ -2096,7 +2169,8 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 	return text;
 }
 /**
- * transform Метод трансформации строки
+ * @brief Метод трансформации строки
+ *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
@@ -2106,7 +2180,8 @@ const string & awh::Framework::transform(const string & text, const transform_t 
 	return this->transform(* const_cast <string *> (&text), flag);
 }
 /**
- * transform Метод трансформации строки
+ * @brief Метод трансформации строки
+ *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
@@ -2116,7 +2191,8 @@ const wstring & awh::Framework::transform(const wstring & text, const transform_
 	return this->transform(* const_cast <wstring *> (&text), flag);
 }
 /**
- * join Метод объединения списка строк в одну строку
+ * @brief Метод объединения списка строк в одну строку
+ *
  * @param items список строк которые необходимо объединить
  * @param delim разделитель
  * @return      строка полученная после объединения
@@ -2140,7 +2216,8 @@ string awh::Framework::join(const vector <string> & items, const string & delim)
 	return result;
 }
 /**
- * join Метод объединения списка строк в одну строку
+ * @brief Метод объединения списка строк в одну строку
+ *
  * @param items список строк которые необходимо объединить
  * @param delim разделитель
  * @return      строка полученная после объединения
@@ -2164,7 +2241,8 @@ wstring awh::Framework::join(const vector <wstring> & items, const wstring & del
 	return result;
 }
 /**
- * split Метод разделения строк на токены
+ * @brief Метод разделения строк на токены
+ *
  * @param text      строка для парсинга
  * @param delim     разделитель
  * @param container результирующий вектор
@@ -2174,7 +2252,8 @@ vector <string> & awh::Framework::split(const string & text, const string & deli
 	return ::split(text, delim, container);
 }
 /**
- * split Метод разделения строк на токены
+ * @brief Метод разделения строк на токены
+ *
  * @param text      строка для парсинга
  * @param delim     разделитель
  * @param container результирующий вектор
@@ -2184,7 +2263,8 @@ vector <wstring> & awh::Framework::split(const wstring & text, const wstring & d
 	return ::split(text, delim, container);
 }
 /**
- * convert Метод конвертирования строки utf-8 в строку
+ * @brief Метод конвертирования строки utf-8 в строку
+ *
  * @param str строка utf-8 для конвертирования
  * @return    обычная строка
  */
@@ -2253,7 +2333,8 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 	return result;
 }
 /**
- * convert Метод конвертирования строки в строку utf-8
+ * @brief Метод конвертирования строки в строку utf-8
+ *
  * @param str строка для конвертирования
  * @return    строка в utf-8
  */
@@ -2320,7 +2401,8 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	return result;
 }
 /**
- * size Метод определения точного размера, сколько занимают данные (в байтах) в буфере
+ * @brief Метод определения точного размера, сколько занимают данные (в байтах) в буфере
+ *
  * @param value значение бинарного буфера для проверки
  * @param size  общий размер бинарного буфера
  * @return      фактический размер буфера занимаемый данными
@@ -2338,7 +2420,9 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
 			uint8_t byte = 0;
 			// Получаем общее количество байт буфера
 			size_t index = size;
-			// Выполняем перебор всех байт буфера
+			/**
+			 * Выполняем перебор всех байт буфера
+			 */
 			while(index--){
 				// Выполняем получениетекущего байта
 				byte = reinterpret_cast <const uint8_t *> (value)[index];
@@ -2374,7 +2458,8 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
 	return result;
 }
 /**
- * greater Метод проверки больше первое число второго или нет (бинарным методом)
+ * @brief Метод проверки больше первое число второго или нет (бинарным методом)
+ *
  * @param value1 значение первого числа в бинарном виде
  * @param value2 значение второго числа в бинарном виде
  * @param size   размер бинарного буфера числа
@@ -2393,7 +2478,9 @@ bool awh::Framework::greater(const void * value1, const void * value2, const siz
 			bitset <8> num1(0), num2(0);
 			// Индекс перебора всех бит числа
 			size_t count = 0, index = size;
-			// Выполняем перебор всех байт буфера
+			/**
+			 * Выполняем перебор всех байт буфера
+			 */
 			while(index--){
 				// Получаем значение числа в виде первого байта
 				num1 = reinterpret_cast <const uint8_t *> (value1)[index];
@@ -2401,7 +2488,9 @@ bool awh::Framework::greater(const void * value1, const void * value2, const siz
 				num2 = reinterpret_cast <const uint8_t *> (value2)[index];
 				// Получаем первоначальное значение индексов
 				count = num1.size();
-				// Выполняем перебор всей строки
+				/**
+				 * Выполняем перебор всей строки
+				 */
 				while(count--){
 					// Если первый байт больше второго
 					if((result = (num1.test(count) && !num2.test(count))) || (!num1.test(count) && num2.test(count)))
@@ -2432,7 +2521,8 @@ bool awh::Framework::greater(const void * value1, const void * value2, const siz
 	return result;
 }
 /**
- * itoa Метод конвертации чисел в указанную систему счисления
+ * @brief Метод конвертации чисел в указанную систему счисления
+ *
  * @param value бинарный буфер числа для конвертации
  * @param size  размер бинарного буфера
  * @param radix система счисления
@@ -2469,7 +2559,9 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 				}
 			// Если это другая система счисления
 			} else {
-				// Определяем размер данных для конвертации
+				/**
+				 * Определяем размер данных для конвертации
+				 */
 				switch(size){
 					// Если это один байт
 					case 1: {
@@ -2481,7 +2573,9 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						if(num == 0)
 							// Выполняем добавление нулевого символа
 							result.insert(result.begin(), digits[0]);
-						// Раскладываем число на цифры (младшими разрядами вперёд)
+						/**
+						 * Раскладываем число на цифры (младшими разрядами вперёд)
+						 */
 						while(num != 0){
 							// Добавляем идентификатор числа
 							result.insert(result.begin(), digits[num % radix]);
@@ -2499,7 +2593,9 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						if(num == 0)
 							// Выполняем добавление нулевого символа
 							result.insert(result.begin(), digits[0]);
-						// Раскладываем число на цифры (младшими разрядами вперёд)
+						/**
+						 * Раскладываем число на цифры (младшими разрядами вперёд)
+						 */
 						while(num != 0){
 							// Добавляем идентификатор числа
 							result.insert(result.begin(), digits[num % static_cast <uint16_t> (radix)]);
@@ -2517,7 +2613,9 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						if(num == 0)
 							// Выполняем добавление нулевого символа
 							result.insert(result.begin(), digits[0]);
-						// Раскладываем число на цифры (младшими разрядами вперёд)
+						/**
+						 * Раскладываем число на цифры (младшими разрядами вперёд)
+						 */
 						while(num != 0){
 							// Добавляем идентификатор числа
 							result.insert(result.begin(), digits[num % static_cast <uint32_t> (radix)]);
@@ -2535,7 +2633,9 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						if(num == 0)
 							// Выполняем добавление нулевого символа
 							result.insert(result.begin(), digits[0]);
-						// Раскладываем число на цифры (младшими разрядами вперёд)
+						/**
+						 * Раскладываем число на цифры (младшими разрядами вперёд)
+						 */
 						while(num != 0){
 							// Добавляем идентификатор числа
 							result.insert(result.begin(), digits[num % static_cast <uint64_t> (radix)]);
@@ -2588,7 +2688,8 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 	return result;
 }
 /**
- * atoi Метод конвертации строковых чисел в десятичную систему счисления
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
  * @param value  число в бинарном виде для конвертации в 10-ю систему
  * @param radix  система счисления
  * @param buffer бинарный буфер куда следует положить результат
@@ -2618,7 +2719,9 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 			this->transform(number, transform_t::UPPER);
 			// Количество перебираемых элементов
 			const uint8_t count = static_cast <uint8_t> (number.length());
-			// Определяем размер данных для конвертации
+			/**
+			 * Определяем размер данных для конвертации
+			 */
 			switch(size){
 				// Если это один байт
 				case 1: {
@@ -2694,7 +2797,9 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 						bitset <8> result(0);
 						// Получаем первоначальное значение индексов
 						size_t i = value.size(), j = 0, offset = 0;
-						// Выполняем перебор всей строки
+						/**
+						 * Выполняем перебор всей строки
+						 */
 						while(i--){
 							// Если бит положительный
 							if(value.at(i) == '1')
@@ -2761,7 +2866,8 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 	}
 }
 /**
- * noexp Метод перевода числа в безэкспоненциальную форму
+ * @brief Метод перевода числа в безэкспоненциальную форму
+ *
  * @param number число для перевода
  * @param step   размер шага после запятой
  * @return       число в безэкспоненциальной форме
@@ -2832,7 +2938,8 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 	return result;
 }
 /**
- * noexp Метод перевода числа в безэкспоненциальную форму
+ * @brief Метод перевода числа в безэкспоненциальную форму
+ *
  * @param number  число для перевода
  * @param onlyNum выводить только числа
  * @return        число в безэкспоненциальной форме
@@ -2858,7 +2965,9 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 			if((count > 0) && !result.empty()){
 				// Флаг завершения перебора
 				bool end = false;
-				// Если последний символ является нулём
+				/**
+				 * Если последний символ является нулём
+				 */
 				while(!end && (result.back() == '0') || (end = ((result.back() == '.') || (result.back() == ','))))
 					// Удаляем последний символ
 					result.pop_back();
@@ -2929,7 +3038,8 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 	return result;
 }
 /**
- * rate Метод порверки на сколько процентов (A > B) или (A < B)
+ * @brief Метод порверки на сколько процентов (A > B) или (A < B)
+ *
  * @param a первое число
  * @param b второе число
  * @return  результат расчёта
@@ -2963,7 +3073,8 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 	}
 }
 /**
- * floor Метод приведения количества символов после запятой к указанному количества
+ * @brief Метод приведения количества символов после запятой к указанному количества
+ *
  * @param x число для приведения
  * @param n количество символов после запятой
  * @return  сформированное число
@@ -2999,7 +3110,8 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 	}
 }
 /**
- * rome2arabic Метод перевода римских цифр в арабские
+ * @brief Метод перевода римских цифр в арабские
+ *
  * @param word римское число
  * @return     арабское число
  */
@@ -3139,7 +3251,8 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 	return result;
 }
 /**
- * rome2arabic Метод перевода римских цифр в арабские
+ * @brief Метод перевода римских цифр в арабские
+ *
  * @param word римское число
  * @return     арабское число
  */
@@ -3279,7 +3392,8 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 	return result;
 }
 /**
- * arabic2rome Метод перевода арабских чисел в римские
+ * @brief Метод перевода арабских чисел в римские
+ *
  * @param number арабское число от 1 до 4999
  * @return       римское число
  */
@@ -3331,7 +3445,8 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 	return result;
 }
 /**
- * arabic2rome Метод перевода арабских чисел в римские
+ * @brief Метод перевода арабских чисел в римские
+ *
  * @param word арабское число от 1 до 4999
  * @return     римское число
  */
@@ -3371,7 +3486,8 @@ string awh::Framework::arabic2rome(const string & word) const noexcept {
 	return result;
 }
 /**
- * arabic2rome Метод перевода арабских чисел в римские
+ * @brief Метод перевода арабских чисел в римские
+ *
  * @param word арабское число от 1 до 4999
  * @return     римское число
  */
@@ -3411,7 +3527,8 @@ wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 	return result;
 }
 /**
- * setCase Метод запоминания регистра слова
+ * @brief Метод запоминания регистра слова
+ *
  * @param pos   позиция для установки регистра
  * @param start начальное значение регистра в бинарном виде
  * @return      позиция верхнего регистра в бинарном виде
@@ -3447,7 +3564,8 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 	return result;
 }
 /**
- * countLetter Метод подсчёта количества указанной буквы в слове
+ * @brief Метод подсчёта количества указанной буквы в слове
+ *
  * @param word   слово в котором нужно подсчитать букву
  * @param letter букву которую нужно подсчитать
  * @return       результат подсчёта
@@ -3463,7 +3581,9 @@ size_t awh::Framework::countLetter(const wstring & word, const wchar_t letter) c
 		try {
 			// Ищем нашу букву
 			size_t pos = 0;
-			// Выполняем подсчёт количества указанных букв в слове
+			/**
+			 * Выполняем подсчёт количества указанных букв в слове
+			 */
 			while((pos = word.find(letter, pos)) != wstring::npos){
 				// Считаем количество букв
 				result++;
@@ -3493,7 +3613,8 @@ size_t awh::Framework::countLetter(const wstring & word, const wchar_t letter) c
 	return result;
 }
 /**
- * format Метод реализации функции формирования форматированной строки
+ * @brief Метод реализации функции формирования форматированной строки
+ *
  * @param format формат строки вывода
  * @param args   передаваемые аргументы
  * @return       сформированная строка
@@ -3515,7 +3636,9 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 			size_t length = 0;
 			// Создаем буфер данных
 			result.resize(1024);
-			// Выполняем перебор всех аргументов
+			/**
+			 * Выполняем перебор всех аргументов
+			 */
 			while(true){
 				// Создаем список аргументов
 				va_list args2;
@@ -3578,7 +3701,8 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 	return result;
 }
 /**
- * format Метод реализации функции формирования форматированной строки
+ * @brief Метод реализации функции формирования форматированной строки
+ *
  * @param  format формат строки вывода
  * @param  items  список аргументов строки
  * @return        сформированная строка
@@ -3589,7 +3713,8 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 	// Если данные переданы
 	if(!format.empty() && !items.empty()){
 		/**
-		 * replaceFn Функция заменты подстроки в строке
+		 * @brief Функция заменты подстроки в строке
+		 *
 		 * @param str  строка в которой нужно произвести замену
 		 * @param from строка которую нужно заменить
 		 * @param to   строка на которую нужно заменить
@@ -3605,7 +3730,9 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 					return;
 				// Позиция подстроки в строке
 				size_t pos = 0;
-				// Выполняем поиск подстроки в стркое
+				/**
+				 * Выполняем поиск подстроки в стркое
+				 */
 				while((pos = str.find(from, pos)) != string::npos){
 					// Заменяем подстроку в строке
 					str.replace(pos, from.length(), to);
@@ -3670,7 +3797,8 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 	return result;
 }
 /**
- * exists Метод проверки существования слова в тексте
+ * @brief Метод проверки существования слова в тексте
+ *
  * @param word слово для проверки
  * @param text текст в котором выполнения проверка
  * @return     результат выполнения проверки
@@ -3720,7 +3848,8 @@ bool awh::Framework::exists(const string & word, const string & text) const noex
 	return false;
 }
 /**
- * exists Метод проверки существования слова в тексте
+ * @brief Метод проверки существования слова в тексте
+ *
  * @param word слово для проверки
  * @param text текст в котором выполнения проверка
  * @return     результат выполнения проверки
@@ -3770,7 +3899,8 @@ bool awh::Framework::exists(const wstring & word, const wstring & text) const no
 	return false;
 }
 /**
- * replace Метод замены в тексте слово на другое слово
+ * @brief Метод замены в тексте слово на другое слово
+ *
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска
  * @param alt  слово на которое нужно произвести замену
@@ -3787,7 +3917,9 @@ string & awh::Framework::replace(string & text, const string & word, const strin
 			size_t pos = 0;
 			// Определяем текст на который нужно произвести замену
 			const string & alternative = (!alt.empty() ? alt : "");
-			// Выполняем поиск всех слов
+			/**
+			 * Выполняем поиск всех слов
+			 */
 			while((pos = text.find(word, pos)) != string::npos){
 				// Выполняем замену текста
 				text.replace(pos, word.length(), alternative);
@@ -3817,7 +3949,8 @@ string & awh::Framework::replace(string & text, const string & word, const strin
 	return text;
 }
 /**
- * replace Метод замены в тексте слово на другое слово
+ * @brief Метод замены в тексте слово на другое слово
+ *
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска
  * @param alt  слово на которое нужно произвести замену
@@ -3834,7 +3967,9 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 			size_t pos = 0;
 			// Определяем текст на который нужно произвести замену
 			const wstring & alternative = (!alt.empty() ? alt : L"");
-			// Выполняем поиск всех слов
+			/**
+			 * Выполняем поиск всех слов
+			 */
 			while((pos = text.find(word, pos)) != wstring::npos){
 				// Выполняем замену текста
 				text.replace(pos, word.length(), alternative);
@@ -3864,7 +3999,8 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 	return text;
 }
 /**
- * replace Метод замены в тексте слово на другое слово
+ * @brief Метод замены в тексте слово на другое слово
+ *
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска
  * @param alt  слово на которое нужно произвести замену
@@ -3875,7 +4011,8 @@ const string & awh::Framework::replace(const string & text, const string & word,
 	return this->replace(* const_cast <string *> (&text), word, alt);
 }
 /**
- * replace Метод замены в тексте слово на другое слово
+ * @brief Метод замены в тексте слово на другое слово
+ *
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска
  * @param alt  слово на которое нужно произвести замену
@@ -3886,7 +4023,8 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
 	return this->replace(* const_cast <wstring *> (&text), word, alt);
 }
 /**
- * kv Метод извлечения ключей и значений из текста
+ * @brief Метод извлечения ключей и значений из текста
+ *
  * @param text      текст из которого извлекаются записи
  * @param delim     разделитель записей
  * @param separator разделитель ключа и значения
@@ -3910,7 +4048,9 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 			size_t keyBegin = 0, keyEnd = 0;
 			// Позиции значения в тексте
 			size_t valueBegin = 0, valueEnd = 0;
-			// Выполняем парсинг текста
+			/**
+			 * Выполняем парсинг текста
+			 */
 			while(keyBegin < text.length()){
 				// Выполняем поиск разделителя ключа и значения
 				keyEnd = text.find(separator, keyBegin);
@@ -3946,11 +4086,15 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 						valueEnd = text.find(* i, valueEnd + i->length() + delim.length());
 						// Получаем позицию поиска экранирования
 						escapingPosition = (valueEnd - static_cast <size_t> (escapingCount));
-						// Если мы нашли экранирование
+						/**
+						 * Если мы нашли экранирование
+						 */
 						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text.at(escapingPosition) == '\\'))
 							// Получаем позицию поиска экранирования
 							escapingPosition = (valueEnd - static_cast <size_t> (++escapingCount));
-					// Если мы ещё не достигли конца значения
+					/**
+					 * Если мы ещё не достигли конца значения
+					 */
 					} while((valueEnd != string::npos) && ((escapingCount % 2) == 0));
 					// Если конец значения не найден
 					if(valueEnd == string::npos)
@@ -3992,7 +4136,9 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 					);
 				// Выполняем поиск следующей записи
 				keyBegin = (valueEnd + (i != escaping.end() ? i->length() : 0));
-				// Выполняем поиск начало следующего ключа
+				/**
+				 * Выполняем поиск начало следующего ключа
+				 */
 				while(((keyBegin + delim.length()) < text.length()) &&
 				       (std::strncmp(&text.data()[keyBegin], delim.data(), delim.length()) == 0))
 					// Выполняем установку начала следующего ключа
@@ -4021,7 +4167,8 @@ std::unordered_map <string, string> awh::Framework::kv(const string & text, cons
 	return result;
 }
 /**
- * kv Метод извлечения ключей и значений из текста
+ * @brief Метод извлечения ключей и значений из текста
+ *
  * @param text      текст из которого извлекаются записи
  * @param delim     разделитель записей
  * @param separator разделитель ключа и значения
@@ -4045,7 +4192,9 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 			size_t keyBegin = 0, keyEnd = 0;
 			// Позиции значения в тексте
 			size_t valueBegin = 0, valueEnd = 0;
-			// Выполняем парсинг текста
+			/**
+			 * Выполняем парсинг текста
+			 */
 			while(keyBegin < text.length()){
 				// Выполняем поиск разделителя ключа и значения
 				keyEnd = text.find(separator, keyBegin);
@@ -4081,11 +4230,15 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 						valueEnd = text.find(* i, valueEnd + i->length() + delim.length());
 						// Получаем позицию поиска экранирования
 						escapingPosition = (valueEnd - static_cast <size_t> (escapingCount));
-						// Если мы нашли экранирование
+						/**
+						 * Если мы нашли экранирование
+						 */
 						while((escapingPosition > 0) && (escapingPosition < text.size()) && (text.at(escapingPosition) == '\\'))
 							// Получаем позицию поиска экранирования
 							escapingPosition = (valueEnd - static_cast <size_t> (++escapingCount));
-					// Если мы ещё не достигли конца значения
+					/**
+					 * Если мы ещё не достигли конца значения
+					 */
 					} while((valueEnd != wstring::npos) && ((escapingCount % 2) == 0));
 					// Если конец значения не найден
 					if(valueEnd == wstring::npos)
@@ -4127,7 +4280,9 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 					);
 				// Выполняем поиск следующей записи
 				keyBegin = (valueEnd + (i != escaping.end() ? i->length() : 0));
-				// Выполняем поиск начало следующего ключа
+				/**
+				 * Выполняем поиск начало следующего ключа
+				 */
 				while(((keyBegin + delim.length()) < text.length()) &&
 				       (std::wcsncmp(&text.data()[keyBegin], delim.data(), delim.length()) == 0))
 					// Выполняем установку начала следующего ключа
@@ -4156,7 +4311,8 @@ std::unordered_map <wstring, wstring> awh::Framework::kv(const wstring & text, c
 	return result;
 }
 /**
- * domainZone Метод установки пользовательской зоны
+ * @brief Метод установки пользовательской зоны
+ *
  * @param zone пользовательская зона
  */
 void awh::Framework::domainZone(const string & zone) noexcept {
@@ -4166,7 +4322,8 @@ void awh::Framework::domainZone(const string & zone) noexcept {
 		this->_nwt.zone(zone);
 }
 /**
- * domainZones Метод установки списка пользовательских зон
+ * @brief Метод установки списка пользовательских зон
+ *
  * @param zones список доменных зон интернета
  */
 void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
@@ -4176,7 +4333,8 @@ void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
 		this->_nwt.zones(zones);
 }
 /**
- * domainZones Метод извлечения списка пользовательских зон интернета
+ * @brief Метод извлечения списка пользовательских зон интернета
+ *
  * @return список доменных зон
  */
 const std::set <string> & awh::Framework::domainZones() const noexcept {
@@ -4184,7 +4342,8 @@ const std::set <string> & awh::Framework::domainZones() const noexcept {
 	return this->_nwt.zones();
 }
 /**
- * setLocale Метод установки системной локали
+ * @brief Метод установки системной локали
+ *
  * @param locale локализация приложения
  */
 void awh::Framework::setLocale(const string & locale) noexcept {
@@ -4204,13 +4363,27 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			// this->_locale = ::locale::global(loc);
 			this->_locale = ::locale(locale.c_str());
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
-				/**
-				 * Выполняем подключение UTF-8 в консоли
-				 */
-				::InitAWHConsoleUTF8();
+				// Параметры устанавливаемого шрифта
+				CONSOLE_FONT_INFOEX fontInfo = {0};
+				// Устанавливаем размер буфера шрифта
+				fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
+				// Формируем параметры шрифта
+				fontInfo.nFont = 1;
+				fontInfo.dwFontSize.X = 7;
+				fontInfo.dwFontSize.Y = 12;
+				fontInfo.FontWeight = 500;
+				fontInfo.FontFamily = FF_DONTCARE;
+				// Выполняем установку шрифта Lucida Console
+				::lstrcpyW(fontInfo.FaceName, L"Lucida Console");
+				// Применяем шрифт
+				::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &fontInfo);
+				// Устанавливаем кодировку ввода текстовых данных в консоле 65001
+				::SetConsoleCP(CP_UTF8);
+				// Устанавливаем кодировку вывода текстовых данных из консоли
+				::SetConsoleOutputCP(CP_UTF8);
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -4237,7 +4410,8 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 	}
 }
 /**
- * urls Метод извлечения координат url адресов в строке
+ * @brief Метод извлечения координат url адресов в строке
+ *
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
  */
@@ -4252,7 +4426,9 @@ std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexce
 		try {
 			// Позиция найденного nwt адреса
 			size_t pos = 0;
-			// Выполням поиск ссылок в тексте
+			/**
+			 * Выполням поиск ссылок в тексте
+			 */
 			while(pos < text.length()){
 				// Выполняем парсинг nwt адреса
 				auto resUri = const_cast <fmk_t *> (this)->_nwt.parse(text.substr(pos));
@@ -4301,7 +4477,8 @@ std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexce
 	return result;
 }
 /**
- * icon Метод получения иконки
+ * @brief Метод получения иконки
+ *
  * @param end флаг завершения работы
  * @return    иконка напутствия работы
  */
@@ -4344,7 +4521,8 @@ string awh::Framework::icon(const bool end) const noexcept {
 	return (!end ? iconBegin[::rand() % iconBegin.size()] : iconEnd[::rand() % iconEnd.size()]);
 }
 /**
- * bytes Метод получения размера в байтах из строки
+ * @brief Метод получения размера в байтах из строки
+ *
  * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
  * @return    размер в байтах
  */
@@ -4410,7 +4588,8 @@ double awh::Framework::bytes(const string & str) const noexcept {
 	return result;
 }
 /**
- * bytes Метод конвертации байт в строку
+ * @brief Метод конвертации байт в строку
+ *
  * @param value   количество байт
  * @param onlyNum выводить только числа
  * @return        полученная строка
@@ -4486,30 +4665,31 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
 	return result;
 }
 /**
- * sizeBuffer Метод получения размера буфера в байтах
+ * @brief Метод получения размера буфера в байтах
+ *
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    размер буфера в байтах
  */
 size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 	/**
 	 * Readme - http://www.securitylab.ru/analytics/243414.php
-	 * 
+	 *
 	 * Example: 17520 Байт / .04 секунды = .44 МБ/сек = 3.5 Мб/сек
 	 * Description: Пропускная способность = размер буфера / задержка
-	 * 
+	 *
 	 * 1. Количество байт в киллобайте: 1024
 	 * 2. Количество байт в мегабайте: 1024000
 	 * 3. Количество байт в гигабайте: 1024000000
-	 * 
+	 *
 	 * Размер буфера: 65536
 	 * Задержка сети: .04
 	 * Количество бит в байте: 8
-	 * 
+	 *
 	 * 65536 / .04 / 1024000 = 1.6 (МБ/сек) * 8 = 13 Мб/сек
-	 * 
+	 *
 	 * Получение размера буфера
 	 * (13 / 8) * (1024000 * .04) = 66560
-	 * 
+	 *
 	 */
 	// Результат работы функции
 	size_t result = 0;
@@ -4568,7 +4748,8 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 	return result;
 }
 /**
- * Framework Конструктор
+ * @brief Конструктор
+ *
  */
 awh::Framework::Framework() noexcept {
 	// Устанавливаем локализацию системы
@@ -4579,7 +4760,8 @@ awh::Framework::Framework() noexcept {
 	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(bytes|b|Kb|Mb|Gb|Tb)$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
 }
 /**
- * Framework Конструктор
+ * @brief Конструктор
+ *
  * @param locale локализация приложения
  */
 awh::Framework::Framework(const string & locale) noexcept {

@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * connectEvent Метод обратного вызова при подключении к серверу
+ * @brief Метод обратного вызова при подключении к серверу
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -73,7 +74,8 @@ void awh::client::Http2::connectEvent(const uint64_t bid, const uint16_t sid) no
 	}
 }
 /**
- * disconnectEvent Метод обратного вызова при отключении от сервера
+ * @brief Метод обратного вызова при отключении от сервера
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -115,7 +117,8 @@ void awh::client::Http2::disconnectEvent(const uint64_t bid, const uint16_t sid)
 		web2_t::_callback.call <void (const mode_t)> ("active", mode_t::DISCONNECT);
 }
 /**
- * readEvent Метод обратного вызова при чтении сообщения с сервера
+ * @brief Метод обратного вызова при чтении сообщения с сервера
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
@@ -154,7 +157,8 @@ void awh::client::Http2::readEvent(const char * buffer, const size_t size, const
 	}
 }
 /**
- * writeEvent Метод обратного вызова при записи сообщения на клиенте
+ * @brief Метод обратного вызова при записи сообщения на клиенте
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
@@ -165,7 +169,9 @@ void awh::client::Http2::writeEvent(const char * buffer, const size_t size, cons
 	if((bid > 0) && (sid > 0)){
 		// Выполняем перебор всех доступных воркеров
 		for(auto & worker : this->_workers){
-			// Определяем протокол клиента
+			/**
+			 * Определяем протокол клиента
+			 */
 			switch(static_cast <uint8_t> (worker.second->agent)){
 				// Если агент является клиентом HTTP
 				case static_cast <uint8_t> (agent_t::HTTP): {
@@ -184,13 +190,16 @@ void awh::client::Http2::writeEvent(const char * buffer, const size_t size, cons
 	}
 }
 /**
- * callbackEvent Метод отлавливания событий контейнера функций обратного вызова
+ * @brief Метод отлавливания событий контейнера функций обратного вызова
+ *
  * @param event событие контейнера функций обратного вызова
  * @param fid   идентификатор функции обратного вызова
  * @param fn    функция обратного вызова в чистом виде
  */
 void awh::client::Http2::callbackEvent(const callback_t::event_t event, const uint64_t fid, const callback_t::fn_t & fn) noexcept {
-	// Определяем входящее событие контейнера функций обратного вызова
+	/**
+	 * Определяем входящее событие контейнера функций обратного вызова
+	 */
 	switch(static_cast <uint8_t> (event)){
 		// Если событием является установка функции обратного вызова
 		case static_cast <uint8_t> (callback_t::event_t::SET): {
@@ -212,7 +221,8 @@ void awh::client::Http2::callbackEvent(const callback_t::event_t event, const ui
 	}
 }
 /**
- * chunkSignal Метод обратного вызова при получении чанка с сервера HTTP/2
+ * @brief Метод обратного вызова при получении чанка с сервера HTTP/2
+ *
  * @param sid    идентификатор потока
  * @param buffer буфер данных который содержит полученный чанк
  * @param size   размер полученного буфера данных чанка
@@ -235,7 +245,9 @@ int32_t awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffe
 				web2_t::_callback.call <void (const uint64_t, const vector <char> &, const awh::http_t *)> ("chunking", i->second->id, vector <char> (buffer, buffer + size), &i->second->http);
 			// Если функция перехвата полученных чанков не установлена
 			else {
-				// Определяем протокол клиента
+				/**
+				 * Определяем протокол клиента
+				 */
 				switch(static_cast <uint8_t> (i->second->agent)){
 					// Если агент является клиентом HTTP
 					case static_cast <uint8_t> (agent_t::HTTP): {
@@ -261,7 +273,8 @@ int32_t awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffe
 	return 0;
 }
 /**
- * frameSignal Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
+ * @brief Метод обратного вызова при получении фрейма заголовков сервера HTTP/2
+ *
  * @param sid    идентификатор потока
  * @param direct направление передачи фрейма
  * @param type   тип полученного фрейма
@@ -269,7 +282,9 @@ int32_t awh::client::Http2::chunkSignal(const int32_t sid, const uint8_t * buffe
  * @return       статус полученных данных
  */
 int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::direct_t direct, const awh::http2_t::frame_t frame, const std::set <awh::http2_t::flag_t> & flags) noexcept {
-	// Определяем направление передачи фрейма
+	/**
+	 * Определяем направление передачи фрейма
+	 */
 	switch(static_cast <uint8_t> (direct)){
 		// Если производится передача фрейма на сервер
 		case static_cast <uint8_t> (awh::http2_t::direct_t::SEND): {
@@ -302,7 +317,9 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 				auto i = this->_workers.find(sid);
 				// Если необходимый нам воркер найден
 				if(i != this->_workers.end()){
-					// Выполняем определение типа фрейма
+					/**
+					 * Выполняем определение типа фрейма
+					 */
 					switch(static_cast <uint8_t> (frame)){
 						// Если производится сброс подключения
 						case static_cast <uint8_t> (awh::http2_t::frame_t::RST_STREAM):
@@ -340,7 +357,9 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 						} break;
 						// Если мы получили входящие данные тела ответа
 						case static_cast <uint8_t> (awh::http2_t::frame_t::DATA): {
-							// Определяем протокол клиента
+							/**
+							 * Определяем протокол клиента
+							 */
 							switch(static_cast <uint8_t> (i->second->agent)){
 								// Если агент является клиентом HTTP
 								case static_cast <uint8_t> (agent_t::HTTP): {
@@ -363,7 +382,9 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 												else std::cout << std::endl << std::flush;
 											}
 										#endif
-										// Выполняем препарирование полученных данных
+										/**
+										 * Выполняем препарирование полученных данных
+										 */
 										switch(static_cast <uint8_t> (this->prepare(sid, this->_bid))){
 											// Если необходимо выполнить пропуск обработки данных
 											case static_cast <uint8_t> (status_t::SKIP):
@@ -408,7 +429,9 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 						} break;
 						// Если мы получили входящие данные заголовков ответа
 						case static_cast <uint8_t> (awh::http2_t::frame_t::HEADERS): {
-							// Определяем протокол клиента
+							/**
+							 * Определяем протокол клиента
+							 */
 							switch(static_cast <uint8_t> (i->second->agent)){
 								// Если агент является клиентом HTTP
 								case static_cast <uint8_t> (agent_t::HTTP): {
@@ -506,7 +529,9 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 											if(web2_t::_callback.is("complete"))
 												// Выполняем функцию обратного вызова
 												web2_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, i->second->id, response.code, response.message, i->second->http.body(), i->second->http.headers());
-											// Выполняем препарирование полученных данных
+											/**
+											 * Выполняем препарирование полученных данных
+											 */
 											switch(static_cast <uint8_t> (this->prepare(sid, this->_bid))){
 												// Если необходимо выполнить пропуск обработки данных
 												case static_cast <uint8_t> (status_t::SKIP):
@@ -544,7 +569,8 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 	return 0;
 }
 /**
- * closedSignal Метод завершения работы потока
+ * @brief Метод завершения работы потока
+ *
  * @param sid   идентификатор потока
  * @param error флаг ошибки если присутствует
  * @return      статус полученных данных
@@ -570,7 +596,8 @@ int32_t awh::client::Http2::closedSignal(const int32_t sid, const awh::http2_t::
 	return 0;
 }
 /**
- * beginSignal Метод начала получения фрейма заголовков HTTP/2 сервера
+ * @brief Метод начала получения фрейма заголовков HTTP/2 сервера
+ *
  * @param sid идентификатор потока
  * @return    статус полученных данных
  */
@@ -585,7 +612,9 @@ int32_t awh::client::Http2::beginSignal(const int32_t sid) noexcept {
 		auto i = this->_workers.find(sid);
 		// Если необходимый нам воркер найден
 		if(i != this->_workers.end()){
-			// Определяем протокол клиента
+			/**
+			 * Определяем протокол клиента
+			 */
 			switch(static_cast <uint8_t> (i->second->agent)){
 				// Если агент является клиентом HTTP
 				case static_cast <uint8_t> (agent_t::HTTP): {
@@ -608,7 +637,8 @@ int32_t awh::client::Http2::beginSignal(const int32_t sid) noexcept {
 	return 0;
 }
 /**
- * headerSignal Метод обратного вызова при получении заголовка HTTP/2 сервера
+ * @brief Метод обратного вызова при получении заголовка HTTP/2 сервера
+ *
  * @param sid идентификатор потока
  * @param key данные ключа заголовка
  * @param val данные значения заголовка
@@ -625,7 +655,9 @@ int32_t awh::client::Http2::headerSignal(const int32_t sid, const string & key, 
 		auto i = this->_workers.find(sid);
 		// Если необходимый нам воркер найден
 		if(i != this->_workers.end()){
-			// Определяем протокол клиента
+			/**
+			 * Определяем протокол клиента
+			 */
 			switch(static_cast <uint8_t> (i->second->agent)){
 				// Если агент является клиентом HTTP
 				case static_cast <uint8_t> (agent_t::HTTP): {
@@ -648,13 +680,16 @@ int32_t awh::client::Http2::headerSignal(const int32_t sid, const string & key, 
 	return 0;
 }
 /**
- * end Метод завершения работы потока
+ * @brief Метод завершения работы потока
+ *
  * @param sid    идентификатор потока
  * @param rid    идентификатор запроса
  * @param direct направление передачи данных
  */
 void awh::client::Http2::end(const int32_t sid, const uint64_t rid, const direct_t direct) noexcept {
-	// Определяем направление передачи данных
+	/**
+	 * Определяем направление передачи данных
+	 */
 	switch(static_cast <uint8_t> (direct)){
 		// Если направление передачи данных отправка на сервер
 		case static_cast <uint8_t> (direct_t::SEND):
@@ -672,7 +707,8 @@ void awh::client::Http2::end(const int32_t sid, const uint64_t rid, const direct
 		web2_t::_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, rid, direct);
 }
 /**
- * answer Метод получение статуса ответа сервера
+ * @brief Метод получение статуса ответа сервера
+ *
  * @param sid    идентификатор потока
  * @param rid    идентификатор запроса
  * @param status статус ответа сервера
@@ -688,7 +724,8 @@ void awh::client::Http2::answer(const int32_t sid, const uint64_t rid, const awh
 		web2_t::_callback.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, rid, status);
 }
 /**
- * redirect Метод выполнения смены потоков
+ * @brief Метод выполнения смены потоков
+ *
  * @param from идентификатор предыдущего потока
  * @param to   идентификатор нового потока
  */
@@ -716,7 +753,8 @@ void awh::client::Http2::redirect(const int32_t from, const int32_t to) noexcept
 		web2_t::_callback.call <void (const int32_t, const int32_t)> ("redirect", from, to);
 }
 /**
- * redirect Метод выполнения редиректа если требуется
+ * @brief Метод выполнения редиректа если требуется
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  * @return    результат выполнения редиректа
@@ -728,7 +766,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 	if(this->_redirects && !this->_stopped && !this->_requests.empty() && !this->_workers.empty()){
 		// Выполняем поиск активного воркера который необходимо перезапустить
 		for(auto i = this->_workers.begin(); i != this->_workers.end(); ++i){
-			// Определяем тип агента
+			/**
+			 * Определяем тип агента
+			 */
 			switch(static_cast <uint8_t> (i->second->agent)){
 				// Если протоколом агента является HTTP-клиент
 				case static_cast <uint8_t> (agent_t::HTTP): {
@@ -749,7 +789,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 									// Завершаем работу
 									return result;
 								}
-								// Выполняем определение ответа сервера
+								/**
+								 * Выполняем определение ответа сервера
+								 */
 								switch(response.code){
 									// Если ответ сервера: Created
 									case 201:
@@ -821,7 +863,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 								// Завершаем работу
 								return result;
 							}
-							// Выполняем определение ответа сервера
+							/**
+							 * Выполняем определение ответа сервера
+							 */
 							switch(response.code){
 								// Если ответ сервера: Created
 								case 201:
@@ -896,7 +940,9 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 							// Завершаем работу
 							return result;
 						}
-						// Выполняем определение ответа сервера
+						/**
+						 * Выполняем определение ответа сервера
+						 */
 						switch(response.code){
 							// Если ответ сервера: Moved Permanently
 							case 301:
@@ -938,7 +984,8 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 	return result;
 }
 /**
- * flush Метод сброса параметров запроса
+ * @brief Метод сброса параметров запроса
+ *
  */
 void awh::client::Http2::flush() noexcept {
 	// Разрешаем чтение данных из буфера
@@ -947,7 +994,8 @@ void awh::client::Http2::flush() noexcept {
 	this->_stopped = false;
 }
 /**
- * result Метод завершения выполнения запроса
+ * @brief Метод завершения выполнения запроса
+ *
  * @param sid идентификатор потока
  * @param rid идентификатор запроса
  */
@@ -971,7 +1019,8 @@ void awh::client::Http2::result(const int32_t sid, const uint64_t rid) noexcept 
 	}
 }
 /**
- * pinging Метод таймера выполнения пинга удалённого сервера
+ * @brief Метод таймера выполнения пинга удалённого сервера
+ *
  * @param tid идентификатор таймера
  */
 void awh::client::Http2::pinging(const uint16_t tid) noexcept {
@@ -981,7 +1030,9 @@ void awh::client::Http2::pinging(const uint16_t tid) noexcept {
 		if(this->_pinging){
 			// Выполняем перебор всех доступных воркеров
 			for(auto & worker : this->_workers){
-				// Определяем протокол клиента
+				/**
+				 * Определяем протокол клиента
+				 */
 				switch(static_cast <uint8_t> (worker.second->agent)){
 					// Если агент является клиентом HTTP
 					case static_cast <uint8_t> (agent_t::HTTP): {
@@ -1008,7 +1059,8 @@ void awh::client::Http2::pinging(const uint16_t tid) noexcept {
 	}
 }
 /**
- * update Метод обновления параметров запроса для переадресации
+ * @brief Метод обновления параметров запроса для переадресации
+ *
  * @param request параметры запроса на удалённый сервер
  * @return        предыдущий идентификатор потока, если произошла переадресация
  */
@@ -1109,7 +1161,8 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 	return result;
 }
 /**
- * prepare Метод выполнения препарирования полученных данных
+ * @brief Метод выполнения препарирования полученных данных
+ *
  * @param sid идентификатор запроса
  * @param bid идентификатор брокера
  * @return    результат препарирования
@@ -1136,7 +1189,9 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 		if(web2_t::_callback.is("answer"))
 			// Выполняем функцию обратного вызова
 			web2_t::_callback.call <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", sid, i->second->id, status);
-		// Выполняем анализ результата авторизации
+		/**
+		 * Выполняем анализ результата авторизации
+		 */
 		switch(static_cast <uint8_t> (status)){
 			// Если нужно попытаться ещё раз
 			case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
@@ -1250,7 +1305,8 @@ awh::client::Web::status_t awh::client::Http2::prepare(const int32_t sid, const 
 	return status_t::STOP;
 }
 /**
- * sendError Метод отправки сообщения об ошибке
+ * @brief Метод отправки сообщения об ошибке
+ *
  * @param mess отправляемое сообщение об ошибке
  */
 void awh::client::Http2::sendError(const ws::mess_t & mess) noexcept {
@@ -1269,7 +1325,8 @@ void awh::client::Http2::sendError(const ws::mess_t & mess) noexcept {
 	}
 }
 /**
- * sendMessage Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
  * @return        результат отправки сообщения
@@ -1289,7 +1346,8 @@ bool awh::client::Http2::sendMessage(const vector <char> & message, const bool t
 	return false;
 }
 /**
- * sendMessage Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param message передаваемое сообщения в бинарном виде
  * @param size    размер передаваемого сообещния
  * @param text    данные передаются в текстовом виде
@@ -1310,7 +1368,8 @@ bool awh::client::Http2::sendMessage(const char * message, const size_t size, co
 	return false;
 }
 /**
- * send Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param request параметры запроса на удалённый сервер
  * @return        идентификатор отправленного запроса
  */
@@ -1349,7 +1408,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					return sid;
 				}
 			}
-			// Определяем тип агента
+			/**
+			 * Определяем тип агента
+			 */
 			switch(static_cast <uint8_t> (request.agent)){
 				// Если протоколом агента является HTTP-клиент
 				case static_cast <uint8_t> (agent_t::HTTP): {
@@ -1424,7 +1485,9 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 							if(!request.entity.empty()){
 								// Тело HTTP-запроса
 								vector <char> entity;
-								// Получаем данные тела запроса
+								/**
+								 * Получаем данные тела запроса
+								 */
 								while(!(entity = this->_http.payload()).empty()){
 									/**
 									 * Если включён режим отладки
@@ -1641,7 +1704,8 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 	return result;
 }
 /**
- * send Метод отправки данных в бинарном виде серверу
+ * @brief Метод отправки данных в бинарном виде серверу
+ *
  * @param buffer буфер бинарных данных передаваемых серверу
  * @param size   размер сообщения в байтах
  * @return       результат отправки сообщения
@@ -1655,7 +1719,8 @@ bool awh::client::Http2::send(const char * buffer, const size_t size) noexcept {
 	return false;
 }
 /**
- * send Метод отправки тела сообщения на сервер
+ * @brief Метод отправки тела сообщения на сервер
+ *
  * @param sid    идентификатор потока HTTP
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
@@ -1681,7 +1746,9 @@ bool awh::client::Http2::send(const int32_t sid, const char * buffer, const size
 				this->_http.body(vector <char> (buffer, buffer + size));
 				// Флаг отправляемого фрейма
 				awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
-				// Получаем данные тела запроса
+				/**
+				 * Получаем данные тела запроса
+				 */
 				while(!(entity = this->_http.payload()).empty()){
 					/**
 					 * Если включён режим отладки
@@ -1705,7 +1772,8 @@ bool awh::client::Http2::send(const int32_t sid, const char * buffer, const size
 	return result;
 }
 /**
- * send Метод отправки заголовков на сервер
+ * @brief Метод отправки заголовков на сервер
+ *
  * @param sid     идентификатор потока HTTP
  * @param url     адрес запроса на сервере
  * @param method  метод запроса на сервере
@@ -1771,7 +1839,8 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 	return result;
 }
 /**
- * send2 Метод HTTP/2 отправки сообщения на сервер
+ * @brief Метод HTTP/2 отправки сообщения на сервер
+ *
  * @param sid    идентификатор потока HTTP/2
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
@@ -1792,13 +1861,14 @@ bool awh::client::Http2::send2(const int32_t sid, const char * buffer, const siz
 	return false;
 }
 /**
- * send2 Метод HTTP/2 отправки заголовков на сервер
+ * @brief Метод HTTP/2 отправки заголовков на сервер
+ *
  * @param sid     идентификатор потока HTTP/2
  * @param headers заголовки отправляемые на сервер
  * @param flag    флаг передаваемого потока по сети
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::Http2::send2(const int32_t sid, const vector <pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
+int32_t awh::client::Http2::send2(const int32_t sid, const vector <std::pair <string, string>> & headers, const awh::http2_t::flag_t flag) noexcept {
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -1812,7 +1882,8 @@ int32_t awh::client::Http2::send2(const int32_t sid, const vector <pair <string,
 	return -1;
 }
 /**
- * pause Метод установки на паузу клиента
+ * @brief Метод установки на паузу клиента
+ *
  */
 void awh::client::Http2::pause() noexcept {
 	// Если список воркеров активен
@@ -1830,7 +1901,8 @@ void awh::client::Http2::pause() noexcept {
 	}
 }
 /**
- * waitPong Метод установки времени ожидания ответа WebSocket-сервера
+ * @brief Метод установки времени ожидания ответа WebSocket-сервера
+ *
  * @param sec время ожидания в секундах
  */
 void awh::client::Http2::waitPong(const uint16_t sec) noexcept {
@@ -1838,7 +1910,8 @@ void awh::client::Http2::waitPong(const uint16_t sec) noexcept {
 	this->_ws2.waitPong(sec);
 }
 /**
- * pingInterval Метод установки интервала времени выполнения пингов
+ * @brief Метод установки интервала времени выполнения пингов
+ *
  * @param sec интервал времени выполнения пингов в секундах
  */
 void awh::client::Http2::pingInterval(const uint16_t sec) noexcept {
@@ -1848,7 +1921,8 @@ void awh::client::Http2::pingInterval(const uint16_t sec) noexcept {
 	this->_pingInterval = (static_cast <uint32_t> (sec) * 1000);
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::client::Http2::callback(const callback_t & callback) noexcept {
@@ -1925,7 +1999,8 @@ void awh::client::Http2::callback(const callback_t & callback) noexcept {
 	}
 }
 /**
- * subprotocol Метод установки поддерживаемого сабпротокола
+ * @brief Метод установки поддерживаемого сабпротокола
+ *
  * @param subprotocol сабпротокол для установки
  */
 void awh::client::Http2::subprotocol(const string & subprotocol) noexcept {
@@ -1933,7 +2008,8 @@ void awh::client::Http2::subprotocol(const string & subprotocol) noexcept {
 	this->_ws2.subprotocol(subprotocol);
 }
 /**
- * subprotocol Метод получения списка выбранных сабпротоколов
+ * @brief Метод получения списка выбранных сабпротоколов
+ *
  * @return список выбранных сабпротоколов
  */
 const std::unordered_set <string> & awh::client::Http2::subprotocols() const noexcept {
@@ -1941,7 +2017,8 @@ const std::unordered_set <string> & awh::client::Http2::subprotocols() const noe
 	return this->_ws2.subprotocols();
 }
 /**
- * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @brief Метод установки списка поддерживаемых сабпротоколов
+ *
  * @param subprotocols сабпротоколы для установки
  */
 void awh::client::Http2::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
@@ -1949,7 +2026,8 @@ void awh::client::Http2::subprotocols(const std::unordered_set <string> & subpro
 	this->_ws2.subprotocols(subprotocols);
 }
 /**
- * extensions Метод извлечения списка расширений
+ * @brief Метод извлечения списка расширений
+ *
  * @return список поддерживаемых расширений
  */
 const vector <vector <string>> & awh::client::Http2::extensions() const noexcept {
@@ -1957,7 +2035,8 @@ const vector <vector <string>> & awh::client::Http2::extensions() const noexcept
 	return this->_ws2.extensions();
 }
 /**
- * extensions Метод установки списка расширений
+ * @brief Метод установки списка расширений
+ *
  * @param extensions список поддерживаемых расширений
  */
 void awh::client::Http2::extensions(const vector <vector <string>> & extensions) noexcept {
@@ -1965,7 +2044,8 @@ void awh::client::Http2::extensions(const vector <vector <string>> & extensions)
 	this->_ws2.extensions(extensions);
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param size размер чанка для установки
  */
 void awh::client::Http2::chunk(const size_t size) noexcept {
@@ -1979,7 +2059,8 @@ void awh::client::Http2::chunk(const size_t size) noexcept {
 	this->_http1.chunk(size);
 }
 /**
- * segmentSize Метод установки размеров сегментов фрейма
+ * @brief Метод установки размеров сегментов фрейма
+ *
  * @param size минимальный размер сегмента
  */
 void awh::client::Http2::segmentSize(const size_t size) noexcept {
@@ -1989,7 +2070,8 @@ void awh::client::Http2::segmentSize(const size_t size) noexcept {
 		this->_ws2.segmentSize(size);
 }
 /**
- * core Метод установки сетевого ядра
+ * @brief Метод установки сетевого ядра
+ *
  * @param core объект сетевого ядра
  */
 void awh::client::Http2::core(const client::core_t * core) noexcept {
@@ -2022,7 +2104,8 @@ void awh::client::Http2::core(const client::core_t * core) noexcept {
 	}
 }
 /**
- * mode Метод установки флагов настроек модуля
+ * @brief Метод установки флагов настроек модуля
+ *
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Http2::mode(const std::set <flag_t> & flags) noexcept {
@@ -2036,7 +2119,8 @@ void awh::client::Http2::mode(const std::set <flag_t> & flags) noexcept {
 	this->_webSocket = (flags.find(flag_t::WEBSOCKET_ENABLE) != flags.end());
 }
 /**
- * user Метод установки параметров авторизации
+ * @brief Метод установки параметров авторизации
+ *
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
@@ -2053,7 +2137,8 @@ void awh::client::Http2::user(const string & login, const string & password) noe
 	this->_http1.user(login, password);
 }
 /**
- * userAgent Метод установки User-Agent для HTTP-запроса
+ * @brief Метод установки User-Agent для HTTP-запроса
+ *
  * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Http2::userAgent(const string & userAgent) noexcept {
@@ -2070,7 +2155,8 @@ void awh::client::Http2::userAgent(const string & userAgent) noexcept {
 	}
 }
 /**
- * ident Метод установки идентификации клиента
+ * @brief Метод установки идентификации клиента
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -2089,7 +2175,8 @@ void awh::client::Http2::ident(const string & id, const string & name, const str
 	}
 }
 /**
- * multiThreads Метод активации многопоточности
+ * @brief Метод активации многопоточности
+ *
  * @param count количество потоков для активации
  * @param mode  флаг активации/деактивации мультипоточности
  */
@@ -2102,7 +2189,8 @@ void awh::client::Http2::multiThreads(const int16_t count, const bool mode) noex
 	else this->_threads = -1;
 }
 /**
- * proxy Метод активации/деактивации прокси-склиента
+ * @brief Метод активации/деактивации прокси-склиента
+ *
  * @param work флаг активации/деактивации прокси-клиента
  */
 void awh::client::Http2::proxy(const client::scheme_t::work_t work) noexcept {
@@ -2114,7 +2202,8 @@ void awh::client::Http2::proxy(const client::scheme_t::work_t work) noexcept {
 	this->_http1.proxy(work);
 }
 /**
- * proxy Метод установки прокси-сервера
+ * @brief Метод установки прокси-сервера
+ *
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / IPC)
  */
@@ -2127,7 +2216,8 @@ void awh::client::Http2::proxy(const string & uri, const scheme_t::family_t fami
 	this->_http1.proxy(uri, family);
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
@@ -2144,7 +2234,8 @@ void awh::client::Http2::authType(const auth_t::type_t type, const auth_t::hash_
 	this->_http1.authType(type, hash);
 }
 /**
- * authTypeProxy Метод установки типа авторизации прокси-сервера
+ * @brief Метод установки типа авторизации прокси-сервера
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest-авторизации
  */
@@ -2157,7 +2248,8 @@ void awh::client::Http2::authTypeProxy(const auth_t::type_t type, const auth_t::
 	this->_http1.authTypeProxy(type, hash);
 }
 /**
- * crypted Метод получения флага шифрования
+ * @brief Метод получения флага шифрования
+ *
  * @param sid идентификатор потока
  * @return    результат проверки
  */
@@ -2166,7 +2258,9 @@ bool awh::client::Http2::crypted(const int32_t sid) const noexcept {
 	auto i = this->_workers.find(sid);
 	// Если искомый воркер найден
 	if(i != this->_workers.end()){
-		// Определяем протокол клиента
+		/**
+		 * Определяем протокол клиента
+		 */
 		switch(static_cast <uint8_t> (i->second->agent)){
 			// Если агент является клиентом HTTP
 			case static_cast <uint8_t> (agent_t::HTTP): {
@@ -2187,7 +2281,8 @@ bool awh::client::Http2::crypted(const int32_t sid) const noexcept {
 	return false;
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param mode флаг активации шифрования
  */
 void awh::client::Http2::encryption(const bool mode) noexcept {
@@ -2201,7 +2296,8 @@ void awh::client::Http2::encryption(const bool mode) noexcept {
 	this->_http1.encryption(mode);
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
@@ -2217,7 +2313,8 @@ void awh::client::Http2::encryption(const string & pass, const string & salt, co
 	this->_http1.encryption(pass, salt, cipher);
 }
 /**
- * Http2 Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -2237,7 +2334,8 @@ awh::client::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_http.on <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", &http2_t::errors, this, _1, _2, _3, _4);
 }
 /**
- * Http2 Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
@@ -2260,7 +2358,8 @@ awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const 
 	const_cast <client::core_t *> (this->_core)->on <void (const char *, const size_t, const uint64_t, const uint16_t)> ("write", &http2_t::writeEvent, this, _1, _2, _3, _4);
 }
 /**
- * ~Http2 Деструктор
+ * @brief Деструктор
+ *
  */
 awh::client::Http2::~Http2() noexcept {
 	// Снимаем адрес сетевого ядра

@@ -33,7 +33,7 @@
 #include "log.hpp"
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	#include <tchar.h>
@@ -55,7 +55,7 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT Signals {
 		private:
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				/**
@@ -77,10 +77,12 @@ namespace awh {
 					Events() noexcept {}
 				} ev_t;
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
-				// Устанавливаем прототип функции обработчика сигнала
+				/**
+				 * Устанавливаем прототип функции обработчика сигнала
+				 */
 				typedef void (* SignalHandlerPointer)(int32_t);
 				/**
 				 * @brief Структура событий сигналов
@@ -107,7 +109,9 @@ namespace awh {
 			// Флаг запуска отслежиявания сигналов
 			bool _mode;
 		private:
-			// Функция обратного вызова при получении сигнала
+			/**
+			 * Функция обратного вызова при получении сигнала
+			 */
 			function <void (const int32_t)> _callback;
 		private:
 			/**

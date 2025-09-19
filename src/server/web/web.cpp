@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * openEvents Метод обратного вызова при запуске работы
+ * @brief Метод обратного вызова при запуске работы
+ *
  * @param sid идентификатор схемы сети
  */
 void awh::server::Web::openEvents(const uint16_t sid) noexcept {
@@ -41,13 +42,16 @@ void awh::server::Web::openEvents(const uint16_t sid) noexcept {
 	}
 }
 /**
- * statusEvents Метод обратного вызова при активации ядра сервера
+ * @brief Метод обратного вызова при активации ядра сервера
+ *
  * @param status флаг запуска/остановки
  */
 void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept {
 	// Если режим работы кластера не активирован
 	if(this->_core->cluster() == awh::scheme_t::mode_t::DISABLED){
-		// Определяем статус активности сетевого ядра
+		/**
+		 * Определяем статус активности сетевого ядра
+		 */
 		switch(static_cast <uint8_t> (status)){
 			// Если система запущена
 			case static_cast <uint8_t> (awh::core_t::status_t::START): {
@@ -80,7 +84,8 @@ void awh::server::Web::statusEvents(const awh::core_t::status_t status) noexcept
 		this->_callback.call <void (const awh::core_t::status_t)> ("status", status);
 }
 /**
- * launchedEvents Метод получения события запуска сервера
+ * @brief Метод получения события запуска сервера
+ *
  * @param host хост запущенного сервера
  * @param port порт запущенного сервера
  */
@@ -94,7 +99,8 @@ void awh::server::Web::launchedEvents(const string & host, const uint32_t port) 
 	}
 }
 /**
- * acceptEvents Метод обратного вызова при проверке подключения брокера
+ * @brief Метод обратного вызова при проверке подключения брокера
+ *
  * @param ip   адрес интернет подключения брокера
  * @param mac  мак-адрес подключившегося брокера
  * @param port порт подключившегося брокера
@@ -115,7 +121,8 @@ bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const
 	return result;
 }
 /**
- * chunking Метод обработки получения чанков
+ * @brief Метод обработки получения чанков
+ *
  * @param bid   идентификатор брокера
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
@@ -132,21 +139,25 @@ void awh::server::Web::chunking(const uint64_t bid, const vector <char> & chunk,
 	}
 }
 /**
- * callbackEvents Метод отлавливания событий контейнера функций обратного вызова
+ * @brief Метод отлавливания событий контейнера функций обратного вызова
+ *
  * @param event событие контейнера функций обратного вызова
  * @param fid   идентификатор функции обратного вызова
  * @param fn    функция обратного вызова в чистом виде
  */
 void awh::server::Web::callbackEvents([[maybe_unused]] const callback_t::event_t event, [[maybe_unused]] const uint64_t fid, [[maybe_unused]] const callback_t::fn_t & fn) noexcept {}
 /**
- * clusterEvents Метод вывода статуса кластера
+ * @brief Метод вывода статуса кластера
+ *
  * @param family флаг семейства кластера
  * @param sid    идентификатор схемы сети
  * @param pid    идентификатор процесса
  * @param event  идентификатор события
  */
 void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uint16_t sid, const pid_t pid, const cluster_t::event_t event) noexcept {
-	// Определяем полученное событие
+	/**
+	 * Определяем полученное событие
+	 */
 	switch(static_cast <uint8_t> (event)){
 		// Если событие запуска сервиса
 		case static_cast <uint8_t> (cluster_t::event_t::START): {
@@ -184,7 +195,8 @@ void awh::server::Web::clusterEvents(const cluster_t::family_t family, const uin
 		this->_callback.call <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", family, sid, pid, event);
 }
 /**
- * erase Метод удаления отключившихся брокеров
+ * @brief Метод удаления отключившихся брокеров
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Web::erase(const uint64_t bid) noexcept {
@@ -215,7 +227,8 @@ void awh::server::Web::erase(const uint64_t bid) noexcept {
 	}
 }
 /**
- * disconnect Метод отключения брокера
+ * @brief Метод отключения брокера
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Web::disconnect(const uint64_t bid) noexcept {
@@ -223,7 +236,8 @@ void awh::server::Web::disconnect(const uint64_t bid) noexcept {
 	this->_disconected.emplace(bid, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS));
 }
 /**
- * disconected Метод удаления отключившихся брокеров
+ * @brief Метод удаления отключившихся брокеров
+ *
  * @param tid идентификатор таймера
  */
 void awh::server::Web::disconected(const uint16_t tid) noexcept {
@@ -231,13 +245,14 @@ void awh::server::Web::disconected(const uint16_t tid) noexcept {
 	this->erase();
 }
 /**
- * init Метод инициализации WEB брокера
+ * @brief Метод инициализации WEB брокера
+ *
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::server::Web::init([[maybe_unused]] const string & socket, [[maybe_unused]] const vector <http_t::compressor_t> & compressors) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если объект сетевого ядра создан
@@ -247,7 +262,8 @@ void awh::server::Web::init([[maybe_unused]] const string & socket, [[maybe_unus
 	#endif
 }
 /**
- * init Метод инициализации WEB брокера
+ * @brief Метод инициализации WEB брокера
+ *
  * @param port        порт сервера
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
@@ -259,7 +275,8 @@ void awh::server::Web::init(const uint32_t port, const string & host, [[maybe_un
 	this->_service.host = host;
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::server::Web::callback(const callback_t & callback) noexcept {
@@ -307,7 +324,8 @@ void awh::server::Web::callback(const callback_t & callback) noexcept {
 	this->_callback.set("messageWebsocket", callback);
 }
 /**
- * proto Метод извлечения поддерживаемого протокола подключения
+ * @brief Метод извлечения поддерживаемого протокола подключения
+ *
  * @param bid идентификатор брокера
  * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
  */
@@ -320,7 +338,8 @@ awh::engine_t::proto_t awh::server::Web::proto(const uint64_t bid) const noexcep
 	return engine_t::proto_t::NONE;
 }
 /**
- * alive Метод установки долгоживущего подключения
+ * @brief Метод установки долгоживущего подключения
+ *
  * @param mode флаг долгоживущего подключения
  */
 void awh::server::Web::alive(const bool mode) noexcept {
@@ -328,7 +347,8 @@ void awh::server::Web::alive(const bool mode) noexcept {
 	this->_service.alive = mode;
 }
 /**
- * core Метод установки сетевого ядра
+ * @brief Метод установки сетевого ядра
+ *
  * @param core объект сетевого ядра
  */
 void awh::server::Web::core(const server::core_t * core) noexcept {
@@ -343,7 +363,8 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
 	}
 }
 /**
- * stop Метод остановки сервера
+ * @brief Метод остановки сервера
+ *
  */
 void awh::server::Web::stop() noexcept {
 	// Если подключение выполнено
@@ -357,7 +378,8 @@ void awh::server::Web::stop() noexcept {
 	}
 }
 /**
- * start Метод запуска сервера
+ * @brief Метод запуска сервера
+ *
  */
 void awh::server::Web::start() noexcept {
 	// Если биндинг не запущен
@@ -366,7 +388,8 @@ void awh::server::Web::start() noexcept {
 		const_cast <server::core_t *> (this->_core)->start();
 }
 /**
- * realm Метод установки название сервера
+ * @brief Метод установки название сервера
+ *
  * @param realm название сервера
  */
 void awh::server::Web::realm(const string & realm) noexcept {
@@ -374,7 +397,8 @@ void awh::server::Web::realm(const string & realm) noexcept {
 	this->_service.realm = realm;
 }
 /**
- * opaque Метод установки временного ключа сессии сервера
+ * @brief Метод установки временного ключа сессии сервера
+ *
  * @param opaque временный ключ сессии сервера
  */
 void awh::server::Web::opaque(const string & opaque) noexcept {
@@ -382,7 +406,8 @@ void awh::server::Web::opaque(const string & opaque) noexcept {
 	this->_service.opaque = opaque;
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param size размер чанка для установки
  */
 void awh::server::Web::chunk(const size_t size) noexcept {
@@ -390,7 +415,8 @@ void awh::server::Web::chunk(const size_t size) noexcept {
 	this->_chunkSize = (size > 0 ? size : AWH_CHUNK_SIZE);
 }
 /**
- * ident Метод установки идентификации сервера
+ * @brief Метод установки идентификации сервера
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -404,7 +430,8 @@ void awh::server::Web::ident(const string & id, const string & name, const strin
 	this->_ident.name = name;
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
@@ -415,7 +442,8 @@ void awh::server::Web::authType(const auth_t::type_t type, const auth_t::hash_t 
 	this->_service.type = type;
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param mode флаг активации шифрования
  */
 void awh::server::Web::encryption(const bool mode) noexcept {
@@ -423,7 +451,8 @@ void awh::server::Web::encryption(const bool mode) noexcept {
 	this->_encryption.mode = mode;
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
@@ -437,7 +466,8 @@ void awh::server::Web::encryption(const string & pass, const string & salt, cons
 	this->_encryption.cipher = cipher;
 }
 /**
- * Web Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -453,7 +483,8 @@ awh::server::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_callback.on(std::bind(&web_t::callbackEvents, this, _1, _2, _3));
 }
 /**
- * Web Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами

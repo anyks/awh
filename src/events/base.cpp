@@ -28,7 +28,7 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -75,12 +75,14 @@ bool awh::Base::isChildThread() const noexcept {
  * @param mode флаг инициализации
  */
 void awh::Base::init(const event_mode_t mode) noexcept {
-	// Определяем флаг инициализации
+	/**
+	 * Определяем флаг инициализации
+	 */
 	switch(static_cast <uint8_t> (mode)){
 		// Если необходимо активировать сетевые методы
 		case static_cast <uint8_t> (event_mode_t::ENABLED): {
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
 				// Если WinSocksAPI ещё не инициализирована
@@ -198,7 +200,7 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 		// Если необходимо деактивировать сетевые методы
 		case static_cast <uint8_t> (event_mode_t::DISABLED): {
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
 				// Если WinSocksAPI была инициализированна в этой базе событий
@@ -258,7 +260,7 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем блокировку чтения базы событий
@@ -475,7 +477,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем поиск файлового дескриптора в базе событий
@@ -630,7 +632,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
 					// Если сокет найден
 					if((erased = (j->ident == sock))){
-						// Определяем тип события к которому принадлежит сокет
+						/**
+						 * Определяем тип события к которому принадлежит сокет
+						 */
 						switch(static_cast <uint8_t> (i->second.type)){
 							// Если событие принадлежит к таймеру
 							case static_cast <uint8_t> (event_type_t::TIMER):
@@ -656,7 +660,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 					if(j->ident == sock){
 						// Если событие ещё не удалено из базы событий
 						if(!erased){
-							// Определяем тип события к которому принадлежит сокет
+							/**
+							 * Определяем тип события к которому принадлежит сокет
+							 */
 							switch(static_cast <uint8_t> (i->second.type)){
 								// Если событие принадлежит к таймеру
 								case static_cast <uint8_t> (event_type_t::TIMER):
@@ -726,7 +732,7 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 		 */
 		try {
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
 				// Выполняем поиск файлового дескриптора в базе событий
@@ -735,7 +741,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
 					this->_locker = true;
-					// Определяем тип переданного события
+					/**
+					 * Определяем тип переданного события
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если событие установлено как отслеживание закрытия подключения
 						case static_cast <uint8_t> (event_type_t::CLOSE): {
@@ -901,7 +909,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
 					this->_locker = true;
-					// Определяем тип переданного события
+					/**
+					 * Определяем тип переданного события
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если событие установлено как отслеживание закрытия подключения
 						case static_cast <uint8_t> (event_type_t::CLOSE): {
@@ -1181,7 +1191,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 						for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 							// Если сокет найден
 							if((erased = (reinterpret_cast <peer_t *> (k->data.ptr) == &i->second))){
-								// Определяем тип переданного события
+								/**
+								 * Определяем тип переданного события
+								 */
 								switch(static_cast <uint8_t> (type)){
 									// Если событие установлено как таймер
 									case static_cast <uint8_t> (event_type_t::TIMER):
@@ -1262,7 +1274,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 				if((result = (i != this->_peers.end()) && (i->second.id == id))){
 					// Выполняем блокировку чтения базы событий
 					this->_locker = true;
-					// Определяем тип переданного события
+					/**
+					 * Определяем тип переданного события
+					 */
 					switch(static_cast <uint8_t> (type)){
 						// Если событие установлено как отслеживание закрытия подключения
 						case static_cast <uint8_t> (event_type_t::CLOSE): {
@@ -1421,7 +1435,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 						for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
 							// Если сокет найден
 							if(k->ident == sock){
-								// Определяем тип события к которому принадлежит сокет
+								/**
+								 * Определяем тип события к которому принадлежит сокет
+								 */
 								switch(static_cast <uint8_t> (i->second.type)){
 									// Если событие принадлежит к таймеру
 									case static_cast <uint8_t> (event_type_t::TIMER):
@@ -1498,7 +1514,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем поиск файлового дескриптора в базе событий
@@ -1849,7 +1865,7 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 					// Выполняем установку режима работы модуля
 					j->second = mode;
 					/**
-					 * Для операционной системы OS Windows
+					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
 						// Если тип установлен как не закрытие подключения
@@ -1860,11 +1876,15 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 								if(k->fd == sock){
 									// Очищаем полученное событие
 									k->revents = 0;
-									// Определяем тип события
+									/**
+									 * Определяем тип события
+									 */
 									switch(static_cast <uint8_t> (type)){
 										// Если событие установлено как таймер
 										case static_cast <uint8_t> (event_type_t::TIMER): {
-											// Определяем режим работы модуля
+											/**
+											 * Определяем режим работы модуля
+											 */
 											switch(static_cast <uint8_t> (mode)){
 												// Если нужно активировать событие работы таймера
 												case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -1886,7 +1906,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										case static_cast <uint8_t> (event_type_t::STREAM): {
 											// Устанавливаем тип события сокета
 											i->second.type = type;
-											// Определяем режим работы модуля
+											/**
+											 * Определяем режим работы модуля
+											 */
 											switch(static_cast <uint8_t> (mode)){
 												// Если нужно активировать событие чтения из сокета
 												case static_cast <uint8_t> (event_mode_t::ENABLED):
@@ -1902,7 +1924,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										} break;
 										// Если событие является чтением данных из сокета
 										case static_cast <uint8_t> (event_type_t::READ): {
-											// Определяем режим работы модуля
+											/**
+											 * Определяем режим работы модуля
+											 */
 											switch(static_cast <uint8_t> (mode)){
 												// Если нужно активировать событие чтения из сокета
 												case static_cast <uint8_t> (event_mode_t::ENABLED):
@@ -1918,7 +1942,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										} break;
 										// Если событие является записи данных в сокет
 										case static_cast <uint8_t> (event_type_t::WRITE): {
-											// Определяем режим работы модуля
+											/**
+											 * Определяем режим работы модуля
+											 */
 											switch(static_cast <uint8_t> (mode)){
 												// Если нужно активировать событие записи в сокет
 												case static_cast <uint8_t> (event_mode_t::ENABLED):
@@ -1948,11 +1974,15 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 							if(k->fd == sock){
 								// Очищаем полученное событие
 								k->revents = 0;
-								// Определяем тип события
+								/**
+								 * Определяем тип события
+								 */
 								switch(static_cast <uint8_t> (type)){
 									// Если событие установлено как таймер
 									case static_cast <uint8_t> (event_type_t::TIMER): {
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие работы таймера
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2004,7 +2034,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									case static_cast <uint8_t> (event_type_t::STREAM): {
 										// Устанавливаем тип события сокета
 										i->second.type = type;
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие работы таймера
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2052,7 +2084,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									} break;
 									// Если событие установлено как отслеживание закрытия подключения
 									case static_cast <uint8_t> (event_type_t::CLOSE): {
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2100,7 +2134,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									} break;
 									// Если событие является чтением данных из сокета
 									case static_cast <uint8_t> (event_type_t::READ): {
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2148,7 +2184,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									} break;
 									// Если событие является записи данных в сокет
 									case static_cast <uint8_t> (event_type_t::WRITE): {
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие записи в сокет
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2207,11 +2245,15 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 						for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 							// Если сокет найден
 							if(reinterpret_cast <peer_t *> (k->data.ptr)->sock == sock){
-								// Определяем тип события
+								/**
+								 * Определяем тип события
+								 */
 								switch(static_cast <uint8_t> (type)){
 									// Если событие установлено как таймер
 									case static_cast <uint8_t> (event_type_t::TIMER): {
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие таймера
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2263,7 +2305,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									case static_cast <uint8_t> (event_type_t::STREAM): {
 										// Устанавливаем тип события сокета
 										i->second.type = type;
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2311,7 +2355,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									} break;
 									// Если событие установлено как отслеживание закрытия подключения
 									case static_cast <uint8_t> (event_type_t::CLOSE): {
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2359,7 +2405,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									} break;
 									// Если событие является чтением данных из сокета
 									case static_cast <uint8_t> (event_type_t::READ): {
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие чтения из сокета
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2407,7 +2455,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 									} break;
 									// Если событие является записи данных в сокет
 									case static_cast <uint8_t> (event_type_t::WRITE): {
-										// Определяем режим работы модуля
+										/**
+										 * Определяем режим работы модуля
+										 */
 										switch(static_cast <uint8_t> (mode)){
 											// Если нужно активировать событие записи в сокет
 											case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2468,11 +2518,15 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 							for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
 								// Если сокет найден
 								if(k->ident == sock){
-									// Определяем тип события
+									/**
+									 * Определяем тип события
+									 */
 									switch(static_cast <uint8_t> (type)){
 										// Если событие установлено как таймер
 										case static_cast <uint8_t> (event_type_t::TIMER): {
-											// Определяем режим работы модуля
+											/**
+											 * Определяем режим работы модуля
+											 */
 											switch(static_cast <uint8_t> (mode)){
 												// Если нужно активировать событие работы таймера
 												case static_cast <uint8_t> (event_mode_t::ENABLED): {
@@ -2494,7 +2548,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										case static_cast <uint8_t> (event_type_t::STREAM): {
 											// Устанавливаем тип события сокета
 											i->second.type = type;
-											// Определяем режим работы модуля
+											/**
+											 * Определяем режим работы модуля
+											 */
 											switch(static_cast <uint8_t> (mode)){
 												// Если нужно активировать событие чтения из сокета
 												case static_cast <uint8_t> (event_mode_t::ENABLED):
@@ -2510,7 +2566,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										} break;
 										// Если событие является чтением данных из сокета
 										case static_cast <uint8_t> (event_type_t::READ): {
-											// Определяем режим работы модуля
+											/**
+											 * Определяем режим работы модуля
+											 */
 											switch(static_cast <uint8_t> (mode)){
 												// Если нужно активировать событие чтения из сокета
 												case static_cast <uint8_t> (event_mode_t::ENABLED):
@@ -2530,7 +2588,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 										} break;
 										// Если событие является записи данных в сокет
 										case static_cast <uint8_t> (event_type_t::WRITE): {
-											// Определяем режим работы модуля
+											/**
+											 * Определяем режим работы модуля
+											 */
 											switch(static_cast <uint8_t> (mode)){
 												// Если нужно активировать событие записи в сокет
 												case static_cast <uint8_t> (event_mode_t::ENABLED):
@@ -2600,7 +2660,7 @@ void awh::Base::clear() noexcept {
 		// Выполняем блокировку чтения базы событий
 		this->_locker = true;
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Сокет найденный сокет для удаления
@@ -2680,7 +2740,9 @@ void awh::Base::clear() noexcept {
 				auto j = this->_peers.find(i->ident);
 				// Если сокет есть в базе событий
 				if(j != this->_peers.end()){
-					// Определяем тип события к которому принадлежит сокет
+					/**
+					 * Определяем тип события к которому принадлежит сокет
+					 */
 					switch(static_cast <uint8_t> (j->second.type)){
 						// Если событие принадлежит к таймеру
 						case static_cast <uint8_t> (event_type_t::TIMER): {
@@ -2711,7 +2773,9 @@ void awh::Base::clear() noexcept {
 				auto j = this->_peers.find(i->ident);
 				// Если сокет есть в базе событий
 				if(j != this->_peers.end()){
-					// Определяем тип события к которому принадлежит сокет
+					/**
+					 * Определяем тип события к которому принадлежит сокет
+					 */
 					switch(static_cast <uint8_t> (j->second.type)){
 						// Если событие принадлежит к таймеру
 						case static_cast <uint8_t> (event_type_t::TIMER): {
@@ -2891,7 +2955,7 @@ void awh::Base::start() noexcept {
 		 */
 		try {
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
 				// Количество событий для опроса
@@ -2904,7 +2968,7 @@ void awh::Base::start() noexcept {
 			 */
 			while(this->_works){
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Если опрос базы событий не заблокирован
@@ -2974,7 +3038,9 @@ void awh::Base::start() noexcept {
 											if(j != this->_peers.end()){
 												// Получаем идентификатор события
 												id = j->second.id;
-												// Определяем тип события к которому принадлежит сокет
+												/**
+												 * Определяем тип события к которому принадлежит сокет
+												 */
 												switch(static_cast <uint8_t> (j->second.type)){
 													// Если событие принадлежит к таймеру
 													case static_cast <uint8_t> (event_type_t::TIMER): {
@@ -3207,7 +3273,9 @@ void awh::Base::start() noexcept {
 											if(j != this->_peers.end()){
 												// Получаем идентификатор события
 												id = j->second.id;
-												// Определяем тип события к которому принадлежит сокет
+												/**
+												 * Определяем тип события к которому принадлежит сокет
+												 */
 												switch(static_cast <uint8_t> (j->second.type)){
 													// Если событие принадлежит к таймеру
 													case static_cast <uint8_t> (event_type_t::TIMER): {
@@ -3426,7 +3494,9 @@ void awh::Base::start() noexcept {
 											sock = item->sock;
 											// Если в сокете появились данные для чтения
 											if(isRead){
-												// Определяем тип события к которому принадлежит сокет
+												/**
+												 * Определяем тип события к которому принадлежит сокет
+												 */
 												switch(static_cast <uint8_t> (item->type)){
 													// Если событие принадлежит к таймеру
 													case static_cast <uint8_t> (event_type_t::TIMER): {
@@ -3650,7 +3720,9 @@ void awh::Base::start() noexcept {
 											sock = item->sock;
 											// Если в сокете появились данные для чтения или пользовательское событие
 											if(isRead || isEvent){
-												// Определяем тип события к которому принадлежит сокет
+												/**
+												 * Определяем тип события к которому принадлежит сокет
+												 */
 												switch(static_cast <uint8_t> (item->type)){
 													// Если событие принадлежит к таймеру
 													case static_cast <uint8_t> (event_type_t::TIMER): {

@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * digest Метод получения параметров Digest авторизации
+ * @brief Метод получения параметров Digest авторизации
+ *
  * @return параметры Digest авторизации
  */
 const awh::Authorization::digest_t & awh::Authorization::digest() const noexcept {
@@ -31,7 +32,8 @@ const awh::Authorization::digest_t & awh::Authorization::digest() const noexcept
 	return this->_digest;
 }
 /**
- * response Метод создания ответа на дайджест авторизацию
+ * @brief Метод создания ответа на дайджест авторизацию
+ *
  * @param method метод HTTP запроса
  * @param user   логин пользователя для проверки
  * @param pass   пароль пользователя для проверки
@@ -47,7 +49,9 @@ string awh::Authorization::response(const string & method, const string & user, 
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем алгоритм шифрования
+			/**
+			 * Определяем алгоритм шифрования
+			 */
 			switch(static_cast <uint16_t> (this->_digest.hash)){
 				// Если алгоритм шифрования MD5
 				case static_cast <uint16_t> (hash_t::MD5): {
@@ -157,7 +161,8 @@ string awh::Authorization::response(const string & method, const string & user, 
 	return result;
 }
 /**
- * type Метод получени типа авторизации
+ * @brief Метод получени типа авторизации
+ *
  * @return тип авторизации
  */
 awh::Authorization::type_t awh::Authorization::type() const noexcept {
@@ -165,7 +170,8 @@ awh::Authorization::type_t awh::Authorization::type() const noexcept {
 	return this->_type;
 }
 /**
- * type Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */

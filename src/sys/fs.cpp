@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * isDir Метод проверяющий существование дирректории
+ * @brief Метод проверяющий существование дирректории
+ *
  * @param addr адрес дирректории
  * @return     результат проверки
  */
@@ -32,7 +33,8 @@ bool awh::FS::isDir(const string & addr) const noexcept {
 	return (this->type(addr) == type_t::DIR);
 }
 /**
- * isFile Метод проверяющий существование файла
+ * @brief Метод проверяющий существование файла
+ *
  * @param addr адрес файла
  * @return     результат проверки
  */
@@ -41,7 +43,8 @@ bool awh::FS::isFile(const string & addr) const noexcept {
 	return (this->type(addr) == type_t::FILE);
 }
 /**
- * isSock Метод проверки существования сокета
+ * @brief Метод проверки существования сокета
+ *
  * @param addr адрес сокета
  * @return     результат проверки
  */
@@ -50,7 +53,8 @@ bool awh::FS::isSock(const string & addr) const noexcept {
 	return (this->type(addr) == type_t::SOCK);
 }
 /**
- * isLink Метод проверки существования сокета
+ * @brief Метод проверки существования сокета
+ *
  * @param addr адрес сокета
  * @return     результат проверки
  */
@@ -59,7 +63,8 @@ bool awh::FS::isLink(const string & addr) const noexcept {
 	return (this->type(addr, false) == type_t::LINK);
 }
 /**
- * type Метод определяющая тип файловой системы по адресу
+ * @brief Метод определяющая тип файловой системы по адресу
+ *
  * @param addr   адрес дирректории
  * @param actual флаг формирования актуальных адресов
  * @return       тип файловой системы
@@ -74,7 +79,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 		 */
 		try {
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
 				// Структура проверка статистики
@@ -82,9 +87,9 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 				// Выполняем извлечение актуального значения адреса
 				const string & address = this->realPath(addr, actual);
 				// Выполняем извлечение данных статистики
-				const int32_t status = (!address.empty() ? _wstat(this->_fmk->convert(address).c_str(), &info) : -1);
+				const int32_t status = (!address.empty() ? ::_wstat(this->_fmk->convert(address).c_str(), &info) : -1);
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#else
 				// Структура проверка статистики
@@ -115,7 +120,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 					// Получаем тип файловой системы
 					result = type_t::FIFO;
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
 					// Если это сокет
@@ -123,7 +128,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 						// Получаем тип файловой системы
 						result = type_t::SOCK;
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#else
 					// Создаём объект работы с файлом
@@ -149,9 +154,9 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 						// Создаём флаги принадлежности адреса
 						Boolean isFolder = false, wasAliased = false;
 						// Выполняем чтение указанного каталога
-						if(FSPathMakeRef(reinterpret_cast <const UInt8 *> (addr.c_str()), &link, nullptr) == 0){
+						if(::FSPathMakeRef(reinterpret_cast <const UInt8 *> (addr.c_str()), &link, nullptr) == 0){
 							// Выполняем проверку является ли адрес ярлыком
-							if(FSResolveAliasFile(&link, true, &isFolder, &wasAliased) == 0){
+							if(::FSResolveAliasFile(&link, TRUE, &isFolder, &wasAliased) == 0){
 								// Если адрес является ярлыком
 								if(static_cast <bool> (wasAliased))
 									// Получаем тип файловой системы
@@ -164,7 +169,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 			// Если детектировать актуальные файлы не нужно и адрес не детектирован как ссылка
 			if(!actual && (result != type_t::LINK)){
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
 					// Если тип определён
@@ -175,7 +180,7 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 							result = type_t::LINK;
 					}
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#else
 					// Создаём объект проверки наличия ярлыка
@@ -248,7 +253,8 @@ awh::FS::type_t awh::FS::type(const string & addr, const bool actual) const noex
 	return result;
 }
 /**
- * realPath Метод извлечения реального адреса
+ * @brief Метод извлечения реального адреса
+ *
  * @param path   путь который нужно определить
  * @param actual флаг формирования актуальных адресов
  * @return       полный путь
@@ -261,7 +267,7 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Создаём буфер для полного адреса
@@ -269,13 +275,13 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 			// Заполняем буфер нулями
 			::memset(buffer, 0, sizeof(buffer));
 			// Выполняем извлечение адресов из переменных окружений
-			ExpandEnvironmentStringsW(this->_fmk->convert(path).c_str(), buffer, ARRAYSIZE(buffer));
+			::ExpandEnvironmentStringsW(this->_fmk->convert(path).c_str(), buffer, ARRAYSIZE(buffer));
 			// Устанавливаем результат
 			result = this->_fmk->convert(buffer);
 			// Заполняем буфер нулями
 			::memset(buffer, 0, sizeof(buffer));
 			// Если адрес существует
-			if(_wfullpath(buffer, this->_fmk->convert(result).c_str(), _MAX_PATH) != nullptr){
+			if(::_wfullpath(buffer, this->_fmk->convert(result).c_str(), _MAX_PATH) != nullptr){
 				// Получаем полный адрес пути
 				result = this->_fmk->convert(buffer);
 				// Если адрес пути получен
@@ -283,9 +289,9 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 					// Создаём объект проверки наличия ярлыка
 					IShellLinkW * psl = nullptr;
 					// Выполняем инициализацию результата
-					HRESULT hres = CoInitialize(nullptr);
+					HRESULT hres = ::CoInitialize(nullptr);
 					// Выполняем инициализацию объекта для проверки ярлыков
-					hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
+					hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
 					// Если инициализация выполнена
 					if(SUCCEEDED(hres)){
 						// Создаём объект проверки файла
@@ -305,23 +311,23 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 									// Создаём буфер символов для получения каталога ярлыка
 									WCHAR szGotPath[MAX_PATH] = {0};
 									// Выполняем получение каталога где находится ярлыка
-									hres = psl->GetPath(szGotPath, _countof(szGotPath), nullptr, SLGP_RAWPATH);
+									hres = psl->GetPath(szGotPath, ::_countof(szGotPath), nullptr, SLGP_RAWPATH);
 									// Если каталог где находится ярлык получен
 									if(SUCCEEDED(hres)){
 										// Создаём буфер для извлечения полного адреса ярлыка
 										WCHAR achPath[MAX_PATH] = {0};
 										// Выполняем извлечение полного адреса ярлыка
-										hres = StringCbCopyW(achPath, _countof(achPath), szGotPath);
+										hres = ::StringCbCopyW(achPath, ::_countof(achPath), szGotPath);
 										// Если полный адрес ярлыка извлечён
 										if(SUCCEEDED(hres)){
 											// Определяем размер полученных данных
-											const int32_t size = WideCharToMultiByte(CP_UTF8, 0, achPath, -1, 0, 0, 0, 0);
+											const int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, achPath, -1, 0, 0, 0, 0);
 											// Если размер извлекаемых данных получен
 											if(size > 0){
 												// Выполняем выделение памяти для результирующего буфера
 												result.resize(static_cast <size_t> (size), 0);
 												// Выполняем извлечение полного адреса ярлыка
-												WideCharToMultiByte(CP_UTF8, 0, achPath, -1, result.data(), result.size(), 0, 0);
+												::WideCharToMultiByte(CP_UTF8, 0, achPath, -1, result.data(), result.size(), 0, 0);
 											}
 										}
 									}
@@ -334,13 +340,13 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 						psl->Release();
 					}
 					// Выполняем очистку объекта результата
-					CoUninitialize();
+					::CoUninitialize();
 				}
 			}
 			// Выполняем перекодирование адреса
 			return result;
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Если нужно вывести актуальнй путь адреса
@@ -364,15 +370,15 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 							// Создаём флаги принадлежности адреса
 							Boolean isFolder = false, wasAliased = false;
 							// Выполняем чтение указанного каталога
-							if(FSPathMakeRef(reinterpret_cast <const UInt8 *> (result.c_str()), &link, nullptr) == 0){
+							if(::FSPathMakeRef(reinterpret_cast <const UInt8 *> (result.c_str()), &link, nullptr) == 0){
 								// Выполняем проверку является ли адрес ярлыком
-								if(FSResolveAliasFile(&link, true, &isFolder, &wasAliased) == 0){
+								if(::FSResolveAliasFile(&link, TRUE, &isFolder, &wasAliased) == 0){
 									// Если адрес является ярлыком
 									if(static_cast <bool> (wasAliased)){
 										// Создаём буфер данных адреса
 										UInt8 buffer[1025];
 										// Выполняем извлечение полного адреса файла
-										if(FSRefMakePath(&link, buffer, 1024) == 0)
+										if(::FSRefMakePath(&link, buffer, 1024) == 0)
 											// Получаем полный адрес файла
 											return this->_fmk->format("%s%s", buffer, (isFolder ? "/" : ""));
 									}
@@ -415,7 +421,9 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 				string folder = "";
 				// начало и конец диапазона строки
 				size_t begin = 0, end = 0;
-				// Выполняем перебор всего переданного адреса
+				/**
+				 * Выполняем перебор всего переданного адреса
+				 */
 				while((end = path.find(AWH_FS_SEPARATOR, end)) != string::npos){
 					// Получаем название текущего каталога
 					folder = path.substr(begin, end - begin);
@@ -496,7 +504,8 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 	return result;
 }
 /**
- * delPath Метод удаления полного пути
+ * @brief Метод удаления полного пути
+ *
  * @param path   полный путь для удаления
  * @param actual флаг формирования актуальных адресов
  * @return       количество дочерних элементов
@@ -514,18 +523,20 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 			const string & address = this->realPath(path, actual);
 			// Если адрес получен правильный
 			if(!address.empty()){
-				// Определяем тип пути
+				/**
+				 * Определяем тип пути
+				 */
 				switch(static_cast <uint8_t> (this->type(address))){
 					// Если переданный путь является каталогом
 					case static_cast <uint8_t> (type_t::DIR): {
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
-							_WDIR * dir = _wopendir(this->_fmk->convert(address).c_str());
+							_WDIR * dir = ::_wopendir(this->_fmk->convert(address).c_str());
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
@@ -536,30 +547,34 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 								// Устанавливаем количество дочерних элементов
 								result = 0;
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Структура проверка статистики
 									struct _stat info;
 									// Создаем указатель на содержимое каталога
 									struct _wdirent * ptr = nullptr;
-									// Выполняем чтение содержимого каталога
-									while(!result && (ptr = _wreaddir(dir))){
+									/**
+									 * Выполняем чтение содержимого каталога
+									 */
+									while(!result && (ptr = ::_wreaddir(dir))){
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Структура проверка статистики
 									struct stat info;
 									// Создаем указатель на содержимое каталога
 									struct dirent * ptr = nullptr;
-									// Выполняем чтение содержимого каталога
+									/**
+									 * Выполняем чтение содержимого каталога
+									 */
 									while(!result && (ptr = ::readdir(dir))){
 								#endif
 										// Количество найденных элементов
 										int32_t count = -1;
 										/**
-										 * Для операционной системы OS Windows
+										 * Для операционной системы MS Windows
 										 */
 										#if _WIN32 || _WIN64
 											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
@@ -569,7 +584,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 											// Получаем адрес в виде строки
 											const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
 										/**
-										 * Для операционной системы не являющейся OS Windows
+										 * Для операционной системы не являющейся MS Windows
 										 */
 										#else
 											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
@@ -580,23 +595,23 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 											const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 										#endif
 										/**
-										 * Для операционной системы OS Windows
+										 * Для операционной системы MS Windows
 										 */
 										#if _WIN32 || _WIN64
 											// Если статистика извлечена
-											if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
+											if(!::_wstat(this->_fmk->convert(address).c_str(), &info)){
 												// Если дочерний элемент является дирректорией
 												if(S_ISDIR(info.st_mode))
 													// Выполняем удаление подкаталогов
 													count = this->delPath(address);
 												// Если дочерний элемент является файлом то удаляем его
-												else count = _wunlink(this->_fmk->convert(address).c_str());
+												else count = ::_wunlink(this->_fmk->convert(address).c_str());
 											// Если путь является символьной ссылкой
 											} else if(this->isLink(address))
 												// Выполняем удаление символьной ссылки
-												count = _wunlink(this->_fmk->convert(address).c_str());
+												count = ::_wunlink(this->_fmk->convert(address).c_str());
 										/**
-										 * Для операционной системы не являющейся OS Windows
+										 * Для операционной системы не являющейся MS Windows
 										 */
 										#else
 											// Если статистика извлечена
@@ -616,13 +631,13 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 										result = count;
 								}
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Закрываем открытый каталог
-									_wclosedir(dir);
+									::_wclosedir(dir);
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Закрываем открытый каталог
@@ -632,13 +647,13 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 							// Удаляем последний каталог
 							if(!result){
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Получаем количество дочерних элементов
-									result = _wrmdir(this->_fmk->convert(address).c_str());
+									result = ::_wrmdir(this->_fmk->convert(address).c_str());
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Получаем количество дочерних элементов
@@ -651,13 +666,13 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 					// Если переданный путь является ссылкой
 					case static_cast <uint8_t> (type_t::LINK): {
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Выполняем удаление переданного пути
-							result = _wunlink(this->_fmk->convert(address).c_str());
+							result = ::_wunlink(this->_fmk->convert(address).c_str());
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Выполняем удаление переданного пути
@@ -669,7 +684,7 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 			// Если путь является символьной ссылкой
 			if(actual && this->isLink(path)){
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем извлечение актуального значения адреса
@@ -677,9 +692,9 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 					// Если адрес получен правильный
 					if(!address.empty())
 						// Выполняем удаление переданного пути
-						result = _wunlink(this->_fmk->convert(address).c_str());
+						result = ::_wunlink(this->_fmk->convert(address).c_str());
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Выполняем удаление переданного пути
@@ -726,7 +741,8 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 	return result;
 }
 /**
- * symLink Метод создания символьной ссылки
+ * @brief Метод создания символьной ссылки
+ *
  * @param addr1 адрес на который нужно сделать ссылку
  * @param addr2 адрес где должна быть создана ссылка
  */
@@ -738,13 +754,13 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 		 */
 		try {
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Выполняем создание символьной ссылки
 				::symlink(this->realPath(addr1).c_str(), this->realPath(addr2).c_str());
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				// Получаем полный адрес пути
@@ -752,11 +768,11 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 				// Если файл передан
 				if(!filename.empty()){
 					// Выполняем инициализацию результата
-					HRESULT hres = CoInitialize(nullptr);
+					HRESULT hres = ::CoInitialize(nullptr);
 					// Создаём объект проверки наличия ярлыка
 					IShellLinkW * psl = nullptr;
 					// Выполняем инициализацию объекта для проверки ярлыков
-					hres = CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
+					hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
 					// Если инициализация выполнена
 					if(SUCCEEDED(hres)){
 						// Позиция разделителя каталога
@@ -802,7 +818,7 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 								// Выполняем установку полного пути адреса файла
 								else symlink = this->_fmk->format("%s.lnk", this->realPath(addr2).c_str());
 								// Выполняем создание ярлыка в файловой системе
-								hres = ppf->Save(this->_fmk->convert(symlink).c_str(), true);
+								hres = ppf->Save(this->_fmk->convert(symlink).c_str(), TRUE);
 							}
 							// Выполняем очистку объекта провверки файла
 							psl->Release();
@@ -811,7 +827,7 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 						psl->Release();
 					}
 					// Выполняем очистку объекта результата
-					CoUninitialize();
+					::CoUninitialize();
 				}
 			#endif
 		/**
@@ -852,7 +868,8 @@ void awh::FS::symLink(const string & addr1, const string & addr2) const noexcept
 	}
 }
 /**
- * hardLink Метод создания жёстких ссылок
+ * @brief Метод создания жёстких ссылок
+ *
  * @param addr1 адрес на который нужно сделать ссылку
  * @param addr2 адрес где должна быть создана ссылка
  */
@@ -864,7 +881,7 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 		 */
 		try {
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Если адрес на который нужно создать ссылку существует
@@ -872,7 +889,7 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 					// Выполняем создание символьной ссылки
 					::link(this->realPath(addr1).c_str(), this->realPath(addr2).c_str());
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				// Если адрес на который нужно создать ссылку существует
@@ -918,7 +935,8 @@ void awh::FS::hardLink(const string & addr1, const string & addr2) const noexcep
 	}
 }
 /**
- * makePath Метод рекурсивного создания пути
+ * @brief Метод рекурсивного создания пути
+ *
  * @param path полный путь для создания
  */
 void awh::FS::makePath(const string & path) const noexcept {
@@ -951,13 +969,13 @@ void awh::FS::makePath(const string & path) const noexcept {
 						// Сбрасываем указатель
 						(* p) = 0;
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#if !_WIN32 && !_WIN64
 							// Создаем каталог
 							::mkdir(buffer.get(), S_IRWXU);
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#else
 							// Создаем каталог
@@ -968,13 +986,13 @@ void awh::FS::makePath(const string & path) const noexcept {
 					}
 				}
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
 					// Создаем последний каталог
 					::mkdir(buffer.get(), S_IRWXU);
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#else
 					// Создаем последний каталог
@@ -1038,7 +1056,8 @@ void awh::FS::makePath(const string & path) const noexcept {
 	}
 }
 /**
- * makeDir Метод создания каталога для хранения логов
+ * @brief Метод создания каталога для хранения логов
+ *
  * @param path  адрес для каталога
  * @param user  данные пользователя
  * @param group идентификатор группы
@@ -1052,7 +1071,7 @@ bool awh::FS::makeDir(const string & path, [[maybe_unused]] const string & user,
 		// Создаем каталог
 		this->makePath(path);
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Устанавливаем права на каталог
@@ -1063,14 +1082,15 @@ bool awh::FS::makeDir(const string & path, [[maybe_unused]] const string & user,
 	return result;
 }
 /**
- * components Метод извлечения названия и расширения файла
+ * @brief Метод извлечения названия и расширения файла
+ *
  * @param addr   адрес файла для извлечения его параметров
  * @param actual флаг формирования актуальных адресов
  * @param before флаг определения первой точки расширения слева
  */
-pair <string, string> awh::FS::components(const string & addr, const bool actual, const bool before) const noexcept {
+std::pair <string, string> awh::FS::components(const string & addr, const bool actual, const bool before) const noexcept {
 	// Результат работы функции
-	pair <string, string> result;
+	std::pair <string, string> result;
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1143,7 +1163,8 @@ pair <string, string> awh::FS::components(const string & addr, const bool actual
 	return result;
 }
 /**
- * chmod Метод получения прав доступа к файлу или каталогу
+ * @brief Метод получения прав доступа к файлу или каталогу
+ *
  * @param path полный путь к файлу или каталогу
  * @return     запрашиваемые метаданные
  */
@@ -1153,7 +1174,7 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 	// Если путь к файлу или каталогу передан
 	if(!path.empty() && (this->type(path) != type_t::NONE)){
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем извлечение актуального значения адреса
@@ -1161,9 +1182,9 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Извлекаем все атрибуты файла
-				return static_cast <mode_t> (GetFileAttributesW(this->_fmk->convert(address).c_str()));
+				return static_cast <mode_t> (::GetFileAttributesW(this->_fmk->convert(address).c_str()));
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Создаём объект информационных данных файла или каталога
@@ -1180,7 +1201,8 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 	return result;
 }
 /**
- * chmod Метод изменения прав доступа к файлу или каталогу
+ * @brief Метод изменения прав доступа к файлу или каталогу
+ *
  * @param path полный путь к файлу или каталогу
  * @param mode метаданные для установки
  * @return     результат работы функции
@@ -1191,7 +1213,7 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 	// Если путь к файлу или каталогу передан
 	if(!path.empty() && (this->type(path) != type_t::NONE)){
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем извлечение актуального значения адреса
@@ -1199,9 +1221,9 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Выполняем установку атрибутов файла
-				return SetFileAttributesW(this->_fmk->convert(address).c_str(), static_cast <DWORD> (mode));
+				return ::SetFileAttributesW(this->_fmk->convert(address).c_str(), static_cast <DWORD> (mode));
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Выполняем установку метаданных файла
@@ -1214,11 +1236,12 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 	return result;
 }
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
-	 * chown Метод установки владельца на файл или каталог
+	 * @brief Метод установки владельца на файл или каталог
+	 *
 	 * @param path  путь к файлу или каталогу для установки владельца
 	 * @param user  данные пользователя
 	 * @param group идентификатор группы
@@ -1245,11 +1268,12 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 		return result;
 	}
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #else
 	/**
-	 * seek Метод установки позиции в файле
+	 * @brief Метод установки позиции в файле
+	 *
 	 * @param file     объект открытого файла
 	 * @param distance дистанцию на которую нужно переместить позицию
 	 * @param position текущая позиция в файле
@@ -1271,7 +1295,8 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 	}
 #endif
 /**
- * size Метод подсчёта размера файла/каталога
+ * @brief Метод подсчёта размера файла/каталога
+ *
  * @param path полный путь для подсчёта размера
  * @param ext  расширение файла если требуется фильтрация
  * @param rec  флаг рекурсивного перебора каталогов
@@ -1290,25 +1315,27 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 			const string & address = this->realPath(path);
 			// Если адрес получен правильный
 			if(!address.empty()){
-				// Определяем тип переданного пути
+				/**
+				 * Определяем тип переданного пути
+				 */
 				switch(static_cast <uint8_t> (this->type(address))){
 					// Если полный путь является файлом
 					case static_cast <uint8_t> (type_t::FILE): {
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Создаём объект работы с файлом
-							HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+							HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 							// Если открыть файл открыт нормально
 							if(file != INVALID_HANDLE_VALUE){
 								// Получаем размер файла
-								result = static_cast <uintmax_t> (GetFileSize(file, nullptr));
+								result = static_cast <uintmax_t> (::GetFileSize(file, nullptr));
 								// Выполняем закрытие файла
-								CloseHandle(file);
+								::CloseHandle(file);
 							}
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Структура проверка статистики
@@ -1340,13 +1367,13 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 					// Если полный путь является каталогом
 					case static_cast <uint8_t> (type_t::DIR): {
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
-							_WDIR * dir = _wopendir(this->_fmk->convert(address).c_str());
+							_WDIR * dir = ::_wopendir(this->_fmk->convert(address).c_str());
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
@@ -1355,28 +1382,32 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 							// Если каталог открыт
 							if(dir != nullptr){
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Структура проверка статистики
 									struct _stat info;
 									// Создаем указатель на содержимое каталога
 									struct _wdirent * ptr = nullptr;
-									// Выполняем чтение содержимого каталога
-									while((ptr = _wreaddir(dir))){
+									/**
+									 * Выполняем чтение содержимого каталога
+									 */
+									while((ptr = ::_wreaddir(dir))){
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Структура проверка статистики
 									struct stat info;
 									// Создаем указатель на содержимое каталога
 									struct dirent * ptr = nullptr;
-									// Выполняем чтение содержимого каталога
+									/**
+									 * Выполняем чтение содержимого каталога
+									 */
 									while((ptr = ::readdir(dir))){
 								#endif
 										/**
-										 * Для операционной системы OS Windows
+										 * Для операционной системы MS Windows
 										 */
 										#if _WIN32 || _WIN64
 											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
@@ -1386,7 +1417,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 											// Получаем адрес в виде строки
 											const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
 										/**
-										 * Для операционной системы не являющейся OS Windows
+										 * Для операционной системы не являющейся MS Windows
 										 */
 										#else
 											// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
@@ -1397,13 +1428,13 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 											const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 										#endif
 										/**
-										 * Для операционной системы OS Windows
+										 * Для операционной системы MS Windows
 										 */
 										#if _WIN32 || _WIN64
 											// Если статистика извлечена
-											if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
+											if(!::_wstat(this->_fmk->convert(address).c_str(), &info)){
 										/**
-										 * Для операционной системы не являющейся OS Windows
+										 * Для операционной системы не являющейся MS Windows
 										 */
 										#else
 											// Если статистика извлечена
@@ -1431,13 +1462,13 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 										}
 								}
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Закрываем открытый каталог
-									_wclosedir(dir);
+									::_wclosedir(dir);
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Закрываем открытый каталог
@@ -1487,7 +1518,8 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 	return result;
 }
 /**
- * count Метод подсчёта количество файлов в каталоге
+ * @brief Метод подсчёта количество файлов в каталоге
+ *
  * @param path путь для подсчёта
  * @param ext  расширение файла если требуется фильтрация
  * @param rec  флаг рекурсивного перебора каталогов
@@ -1507,13 +1539,13 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 			// Если адрес получен правильный
 			if(!address.empty()){
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Открываем указанный каталог
-					_WDIR * dir = _wopendir(this->_fmk->convert(address).c_str());
+					_WDIR * dir = ::_wopendir(this->_fmk->convert(address).c_str());
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем указанный каталог
@@ -1522,28 +1554,32 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 					// Если каталог открыт
 					if(dir != nullptr){
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Структура проверка статистики
 							struct _stat info;
 							// Создаем указатель на содержимое каталога
 							struct _wdirent * ptr = nullptr;
-							// Выполняем чтение содержимого каталога
-							while((ptr = _wreaddir(dir))){
+							/**
+							 * Выполняем чтение содержимого каталога
+							 */
+							while((ptr = ::_wreaddir(dir))){
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Структура проверка статистики
 							struct stat info;
 							// Создаем указатель на содержимое каталога
 							struct dirent * ptr = nullptr;
-							// Выполняем чтение содержимого каталога
+							/**
+							 * Выполняем чтение содержимого каталога
+							 */
 							while((ptr = ::readdir(dir))){
 						#endif
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
@@ -1553,7 +1589,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 									// Получаем адрес в виде строки
 									const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
@@ -1564,13 +1600,13 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 									const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 								#endif
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Если статистика извлечена
-									if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
+									if(!::_wstat(this->_fmk->convert(address).c_str(), &info)){
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Если статистика извлечена
@@ -1598,13 +1634,13 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 								}
 						}
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Закрываем открытый каталог
-							_wclosedir(dir);
+							::_wclosedir(dir);
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Закрываем открытый каталог
@@ -1653,7 +1689,8 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 	return result;
 }
 /**
- * read Метод чтения данных из файла
+ * @brief Метод чтения данных из файла
+ *
  * @param filename адрес файла для чтения
  * @return         бинарный буфер с прочитанными данными
  */
@@ -1671,22 +1708,22 @@ vector <char> awh::FS::read(const string & filename) const noexcept {
 			// Если адрес получен правильный
 			if(!address.empty()){
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
-					HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если открыть файл открыт нормально
 					if(file != INVALID_HANDLE_VALUE){
 						// Устанавливаем размер буфера
-						result.resize(static_cast <uintmax_t> (GetFileSize(file, nullptr)), 0);
+						result.resize(static_cast <uintmax_t> (::GetFileSize(file, nullptr)), 0);
 						// Выполняем чтение из файла в буфер данные
-						ReadFile(file, static_cast <LPVOID> (result.data()), static_cast <DWORD> (result.size()), 0, nullptr);
+						::ReadFile(file, static_cast <LPVOID> (result.data()), static_cast <DWORD> (result.size()), 0, nullptr);
 						// Выполняем закрытие файла
-						CloseHandle(file);
+						::CloseHandle(file);
 					}
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Файловый дескриптор файла
@@ -1768,7 +1805,8 @@ vector <char> awh::FS::read(const string & filename) const noexcept {
 	return result;
 }
 /**
- * write Метод записи в файл бинарных данных
+ * @brief Метод записи в файл бинарных данных
+ *
  * @param filename адрес файла в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param size     размер бинарного буфера для записи в файл
@@ -1785,20 +1823,20 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 			// Если адрес получен правильный
 			if(!address.empty()){
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем открытие файла на запись
-					HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если открыть файл открыт нормально
 					if(file != INVALID_HANDLE_VALUE){
 						// Выполняем запись данных в файл
-						WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+						::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
 						// Выполняем закрытие файла
-						CloseHandle(file);
+						::CloseHandle(file);
 					}
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Файловый поток для записи
@@ -1850,7 +1888,8 @@ void awh::FS::write(const string & filename, const char * buffer, const size_t s
 	}
 }
 /**
- * append Метод добавления в файл бинарных данных
+ * @brief Метод добавления в файл бинарных данных
+ *
  * @param filename адрес файла в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param size     размер бинарного буфера для записи в файл
@@ -1867,20 +1906,20 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 			// Если адрес получен правильный
 			if(!address.empty()){
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Выполняем открытие файла на добавление
-					HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если открыть файл открыт нормально
 					if(file != INVALID_HANDLE_VALUE){
 						// Выполняем добавление данных в файл
-						WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+						::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
 						// Выполняем закрытие файла
-						CloseHandle(file);
+						::CloseHandle(file);
 					}
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Файловый поток для добавления
@@ -1932,7 +1971,8 @@ void awh::FS::append(const string & filename, const char * buffer, const size_t 
 	}
 }
 /**
- * readFile Метод рекурсивного получения всех строк файла
+ * @brief Метод рекурсивного получения всех строк файла
+ *
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова
  */
@@ -1942,13 +1982,13 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 	 */
 	try {
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Вызываем метод рекурсивного получения всех строк файла, старым способом
 			this->readFile2(filename, callback);
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Если адрес файла передан
@@ -2075,7 +2115,8 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 	}
 }
 /**
- * readFile2 Метод рекурсивного получения всех строк файла (стандартным способом)
+ * @brief Метод рекурсивного получения всех строк файла (стандартным способом)
+ *
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова
  */
@@ -2087,7 +2128,8 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 		 */
 		try {
 			/**
-			 * readFn Функция чтения данных из бинарного буфера
+			 * @brief Функция чтения данных из бинарного буфера
+			 *
 			 * @param buffer буфер откуда производится чтение
 			 */
 			auto readFn = [&callback](vector <char> & buffer) noexcept -> void {
@@ -2140,24 +2182,24 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 			// Если адрес получен правильный
 			if(!address.empty()){
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Создаём объект работы с файлом
-					HANDLE file = CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+					HANDLE file = ::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если открыть файл открыт нормально
 					if(file != INVALID_HANDLE_VALUE){
 						// Устанавливаем размер буфера
-						vector <char> buffer(static_cast <uintmax_t> (GetFileSize(file, nullptr)));
+						vector <char> buffer(static_cast <uintmax_t> (::GetFileSize(file, nullptr)));
 						// Выполняем чтение из файла в буфер данные
-						ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
+						::ReadFile(file, static_cast <LPVOID> (buffer.data()), static_cast <DWORD> (buffer.size()), 0, nullptr);
 						// Выполняем чтение данных из буфера
-						readFn(buffer);
+						::readFn(buffer);
 						// Выполняем закрытие файла
-						CloseHandle(file);
+						::CloseHandle(file);
 					}
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Структура проверка статистики
@@ -2231,7 +2273,8 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 	} else this->_log->print("Filename: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
 }
 /**
- * readFile3 Метод рекурсивного получения всех строк файла (построчным методом)
+ * @brief Метод рекурсивного получения всех строк файла (построчным методом)
+ *
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова
  */
@@ -2247,7 +2290,7 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 			// Если адрес получен правильный
 			if(!address.empty()){
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Открываем файл на чтение
@@ -2256,15 +2299,17 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 					if(file.is_open()){
 						// Результат полученный из потока
 						string result = "";
-						// Выполняем чтение данных из потока
-						while(getline(file, result))
+						/**
+						 * Выполняем чтение данных из потока
+						 */
+						while(::getline(file, result))
 							// Выводим полученный результат
 							std::apply(callback, std::make_tuple(result));
 						// Закрываем файл
 						file.close();
 					}
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем файл на чтение
@@ -2273,7 +2318,9 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 					if(file.is_open()){
 						// Результат полученный из потока
 						string result = "";
-						// Выполняем чтение данных из потока
+						/**
+						 * Выполняем чтение данных из потока
+						 */
 						while(getline(file, result))
 							// Выводим полученный результат
 							std::apply(callback, std::make_tuple(result));
@@ -2321,7 +2368,8 @@ void awh::FS::readFile3(const string & filename, function <void (const string &)
 	} else this->_log->print("Filename: \"%s\" is not found", log_t::flag_t::WARNING, filename.c_str());
 }
 /**
- * readDir Метод рекурсивного получения файлов во всех подкаталогах
+ * @brief Метод рекурсивного получения файлов во всех подкаталогах
+ *
  * @param path     путь до каталога
  * @param ext      расширение файла по которому идет фильтрация
  * @param rec      флаг рекурсивного перебора каталогов
@@ -2332,14 +2380,16 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
 		/**
-		 * readFn Прототип функции запроса файлов в каталоге
+		 * @brief Прототип функции запроса файлов в каталоге
+		 *
 		 * @param путь до каталога
 		 * @param расширение файла по которому идет фильтрация
 		 * @param флаг рекурсивного перебора каталогов
 		 */
 		function <void (const string &, const string &, const bool)> readFn;
 		/**
-		 * readFn Функция запроса файлов в каталоге
+		 * @brief Функция запроса файлов в каталоге
+		 *
 		 * @param path путь до каталога
 		 * @param ext  расширение файла по которому идет фильтрация
 		 * @param rec  флаг рекурсивного перебора каталогов
@@ -2350,13 +2400,13 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 			 */
 			try {
 				/**
-				 * Для операционной системы OS Windows
+				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
 					// Открываем указанный каталог
-					_WDIR * dir = _wopendir(this->_fmk->convert(path).c_str());
+					_WDIR * dir = ::_wopendir(this->_fmk->convert(path).c_str());
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем указанный каталог
@@ -2365,28 +2415,32 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 					// Если каталог открыт
 					if(dir != nullptr){
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Структура проверка статистики
 							struct _stat info;
 							// Создаем указатель на содержимое каталога
 							struct _wdirent * ptr = nullptr;
-							// Выполняем чтение содержимого каталога
-							while((ptr = _wreaddir(dir))){
+							/**
+							 * Выполняем чтение содержимого каталога
+							 */
+							while((ptr = ::_wreaddir(dir))){
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Структура проверка статистики
 							struct stat info;
 							// Создаем указатель на содержимое каталога
 							struct dirent * ptr = nullptr;
-							// Выполняем чтение содержимого каталога
+							/**
+							 * Выполняем чтение содержимого каталога
+							 */
 							while((ptr = ::readdir(dir))){
 						#endif
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
@@ -2396,7 +2450,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 									// Получаем адрес в виде строки
 									const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(wstring(ptr->d_name)).c_str());
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
@@ -2407,13 +2461,13 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 									const string & address = this->_fmk->format("%s%s%s", path.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 								#endif
 								/**
-								 * Для операционной системы OS Windows
+								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
 									// Если статистика извлечена
-									if(!_wstat(this->_fmk->convert(address).c_str(), &info)){
+									if(!::_wstat(this->_fmk->convert(address).c_str(), &info)){
 								/**
-								 * Для операционной системы не являющейся OS Windows
+								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Если статистика извлечена
@@ -2470,13 +2524,13 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 									}
 						}
 						/**
-						 * Для операционной системы OS Windows
+						 * Для операционной системы MS Windows
 						 */
 						#if _WIN32 || _WIN64
 							// Закрываем открытый каталог
-							_wclosedir(dir);
+							::_wclosedir(dir);
 						/**
-						 * Для операционной системы не являющейся OS Windows
+						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Закрываем открытый каталог
@@ -2529,7 +2583,8 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }
 /**
- * readPath Метод рекурсивного чтения файлов во всех подкаталогах
+ * @brief Метод рекурсивного чтения файлов во всех подкаталогах
+ *
  * @param path     путь до каталога
  * @param ext      расширение файла по которому идет фильтрация
  * @param rec      флаг рекурсивного перебора каталогов

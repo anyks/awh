@@ -29,7 +29,7 @@
 #endif
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
@@ -39,7 +39,7 @@
 	#include <grp.h>
 	#include <sys/resource.h>
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #else
 	/**
@@ -69,12 +69,13 @@
 using namespace std;
 
 /**
- * boost Метод применение сетевой оптимизации операционной системы
+ * @brief Метод применение сетевой оптимизации операционной системы
+ *
  * @return результат работы
  */
 void awh::OS::boost() const noexcept {
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		// Vista/7 также включает «Compound TCP (CTCP)», который похож на CUBIC в Linux
@@ -219,7 +220,8 @@ void awh::OS::boost() const noexcept {
 	#endif
 }
 /**
- * type Метод определения операционной системы
+ * @brief Метод определения операционной системы
+ *
  * @return название операционной системы
  */
 awh::OS::type_t awh::OS::type() const noexcept {
@@ -284,7 +286,8 @@ awh::OS::type_t awh::OS::type() const noexcept {
 	return result;
 }
 /**
- * enableCoreDumps Метод активации создания дампа ядра
+ * @brief Метод активации создания дампа ядра
+ *
  * @return результат установки лимитов дампов ядра
  */
 bool awh::OS::enableCoreDumps() const noexcept {
@@ -293,7 +296,7 @@ bool awh::OS::enableCoreDumps() const noexcept {
 	 */
 	#if DEBUG_MODE
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Структура лимитов дампов
@@ -310,7 +313,8 @@ bool awh::OS::enableCoreDumps() const noexcept {
 	return false;
 }
 /**
- * uid Метод вывода идентификатора пользователя
+ * @brief Метод вывода идентификатора пользователя
+ *
  * @param name имя пользователя
  * @return     полученный идентификатор пользователя
  */
@@ -318,7 +322,7 @@ uid_t awh::OS::uid(const string & name) const noexcept {
 	// Результат работы функции
 	uid_t result = 0;
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если имя пользователя передано
@@ -337,7 +341,8 @@ uid_t awh::OS::uid(const string & name) const noexcept {
 	return result;
 }
 /**
- * gid Метод вывода идентификатора группы пользователя
+ * @brief Метод вывода идентификатора группы пользователя
+ *
  * @param name название группы пользователя
  * @return     полученный идентификатор группы пользователя
  */
@@ -345,7 +350,7 @@ gid_t awh::OS::gid(const string & name) const noexcept {
 	// Результат работы функции
 	gid_t result = 0;
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если имя пользователя передано
@@ -364,7 +369,8 @@ gid_t awh::OS::gid(const string & name) const noexcept {
 	return result;
 }
 /**
- * congestionControl Метод определения алгоритма работы сети
+ * @brief Метод определения алгоритма работы сети
+ *
  * @param str строка с выводмом доступных алгоритмов из sysctl
  * @return    выбранная строка с названием алгоритма
  */
@@ -386,14 +392,15 @@ string awh::OS::congestionControl(const string & str) const noexcept {
 	return "";
 }
 /**
- * limitFDs Метод установки количество разрешенных файловых дескрипторов
+ * @brief Метод установки количество разрешенных файловых дескрипторов
+ *
  * @param cur текущий лимит на количество открытых файловых дискриптеров
  * @param max максимальный лимит на количество открытых файловых дискриптеров
  * @return    результат выполнения операции
  */
 bool awh::OS::limitFDs(const uint32_t cur, const uint32_t max) const noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Структура для установки лимитов
@@ -405,7 +412,7 @@ bool awh::OS::limitFDs(const uint32_t cur, const uint32_t max) const noexcept {
 		// установим указанное кол-во
 		return (::setrlimit(RLIMIT_NOFILE, &limit) == 0);
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Сообщаем, что ничего не установленно
@@ -413,14 +420,15 @@ bool awh::OS::limitFDs(const uint32_t cur, const uint32_t max) const noexcept {
 	#endif
 }
 /**
- * chown Метод запуска приложения от имени указанного пользователя
+ * @brief Метод запуска приложения от имени указанного пользователя
+ *
  * @param uid идентификатор пользователя
  * @param gid идентификатор группы пользователя
  * @return    результат выполнения операции
  */
 bool awh::OS::chown(const uid_t uid, const gid_t gid) const noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Результат работы функции
@@ -436,7 +444,7 @@ bool awh::OS::chown(const uid_t uid, const gid_t gid) const noexcept {
 		// Выводим результат
 		return result;
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Сообщаем, что ничего не установленно
@@ -444,14 +452,15 @@ bool awh::OS::chown(const uid_t uid, const gid_t gid) const noexcept {
 	#endif
 }
 /**
- * chown Метод запуска приложения от имени указанного пользователя
+ * @brief Метод запуска приложения от имени указанного пользователя
+ *
  * @param user  название пользователя
  * @param group название группы пользователя
  * @return      результат выполнения операции
  */
 bool awh::OS::chown(const string & user, const string & group) const noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Результат работы функции
@@ -481,7 +490,7 @@ bool awh::OS::chown(const string & user, const string & group) const noexcept {
 		// Выводим результат
 		return result;
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#else
 		// Сообщаем, что ничего не установленно
@@ -489,7 +498,8 @@ bool awh::OS::chown(const string & user, const string & group) const noexcept {
 	#endif
 }
 /**
- * sysctl Метод извлечения настроек ядра операционной системы
+ * @brief Метод извлечения настроек ядра операционной системы
+ *
  * @param name   название записи для получения настроек
  * @param buffer бинарный буфер с извлечёнными значениями
  */
@@ -532,7 +542,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 			// Если результат получен
 			if(!result.empty()){
 				// Очередь собранных данных
-				std::queue <pair <string, bool>> data;
+				std::queue <std::pair <string, bool>> data;
 				// Выполняем перебор всего полученного результата
 				for(auto & item : result){
 					// Если символ является пробелом
@@ -542,7 +552,7 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 							// Если запись является числом
 							if(data.back().second){
 								// Выполняем создание блока данных
-								pair <string, bool> record = std::make_pair("", true);
+								std::pair <string, bool> record = std::make_pair("", true);
 								// Выполняем добавление записи в очередь
 								data.push(::move(record));
 							// Если запись является строкой, добавляем полученный символ в запись
@@ -553,17 +563,17 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
-							pair <string, bool> record = std::make_pair(string(1, item), true);
+							std::pair <string, bool> record = std::make_pair(string(1, item), true);
 							// Выполняем добавление записи в очередь
 							data.push(::move(record));
 						// Если данные в очереди уже есть, добавляем полученный символ в запись
 						} else data.back().first.append(1, item);
-					// Если символ является простым символом		  
+					// Если символ является простым символом
 					} else if(item != 0) {
 						// Если данных в очереди ещё нет
 						if(data.empty()){
 							// Выполняем создание блока данных
-							pair <string, bool> record = std::make_pair(string(1, item), false);
+							std::pair <string, bool> record = std::make_pair(string(1, item), false);
 							// Выполняем добавление записи в очередь
 							data.push(::move(record));
 						// Если данные в очереди уже есть
@@ -575,7 +585,9 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 						}
 					}
 				}
-				// Выполняем перебор всей очереди собранных данных
+				/**
+				 * Выполняем перебор всей очереди собранных данных
+				 */
 				while(!data.empty()){
 					// Если запись существует
 					if(!data.front().first.empty()){
@@ -628,7 +640,8 @@ void awh::OS::sysctl(const string & name, vector <char> & buffer) const noexcept
 	}
 }
 /**
- * sysctl Метод установки настроек ядра операционной системы
+ * @brief Метод установки настроек ядра операционной системы
+ *
  * @param name   название записи для установки настроек
  * @param buffer буфер бинарных данных записи для установки настроек
  * @param size   размер буфера данных
@@ -665,7 +678,8 @@ bool awh::OS::sysctl(const string & name, const void * buffer, const size_t size
 	return false;
 }
 /**
- * exec Метод запуска внешнего приложения
+ * @brief Метод запуска внешнего приложения
+ *
  * @param cmd       команда запуска
  * @param multiline данные должны вернутся многострочные
  */
@@ -675,7 +689,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 	// Если комманда запуска приложения передана правильно
 	if(!cmd.empty()){
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Создаем буфер для чтения результата
@@ -684,7 +698,9 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 			FILE * stream = ::popen(cmd.c_str(), "r");
 			// Если пайп открыт
 			if(stream != nullptr){
-				// Считываем до тех пор пока все не прочитаем
+				/**
+				 * Считываем до тех пор пока все не прочитаем
+				 */
 				while(::fgets(buffer, sizeof(buffer), stream) != nullptr){
 					// Добавляем полученный результат
 					result.append(buffer);
@@ -697,7 +713,7 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 				::pclose(stream);
 			}
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#else
 			// Создаем буфер для чтения результата
@@ -722,7 +738,9 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 			FILE * stream = _wpopen(command.c_str(), L"rt");
 			// Если пайп открыт
 			if(stream){
-				// Считываем до тех пор пока все не прочитаем
+				/**
+				 * Считываем до тех пор пока все не прочитаем
+				 */
 				while(::fgetws(buffer, sizeof(buffer), stream) != nullptr){
 					// Если используется BOOST
 					#ifdef USE_BOOST_CONVERT

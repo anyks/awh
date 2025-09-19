@@ -46,7 +46,7 @@
  */
 #ifndef AWH_MAX_COUNT_FDS
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		/**
@@ -142,7 +142,9 @@ namespace awh {
 				std::mutex mtx;
 				// Объект работы с уведомителем
 				notifier_t notifier;
-				// Функция обратного вызова
+				/**
+				 * Функция обратного вызова
+				 */
 				function <void (const uint64_t)> callback;
 				/**
 				 * @brief Конструктор
@@ -196,7 +198,7 @@ namespace awh {
 			std::atomic_bool _launched;
 		private:
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
 				// Объект данных запроса

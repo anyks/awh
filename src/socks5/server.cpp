@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * server Метод извлечения параметров запрашиваемого сервера
+ * @brief Метод извлечения параметров запрашиваемого сервера
+ *
  * @return параметры запрашиваемого сервера
  */
 const awh::server::Socks5::serv_t & awh::server::Socks5::server() const noexcept {
@@ -31,7 +32,8 @@ const awh::server::Socks5::serv_t & awh::server::Socks5::server() const noexcept
 	return this->_server;
 }
 /**
- * cmd Метод получения бинарного буфера ответа
+ * @brief Метод получения бинарного буфера ответа
+ *
  * @param rep код ответа сервера
  */
 void awh::server::Socks5::cmd(const rep_t rep) const noexcept {
@@ -61,7 +63,9 @@ void awh::server::Socks5::cmd(const rep_t rep) const noexcept {
 			const auto & ip = this->ipToHex(this->_url.ip, this->_url.family);
 			// Если буфер IP адреса получен
 			if(!ip.empty()){
-				// Определяем тип подключения
+				/**
+				 * Определяем тип подключения
+				 */
 				switch(this->_url.family){
 					// Устанавливаем тип адреса [IPv4]
 					case AF_INET: offset = this->octet(static_cast <uint8_t> (atyp_t::IPv4), offset); break;
@@ -85,7 +89,8 @@ void awh::server::Socks5::cmd(const rep_t rep) const noexcept {
 	}
 }
 /**
- * method Метод получения бинарного буфера выбора метода подключения
+ * @brief Метод получения бинарного буфера выбора метода подключения
+ *
  * @param methods методы авторизаций выбранныйе пользователем
  */
 void awh::server::Socks5::method(const vector <uint8_t> & methods) const noexcept {
@@ -132,7 +137,8 @@ void awh::server::Socks5::method(const vector <uint8_t> & methods) const noexcep
 	::memcpy(this->_buffer.data(), &response, sizeof(response));
 }
 /**
- * auth Метод получения бинарного буфера ответа на авторизацию клиента
+ * @brief Метод получения бинарного буфера ответа на авторизацию клиента
+ *
  * @param login    логин пользователя
  * @param password пароль пользователя
  */
@@ -162,7 +168,8 @@ void awh::server::Socks5::auth(const string & login, const string & password) co
 	::memcpy(this->_buffer.data(), &response, sizeof(response));
 }
 /**
- * parse Метод парсинга входящих данных
+ * @brief Метод парсинга входящих данных
+ *
  * @param buffer бинарный буфер входящих данных
  * @param size   размер бинарного буфера входящих данных
  */
@@ -175,7 +182,9 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	// Если данные буфера переданы
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем текущий стейт
+		/**
+		 * Определяем текущий стейт
+		 */
 		switch(static_cast <uint8_t> (this->_state)){
 			// Если установлен стейт, выбора метода
 			case static_cast <uint8_t> (state_t::METHOD): {
@@ -206,7 +215,9 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 							}
 							// Выполняем формирование ответа клиенту
 							this->method(methods);
-							// Проверяем метод сформированного овтета
+							/**
+							 * Проверяем метод сформированного овтета
+							 */
 							switch(static_cast <uint8_t> (this->_buffer.back())){
 								// Если метод авторизации не выбран
 								case static_cast <uint8_t> (method_t::NOMETHOD): {
@@ -270,7 +281,9 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 									if(!password.empty()){
 										// Выполняем проверку авторизации
 										this->auth(login, password);
-										// Проверяем авторизацию пользователя
+										/**
+										 * Проверяем авторизацию пользователя
+										 */
 										switch(static_cast <uint8_t> (this->_buffer.back())){
 											// Если авторизация не пройдена
 											case static_cast <uint8_t> (rep_t::FORBIDDEN): {
@@ -322,7 +335,9 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 					if(req.ver == static_cast <uint8_t> (VER)){
 						// Если команда запрошена поддерживаемая сервером
 						if(req.cmd == static_cast <uint8_t> (cmd_t::CONNECT)){
-							// Определяем тип адреса
+							/**
+							 * Определяем тип адреса
+							 */
 							switch(req.atyp){
 								// Получаем адрес IPv4
 								case static_cast <uint8_t> (atyp_t::IPv4): {
@@ -414,7 +429,8 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 	}
 }
 /**
- * reset Метод сброса собранных данных
+ * @brief Метод сброса собранных данных
+ *
  */
 void awh::server::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
@@ -429,7 +445,8 @@ void awh::server::Socks5::reset() noexcept {
 	this->_state = state_t::METHOD;
 }
 /**
- * authCallback Метод добавления функции обработки авторизации
+ * @brief Метод добавления функции обработки авторизации
+ *
  * @param callback функция обратного вызова для обработки авторизации
  */
 void awh::server::Socks5::authCallback(function <bool (const string &, const string &)> callback) noexcept {

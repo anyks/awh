@@ -28,24 +28,29 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
-	 * message Метод обратного вызова получении сообщений
+	 * @brief Метод обратного вызова получении сообщений
+	 *
 	 * @param sock  сетевой сокет
 	 * @param event произошедшее событие
 	 */
 	void awh::Cluster::Worker::message(SOCKET sock, const base_t::event_type_t event) noexcept {
 		// Если процесс является родительским
 		if(this->_ctx->_pid == static_cast <pid_t> (::getpid())){
-			// Определяем тип события
+			/**
+			 * Определяем тип события
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если выполняется событие закрытие подключения
 				case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
 					// Идентификатор процесса приславший сообщение
 					pid_t pid = 0;
-					// Определяем принцип передачи данных
+					/**
+					 * Определяем принцип передачи данных
+					 */
 					switch(static_cast <uint8_t> (this->_ctx->_transfer)){
 						// Если мы передаём данные через unix-сокет
 						case static_cast <uint8_t> (transfer_t::IPC): {
@@ -149,11 +154,15 @@ using namespace placeholders;
 							if(i != this->_decoders.end()){
 								// Выполняем добавление бинарных данных в протокол
 								i->second->push(reinterpret_cast <char *> (this->_buffer.data.get()), static_cast <size_t> (bytes));
-								// Выполняем извлечение записей
+								/**
+								 * Выполняем извлечение записей
+								 */
 								while(!i->second->empty()){
 									// Получаем буфер входящего сообщения
 									const auto & message = i->second->get();
-									// Определяем тип входящего сообщения
+									/**
+									 * Определяем тип входящего сообщения
+									 */
 									switch(message.mid){
 										// Если сообщение соответствует рукопожатию
 										case static_cast <uint8_t> (message_t::HELLO): {
@@ -176,7 +185,9 @@ using namespace placeholders;
 													// Устанавливаем соли шифрования
 													ret.first->second->salt(this->_ctx->_salt);
 											}
-											// Определяем принцип передачи данных
+											/**
+											 * Определяем принцип передачи данных
+											 */
 											switch(static_cast <uint8_t> (this->_ctx->_transfer)){
 												// Если мы передаём данные через unix-сокет
 												case static_cast <uint8_t> (transfer_t::IPC): {
@@ -248,11 +259,15 @@ using namespace placeholders;
 			}
 		// Если процесс является дочерним
 		} else if(this->_ctx->_pid == static_cast <pid_t> (::getppid())) {
-			// Определяем тип события
+			/**
+			 * Определяем тип события
+			 */
 			switch(static_cast <uint8_t> (event)){
 				// Если выполняется событие закрытие подключения
 				case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
-					// Определяем принцип передачи данных
+					/**
+					 * Определяем принцип передачи данных
+					 */
 					switch(static_cast <uint8_t> (this->_ctx->_transfer)){
 						// Если мы передаём данные через unix-сокет
 						case static_cast <uint8_t> (transfer_t::IPC): {
@@ -357,11 +372,15 @@ using namespace placeholders;
 									if(i != this->_decoders.end()){
 										// Выполняем добавление бинарных данных в протокол
 										i->second->push(reinterpret_cast <char *> (this->_buffer.data.get()), static_cast <size_t> (bytes));
-										// Выполняем извлечение записей
+										/**
+										 * Выполняем извлечение записей
+										 */
 										while(!i->second->empty()){
 											// Получаем буфер входящего сообщения
 											const auto & message = i->second->get();
-											// Определяем тип входящего сообщения
+											/**
+											 * Определяем тип входящего сообщения
+											 */
 											switch(message.mid){
 												// Если сообщение соответствует рукопожатию
 												case static_cast <uint8_t> (message_t::HELLO):
@@ -406,7 +425,7 @@ using namespace placeholders;
 	}
 #endif
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
@@ -414,7 +433,8 @@ using namespace placeholders;
 	 */
 	static awh::cluster_t * cluster = nullptr;
 	/**
-	 * ipc Метод инициализации unix-сокета для обмены данными
+	 * @brief Метод инициализации unix-сокета для обмены данными
+	 *
 	 * @param family семейстов кластера
 	 */
 	void awh::Cluster::ipc(const family_t family) noexcept {
@@ -428,7 +448,7 @@ using namespace placeholders;
 		// Если unix-сокет передан
 		if(!this->_server.ipc.empty()){
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Создаем сокет подключения
@@ -508,7 +528,8 @@ using namespace placeholders;
 		}
 	}
 	/**
-	 * process Метод перезапуска упавшего процесса
+	 * @brief Метод перезапуска упавшего процесса
+	 *
 	 * @param pid    идентификатор упавшего процесса
 	 * @param status статус остановившегося процесса
 	 */
@@ -573,7 +594,8 @@ using namespace placeholders;
 		}
 	}
 	/**
-	 * child Функция фильтр перехватчика сигналов
+	 * @brief Функция фильтр перехватчика сигналов
+	 *
 	 * @param signal номер сигнала полученного системой
 	 * @param info   объект информации полученный системой
 	 * @param ctx    передаваемый внутренний контекст
@@ -583,14 +605,17 @@ using namespace placeholders;
 		pid_t pid = 0;
 		// Статус упавшего процесса
 		int32_t status = 0;
-		// Выполняем получение идентификатора упавшего процесса
+		/**
+		 * Выполняем получение идентификатора упавшего процесса
+		 */
 		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0)
 			// Выполняем создание дочернего потока
 			const_cast <cluster_t *> (cluster)->process(pid, status);
 	}
 #endif
 /**
- * list Метод активации прослушивания сокета
+ * @brief Метод активации прослушивания сокета
+ *
  * @return результат выполнения операции
  */
 bool awh::Cluster::list() noexcept {
@@ -616,12 +641,13 @@ bool awh::Cluster::list() noexcept {
 	return result;
 }
 /**
- * connect Метод выполнения подключения
+ * @brief Метод выполнения подключения
+ *
  * @return результат выполнения операции
  */
 bool awh::Cluster::connect() noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Получаем размер объекта сокета
@@ -636,13 +662,14 @@ bool awh::Cluster::connect() noexcept {
 	return false;
 }
 /**
- * accept Метод обратного вызова получении запроса на подключение
+ * @brief Метод обратного вызова получении запроса на подключение
+ *
  * @param wid  идентификатор воркера
  * @param sock сетевой сокет
  */
 void awh::Cluster::accept(const uint16_t wid, const SOCKET sock, const base_t::event_type_t) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем поиск воркера
@@ -719,14 +746,15 @@ void awh::Cluster::accept(const uint16_t wid, const SOCKET sock, const base_t::e
 	#endif
 }
 /**
- * write Метод записи буфера данных в сокет
+ * @brief Метод записи буфера данных в сокет
+ *
  * @param wid  идентификатор воркера
  * @param pid  идентификатор процесса для получения сообщения
  * @param sock идентификатор сетевого сокета
  */
 void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET sock) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		/**
@@ -739,7 +767,9 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET sock)
 			if(i != this->_encoders.end()){
 				// Получаем размер размер буфера данных
 				const size_t max = i->second->chunkSize();
-				// Выполняем перебор всех чанков протокола
+				/**
+				 * Выполняем перебор всех чанков протокола
+				 */
 				while(!i->second->empty()){
 					// Получаем бинарный буфер данных
 					const void * buffer = i->second->data();
@@ -760,7 +790,9 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET sock)
 							i->second->erase(bytes);
 						// Если мы поймали ошибку
 						else if(bytes < 0) {
-							// Определяем принцип передачи данных
+							/**
+							 * Определяем принцип передачи данных
+							 */
 							switch(static_cast <uint8_t> (this->_transfer)){
 								// Если мы передаём данные через unix-сокет
 								case static_cast <uint8_t> (transfer_t::IPC): {
@@ -853,21 +885,24 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET sock)
 	#endif
 }
 /**
- * sending Метод обратного вызова получении сообщений готовности сокета на запись
+ * @brief Метод обратного вызова получении сообщений готовности сокета на запись
+ *
  * @param wid  идентификатор воркера
  * @param pid  идентификатор процесса для отправки сообщения
  * @param sock сетевой сокет
  */
 void awh::Cluster::sending(const uint16_t wid, const pid_t pid, const SOCKET sock) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем принцип передачи данных
+			/**
+			 * Определяем принцип передачи данных
+			 */
 			switch(static_cast <uint8_t> (this->_transfer)){
 				// Если мы передаём данные через unix-сокет
 				case static_cast <uint8_t> (transfer_t::IPC): {
@@ -920,13 +955,14 @@ void awh::Cluster::sending(const uint16_t wid, const pid_t pid, const SOCKET soc
 	#endif
 }
 /**
- * emplace Метод размещения нового дочернего процесса
+ * @brief Метод размещения нового дочернего процесса
+ *
  * @param wid идентификатор воркера
  * @param pid идентификатор предыдущего процесса
  */
 void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		/**
@@ -971,7 +1007,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 				}
 				// Устанавливаем идентификатор процесса
 				pid_t pid = -1;
-				// Определяем тип потока
+				/**
+				 * Определяем тип потока
+				 */
 				switch((pid = ::fork())){
 					// Если поток не создан
 					case -1: {
@@ -999,7 +1037,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								broker->pid = pid;
 								// Устанавливаем время начала жизни процесса
 								broker->date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-								// Определяем принцип передачи данных
+								/**
+								 * Определяем принцип передачи данных
+								 */
 								switch(static_cast <uint8_t> (this->_transfer)){
 									// Если мы передаём данные через unix-сокет
 									case static_cast <uint8_t> (transfer_t::IPC): {
@@ -1007,7 +1047,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										this->close(i->first, this->_server.sock);
 										// Выполняем инициализацию unix-сокета
 										this->ipc(family_t::CHILDREN);
-										// Если подключение выполнено
+										/**
+										 * Если подключение выполнено
+										 */
 										while(!this->connect())
 											// Погружаем поток в сон на 100мс
 											std::this_thread::sleep_for(100ms);
@@ -1184,7 +1226,9 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						broker->pid = pid;
 						// Устанавливаем время начала жизни процесса
 						broker->date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-						// Определяем принцип передачи данных
+						/**
+						 * Определяем принцип передачи данных
+						 */
 						switch(static_cast <uint8_t> (this->_transfer)){
 							// Если мы передаём данные через Shared memory
 							case static_cast <uint8_t> (transfer_t::PIPE): {
@@ -1269,13 +1313,14 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 	#endif
 }
 /**
- * create Метод создания дочерних процессов при запуске кластера
+ * @brief Метод создания дочерних процессов при запуске кластера
+ *
  * @param wid   идентификатор воркера
  * @param index индекс инициализированного процесса
  */
 void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		/**
@@ -1374,7 +1419,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 					}
 					// Устанавливаем идентификатор процесса
 					pid_t pid = -1;
-					// Определяем тип потока
+					/**
+					 * Определяем тип потока
+					 */
 					switch((pid = ::fork())){
 						// Если поток не создан
 						case -1: {
@@ -1402,7 +1449,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									broker->pid = pid;
 									// Устанавливаем время начала жизни процесса
 									broker->date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-									// Определяем принцип передачи данных
+									/**
+									 * Определяем принцип передачи данных
+									 */
 									switch(static_cast <uint8_t> (this->_transfer)){
 										// Если мы передаём данные через unix-сокет
 										case static_cast <uint8_t> (transfer_t::IPC): {
@@ -1410,7 +1459,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											this->close(i->first, this->_server.sock);
 											// Выполняем инициализацию unix-сокета
 											this->ipc(family_t::CHILDREN);
-											// Если подключение выполнено
+											/**
+											 * Если подключение выполнено
+											 */
 											while(!this->connect())
 												// Погружаем поток в сон на 100мс
 												std::this_thread::sleep_for(100ms);
@@ -1580,7 +1631,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							broker->pid = pid;
 							// Устанавливаем время начала жизни процесса
 							broker->date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-							// Определяем принцип передачи данных
+							/**
+							 * Определяем принцип передачи данных
+							 */
 							switch(static_cast <uint8_t> (this->_transfer)){
 								// Если мы передаём данные через Shared memory
 								case static_cast <uint8_t> (transfer_t::PIPE): {
@@ -1620,7 +1673,9 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 					auto j = this->_brokers.find(i->first);
 					// Если идентификатор воркера получен
 					if((i->second->_working = (j != this->_brokers.end()))){
-						// Определяем принцип передачи данных
+						/**
+						 * Определяем принцип передачи данных
+						 */
 						switch(static_cast <uint8_t> (this->_transfer)){
 							// Если мы передаём данные через unix-сокет
 							case static_cast <uint8_t> (transfer_t::IPC): {
@@ -1706,7 +1761,8 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 	#endif
 }
 /**
- * master Метод проверки является ли процесс родительским
+ * @brief Метод проверки является ли процесс родительским
+ *
  * @return результат проверки
  */
 bool awh::Cluster::master() const noexcept {
@@ -1714,7 +1770,8 @@ bool awh::Cluster::master() const noexcept {
 	return (this->_pid == static_cast <pid_t> (::getpid()));
 }
 /**
- * working Метод проверки на запуск работы кластера
+ * @brief Метод проверки на запуск работы кластера
+ *
  * @param wid идентификатор воркера
  * @return    результат работы проверки
  */
@@ -1729,7 +1786,8 @@ bool awh::Cluster::working(const uint16_t wid) const noexcept {
 	return false;
 }
 /**
- * pids Метод получения списка дочерних процессов
+ * @brief Метод получения списка дочерних процессов
+ *
  * @param wid идентификатор воркера
  * @return    список дочерних процессов
  */
@@ -1741,7 +1799,7 @@ std::set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	// Если брокер найден
 	if((i != this->_brokers.end()) && !i->second.empty()){
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
 			// Переходим по всему списку брокеров
@@ -1754,7 +1812,8 @@ std::set <pid_t> awh::Cluster::pids(const uint16_t wid) const noexcept {
 	return result;
 }
 /**
- * send Метод отправки сообщения родительскому процессу
+ * @brief Метод отправки сообщения родительскому процессу
+ *
  * @param wid идентификатор воркера
  */
 void awh::Cluster::send(const uint16_t wid) noexcept {
@@ -1764,14 +1823,15 @@ void awh::Cluster::send(const uint16_t wid) noexcept {
 	this->send(wid, reinterpret_cast <const char *> (&message), sizeof(message));
 }
 /**
- * send Метод отправки сообщения родительскому процессу
+ * @brief Метод отправки сообщения родительскому процессу
+ *
  * @param wid    идентификатор воркера
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
 void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t size) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Получаем идентификатор текущего процесса
@@ -1815,7 +1875,8 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 	#endif
 }
 /**
- * send Метод отправки сообщения дочернему процессу
+ * @brief Метод отправки сообщения дочернему процессу
+ *
  * @param wid идентификатор воркера
  * @param pid идентификатор процесса для получения сообщения
  */
@@ -1826,7 +1887,8 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid) noexcept {
 	this->send(wid, pid, reinterpret_cast <const char *> (&message), sizeof(message));
 }
 /**
- * send Метод отправки сообщения дочернему процессу
+ * @brief Метод отправки сообщения дочернему процессу
+ *
  * @param wid    идентификатор воркера
  * @param pid    идентификатор процесса для получения сообщения
  * @param buffer бинарный буфер для отправки сообщения
@@ -1834,7 +1896,7 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid) noexcept {
  */
 void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -1880,7 +1942,8 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 	#endif
 }
 /**
- * broadcast Метод отправки сообщения всем дочерним процессам
+ * @brief Метод отправки сообщения всем дочерним процессам
+ *
  * @param wid идентификатор воркера
  */
 void awh::Cluster::broadcast(const uint16_t wid) noexcept {
@@ -1890,14 +1953,15 @@ void awh::Cluster::broadcast(const uint16_t wid) noexcept {
 	this->broadcast(wid, reinterpret_cast <const char *> (&message), sizeof(message));
 }
 /**
- * broadcast Метод отправки сообщения всем дочерним процессам
+ * @brief Метод отправки сообщения всем дочерним процессам
+ *
  * @param wid    идентификатор воркера
  * @param buffer бинарный буфер для отправки сообщения
  * @param size   размер бинарного буфера для отправки сообщения
  */
 void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size_t size) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -1944,14 +2008,17 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 	#endif
 }
 /**
- * clear Метод очистки всех выделенных ресурсов
+ * @brief Метод очистки всех выделенных ресурсов
+ *
  */
 void awh::Cluster::clear() noexcept {
 	// Удаляем список дочерних процессов
 	this->_pids.clear();
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
-		// Определяем принцип передачи данных
+		/**
+		 * Определяем принцип передачи данных
+		 */
 		switch(static_cast <uint8_t> (this->_transfer)){
 			// Если мы передаём данные через unix-сокет
 			case static_cast <uint8_t> (transfer_t::IPC): {
@@ -1996,16 +2063,19 @@ void awh::Cluster::clear() noexcept {
 	std::map <decltype(this->_encoders)::key_type, decltype(this->_encoders)::mapped_type> ().swap(this->_encoders);
 }
 /**
- * close Метод закрытия всех подключений
+ * @brief Метод закрытия всех подключений
+ *
  */
 void awh::Cluster::close() noexcept {
 	// Если список брокеров не пустой
 	if(!this->_brokers.empty()){
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			// Определяем принцип передачи данных
+			/**
+			 * Определяем принцип передачи данных
+			 */
 			switch(static_cast <uint8_t> (this->_transfer)){
 				// Если мы передаём данные через unix-сокет
 				case static_cast <uint8_t> (transfer_t::IPC): {
@@ -2064,7 +2134,8 @@ void awh::Cluster::close() noexcept {
 	}
 }
 /**
- * close Метод закрытия всех подключений
+ * @brief Метод закрытия всех подключений
+ *
  * @param wid идентификатор воркера
  */
 void awh::Cluster::close(const uint16_t wid) noexcept {
@@ -2073,10 +2144,12 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 	// Если брокер найден
 	if((i != this->_brokers.end()) && !i->second.empty()){
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			// Определяем принцип передачи данных
+			/**
+			 * Определяем принцип передачи данных
+			 */
 			switch(static_cast <uint8_t> (this->_transfer)){
 				// Если мы передаём данные через unix-сокет
 				case static_cast <uint8_t> (transfer_t::IPC): {
@@ -2132,13 +2205,14 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 	}
 }
 /**
- * close Метод закрытия сетевого сокета
+ * @brief Метод закрытия сетевого сокета
+ *
  * @param wid  идентификатор воркера
  * @param sock сетевой сокет для закрытия
  */
 void awh::Cluster::close(const uint16_t wid, const SOCKET sock) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Закрываем сокет подключения
@@ -2163,7 +2237,8 @@ void awh::Cluster::close(const uint16_t wid, const SOCKET sock) noexcept {
 	#endif
 }
 /**
- * stop Метод остановки кластера
+ * @brief Метод остановки кластера
+ *
  * @param wid идентификатор воркера
  */
 void awh::Cluster::stop(const uint16_t wid) noexcept {
@@ -2185,7 +2260,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 				i->second->_autoRestart = false;
 			}
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Выполняем закрытие подключения передачи сообщений
@@ -2222,12 +2297,13 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 	}
 }
 /**
- * start Метод запуска кластера
+ * @brief Метод запуска кластера
+ *
  * @param wid идентификатор воркера
  */
 void awh::Cluster::start(const uint16_t wid) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -2256,7 +2332,8 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
 	#endif
 }
 /**
- * base Метод установки сетевого ядра
+ * @brief Метод установки сетевого ядра
+ *
  * @param core сетевое ядро для установки
  */
 void awh::Cluster::core(core_t * core) noexcept {
@@ -2271,7 +2348,8 @@ void awh::Cluster::core(core_t * core) noexcept {
 	this->_core = core;
 }
 /**
- * name Метод установки названия кластера
+ * @brief Метод установки названия кластера
+ *
  * @param name название кластера для установки
  */
 void awh::Cluster::name(const string & name) noexcept {
@@ -2295,7 +2373,8 @@ void awh::Cluster::name(const string & name) noexcept {
 	}
 }
 /**
- * transfer Метод установки режима передачи данных
+ * @brief Метод установки режима передачи данных
+ *
  * @param transfer режим передачи данных
  */
 void awh::Cluster::transfer(const transfer_t transfer) noexcept {
@@ -2305,7 +2384,8 @@ void awh::Cluster::transfer(const transfer_t transfer) noexcept {
 		this->_transfer = transfer;
 }
 /**
- * salt Метод установки соли шифрования
+ * @brief Метод установки соли шифрования
+ *
  * @param salt соль для шифрования
  */
 void awh::Cluster::salt(const string & salt) noexcept {
@@ -2315,7 +2395,8 @@ void awh::Cluster::salt(const string & salt) noexcept {
 		this->_salt = salt;
 }
 /**
- * password Метод установки пароля шифрования
+ * @brief Метод установки пароля шифрования
+ *
  * @param password пароль шифрования
  */
 void awh::Cluster::password(const string & password) noexcept {
@@ -2325,7 +2406,8 @@ void awh::Cluster::password(const string & password) noexcept {
 		this->_pass = password;
 }
 /**
- * cipher Метод установки размера шифрования
+ * @brief Метод установки размера шифрования
+ *
  * @param cipher размер шифрования
  */
 void awh::Cluster::cipher(const hash_t::cipher_t cipher) noexcept {
@@ -2335,7 +2417,8 @@ void awh::Cluster::cipher(const hash_t::cipher_t cipher) noexcept {
 		this->_cipher = cipher;
 }
 /**
- * compressor Метод установки метода компрессии
+ * @brief Метод установки метода компрессии
+ *
  * @param compressor метод компрессии для установки
  */
 void awh::Cluster::compressor(const hash_t::method_t compressor) noexcept {
@@ -2345,12 +2428,13 @@ void awh::Cluster::compressor(const hash_t::method_t compressor) noexcept {
 		this->_method = compressor;
 }
 /**
- * emplace Метод размещения нового дочернего процесса
+ * @brief Метод размещения нового дочернего процесса
+ *
  * @param wid идентификатор воркера
  */
 void awh::Cluster::emplace(const uint16_t wid) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -2382,13 +2466,14 @@ void awh::Cluster::emplace(const uint16_t wid) noexcept {
 	#endif
 }
 /**
- * erase Метод удаления активного процесса
+ * @brief Метод удаления активного процесса
+ *
  * @param wid идентификатор воркера
  * @param pid идентификатор процесса
  */
 void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -2403,7 +2488,9 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 				if((j != this->_pids.end()) && (static_cast <size_t> (j->second) < i->second.size())){
 					// Получаем объект текущего брокера
 					broker_t * broker = i->second.at(j->second).get();
-					// Определяем принцип передачи данных
+					/**
+					 * Определяем принцип передачи данных
+					 */
 					switch(static_cast <uint8_t> (this->_transfer)){
 						// Если мы передаём данные через unix-сокет
 						case static_cast <uint8_t> (transfer_t::IPC): {
@@ -2454,7 +2541,8 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 	#endif
 }
 /**
- * count Метод получения максимального количества процессов
+ * @brief Метод получения максимального количества процессов
+ *
  * @param wid идентификатор воркера
  * @return    максимальное количество процессов
  */
@@ -2469,7 +2557,8 @@ uint16_t awh::Cluster::count(const uint16_t wid) const noexcept {
 	return 0;
 }
 /**
- * count Метод установки максимального количества процессов
+ * @brief Метод установки максимального количества процессов
+ *
  * @param wid   идентификатор воркера
  * @param count максимальное количество процессов
  */
@@ -2491,13 +2580,14 @@ void awh::Cluster::count(const uint16_t wid, const uint16_t count) noexcept {
 	}
 }
 /**
- * autoRestart Метод установки флага перезапуска процессов
+ * @brief Метод установки флага перезапуска процессов
+ *
  * @param wid  идентификатор воркера
  * @param mode флаг перезапуска процессов
  */
 void awh::Cluster::autoRestart(const uint16_t wid, const bool mode) noexcept {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
@@ -2526,7 +2616,8 @@ void awh::Cluster::autoRestart(const uint16_t wid, const bool mode) noexcept {
 	#endif
 }
 /**
- * init Метод инициализации воркера
+ * @brief Метод инициализации воркера
+ *
  * @param wid   идентификатор воркера
  * @param count максимальное количество процессов
  */
@@ -2565,7 +2656,8 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 	}
 }
 /**
- * bandwidth Метод установки пропускной способности сети
+ * @brief Метод установки пропускной способности сети
+ *
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
@@ -2580,7 +2672,8 @@ void awh::Cluster::bandwidth(const string & read, const string & write) noexcept
 		this->_bandwidth.write = this->_fmk->sizeBuffer(write);
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::Cluster::callback(const callback_t & callback) noexcept {
@@ -2596,7 +2689,8 @@ void awh::Cluster::callback(const callback_t & callback) noexcept {
 	this->_callback.set("message", callback);
 }
 /**
- * Cluster Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -2605,7 +2699,7 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  _transfer(transfer_t::PIPE), _cipher(hash_t::cipher_t::NONE), _method(hash_t::method_t::NONE),
  _core(nullptr), _fmk(fmk), _log(log) {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем установку объекта кластера
@@ -2625,7 +2719,8 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 	#endif
 }
 /**
- * Cluster Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
@@ -2635,7 +2730,7 @@ awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexc
  _transfer(transfer_t::PIPE), _cipher(hash_t::cipher_t::NONE), _method(hash_t::method_t::NONE),
  _core(core), _fmk(fmk), _log(log) {
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Выполняем установку объекта кластера
@@ -2655,7 +2750,8 @@ awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexc
 	#endif
 }
 /**
- * ~Cluster Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Cluster::~Cluster() noexcept {
 	// Если активные брокеры присутствуют в кластере

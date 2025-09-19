@@ -76,7 +76,7 @@ namespace awh {
 			/**
 			 * Создаём тип данных инарного буфера
 			 */
-			typedef pair <const void *, size_t> buffer_t;
+			typedef std::pair <const void *, size_t> buffer_t;
 		private:
 			// Количество аллоцированных элементов
 			static constexpr uint16_t BATCH = 0x3E8;

@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * getIPAddresses Метод извлечения IP-адресов
+ * @brief Метод извлечения IP-адресов
+ *
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
@@ -83,7 +84,9 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			if((ifrc.ifr_flags & IFF_UP) == 0)
 				// Выполняем пропуск
 				continue;
-			// Определяем тип интернет адреса
+			/**
+			 * Определяем тип интернет адреса
+			 */
 			switch(ifr->ifr_addr.sa_family){
 				// Если мы обрабатываем IPv4
 				case AF_INET:
@@ -163,7 +166,9 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			if((ifrc.ifr_flags & IFF_UP) == 0)
 				// Выполняем пропуск
 				continue;
-			// Определяем тип интернет адреса
+			/**
+			 * Определяем тип интернет адреса
+			 */
 			switch(i->ifr_addr.sa_family){
 				// Если мы обрабатываем IPv4
 				case AF_INET:
@@ -186,7 +191,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 		// Закрываем сетевой сокет
 		this->close(sock);
 	/**
-	 * Устанавливаем настройки для OS Windows
+	 * Устанавливаем настройки для MS Windows
 	 */
 	#elif _WIN32 || _WIN64
 		// Получаем размер буфера данных
@@ -194,7 +199,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 		// Выделяем память под буфер данных
 		PIP_ADAPTER_ADDRESSES addr = reinterpret_cast <IP_ADAPTER_ADDRESSES *> (MALLOC(size));
 		// Выполняем первоначальный вызов GetAdaptersAddresses, чтобы получить необходимый размер.
-		if(GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size) == ERROR_BUFFER_OVERFLOW){
+		if(::GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size) == ERROR_BUFFER_OVERFLOW){
 			// Очищаем выделенную ранее память
 			FREE(addr);
 			// Выделяем ещё раз память для буфера данных
@@ -208,7 +213,7 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			return;
 		}
 		// Выполняем получения данных сетевого адаптера
-		const DWORD result = GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size);
+		const DWORD result = ::GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size);
 		// Если данные сетевого адаптера считаны удачно
 		if(result == NO_ERROR){
 			// Создаём буфер для получения IPv4 адреса
@@ -217,11 +222,15 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 			char ipv6[INET6_ADDRSTRLEN];
 			// В случае успеха выводим некоторую информацию из полученных данных.
 			PIP_ADAPTER_ADDRESSES adapter = addr;
-			// Выполняем обработку всех сетевых адаптеров
+			/**
+			 * Выполняем обработку всех сетевых адаптеров
+			 */
 			while(adapter != nullptr){
 				// Получаем данные сетевого интерфейса
 				PIP_ADAPTER_UNICAST_ADDRESS host = adapter->FirstUnicastAddress;
-				// Определяем тип сетевого интерфейса
+				/**
+				 * Определяем тип сетевого интерфейса
+				 */
 				switch(host->Address.lpSockaddr->sa_family){
 					// Если мы обрабатываем IPv4
 					case AF_INET: {
@@ -262,11 +271,11 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 				// Создаём объект сообщения
 				LPVOID message = nullptr;
 				// Формируем генерарцию сообщения
-				if(FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) & message, 0, nullptr)){
+				if(::FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) & message, 0, nullptr)){
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::WARNING, message);
 					// Очищаем выделенную память сообщения
-					LocalFree(message);
+					::LocalFree(message);
 				}
 			}
 		}
@@ -275,7 +284,8 @@ void awh::IfNet::getIPAddresses(const int32_t family) noexcept {
 	#endif
 }
 /**
- * getHWAddresses Метод извлечения MAC-адресов
+ * @brief Метод извлечения MAC-адресов
+ *
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
@@ -476,7 +486,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Закрываем сетевой сокет
 		this->close(sock);
 	/**
-	 * Устанавливаем настройки для OS Windows
+	 * Устанавливаем настройки для MS Windows
 	 */
 	#elif _WIN32 || _WIN64
 		// Получаем размер буфера данных
@@ -484,7 +494,7 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 		// Выделяем память под буфер данных
 		PIP_ADAPTER_ADDRESSES addr = reinterpret_cast <IP_ADAPTER_ADDRESSES *> (MALLOC(size));
 		// Выполняем первоначальный вызов GetAdaptersAddresses, чтобы получить необходимый размер.
-		if(GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size) == ERROR_BUFFER_OVERFLOW){
+		if(::GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size) == ERROR_BUFFER_OVERFLOW){
 			// Очищаем выделенную ранее память
 			FREE(addr);
 			// Выделяем ещё раз память для буфера данных
@@ -498,15 +508,16 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 			return;
 		}
 		// Выполняем получения данных сетевого адаптера
-		const DWORD result = GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size);
+		const DWORD result = ::GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size);
 		// Если данные сетевого адаптера считаны удачно
 		if(result == NO_ERROR){
 			// Временный буфер MAC-адреса
 			char hardware[18];
 			// В случае успеха выводим некоторую информацию из полученных данных.
 			PIP_ADAPTER_ADDRESSES adapter = addr;
-			// Выполняем обработку всех сетевых адаптеров
-			while(adapter != nullptr){
+			/**
+ *  Выполняем обработку всех сетевых адаптеров
+ */(adapter != nullptr){
 				// Если MAC-адрес сетевой карты найден
 				if(adapter->PhysicalAddressLength != 0){
 					// Заполняем нуляем наши буферы
@@ -532,11 +543,11 @@ void awh::IfNet::getHWAddresses(const int32_t family) noexcept {
 				// Создаём объект сообщения
 				LPVOID message = nullptr;
 				// Формируем генерарцию сообщения
-				if(FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) & message, 0, nullptr)){
+				if(::FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) & message, 0, nullptr)){
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::WARNING, message);
 					// Очищаем выделенную память сообщения
-					LocalFree(message);
+					::LocalFree(message);
 				}
 			}
 		}
@@ -552,13 +563,13 @@ void awh::IfNet::close(const int32_t sock) const noexcept {
 	// Если сетевой сокет подключён
 	if(sock != INVALID_SOCKET){
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем закрытие сокета
 			::closesocket(sock);
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Выполняем закрытие сокета
@@ -567,7 +578,8 @@ void awh::IfNet::close(const int32_t sock) const noexcept {
 	}
 }
 /**
- * init Метод инициализации сбора информации
+ * @brief Метод инициализации сбора информации
+ *
  */
 void awh::IfNet::init() noexcept {
 	// Очищаем ранее собранные данные
@@ -582,7 +594,8 @@ void awh::IfNet::init() noexcept {
 	this->getHWAddresses(AF_INET6);
 }
 /**
- * clear Метод очистки собранных данных
+ * @brief Метод очистки собранных данных
+ *
  */
 void awh::IfNet::clear() noexcept {
 	// Выполняем очистку списка MAC-адресов
@@ -601,7 +614,8 @@ const std::unordered_map <string, string> & awh::IfNet::hws() const noexcept {
 	return this->_ifs;
 }
 /**
- * name Метод запроса названия сетевого интерфейса
+ * @brief Метод запроса названия сетевого интерфейса
+ *
  * @param eth идентификатор сетевого интерфейса
  * @return    название сетевого интерфейса
  */
@@ -611,7 +625,7 @@ string awh::IfNet::name(const string & eth) const noexcept {
 	// Если сетевой интерфейс получен
 	if(!eth.empty()){
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Получаем размер буфера данных
@@ -626,7 +640,7 @@ string awh::IfNet::name(const string & eth) const noexcept {
 				return result;
 			}
 			// Выполняем первоначальный вызов GetAdaptersInfo, чтобы получить необходимый размер
-			if(GetAdaptersInfo(addr, &size) == ERROR_BUFFER_OVERFLOW){
+			if(::GetAdaptersInfo(addr, &size) == ERROR_BUFFER_OVERFLOW){
 				// Очищаем выделенную ранее память
 				FREE(addr);
 				// Выделяем ещё раз память для буфера данных
@@ -642,13 +656,15 @@ string awh::IfNet::name(const string & eth) const noexcept {
 			// Результат получения данных адаптера
 			DWORD info = 0;
 			// Получаем информацию о сетевом адаптере
-			if((info = GetAdaptersInfo(addr, &size)) == NO_ERROR){
+			if((info = ::GetAdaptersInfo(addr, &size)) == NO_ERROR){
 				// В случае успеха выводим некоторую информацию из полученных данных
 				PIP_ADAPTER_INFO adapter = addr;
-				// Выполняем обработку всех сетевых адаптеров
+				/**
+				 *  Выполняем обработку всех сетевых адаптеров
+				 */
 				while(adapter != nullptr){
 					// Если сетевой адаптер найден
-					if(strcmp(adapter->AdapterName, eth.c_str()) == 0){
+					if(::strcmp(adapter->AdapterName, eth.c_str()) == 0){
 						// Получаем название сетевого интерфейса
 						result = adapter->Description;
 						// Выходим из цикла
@@ -669,7 +685,8 @@ string awh::IfNet::name(const string & eth) const noexcept {
 	return result;
 }
 /**
- * mac Метод получения MAC-адреса по IP-адресу клиента
+ * @brief Метод получения MAC-адреса по IP-адресу клиента
+ *
  * @param ip     адрес интернет-подключения клиента
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       аппаратный адрес сетевого интерфейса клиента
@@ -683,7 +700,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 		 * Если операционной системой является MacOS X, FreeBSD, NetBSD или OpenBSD
 		 */
 		#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-			// Определяем тип протокола интернета
+			/**
+			 * Определяем тип протокола интернета
+			 */
 			switch(family){
 				// Если запрашиваемый адрес IPv4
 				case AF_INET: {
@@ -886,7 +905,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 		 * Если операционной системой является Linux
 		 */
 		#elif __linux__
-			// Определяем тип протокола интернета
+			/**
+			 * Определяем тип протокола интернета
+			 */
 			switch(family){
 				// Если запрашиваемый адрес IPv4
 				case AF_INET: {
@@ -1129,7 +1150,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 		 * Если операционной системой является Sun Solaris
 		 */
 		#elif __sun__
-			// Определяем тип протокола интернета
+			/**
+			 * Определяем тип протокола интернета
+			 */
 			switch(family){
 				// Если запрашиваемый адрес IPv4
 				case AF_INET: {
@@ -1367,10 +1390,12 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 				} break;
 			}
 		/**
-		 * Устанавливаем настройки для OS Windows
+		 * Устанавливаем настройки для MS Windows
 		 */
 		#elif _WIN32 || _WIN64
-			// Определяем тип протокола интернета
+			/**
+			 * Определяем тип протокола интернета
+			 */
 			switch(family){
 				// Если запрашиваемый адрес IPv4
 				case AF_INET: {
@@ -1383,7 +1408,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Устанавливаем IP-адрес назначения
 					destip.s_addr = ::inet_addr(ip.c_str());
 					// Отправляем запрос на указанный адрес
-					SendARP(static_cast <IPAddr> (destip.S_un.S_addr), 0, buffer, &size);
+					::SendARP(static_cast <IPAddr> (destip.S_un.S_addr), 0, buffer, &size);
 					// Если MAC-адрес получен
 					if(size > 0){
 						// Выделяем память для MAC-адреса
@@ -1403,7 +1428,7 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					// Получаем объект таблицы подключений
 					PMIB_IPNET_TABLE2 pipTable = nullptr;
 					// Считываем данные таблицы подключений
-					const u_long status = GetIpNetTable2(AF_INET6, &pipTable);
+					const u_long status = ::GetIpNetTable2(AF_INET6, &pipTable);
 					// Если данные таблицы не получены
 					if(status != NO_ERROR){
 						// Выводим сообщение об ошибке
@@ -1472,7 +1497,9 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 		const_cast <ifnet_t *> (this)->getIPAddresses(family);
 		// Выполняем обновление списка MAC-адресов
 		const_cast <ifnet_t *> (this)->getHWAddresses(family);
-		// Определяем тип протокола интернета
+		/**
+		 * Определяем тип протокола интернета
+		 */
 		switch(family){
 			// Если протокол интернета IPv4
 			case AF_INET: {
@@ -1531,7 +1558,8 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 	return result;
 }
 /**
- * mac Метод определения мак адреса клиента
+ * @brief Метод определения мак адреса клиента
+ *
  * @param sin    объект подключения
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       данные мак адреса
@@ -1545,7 +1573,9 @@ string awh::IfNet::mac(struct sockaddr * sin, const int32_t family) const noexce
 		char hardware[18];
 		// Заполняем нуляем наши буферы
 		::memset(hardware, 0, sizeof(hardware));
-		// Определяем тип интернет протокола
+		/**
+		 * Определяем тип интернет протокола
+		 */
 		switch(family){
 			// Если это IPv4
 			case AF_INET: {
@@ -1578,7 +1608,8 @@ string awh::IfNet::mac(struct sockaddr * sin, const int32_t family) const noexce
 	return result;
 }
 /**
- * ip Метод получения основного IP-адреса на сервере
+ * @brief Метод получения основного IP-адреса на сервере
+ *
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 string awh::IfNet::ip(const int32_t family) const noexcept {
@@ -1588,7 +1619,9 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 	const SOCKET sock = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если сокет создан
 	if(sock != INVALID_SOCKET){
-		// Определяем тип интернет протокола
+		/**
+		 * Определяем тип интернет протокола
+		 */
 		switch(family){
 			// Если это IPv4
 			case AF_INET: {
@@ -1672,7 +1705,8 @@ string awh::IfNet::ip(const int32_t family) const noexcept {
 	return result;
 }
 /**
- * ip Метод получения IP-адреса из подключения
+ * @brief Метод получения IP-адреса из подключения
+ *
  * @param sin    объект подключения
  * @param family тип интернет протокола
  * @return       данные ip адреса
@@ -1682,7 +1716,9 @@ string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcep
 	string result = "";
 	// Если данные переданы
 	if(sin != nullptr){
-		// Определяем тип интернет протокола
+		/**
+		 * Определяем тип интернет протокола
+		 */
 		switch(family){
 			// Если это IPv4
 			case AF_INET: {
@@ -1716,7 +1752,8 @@ string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcep
 	return result;
 }
 /**
- * ip Метод вывода IP-адреса соответствующего сетевому интерфейсу
+ * @brief Метод вывода IP-адреса соответствующего сетевому интерфейсу
+ *
  * @param eth    идентификатор сетевого интерфейса
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       IP-адрес соответствующий сетевому интерфейсу
@@ -1726,7 +1763,9 @@ const string & awh::IfNet::ip(const string & eth, const int32_t family) const no
 	static const string result = "";
 	// Если сетевой интерфейс получен
 	if(!eth.empty()){
-		// Определяем тип интернет адреса
+		/**
+		 * Определяем тип интернет адреса
+		 */
 		switch(family){
 			// Если мы обрабатываем IPv4
 			case AF_INET: {

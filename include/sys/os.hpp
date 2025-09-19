@@ -41,7 +41,7 @@
 #endif
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -88,44 +88,8 @@
 	#ifndef getppid
 		#define getppid GetCurrentProcessId
 	#endif
-	/**
-	 * Только для MSVC (MinGW игнорирует или предупреждает)
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Устанавливаем кодировку UTF-8
-		 */
-		#pragma execution_character_set("utf-8")
-	/**
-	 * Для компилятора MinGW
-	 */
-	#else
-		/**
-		 * @brief Функция для инициализации консоли в MinGW
-		 * 
-		 */
-		static void InitAWHConsoleUTF8(){
-			// Параметры устанавливаемого шрифта
-			CONSOLE_FONT_INFOEX fontInfo = {0};
-			fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
-			// Формируем параметры шрифта
-			fontInfo.nFont = 1;
-			fontInfo.dwFontSize.X = 7;
-			fontInfo.dwFontSize.Y = 12;
-			fontInfo.FontWeight = 500;
-			fontInfo.FontFamily = FF_DONTCARE;
-			// Выполняем установку шрифта Lucida Console
-			::lstrcpyW(fontInfo.FaceName, L"Lucida Console");
-			// Применяем шрифт
-			::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &fontInfo);
-			// Устанавливаем кодировку ввода текстовых данных в консоле 65001
-			::SetConsoleCP(CP_UTF8);
-			// Устанавливаем кодировку вывода текстовых данных из консоли
-			::SetConsoleOutputCP(CP_UTF8);
-		}
-	#endif
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	/**

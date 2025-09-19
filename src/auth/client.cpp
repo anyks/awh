@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * data Метод извлечения данных авторизации
+ * @brief Метод извлечения данных авторизации
+ *
  * @return данные модуля авторизации
  */
 awh::client::Auth::data_t awh::client::Auth::data() const noexcept {
@@ -41,7 +42,8 @@ awh::client::Auth::data_t awh::client::Auth::data() const noexcept {
 	return result;
 }
 /**
- * data Метод установки данных авторизации
+ * @brief Метод установки данных авторизации
+ *
  * @param data данные авторизации для установки
  */
 void awh::client::Auth::data(const data_t & data) noexcept {
@@ -58,7 +60,8 @@ void awh::client::Auth::data(const data_t & data) noexcept {
 	}
 }
 /**
- * uri Метод установки параметров HTTP запроса
+ * @brief Метод установки параметров HTTP запроса
+ *
  * @param uri строка параметров HTTP запроса
  */
 void awh::client::Auth::uri(const string & uri) noexcept {
@@ -70,7 +73,8 @@ void awh::client::Auth::uri(const string & uri) noexcept {
 	else this->_digest.uri = "/";
 }
 /**
- * user Метод установки логина пользователя
+ * @brief Метод установки логина пользователя
+ *
  * @param user логин пользователя для установки
  */
 void awh::client::Auth::user(const string & user) noexcept {
@@ -78,7 +82,8 @@ void awh::client::Auth::user(const string & user) noexcept {
 	this->_user = user;
 }
 /**
- * pass Метод установки пароля пользователя
+ * @brief Метод установки пароля пользователя
+ *
  * @param pass пароль пользователя для установки
  */
 void awh::client::Auth::pass(const string & pass) noexcept {
@@ -86,7 +91,8 @@ void awh::client::Auth::pass(const string & pass) noexcept {
 	this->_pass = pass;
 }
 /**
- * header Метод установки параметров авторизации из заголовков
+ * @brief Метод установки параметров авторизации из заголовков
+ *
  * @param header заголовок HTTP с параметрами авторизации
  */
 void awh::client::Auth::header(const string & header) noexcept {
@@ -185,7 +191,8 @@ void awh::client::Auth::header(const string & header) noexcept {
 	}
 }
 /**
- * auth Метод получения строки авторизации HTTP-заголовка
+ * @brief Метод получения строки авторизации HTTP-заголовка
+ *
  * @param method метод HTTP-запроса
  * @return       строка авторизации
  */
@@ -198,7 +205,9 @@ string awh::client::Auth::auth(const string & method) noexcept {
 	try {
 		// Если логин и пароль установлены
 		if(!this->_user.empty() && !this->_pass.empty()){
-			// Определяем тип авторизации
+			/**
+			 * Определяем тип авторизации
+			 */
 			switch(static_cast <uint8_t> (this->_type)){
 				// Если тип авторизации Digest
 				case static_cast <uint8_t> (type_t::DIGEST): {

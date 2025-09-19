@@ -24,11 +24,10 @@
 #include <string>
 #include <cstring>
 #include <csignal>
-#include <functional>
 #include <sys/types.h>
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	/**
@@ -143,7 +142,7 @@ namespace awh {
 					const Cluster * _ctx;
 				public:
 					/**
-					 * Для операционной системы не являющейся OS Windows
+					 * Для операционной системы не являющейся MS Windows
 					 */
 					#if !_WIN32 && !_WIN64
 						/**
@@ -255,7 +254,7 @@ namespace awh {
 			} server_t;
 		private:
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				/**
@@ -289,7 +288,7 @@ namespace awh {
 					~Broker() noexcept {}
 				} broker_t;
 			/**
-			 * Для операционной системы OS Windows
+			 * Для операционной системы MS Windows
 			 */
 			#else
 				/**
@@ -336,7 +335,7 @@ namespace awh {
 			hash_t::method_t _method;
 		private:
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				// Объект перехвата сигнала
@@ -365,7 +364,7 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * Для операционной системы не являющейся OS Windows
+			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !_WIN32 && !_WIN64
 				/**

@@ -30,7 +30,7 @@
 #include <functional>
 
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #if !_WIN32 && !_WIN64
 	#define SOCKET int32_t
@@ -38,13 +38,13 @@
 #endif
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 /**
- * Для операционной системы не являющейся OS Windows
+ * Для операционной системы не являющейся MS Windows
  */
 #else
 	#include <netdb.h>
@@ -201,7 +201,9 @@ namespace awh {
 			// Объект работы с логами
 			const log_t * _log;
 		private:
-			// Функция обратного вызова для работы в асинхронном режиме
+			/**
+			 * Функция обратного вызова для работы в асинхронном режиме
+			 */
 			function <void (const uint64_t, const string &, Ping *)> _callback;
 		private:
 			/**

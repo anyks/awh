@@ -454,7 +454,7 @@ namespace awh {
 			 * @param date дата в UnixTimestamp
 			 * @return     сформированная аббревиатура даты
 			 */
-			pair <type_t, double> abbreviation(const uint64_t date) const noexcept;
+			std::pair <type_t, double> abbreviation(const uint64_t date) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения конца позиции указанной даты

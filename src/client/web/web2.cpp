@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * sendSignal Метод обратного вызова при отправки данных HTTP/2
+ * @brief Метод обратного вызова при отправки данных HTTP/2
+ *
  * @param buffer буфер бинарных данных
  * @param size  размер буфера данных для отправки
  */
@@ -39,7 +40,8 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
 		const_cast <client::core_t *> (this->_core)->send(reinterpret_cast <const char *> (buffer), size, this->_bid);
 }
 /**
- * frameProxySignal Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
+ * @brief Метод обратного вызова при получении фрейма заголовков прокси-сервера HTTP/2
+ *
  * @param sid    идентификатор потока
  * @param direct направление передачи фрейма
  * @param type   тип полученного фрейма
@@ -49,7 +51,9 @@ void awh::client::Web2::sendSignal(const uint8_t * buffer, const size_t size) no
 int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::direct_t direct, const http2_t::frame_t frame, const std::set <http2_t::flag_t> & flags) noexcept {
 	// Если идентификатор сессии клиента совпадает
 	if((this->_core != nullptr) && (this->_proxy.sid == sid)){
-		// Выполняем определение типа фрейма
+		/**
+		 * Выполняем определение типа фрейма
+		 */
 		switch(static_cast <uint8_t> (frame)){
 			// Если мы получили входящие данные тела ответа
 			case static_cast <uint8_t> (http2_t::frame_t::DATA): {
@@ -70,7 +74,9 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 							else std::cout << std::endl << std::flush;
 						}
 					#endif
-					// Выполняем препарирование полученных данных
+					/**
+					 * Выполняем препарирование полученных данных
+					 */
 					switch(static_cast <uint8_t> (this->prepareProxy(sid, this->_bid))){
 						// Если необходимо выполнить пропуск обработки данных
 						case static_cast <uint8_t> (status_t::SKIP):
@@ -126,7 +132,9 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					if(flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()){
 						// Выполняем коммит полученного результата
 						this->_scheme.proxy.http.commit();
-						// Выполняем препарирование полученных данных
+						/**
+						 * Выполняем препарирование полученных данных
+						 */
 						switch(static_cast <uint8_t> (this->prepareProxy(sid, this->_bid))){
 							// Если необходимо выполнить пропуск обработки данных
 							case static_cast <uint8_t> (status_t::SKIP):
@@ -151,7 +159,8 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 	return 0;
 }
 /**
- * chunkProxySignal Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
+ * @brief Метод обратного вызова при получении чанка с прокси-сервера HTTP/2
+ *
  * @param sid    идентификатор потока
  * @param buffer буфер данных который содержит полученный чанк
  * @param size   размер полученного буфера данных чанка
@@ -166,7 +175,8 @@ int32_t awh::client::Web2::chunkProxySignal(const int32_t sid, const uint8_t * b
 	return 0;
 }
 /**
- * beginProxySignal Метод начала получения фрейма заголовков HTTP/2 прокси-сервера
+ * @brief Метод начала получения фрейма заголовков HTTP/2 прокси-сервера
+ *
  * @param sid идентификатор потока
  * @return    статус полученных данных
  */
@@ -179,7 +189,8 @@ int32_t awh::client::Web2::beginProxySignal(const int32_t sid) noexcept {
 	return 0;
 }
 /**
- * headerProxySignal Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера
+ * @brief Метод обратного вызова при получении заголовка HTTP/2 прокси-сервера
+ *
  * @param sid идентификатор потока
  * @param key данные ключа заголовка
  * @param val данные значения заголовка
@@ -194,7 +205,8 @@ int32_t awh::client::Web2::headerProxySignal(const int32_t sid, const string & k
 	return 0;
 }
 /**
- * statusEvent Метод обратного вызова при активации ядра сервера
+ * @brief Метод обратного вызова при активации ядра сервера
+ *
  * @param status флаг запуска/остановки
  */
 void awh::client::Web2::statusEvent(const awh::core_t::status_t status) noexcept {
@@ -206,7 +218,8 @@ void awh::client::Web2::statusEvent(const awh::core_t::status_t status) noexcept
 	web_t::statusEvent(status);
 }
 /**
- * connectEvent Метод обратного вызова при подключении к серверу
+ * @brief Метод обратного вызова при подключении к серверу
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -219,7 +232,8 @@ void awh::client::Web2::connectEvent(const uint64_t bid, const uint16_t sid) noe
 		this->implementation(bid);
 }
 /**
- * proxyConnectEvent Метод обратного вызова при подключении к прокси-серверу
+ * @brief Метод обратного вызова при подключении к прокси-серверу
+ *
  * @param bid идентификатор брокера
  * @param sid идентификатор схемы сети
  */
@@ -230,7 +244,9 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::OPEN, event_t::PROXY_READ}, event_t::PROXY_CONNECT)){
-			// Определяем тип прокси-сервера
+			/**
+			 * Определяем тип прокси-сервера
+			 */
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является HTTP/1.1
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP):
@@ -294,7 +310,9 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 							}
 						// Если протокол подключения не является защищённым подключением
 						} else {
-							// Выполняем переключение на работу с сервером
+							/**
+							this->_scheme. * Выполняем переключение на работу с сервером
+							this->_scheme. */
 							this->_scheme.switchConnect();
 							// Выполняем запуск работы основного модуля
 							this->connectEvent(bid, sid);
@@ -309,7 +327,8 @@ void awh::client::Web2::proxyConnectEvent(const uint64_t bid, const uint16_t sid
 	}
 }
 /**
- * proxyReadEvent Метод обратного вызова при чтении сообщения с прокси-сервера
+ * @brief Метод обратного вызова при чтении сообщения с прокси-сервера
+ *
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param bid    идентификатор брокера
@@ -322,7 +341,9 @@ void awh::client::Web2::proxyReadEvent(const char * buffer, const size_t size, c
 		hold_t <event_t> hold(this->_events);
 		// Если событие соответствует разрешённому
 		if(hold.access({event_t::PROXY_CONNECT}, event_t::PROXY_READ)){
-			// Определяем тип прокси-сервера
+			/**
+			 * Определяем тип прокси-сервера
+			 */
 			switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 				// Если прокси-сервер является HTTP
 				case static_cast <uint8_t> (client::proxy_t::type_t::HTTP):
@@ -349,7 +370,8 @@ void awh::client::Web2::proxyReadEvent(const char * buffer, const size_t size, c
 	}
 }
 /**
- * originCallback Метод вывода полученного списка разрешённых ресурсов для подключения
+ * @brief Метод вывода полученного списка разрешённых ресурсов для подключения
+ *
  * @param origin список разрешённых ресурсов для подключения
  */
 void awh::client::Web2::originCallback(const vector <string> & origin) noexcept {
@@ -359,7 +381,8 @@ void awh::client::Web2::originCallback(const vector <string> & origin) noexcept 
 		web_t::_callback.call <void (const vector <string> &)> ("origin", origin);
 }
 /**
- * altsvcCallback Метод вывода полученного альтернативного сервиса от сервера
+ * @brief Метод вывода полученного альтернативного сервиса от сервера
+ *
  * @param origin источник альтернативного сервиса
  * @param field  поле параметров альтернативного сервиса
  */
@@ -370,7 +393,8 @@ void awh::client::Web2::altsvcCallback(const string & origin, const string & fie
 		web_t::_callback.call <void (const string &, const string &)> ("altsvc", origin, field);
 }
 /**
- * implementation Метод выполнения активации сессии HTTP/2
+ * @brief Метод выполнения активации сессии HTTP/2
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Web2::implementation(const uint64_t bid) noexcept {
@@ -406,7 +430,8 @@ void awh::client::Web2::implementation(const uint64_t bid) noexcept {
 	}
 }
 /**
- * prepareProxy Метод выполнения препарирования полученных данных
+ * @brief Метод выполнения препарирования полученных данных
+ *
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @return    результат препарирования
@@ -425,7 +450,9 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 			// Запрещаем выполнять редирект
 			status = awh::http_t::status_t::GOOD;
 	}
-	// Выполняем проверку авторизации
+	/**
+	 * Выполняем проверку авторизации
+	 */
 	switch(static_cast <uint8_t> (status)){
 		// Если нужно попытаться ещё раз
 		case static_cast <uint8_t> (awh::http_t::status_t::RETRY): {
@@ -452,7 +479,9 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 		} break;
 		// Если запрос выполнен удачно
 		case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
-			// Выполняем переключение на работу с сервером
+			/**
+			this->_scheme. * Выполняем переключение на работу с сервером
+			this->_scheme. */
 			this->_scheme.switchConnect();
 			// Выполняем запуск работы основного модуля
 			this->connectEvent(bid, this->_scheme.id);
@@ -471,7 +500,8 @@ awh::client::Web::status_t awh::client::Web2::prepareProxy(const int32_t sid, co
 	return status_t::STOP;
 }
 /**
- * ping Метод выполнения пинга сервера
+ * @brief Метод выполнения пинга сервера
+ *
  * @return результат работы пинга
  */
 bool awh::client::Web2::ping() noexcept {
@@ -485,7 +515,8 @@ bool awh::client::Web2::ping() noexcept {
 	return false;
 }
 /**
- * close Метод выполнения закрытия подключения
+ * @brief Метод выполнения закрытия подключения
+ *
  * @param bid идентификатор брокера
  */
 void awh::client::Web2::close(const uint64_t bid) noexcept {
@@ -493,7 +524,8 @@ void awh::client::Web2::close(const uint64_t bid) noexcept {
 	this->_http2.on <void (void)> (1, static_cast <void (client::core_t::*)(const uint64_t)> (&client::core_t::close), const_cast <client::core_t *> (this->_core), bid);
 }
 /**
- * send Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param sid    идентификатор потока
  * @param buffer буфер бинарных данных передаваемых на сервер
  * @param size   размер сообщения в байтах
@@ -522,13 +554,14 @@ bool awh::client::Web2::send(const int32_t sid, const char * buffer, const size_
 	return result;
 }
 /**
- * send Метод отправки заголовков на сервер
+ * @brief Метод отправки заголовков на сервер
+ *
  * @param sid     идентификатор потока
  * @param headers заголовки отправляемые на сервер
  * @param flag    флаг передаваемого потока по сети
  * @return        идентификатор нового запроса
  */
-int32_t awh::client::Web2::send(const int32_t sid, const vector <pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
+int32_t awh::client::Web2::send(const int32_t sid, const vector <std::pair <string, string>> & headers, const http2_t::flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Создаём объект холдирования
@@ -552,7 +585,8 @@ int32_t awh::client::Web2::send(const int32_t sid, const vector <pair <string, s
 	return result;
 }
 /**
- * settings Модуль установки настроек протокола HTTP/2
+ * @brief Модуль установки настроек протокола HTTP/2
+ *
  * @param settings список настроек протокола HTTP/2
  */
 void awh::client::Web2::settings(const std::map <http2_t::settings_t, uint32_t> & settings) noexcept {
@@ -599,7 +633,8 @@ void awh::client::Web2::settings(const std::map <http2_t::settings_t, uint32_t> 
 		this->_settings.emplace(http2_t::settings_t::ENABLE_PUSH, 0);
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param size размер чанка для установки
  */
 void awh::client::Web2::chunk(const size_t size) noexcept {
@@ -609,7 +644,8 @@ void awh::client::Web2::chunk(const size_t size) noexcept {
 		this->_chunkSize = size;
 }
 /**
- * mode Метод установки флагов настроек модуля
+ * @brief Метод установки флагов настроек модуля
+ *
  * @param flags список флагов настроек модуля для установки
  */
 void awh::client::Web2::mode(const std::set <flag_t> & flags) noexcept {
@@ -631,7 +667,8 @@ void awh::client::Web2::mode(const std::set <flag_t> & flags) noexcept {
 		const_cast <client::core_t *> (this->_core)->verbose(flags.find(flag_t::NOT_INFO) == flags.end());
 }
 /**
- * userAgent Метод установки User-Agent для HTTP-запроса
+ * @brief Метод установки User-Agent для HTTP-запроса
+ *
  * @param userAgent агент пользователя для HTTP-запроса
  */
 void awh::client::Web2::userAgent(const string & userAgent) noexcept {
@@ -644,7 +681,8 @@ void awh::client::Web2::userAgent(const string & userAgent) noexcept {
 	}
 }
 /**
- * user Метод установки параметров авторизации
+ * @brief Метод установки параметров авторизации
+ *
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
@@ -659,7 +697,8 @@ void awh::client::Web2::user(const string & login, const string & password) noex
 		this->_password = password;
 }
 /**
- * ident Метод установки идентификации клиента
+ * @brief Метод установки идентификации клиента
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -678,7 +717,8 @@ void awh::client::Web2::ident(const string & id, const string & name, const stri
 	}
 }
 /**
- * Web2 Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
@@ -688,7 +728,8 @@ awh::client::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept :
 	this->settings();
 }
 /**
- * Web2 Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами

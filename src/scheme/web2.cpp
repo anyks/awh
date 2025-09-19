@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * clear Метод очистки
+ * @brief Метод очистки
+ *
  */
 void awh::server::scheme::WEB2::clear() noexcept {
 	// Очищаем данные вокера
@@ -36,7 +37,8 @@ void awh::server::scheme::WEB2::clear() noexcept {
 	clients_t().swap(this->_clients);
 }
 /**
- * set Метод создания параметров активного клиента
+ * @brief Метод создания параметров активного клиента
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::scheme::WEB2::set(const uint64_t bid) noexcept {
@@ -49,7 +51,8 @@ void awh::server::scheme::WEB2::set(const uint64_t bid) noexcept {
 	}
 }
 /**
- * rm Метод удаления параметров активного клиента
+ * @brief Метод удаления параметров активного клиента
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::scheme::WEB2::rm(const uint64_t bid) noexcept {
@@ -64,7 +67,8 @@ void awh::server::scheme::WEB2::rm(const uint64_t bid) noexcept {
 	}
 }
 /**
- * get Метод извлечения списка параметров активных клиентов
+ * @brief Метод извлечения списка параметров активных клиентов
+ *
  * @return список параметров активных клиентов
  */
 const awh::server::scheme::WEB2::clients_t & awh::server::scheme::WEB2::get() const noexcept {
@@ -72,7 +76,8 @@ const awh::server::scheme::WEB2::clients_t & awh::server::scheme::WEB2::get() co
 	return this->_clients;
 }
 /**
- * get Метод получения параметров активного клиента
+ * @brief Метод получения параметров активного клиента
+ *
  * @param bid идентификатор брокера
  * @return    параметры активного клиента
  */
@@ -90,7 +95,8 @@ const awh::server::scheme::WEB2::options_t * awh::server::scheme::WEB2::get(cons
 	return nullptr;
 }
 /**
- * openStream Метод открытия потока
+ * @brief Метод открытия потока
+ *
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  */
@@ -111,7 +117,8 @@ void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid
 	}
 }
 /**
- * closeStream Метод закрытия потока
+ * @brief Метод закрытия потока
+ *
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  */
@@ -132,7 +139,8 @@ void awh::server::scheme::WEB2::closeStream(const int32_t sid, const uint64_t bi
 	}
 }
 /**
- * getStream Метод извлечения данных потока
+ * @brief Метод извлечения данных потока
+ *
  * @param sid идентификатор потока
  * @param bid идентификатор брокера
  * @return    данные запрашиваемого потока

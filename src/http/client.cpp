@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * status Метод проверки текущего статуса
+ * @brief Метод проверки текущего статуса
+ *
  * @return результат проверки текущего статуса
  */
 awh::Http::status_t awh::client::Http::status() noexcept {
@@ -31,7 +32,9 @@ awh::Http::status_t awh::client::Http::status() noexcept {
 	status_t result = status_t::FAULT;
 	// Получаем объект параметров запроса
 	const web_t::res_t & response = this->_web.response();
-	// Проверяем код ответа
+	/**
+	 * Проверяем код ответа
+	 */
 	switch(response.code){
 		// Если требуется авторизация
 		case 401:
@@ -81,7 +84,8 @@ awh::Http::status_t awh::client::Http::status() noexcept {
 	return result;
 }
 /**
- * dataAuth Метод извлечения данных авторизации
+ * @brief Метод извлечения данных авторизации
+ *
  * @return данные модуля авторизации
  */
 awh::client::auth_t::data_t awh::client::Http::dataAuth() const noexcept {
@@ -89,7 +93,8 @@ awh::client::auth_t::data_t awh::client::Http::dataAuth() const noexcept {
 	return this->_auth.client.data();
 }
 /**
- * dataAuth Метод установки данных авторизации
+ * @brief Метод установки данных авторизации
+ *
  * @param data данные авторизации для установки
  */
 void awh::client::Http::dataAuth(const client::auth_t::data_t & data) noexcept {
@@ -97,7 +102,8 @@ void awh::client::Http::dataAuth(const client::auth_t::data_t & data) noexcept {
 	this->_auth.client.data(data);
 }
 /**
- * user Метод установки параметров авторизации
+ * @brief Метод установки параметров авторизации
+ *
  * @param user логин пользователя для авторизации на сервере
  * @param pass пароль пользователя для авторизации на сервере
  */
@@ -111,7 +117,8 @@ void awh::client::Http::user(const string & user, const string & pass) noexcept 
 	}
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
@@ -120,7 +127,8 @@ void awh::client::Http::authType(const awh::auth_t::type_t type, const awh::auth
 	this->_auth.client.type(type, hash);
 }
 /**
- * Http Конструктор
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */

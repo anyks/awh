@@ -19,7 +19,7 @@
 #include <sys/ver.hpp>
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -128,7 +128,9 @@ void awh::Version::set(const string & ver) noexcept {
 			this->_version = 0;
 			// Позиция разделителя
 			size_t start = 0, stop = 0, index = 0;
-			// Выполняем поиск разделителя
+			/**
+			 * Выполняем поиск разделителя
+			 */
 			while((stop = ver.find('.', start)) != string::npos){
 				// Извлекаем полученное число
 				reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (::stoi(ver.substr(start, stop)));

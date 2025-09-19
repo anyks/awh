@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * alignment Метод выравнивания памяти
+ * @brief Метод выравнивания памяти
+ *
  * @param size необходимый размер
  */
 void awh::Queue::alignment(const size_t size) noexcept {
@@ -105,7 +106,8 @@ void awh::Queue::alignment(const size_t size) noexcept {
 	}
 }
 /**
- * clear Метод очистки всех данных очереди
+ * @brief Метод очистки всех данных очереди
+ *
  */
 void awh::Queue::clear() noexcept {
 	/**
@@ -152,7 +154,8 @@ void awh::Queue::clear() noexcept {
 	}
 }
 /**
- * reset Метод очистки всех ресурсов
+ * @brief Метод очистки всех ресурсов
+ *
  */
 void awh::Queue::reset() noexcept {
 	/**
@@ -225,7 +228,8 @@ void awh::Queue::reset() noexcept {
 	}
 }
 /**
- * empty Метод проверки на заполненность очереди
+ * @brief Метод проверки на заполненность очереди
+ *
  * @return результат проверки
  */
 bool awh::Queue::empty() const noexcept {
@@ -233,7 +237,8 @@ bool awh::Queue::empty() const noexcept {
 	return (this->_begin == this->_end);
 }
 /**
- * count Количество добавленных элементов
+ * @brief Количество добавленных элементов
+ *
  * @return количество добавленных элементов
  */
 size_t awh::Queue::count() const noexcept {
@@ -241,7 +246,8 @@ size_t awh::Queue::count() const noexcept {
 	return (!this->empty() ? (this->_end - this->_begin) : 0);
 }
 /**
- * reserve Метод резервирования размера очереди
+ * @brief Метод резервирования размера очереди
+ *
  * @param count размер очереди для аллокации
  */
 void awh::Queue::reserve(const size_t count) noexcept {
@@ -259,7 +265,8 @@ void awh::Queue::reserve(const size_t count) noexcept {
 	this->alignment();
 }
 /**
- * pop Метод удаления записи в очереди
+ * @brief Метод удаления записи в очереди
+ *
  * @param pos позиция в очереди
  */
 void awh::Queue::pop(const pos_t pos) noexcept {
@@ -267,7 +274,9 @@ void awh::Queue::pop(const pos_t pos) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем позицию в очереди
+		/**
+		 * Определяем позицию в очереди
+		 */
 		switch(static_cast <uint8_t> (pos)){
 			// Если позиция с конца очереди
 			case static_cast <uint8_t> (pos_t::BACK): {
@@ -322,7 +331,8 @@ void awh::Queue::pop(const pos_t pos) noexcept {
 	}
 }
 /**
- * size Метод получения размера добавленных данных
+ * @brief Метод получения размера добавленных данных
+ *
  * @param pos позиция в очереди
  * @return    размер всех добавленных данных
  */
@@ -331,7 +341,9 @@ size_t awh::Queue::size(const pos_t pos) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем позицию в очереди
+		/**
+		 * Определяем позицию в очереди
+		 */
 		switch(static_cast <uint8_t> (pos)){
 			// Если позиция в очереди не определена
 			case static_cast <uint8_t> (pos_t::NONE):
@@ -374,7 +386,8 @@ size_t awh::Queue::size(const pos_t pos) const noexcept {
 	return 0;
 }
 /**
- * get Получения данных указанного элемента в очереди
+ * @brief Получения данных указанного элемента в очереди
+ *
  * @param pos позиция в очереди
  * @return    указатель на элемент очереди
  */
@@ -385,7 +398,9 @@ const void * awh::Queue::get(const pos_t pos) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Определяем позицию в очереди
+			/**
+			 * Определяем позицию в очереди
+			 */
 			switch(static_cast <uint8_t> (pos)){
 				// Если позиция с конца очереди
 				case static_cast <uint8_t> (pos_t::BACK): {
@@ -425,7 +440,8 @@ const void * awh::Queue::get(const pos_t pos) const noexcept {
 	return nullptr;
 }
 /**
- * push Метод добавления бинарного буфера данных в очередь
+ * @brief Метод добавления бинарного буфера данных в очередь
+ *
  * @param buffer бинарный буфер для добавления
  * @param size   размер бинарного буфера
  */
@@ -495,7 +511,8 @@ void awh::Queue::push(const void * buffer, const size_t size) noexcept {
 	}
 }
 /**
- * push Метод добавления бинарного буфера данных в очередь
+ * @brief Метод добавления бинарного буфера данных в очередь
+ *
  * @param buffers список бинарных буферов для добавления
  * @param size    общий размер добавляемых данных
  */
@@ -616,7 +633,8 @@ void awh::Queue::push(const vector <buffer_t> & buffers, const size_t size) noex
 	}
 }
 /**
- * Queue Конструктор
+ * @brief Конструктор
+ *
  * @param log объект для работы с логами
  */
 awh::Queue::Queue(const log_t * log) noexcept :
@@ -670,7 +688,8 @@ awh::Queue::Queue(const log_t * log) noexcept :
 	}
 }
 /**
- * ~Queue Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Queue::~Queue() noexcept {
 	/**

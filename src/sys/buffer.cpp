@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * clear Метод очистки всех данных очереди
+ * @brief Метод очистки всех данных очереди
+ *
  */
 void awh::Buffer::clear() noexcept {
 	/**
@@ -58,7 +59,8 @@ void awh::Buffer::clear() noexcept {
 	}
 }
 /**
- * empty Метод проверки на заполненность очереди
+ * @brief Метод проверки на заполненность очереди
+ *
  * @return результат проверки
  */
 bool awh::Buffer::empty() const noexcept {
@@ -66,7 +68,8 @@ bool awh::Buffer::empty() const noexcept {
 	return this->_buffer.empty();
 }
 /**
- * size Метод получения размера добавленных данных
+ * @brief Метод получения размера добавленных данных
+ *
  * @return размер всех добавленных данных
  */
 size_t awh::Buffer::size() const noexcept {
@@ -74,15 +77,17 @@ size_t awh::Buffer::size() const noexcept {
 	return this->_buffer.size();
 }
 /**
- * capacity Метод получения размера выделенной памяти
- * @return размер выделенной памяти 
+ * @brief Метод получения размера выделенной памяти
+ *
+ * @return размер выделенной памяти
  */
 size_t awh::Buffer::capacity() const noexcept {
 	// Выводим размер выделенной памяти
 	return this->_buffer.capacity();
 }
 /**
- * get Получения данных указанного элемента в очереди
+ * @brief Получения данных указанного элемента в очереди
+ *
  * @return указатель на элемент очереди
  */
 const uint8_t * awh::Buffer::get() const noexcept {
@@ -94,7 +99,8 @@ const uint8_t * awh::Buffer::get() const noexcept {
 	return nullptr;
 }
 /**
- * erase Метод удаления указанного количества байт
+ * @brief Метод удаления указанного количества байт
+ *
  * @param size количество байт для удаления
  */
 void awh::Buffer::erase(const size_t size) noexcept {
@@ -132,7 +138,8 @@ void awh::Buffer::erase(const size_t size) noexcept {
 	}
 }
 /**
- * reserve Метод резервирования размера очереди
+ * @brief Метод резервирования размера очереди
+ *
  * @param size размер выделяемой памяти
  */
 void awh::Buffer::reserve(const size_t size) noexcept {
@@ -164,7 +171,8 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	}
 }
 /**
- * push Метод добавления бинарного буфера данных в очередь
+ * @brief Метод добавления бинарного буфера данных в очередь
+ *
  * @param buffer бинарный буфер для добавления
  * @param size   размер бинарного буфера
  */
@@ -200,7 +208,8 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 	}
 }
 /**
- * operator Получения размера данных в буфере
+ * @brief Получения размера данных в буфере
+ *
  * @return размер данных в буфере
  */
 awh::Buffer::operator size_t() const noexcept {
@@ -208,7 +217,8 @@ awh::Buffer::operator size_t() const noexcept {
 	return this->_buffer.size();
 }
 /**
- * operator Получения бинарных данных буфера
+ * @brief Получения бинарных данных буфера
+ *
  * @return бинарные данные буфера
  */
 awh::Buffer::operator const char * () const noexcept {
@@ -216,7 +226,8 @@ awh::Buffer::operator const char * () const noexcept {
 	return reinterpret_cast <const char *> (this->_buffer.data());
 }
 /**
- * operator Оператор перемещения
+ * @brief Оператор перемещения
+ *
  * @param buffer буфер для перемещения
  * @return       текущий контейнер буфера
  */
@@ -256,7 +267,8 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 	return (* this);
 }
 /**
- * operator Оператор копирования
+ * @brief Оператор копирования
+ *
  * @param buffer буфер для копирования
  * @return       текущий контейнер буфера
  */
@@ -294,7 +306,8 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 	return (* this);
 }
 /**
- * operator Оператор извлечения символов буфера по его индексу
+ * @brief Оператор извлечения символов буфера по его индексу
+ *
  * @param index индекс буфера
  * @return      символ находящийся в буфере
  */
@@ -307,7 +320,8 @@ uint8_t awh::Buffer::operator [](const size_t index) const noexcept {
 	return 0;
 }
 /**
- * operator Оператор сравнения двух буферов
+ * @brief Оператор сравнения двух буферов
+ *
  * @param buffer буфер для сравнения
  * @return       результат сравнения
  */
@@ -319,7 +333,8 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 	);
 }
 /**
- * Buffer Конструктор перемещения
+ * @brief Конструктор перемещения
+ *
  * @param buffer буфер данных для перемещения
  */
 awh::Buffer::Buffer(buffer_t && buffer) noexcept {
@@ -356,7 +371,8 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 	}
 }
 /**
- * Buffer Конструктор копирования
+ * @brief Конструктор копирования
+ *
  * @param buffer буфер данных для копирования
  */
 awh::Buffer::Buffer(const buffer_t & buffer) noexcept {

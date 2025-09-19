@@ -28,7 +28,8 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * launching Метод вызова при активации базы событий
+ * @brief Метод вызова при активации базы событий
+ *
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
  */
@@ -37,7 +38,8 @@ void awh::Timer::launching(const bool mode, const bool status) noexcept {
 	core_t::launching(mode, status);
 }
 /**
- * closedown Метод вызова при деакцтивации базы событий
+ * @brief Метод вызова при деакцтивации базы событий
+ *
  * @param mode   флаг работы с сетевым протоколом
  * @param status флаг вывода события статуса
  */
@@ -50,13 +52,16 @@ void awh::Timer::closedown(const bool mode, const bool status) noexcept {
 	core_t::closedown(mode, status);
 }
 /**
- * event Метод события таймера
+ * @brief Метод события таймера
+ *
  * @param tid   идентификатор таймера
  * @param sock  сетевой сокет
  * @param event произошедшее событие
  */
 void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET sock, const base_t::event_type_t event) noexcept {
-	// Определяем тип события
+	/**
+	 * Определяем тип события
+	 */
 	switch(static_cast <uint8_t> (event)){
 		// Если выполняется событие таймера
 		case static_cast <uint8_t> (base_t::event_type_t::TIMER): {
@@ -128,7 +133,8 @@ void awh::Timer::event(const uint16_t tid, [[maybe_unused]] const SOCKET sock, c
 	}
 }
 /**
- * clear Метод очистки всех таймеров
+ * @brief Метод очистки всех таймеров
+ *
  */
 void awh::Timer::clear() noexcept {
 	/**
@@ -173,7 +179,8 @@ void awh::Timer::clear() noexcept {
 	}
 }
 /**
- * clear Метод очистки таймера
+ * @brief Метод очистки таймера
+ *
  * @param tid идентификатор таймера для очистки
  */
 void awh::Timer::clear(const uint16_t tid) noexcept {
@@ -218,7 +225,8 @@ void awh::Timer::clear(const uint16_t tid) noexcept {
 	}
 }
 /**
- * timeout Метод создания таймаута
+ * @brief Метод создания таймаута
+ *
  * @param delay задержка времени в миллисекундах
  * @return      идентификатор таймера
  */
@@ -291,7 +299,8 @@ uint16_t awh::Timer::timeout(const uint32_t delay) noexcept {
 	return 0;
 }
 /**
- * interval Метод создания интервала
+ * @brief Метод создания интервала
+ *
  * @param delay задержка времени в миллисекундах
  * @return      идентификатор таймера
  */
@@ -366,7 +375,8 @@ uint16_t awh::Timer::interval(const uint32_t delay) noexcept {
 	return 0;
 }
 /**
- * ~Timer Деструктор
+ * @brief Деструктор
+ *
  */
 awh::Timer::~Timer() noexcept {
 	// Выполняем удаление всех таймеров

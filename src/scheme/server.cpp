@@ -18,7 +18,8 @@
 #include <scheme/server.hpp>
 
 /**
- * clear Метод очистки
+ * @brief Метод очистки
+ *
  */
 void awh::server::Scheme::clear() noexcept {
 	// Очищаем данные вокера

@@ -18,7 +18,7 @@
 #include <ws/frame.hpp>
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	/**
@@ -51,7 +51,8 @@ using namespace awh;
 using namespace ws;
 
 /**
- * find Метод поиска типа сообщения
+ * @brief Метод поиска типа сообщения
+ *
  */
 void awh::ws::Message::find() noexcept {
 	// Если код сообщения передан
@@ -70,7 +71,8 @@ void awh::ws::Message::find() noexcept {
 	}
 }
 /**
- * init Метод инициализации модуля
+ * @brief Метод инициализации модуля
+ *
  */
 void awh::ws::Message::init() noexcept {
 	// Выполняем установку расшифровки кодов ошибок
@@ -94,7 +96,8 @@ void awh::ws::Message::init() noexcept {
 	};
 }
 /**
- * operator= Оператор установки текстового сообщения
+ * @brief Оператор установки текстового сообщения
+ *
  * @param text текст сообщения
  * @return     ссылка на контекст объекта
  */
@@ -107,7 +110,8 @@ awh::ws::Message & awh::ws::Message::operator = (const string & text) noexcept {
 	return (* this);
 }
 /**
- * operator= Оператор установки кода сообщения
+ * @brief Оператор установки кода сообщения
+ *
  * @param code код сообщения
  * @return     ссылка на контекст объекта
  */
@@ -123,14 +127,16 @@ awh::ws::Message & awh::ws::Message::operator = (const uint16_t code) noexcept {
 	return (* this);
 }
 /**
- * Message Конструктор
+ * @brief Конструктор
+ *
  */
 awh::ws::Message::Message() noexcept : code(0), text{""}, type{""} {
 	// Выполняем инициализацию модуля
 	this->init();
 }
 /**
- * Message Конструктор
+ * @brief Конструктор
+ *
  * @param code код сообщения
  */
 awh::ws::Message::Message(const uint16_t code) noexcept : code(code), text{""}, type{""} {
@@ -140,7 +146,8 @@ awh::ws::Message::Message(const uint16_t code) noexcept : code(code), text{""}, 
 	this->find();
 }
 /**
- * Message Конструктор
+ * @brief Конструктор
+ *
  * @param text текст сообщения
  */
 awh::ws::Message::Message(const string & text) noexcept : code(0), text{text}, type{""} {
@@ -150,7 +157,8 @@ awh::ws::Message::Message(const string & text) noexcept : code(0), text{text}, t
 	this->find();
 }
 /**
- * Message Конструктор
+ * @brief Конструктор
+ *
  * @param code код сообщения
  * @param text текст сообщения
  */
@@ -161,7 +169,8 @@ awh::ws::Message::Message(const uint16_t code, const string & text) noexcept : c
 	this->find();
 }
 /**
- * head Функция извлечения заголовка фрейма
+ * @brief Функция извлечения заголовка фрейма
+ *
  * @param head   объект для извлечения заголовка
  * @param buffer буфер с данными заголовка
  * @param size   размер передаваемого буфера
@@ -235,7 +244,8 @@ static void head(frame_t::head_t & head, const void * buffer, const size_t size,
  */
 template <typename T>
 /**
- * frame Функция создания бинарного фрейма
+ * @brief Функция создания бинарного фрейма
+ *
  * @param payload бинарный буфер фрейма
  * @param buffer  бинарные данные полезной нагрузки
  * @param size    размер передаваемого буфера
@@ -329,7 +339,8 @@ static void frame(T & payload, const void * buffer, const size_t size, const boo
 	}
 }
 /**
- * message Метод создание фрейма сообщения
+ * @brief Метод создание фрейма сообщения
+ *
  * @param mess данные сообщения
  * @return     бинарные данные фрейма
  */
@@ -400,7 +411,8 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 	return result;
 }
 /**
- * message Метод извлечения сообщения из фрейма
+ * @brief Метод извлечения сообщения из фрейма
+ *
  * @param buffer бинарные данные сообщения
  * @param size   размер буфера данных сообщения
  * @return       сообщение в текстовом виде
@@ -456,7 +468,8 @@ awh::ws::mess_t awh::ws::Frame::message(const void * buffer, const size_t size) 
 	return result;
 }
 /**
- * message Метод извлечения сообщения из заголовка фрейма
+ * @brief Метод извлечения сообщения из заголовка фрейма
+ *
  * @param head       заголовки фрейма
  * @param code       код сообщения
  * @param compressed флаг сжатых ожидаемых данных
@@ -480,7 +493,8 @@ awh::ws::mess_t awh::ws::Frame::message(const head_t & head, const uint16_t code
 	return (head.state == state_t::BAD ? mess_t(code == 0 ? 1005 : code) : mess_t(code));
 }
 /**
- * ping Метод создания фрейма пинга
+ * @brief Метод создания фрейма пинга
+ *
  * @param mess данные сообщения
  * @param mask флаг выполнения маскировки сообщения
  * @return     бинарные данные фрейма
@@ -496,7 +510,8 @@ vector <char> awh::ws::Frame::ping(const string & mess, const bool mask) const n
 	return result;
 }
 /**
- * ping Метод создания фрейма пинга
+ * @brief Метод создания фрейма пинга
+ *
  * @param buffer бинарный буфер данных для создания фрейма
  * @param size   размер буфера данных для создания фрейма
  * @param mask   флаг выполнения маскировки сообщения
@@ -513,7 +528,8 @@ vector <char> awh::ws::Frame::ping(const void * buffer, const size_t size, const
 	return result;
 }
 /**
- * pong Метод создания фрейма понга
+ * @brief Метод создания фрейма понга
+ *
  * @param mess данные сообщения
  * @param mask флаг выполнения маскировки сообщения
  * @return     бинарные данные фрейма
@@ -529,7 +545,8 @@ vector <char> awh::ws::Frame::pong(const string & mess, const bool mask) const n
 	return result;
 }
 /**
- * pong Метод создания фрейма понга
+ * @brief Метод создания фрейма понга
+ *
  * @param buffer бинарный буфер данных для создания фрейма
  * @param size   размер буфера данных для создания фрейма
  * @param mask   флаг выполнения маскировки сообщения
@@ -546,7 +563,8 @@ vector <char> awh::ws::Frame::pong(const void * buffer, const size_t size, const
 	return result;
 }
 /**
- * get Метод извлечения данных фрейма
+ * @brief Метод извлечения данных фрейма
+ *
  * @param head   заголовки фрейма
  * @param buffer бинарные данные фрейма для извлечения
  * @param size   размер передаваемого буфера
@@ -662,7 +680,8 @@ vector <char> awh::ws::Frame::get(head_t & head, const void * buffer, const size
 	return result;
 }
 /**
- * set Метод создания данных фрейма
+ * @brief Метод создания данных фрейма
+ *
  * @param head   заголовки фрейма
  * @param buffer бинарные данные полезной нагрузки
  * @param size   размер передаваемого буфера

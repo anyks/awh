@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * cmd Метод получения бинарного буфера запроса
+ * @brief Метод получения бинарного буфера запроса
+ *
  */
 void awh::client::Socks5::cmd() const noexcept {
 	// Очищаем бинарный буфер данных
@@ -52,7 +53,9 @@ void awh::client::Socks5::cmd() const noexcept {
 			const auto & ip = this->ipToHex(this->_url.ip, this->_url.family);
 			// Если буфер IP адреса получен
 			if(!ip.empty()){
-				// Определяем тип подключения
+				/**
+				 * Определяем тип подключения
+				 */
 				switch(this->_url.family){
 					// Устанавливаем тип адреса [IPv4]
 					case AF_INET: offset = this->octet(static_cast <uint8_t> (atyp_t::IPv4), offset); break;
@@ -76,7 +79,8 @@ void awh::client::Socks5::cmd() const noexcept {
 	}
 }
 /**
- * auth Метод получения бинарного буфера авторизации на сервере
+ * @brief Метод получения бинарного буфера авторизации на сервере
+ *
  */
 void awh::client::Socks5::auth() const noexcept {
 	// Очищаем бинарный буфер данных
@@ -98,7 +102,8 @@ void awh::client::Socks5::auth() const noexcept {
 	}
 }
 /**
- * methods Метод получения бинарного буфера опроса методов подключения
+ * @brief Метод получения бинарного буфера опроса методов подключения
+ *
  */
 void awh::client::Socks5::methods() const noexcept {
 	// Очищаем бинарный буфер данных
@@ -119,7 +124,8 @@ void awh::client::Socks5::methods() const noexcept {
 	offset = this->octet(static_cast <uint8_t> (method_t::PASSWD), offset);
 }
 /**
- * parse Метод парсинга входящих данных
+ * @brief Метод парсинга входящих данных
+ *
  * @param buffer бинарный буфер входящих данных
  * @param size   размер бинарного буфера входящих данных
  */
@@ -132,7 +138,9 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	// Если данные буфера переданы
 	if((buffer != nullptr) && (size > 0)){
-		// Определяем текущий стейт
+		/**
+		 * Определяем текущий стейт
+		 */
 		switch(static_cast <uint8_t> (this->_state)){
 			// Если установлен стейт, выбора метода
 			case static_cast <uint8_t> (state_t::METHOD): {
@@ -225,7 +233,9 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 					if(res.ver == static_cast <uint8_t> (VER)){
 						// Если рукопожатие выполнено
 						if(res.rep == static_cast <uint8_t> (rep_t::SUCCESS)){
-							// Определяем тип адреса
+							/**
+							 * Определяем тип адреса
+							 */
 							switch(res.atyp){
 								// Получаем адрес IPv4
 								case static_cast <uint8_t> (atyp_t::IPv4): {
@@ -335,7 +345,8 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 	} else if(this->_state == state_t::METHOD) this->methods();
 }
 /**
- * reset Метод сброса собранных данных
+ * @brief Метод сброса собранных данных
+ *
  */
 void awh::client::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
@@ -350,7 +361,8 @@ void awh::client::Socks5::reset() noexcept {
 	this->_state = state_t::METHOD;
 }
 /**
- * clearUser Метод очистки списка пользователей
+ * @brief Метод очистки списка пользователей
+ *
  */
 void awh::client::Socks5::clearUser() noexcept {
 	// Выполняем очистку пароля пользователя
@@ -359,7 +371,8 @@ void awh::client::Socks5::clearUser() noexcept {
 	this->_login.clear();
 }
 /**
- * user Метод установки параметров авторизации
+ * @brief Метод установки параметров авторизации
+ *
  * @param login логин пользователя для авторизации на сервере
  * @param pass  пароль пользователя для авторизации на сервере
  */

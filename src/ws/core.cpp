@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * init Метод инициализации
+ * @brief Метод инициализации
+ *
  * @param flag флаг направления передачи данных
  */
 void awh::WCore::init(const process_t flag) noexcept {
@@ -31,7 +32,9 @@ void awh::WCore::init(const process_t flag) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем флаг выполняемого процесса
+		/**
+		 * Определяем флаг выполняемого процесса
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если нужно сформировать данные запроса
 			case static_cast <uint8_t> (process_t::REQUEST): {
@@ -96,7 +99,9 @@ void awh::WCore::init(const process_t flag) noexcept {
 				this->header("Sec-WebSocket-Version", std::to_string(WS_VERSION));
 				// Если компрессор уже выбран
 				if(http_t::_compressors.selected != compressor_t::NONE){
-					// Определяем метод сжатия который поддерживает клиент
+					/**
+					 * Определяем метод сжатия который поддерживает клиент
+					 */
 					switch(static_cast <uint8_t> (http_t::_compressors.selected)){
 						// Если клиент поддерживает методот сжатия LZ4
 						case static_cast <uint8_t> (compressor_t::LZ4):
@@ -144,7 +149,9 @@ void awh::WCore::init(const process_t flag) noexcept {
 						if(!compressors.empty())
 							// Выполняем добавление разделителя
 							compressors.append(", ");
-						// Определяем метод сжатия который поддерживает клиент
+						/**
+						 * Определяем метод сжатия который поддерживает клиент
+						 */
 						switch(static_cast <uint8_t> (i->second)){
 							// Если клиент поддерживает методот сжатия LZ4
 							case static_cast <uint8_t> (compressor_t::LZ4):
@@ -257,7 +264,8 @@ void awh::WCore::init(const process_t flag) noexcept {
 	}
 }
 /**
- * applyExtensions Метод установки выбранных расширений
+ * @brief Метод установки выбранных расширений
+ *
  * @param flag флаг направления передачи данных
  */
 void awh::WCore::applyExtensions(const process_t flag) noexcept {
@@ -269,7 +277,9 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 		if(!this->is(suite_t::HEADER, "Sec-WebSocket-Extensions")){
 			// Список поддверживаемых расширений
 			vector <vector <string>> extensions;
-			// Определяем тип активной компрессии
+			/**
+			 * Определяем тип активной компрессии
+			 */
 			switch(static_cast <uint8_t> (this->_compressors.selected)){
 				// Если метод компрессии выбран LZ4
 				case static_cast <uint8_t> (compressor_t::LZ4):
@@ -313,7 +323,9 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 					if(!this->_client.takeover)
 						// Добавляем флаг запрещения использования контекста компрессии для клиента
 						extensions.push_back({"client_no_context_takeover"});
-					// Определяем флаг выполняемого процесса
+					/**
+					 * Определяем флаг выполняемого процесса
+					 */
 					switch(static_cast <uint8_t> (flag)){
 						// Если нужно сформировать данные запроса
 						case static_cast <uint8_t> (process_t::REQUEST): {
@@ -412,7 +424,8 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
 	}
 }
 /**
- * key Метод генерации ключа
+ * @brief Метод генерации ключа
+ *
  * @return сгенерированный ключ
  */
 string awh::WCore::key() const noexcept {
@@ -464,7 +477,8 @@ string awh::WCore::key() const noexcept {
 	return result;
 }
 /**
- * sha1 Метод генерации хэша SHA1 ключа
+ * @brief Метод генерации хэша SHA1 ключа
+ *
  * @return сгенерированный хэш ключа клиента
  */
 string awh::WCore::sha1() const noexcept {
@@ -519,7 +533,8 @@ string awh::WCore::sha1() const noexcept {
 	return result;
 }
 /**
- * extractExtension Метод извлечения системного расширения из заголовка
+ * @brief Метод извлечения системного расширения из заголовка
+ *
  * @param extension запись из которой нужно извлечь расширение
  * @return          результат извлечения
  */
@@ -538,7 +553,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Определяем размер шифрования
+					/**
+					 * Определяем размер шифрования
+					 */
 					switch(static_cast <uint16_t> (::stoi(extension.substr(19)))){
 						// Если шифрование произведено 128 битным ключём
 						case 128: this->_cipher = hash_t::cipher_t::AES128; break;
@@ -556,7 +573,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если клиент просит отключить перехват контекста сжатия для сервера
 			} else if((result = this->_fmk->compare(extension, "server_no_context_takeover"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -577,7 +596,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				this->_client.takeover = false;
 			// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
 			else if((result = this->_fmk->compare(extension, "permessage-deflate") || this->_fmk->compare(extension, "perframe-deflate"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -596,7 +617,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если получены заголовки требующие сжимать передаваемые фреймы методом LZ4
 			} else if((result = this->_fmk->compare(extension, "permessage-lz4") || this->_fmk->compare(extension, "perframe-lz4"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -615,7 +638,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если получены заголовки требующие сжимать передаваемые фреймы методом Zstandard
 			} else if((result = this->_fmk->compare(extension, "permessage-zstd") || this->_fmk->compare(extension, "perframe-zstd"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -634,7 +659,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если получены заголовки требующие сжимать передаваемые фреймы методом LZma
 			} else if((result = this->_fmk->compare(extension, "permessage-xz") || this->_fmk->compare(extension, "perframe-xz"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -653,7 +680,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
 			} else if((result = this->_fmk->compare(extension, "permessage-br") || this->_fmk->compare(extension, "perframe-br"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -672,7 +701,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если получены заголовки требующие сжимать передаваемые фреймы методом BZip2
 			} else if((result = this->_fmk->compare(extension, "permessage-bzip2") || this->_fmk->compare(extension, "perframe-bzip2"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -691,7 +722,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
 			} else if((result = this->_fmk->compare(extension, "permessage-gzip") || this->_fmk->compare(extension, "perframe-gzip"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -710,7 +743,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если размер скользящего окна для клиента получен
 			} else if((result = this->_fmk->exists("client_max_window_bits=", extension))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -764,7 +799,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если разрешено использовать максимальный размер скользящего окна для клиента
 			} else if((result = this->_fmk->compare(extension, "client_max_window_bits"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -779,7 +816,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если размер скользящего окна для сервера получен
 			} else if((result = this->_fmk->exists("server_max_window_bits=", extension))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -833,7 +872,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 				}
 			// Если разрешено использовать максимальный размер скользящего окна для сервера
 			} else if((result = this->_fmk->compare(extension, "server_max_window_bits"))) {
-				// Определяем флаг типа текущего модуля
+				/**
+				 * Определяем флаг типа текущего модуля
+				 */
 				switch(static_cast <uint8_t> (this->_web.hid())){
 					// Если флаг текущего модуля соответствует клиенту
 					case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -874,7 +915,8 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
 	return result;
 }
 /**
- * dump Метод получения бинарного дампа
+ * @brief Метод получения бинарного дампа
+ *
  * @return бинарный дамп данных
  */
 vector <char> awh::WCore::dump() const noexcept {
@@ -996,7 +1038,8 @@ vector <char> awh::WCore::dump() const noexcept {
 	return result;
 }
 /**
- * dump Метод установки бинарного дампа
+ * @brief Метод установки бинарного дампа
+ *
  * @param data бинарный дамп данных
  */
 void awh::WCore::dump(const vector <char> & data) noexcept {
@@ -1193,7 +1236,8 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 	}
 }
 /**
- * clean Метод очистки собранных данных
+ * @brief Метод очистки собранных данных
+ *
  */
 void awh::WCore::clean() noexcept {
 	/**
@@ -1236,7 +1280,8 @@ void awh::WCore::clean() noexcept {
 	}
 }
 /**
- * crypted Метод проверки на зашифрованные данные
+ * @brief Метод проверки на зашифрованные данные
+ *
  * @return флаг проверки на зашифрованные данные
  */
 bool awh::WCore::crypted() const noexcept {
@@ -1244,7 +1289,8 @@ bool awh::WCore::crypted() const noexcept {
 	return this->_encryption;
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param mode флаг активации шифрования
  */
 void awh::WCore::encryption(const bool mode) noexcept {
@@ -1254,7 +1300,8 @@ void awh::WCore::encryption(const bool mode) noexcept {
 	http_t::encryption(mode);
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
@@ -1264,7 +1311,8 @@ void awh::WCore::encryption(const string & pass, const string & salt, const hash
 	http_t::encryption(pass, salt, cipher);
 }
 /**
- * compression Метод извлечения выбранного метода компрессии
+ * @brief Метод извлечения выбранного метода компрессии
+ *
  * @return метод компрессии
  */
 awh::Http::compressor_t awh::WCore::compression() const noexcept {
@@ -1272,7 +1320,8 @@ awh::Http::compressor_t awh::WCore::compression() const noexcept {
 	return this->_compressors.selected;
 }
 /**
- * compression Метод установки выбранного метода компрессии
+ * @brief Метод установки выбранного метода компрессии
+ *
  * @param compressor метод компрессии
  */
 void awh::WCore::compression(const compressor_t compressor) noexcept {
@@ -1280,7 +1329,8 @@ void awh::WCore::compression(const compressor_t compressor) noexcept {
 	this->_compressors.selected = compressor;
 }
 /**
- * compressors Метод установки списка поддерживаемых компрессоров
+ * @brief Метод установки списка поддерживаемых компрессоров
+ *
  * @param compressors методы компрессии данных полезной нагрузки
  */
 void awh::WCore::compressors(const vector <compressor_t> & compressors) noexcept {
@@ -1326,7 +1376,8 @@ void awh::WCore::compressors(const vector <compressor_t> & compressors) noexcept
 	}
 }
 /**
- * extensions Метод извлечения списка расширений
+ * @brief Метод извлечения списка расширений
+ *
  * @return список поддерживаемых расширений
  */
 const vector <vector <string>> & awh::WCore::extensions() const noexcept {
@@ -1334,7 +1385,8 @@ const vector <vector <string>> & awh::WCore::extensions() const noexcept {
 	return this->_extensions;
 }
 /**
- * extensions Метод установки списка расширений
+ * @brief Метод установки списка расширений
+ *
  * @param extensions список поддерживаемых расширений
  */
 void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcept {
@@ -1346,7 +1398,8 @@ void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcep
 	else this->_extensions.clear();
 }
 /**
- * handshake Метод выполнения проверки рукопожатия
+ * @brief Метод выполнения проверки рукопожатия
+ *
  * @param flag флаг выполняемого процесса
  * @return     результат выполнения проверки рукопожатия
  */
@@ -1361,7 +1414,9 @@ bool awh::WCore::handshake(const process_t flag) noexcept {
 		try {
 			// Версия протокола
 			float version = 1.1f;
-			// Определяем флаг выполняемого процесса
+			/**
+			 * Определяем флаг выполняемого процесса
+			 */
 			switch(static_cast <uint8_t> (flag)){
 				// Если нужно сформировать данные запроса
 				case static_cast <uint8_t> (process_t::REQUEST):
@@ -1457,7 +1512,8 @@ bool awh::WCore::handshake(const process_t flag) noexcept {
 	return result;
 }
 /**
- * check Метод проверки шагов рукопожатия
+ * @brief Метод проверки шагов рукопожатия
+ *
  * @param flag флаг выполнения проверки
  * @return     результат проверки соответствия
  */
@@ -1466,7 +1522,9 @@ bool awh::WCore::check(const flag_t flag) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем флаг выполнения проверки
+		/**
+		 * Определяем флаг выполнения проверки
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если требуется выполнить проверки на переключение контекста
 			case static_cast <uint8_t> (flag_t::UPGRADE): {
@@ -1509,12 +1567,15 @@ bool awh::WCore::check(const flag_t flag) noexcept {
 	return false;
 }
 /**
- * wbit Метод получения размер скользящего окна
+ * @brief Метод получения размер скользящего окна
+ *
  * @param hid тип модуля
  * @return    размер скользящего окна
  */
 int16_t awh::WCore::wbit(const web_t::hid_t hid) const noexcept {
-	// Определяем флаг типа текущего модуля
+	/**
+	 * Определяем флаг типа текущего модуля
+	 */
 	switch(static_cast <uint8_t> (hid)){
 		// Если флаг текущего модуля соответствует клиенту
 		case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -1529,7 +1590,8 @@ int16_t awh::WCore::wbit(const web_t::hid_t hid) const noexcept {
 	return GZIP_MAX_WBITS;
 }
 /**
- * reject Метод создания отрицательного ответа
+ * @brief Метод создания отрицательного ответа
+ *
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
@@ -1540,18 +1602,20 @@ vector <char> awh::WCore::reject(const web_t::res_t & res) const noexcept {
 	return http_t::reject(res);
 }
 /**
- * reject2 Метод создания отрицательного ответа (для протокола HTTP/2)
+ * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
+ *
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-vector <pair <string, string>> awh::WCore::reject2(const web_t::res_t & res) const noexcept {
+vector <std::pair <string, string>> awh::WCore::reject2(const web_t::res_t & res) const noexcept {
 	// Выполняем очистку выбранного сабпротокола
 	const_cast <ws_core_t *> (this)->_selectedProtocols.clear();
 	// Выполняем генерацию сообщения ответа
 	return http_t::reject2(res);
 }
 /**
- * process Метод создания выполняемого процесса в бинарном виде
+ * @brief Метод создания выполняемого процесса в бинарном виде
+ *
  * @param flag     флаг выполняемого процесса
  * @param provider параметры провайдера обмена сообщениями
  * @return         буфер данных в бинарном виде
@@ -1561,7 +1625,9 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем флаг выполняемого процесса
+		/**
+		 * Определяем флаг выполняемого процесса
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если нужно сформировать данные запроса
 			case static_cast <uint8_t> (process_t::REQUEST): {
@@ -1681,17 +1747,20 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 	return http_t::process(flag, provider);
 }
 /**
- * process2 Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+ * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
+ *
  * @param flag     флаг выполняемого процесса
  * @param provider параметры провайдера обмена сообщениями
  * @return         буфер данных в бинарном виде
  */
-vector <pair <string, string>> awh::WCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
+vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Определяем флаг выполняемого процесса
+		/**
+		 * Определяем флаг выполняемого процесса
+		 */
 		switch(static_cast <uint8_t> (flag)){
 			// Если нужно сформировать данные запроса
 			case static_cast <uint8_t> (process_t::REQUEST): {
@@ -1720,7 +1789,7 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Address or request method for WebSocket-client is incorrect");
 					// Выходим из функции
-					return vector <pair <string, string>> ();
+					return vector <std::pair <string, string>> ();
 				}
 			} break;
 			// Если нужно сформировать данные ответа
@@ -1748,7 +1817,7 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "WebSocket-server response code set incorrectly");
 					// Выходим из функции
-					return vector <pair <string, string>> ();
+					return vector <std::pair <string, string>> ();
 				}
 			} break;
 		}
@@ -1780,7 +1849,8 @@ vector <pair <string, string>> awh::WCore::process2(const process_t flag, const 
 	return http_t::process2(flag, provider);
 }
 /**
- * subprotocol Метод установки поддерживаемого сабпротокола
+ * @brief Метод установки поддерживаемого сабпротокола
+ *
  * @param subprotocol сабпротокол для установки
  */
 void awh::WCore::subprotocol(const string & subprotocol) noexcept {
@@ -1790,7 +1860,8 @@ void awh::WCore::subprotocol(const string & subprotocol) noexcept {
 		this->_supportedProtocols.emplace(subprotocol);
 }
 /**
- * subprotocol Метод получения списка выбранных сабпротоколов
+ * @brief Метод получения списка выбранных сабпротоколов
+ *
  * @return список выбранных сабпротоколов
  */
 const std::unordered_set <string> & awh::WCore::subprotocols() const noexcept {
@@ -1798,7 +1869,8 @@ const std::unordered_set <string> & awh::WCore::subprotocols() const noexcept {
 	return this->_selectedProtocols;
 }
 /**
- * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @brief Метод установки списка поддерживаемых сабпротоколов
+ *
  * @param subprotocols сабпротоколы для установки
  */
 void awh::WCore::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
@@ -1808,12 +1880,15 @@ void awh::WCore::subprotocols(const std::unordered_set <string> & subprotocols) 
 		this->_supportedProtocols = subprotocols;
 }
 /**
- * takeover Метод получения флага переиспользования контекста компрессии
+ * @brief Метод получения флага переиспользования контекста компрессии
+ *
  * @param hid тип текущего модуля
  * @return    флаг запрета переиспользования контекста компрессии
  */
 bool awh::WCore::takeover(const web_t::hid_t hid) const noexcept {
-	// Определяем флаг типа текущего модуля
+	/**
+	 * Определяем флаг типа текущего модуля
+	 */
 	switch(static_cast <uint8_t> (hid)){
 		// Если флаг текущего модуля соответствует клиенту
 		case static_cast <uint8_t> (web_t::hid_t::CLIENT):
@@ -1828,12 +1903,15 @@ bool awh::WCore::takeover(const web_t::hid_t hid) const noexcept {
 	return false;
 }
 /**
- * takeover Метод установки флага переиспользования контекста компрессии
+ * @brief Метод установки флага переиспользования контекста компрессии
+ *
  * @param hid  тип текущего модуля
  * @param flag флаг запрета переиспользования контекста компрессии
  */
 void awh::WCore::takeover(const web_t::hid_t hid, const bool flag) noexcept {
-	// Определяем флаг типа текущего модуля
+	/**
+	 * Определяем флаг типа текущего модуля
+	 */
 	switch(static_cast <uint8_t> (hid)){
 		// Если флаг текущего модуля соответствует клиенту
 		case static_cast <uint8_t> (web_t::hid_t::CLIENT):

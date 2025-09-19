@@ -26,7 +26,7 @@
 #include <unordered_map>
 
 /**
- * Для операционной системы OS Windows
+ * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	// Подключаем библиотеку асинхронного ввода-вывода
@@ -205,7 +205,7 @@ namespace awh {
 			// Буферы отправляемой полезной нагрузки
 			std::map <int32_t, std::unique_ptr <buffer_t>> _payloads;
 			// Список подготовленных для отправки записей
-			std::map <int32_t, std::queue <pair <size_t, flag_t>>> _records;
+			std::map <int32_t, std::queue <std::pair <size_t, flag_t>>> _records;
 		private:
 			// Ессия HTTP/2 подключения
 			nghttp2_session * _session;
@@ -423,7 +423,7 @@ namespace awh {
 			 * @param headers заголовки отправляемые
 			 * @return        результат отправки данных фрейма
 			 */
-			bool sendTrailers(const int32_t id, const vector <pair <string, string>> & headers) noexcept;
+			bool sendTrailers(const int32_t id, const vector <std::pair <string, string>> & headers) noexcept;
 			/**
 			 * @brief Метод отправки бинарных данных
 			 *
@@ -443,7 +443,7 @@ namespace awh {
 			 * @param flag    флаг передаваемого потока по сети
 			 * @return        флаг завершения потока передачи данных
 			 */
-			int32_t sendPush(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
+			int32_t sendPush(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept;
 			/**
 			 * @brief Метод отправки заголовков
 			 *
@@ -452,7 +452,7 @@ namespace awh {
 			 * @param flag    флаг передаваемого потока по сети
 			 * @return        флаг завершения потока передачи данных
 			 */
-			int32_t sendHeaders(const int32_t id, const vector <pair <string, string>> & headers, const flag_t flag) noexcept;
+			int32_t sendHeaders(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки сообщения закрытия всех потоков

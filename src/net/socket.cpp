@@ -33,14 +33,15 @@
 using namespace std;
 
 /**
- * noSigILL Метод блокировки сигнала SIGILL
+ * @brief Метод блокировки сигнала SIGILL
+ *
  * @return результат работы функции
  */
 bool awh::Socket::noSigILL() const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Создаем структуру активации сигнала
@@ -66,7 +67,8 @@ bool awh::Socket::noSigILL() const noexcept {
 	return result;
 }
 /**
- * events Метод активации получения событий SCTP для сокета
+ * @brief Метод активации получения событий SCTP для сокета
+ *
  * @param sock сетевой сокет
  * @return     результат работы функции
  */
@@ -98,7 +100,8 @@ bool awh::Socket::events(const SOCKET sock) const noexcept {
 	return result;
 }
 /**
- * noSigPIPE Метод игнорирования отключения сигнала записи в убитый сокет
+ * @brief Метод игнорирования отключения сигнала записи в убитый сокет
+ *
  * @param sock сетевой сокет
  * @return     результат работы функции
  */
@@ -154,7 +157,8 @@ bool awh::Socket::noSigPIPE(const SOCKET sock) const noexcept {
 	return result;
 }
 /**
- * reuseable Метод разрешающая повторно использовать сокет после его удаления
+ * @brief Метод разрешающая повторно использовать сокет после его удаления
+ *
  * @param sock сетевой сокет
  * @return     результат работы функции
  */
@@ -162,7 +166,7 @@ bool awh::Socket::reuseable(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		// Устанавливаем параметр
@@ -178,7 +182,7 @@ bool awh::Socket::reuseable(const SOCKET sock) const noexcept {
 			#endif
 		}
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
 		// Устанавливаем параметр
@@ -215,7 +219,8 @@ bool awh::Socket::reuseable(const SOCKET sock) const noexcept {
 	return result;
 }
 /**
- * closeOnExec Метод разрешения закрывать сокет, после запуска
+ * @brief Метод разрешения закрывать сокет, после запуска
+ *
  * @param sock сетевой сокет
  * @return     результат работы функции
  */
@@ -223,7 +228,7 @@ bool awh::Socket::closeOnExec(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Флаги сетевого сокета
@@ -258,7 +263,8 @@ bool awh::Socket::closeOnExec(const SOCKET sock) const noexcept {
 	return result;
 }
 /**
- * blocking Метод проверки сокета блокирующий режим
+ * @brief Метод проверки сокета блокирующий режим
+ *
  * @param sock сетевой сокет
  * @return     результат работы функции
  */
@@ -266,7 +272,7 @@ bool awh::Socket::blocking(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Флаги сетевого сокета
@@ -288,7 +294,8 @@ bool awh::Socket::blocking(const SOCKET sock) const noexcept {
 	return result;
 }
 /**
- * blocking Метод установки блокирующего сокета
+ * @brief Метод установки блокирующего сокета
+ *
  * @param sock сетевого сокета
  * @param mode режим установки типа сокета
  * @return     результат работы функции
@@ -297,10 +304,12 @@ bool awh::Socket::blocking(const SOCKET sock, const mode_t mode) const noexcept 
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
-		// Определяем режим блокировки
+		/**
+		 * Определяем режим блокировки
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо перевести сокет в блокирующий режим
 			case static_cast <uint8_t> (mode_t::ENABLED): {
@@ -334,7 +343,7 @@ bool awh::Socket::blocking(const SOCKET sock, const mode_t mode) const noexcept 
 			} break;
 		}
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
 		// Флаги сетевого сокета
@@ -351,7 +360,9 @@ bool awh::Socket::blocking(const SOCKET sock, const mode_t mode) const noexcept 
 			// Выходим из функции
 			return result;
 		}
-		// Определяем режим блокировки
+		/**
+		 * Определяем режим блокировки
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо перевести сокет в блокирующий режим
 			case static_cast <uint8_t> (mode_t::ENABLED): {
@@ -391,7 +402,8 @@ bool awh::Socket::blocking(const SOCKET sock, const mode_t mode) const noexcept 
 	return result;
 }
 /**
- * cork Метод активации TCP/CORK
+ * @brief Метод активации TCP/CORK
+ *
  * @param sock сетевой сокет
  * @param mode режим установки типа сокета
  * @return     результат работы функции
@@ -405,7 +417,9 @@ bool awh::Socket::cork(const SOCKET sock, const mode_t mode) const noexcept {
 	#if __linux__ || __sun__
 		// Флаг активации или деактивации алгоритма TCP/CORK
 		int32_t flag = -1;
-		// Определяем режим установки типа сокета
+		/**
+		 * Определяем режим установки типа сокета
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо активировать алгоритм TCP/CORK
 			case static_cast <uint8_t> (mode_t::ENABLED):
@@ -434,7 +448,9 @@ bool awh::Socket::cork(const SOCKET sock, const mode_t mode) const noexcept {
 	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Флаг активации или деактивации алгоритма TCP/CORK
 		int32_t flag = -1;
-		// Определяем режим установки типа сокета
+		/**
+		 * Определяем режим установки типа сокета
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо активировать алгоритм TCP/CORK
 			case static_cast <uint8_t> (mode_t::ENABLED):
@@ -462,7 +478,8 @@ bool awh::Socket::cork(const SOCKET sock, const mode_t mode) const noexcept {
 	return result;
 }
 /**
- * nodelay Метод отключения алгоритма Нейгла
+ * @brief Метод отключения алгоритма Нейгла
+ *
  * @param sock сетевой сокет
  * @param mode режим установки типа сокета
  * @return     результат работы функции
@@ -472,7 +489,9 @@ bool awh::Socket::nodelay(const SOCKET sock, const mode_t mode) const noexcept {
 	int32_t flag = -1;
 	// Результат работы функции
 	bool result = false;
-	// Определяем режим установки типа сокета
+	/**
+	 * Определяем режим установки типа сокета
+	 */
 	switch(static_cast <uint8_t> (mode)){
 		// Если необходимо активировать алгоритм TCP/NODELAY
 		case static_cast <uint8_t> (mode_t::ENABLED):
@@ -499,7 +518,8 @@ bool awh::Socket::nodelay(const SOCKET sock, const mode_t mode) const noexcept {
 	return result;
 }
 /**
- * error Метод получения кода ошибки
+ * @brief Метод получения кода ошибки
+ *
  * @param sock сетевой сокет
  * @return     код ошибки на сокете если присутствует
  */
@@ -528,7 +548,8 @@ int32_t awh::Socket::error(const SOCKET sock) const noexcept {
 	return result;
 }
 /**
- * message Метод получения текста описания ошибки
+ * @brief Метод получения текста описания ошибки
+ *
  * @param code код ошибки для получения сообщения
  * @return     текст сообщения описания кода ошибки
  */
@@ -538,17 +559,17 @@ string awh::Socket::message(const int32_t code) const noexcept {
 		// Выполняем получение кода ошибки
 		const_cast <int32_t &> (code) = AWH_ERROR();
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		// Создаём буфер сообщения ошибки
 		wchar_t message[256] = {0};
 		// Выполняем формирование текста ошибки
-		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, message, 256, 0);
+		::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, message, 256, 0);
 		// Выводим текст полученной ошибки
 		return this->_fmk->convert(message);
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
 		// Выводим текст полученной ошибки
@@ -556,7 +577,8 @@ string awh::Socket::message(const int32_t code) const noexcept {
 	#endif
 }
 /**
- * onlyIPv6 Метод включающая или отключающая режим отображения IPv4 на IPv6
+ * @brief Метод включающая или отключающая режим отображения IPv4 на IPv6
+ *
  * @param sock сетевой сокет
  * @param mode режим активации или деактивации
  * @return     результат работы функции
@@ -580,7 +602,8 @@ bool awh::Socket::onlyIPv6(const SOCKET sock, const mode_t mode) const noexcept 
 	return result;
 }
 /**
- * timeout Метод установки таймаута на чтение из сокета
+ * @brief Метод установки таймаута на чтение из сокета
+ *
  * @param sock сетевой сокет
  * @param msec время таймаута в миллисекундах
  * @param mode режим установки типа сокета
@@ -590,10 +613,12 @@ bool awh::Socket::timeout(const SOCKET sock, const uint32_t msec, const mode_t m
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
-		// Определяем флаг блокировки
+		/**
+		 * Определяем флаг блокировки
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо установить таймаут на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
@@ -623,7 +648,7 @@ bool awh::Socket::timeout(const SOCKET sock, const uint32_t msec, const mode_t m
 			} break;
 		}
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
 		// Создаём объект таймаута
@@ -632,7 +657,9 @@ bool awh::Socket::timeout(const SOCKET sock, const uint32_t msec, const mode_t m
 		timeout.tv_sec = (msec > 0 ? (msec / 1000) : 0);
 		// Устанавливаем время счётчика (микросекунды)
 		timeout.tv_usec = (msec > 0 ? ((msec % 1000) * 1000) : 0);
-		// Определяем флаг блокировки
+		/**
+		 * Определяем флаг блокировки
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо установить таймаут на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
@@ -666,7 +693,8 @@ bool awh::Socket::timeout(const SOCKET sock, const uint32_t msec, const mode_t m
 	return result;
 }
 /**
- * timeToLive Метод установки времени жизни сокета
+ * @brief Метод установки времени жизни сокета
+ *
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @param sock   сетевой сокет
  * @param ttl    время жизни сетевого сокета в секундах
@@ -675,7 +703,9 @@ bool awh::Socket::timeout(const SOCKET sock, const uint32_t msec, const mode_t m
 bool awh::Socket::timeToLive(const int32_t family, const SOCKET sock, const int32_t ttl) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Определяем тип протокола интернета
+	/**
+	 * Определяем тип протокола интернета
+	 */
 	switch(family){
 		// Если тип протокола подключения IPv4
 		case static_cast <int32_t> (AF_INET): {
@@ -786,7 +816,8 @@ bool awh::Socket::timeToLive(const int32_t family, const SOCKET sock, const int3
 	return result;
 }
 /**
- * isBind Метод проверки на занятость порта
+ * @brief Метод проверки на занятость порта
+ *
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @param type   тип сокета SOCK_DGRAM или SOCK_STREAM
  * @param port   номер порта для проверки
@@ -814,13 +845,13 @@ bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_
 		// Выводим сообщение об ошибке
 		} else this->_log->print("PIPE: %s", log_t::flag_t::CRITICAL, this->message(AWH_ERROR()).c_str());
 		/**
-		 * Для операционной системы OS Windows
+		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Закрываем сетевой сокет
 			::closesocket(sock);
 		/**
-		 * Для операционной системы не являющейся OS Windows
+		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Закрываем сетевой сокет
@@ -831,7 +862,8 @@ bool awh::Socket::isBind(const int32_t family, const int32_t type, const uint32_
 	return result;
 }
 /**
- * keepAlive Метод устанавливает постоянное подключение на сокет
+ * @brief Метод устанавливает постоянное подключение на сокет
+ *
  * @param sock  сетевой сокет
  * @param cnt   максимальное количество попыток
  * @param idle  время через которое происходит проверка подключения
@@ -854,7 +886,7 @@ bool awh::Socket::keepAlive(const SOCKET sock, const int32_t cnt, const int32_t 
 		// Выполняем компенсацию
 		const_cast <int32_t &> (intvl) = 0;
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
 		{
@@ -912,7 +944,7 @@ bool awh::Socket::keepAlive(const SOCKET sock, const int32_t cnt, const int32_t 
 			}
 		}
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
 		// Устанавливаем параметр
@@ -998,7 +1030,8 @@ bool awh::Socket::keepAlive(const SOCKET sock, const int32_t cnt, const int32_t 
 	return result;
 }
 /**
- * listen Метод проверки сокета на прослушиваемость
+ * @brief Метод проверки сокета на прослушиваемость
+ *
  * @param sock сетевой сокет
  * @return     результат проверки сокета
  */
@@ -1029,7 +1062,8 @@ bool awh::Socket::listen(const SOCKET sock) const noexcept {
 	return result;
 }
 /**
- * availability Метод проверки количества находящихся байт в сокете
+ * @brief Метод проверки количества находящихся байт в сокете
+ *
  * @param sock сетевой сокет
  * @param mode режим проверки типа сокета
  * @return     запрашиваемый размер буфера
@@ -1038,10 +1072,12 @@ u_long awh::Socket::availability(const SOCKET sock, const mode_t mode) const noe
 	// Результат работы функции
 	u_long result = 0;
 	/**
-	 * Для операционной системы OS Windows
+	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
-		// Определяем флаг блокировки
+		/**
+		 * Определяем флаг блокировки
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо получить размер буфера на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
@@ -1058,12 +1094,14 @@ u_long awh::Socket::availability(const SOCKET sock, const mode_t mode) const noe
 			} break;
 		}
 	/**
-	 * Для операционной системы не являющейся OS Windows
+	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
 		// Получаем количество байт находящихся в сокете
 		int32_t bytes = 0;
-		// Определяем флаг блокировки
+		/**
+		 * Определяем флаг блокировки
+		 */
 		switch(static_cast <uint8_t> (mode)){
 			// Если необходимо получить размер буфера на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
@@ -1082,7 +1120,7 @@ u_long awh::Socket::availability(const SOCKET sock, const mode_t mode) const noe
 						#endif
 					}
 				/**
-				 * Для операционной системы не являющейся OS Windows
+				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Выполняем получения количества байт в сокете
@@ -1120,7 +1158,8 @@ u_long awh::Socket::availability(const SOCKET sock, const mode_t mode) const noe
 	return result;
 }
 /**
- * bufferSize Метод получения размера буфера
+ * @brief Метод получения размера буфера
+ *
  * @param sock сетевой сокет
  * @param mode режим проверки типа сокета
  * @return     запрашиваемый размер буфера
@@ -1130,7 +1169,9 @@ int32_t awh::Socket::bufferSize(const SOCKET sock, const mode_t mode) const noex
 	int32_t result = 0;
 	// Размер результата
 	socklen_t size = sizeof(result);
-	// Определяем флаг блокировки
+	/**
+	 * Определяем флаг блокировки
+	 */
 	switch(static_cast <uint8_t> (mode)){
 		// Если необходимо получить размер буфера на чтение
 		case static_cast <uint8_t> (mode_t::READ): {
@@ -1163,7 +1204,8 @@ int32_t awh::Socket::bufferSize(const SOCKET sock, const mode_t mode) const noex
 	return result;
 }
 /**
- * bufferSize Метод установки размеров буфера
+ * @brief Метод установки размеров буфера
+ *
  * @param sock сетевой сокет
  * @param size устанавливаемый размер буфера
  * @param mode режим проверки типа сокета
@@ -1174,7 +1216,9 @@ bool awh::Socket::bufferSize(const SOCKET sock, const int32_t size, const mode_t
 	bool result = false;
 	// Определяем размер массива опции
 	socklen_t length = sizeof(size);
-	// Определяем флаг блокировки
+	/**
+	 * Определяем флаг блокировки
+	 */
 	switch(static_cast <uint8_t> (mode)){
 		// Если необходимо установить размер буфера на чтение
 		case static_cast <uint8_t> (mode_t::READ): {

@@ -23,7 +23,8 @@
 using namespace std;
 
 /**
- * proto Метод извлечения поддерживаемого протокола подключения
+ * @brief Метод извлечения поддерживаемого протокола подключения
+ *
  * @param bid идентификатор брокера
  * @return    поддерживаемый протокол подключения (HTTP1_1, HTTP2)
  */
@@ -32,7 +33,8 @@ awh::engine_t::proto_t awh::server::Websocket::proto(const uint64_t bid) const n
 	return this->_ws.proto(bid);
 }
 /**
- * init Метод инициализации Websocket-сервера
+ * @brief Метод инициализации Websocket-сервера
+ *
  * @param socket      unix-сокет для биндинга
  * @param compressors список поддерживаемых компрессоров
  */
@@ -41,7 +43,8 @@ void awh::server::Websocket::init(const string & socket, const vector <http_t::c
 	this->_ws.init(socket, compressors);
 }
 /**
- * init Метод инициализации Websocket-сервера
+ * @brief Метод инициализации Websocket-сервера
+ *
  * @param port        порт сервера
  * @param host        хост сервера
  * @param compressors список поддерживаемых компрессоров
@@ -51,7 +54,8 @@ void awh::server::Websocket::init(const uint32_t port, const string & host, cons
 	this->_ws.init(port, host, compressors);
 }
 /**
- * sendError Метод отправки сообщения об ошибке
+ * @brief Метод отправки сообщения об ошибке
+ *
  * @param bid  идентификатор брокера
  * @param mess отправляемое сообщение об ошибке
  */
@@ -60,7 +64,8 @@ void awh::server::Websocket::sendError(const uint64_t bid, const ws::mess_t & me
 	this->_ws.sendError(bid, mess);
 }
 /**
- * sendMessage Метод отправки сообщения клиенту
+ * @brief Метод отправки сообщения клиенту
+ *
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param text    данные передаются в текстовом виде
@@ -71,7 +76,8 @@ bool awh::server::Websocket::sendMessage(const uint64_t bid, const vector <char>
 	return this->_ws.sendMessage(bid, message, text);
 }
 /**
- * sendMessage Метод отправки сообщения на сервер
+ * @brief Метод отправки сообщения на сервер
+ *
  * @param bid     идентификатор брокера
  * @param message передаваемое сообщения в бинарном виде
  * @param size    размер передаваемого сообещния
@@ -83,7 +89,8 @@ bool awh::server::Websocket::sendMessage(const uint64_t bid, const char * messag
 	return this->_ws.sendMessage(bid, message, size, text);
 }
 /**
- * callback Метод установки функций обратного вызова
+ * @brief Метод установки функций обратного вызова
+ *
  * @param callback функции обратного вызова
  */
 void awh::server::Websocket::callback(const callback_t & callback) noexcept {
@@ -91,7 +98,8 @@ void awh::server::Websocket::callback(const callback_t & callback) noexcept {
 	this->_ws.callback(callback);
 }
 /**
- * port Метод получения порта подключения брокера
+ * @brief Метод получения порта подключения брокера
+ *
  * @param bid идентификатор брокера
  * @return    порт подключения брокера
  */
@@ -100,7 +108,8 @@ uint32_t awh::server::Websocket::port(const uint64_t bid) const noexcept {
 	return this->_ws.port(bid);
 }
 /**
- * ip Метод получения IP-адреса брокера
+ * @brief Метод получения IP-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес интернет подключения брокера
  */
@@ -109,7 +118,8 @@ const string & awh::server::Websocket::ip(const uint64_t bid) const noexcept {
 	return this->_ws.ip(bid);
 }
 /**
- * mac Метод получения MAC-адреса брокера
+ * @brief Метод получения MAC-адреса брокера
+ *
  * @param bid идентификатор брокера
  * @return    адрес устройства брокера
  */
@@ -118,21 +128,24 @@ const string & awh::server::Websocket::mac(const uint64_t bid) const noexcept {
 	return this->_ws.mac(bid);
 }
 /**
- * stop Метод остановки сервера
+ * @brief Метод остановки сервера
+ *
  */
 void awh::server::Websocket::stop() noexcept {
 	// Выполняем остановку сервера
 	this->_ws.stop();
 }
 /**
- * start Метод запуска сервера
+ * @brief Метод запуска сервера
+ *
  */
 void awh::server::Websocket::start() noexcept {
 	// Выполняем запуск сервера
 	this->_ws.start();
 }
 /**
- * close Метод закрытия подключения брокера
+ * @brief Метод закрытия подключения брокера
+ *
  * @param bid идентификатор брокера
  */
 void awh::server::Websocket::close(const uint64_t bid) noexcept {
@@ -140,7 +153,8 @@ void awh::server::Websocket::close(const uint64_t bid) noexcept {
 	this->_ws.close(bid);
 }
 /**
- * waitPong Метод установки времени ожидания ответа WebSocket-клиента
+ * @brief Метод установки времени ожидания ответа WebSocket-клиента
+ *
  * @param sec время ожидания в секундах
  */
 void awh::server::Websocket::waitPong(const uint16_t sec) noexcept {
@@ -148,7 +162,8 @@ void awh::server::Websocket::waitPong(const uint16_t sec) noexcept {
 	this->_ws.waitPong(sec);
 }
 /**
- * pingInterval Метод установки интервала времени выполнения пингов
+ * @brief Метод установки интервала времени выполнения пингов
+ *
  * @param sec интервал времени выполнения пингов в секундах
  */
 void awh::server::Websocket::pingInterval(const uint16_t sec) noexcept {
@@ -156,7 +171,8 @@ void awh::server::Websocket::pingInterval(const uint16_t sec) noexcept {
 	this->_ws.pingInterval(sec);
 }
 /**
- * subprotocol Метод установки поддерживаемого сабпротокола
+ * @brief Метод установки поддерживаемого сабпротокола
+ *
  * @param subprotocol сабпротокол для установки
  */
 void awh::server::Websocket::subprotocol(const string & subprotocol) noexcept {
@@ -164,7 +180,8 @@ void awh::server::Websocket::subprotocol(const string & subprotocol) noexcept {
 	this->_ws.subprotocol(subprotocol);
 }
 /**
- * subprotocols Метод установки списка поддерживаемых сабпротоколов
+ * @brief Метод установки списка поддерживаемых сабпротоколов
+ *
  * @param subprotocols сабпротоколы для установки
  */
 void awh::server::Websocket::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
@@ -172,7 +189,8 @@ void awh::server::Websocket::subprotocols(const std::unordered_set <string> & su
 	this->_ws.subprotocols(subprotocols);
 }
 /**
- * subprotocol Метод получения списка выбранных сабпротоколов
+ * @brief Метод получения списка выбранных сабпротоколов
+ *
  * @param bid идентификатор брокера
  * @return    список выбранных сабпротоколов
  */
@@ -181,7 +199,8 @@ const std::unordered_set <string> & awh::server::Websocket::subprotocols(const u
 	return this->_ws.subprotocols(bid);
 }
 /**
- * extensions Метод установки списка расширений
+ * @brief Метод установки списка расширений
+ *
  * @param extensions список поддерживаемых расширений
  */
 void awh::server::Websocket::extensions(const vector <vector <string>> & extensions) noexcept {
@@ -189,7 +208,8 @@ void awh::server::Websocket::extensions(const vector <vector <string>> & extensi
 	this->_ws.extensions(extensions);
 }
 /**
- * extensions Метод извлечения списка расширений
+ * @brief Метод извлечения списка расширений
+ *
  * @param bid идентификатор брокера
  * @return    список поддерживаемых расширений
  */
@@ -198,7 +218,8 @@ const vector <vector <string>> & awh::server::Websocket::extensions(const uint64
 	return this->_ws.extensions(bid);
 }
 /**
- * multiThreads Метод активации многопоточности
+ * @brief Метод активации многопоточности
+ *
  * @param count количество потоков для активации
  * @param mode  флаг активации/деактивации мультипоточности
  */
@@ -207,7 +228,8 @@ void awh::server::Websocket::multiThreads(const uint16_t count, const bool mode)
 	this->_ws.multiThreads(count, mode);
 }
 /**
- * total Метод установки максимального количества одновременных подключений
+ * @brief Метод установки максимального количества одновременных подключений
+ *
  * @param total максимальное количество одновременных подключений
  */
 void awh::server::Websocket::total(const uint16_t total) noexcept {
@@ -215,7 +237,8 @@ void awh::server::Websocket::total(const uint16_t total) noexcept {
 	this->_ws.total(total);
 }
 /**
- * segmentSize Метод установки размеров сегментов фрейма
+ * @brief Метод установки размеров сегментов фрейма
+ *
  * @param size минимальный размер сегмента
  */
 void awh::server::Websocket::segmentSize(const size_t size) noexcept {
@@ -223,7 +246,8 @@ void awh::server::Websocket::segmentSize(const size_t size) noexcept {
 	this->_ws.segmentSize(size);
 }
 /**
- * hosts Метод загрузки файла со списком хостов
+ * @brief Метод загрузки файла со списком хостов
+ *
  * @param filename адрес файла для загрузки
  */
 void awh::server::Websocket::hosts(const string & filename) noexcept {
@@ -233,7 +257,8 @@ void awh::server::Websocket::hosts(const string & filename) noexcept {
 		this->_dns.hosts(filename);
 }
 /**
- * compressors Метод установки списка поддерживаемых компрессоров
+ * @brief Метод установки списка поддерживаемых компрессоров
+ *
  * @param compressors список поддерживаемых компрессоров
  */
 void awh::server::Websocket::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
@@ -241,7 +266,8 @@ void awh::server::Websocket::compressors(const vector <http_t::compressor_t> & c
 	this->_ws.compressors(compressors);
 }
 /**
- * keepAlive Метод установки жизни подключения
+ * @brief Метод установки жизни подключения
+ *
  * @param cnt   максимальное количество попыток
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
@@ -251,7 +277,8 @@ void awh::server::Websocket::keepAlive(const int32_t cnt, const int32_t idle, co
 	this->_ws.keepAlive(cnt, idle, intvl);
 }
 /**
- * mode Метод установки флагов настроек модуля
+ * @brief Метод установки флагов настроек модуля
+ *
  * @param flags список флагов настроек модуля для установки
  */
 void awh::server::Websocket::mode(const std::set <web_t::flag_t> & flags) noexcept {
@@ -259,7 +286,8 @@ void awh::server::Websocket::mode(const std::set <web_t::flag_t> & flags) noexce
 	this->_ws.mode(flags);
 }
 /**
- * realm Метод установки название сервера
+ * @brief Метод установки название сервера
+ *
  * @param realm название сервера
  */
 void awh::server::Websocket::realm(const string & realm) noexcept {
@@ -267,7 +295,8 @@ void awh::server::Websocket::realm(const string & realm) noexcept {
 	this->_ws.realm(realm);
 }
 /**
- * opaque Метод установки временного ключа сессии сервера
+ * @brief Метод установки временного ключа сессии сервера
+ *
  * @param opaque временный ключ сессии сервера
  */
 void awh::server::Websocket::opaque(const string & opaque) noexcept {
@@ -275,7 +304,8 @@ void awh::server::Websocket::opaque(const string & opaque) noexcept {
 	this->_ws.opaque(opaque);
 }
 /**
- * chunk Метод установки размера чанка
+ * @brief Метод установки размера чанка
+ *
  * @param size размер чанка для установки
  */
 void awh::server::Websocket::chunk(const size_t size) noexcept {
@@ -283,7 +313,8 @@ void awh::server::Websocket::chunk(const size_t size) noexcept {
 	this->_ws.chunk(size);
 }
 /**
- * alive Метод установки долгоживущего подключения
+ * @brief Метод установки долгоживущего подключения
+ *
  * @param mode флаг долгоживущего подключения
  */
 void awh::server::Websocket::alive(const bool mode) noexcept {
@@ -291,7 +322,8 @@ void awh::server::Websocket::alive(const bool mode) noexcept {
 	this->_ws.alive(mode);
 }
 /**
- * setHeaders Метод установки списка заголовков
+ * @brief Метод установки списка заголовков
+ *
  * @param headers список заголовков для установки
  */
 void awh::server::Websocket::setHeaders(const std::unordered_multimap <string, string> & headers) noexcept {
@@ -299,7 +331,8 @@ void awh::server::Websocket::setHeaders(const std::unordered_multimap <string, s
 	this->_ws.setHeaders(headers);
 }
 /**
- * waitMessage Метод ожидания входящих сообщений
+ * @brief Метод ожидания входящих сообщений
+ *
  * @param sec интервал времени в секундах
  */
 void awh::server::Websocket::waitMessage(const uint16_t sec) noexcept {
@@ -307,7 +340,8 @@ void awh::server::Websocket::waitMessage(const uint16_t sec) noexcept {
 	this->_ws.waitMessage(sec);
 }
 /**
- * waitTimeDetect Метод детекции сообщений по количеству секунд
+ * @brief Метод детекции сообщений по количеству секунд
+ *
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
@@ -316,7 +350,8 @@ void awh::server::Websocket::waitTimeDetect(const uint16_t read, const uint16_t 
 	this->_ws.waitTimeDetect(read, write);
 }
 /**
- * addOrigin Метод добавления разрешённого источника
+ * @brief Метод добавления разрешённого источника
+ *
  * @param origin разрешённый источнико
  */
 void awh::server::Websocket::addOrigin(const string & origin) noexcept {
@@ -324,7 +359,8 @@ void awh::server::Websocket::addOrigin(const string & origin) noexcept {
 	this->_ws.addOrigin(origin);
 }
 /**
- * setOrigin Метод установки списка разрешённых источников
+ * @brief Метод установки списка разрешённых источников
+ *
  * @param origins список разрешённых источников
  */
 void awh::server::Websocket::setOrigin(const vector <string> & origins) noexcept {
@@ -332,7 +368,8 @@ void awh::server::Websocket::setOrigin(const vector <string> & origins) noexcept
 	this->_ws.setOrigin(origins);
 }
 /**
- * addAltSvc Метод добавления альтернативного сервиса
+ * @brief Метод добавления альтернативного сервиса
+ *
  * @param origin название альтернативного сервиса
  * @param field  поле альтернативного сервиса
  */
@@ -341,7 +378,8 @@ void awh::server::Websocket::addAltSvc(const string & origin, const string & fie
 	this->_ws.addAltSvc(origin, field);
 }
 /**
- * setAltSvc Метод установки списка разрешённых источников
+ * @brief Метод установки списка разрешённых источников
+ *
  * @param origins список альтернативных сервисов
  */
 void awh::server::Websocket::setAltSvc(const std::unordered_multimap <string, string> & origins) noexcept {
@@ -349,7 +387,8 @@ void awh::server::Websocket::setAltSvc(const std::unordered_multimap <string, st
 	this->_ws.setAltSvc(origins);
 }
 /**
- * settings Модуль установки настроек протокола HTTP/2
+ * @brief Модуль установки настроек протокола HTTP/2
+ *
  * @param settings список настроек протокола HTTP/2
  */
 void awh::server::Websocket::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
@@ -357,7 +396,8 @@ void awh::server::Websocket::settings(const std::map <awh::http2_t::settings_t, 
 	this->_ws.settings(settings);
 }
 /**
- * ident Метод установки идентификации сервера
+ * @brief Метод установки идентификации сервера
+ *
  * @param id   идентификатор сервиса
  * @param name название сервиса
  * @param ver  версия сервиса
@@ -367,7 +407,8 @@ void awh::server::Websocket::ident(const string & id, const string & name, const
 	this->_ws.ident(id, name, ver);
 }
 /**
- * authType Метод установки типа авторизации
+ * @brief Метод установки типа авторизации
+ *
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
@@ -376,7 +417,8 @@ void awh::server::Websocket::authType(const auth_t::type_t type, const auth_t::h
 	this->_ws.authType(type, hash);
 }
 /**
- * crypted Метод получения флага шифрования
+ * @brief Метод получения флага шифрования
+ *
  * @param bid идентификатор брокера
  * @return    результат проверки
  */
@@ -385,7 +427,8 @@ bool awh::server::Websocket::crypted(const uint64_t bid) const noexcept {
 	return this->_ws.crypted(bid);
 }
 /**
- * encrypt Метод активации шифрования для клиента
+ * @brief Метод активации шифрования для клиента
+ *
  * @param bid  идентификатор брокера
  * @param mode флаг активации шифрования
  */
@@ -394,7 +437,8 @@ void awh::server::Websocket::encrypt(const uint64_t bid, const bool mode) noexce
 	this->_ws.encrypt(bid, mode);
 }
 /**
- * encryption Метод активации шифрования
+ * @brief Метод активации шифрования
+ *
  * @param mode флаг активации шифрования
  */
 void awh::server::Websocket::encryption(const bool mode) noexcept {
@@ -402,7 +446,8 @@ void awh::server::Websocket::encryption(const bool mode) noexcept {
 	this->_ws.encryption(mode);
 }
 /**
- * encryption Метод установки параметров шифрования
+ * @brief Метод установки параметров шифрования
+ *
  * @param pass   пароль шифрования передаваемых данных
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
@@ -412,7 +457,8 @@ void awh::server::Websocket::encryption(const string & pass, const string & salt
 	this->_ws.encryption(pass, salt, cipher);
 }
 /**
- * Websocket Конструктор
+ * @brief Конструктор
+ *
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
