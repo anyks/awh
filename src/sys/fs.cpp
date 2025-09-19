@@ -311,13 +311,13 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 									// Создаём буфер символов для получения каталога ярлыка
 									WCHAR szGotPath[MAX_PATH] = {0};
 									// Выполняем получение каталога где находится ярлыка
-									hres = psl->GetPath(szGotPath, ::_countof(szGotPath), nullptr, SLGP_RAWPATH);
+									hres = psl->GetPath(szGotPath, _countof(szGotPath), nullptr, SLGP_RAWPATH);
 									// Если каталог где находится ярлык получен
 									if(SUCCEEDED(hres)){
 										// Создаём буфер для извлечения полного адреса ярлыка
 										WCHAR achPath[MAX_PATH] = {0};
 										// Выполняем извлечение полного адреса ярлыка
-										hres = ::StringCbCopyW(achPath, ::_countof(achPath), szGotPath);
+										hres = ::StringCbCopyW(achPath, _countof(achPath), szGotPath);
 										// Если полный адрес ярлыка извлечён
 										if(SUCCEEDED(hres)){
 											// Определяем размер полученных данных
