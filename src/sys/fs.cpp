@@ -1291,13 +1291,13 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message.c_str());
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message);
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message.c_str());
+					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 				#endif
 				// Выводим результат
 				return result;
@@ -1344,13 +1344,13 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message.c_str());
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message);
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message.c_str());
+					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 				#endif
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
@@ -1368,13 +1368,13 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message.c_str());
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message);
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message.c_str());
+					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 				#endif
 				// Освобождаем дескриптор системы безопасности
 				::LocalFree(sd);
@@ -1394,13 +1394,13 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message.c_str());
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(path, user), log_t::flag_t::CRITICAL, message);
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message.c_str());
+					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 				#endif
 			}
 			// Освобождаем дескриптор системы безопасности
