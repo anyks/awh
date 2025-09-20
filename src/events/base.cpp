@@ -70,6 +70,319 @@ bool awh::Base::isChildThread() const noexcept {
 	return (this->_wid != this->wid());
 }
 /**
+ * @brief Метод применение сетевой оптимизации операционной системы
+ *
+ * @return результат работы
+ */
+void awh::Base::boostingNetwork() const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				// Структура лимитов дампов
+				struct rlimit limit;
+				// Устанавливаем текущий лимит равный бесконечности
+				limit.rlim_cur = RLIM_INFINITY;
+				// Устанавливаем максимальный лимит равный бесконечности
+				limit.rlim_max = RLIM_INFINITY;
+				// Выводим результат установки лимита дампов ядра
+				if(::setrlimit(RLIMIT_CORE, &limit) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			#endif
+		#endif
+		/**
+		 * Выполняем установку нужного нам количества файловых дескрипторов
+		 */
+		if(!this->_fds.limit(AWH_MAX_COUNT_FDS)){
+			// Получаем лимиты файловых дескрипторов
+			const auto & limits = this->_fds.limit();
+			// Если текущий лимит меньше желаемого
+			if(limits.first < AWH_MAX_COUNT_FDS)
+				// Выводим сообщение подсказки
+				this->_fds.help(limits.first, AWH_MAX_COUNT_FDS);
+		}
+		/**
+		 * Если необходимо выполнить тюннинг операционной системы
+		 */
+		#if AWH_BOOSTING_OS
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Если эффективный идентификатор пользователя принадлежит Administrator
+				if(this->_os.isAdmin()){
+					// Vista/7 также включает «Compound TCP (CTCP)», который похож на CUBIC в Linux
+					this->_os.exec("netsh interface tcp set global congestionprovider=ctcp");
+					// Если вам вообще нужно включить автонастройку, вот команды
+					this->_os.exec("netsh interface tcp set global autotuninglevel=normal");
+				// Если пользователь не является суперпользователем
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					#endif
+				}
+			/**
+			 * Реализация под Sun Solaris
+			 */
+			#elif __sun__
+				// Если эффективный идентификатор пользователя принадлежит ROOT
+				if(this->_os.isAdmin()){
+					// Эмпирическое правило: max_buf = 2 x cwnd_max (окно перегрузки)
+					this->_os.exec("ndd -set /dev/tcp tcp_max_buf 4194304");
+					this->_os.exec("ndd -set /dev/tcp tcp_cwnd_max 2097152");
+					// Увеличиваем размер окна TCP по умолчанию
+					this->_os.exec("ndd -set /dev/tcp tcp_xmit_hiwat 65536");
+					this->_os.exec("ndd -set /dev/tcp tcp_recv_hiwat 65536");
+				// Если пользователь не является суперпользователем
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					#endif
+				}
+			/**
+			 * Для операционной системы MacOS X
+			 */
+			#elif __APPLE__ || __MACH__
+				// Если эффективный идентификатор пользователя принадлежит ROOT
+				if(this->_os.isAdmin()){
+					// Устанавливаем максимальное количество подключений
+					this->_os.sysctl("kern.ipc.somaxconn", 49152);
+					/**
+					 * Для хостов 10G было бы неплохо увеличить это значение,
+					 * т.к. 4G, похоже, является пределом для некоторых установок MacOS X
+					 */
+					this->_os.sysctl("kern.ipc.maxsockbuf", 6291456);
+					// Увеличиваем максимальный размер буферов для отправки
+					this->_os.sysctl("net.inet.tcp.sendspace", 1042560);
+					// Увеличиваем максимальный размер буферов для чтения
+					this->_os.sysctl("net.inet.tcp.recvspace", 1042560);
+					// В MacOS X значение по умолчанию 3, что очень мало
+					this->_os.sysctl("net.inet.tcp.r", 8);
+					// Увеличиваем максимумы автонастройки MacOS X TCP
+					this->_os.sysctl("net.inet.tcp.autorcvbufmax", 33554432);
+					this->_os.sysctl("net.inet.tcp.autosndbufmax", 33554432);
+					// Устанавливаем прочие настройки
+					this->_os.sysctl("net.inet.tcp.slowstart_flightsize", 20);
+					this->_os.sysctl("net.inet.tcp.local_slowstart_flightsize", 20);
+				// Если пользователь не является суперпользователем
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					#endif
+				}
+			/**
+			 * Для операционной системы Linux
+			 */
+			#elif __linux__
+				// Если эффективный идентификатор пользователя принадлежит ROOT
+				if(this->_os.isAdmin()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Для отладки активируем создание дампов ядра
+						this->_os.sysctl("kernel.core_uses_pid", 1);
+						this->_os.sysctl("kernel.core_pattern", string{"/tmp/%e-%p.core"});
+					#endif
+					// Разрешаем выборочные подтверждения (Selective Acknowledgements, SACK)
+					this->_os.sysctl("net.ipv4.tcp_sack", 1);
+					// Активируем параметр помогающий в борье за ресурсы
+					this->_os.sysctl("net.ipv4.tcp_tw_reuse", 1);
+					// Разрешаем использование временных меток (timestamps) в протоколах TCP
+					this->_os.sysctl("net.ipv4.tcp_timestamps", 1);
+					// Устанавливаем максимальное количество подключений
+					this->_os.sysctl("net.core.somaxconn", 49152);
+					// Увеличиваем максимальный размер буферов для чтения
+					this->_os.sysctl("net.core.rmem_max", 16777216);
+					// Увеличиваем максимальный размер буферов для отправки
+					this->_os.sysctl("net.core.wmem_max", 16777216);
+					// Разрешаем масштабирование TCP-окна
+					this->_os.sysctl("net.ipv4.tcp_window_scaling", 1);
+					// Запрещаем сохранять результаты измерений TCP-соединения в кэше при его закрытии
+					this->_os.sysctl("net.ipv4.tcp_no_metrics_save", 1);
+					// Включаем автоматическую настройку размера приёмного буфера TCP
+					this->_os.sysctl("net.ipv4.tcp_moderate_rcvbuf", 1);
+					// Определяем максимальное количество входящих пакетов
+					this->_os.sysctl("net.core.netdev_max_backlog", 2500);
+					// Увеличиваем лимит автонастройки TCP-буфера Linux до 64 МБ
+					this->_os.sysctl("net.ipv4.tcp_rmem", string{"\"4096 87380 16777216\""});
+					this->_os.sysctl("net.ipv4.tcp_wmem", string{"\"4096 65536 16777216\""});
+					// Рекомендуется для хостов с включенными большими фреймами
+					this->_os.sysctl("net.ipv4.tcp_mtu_probing", 1);
+					// Рекомендуется для хостов CentOS 7/Debian 8
+					this->_os.sysctl("net.core.default_qdisc", string{"fq"});
+					/**
+					 * Рекомендуемый контроль перегрузки по умолчанию — htcp.
+					 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.ipv4.tcp_available_congestion_control
+					 */
+					const string & algorithm = this->_os.sysctl <string> ("net.ipv4.tcp_available_congestion_control");
+					// Если выбран лучший доступны алгоритм
+					if(!algorithm.empty()){
+						// Если найден алгоритм cubic
+						if(this->_fmk->exists("cubic", algorithm))
+							// Активируем выбранный нами алгоритм
+							this->_os.sysctl("net.ipv4.tcp_congestion_control", "cubic");
+						// Если же найден алгоритм htcp
+						else if(this->_fmk->exists("htcp", algorithm))
+							// Активируем выбранный нами алгоритм
+							this->_os.sysctl("net.ipv4.tcp_congestion_control", "htcp");
+					}
+				// Если пользователь не является суперпользователем
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					#endif
+				}
+			/**
+			 * Для операционной системы FreeBSD, NetBSD или OpenBSD
+			 */
+			#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				// Если эффективный идентификатор пользователя принадлежит ROOT
+				if(this->_os.isAdmin()){
+					/**
+					 * Данные оптимизаций операционной системы берет от сюда: http://fasterdata.es.net/host-tuning/freebsd
+					 */
+					// Активируем контроль работы временной марки и масштабируемого окна
+					this->_os.sysctl("net.inet.tcp.rfc1323", 1);
+					// Устанавливаем максимальное количество подключений
+					this->_os.sysctl("kern.ipc.somaxconn", 49152);
+					// Активируем автоматическую отправку и получение
+					this->_os.sysctl("net.inet.tcp.sendbuf_auto", 1);
+					this->_os.sysctl("net.inet.tcp.recvbuf_auto", 1);
+					// Увеличиваем размер шага автонастройки
+					this->_os.sysctl("net.inet.tcp.sendbuf_inc", 8192);
+					this->_os.sysctl("net.inet.tcp.recvbuf_inc", 16384);
+					// Активируем нормальное нормальное TCP Reno
+					this->_os.sysctl("net.inet.tcp.inflight.enable", 0);
+					// Активируем на хостах тестирования/измерений
+					this->_os.sysctl("net.inet.tcp.hostcache.expire", 1);
+					/**
+					 * Для хостов 10G было бы неплохо увеличить это значение,
+					 * т.к. 4G, похоже, является пределом для некоторых установок FreeBSD
+					 */
+					this->_os.sysctl("kern.ipc.maxsockbuf", 16777216);
+					// Увеличиваем максимальный размер буферов для отправки
+					this->_os.sysctl("net.inet.tcp.sendspace", 1042560);
+					// Увеличиваем максимальный размер буферов для чтения
+					this->_os.sysctl("net.inet.tcp.recvspace", 1042560);
+					// Увеличиваем максимальный размер буферов для отправки
+					this->_os.sysctl("net.inet.tcp.sendbuf_max", 16777216);
+					// Увеличиваем максимальный размер буферов для чтения
+					this->_os.sysctl("net.inet.tcp.recvbuf_max", 16777216);
+					/**
+					 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.inet.tcp.cc.available
+					 */
+					const string & algorithm = this->_os.sysctl <string> ("net.inet.tcp.cc.available");
+					// Если выбран лучший доступны алгоритм
+					if(!algorithm.empty()){
+						// Если найден алгоритм cubic
+						if(this->_fmk->exists("cubic", algorithm))
+							// Активируем выбранный нами алгоритм
+							this->_os.sysctl("net.inet.tcp.cc.algorithm", "cubic");
+						// Если же найден алгоритм htcp
+						else if(this->_fmk->exists("htcp", algorithm))
+							// Активируем выбранный нами алгоритм
+							this->_os.sysctl("net.inet.tcp.cc.algorithm", "htcp");
+					}
+				// Если пользователь не является суперпользователем
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+					#endif
+				}
+			#endif
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод инициализации базы событий
  *
  * @param mode флаг инициализации
@@ -100,13 +413,13 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_fmk->convert(message).c_str());
+							this->_log->debug(L"%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, message);
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, this->_fmk->convert(message).c_str());
+							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 						#endif
 						// Очищаем сетевой контекст
 						::WSACleanup();
@@ -2988,13 +3301,13 @@ void awh::Base::start() noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_fmk->convert(message).c_str());
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, message);
 								/**
 								* Если режим отладки не включён
 								*/
 								#else
 									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_fmk->convert(message).c_str());
+									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 								#endif
 							// Если сработал таймаут
 							} else if(poll == 0)
@@ -3141,13 +3454,13 @@ void awh::Base::start() noexcept {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, this->_fmk->convert(message).c_str());
+													this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, message);
 												/**
 												* Если режим отладки не включён
 												*/
 												#else
 													// Выводим сообщение об ошибке
-													this->_log->print("%s", log_t::flag_t::CRITICAL, this->_fmk->convert(message).c_str());
+													this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 												#endif
 											}
 											// Выполняем поиск указанной записи
@@ -4117,7 +4430,7 @@ SOCKET awh::Base::activationUpstream(function <void (const uint64_t)> callback) 
 		 */
 		try {
 			// Создаём объект межпотокового передатчика
-			auto upstream = std::make_unique <upstream_t> (this->_fmk, this->_log);
+			auto upstream = std::make_unique <upstream_t> (this->_log);
 			// Выполняем установку функции обратного вызова
 			upstream->callback = callback;
 			// Выполняем инициализацию уведомителя
@@ -4197,15 +4510,8 @@ awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_wid = this->wid();
 	// Выполняем инициализацию базы событий
 	this->init(event_mode_t::ENABLED);
-	// Выполняем установку нужного нам количества файловых дескрипторов
-	if(!this->_fds.limit(AWH_MAX_COUNT_FDS)){
-		// Получаем лимиты файловых дескрипторов
-		const auto & limits = this->_fds.limit();
-		// Если текущий лимит меньше желаемого
-		if(limits.first < AWH_MAX_COUNT_FDS)
-			// Выводим сообщение подсказки
-			this->_fds.help(limits.first, AWH_MAX_COUNT_FDS);
-	}
+	// Выполняем настройку сетевых параметров
+	this->boostingNetwork();
 }
 /**
  * @brief Деструктор

@@ -1236,22 +1236,22 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 	return result;
 }
 /**
- * Для операционной системы не являющейся MS Windows
+ * @brief Метод установки владельца на файл или каталог
+ *
+ * @param path  путь к файлу или каталогу для установки владельца
+ * @param user  данные пользователя
+ * @param group идентификатор группы
+ * @return      результат работы функции
  */
-#if !_WIN32 && !_WIN64
-	/**
-	 * @brief Метод установки владельца на файл или каталог
-	 *
-	 * @param path  путь к файлу или каталогу для установки владельца
-	 * @param user  данные пользователя
-	 * @param group идентификатор группы
-	 * @return      результат работы функции
-	 */
-	bool awh::FS::chown(const string & path, const string & user, const string & group) const noexcept {
-		// Результат работы функции
-		bool result = false;
-		// Если путь передан
-		if(!path.empty() && !user.empty() && !group.empty() && (this->type(path) != type_t::NONE)){
+bool awh::FS::chown(const string & path, const string & user, const string & group) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если путь передан
+	if(!path.empty() && !user.empty() && !group.empty() && (this->type(path) != type_t::NONE)){
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#if !_WIN32 && !_WIN64
 			// Идентификатор пользователя
 			const uid_t uid = this->_os.uid(user);
 			// Идентификатор группы
@@ -1263,14 +1263,154 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			}
-		}
-		// Выводим результат
-		return result;
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#else
+			// Тип SID-а
+			SID_NAME_USE sidType;
+			// Размер SID-а пользователя/группы и домена пользователя
+			DWORD sidSize = 0, domainSize = 0;
+			// Первый вызов — получаем размеры буферов
+			::LookupAccountNameW(nullptr, user.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
+			// Если мы получиши ошибку извлечения размеров буфера
+			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
+				// Создаём буфер сообщения ошибки
+				wchar_t message[256] = {0};
+				// Выполняем формирование текста ошибки
+				::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, ::GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR) message, 256, nullptr);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fwprintf(stderr, L"%s\n\n", message);
+				#endif
+				// Выводим результат
+				return result;
+			}
+			// Инициализируем доменное имя пользователя
+			string domain(domainSize, '\0');
+			// Выделяем память под SID и домен
+			PSID pSid = (PSID) ::LocalAlloc(LPTR, sidSize);
+			// Извлекаем SID пользователя и его доменное имя
+			if(!::LookupAccountNameA(nullptr, user.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
+				// Освобождаем ресурсы
+				::LocalFree(pSid);
+				// Выводим пустой результат
+				return result;
+			}
+			// Объект параметров доступа
+			EXPLICIT_ACCESSW ea = {0};
+			// Зануляем объект параметров доступа
+			::ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+			// Устанавливаем новые права
+			ea.grfAccessMode = SET_ACCESS;
+			// Устанавливаем идентификатор пользователя
+			ea.Trustee.ptstrName = (LPWSTR) pSid;
+			// Устанавливаем права доступа для SID-пользователя
+			ea.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+			// Устанавливаем тип инициатора пользователя
+			ea.Trustee.TrusteeType = TRUSTEE_IS_USER;
+			// Наследование для подпапок и файлов
+			ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+			// Права: чтение + запись + выполнение (если файл исполняемый)
+			ea.grfAccessPermissions = (GENERIC_READ | GENERIC_WRITE | GENERIC_EXECUTE);
+			// Дескриптор системы безопасности
+			PSECURITY_DESCRIPTOR sd = nullptr;
+			// Старые и новые параметры безопасности
+			PACL pOldDACL = nullptr, pNewDACL = nullptr;
+			// Получаем текущий DACL файла
+			if(::GetNamedSecurityInfoA(path.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &pOldDACL, nullptr, &sd) != ERROR_SUCCESS){
+				// Создаём буфер сообщения ошибки
+				wchar_t message[256] = {0};
+				// Выполняем формирование текста ошибки
+				::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, ::GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR) message, 256, nullptr);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fwprintf(stderr, L"%s\n\n", message);
+				#endif
+				// Освобождаем ресурсы
+				::LocalFree(pSid);
+				// Выводим пустой результат
+				return result;
+			}
+			// Создаем новый DACL с добавленной записью
+			if(::SetEntriesInAclW(1, &ea, pOldDACL, &pNewDACL) != ERROR_SUCCESS){
+				// Создаём буфер сообщения ошибки
+				wchar_t message[256] = {0};
+				// Выполняем формирование текста ошибки
+				::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, ::GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR) message, 256, nullptr);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fwprintf(stderr, L"%s\n\n", message);
+				#endif
+				// Освобождаем дескриптор системы безопасности
+				::LocalFree(sd);
+				// Освобождаем ресурсы
+				::LocalFree(pSid);
+				// Выводим пустой результат
+				return result;
+			}
+			// Применяем новый DACL к файлу
+			if(!(result = (::SetNamedSecurityInfoW((LPWSTR)path.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, pNewDACL, nullptr) == ERROR_SUCCESS))){
+				// Создаём буфер сообщения ошибки
+				wchar_t message[256] = {0};
+				// Выполняем формирование текста ошибки
+				::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, ::GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR) message, 256, nullptr);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fwprintf(stderr, L"%s\n\n", message);
+				#endif
+			}
+			// Освобождаем дескриптор системы безопасности
+			::LocalFree(sd);
+			// Освобождаем ресурсы
+			::LocalFree(pSid);
+			// Очищаем новый объект параметров безопасности
+			::LocalFree(pNewDACL);
+		#endif
 	}
+	// Выводим результат
+	return result;
+}
 /**
  * Для операционной системы MS Windows
  */
-#else
+#if _WIN32 && _WIN64
 	/**
 	 * @brief Метод установки позиции в файле
 	 *

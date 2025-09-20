@@ -95,7 +95,6 @@
 	/**
 	 * Подключаем основные заголовочные файлы
 	 */
-	#include <cerrno>
 	#include <sys/types.h>
 	/**
 	 * Заменяем переменную AWH ERROR
@@ -128,9 +127,9 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT OS {
 		public:
 			/**
-			 * type_t Названия поддерживаемых операционных систем
+			 * Семейстов поддерживаемых операционных систем
 			 */
-			enum class type_t : uint8_t {
+			enum class family_t : uint8_t {
 				NONE    = 0x00, // Операционная система не определена
 				UNIX    = 0x01, // Операционная система Unix
 				LINUX   = 0x02, // Операционная система Linux
@@ -142,79 +141,65 @@ namespace awh {
 				NETBSD  = 0x08, // Операционная система NetBSD
 				OPENBSD = 0x09  // Операционная система OpenBSD
 			};
-		private:
-			/**
-			 * @brief Функция получения строкового типа метаданных
-			 *
-			 * @param buffer буфер бинарных данных
-			 * @param result результат работф функции
-			 */
-			static void metadata(const vector <char> & buffer, string & result) noexcept {
-				// Если буфер данных передан
-				if(!buffer.empty())
-					// Выполняем формирование строки
-					result.assign(buffer.begin(), buffer.end());
-			}
-			/**
-			 * @brief Шаблон метода чтения метаданных из бинарного контейнера
-			 *
-			 * @tparam T Тип данных выводимого результата
-			 */
-			template <typename T>
-			/**
-			 * @brief Функция получения бинарного буфера метаданных
-			 *
-			 * @param buffer буфер бинарных данных
-			 * @param result результат работф функции
-			 */
-			static void metadata(const vector <char> & buffer, vector <T> & result) noexcept {
-				// Если буфер данных передан
-				if(!buffer.empty()){
-					// Выделяем память для результирующего буфера данных
-					result.resize(buffer.size() / sizeof(T));
-					// Выполняем копирование полученного буфера данных
-					::memcpy(result.data(), buffer.data(), buffer.size());
-				}
-			}
-			/**
-			 * @brief Шаблон метода чтения метаданных из бинарного контейнера
-			 * 
-			 * @tparam T Тип данных выводимого результата
-			 */
-			template <typename T>
-			/**
-			 * @brief Функция получения основных типов метаданных
-			 *
-			 * @param buffer буфер бинарных данных
-			 * @param result результат работф функции
-			 */
-			static void metadata(const vector <char> & buffer, T & result) noexcept {
-				// Если данные являются основными
-				if(!buffer.empty())
-					// Выполняем копирование полученных данных
-					::memcpy(&result, buffer.data(), sizeof(result));
-			}
 		public:
 			/**
-			 * @brief Метод применение сетевой оптимизации операционной системы
+			 * @brief isAdmin Метод проверпи запущено ли приложение под суперпользователем
 			 *
-			 * @return результат работы
+			 * @return результат проверки
 			 */
-			void boost() const noexcept;
+			bool isAdmin() const noexcept;
 		public:
 			/**
 			 * @brief Метод определения операционной системы
 			 *
 			 * @return название операционной системы
 			 */
-			type_t type() const noexcept;
+			family_t family() const noexcept;
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
 		public:
 			/**
-			 * @brief Метод активации создания дампа ядра
+			 * @brief Метод получения идентификатора текущего пользвоателя
 			 *
-			 * @return результат установки лимитов дампов ядра
+			 * @return идентификатор текущего пользователя
 			 */
-			bool enableCoreDumps() const noexcept;
+			uid_t user() const noexcept;
+			/**
+			 * @brief Метод получения группы текущего пользователя
+			 *
+			 * @return идентификатор группы текущего пользователя
+			 */
+			gid_t group() const noexcept;
+			/**
+			 * @brief Метод получения списка групп текущего пользователя
+			 *
+			 * @return список групп текущего пользователя
+			 */
+			vector <gid_t> groups() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения имени пользователя по его идентификатору
+			 *
+			 * @param uid идентификатор пользователя
+			 * @return    имя запрашиваемого пользователя
+			 */
+			string user(const uid_t uid) const noexcept;
+			/**
+			 * @brief Метод получения группы пользователя по её идентификатору
+			 *
+			 * @param gid идентификатор группы пользователя
+			 * @return    название группы пользователя
+			 */
+			string group(const gid_t gid) const noexcept;
+			/**
+			 * @brief Метод получения идентификатора группы пользователя
+			 *
+			 * @param name название группы пользователя
+			 * @return     идентификатор группы пользователя
+			 */
+			gid_t group(const string & name) const noexcept;
 		public:
 			/**
 			 * @brief Метод вывода идентификатора пользователя
@@ -226,28 +211,26 @@ namespace awh {
 			/**
 			 * @brief Метод вывода идентификатора группы пользователя
 			 *
-			 * @param name название группы пользователя
+			 * @param name имя пользователя
 			 * @return     полученный идентификатор группы пользователя
 			 */
 			gid_t gid(const string & name) const noexcept;
-		private:
-			/**
-			 * @brief Метод определения алгоритма работы сети
-			 *
-			 * @param str строка с выводмом доступных алгоритмов из sysctl
-			 * @return    выбранная строка с названием алгоритма
-			 */
-			string congestionControl(const string & str) const noexcept;
 		public:
 			/**
-			 * @brief Метод установки количество разрешенных файловых дескрипторов
+			 * @brief Получение списка групп пользователя
 			 *
-			 * @param cur текущий лимит на количество открытых файловых дискриптеров
-			 * @param max максимальный лимит на количество открытых файловых дискриптеров
+			 * @param user имя пользователя чьи группы следует получить
+			 * @return     список групп пользователя
+			 */
+			vector <gid_t> groups(const string & user) const noexcept;
+		public:
+			/**
+			 * @brief Метод запуска приложения от имени указанного пользователя
+			 *
+			 * @param gid идентификатор группы пользователя
 			 * @return    результат выполнения операции
 			 */
-			bool limitFDs(const uint32_t cur, const uint32_t max) const noexcept;
-		public:
+			bool chown(const uid_t uid) const noexcept;
 			/**
 			 * @brief Метод запуска приложения от имени указанного пользователя
 			 *
@@ -255,7 +238,7 @@ namespace awh {
 			 * @param gid идентификатор группы пользователя
 			 * @return    результат выполнения операции
 			 */
-			bool chown(const uid_t uid, const gid_t gid = 0) const noexcept;
+			bool chown(const uid_t uid, const gid_t gid) const noexcept;
 			/**
 			 * @brief Метод запуска приложения от имени указанного пользователя
 			 *
@@ -264,18 +247,55 @@ namespace awh {
 			 * @return      результат выполнения операции
 			 */
 			bool chown(const string & user, const string & group = "") const noexcept;
-		private:
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#else
+		public:
 			/**
-			 * @brief Метод извлечения настроек ядра операционной системы
+			 * @brief Метод получения идентификатора текущего пользвоателя
 			 *
-			 * @param name   название записи для получения настроек
-			 * @param buffer бинарный буфер с извлечёнными значениями
+			 * @return идентификатор текущего пользователя
 			 */
-			void sysctl(const string & name, vector <char> & buffer) const noexcept;
+			wstring user() const noexcept;
+			/**
+			 * @brief Метод получения списка групп текущего пользователя
+			 *
+			 * @return список групп текущего пользователя
+			 */
+			vector <wstring> groups() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения названия пользователя/группы по идентификатору
+			 *
+			 * @param sid идентификатор пользователя/группы
+			 * @return    имя запрашиваемого пользователя/группы
+			 */
+			string account(const wstring & sid) const noexcept;
+			/**
+			 * @brief Метод вывода идентификатора пользователя/группы
+			 *
+			 * @param name название пользователя/группы
+			 * @return     полученный идентификатор пользователя/группы
+			 */
+			wstring account(const string & name) const noexcept;
+		public:
+			/**
+			 * @brief Получение списка групп пользователя
+			 *
+			 * @param user имя пользователя чьи группы следует получить
+			 * @return     список групп пользователя
+			 */
+			vector <wstring> groups(const string & user) const noexcept;
+	#endif
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
 		public:
 			/**
 			 * @brief Шаблон метода извлечения настроек ядра операционной системы
-			 * 
+			 *
 			 * @tparam T Тип данных выводимого результата
 			 */
 			template <typename T>
@@ -285,49 +305,11 @@ namespace awh {
 			 * @param name название записи для получения настроек
 			 * @return     полученное значение записи
 			 */
-			T sysctl(const string & name) const noexcept {
-				// Результат работы функции
-				T result;
-				// Если данные являются основными
-				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-					// Буфер результата по умолчанию
-					uint8_t buffer[sizeof(T)];
-					// Заполняем нулями буфер данных
-					::memset(buffer, 0, sizeof(T));
-					// Выполняем установку результата по умолчанию
-					::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
-				}
-				// Если название записи передано правильно
-				if(!name.empty()){
-					// Создаём буфер данных для извлечения данных
-					vector <char> buffer;
-					// Выполняем извлечение данных записи
-					this->sysctl(name, buffer);
-					// Если данные буфера были извлечены удачно
-					if(!buffer.empty()){
-						// Если данные являются основными
-						if(is_class <T>::value || is_integral <T>::value || is_floating_point <T>::value)
-							// Выполняем получение данных
-							this->metadata(buffer, result);
-					}
-				}
-				// Выводим результат
-				return result;
-			}
-		private:
-			/**
-			 * @brief Метод установки настроек ядра операционной системы
-			 *
-			 * @param name   название записи для установки настроек
-			 * @param buffer буфер бинарных данных записи для установки настроек
-			 * @param size   размер буфера данных
-			 * @return       результат выполнения установки
-			 */
-			bool sysctl(const string & name, const void * buffer, const size_t size) const noexcept;
+			T sysctl(const string & name) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода установки настроек ядра операционной системы
-			 * 
+			 *
 			 * @tparam T Тип данных для установки
 			 */
 			template <typename T>
@@ -338,35 +320,10 @@ namespace awh {
 			 * @param value значение записи для установки настроек
 			 * @return      результат выполнения установки
 			 */
-			bool sysctl(const string & name, const T value) const noexcept {
-				// Если название записи для установки настроек передано
-				if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
-					/**
-					 * Если это Linux
-					 */
-					#if __linux__
-						// Выполняем преобразование числа в строку
-						const string param = std::to_string(value);
-						// Выполняем установку буфера бинарных данных
-						return this->sysctl(name, param.c_str(), param.size());
-					/**
-					 * Если это другая операционная система
-					 */
-					#else
-						// Буфер результата по умолчанию
-						vector <uint8_t> buffer(sizeof(value), 0);
-						// Выполняем установку результата по умолчанию
-						::memcpy(buffer.data(), &value, sizeof(value));
-						// Выполняем установку буфера бинарных данных
-						return this->sysctl(name, buffer.data(), buffer.size());
-					#endif
-				}
-				// Сообщаем, что ничего не установленно
-				return false;
-			}
+			bool sysctl(const string & name, const T value) const noexcept;
 			/**
 			 * @brief Шаблон метода установки настроек ядра операционной системы
-			 * 
+			 *
 			 * @tparam T Тип данных списка для установки
 			 */
 			template <typename T>
@@ -377,48 +334,7 @@ namespace awh {
 			 * @param items значение записи для установки настроек
 			 * @return      результат выполнения установки
 			 */
-			bool sysctl(const string & name, const vector <T> & items) const noexcept {
-				// Если название записи для установки настроек передано
-				if(!name.empty() && (is_integral <T>::value || is_floating_point <T>::value)){
-					/**
-					 * Если это Linux
-					 */
-					#if __linux__
-						// Выполняем преобразование числа в строку
-						string param = "";
-						// Выполняем перебор всего списка параметров
-						for(auto & item : items){
-							// Если строка уже сформированна
-							if(!param.empty())
-								// Выполняем добавление пробела
-								param.append(1, ' ');
-							// Добавляем полученное значение в список
-							param.append(std::to_string(item));
-						}
-						// Выполняем установку буфера бинарных данных
-						return this->sysctl(name, param.c_str(), param.size());
-					/**
-					 * Если это другая операционная система
-					 */
-					#else
-						// Смещение в бинарном буфере
-						size_t offset = 0;
-						// Буфер результата по умолчанию
-						vector <uint8_t> buffer(items.size() * sizeof(T), 0);
-						// Выполняем перебор всего списка параметров
-						for(auto & item : items){
-							// Выполняем установку результата по умолчанию
-							::memcpy(buffer.data() + offset, &item, sizeof(item));
-							// Выполняем увеличение смещения в буфере
-							offset += sizeof(item);
-						}
-						// Выполняем установку буфера бинарных данных
-						return this->sysctl(name, buffer.data(), buffer.size());
-					#endif
-				}
-				// Сообщаем, что ничего не установленно
-				return false;
-			}
+			bool sysctl(const string & name, const vector <T> & items) const noexcept;
 			/**
 			 * @brief Метод установки настроек ядра операционной системы
 			 *
@@ -426,14 +342,8 @@ namespace awh {
 			 * @param value значение записи для установки настроек
 			 * @return      результат выполнения установки
 			 */
-			bool sysctl(const string & name, const string & value) const noexcept {
-				// Если название записи для установки настроек передано
-				if(!name.empty())
-					// Выполняем установку буфера бинарных данных
-					return this->sysctl(name, value.c_str(), value.size());
-				// Сообщаем, что ничего не установленно
-				return false;
-			}
+			bool sysctl(const string & name, const string & value) const noexcept;
+	#endif
 		public:
 			/**
 			 * @brief Метод запуска внешнего приложения

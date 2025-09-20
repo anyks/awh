@@ -185,7 +185,7 @@ SOCKET awh::Watch::create() noexcept {
 	 */
 	try {
 		// Выполняем инициализацию нового уведомителя
-		std::unique_ptr <notifier_t> notifier = std::make_unique <notifier_t> (this->_fmk, this->_log);
+		std::unique_ptr <notifier_t> notifier = std::make_unique <notifier_t> (this->_log);
 		// Выполняем инициализацию
 		result = notifier->init();
 		// Если уведомитель инициализирован правильно

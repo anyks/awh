@@ -1,6 +1,6 @@
-[![ANYKS - WEB](https://raw.githubusercontent.com/anyks/awh/main/img/banner.jpg)](https://anyks.com)
+[![ANYKS - WEB HUB](https://raw.githubusercontent.com/anyks/awh/main/img/banner.jpg)](https://anyks.com)
 
-# ANYKS - WEB (AWH) C++
+# ANYKS - WEB HUB (AWH) C++
 
 ## Project goals and features
 

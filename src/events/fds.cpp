@@ -311,8 +311,6 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->print("SetHandleCount(%llu) failed", log_t::flag_t::WARNING, limit);
 			#endif
-			// Выходим из функции
-			return false;
 		}
 	/**
 	 * Для всех остальных операционных систем
@@ -392,7 +390,7 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("Failed to raise hard FD limit to %llu (need root?): %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
@@ -411,7 +409,7 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->debug("Failed to raise soft FD limit to %llu: %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, static_cast <uint64_t> (soft), ::strerror(errno));
 			/**
 			* Если режим отладки не включён
 			*/
@@ -486,7 +484,7 @@ std::pair <uint64_t, uint64_t> awh::FDS::limit() const noexcept {
 						// Закрываем все открытые сокеты
 						::closesocket(sock);
 					// Устанавливаем максимальное значение доступных сокетов
-					result.second = static_cast <uint64_t> (i);
+					result.second = i;
 					// Выводим полученны результат
 					return result;
 				}

@@ -566,6 +566,108 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
  *
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
+ */
+void awh::Log::print(const wstring & format, flag_t flag, ...) const noexcept {
+	// Если формат передан
+	if(!format.empty()){
+		// Если уровень логирования соответствует
+		if((this->_level == level_t::ALL) ||
+		  ((this->_level == level_t::INFO) && (flag == flag_t::INFO)) ||
+		  ((this->_level == level_t::WARNING) && (flag == flag_t::WARNING)) ||
+		  ((this->_level == level_t::CRITICAL) && (flag == flag_t::CRITICAL)) ||
+		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
+		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
+		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
+			// Создаём список аргументов
+			va_list args;
+			// Запускаем инициализацию списка аргументов
+			va_start(args, flag);
+			// Буфер данных для логирования
+			vector <wchar_t> buffer(1024);
+			// Выполняем перебор всех аргументов
+			for(;;){
+				// Создаем список аргументов
+				va_list args2;
+				// Копируем список аргументов
+				va_copy(args2, args);
+				// Выполняем запись в буфер данных
+				size_t res = ::vswprintf(buffer.data(), buffer.size(), format.c_str(), args2);
+				// Если результат получен
+				if((res >= 0) && (res < buffer.size())){
+					// Завершаем список аргументов
+					va_end(args);
+					// Завершаем список локальных аргументов
+					va_end(args2);
+					// Если результат не получен
+					if(res == 0)
+						// Выполняем сброс результата
+						buffer.clear();
+					// Выводим результат
+					else buffer.assign(buffer.begin(), buffer.begin() + res);
+					// Выходим из цикла
+					break;
+				}
+				// Размер буфера данных
+				size_t size = 0;
+				// Если данные не получены, увеличиваем буфер в два раза
+				if(res < 0)
+					// Увеличиваем размер буфера в два раза
+					size = (buffer.size() * 2);
+				// Увеличиваем размер буфера на один байт
+				else size = (res + 1);
+				// Очищаем буфер данных
+				buffer.clear();
+				// Выделяем память для буфера
+				buffer.resize(size);
+				// Завершаем список локальных аргументов
+				va_end(args2);
+			}
+			// Завершаем список аргументов
+			va_end(args);
+			// Если буфер данных для логирования сформирован
+			if(!buffer.empty()){
+				// Создаём объект полезной нагрузки
+				payload_t payload;
+				// Устанавливаем флаг логирования
+				payload.flag = flag;
+				// Устанавливаем даныне сообщения
+				payload.text = this->_fmk->convert(wstring(buffer.begin(), buffer.end()));
+				// Если асинхронный режим работы активирован
+				if(this->_async){
+					// Получаем идентификатор текущего процесса
+					const pid_t pid = ::getpid();
+					// Если идентификатор процесса является дочерним
+					if(pid != this->_pid){
+						// Если процесс ещё не инициализирован и дочерний поток уже создан
+						if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+							// Выполняем остановку скрина
+							this->_screen.stop();
+							// Выполняем очистку списка инициализированных процессов
+							this->_initialized.clear();
+						}
+					}
+					// Если дочерний поток не создан
+					if(!static_cast <bool> (this->_screen)){
+						// Выполняем установку функцию обратного вызова
+						this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+						// Выполняем инициализацию текущего процесса
+						this->_initialized.emplace(pid);
+						// Запускаем работу скрина
+						this->_screen.start();
+					}
+					// Выполняем отправку сообщения дочернему потоку
+					this->_screen = ::move(payload);
+				// Выполняем вывод полученного лога
+				} else this->receiving(payload);
+			}
+		}
+	}
+}
+/**
+ * @brief Метод вывода текстовой информации в консоль или файл
+ *
+ * @param format формат строки вывода
+ * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  */
 void awh::Log::print(const string & format, flag_t flag, const vector <string> & args) const noexcept {
@@ -585,6 +687,60 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			payload.flag = flag;
 			// Устанавливаем даныне сообщения
 			payload.text = this->_fmk->format(format, args);
+			// Если асинхронный режим работы активирован
+			if(this->_async){
+				// Получаем идентификатор текущего процесса
+				const pid_t pid = ::getpid();
+				// Если идентификатор процесса является дочерним
+				if(pid != this->_pid){
+					// Если процесс ещё не инициализирован, а скрин уже запущен
+					if(static_cast <bool> (this->_screen) && (this->_initialized.count(pid) < 1)){
+						// Выполняем остановку скрина
+						this->_screen.stop();
+						// Выполняем очистку списка инициализированных процессов
+						this->_initialized.clear();
+					}
+				}
+				// Если дочерний поток не создан
+				if(!static_cast <bool> (this->_screen)){
+					// Выполняем установку функцию обратного вызова
+					this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+					// Выполняем инициализацию текущего процесса
+					this->_initialized.emplace(pid);
+					// Запускаем работу скрина
+					this->_screen.start();
+				}
+				// Выполняем отправку сообщения дочернему потоку
+				this->_screen = ::move(payload);
+			// Выполняем вывод полученного лога
+			} else this->receiving(payload);
+		}
+	}
+}
+/**
+ * @brief Метод вывода текстовой информации в консоль или файл
+ *
+ * @param format формат строки вывода
+ * @param flag   флаг типа логирования
+ * @param args   список аргументов для замены
+ */
+void awh::Log::print(const wstring & format, flag_t flag, const vector <wstring> & args) const noexcept {
+	// Если формат передан
+	if(!format.empty() && !args.empty()){
+		// Если уровень логирования соответствует
+		if((this->_level == level_t::ALL) ||
+		  ((this->_level == level_t::INFO) && (flag == flag_t::INFO)) ||
+		  ((this->_level == level_t::WARNING) && (flag == flag_t::WARNING)) ||
+		  ((this->_level == level_t::CRITICAL) && (flag == flag_t::CRITICAL)) ||
+		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
+		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
+		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
+			// Создаём объект полезной нагрузки
+			payload_t payload;
+			// Устанавливаем флаг логирования
+			payload.flag = flag;
+			// Устанавливаем даныне сообщения
+			payload.text = this->_fmk->convert(this->_fmk->format(format, args));
 			// Если асинхронный режим работы активирован
 			if(this->_async){
 				// Получаем идентификатор текущего процесса

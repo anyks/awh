@@ -243,32 +243,29 @@ namespace awh {
 			bool chmod(const string & path, const mode_t mode) const noexcept;
 		public:
 			/**
-			 * Для операционной системы не являющейся MS Windows
+			 * @brief Метод установки владельца на файл или каталог
+			 *
+			 * @param path  путь к файлу или каталогу для установки владельца
+			 * @param user  данные пользователя
+			 * @param group идентификатор группы
+			 * @return      результат работы функции
 			 */
-			#if !_WIN32 && !_WIN64
-				/**
-				 * @brief Метод установки владельца на файл или каталог
-				 *
-				 * @param path  путь к файлу или каталогу для установки владельца
-				 * @param user  данные пользователя
-				 * @param group идентификатор группы
-				 * @return      результат работы функции
-				 */
-				bool chown(const string & path, const string & user, const string & group) const noexcept;
+			bool chown(const string & path, const string & user, const string & group) const noexcept;
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 && _WIN64
+		public:
 			/**
-			 * Для операционной системы MS Windows
+			 * @brief Метод установки позиции в файле
+			 *
+			 * @param file     объект открытого файла
+			 * @param distance дистанцию на которую нужно переместить позицию
+			 * @param position текущая позиция в файле
+			 * @return         перенос позиции в файле
 			 */
-			#else
-				/**
-				 * @brief Метод установки позиции в файле
-				 *
-				 * @param file     объект открытого файла
-				 * @param distance дистанцию на которую нужно переместить позицию
-				 * @param position текущая позиция в файле
-				 * @return         перенос позиции в файле
-				 */
-				int64_t seek(HANDLE file, const int64_t distance, const DWORD position) const noexcept;
-			#endif
+			int64_t seek(HANDLE file, const int64_t distance, const DWORD position) const noexcept;
+	#endif
 		public:
 			/**
 			 * @brief Метод подсчёта размера файла/каталога

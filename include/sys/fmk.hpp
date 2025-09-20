@@ -692,10 +692,27 @@ namespace awh {
 			 * @brief Метод реализации функции формирования форматированной строки
 			 *
 			 * @param format формат строки вывода
+			 * @param args   передаваемые аргументы
+			 * @return       сформированная строка
+			 */
+			wstring format(const wchar_t * format, ...) const noexcept;
+		public:
+			/**
+			 * @brief Метод реализации функции формирования форматированной строки
+			 *
+			 * @param format формат строки вывода
 			 * @param items  список аргументов строки
 			 * @return       сформированная строка
 			 */
 			string format(const string & format, const vector <string> & items) const noexcept;
+			/**
+			 * @brief Метод реализации функции формирования форматированной строки
+			 *
+			 * @param format формат строки вывода
+			 * @param items  список аргументов строки
+			 * @return       сформированная строка
+			 */
+			wstring format(const wstring & format, const vector <wstring> & items) const noexcept;
 		public:
 			/**
 			 * @brief Метод проверки существования слова в тексте

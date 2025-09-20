@@ -352,6 +352,51 @@ namespace awh {
 			/**
 			 * @brief Шаблон входных аргументов функции
 			 *
+			 * @tclass T    тип входных аргументов функции
+			 * @tparam Args список входящих аргументов
+			 */
+			template <class... T, typename... Args>
+			/**
+			 * @brief Метод вывода текстовой информации в консоль или файл
+			 *
+			 * @param format формат строки вывода
+			 * @param method название вызываемого метода
+			 * @param params параметры переданные в метод
+			 * @param flag   флаг типа логирования
+			 * @param args   аргументы формирования лога
+			 */
+			void debug(const wstring & format, const string & method, const tuple <T...> & params, flag_t flag, Args&&... args) const noexcept {
+				// Если формат строки вывода передан
+				if(!format.empty()){
+					// Если метод названия функции передан
+					if(!method.empty()){
+						// Формируем результирующую строку отладки
+						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m"AWH_STRING_BREAK;
+						// Добавляем название метода
+						debug.append(method);
+						// Добавляем перенос строки
+						debug.append(AWH_STRING_BREAKS);
+						// Если аргументы функции переданы
+						if(this->count(params) > 0){
+							// Добавляем входные аргументы функции
+							debug.append("\x1B[1mArguments function:\x1B[0m"AWH_STRING_BREAK);
+							// Добавляем список аргументов функции
+							debug.append(this->serialization(params));
+							// Добавляем перенос строки
+							debug.append(AWH_STRING_BREAKS);
+							// Добавляем описание входящего сообщения
+							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
+						}
+						// Выводим полученный нами лог
+						this->print(this->_fmk->convert(debug) + format, flag, args...);
+					// Выводим лог в том виде как он пришёл
+					} else this->print(format, flag, args...);
+				}
+			}
+		public:
+			/**
+			 * @brief Шаблон входных аргументов функции
+			 *
 			 * @tclass T тип входных аргументов функции
 			 */
 			template <class... T>
@@ -392,6 +437,49 @@ namespace awh {
 					} else this->print(format, flag, args);
 				}
 			}
+			/**
+			 * @brief Шаблон входных аргументов функции
+			 *
+			 * @tclass T тип входных аргументов функции
+			 */
+			template <class... T>
+			/**
+			 * @brief Метод вывода текстовой информации в консоль или файл
+			 *
+			 * @param format формат строки вывода
+			 * @param method название вызываемого метода
+			 * @param params параметры переданные в метод
+			 * @param flag   флаг типа логирования
+			 * @param args   список аргументов для замены
+			 */
+			void debug(const wstring & format, const string & method, const tuple <T...> & params, flag_t flag, const vector <wstring> & args) const noexcept {
+				// Если формат строки вывода передан
+				if(!format.empty()){
+					// Если метод названия функции передан
+					if(!method.empty()){
+						// Формируем результирующую строку отладки
+						string debug = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m"AWH_STRING_BREAK;
+						// Добавляем название метода
+						debug.append(method);
+						// Добавляем перенос строки
+						debug.append(AWH_STRING_BREAKS);
+						// Если аргументы функции переданы
+						if(this->count(params) > 0){
+							// Добавляем входные аргументы функции
+							debug.append("\x1B[1mArguments function:\x1B[0m"AWH_STRING_BREAK);
+							// Добавляем список аргументов функции
+							debug.append(this->serialization(params));
+							// Добавляем перенос строки
+							debug.append(AWH_STRING_BREAKS);
+							// Добавляем описание входящего сообщения
+							debug.append("\x1B[1mMessage:\x1B[0m"AWH_STRING_BREAK);
+						}
+						// Выводим полученный нами лог
+						this->print(this->_fmk->convert(debug) + format, flag, args);
+					// Выводим лог в том виде как он пришёл
+					} else this->print(format, flag, args);
+				}
+			}
 		public:
 			/**
 			 * @brief Метод вывода текстовой информации в консоль или файл
@@ -405,9 +493,25 @@ namespace awh {
 			 *
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
+			 */
+			void print(const wstring & format, flag_t flag, ...) const noexcept;
+		public:
+			/**
+			 * @brief Метод вывода текстовой информации в консоль или файл
+			 *
+			 * @param format формат строки вывода
+			 * @param flag   флаг типа логирования
 			 * @param args   список аргументов для замены
 			 */
 			void print(const string & format, flag_t flag, const vector <string> & args) const noexcept;
+			/**
+			 * @brief Метод вывода текстовой информации в консоль или файл
+			 *
+			 * @param format формат строки вывода
+			 * @param flag   флаг типа логирования
+			 * @param args   список аргументов для замены
+			 */
+			void print(const wstring & format, flag_t flag, const vector <wstring> & args) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения установленных режимов вывода логов

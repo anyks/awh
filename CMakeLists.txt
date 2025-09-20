@@ -34,6 +34,12 @@ if (CMAKE_MAX_COUNT_FDS)
     message(STATUS "Build AWH with max fds: ${CMAKE_MAX_COUNT_FDS}\n")
 endif (CMAKE_MAX_COUNT_FDS)
 
+# Если активирован флаг оптимизации операционной системы
+if (CMAKE_AWH_BOOSTING_OS)
+    add_compile_definitions(AWH_BOOSTING_OS)
+    message(STATUS "Build AWH with boosting os: YES\n")
+endif (CMAKE_AWH_BOOSTING_OS)
+
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 

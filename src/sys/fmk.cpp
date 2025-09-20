@@ -3703,6 +3703,94 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 /**
  * @brief Метод реализации функции формирования форматированной строки
  *
+ * @param format формат строки вывода
+ * @param args   передаваемые аргументы
+ * @return       сформированная строка
+ */
+wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
+	// Результат работы функции
+	wstring result = L"";
+	// Если формат передан
+	if(format != nullptr){
+		// Создаем список аргументов
+		va_list args;
+		// Запускаем инициализацию списка аргументов
+		va_start(args, format);
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Размер полученной строки
+			size_t length = 0;
+			// Создаем буфер данных
+			result.resize(1024);
+			/**
+			 * Выполняем перебор всех аргументов
+			 */
+			while(true){
+				// Создаем список аргументов
+				va_list args2;
+				// Копируем список аргументов
+				va_copy(args2, args);
+				// Выполняем запись в буфер данных
+				length = ::vswprintf(result.data(), result.size(), format, args2);
+				// Если результат получен
+				if((length >= 0) && (length < result.size())){
+					// Завершаем список аргументов
+					va_end(args);
+					// Завершаем список локальных аргументов
+					va_end(args2);
+					// Если результат не получен
+					if(length == 0){
+						// Выполняем сброс результата
+						result.clear();
+						// Выходим из функции
+						return result;
+					// Выводим результат
+					} else return result.assign(result.begin(), result.begin() + length);
+				}
+				// Размер буфера данных
+				size_t size = 0;
+				// Если данные не получены, увеличиваем буфер в два раза
+				if(length < 0)
+					// Увеличиваем размер буфера в два раза
+					size = (result.size() * 2);
+				// Увеличиваем размер буфера на один байт
+				else size = (length + 1);
+				// Очищаем буфер данных
+				result.clear();
+				// Выделяем память для буфера
+				result.resize(size);
+				// Завершаем список локальных аргументов
+				va_end(args2);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n\n", error.what());
+			#endif
+		}
+		// Завершаем список аргументов
+		va_end(args);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод реализации функции формирования форматированной строки
+ *
  * @param  format формат строки вывода
  * @param  items  список аргументов строки
  * @return        сформированная строка
@@ -3774,6 +3862,102 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 			for(auto & item : items)
 				// Выполняем замену индекса аргумента на указанный аргумент
 				replaceFn(result, "$" + std::to_string(index++), item);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				::fprintf(stderr, "%s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод реализации функции формирования форматированной строки
+ *
+ * @param format формат строки вывода
+ * @param items  список аргументов строки
+ * @return       сформированная строка
+ */
+wstring awh::Framework::format(const wstring & format, const vector <wstring> & items) const noexcept {
+	// Результат работы функции
+	wstring result = format;
+	// Если данные переданы
+	if(!format.empty() && !items.empty()){
+		/**
+		 * @brief Функция заменты подстроки в строке
+		 *
+		 * @param str  строка в которой нужно произвести замену
+		 * @param from строка которую нужно заменить
+		 * @param to   строка на которую нужно заменить
+		 */
+		auto replaceFn = [](wstring & str, const wstring & from, const wstring & to) noexcept {
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Если строка пустая, выходим
+				if(from.empty() || to.empty())
+					// Выходим из функции
+					return;
+				// Позиция подстроки в строке
+				size_t pos = 0;
+				/**
+				 * Выполняем поиск подстроки в стркое
+				 */
+				while((pos = str.find(from, pos)) != string::npos){
+					// Заменяем подстроку в строке
+					str.replace(pos, from.length(), to);
+					// Увеличиваем позицию для поиска в строке
+					pos += to.length();
+				}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					::fprintf(stderr, "%s\n\n", error.what());
+				#endif
+			}
+		};
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Индекс в массиве
+			uint16_t index = 1;
+			// Исправляем возврат каретки
+			replaceFn(result, L"\\r", L"\r");
+			// Исправляем перенос строки
+			replaceFn(result, L"\\n", L"\n");
+			// Исправляем табуляцию
+			replaceFn(result, L"\\t", L"\t");
+			// Перебираем весь список аргументов
+			for(auto & item : items)
+				// Выполняем замену индекса аргумента на указанный аргумент
+				replaceFn(result, L"$" + std::to_wstring(index++), item);
 		/**
 		 * Если возникает ошибка
 		 */

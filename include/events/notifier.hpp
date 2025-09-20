@@ -78,8 +78,6 @@ namespace awh {
 				socket_t _socket;
 			#endif
 		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
 		public:
@@ -113,10 +111,9 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Notifier(const fmk_t * fmk, const log_t * log) noexcept;
+			Notifier(const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

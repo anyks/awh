@@ -149,11 +149,9 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Upstream(const fmk_t * fmk, const log_t * log) noexcept :
-				 notifier(fmk, log), callback(nullptr) {}
+				Upstream(const log_t * log) noexcept : notifier(log), callback(nullptr) {}
 			} upstream_t;
 			/**
 			 * @brief Структура участника
@@ -239,6 +237,8 @@ namespace awh {
 				vector <struct kevent> _events;
 			#endif
 		private:
+			// Объект работы с операционноы системы
+			os_t _os;
 			// Объект работы с файловыми дескрипторами
 			fds_t _fds;
 			// Объект работы с часами
@@ -270,6 +270,13 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			bool isChildThread() const noexcept;
+		private:
+			/**
+			 * @brief Метод применение сетевой оптимизации операционной системы
+			 *
+			 * @return результат работы
+			 */
+			void boostingNetwork() const noexcept;
 		private:
 			/**
 			 * @brief Метод инициализации базы событий

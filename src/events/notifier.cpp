@@ -298,13 +298,13 @@ SOCKET awh::Notifier::init() noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_fmk->convert(message).c_str());
+						this->_log->debug(L"%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, message);
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, this->_fmk->convert(message).c_str());
+						this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 					#endif
 				}
 			}
@@ -611,13 +611,13 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, this->_fmk->convert(message).c_str());
+						this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, message);
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::WARNING, this->_fmk->convert(message).c_str());
+						this->_log->print(L"%s", log_t::flag_t::WARNING, message);
 					#endif
 				}
 			}
@@ -727,10 +727,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 	/**
 	 * @brief Конструктор
 	 *
-	 * @param fmk объект фреймворка
 	 * @param log объект для работы с логами
 	 */
-	awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _socket(fmk, log), _fmk(fmk), _log(log) {
+	awh::Notifier::Notifier(const log_t * log) noexcept : _socket(fmk, log), _log(log) {
 /**
  * Для других операционных систем
  */
@@ -738,10 +737,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 	/**
 	 * @brief Конструктор
 	 *
-	 * @param fmk объект фреймворка
 	 * @param log объект для работы с логами
 	 */
-	awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+	awh::Notifier::Notifier(const log_t * log) noexcept : _log(log) {
 #endif
 		/**
 		 * Для операционной системы MS Windows или OpenBSD или Sun Solaris
