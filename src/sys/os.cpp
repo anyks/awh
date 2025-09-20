@@ -1058,9 +1058,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 		// Получаем информацию о пользователе
 		if(::GetTokenInformation(token, TokenUser, tokenUser, size, &size)){
 			// Итоговое имя пользователя
-			LPSTR username = nullptr;
+			LPWSTR username = nullptr;
 			// Если имя пользователя мы извлекли успешно
-			if(::ConvertSidToStringSidA(tokenUser->User.Sid, &username)){
+			if(::ConvertSidToStringSidW(tokenUser->User.Sid, &username)){
 				// Запоминаем итоговое имя пользователя
 				result = username;
 				// Освобождаем память, выделенную ConvertSidToStringSid
@@ -1068,7 +1068,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			}
 		}
 		// Освобождаем память выделенную для токена пользователя
-		LocalFree(tokenUser);
+		::LocalFree(tokenUser);
 		// Закрываем токен процесса
 		::CloseHandle(token);
 		// Выводим результат
