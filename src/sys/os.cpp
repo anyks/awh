@@ -1066,13 +1066,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"%s\n\n", message);
+					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 				#endif
 			}
 			// Выводим результат
@@ -1097,13 +1097,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"%s\n\n", message);
+					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -1126,13 +1126,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"%s\n\n", message);
+					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -1184,13 +1184,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"%s\n\n", message);
+					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 				#endif
 			}
 			// Выводим результат
@@ -1215,13 +1215,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"%s\n\n", message);
+					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -1244,13 +1244,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"%s\n\n", message);
+					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -1314,13 +1314,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+						::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"%s\n\n", message);
+						::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 					#endif
 					// Выводим результат
 					return result;
@@ -1355,13 +1355,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+						::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"%s\n\n", message);
+						::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 					#endif
 				}
 			}
@@ -1402,13 +1402,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"%s\n\n", message);
+					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 				#endif
 				// Выводим результат
 				return result;
@@ -1467,13 +1467,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fwprintf(stderr, L"%s\n\n", message);
+					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 				#endif
 				// Выводим результат
 				return result;
@@ -1509,13 +1509,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+						::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"%s\n\n", message);
+						::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 					#endif
 				}
 				// Освобождаем ресурсы
@@ -1540,13 +1540,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+						::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"%s\n\n", message);
+						::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 					#endif
 				}
 				// Закрываем токен
@@ -1571,13 +1571,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message);
+						::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fwprintf(stderr, L"%s\n\n", message);
+						::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
 					#endif
 				}
 				// Закрываем токен
