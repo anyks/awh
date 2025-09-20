@@ -350,13 +350,13 @@ using namespace std;
 		// Если текст для конвертации передан
 		if(!text.empty()){
 			// Получаем размер результирующего буфера данных в кодировке UTF-8
-			const int32_t size = ::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0, nullptr, nullptr);
+			const int32_t size = ::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
 			// Если размер буфера данных получен
 			if(size > 0){
 				// Выделяем данные для результирующего буфера данных
 				result.resize(static_cast <size_t> (size), 0);
 				// Если конвертация буфера текстовых данных в UTF-8 не выполнена
-				if(!::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), result.data(), static_cast <int32_t> (result.size()), nullptr, nullptr)){
+				if(!::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), result.data(), static_cast <int32_t> (result.size()))){
 					// Выполняем удаление результирующего буфера данных
 					result.clear();
 					// Выполняем удаление выделенной памяти
