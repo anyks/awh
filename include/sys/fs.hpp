@@ -68,7 +68,9 @@
 	/**
 	 * Подключаем стандартные модули
 	 */
+	#include <sddl.h>
 	#include <conio.h>
+	#include <aclapi.h>
 	#include <direct.h>
 /**
  * Для операционной системы не являющейся MS Windows
@@ -360,7 +362,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			FS(const fmk_t * fmk, const log_t * log) noexcept : _pid(::getpid()), _fmk(fmk), _log(log) {}
+			FS(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief деструктор
 			 *

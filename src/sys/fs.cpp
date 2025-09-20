@@ -2751,3 +2751,10 @@ void awh::FS::readPath(const string & path, const string & ext, const bool rec, 
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }
+/**
+ * @brief конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::FS::FS(const fmk_t * fmk, const log_t * log) noexcept : _pid(::getpid()), _fmk(fmk), _log(log) {}
