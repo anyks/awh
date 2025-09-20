@@ -1272,7 +1272,7 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Первый вызов — получаем размеры буферов
-			::LookupAccountNameW(nullptr, user.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
+			::LookupAccountNameA(nullptr, user.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
