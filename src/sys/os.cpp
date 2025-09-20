@@ -1242,6 +1242,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				string domain(domainSize, '\0');
 				// Извлекаем имя пользователя и его доменное имя
 				if(::LookupAccountSidA(nullptr, pSid, &name[0], &nameSize, &domain[0], &domainSize, &sidType)){
+					
+					cout << " ************ " << domain << " == " << name << endl;
+					
 					/**
 					 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
 					 */
