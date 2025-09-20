@@ -727,9 +727,10 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 	/**
 	 * @brief Конструктор
 	 *
+	 * @param fmk объект фреймворка
 	 * @param log объект для работы с логами
 	 */
-	awh::Notifier::Notifier(const log_t * log) noexcept : _socket(fmk, log), _log(log) {
+	awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _socket(fmk, log), _fmk(fmk), _log(log) {
 /**
  * Для других операционных систем
  */
@@ -737,9 +738,10 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 	/**
 	 * @brief Конструктор
 	 *
+	 * @param fmk объект фреймворка
 	 * @param log объект для работы с логами
 	 */
-	awh::Notifier::Notifier(const log_t * log) noexcept : _log(log) {
+	awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 #endif
 		/**
 		 * Для операционной системы MS Windows или OpenBSD или Sun Solaris

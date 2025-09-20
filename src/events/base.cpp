@@ -4430,7 +4430,7 @@ SOCKET awh::Base::activationUpstream(function <void (const uint64_t)> callback) 
 		 */
 		try {
 			// Создаём объект межпотокового передатчика
-			auto upstream = std::make_unique <upstream_t> (this->_log);
+			auto upstream = std::make_unique <upstream_t> (this->_fmk, this->_log);
 			// Выполняем установку функции обратного вызова
 			upstream->callback = callback;
 			// Выполняем инициализацию уведомителя

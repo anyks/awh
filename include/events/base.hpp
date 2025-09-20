@@ -149,9 +149,11 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
+				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Upstream(const log_t * log) noexcept : notifier(log), callback(nullptr) {}
+				Upstream(const fmk_t * fmk, const log_t * log) noexcept :
+				 notifier(fmk, log), callback(nullptr) {}
 			} upstream_t;
 			/**
 			 * @brief Структура участника
