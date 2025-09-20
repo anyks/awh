@@ -1278,7 +1278,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				// Извлекаем имя пользователя и его доменное имя
 				if(::LookupAccountSidW(nullptr, pSid, &name[0], &nameSize, &domain[0], &domainSize, &sidType)){
 					// Если доменное имя установлено
-					if(!domain.empty()){
+					if(!domain.empty() && (domain[0] != '\0')){
 						/**
 						 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
 						 */
