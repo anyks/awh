@@ -1369,10 +1369,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			std::wstring groupName = L"Администраторы";
 
 			// Сначала получаем SID для группы в указанном "домене"
-			if (LookupAccountNameW(nullptr, groupName.c_str(), pSid, &sidSize, nullptr, &domainSize, &sidType)) {
+			if (LookupAccountNameW(nullptr, groupName.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType)) {
 				// Затем проверяем, что домен совпадает
 				std::wstring returnedDomain(domainSize, L'\0');
-				if (LookupAccountNameW(nullptr, groupName.c_str(), pSid, &sidSize, &returnedDomain[0], &domainSize, &sidType)) {
+				if (LookupAccountNameW(nullptr, groupName.c_str(), nullptr, &sidSize, &returnedDomain[0], &domainSize, &sidType)) {
 					if (returnedDomain == domain) {
 						// Успех! Это именно та группа, которую вы искали.
 
