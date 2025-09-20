@@ -1365,7 +1365,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			const wstring & account = ::convert(name);
 			
 
-			std::wstring domain = L"BUILTIN";
+			std::wstring domain2 = L"BUILTIN";
 			std::wstring groupName = L"Администраторы";
 
 			// Сначала получаем SID для группы в указанном "домене"
@@ -1379,7 +1379,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					
 					::fprintf(stdout, "%s\n\n", "***************2");
 					
-					if (returnedDomain == domain) {
+					if (returnedDomain == domain2) {
 						// Успех! Это именно та группа, которую вы искали.
 
 						::fprintf(stdout, "%s\n\n", "YES!!!!!!!!!!!!!!!!");
