@@ -1391,7 +1391,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				
-				cout << " !!!!!!!! " << name << " || " << ::convert(::convert(name)) << endl;
+				cout << " !!!!!!!! " << name << " || " << ::convert(::convert(name)) << " :: " << ::convert(account) << endl;
 				
 				// Создаём буфер сообщения ошибки
 				wchar_t message[256] = {0};
