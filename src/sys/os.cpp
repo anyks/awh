@@ -1526,7 +1526,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				return result;
 			}
 			// Сначала получаем размер буфера
-			if(::GetTokenInformationW(token, TokenGroups, tokenGroups, size, &size)){
+			if(::GetTokenInformation(token, TokenGroups, tokenGroups, size, &size)){
 				// Выполняем перебор всех групп пользователя
 				for(DWORD i = 0; i < tokenGroups->GroupCount; ++i){
 					// Итоговое название группы пользователя
