@@ -1348,9 +1348,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	 * @param user имя пользователя чьи группы следует получить
 	 * @return     список групп пользователя
 	 */
-	vector <string> awh::OS::groups(const string & user) const noexcept {
+	vector <wstring> awh::OS::groups(const string & user) const noexcept {
 		// Результат работы функции
-		vector <string> result;
+		vector <wstring> result;
 		// Если имя пользователя передано
 		if(!user.empty()){
 			// Тип SID-а
@@ -1495,7 +1495,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				// Выполняем перебор всех групп пользователя
 				for(DWORD i = 0; i < tokenGroups->GroupCount; ++i){
 					// Итоговое название группы пользователя
-					LPSTR usergroup = nullptr;
+					LPWSTR usergroup = nullptr;
 					// Если название группы пользователя мы извлекли успешно
 					if(::ConvertSidToStringSidW(tokenGroups->Groups[i].Sid, &usergroup)){
 						// Добавляем полученное название группы пользователя в список групп
