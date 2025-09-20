@@ -309,6 +309,9 @@ using namespace std;
  * Для операционной системы MS Windows
  */
 #else
+
+#include <codecvt>
+
 	/**
 	 * @brief Функция конвертация строки из wstring в string
 	 *
@@ -320,6 +323,15 @@ using namespace std;
 		string result = "";
 		// Если текст для конвертации передан
 		if(!text.empty()){
+			
+			// Устанавливаем тип для конвертера UTF-8
+			using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
+			// Объявляем конвертер
+			wstring_convert <convert_type, wchar_t> conv;
+			// Выполняем конвертирование в utf-8 строку
+			result = conv.to_bytes(text);
+
+			/*
 			// Получаем размер результирующего буфера данных в кодировке UTF-8
 			const int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0, nullptr, nullptr);
 			// Если размер буфера данных получен
@@ -334,6 +346,7 @@ using namespace std;
 					string().swap(result);
 				}
 			}
+			*/
 		}
 		// Выводим результат
 		return result;
@@ -349,6 +362,13 @@ using namespace std;
 		wstring result = L"";
 		// Если текст для конвертации передан
 		if(!text.empty()){
+
+			// Объявляем конвертер
+			wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
+			// Выполняем конвертирование в utf-8 строку
+			result = conv.from_bytes(text);
+			
+			/*
 			// Получаем размер результирующего буфера данных в кодировке UTF-8
 			const int32_t size = ::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
 			// Если размер буфера данных получен
@@ -363,6 +383,7 @@ using namespace std;
 					wstring().swap(result);
 				}
 			}
+			*/
 		}
 		// Выводим результат
 		return result;
