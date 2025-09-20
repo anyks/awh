@@ -1303,7 +1303,7 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 				return result;
 			}
 			// Инициализируем доменное имя пользователя
-			string domain(domainSize, '\0');
+			wstring domain(domainSize, L'\0');
 			// Выделяем память под SID и домен
 			PSID pSid = (PSID) ::LocalAlloc(LPTR, sidSize);
 			// Извлекаем SID пользователя и его доменное имя
