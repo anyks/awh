@@ -1282,7 +1282,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 							// Выделяем память для имени пользователя
 							result.resize(size, 0);
 							// Выполняем извлечение имени пользователя
-							::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size())), result.data(), size, nullptr, nullptr);
+							if(!::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size())), result.data(), size, nullptr, nullptr))
+								// Выполняем сброс результата
+								result.clear();
 						}
 					}
 				}
