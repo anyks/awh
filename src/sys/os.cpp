@@ -309,9 +309,6 @@ using namespace std;
  * Для операционной системы MS Windows
  */
 #else
-
-#include <codecvt>
-
 	/**
 	 * @brief Функция конвертация строки из wstring в string
 	 *
@@ -323,15 +320,6 @@ using namespace std;
 		string result = "";
 		// Если текст для конвертации передан
 		if(!text.empty()){
-			
-			// Устанавливаем тип для конвертера UTF-8
-			using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
-			// Объявляем конвертер
-			wstring_convert <convert_type, wchar_t> conv;
-			// Выполняем конвертирование в utf-8 строку
-			result = conv.to_bytes(text);
-
-			/*
 			// Получаем размер результирующего буфера данных в кодировке UTF-8
 			const int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0, nullptr, nullptr);
 			// Если размер буфера данных получен
@@ -346,7 +334,6 @@ using namespace std;
 					string().swap(result);
 				}
 			}
-			*/
 		}
 		// Выводим результат
 		return result;
@@ -362,13 +349,6 @@ using namespace std;
 		wstring result = L"";
 		// Если текст для конвертации передан
 		if(!text.empty()){
-
-			// Объявляем конвертер
-			wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
-			// Выполняем конвертирование в utf-8 строку
-			result = conv.from_bytes(text);
-			
-			/*
 			// Получаем размер результирующего буфера данных в кодировке UTF-8
 			const int32_t size = ::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
 			// Если размер буфера данных получен
@@ -383,7 +363,6 @@ using namespace std;
 					wstring().swap(result);
 				}
 			}
-			*/
 		}
 		// Выводим результат
 		return result;
@@ -1146,8 +1125,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			LPWSTR username = nullptr;
 			// Если имя пользователя мы извлекли успешно
 			if(::ConvertSidToStringSidW(tokenUser->User.Sid, &username)){
-				// Запоминаем итоговое имя пользователя
-				result = username;
+				// Если результат мы получили
+				if((username != nullptr) && (username[0] != L'\0'))
+					// Запоминаем итоговое имя пользователя
+					result = username;
 				// Освобождаем память, выделенную ConvertSidToStringSid
 				::LocalFree(username);
 			}
@@ -1264,8 +1245,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				LPWSTR usergroup = nullptr;
 				// Если название группы пользователя мы извлекли успешно
 				if(::ConvertSidToStringSidW(tokenGroups->Groups[i].Sid, &usergroup)){
-					// Добавляем полученное название группы пользователя в список групп
-					result.push_back(usergroup);
+					// Если результат мы получили
+					if((usergroup != nullptr) && (usergroup[0] != L'\0'))
+						// Добавляем полученное название группы пользователя в список групп
+						result.push_back(usergroup);
 					// Освобождаем память, выделенную ConvertSidToStringSid
 					::LocalFree(usergroup);
 				}
@@ -1416,8 +1399,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				LPWSTR sid = nullptr;
 				// Выполняем извлечение SID идентификатор пользователя/доменного имени
 				if(::ConvertSidToStringSidW(pSid, &sid)){
-					// Выполняем получение SID-а
-					result.assign(sid, sid + wcslen(sid));
+					// Если результат мы получили
+					if((sid != nullptr) && (sid[0] != L'\0'))
+						// Выполняем получение SID-а
+						result.assign(sid, sid + wcslen(sid));
 					// Освобождаем строку, выделенную ConvertSidToStringSid
 					::LocalFree(sid);
 				}
@@ -1586,8 +1571,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					LPWSTR usergroup = nullptr;
 					// Если название группы пользователя мы извлекли успешно
 					if(::ConvertSidToStringSidW(tokenGroups->Groups[i].Sid, &usergroup)){
-						// Добавляем полученное название группы пользователя в список групп
-						result.push_back(usergroup);
+						// Если результат мы получили верный
+						if((usergroup != nullptr) && (usergroup[0] != L'\0'))
+							// Добавляем полученное название группы пользователя в список групп
+							result.push_back(usergroup);
 						// Освобождаем память, выделенную ConvertSidToStringSid
 						::LocalFree(usergroup);
 					}
