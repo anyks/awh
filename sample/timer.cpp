@@ -168,7 +168,10 @@ int32_t main(int32_t argc, char * argv[]){
 		const wstring & uid = os.user();
 		const vector <wstring> & gids = os.groups();
 
-		cout << " ==== " << fmk.convert(uid) << " == " << os.account(uid) << " || " << fmk.convert(os.account(os.account(uid))) << endl;
+		cout << " !!!!1 " << fmk.convert(uid) << endl;
+		cout << " !!!!2 " << os.account(uid) << endl;
+		cout << " !!!!3 " << fmk.convert(os.account(os.account(uid))) << endl;
+
 
 		for(auto & item : gids)
 			cout << " ^^^1 " << fmk.convert(item) << " || " << os.account(item) << endl;
