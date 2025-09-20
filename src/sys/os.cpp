@@ -1256,7 +1256,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 							// Выделяем память для доменного имени
 							result.resize(size, 0);
 							// Выполняем извлечение доменного имени
-							if(::WideCharToMultiByte(CP_UTF8, 0, domain.data(), static_cast <int32_t> (domain.size()), result.data(), static_cast <int32_t> (result.size()), nullptr, nullptr)){
+							if(::WideCharToMultiByte(CP_UTF8, 0, domain.data(), static_cast <int32_t> (domain.size()), result.data(), size, nullptr, nullptr)){
 								
 								/*
 								// Получаем размер имени пользователя
@@ -1276,13 +1276,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					// Если доменное имя не получено
 					} else {
 						// Получаем размер имени пользователя
-						int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
+						int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
 						// Если размер получен успешно
 						if(size > 0){
 							// Выделяем память для имени пользователя
 							result.resize(size, 0);
 							// Выполняем извлечение имени пользователя
-							::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size())), &result[0], size, nullptr, nullptr);
+							::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size())), result.data(), size, nullptr, nullptr);
 						}
 					}
 				}
