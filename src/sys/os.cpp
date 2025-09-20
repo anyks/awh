@@ -1423,7 +1423,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			// Размер SID-а пользователя и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
-			const wstring & account = ::convert(name);
+			const wstring & account = ::convert(user);
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
