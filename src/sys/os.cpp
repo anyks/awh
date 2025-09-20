@@ -367,27 +367,6 @@ using namespace std;
 		// Выводим результат
 		return result;
 	}
-
-	std::wstring utf8_to_wstring(const std::string& utf8Str) {
-		if (utf8Str.empty()) return std::wstring();
-
-		// Получаем размер буфера для wchar_t строки (в символах)
-		int wideSize = MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, nullptr, 0);
-		if (wideSize == 0) {
-			return std::wstring(); // Ошибка конвертации
-		}
-
-		std::wstring wideStr(wideSize, L'\0');
-		MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, &wideStr[0], wideSize);
-
-		// Убираем завершающий нулевой символ, если он есть
-		if (!wideStr.empty() && wideStr.back() == L'\0') {
-			wideStr.pop_back();
-		}
-
-		return wideStr;
-	}
-
 #endif
 /**
  * @brief isAdmin Метод проверпи запущено ли приложение под суперпользователем
@@ -1402,13 +1381,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
+					::fprintf(stderr, "%s\n\n", ::convert(message).c_str());
 				#endif
 				// Выводим результат
 				return result;
@@ -1467,13 +1446,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+					::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
+					::fprintf(stderr, "%s\n\n", ::convert(message).c_str());
 				#endif
 				// Выводим результат
 				return result;
@@ -1509,13 +1488,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
+						::fprintf(stderr, "%s\n\n", ::convert(message).c_str());
 					#endif
 				}
 				// Освобождаем ресурсы
@@ -1540,13 +1519,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
+						::fprintf(stderr, "%s\n\n", ::convert(message).c_str());
 					#endif
 				}
 				// Закрываем токен
@@ -1571,13 +1550,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, L"Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, L"%s\n\n", ::convert(message).c_str());
+						::fprintf(stderr, "%s\n\n", ::convert(message).c_str());
 					#endif
 				}
 				// Закрываем токен
