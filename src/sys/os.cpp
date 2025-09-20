@@ -1370,9 +1370,15 @@ awh::OS::family_t awh::OS::family() const noexcept {
 
 			// Сначала получаем SID для группы в указанном "домене"
 			if (LookupAccountNameW(nullptr, groupName.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType)) {
+				
+				::fprintf(stdout, "%s\n\n", "***************1");
+				
 				// Затем проверяем, что домен совпадает
 				std::wstring returnedDomain(domainSize, L'\0');
 				if (LookupAccountNameW(nullptr, groupName.c_str(), nullptr, &sidSize, &returnedDomain[0], &domainSize, &sidType)) {
+					
+					::fprintf(stdout, "%s\n\n", "***************2");
+					
 					if (returnedDomain == domain) {
 						// Успех! Это именно та группа, которую вы искали.
 
