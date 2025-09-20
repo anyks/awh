@@ -1363,6 +1363,27 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
 			const wstring & account = ::convert(name);
+			
+
+			std::wstring domain = L"BUILTIN";
+			std::wstring groupName = L"Администраторы";
+
+			// Сначала получаем SID для группы в указанном "домене"
+			if (LookupAccountNameW(nullptr, groupName.c_str(), pSid, &sidSize, nullptr, &domainSize, &sidType)) {
+				// Затем проверяем, что домен совпадает
+				std::wstring returnedDomain(domainSize, L'\0');
+				if (LookupAccountNameW(nullptr, groupName.c_str(), pSid, &sidSize, &returnedDomain[0], &domainSize, &sidType)) {
+					if (returnedDomain == domain) {
+						// Успех! Это именно та группа, которую вы искали.
+
+						::fprintf(stdout, "%s\n\n", "YES!!!!!!!!!!!!!!!!");
+					} else {
+						::fprintf(stdout, "%s\n\n", "NO!!!!!!!!!!!!!!!!");
+					}
+				}
+			}
+			
+			
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
