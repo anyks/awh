@@ -1431,7 +1431,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			// Размер буфера данных
 			DWORD size = 0;
 			// Сначала получаем размер буфера
-			::GetTokenInformation(token, TokenGroups, nullptr, 0, &size);
+			::GetTokenInformationW(token, TokenGroups, nullptr, 0, &size);
 			// Если размер буфера мы не определили
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Если мы получили ошибку
@@ -1493,7 +1493,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				return result;
 			}
 			// Сначала получаем размер буфера
-			if(::GetTokenInformation(token, TokenGroups, tokenGroups, size, &size)){
+			if(::GetTokenInformationW(token, TokenGroups, tokenGroups, size, &size)){
 				// Выполняем перебор всех групп пользователя
 				for(DWORD i = 0; i < tokenGroups->GroupCount; ++i){
 					// Итоговое название группы пользователя
