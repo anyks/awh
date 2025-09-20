@@ -252,7 +252,7 @@ namespace awh {
 			 * @param group идентификатор группы
 			 * @return      результат работы функции
 			 */
-			bool chown(const string & path, const string & user, const string & group) const noexcept;
+			bool chown(const string & path, const string & user, const string & group = "") const noexcept;
 	/**
 	 * Для операционной системы MS Windows
 	 */

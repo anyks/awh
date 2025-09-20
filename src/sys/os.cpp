@@ -315,7 +315,7 @@ using namespace std;
 	 * @param text текст для конвертации
 	 * @return     результат проверки
 	 */
-	static string wstringToUTF8(const wstring & text) noexcept {
+	static string convert(const wstring & text) noexcept {
 		// Результат работы функции
 		string result = "";
 		// Если текст для конвертации передан
@@ -332,6 +332,35 @@ using namespace std;
 					result.clear();
 					// Выполняем удаление выделенной памяти
 					string().swap(result);
+				}
+			}
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Функция конвертация строки из string в wstring
+	 *
+	 * @param text текст для конвертации
+	 * @return     результат проверки
+	 */
+	static wstring convert(const string & text) noexcept {
+		// Результат работы функции
+		wstring result = L"";
+		// Если текст для конвертации передан
+		if(!text.empty()){
+			// Получаем размер результирующего буфера данных в кодировке UTF-8
+			const int32_t size = ::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0, nullptr, nullptr);
+			// Если размер буфера данных получен
+			if(size > 0){
+				// Выделяем данные для результирующего буфера данных
+				result.resize(static_cast <size_t> (size), 0);
+				// Если конвертация буфера текстовых данных в UTF-8 не выполнена
+				if(!::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), result.data(), static_cast <int32_t> (result.size()), nullptr, nullptr)){
+					// Выполняем удаление результирующего буфера данных
+					result.clear();
+					// Выполняем удаление выделенной памяти
+					wstring().swap(result);
 				}
 			}
 		}
@@ -1282,9 +1311,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 						/**
 						 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
 						 */
-						result = (::wstringToUTF8(domain) + "\\" + ::wstringToUTF8(name));
+						result = (::convert(domain) + "\\" + ::convert(name));
 					// Если доменное имя не получено
-					} else result = ::wstringToUTF8(name);
+					} else result = ::convert(name);
 				}
 				// Освобождаем память выделенную под идентификатор пользователя
 				::LocalFree(pSid);

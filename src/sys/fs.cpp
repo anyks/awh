@@ -1247,21 +1247,24 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 	// Результат работы функции
 	bool result = false;
 	// Если путь передан
-	if(!path.empty() && !user.empty() && !group.empty() && (this->type(path) != type_t::NONE)){
+	if(!path.empty() && !user.empty() && (this->type(path) != type_t::NONE)){
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			// Идентификатор пользователя
-			const uid_t uid = this->_os.uid(user);
-			// Идентификатор группы
-			const gid_t gid = this->_os.gid(group);
-			// Устанавливаем права на каталог
-			if((result = (uid && gid))){
-				// Выполняем установку владельца
-				if(!(result = (::chown(path.c_str(), uid, gid) == 0)) && (errno != 0))
-					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			// Если группа пользователя передана
+			if(!group.empty()){
+				// Идентификатор пользователя
+				const uid_t uid = this->_os.uid(user);
+				// Идентификатор группы
+				const gid_t gid = this->_os.gid(group);
+				// Устанавливаем права на каталог
+				if((result = (uid && gid))){
+					// Выполняем установку владельца
+					if(!(result = (::chown(path.c_str(), uid, gid) == 0)) && (errno != 0))
+						// Выводим в лог сообщение
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				}
 			}
 		/**
 		 * Для операционной системы MS Windows
@@ -1271,8 +1274,12 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 			SID_NAME_USE sidType;
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
+			// Получаем адрес файла
+			const wstring fileName = this->_fmk->convert(path);
+			// Получаем имя пользователя
+			const wstring userName = this->_fmk->convert(user);
 			// Первый вызов — получаем размеры буферов
-			::LookupAccountNameA(nullptr, user.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
+			::LookupAccountNameW(nullptr, userName.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
@@ -1300,7 +1307,7 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 			// Выделяем память под SID и домен
 			PSID pSid = (PSID) ::LocalAlloc(LPTR, sidSize);
 			// Извлекаем SID пользователя и его доменное имя
-			if(!::LookupAccountNameA(nullptr, user.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
+			if(!::LookupAccountNameW(nullptr, userName.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
 				// Выводим пустой результат
@@ -1327,7 +1334,7 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 			// Старые и новые параметры безопасности
 			PACL pOldDACL = nullptr, pNewDACL = nullptr;
 			// Получаем текущий DACL файла
-			if(::GetNamedSecurityInfoA(path.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &pOldDACL, nullptr, &sd) != ERROR_SUCCESS){
+			if(::GetNamedSecurityInfoW(fileName.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &pOldDACL, nullptr, &sd) != ERROR_SUCCESS){
 				// Создаём буфер сообщения ошибки
 				wchar_t message[256] = {0};
 				// Выполняем формирование текста ошибки
@@ -1377,7 +1384,7 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 				return result;
 			}
 			// Применяем новый DACL к файлу
-			if(!(result = (::SetNamedSecurityInfoW((LPWSTR)path.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, pNewDACL, nullptr) == ERROR_SUCCESS))){
+			if(!(result = (::SetNamedSecurityInfoW((LPWSTR) fileName.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, pNewDACL, nullptr) == ERROR_SUCCESS))){
 				// Создаём буфер сообщения ошибки
 				wchar_t message[256] = {0};
 				// Выполняем формирование текста ошибки
