@@ -1359,8 +1359,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			SID_NAME_USE sidType;
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
+			// Выполняем конвертирование название пользователя/группы
+			const wstring & account = ::convert(name);
 			// Первый вызов — получаем размеры буферов
-			::LookupAccountNameA(nullptr, name.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
+			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
@@ -1384,11 +1386,11 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				return result;
 			}
 			// Инициализируем доменное имя пользователя
-			string domain(domainSize, '\0');
+			wstring domain(domainSize, L'\0');
 			// Выделяем память под SID и домен
 			PSID pSid = (PSID) ::LocalAlloc(LPTR, sidSize);
 			// Извлекаем SID пользователя/группы и его доменное имя
-			if(::LookupAccountNameA(nullptr, name.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
+			if(::LookupAccountNameW(nullptr, account.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
 				// Строка SID идентификатора пользователя/доменного имени
 				LPWSTR sid = nullptr;
 				// Выполняем извлечение SID идентификатор пользователя/доменного имени
@@ -1420,8 +1422,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			SID_NAME_USE sidType;
 			// Размер SID-а пользователя и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
+			// Выполняем конвертирование название пользователя/группы
+			const wstring & account = ::convert(name);
 			// Первый вызов — получаем размеры буферов
-			::LookupAccountNameA(nullptr, user.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
+			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
 				// Создаём буфер сообщения ошибки
@@ -1445,11 +1449,11 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				return result;
 			}
 			// Инициализируем доменное имя пользователя
-			string domain(domainSize, '\0');
+			wstring domain(domainSize, L'\0');
 			// Выделяем память под SID и домен
 			PSID pSid = (PSID) ::LocalAlloc(LPTR, sidSize);
 			// Извлекаем SID пользователя и его доменное имя
-			if(!::LookupAccountNameA(nullptr, user.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
+			if(!::LookupAccountNameW(nullptr, account.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
 				// Выводим пустой результат
