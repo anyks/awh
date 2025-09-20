@@ -1176,7 +1176,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			// Выполняем перебор всех групп пользователя
 			for(DWORD i = 0; i < tokenGroups->GroupCount; ++i){
 				// Итоговое название группы пользователя
-				LPSTR usergroup = nullptr;
+				LPWSTR usergroup = nullptr;
 				// Если название группы пользователя мы извлекли успешно
 				if(::ConvertSidToStringSidW(tokenGroups->Groups[i].Sid, &usergroup)){
 					// Добавляем полученное название группы пользователя в список групп
@@ -1187,7 +1187,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			}
 		}
 		// Освобождаем память выделенную для токена группы пользователя
-		LocalFree(tokenGroups);
+		::LocalFree(tokenGroups);
 		// Закрываем токен процесса
 		::CloseHandle(token);
 		// Выводим результат
