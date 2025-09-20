@@ -174,10 +174,10 @@ int32_t main(int32_t argc, char * argv[]){
 
 
 		for(auto & item : gids)
-			cout << " ^^^1 " << fmk.convert(item) << " || " << os.account(item) << endl;
+			cout << " ^^^1 " << fmk.convert(item) << " || " << os.account(item) << " || " << fmk.convert(os.account(os.account(item))) << endl;
 		
 		for(auto & item : os.groups(os.account(uid)))
-			cout << " ^^^2 " << fmk.convert(item) << " || " << os.account(item) << endl;
+			cout << " ^^^2 " << fmk.convert(item) << " || " << os.account(item) << " || " << fmk.convert(os.account(os.account(item))) << endl;
 
 	#endif
 
