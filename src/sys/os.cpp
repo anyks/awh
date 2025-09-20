@@ -1243,7 +1243,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				// Инициализируем доменное имя пользователя
 				wstring domain(domainSize, L'\0');
 				// Извлекаем имя пользователя и его доменное имя
-				if(::LookupAccountSidA(nullptr, pSid, &name[0], &nameSize, &domain[0], &domainSize, &sidType)){
+				if(::LookupAccountSidW(nullptr, pSid, &name[0], &nameSize, &domain[0], &domainSize, &sidType)){
 					// Если доменное имя установлено
 					if(!domain.empty()){
 						/**
