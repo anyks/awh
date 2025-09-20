@@ -1263,15 +1263,14 @@ awh::OS::family_t awh::OS::family() const noexcept {
 								if(size > 0){
 									// Добавляем разделитель
 									result.append(1, '\\');
-									
-									/*
+									// Запоминаем смещение
+									const int32_t offset = result.size();
 									// Выделяем память для имени пользователя
-									result.resize(result.size() + static_cast <size_t> (size), 0);
+									result.resize(size + offset, 0);
 									// Выполняем извлечение имени пользователя
-									if(!::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), result.data() + result.size(), size, nullptr, nullptr))
+									if(!::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), result.data() + offset, size, nullptr, nullptr))
 										// Выполняем сброс результата
 										result.clear();
-									*/
 								}
 							}
 						}
