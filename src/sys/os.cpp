@@ -317,17 +317,17 @@ using namespace std;
 	 */
 	static string wstringToUTF8(const wstring & text) noexcept {
 		// Результат работы функции
-		wstring result = L"";
+		string result = "";
 		// Если текст для конвертации передан
 		if(!text.empty()){
 			// Получаем размер результирующего буфера данных в кодировке UTF-8
-			const int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
+			const int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0, nullptr, nullptr);
 			// Если размер буфера данных получен
 			if(size > 0){
 				// Выделяем данные для результирующего буфера данных
 				result.resize(static_cast <size_t> (size), 0);
 				// Если конвертация буфера текстовых данных в UTF-8 не выполнена
-				if(!::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
+				if(!::WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), result.data(), static_cast <int32_t> (result.size()), nullptr, nullptr)){
 					// Выполняем удаление результирующего буфера данных
 					result.clear();
 					// Выполняем удаление выделенной памяти
