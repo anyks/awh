@@ -1369,6 +1369,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
 			if(::GetLastError() != ERROR_INSUFFICIENT_BUFFER){
+				
+				cout << " !!!!!!!! " << name << " || " << ::convert(::convert(name)) << endl;
+				
 				// Создаём буфер сообщения ошибки
 				wchar_t message[256] = {0};
 				// Выполняем формирование текста ошибки
