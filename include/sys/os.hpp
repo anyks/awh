@@ -48,6 +48,7 @@
 	 * Подключаем основные заголовочные файлы
 	 */
 	#include <windows.h>
+	#include <sddl.h>
 	#include <process.h>
 	#include <processthreadsapi.h>
 	/**
