@@ -1060,7 +1060,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			// Итоговое имя пользователя
 			LPSTR username = nullptr;
 			// Если имя пользователя мы извлекли успешно
-			if(::ConvertSidToStringSidW(tokenUser->User.Sid, &username)){
+			if(::ConvertSidToStringSidA(tokenUser->User.Sid, &username)){
 				// Запоминаем итоговое имя пользователя
 				result = username;
 				// Освобождаем память, выделенную ConvertSidToStringSid
