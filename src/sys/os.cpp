@@ -1257,10 +1257,8 @@ awh::OS::family_t awh::OS::family() const noexcept {
 							result.resize(size, 0);
 							// Выполняем извлечение доменного имени
 							if(::WideCharToMultiByte(CP_UTF8, 0, domain.data(), static_cast <int32_t> (domain.size()), result.data(), size, nullptr, nullptr)){
-								
-								/*
 								// Получаем размер имени пользователя
-								size = ::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
+								size = ::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
 								// Если размер получен успешно
 								if(size > 0){
 									// Добавляем разделитель
@@ -1268,9 +1266,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 									// Выделяем память для имени пользователя
 									result.resize(result.size() + static_cast <size_t> (size), 0);
 									// Выполняем извлечение имени пользователя
-									::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size())), &result[0] + result.size(), size, nullptr, nullptr);
+									if(!::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), result.data() + result.size(), size, nullptr, nullptr))
+										// Выполняем сброс результата
+										result.clear();
 								}
-								*/
 							}
 						}
 					// Если доменное имя не получено
