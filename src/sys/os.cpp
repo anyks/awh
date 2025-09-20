@@ -1244,16 +1244,13 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				string domain(domainSize, '\0');
 				// Извлекаем имя пользователя и его доменное имя
 				if(::LookupAccountSidA(nullptr, pSid, &name[0], &nameSize, &domain[0], &domainSize, &sidType)){
-					
-					cout << " ************ " << domain << " == " << name << endl;
-					
 					/**
 					 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
 					 */
 					// Если доменное имя пользователя получено
 					if(!domain.empty() && (domain[0] != '\0'))
 						// Формируем итоговый результат
-						result.assign((domain + "\\" + name).begin(), (domain + "\\" + name).end());
+						result.assign(domain + "\\" + name);
 					// Если доменное имя пользователя не получено
 					else result.assign(name.begin(), name.end());
 				}
