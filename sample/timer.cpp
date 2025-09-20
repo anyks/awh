@@ -173,8 +173,14 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " !!!!3 " << fmk.convert(os.account(os.account(uid))) << endl;
 
 
-		for(auto & item : gids)
+		for(auto & item : gids){
 			cout << " ^^^1 " << fmk.convert(item) << " || " << os.account(item) << " || " << fmk.convert(os.account(os.account(item))) << endl;
+
+			const auto str = os.account(item);
+
+			cout << " ===2 " << str << endl;
+			cout << " ===3 " << os.account(str).size() << endl;
+		}
 		
 		for(auto & item : os.groups(os.account(uid)))
 			cout << " ^^^2 " << fmk.convert(item) << " || " << os.account(item) << " || " << fmk.convert(os.account(os.account(item))) << endl;

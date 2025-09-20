@@ -1399,9 +1399,6 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				LPWSTR sid = nullptr;
 				// Выполняем извлечение SID идентификатор пользователя/доменного имени
 				if(::ConvertSidToStringSidW(pSid, &sid)){
-
-					cout << " ++++++++++++ " << (sid != nullptr) << " == " << wcslen(sid) << endl;
-
 					// Если результат мы получили
 					if((sid != nullptr) && (sid[0] != L'\0'))
 						// Выполняем получение SID-а
