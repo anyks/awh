@@ -1250,23 +1250,27 @@ awh::OS::family_t awh::OS::family() const noexcept {
 						 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
 						 */
 						// Получаем размер доменного имени пользователя
-						int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, &domain[0], static_cast <int32_t> (domain.size()), nullptr, 0, nullptr, nullptr);
+						int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, domain.data(), static_cast <int32_t> (domain.size()), nullptr, 0, nullptr, nullptr);
 						// Если размер получен успешно
 						if(size > 0){
 							// Выделяем память для доменного имени
 							result.resize(size, 0);
 							// Выполняем извлечение доменного имени
-							::WideCharToMultiByte(CP_UTF8, 0, &domain[0], static_cast <int32_t> (domain.size())), &result[0], size, nullptr, nullptr);
-							// Получаем размер имени пользователя
-							size = ::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
-							// Если размер получен успешно
-							if(size > 0){
-								// Добавляем разделитель
-								result.append(1, '\\');
-								// Выделяем память для имени пользователя
-								result.resize(result.size() + static_cast <size_t> (size), 0);
-								// Выполняем извлечение имени пользователя
-								::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size())), &result[0] + result.size(), size, nullptr, nullptr);
+							if(::WideCharToMultiByte(CP_UTF8, 0, domain.data(), static_cast <int32_t> (domain.size()), result.data(), static_cast <int32_t> (result.size()), nullptr, nullptr)){
+								
+								/*
+								// Получаем размер имени пользователя
+								size = ::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
+								// Если размер получен успешно
+								if(size > 0){
+									// Добавляем разделитель
+									result.append(1, '\\');
+									// Выделяем память для имени пользователя
+									result.resize(result.size() + static_cast <size_t> (size), 0);
+									// Выполняем извлечение имени пользователя
+									::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size())), &result[0] + result.size(), size, nullptr, nullptr);
+								}
+								*/
 							}
 						}
 					// Если доменное имя не получено
