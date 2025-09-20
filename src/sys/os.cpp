@@ -305,6 +305,39 @@ using namespace std;
 		// Сообщаем, что ничего не установленно
 		return false;
 	}
+/**
+ * Для операционной системы MS Windows
+ */
+#else
+	/**
+	 * @brief Функция конвертация строки из wstring в string
+	 *
+	 * @param text текст для конвертации
+	 * @return     результат проверки
+	 */
+	static string wstringToUTF8(const wstring & text) noexcept {
+		// Результат работы функции
+		wstring result = L"";
+		// Если текст для конвертации передан
+		if(!text.empty()){
+			// Получаем размер результирующего буфера данных в кодировке UTF-8
+			const int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), 0, 0, 0, 0);
+			// Если размер буфера данных получен
+			if(size > 0){
+				// Выделяем данные для результирующего буфера данных
+				result.resize(static_cast <size_t> (size), 0);
+				// Если конвертация буфера текстовых данных в UTF-8 не выполнена
+				if(!::WideCharToMultiByte(CP_UTF8, 0, buffer.data(), static_cast <int32_t> (buffer.size()), result.data(), static_cast <int32_t> (result.size()), 0, 0)){
+					// Выполняем удаление результирующего буфера данных
+					result.clear();
+					// Выполняем удаление выделенной памяти
+					string().swap(result);
+				}
+			}
+		}
+		// Выводим результат
+		return result;
+	}
 #endif
 /**
  * @brief isAdmin Метод проверпи запущено ли приложение под суперпользователем
@@ -1249,45 +1282,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 						/**
 						 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
 						 */
-						// Получаем размер доменного имени пользователя
-						int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, domain.data(), static_cast <int32_t> (domain.size()), nullptr, 0, nullptr, nullptr);
-						// Если размер получен успешно
-						if(size > 0){
-							// Выделяем память для доменного имени
-							result.resize(size, 0);
-							// Выполняем извлечение доменного имени
-							if(::WideCharToMultiByte(CP_UTF8, 0, domain.data(), static_cast <int32_t> (domain.size()), result.data(), size, nullptr, nullptr)){
-								// Получаем размер имени пользователя
-								size = ::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
-								// Если размер получен успешно
-								if(size > 0){
-									// Добавляем разделитель
-									result.append(1, '\\');
-									// Запоминаем смещение
-									const int32_t offset = result.size();
-									// Выделяем память для имени пользователя
-									result.resize(size + offset, 0);
-									// Выполняем извлечение имени пользователя
-									if(!::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), result.data() + offset, size, nullptr, nullptr))
-										// Выполняем сброс результата
-										result.clear();
-								}
-							}
-						}
+						result = (::wstringToUTF8(domain) + "\\" + ::wstringToUTF8(name));
 					// Если доменное имя не получено
-					} else {
-						// Получаем размер имени пользователя
-						int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
-						// Если размер получен успешно
-						if(size > 0){
-							// Выделяем память для имени пользователя
-							result.resize(size, 0);
-							// Выполняем извлечение имени пользователя
-							if(!::WideCharToMultiByte(CP_UTF8, 0, name.data(), static_cast <int32_t> (name.size()), result.data(), size, nullptr, nullptr))
-								// Выполняем сброс результата
-								result.clear();
-						}
-					}
+					} else result = ::wstringToUTF8(name);
 				}
 				// Освобождаем память выделенную под идентификатор пользователя
 				::LocalFree(pSid);
