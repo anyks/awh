@@ -350,13 +350,13 @@ using namespace std;
 		// Если текст для конвертации передан
 		if(!text.empty()){
 			// Получаем размер результирующего буфера данных в кодировке UTF-8
-			const int32_t size = ::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
+			const int32_t size = ::MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), 0, 0);
 			// Если размер буфера данных получен
 			if(size > 0){
 				// Выделяем данные для результирующего буфера данных
 				result.resize(static_cast <size_t> (size), 0);
 				// Если конвертация буфера текстовых данных в UTF-8 не выполнена
-				if(!::MultiByteToWideChar(1251, 0, text.data(), static_cast <int32_t> (text.size()), result.data(), static_cast <int32_t> (result.size()))){
+				if(!::MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast <int32_t> (text.size()), result.data(), static_cast <int32_t> (result.size()))){
 					// Выполняем удаление результирующего буфера данных
 					result.clear();
 					// Выполняем удаление выделенной памяти
@@ -367,6 +367,27 @@ using namespace std;
 		// Выводим результат
 		return result;
 	}
+
+	std::wstring utf8_to_wstring(const std::string& utf8Str) {
+		if (utf8Str.empty()) return std::wstring();
+
+		// Получаем размер буфера для wchar_t строки (в символах)
+		int wideSize = MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, nullptr, 0);
+		if (wideSize == 0) {
+			return std::wstring(); // Ошибка конвертации
+		}
+
+		std::wstring wideStr(wideSize, L'\0');
+		MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, &wideStr[0], wideSize);
+
+		// Убираем завершающий нулевой символ, если он есть
+		if (!wideStr.empty() && wideStr.back() == L'\0') {
+			wideStr.pop_back();
+		}
+
+		return wideStr;
+	}
+
 #endif
 /**
  * @brief isAdmin Метод проверпи запущено ли приложение под суперпользователем
