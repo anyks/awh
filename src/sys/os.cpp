@@ -1239,20 +1239,48 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					return result;
 				}
 				// Инициализируем имя пользователя
-				string name(nameSize, '\0');
+				wstring name(nameSize, L'\0');
 				// Инициализируем доменное имя пользователя
-				string domain(domainSize, '\0');
+				wstring domain(domainSize, L'\0');
 				// Извлекаем имя пользователя и его доменное имя
 				if(::LookupAccountSidA(nullptr, pSid, &name[0], &nameSize, &domain[0], &domainSize, &sidType)){
-					/**
-					 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
-					 */
-					// Если доменное имя пользователя получено
-					if(!domain.empty() && (domain[0] != '\0'))
-						// Формируем итоговый результат
-						result.assign(domain + "\\" + name);
-					// Если доменное имя пользователя не получено
-					else result.assign(name.begin(), name.end());
+					// Если доменное имя установлено
+					if(!domain.empty()){
+						/**
+						 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
+						 */
+						// Получаем размер доменного имени пользователя
+						int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, &domain[0], static_cast <int32_t> (domain.size()), nullptr, 0, nullptr, nullptr);
+						// Если размер получен успешно
+						if(size > 0){
+							// Выделяем память для доменного имени
+							result.resize(size, 0);
+							// Выполняем извлечение доменного имени
+							::WideCharToMultiByte(CP_UTF8, 0, &domain[0], static_cast <int32_t> (domain.size())), &result[0], size, nullptr, nullptr);
+							// Получаем размер имени пользователя
+							size = ::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
+							// Если размер получен успешно
+							if(size > 0){
+								// Добавляем разделитель
+								result.append(1, '\\');
+								// Выделяем память для имени пользователя
+								result.resize(result.size() + static_cast <size_t> (size), 0);
+								// Выполняем извлечение имени пользователя
+								::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size())), &result[0] + result.size(), size, nullptr, nullptr);
+							}
+						}
+					// Если доменное имя не получено
+					} else {
+						// Получаем размер имени пользователя
+						int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size()), nullptr, 0, nullptr, nullptr);
+						// Если размер получен успешно
+						if(size > 0){
+							// Выделяем память для имени пользователя
+							result.resize(size, 0);
+							// Выполняем извлечение имени пользователя
+							::WideCharToMultiByte(CP_UTF8, 0, &name[0], static_cast <int32_t> (name.size())), &result[0], size, nullptr, nullptr);
+						}
+					}
 				}
 				// Освобождаем память выделенную под идентификатор пользователя
 				::LocalFree(pSid);
