@@ -38,6 +38,8 @@
 	#include <pwd.h>
 	#include <grp.h>
 	#include <sys/resource.h>
+
+	#include <iostream>
 /**
  * Для операционной системы MS Windows
  */
