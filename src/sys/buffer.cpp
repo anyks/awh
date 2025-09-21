@@ -112,10 +112,15 @@ template void awh::Buffer::pop <int32_t> () noexcept;
 template void awh::Buffer::pop <uint32_t> () noexcept;
 template void awh::Buffer::pop <int64_t> () noexcept;
 template void awh::Buffer::pop <uint64_t> () noexcept;
-template void awh::Buffer::pop <size_t> () noexcept;
-template void awh::Buffer::pop <ssize_t> () noexcept;
 template void awh::Buffer::pop <float> () noexcept;
 template void awh::Buffer::pop <double> () noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template void awh::Buffer::pop <size_t> () noexcept;
+	template void awh::Buffer::pop <ssize_t> () noexcept;
+#endif
 /**
  * @brief Шаблон для метода получения количества элементов в бинарном буфере
  *
@@ -146,10 +151,15 @@ template size_t awh::Buffer::count <int32_t> () const noexcept;
 template size_t awh::Buffer::count <uint32_t> () const noexcept;
 template size_t awh::Buffer::count <int64_t> () const noexcept;
 template size_t awh::Buffer::count <uint64_t> () const noexcept;
-template size_t awh::Buffer::count <size_t> () const noexcept;
-template size_t awh::Buffer::count <ssize_t> () const noexcept;
 template size_t awh::Buffer::count <float> () const noexcept;
 template size_t awh::Buffer::count <double> () const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Buffer::count <size_t> () const noexcept;
+	template size_t awh::Buffer::count <ssize_t> () const noexcept;
+#endif
 /**
  * @brief Шаблон для метода извлечения нижнего значения в буфере
  *
@@ -185,10 +195,15 @@ template int32_t awh::Buffer::back() const noexcept;
 template uint32_t awh::Buffer::back() const noexcept;
 template int64_t awh::Buffer::back() const noexcept;
 template uint64_t awh::Buffer::back() const noexcept;
-template size_t awh::Buffer::back() const noexcept;
-template ssize_t awh::Buffer::back() const noexcept;
 template float awh::Buffer::back() const noexcept;
 template double awh::Buffer::back() const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Buffer::back() const noexcept;
+	template ssize_t awh::Buffer::back() const noexcept;
+#endif
 /**
  * @brief Шаблон для метода извлечения верхнего значения в буфере
  *
@@ -224,10 +239,15 @@ template int32_t awh::Buffer::front() const noexcept;
 template uint32_t awh::Buffer::front() const noexcept;
 template int64_t awh::Buffer::front() const noexcept;
 template uint64_t awh::Buffer::front() const noexcept;
-template size_t awh::Buffer::front() const noexcept;
-template ssize_t awh::Buffer::front() const noexcept;
 template float awh::Buffer::front() const noexcept;
 template double awh::Buffer::front() const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Buffer::front() const noexcept;
+	template ssize_t awh::Buffer::front() const noexcept;
+#endif
 /**
  * @brief Шаблон для метода извлечения содержимого контейнера по его индексу
  *
@@ -264,10 +284,15 @@ template int32_t awh::Buffer::at(const size_t) const noexcept;
 template uint32_t awh::Buffer::at(const size_t) const noexcept;
 template int64_t awh::Buffer::at(const size_t) const noexcept;
 template uint64_t awh::Buffer::at(const size_t) const noexcept;
-template size_t awh::Buffer::at(const size_t) const noexcept;
-template ssize_t awh::Buffer::at(const size_t) const noexcept;
 template float awh::Buffer::at(const size_t) const noexcept;
 template double awh::Buffer::at(const size_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Buffer::at(const size_t) const noexcept;
+	template ssize_t awh::Buffer::at(const size_t) const noexcept;
+#endif
 /**
  * @brief Шаблон для метода установки значений в уже существующем буфере
  *
@@ -300,10 +325,15 @@ template void awh::Buffer::set(const int32_t, const size_t) noexcept;
 template void awh::Buffer::set(const uint32_t, const size_t) noexcept;
 template void awh::Buffer::set(const int64_t, const size_t) noexcept;
 template void awh::Buffer::set(const uint64_t, const size_t) noexcept;
-template void awh::Buffer::set(const size_t, const size_t) noexcept;
-template void awh::Buffer::set(const ssize_t, const size_t) noexcept;
 template void awh::Buffer::set(const float, const size_t) noexcept;
 template void awh::Buffer::set(const double, const size_t) noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template void awh::Buffer::set(const size_t, const size_t) noexcept;
+	template void awh::Buffer::set(const ssize_t, const size_t) noexcept;
+#endif
 /**
  * @brief Получения данных указанного элемента в очереди
  *
