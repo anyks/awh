@@ -1827,9 +1827,9 @@ template uint64_t awh::Framework::timestamp <uint64_t> (const chrono_t) const no
 template float awh::Framework::timestamp <float> (const chrono_t) const noexcept;
 template double awh::Framework::timestamp <double> (const chrono_t) const noexcept;
 /**
- * Если операционной системой является MacOS X, Linux или MS Windows
+ * Если операционной системой является MacOS X или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+#if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::Framework::timestamp <size_t> (const chrono_t) const noexcept;
 	template ssize_t awh::Framework::timestamp <ssize_t> (const chrono_t) const noexcept;
 #endif
@@ -2483,9 +2483,9 @@ template size_t awh::Framework::size <uint64_t> (const uint64_t) const noexcept;
 template size_t awh::Framework::size <float> (const float) const noexcept;
 template size_t awh::Framework::size <double> (const double) const noexcept;
 /**
- * Если операционной системой является MacOS X, Linux или MS Windows
+ * Если операционной системой является MacOS X или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+#if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::Framework::size <size_t> (const size_t) const noexcept;
 	template size_t awh::Framework::size <ssize_t> (const ssize_t) const noexcept;
 #endif
@@ -2581,9 +2581,9 @@ template bool awh::Framework::compare <uint64_t> (const uint64_t, const uint64_t
 template bool awh::Framework::compare <float> (const float, const float) const noexcept;
 template bool awh::Framework::compare <double> (const double, const double) const noexcept;
 /**
- * Если операционной системой является MacOS X, Linux или MS Windows
+ * Если операционной системой является MacOS X или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+#if __APPLE__ || __MACH__ || __Linux__
 	template bool awh::Framework::compare <size_t> (const size_t, const size_t) const noexcept;
 	template bool awh::Framework::compare <ssize_t> (const ssize_t, const ssize_t) const noexcept;
 #endif
@@ -2685,9 +2685,9 @@ template string awh::Framework::itoa <uint64_t> (const uint64_t, const uint8_t) 
 template string awh::Framework::itoa <float> (const float, const uint8_t) const noexcept;
 template string awh::Framework::itoa <double> (const double, const uint8_t) const noexcept;
 /**
- * Если операционной системой является MacOS X, Linux или MS Windows
+ * Если операционной системой является MacOS X или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+#if __APPLE__ || __MACH__ || __Linux__
 	template string awh::Framework::itoa <size_t> (const size_t, const uint8_t) const noexcept;
 	template string awh::Framework::itoa <ssize_t> (const ssize_t, const uint8_t) const noexcept;
 #endif
@@ -2902,9 +2902,9 @@ template uint64_t awh::Framework::atoi <uint64_t> (const string &, const uint8_t
 template float awh::Framework::atoi <float> (const string &, const uint8_t) const noexcept;
 template double awh::Framework::atoi <double> (const string &, const uint8_t) const noexcept;
 /**
- * Если операционной системой является MacOS X, Linux или MS Windows
+ * Если операционной системой является MacOS X или Linux
  */
-#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+#if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::Framework::atoi <size_t> (const string &, const uint8_t) const noexcept;
 	template ssize_t awh::Framework::atoi <ssize_t> (const string &, const uint8_t) const noexcept;
 #endif
