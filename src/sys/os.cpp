@@ -1363,11 +1363,14 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
 			const wstring & account = ::convert(name);
-			
 
-			std::wstring domain2 = L"BUILTIN";
-			std::wstring groupName = L"Администраторы";
 
+			// std::wstring domain2 = L"BUILTIN";
+			// std::wstring groupName = L"Администраторы";
+
+			const wstring account = L"Администраторы";
+
+			/*
 			// Сначала получаем SID для группы в указанном "домене"
 			if (LookupAccountNameW(nullptr, groupName.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType)) {
 				
@@ -1388,8 +1391,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					}
 				}
 			}
-			
-			
+			*/
+
+
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
