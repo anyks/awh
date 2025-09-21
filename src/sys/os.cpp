@@ -97,7 +97,7 @@ using namespace std;
 			// Выделяем память для результирующего буфера данных
 			result.resize(buffer.size() / sizeof(T));
 			// Выполняем копирование полученного буфера данных
-			::memcpy(result.data(), buffer.data(), buffer.size());
+			::memcpy(reinterpret_cast <char *> (result.data()), reinterpret_cast <const char *> (buffer.data()), buffer.size());
 		}
 	}
 	/**
