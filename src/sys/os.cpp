@@ -1362,38 +1362,18 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
-			// const wstring & account = ::convert(name);
+			wstring account = ::convert(name), actualDomain = L"";
+			// Выполняем поиск разделителя
+			const size_t pos = account.find("\\");
+			// Если позиция разделителя доменного имя найдена
+			if(pos != wstring::npos){
+				// Извлекаем доменное имя
+				actualDomain = account.substr(0, pos);
+				// Удаляем из аккаунта доменное имя
+				account.erase(0, pos + 1);
 
-
-			// std::wstring domain2 = L"BUILTIN";
-			// std::wstring groupName = L"Администраторы";
-
-			const wstring account = L"Администраторы";
-
-			/*
-			// Сначала получаем SID для группы в указанном "домене"
-			if (LookupAccountNameW(nullptr, groupName.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType)) {
-				
-				::fprintf(stdout, "%s\n\n", "***************1");
-				
-				// Затем проверяем, что домен совпадает
-				std::wstring returnedDomain(domainSize, L'\0');
-				if (LookupAccountNameW(nullptr, groupName.c_str(), nullptr, &sidSize, &returnedDomain[0], &domainSize, &sidType)) {
-					
-					::fprintf(stdout, "%s\n\n", "***************2");
-					
-					if (returnedDomain == domain2) {
-						// Успех! Это именно та группа, которую вы искали.
-
-						::fprintf(stdout, "%s\n\n", "YES!!!!!!!!!!!!!!!!");
-					} else {
-						::fprintf(stdout, "%s\n\n", "NO!!!!!!!!!!!!!!!!");
-					}
-				}
+				cout << " ^^^^^^^^^^^ " << ::convert(account) << " == " << ::convert(actualDomain) << endl;
 			}
-			*/
-
-
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
@@ -1427,7 +1407,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				// Строка SID идентификатора пользователя/доменного имени
 				LPWSTR sid = nullptr;
 				// Выполняем извлечение SID идентификатор пользователя/доменного имени
-				if(::ConvertSidToStringSidW(pSid, &sid)){
+				if(::ConvertSidToStringSidW(pSid, &sid) && (domain.compare(actualDomain) == 0)){
 					// Если результат мы получили
 					if((sid != nullptr) && (sid[0] != L'\0'))
 						// Выполняем получение SID-а
