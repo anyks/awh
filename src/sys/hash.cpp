@@ -959,7 +959,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 						// Выполняем удаление потока
 						::ZSTD_freeCStream(ctx);
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
+						::fprintf(stderr, "ERROR! Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -994,7 +994,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 								// Выполняем удаление потока
 								::ZSTD_freeCStream(ctx);
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
+								::fprintf(stderr, "ERROR! Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 								// Выполняем очистку результата
 								result.clear();
 								// Выходим из функции
@@ -1015,7 +1015,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 						// Выполняем удаление потока
 						::ZSTD_freeCStream(ctx);
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
+						::fprintf(stderr, "ERROR! Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -1042,7 +1042,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					// Если мы получили ошибку
 					if(::ZSTD_isError(actual)){
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(actual));
+						::fprintf(stderr, "ERROR! Zstandard: %s\n\n", ::ZSTD_getErrorName(actual));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -1070,7 +1070,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 						// Выполняем удаление потока
 						::ZSTD_freeDStream(ctx);
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
+						::fprintf(stderr, "ERROR! Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции
@@ -1105,7 +1105,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 								// Выполняем удаление потока
 								::ZSTD_freeDStream(ctx);
 								// Выводим сообщение об ошибке
-								::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
+								::fprintf(stderr, "ERROR! Zstandard: %s\n\n", ::ZSTD_getErrorName(status));
 								// Выполняем очистку результата
 								result.clear();
 								// Выходим из функции
@@ -1133,7 +1133,7 @@ static void zstd(const char * buffer, const size_t size, const uint32_t level, c
 					// Если мы получили ошибку
 					if(::ZSTD_isError(actual)){
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Zstandard: %s\n\n", ::ZSTD_getErrorName(actual));
+						::fprintf(stderr, "ERROR! Zstandard: %s\n\n", ::ZSTD_getErrorName(actual));
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции

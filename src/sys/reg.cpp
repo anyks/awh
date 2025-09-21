@@ -131,13 +131,13 @@ bool awh::RegExp::test(const char * text, const size_t size, const exp_t & exp) 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -215,13 +215,13 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", "Memory allocation error");
+				::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
@@ -234,13 +234,13 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -320,13 +320,13 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", "Memory allocation error");
+				::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
@@ -339,13 +339,13 @@ vector <std::pair <size_t, size_t>> awh::RegExp::match(const char * text, const 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -471,13 +471,13 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n", "Memory allocation error");
+				::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
 			#endif
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
@@ -490,13 +490,13 @@ awh::RegExp::exp_t awh::RegExp::build(const string & pattern, const vector <opti
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}

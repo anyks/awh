@@ -91,13 +91,13 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -156,13 +156,13 @@ void awh::Version::set(const string & ver) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}

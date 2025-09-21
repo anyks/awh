@@ -130,13 +130,13 @@ void awh::Chrono::clear() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 }
@@ -196,13 +196,13 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 		// Выполняем сброс результата
 		result = 0;
@@ -302,13 +302,13 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	// Выполняем сброс значения даты
@@ -346,13 +346,13 @@ void awh::Chrono::compile(const string & expression, const format_t format) noex
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, string(buffer, size).c_str());
+						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, string(buffer, size).c_str());
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						::fprintf(stderr, "%s\n", string(buffer, size).c_str());
+						::fprintf(stderr, "ERROR! %s\n", string(buffer, size).c_str());
 					#endif
 				}
 				// Выполняем удаление созданного объекта регулярного выражения
@@ -955,13 +955,13 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -1084,13 +1084,13 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -1266,13 +1266,13 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -2983,13 +2983,13 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3377,13 +3377,13 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3482,13 +3482,13 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3592,13 +3592,13 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3632,13 +3632,13 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3682,13 +3682,13 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3740,13 +3740,13 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3789,13 +3789,13 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -3859,13 +3859,13 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3906,13 +3906,13 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -3943,13 +3943,13 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -4384,13 +4384,13 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -4709,13 +4709,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -5483,13 +5483,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -6325,13 +6325,13 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const string & zone) const noexce
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 			// Результат работы функции
 			result = zone_t::NONE;
@@ -6377,13 +6377,13 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -7770,13 +7770,13 @@ int32_t awh::Chrono::getTimeZone(const string & zone) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 			// Результат работы функции
 			result = this->_dt.offset;
@@ -7818,13 +7818,13 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -7896,13 +7896,13 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -7932,13 +7932,13 @@ void awh::Chrono::clearTimeZones() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 }
@@ -7966,13 +7966,13 @@ void awh::Chrono::addTimeZone(const string & name, const int32_t offset) noexcep
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 }
@@ -8081,13 +8081,13 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -8320,13 +8320,13 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -9035,13 +9035,13 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
@@ -9894,13 +9894,13 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -10822,13 +10822,13 @@ string awh::Chrono::strip(const string & date, const string & format1, const str
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "%s\n\n", error.what());
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}

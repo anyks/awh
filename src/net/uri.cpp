@@ -164,13 +164,13 @@ awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -181,13 +181,13 @@ awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -273,13 +273,13 @@ awh::URI::URL & awh::URI::URL::operator = (const url_t & url) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -290,13 +290,13 @@ awh::URI::URL & awh::URI::URL::operator = (const url_t & url) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 	// Выводим результат
@@ -435,13 +435,13 @@ awh::URI::URL::URL(url_t && url) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -452,13 +452,13 @@ awh::URI::URL::URL(url_t && url) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 }
@@ -541,13 +541,13 @@ awh::URI::URL::URL(const url_t & url) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -558,13 +558,13 @@ awh::URI::URL::URL(const url_t & url) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
 			// Выводим сообщение об ошибке
-			::fprintf(stderr, "%s\n\n", error.what());
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
 		#endif
 	}
 }

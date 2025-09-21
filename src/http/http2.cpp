@@ -76,13 +76,13 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
 	 */
 	#if DEBUG_MODE
 		// Выводим сообщение об ошибке
-		::fprintf(stderr, "Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, buffer.c_str());
+		::fprintf(stderr, "DEBUG! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, buffer.c_str());
 	/**
 	* Если режим отладки не включён
 	*/
 	#else
 		// Выводим сообщение об ошибке
-		::fprintf(stderr, "Debug:%s\n\n", buffer.c_str());
+		::fprintf(stderr, "DEBUG! %s\n\n", buffer.c_str());
 	#endif
 }
 /**

@@ -136,51 +136,6 @@ int32_t main(int32_t argc, char * argv[]){
 	log.name("Timer");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
-
-	os_t os;
-
-	/**
-	 * Для операционной системы не являющейся MS Windows
-	 */
-	#if !_WIN32 && !_WIN64
-
-		const uid_t uid = os.user();
-		const gid_t gid = os.group();
-		const string & user = os.user(uid);
-		const string & group = os.group(gid);
-
-		cout << " === " << uid << " == " << gid << " || " << user << " == " << group << " || " << os.group(group) << " || " << os.uid(user) << " == " << os.gid(user) << endl;
-
-		for(auto & item : os.groups())
-			cout << " ^^^1 " << os.group(item) << endl;
-
-		for(auto & item : os.groups(user))
-			cout << " ^^^2 " << os.group(item) << endl;
-
-		for(auto & item : os.sysctl <vector <uint32>> ("hw.cachesize"))
-			cout << " -----3 " << item << endl;
-
-	/**
-	 * Для операционной системы MS Windows
-	 */
-	#else
-
-		const wstring & uid = os.user();
-		const vector <wstring> & gids = os.groups();
-
-		cout << " !!!!1 " << fmk.convert(uid) << endl;
-		cout << " !!!!2 " << os.account(uid) << endl;
-		cout << " !!!!3 " << fmk.convert(os.account(os.account(uid))) << endl;
-
-
-		for(auto & item : gids)
-			cout << " ^^^1 " << fmk.convert(item) << " || " << os.account(item) << " || " << fmk.convert(os.account(os.account(item))) << endl;
-		
-		for(auto & item : os.groups(os.account(uid)))
-			cout << " ^^^2 " << fmk.convert(item) << " || " << os.account(item) << " || " << fmk.convert(os.account(os.account(item))) << endl;
-
-	#endif
-
 	// Устанавливаем функцию обратного вызова на запуск системы
 	dynamic_cast <awh::core_t &> (timer).on <void (const awh::core_t::status_t)> ("status", &Executor::status, &executor, _1, &timer);
 	// Выполняем запуск таймера
