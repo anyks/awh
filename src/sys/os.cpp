@@ -149,7 +149,7 @@ using namespace std;
 			 */
 			#elif __linux__
 				// Объект работы с операционной системой
-				os_t os;
+				awh::os_t os;
 				// Создаём комманду запуска
 				string command = "sysctl";
 				// Добавляем разделитель
