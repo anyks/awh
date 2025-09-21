@@ -1758,7 +1758,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template uint32_t awh::OS::sysctl <uint32_t> (const string &) const noexcept;
 	template int64_t awh::OS::sysctl <int64_t> (const string &) const noexcept;
 	template uint64_t awh::OS::sysctl <uint64_t> (const string &) const noexcept;
-	template size_t awh::OS::sysctl <size_t> (const string &) const noexcept;
+	// template size_t awh::OS::sysctl <size_t> (const string &) const noexcept;
 	template ssize_t awh::OS::sysctl <ssize_t> (const string &) const noexcept;
 	template float awh::OS::sysctl <float> (const string &) const noexcept;
 	template double awh::OS::sysctl <double> (const string &) const noexcept;
