@@ -1759,6 +1759,21 @@ awh::OS::family_t awh::OS::family() const noexcept {
 		return false;
 	}
 	/**
+	 * @brief Метод установки настроек ядра операционной системы
+	 *
+	 * @param name  название записи для установки настроек
+	 * @param value значение записи для установки настроек
+	 * @return      результат выполнения установки
+	 */
+	bool awh::OS::sysctl(const string & name, const char * value) const noexcept {
+		// Если название записи для установки настроек передано
+		if(!name.empty())
+			// Выполняем установку буфера бинарных данных
+			return ::sysctl(name, value, ::strlen(value));
+		// Сообщаем, что ничего не установленно
+		return false;
+	}
+	/**
 	 * @brief Шаблон метода установки настроек ядра операционной системы
 	 *
 	 * @tparam T Тип данных списка для установки
@@ -1841,6 +1856,33 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	 * @return      результат выполнения установки
 	 */
 	bool awh::OS::sysctl(const string & name, const vector <string> & items) const noexcept {
+		// Если название записи для установки настроек передано
+		if(!name.empty()){
+			// Выполняем преобразование числа в строку
+			string param = "";
+			// Выполняем перебор всего списка параметров
+			for(auto & item : items){
+				// Если строка уже сформированна
+				if(!param.empty())
+					// Выполняем добавление пробела
+					param.append(1, ' ');
+				// Добавляем полученное значение в список
+				param.append(item);
+			}
+			// Выполняем установку буфера бинарных данных
+			return ::sysctl(name, param.c_str(), param.size());
+		}
+		// Сообщаем, что ничего не установленно
+		return false;
+	}
+	/**
+	 * @brief Метод установки настроек ядра операционной системы
+	 *
+	 * @param name  название записи для установки настроек
+	 * @param items значение записи для установки настроек
+	 * @return      результат выполнения установки
+	 */
+	bool awh::OS::sysctl(const string & name, const vector <const char *> & items) const noexcept {
 		// Если название записи для установки настроек передано
 		if(!name.empty()){
 			// Выполняем преобразование числа в строку

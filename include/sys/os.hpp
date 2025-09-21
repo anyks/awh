@@ -331,6 +331,14 @@ namespace awh {
 			 */
 			bool sysctl(const string & name, const string & value) const noexcept;
 			/**
+			 * @brief Метод установки настроек ядра операционной системы
+			 *
+			 * @param name  название записи для установки настроек
+			 * @param value значение записи для установки настроек
+			 * @return      результат выполнения установки
+			 */
+			bool sysctl(const string & name, const char * value) const noexcept;
+			/**
 			 * @brief Шаблон метода установки настроек ядра операционной системы
 			 *
 			 * @tparam T Тип данных списка для установки
@@ -352,6 +360,14 @@ namespace awh {
 			 * @return      результат выполнения установки
 			 */
 			bool sysctl(const string & name, const vector <string> & items) const noexcept;
+			/**
+			 * @brief Метод установки настроек ядра операционной системы
+			 *
+			 * @param name  название записи для установки настроек
+			 * @param items значение записи для установки настроек
+			 * @return      результат выполнения установки
+			 */
+			bool sysctl(const string & name, const vector <const char *> & items) const noexcept;
 	#endif
 		public:
 			/**
