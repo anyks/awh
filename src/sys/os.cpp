@@ -1643,6 +1643,48 @@ awh::OS::family_t awh::OS::family() const noexcept {
 		return result;
 	}
 	/**
+	 * Объявляем прототипы для извлечения значений настроек ядра операционной системы
+	 */
+	template int8_t awh::OS::sysctl <int8_t> (const string &) const noexcept;
+	template uint8_t awh::OS::sysctl <uint8_t> (const string &) const noexcept;
+	template int16_t awh::OS::sysctl <int16_t> (const string &) const noexcept;
+	template uint16_t awh::OS::sysctl <uint16_t> (const string &) const noexcept;
+	template int32_t awh::OS::sysctl <int32_t> (const string &) const noexcept;
+	template uint32_t awh::OS::sysctl <uint32_t> (const string &) const noexcept;
+	template int64_t awh::OS::sysctl <int64_t> (const string &) const noexcept;
+	template uint64_t awh::OS::sysctl <uint64_t> (const string &) const noexcept;
+	template float awh::OS::sysctl <float> (const string &) const noexcept;
+	template double awh::OS::sysctl <double> (const string &) const noexcept;
+	template string awh::OS::sysctl <string> (const string &) const noexcept;
+	/**
+	 * Если операционной системой является MacOS X, Linux или MS Windows
+	 */
+	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+		template size_t awh::OS::sysctl <size_t> (const string &) const noexcept;
+		template ssize_t awh::OS::sysctl <ssize_t> (const string &) const noexcept;
+	#endif
+	/**
+	 * Объявляем прототипы для извлечения списка значений настроек ядра операционной системы
+	 */
+	template vector <int8_t> awh::OS::sysctl <vector <int8_t>> (const string &) const noexcept;
+	template vector <uint8_t> awh::OS::sysctl <vector <uint8_t>> (const string &) const noexcept;
+	template vector <int16_t> awh::OS::sysctl <vector <int16_t>> (const string &) const noexcept;
+	template vector <uint16_t> awh::OS::sysctl <vector <uint16_t>> (const string &) const noexcept;
+	template vector <int32_t> awh::OS::sysctl <vector <int32_t>> (const string &) const noexcept;
+	template vector <uint32_t> awh::OS::sysctl <vector <uint32_t>> (const string &) const noexcept;
+	template vector <int64_t> awh::OS::sysctl <vector <int64_t>> (const string &) const noexcept;
+	template vector <uint64_t> awh::OS::sysctl <vector <uint64_t>> (const string &) const noexcept;
+	template vector <float> awh::OS::sysctl <vector <float>> (const string &) const noexcept;
+	template vector <double> awh::OS::sysctl <vector <double>> (const string &) const noexcept;
+	template vector <string> awh::OS::sysctl <vector <string>> (const string &) const noexcept;
+	/**
+	 * Если операционной системой является MacOS X, Linux или MS Windows
+	 */
+	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+		template vector <size_t> awh::OS::sysctl <vector <size_t>> (const string &) const noexcept;
+		template vector <ssize_t> awh::OS::sysctl <vector <ssize_t>> (const string &) const noexcept;
+	#endif
+	/**
 	 * @brief Шаблон метода установки настроек ядра операционной системы
 	 *
 	 * @tparam T Тип данных для установки
@@ -1678,6 +1720,41 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				return ::sysctl(name, buffer.data(), buffer.size());
 			#endif
 		}
+		// Сообщаем, что ничего не установленно
+		return false;
+	}
+	/**
+	 * Объявляем прототипы для установки значений настроек ядра операционной системы
+	 */
+	template bool awh::OS::sysctl <int8_t> (const string &, const int8_t) const noexcept;
+	template bool awh::OS::sysctl <uint8_t> (const string &, const uint8_t) const noexcept;
+	template bool awh::OS::sysctl <int16_t> (const string &, const int16_t) const noexcept;
+	template bool awh::OS::sysctl <uint16_t> (const string &, const uint16_t) const noexcept;
+	template bool awh::OS::sysctl <int32_t> (const string &, const int32_t) const noexcept;
+	template bool awh::OS::sysctl <uint32_t> (const string &, const uint32_t) const noexcept;
+	template bool awh::OS::sysctl <int64_t> (const string &, const int64_t) const noexcept;
+	template bool awh::OS::sysctl <uint64_t> (const string &, const uint64_t) const noexcept;
+	template bool awh::OS::sysctl <float> (const string &, const float) const noexcept;
+	template bool awh::OS::sysctl <double> (const string &, const double) const noexcept;
+	/**
+	 * Если операционной системой является MacOS X, Linux или MS Windows
+	 */
+	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+		template bool awh::OS::sysctl <size_t> (const string &, const size_t) const noexcept;
+		template bool awh::OS::sysctl <ssize_t> (const string &, const ssize_t) const noexcept;
+	#endif
+	/**
+	 * @brief Метод установки настроек ядра операционной системы
+	 *
+	 * @param name  название записи для установки настроек
+	 * @param value значение записи для установки настроек
+	 * @return      результат выполнения установки
+	 */
+	bool awh::OS::sysctl(const string & name, const string & value) const noexcept {
+		// Если название записи для установки настроек передано
+		if(!name.empty())
+			// Выполняем установку буфера бинарных данных
+			return ::sysctl(name, value.c_str(), value.size());
 		// Сообщаем, что ничего не установленно
 		return false;
 	}
@@ -1737,83 +1814,6 @@ awh::OS::family_t awh::OS::family() const noexcept {
 		return false;
 	}
 	/**
-	 * @brief Метод установки настроек ядра операционной системы
-	 *
-	 * @param name  название записи для установки настроек
-	 * @param value значение записи для установки настроек
-	 * @return      результат выполнения установки
-	 */
-	bool awh::OS::sysctl(const string & name, const string & value) const noexcept {
-		// Если название записи для установки настроек передано
-		if(!name.empty())
-			// Выполняем установку буфера бинарных данных
-			return ::sysctl(name, value.c_str(), value.size());
-		// Сообщаем, что ничего не установленно
-		return false;
-	}
-	/**
-	 * Объявляем прототипы для извлечения значений настроек ядра операционной системы
-	 */
-	template int8_t awh::OS::sysctl <int8_t> (const string &) const noexcept;
-	template uint8_t awh::OS::sysctl <uint8_t> (const string &) const noexcept;
-	template int16_t awh::OS::sysctl <int16_t> (const string &) const noexcept;
-	template uint16_t awh::OS::sysctl <uint16_t> (const string &) const noexcept;
-	template int32_t awh::OS::sysctl <int32_t> (const string &) const noexcept;
-	template uint32_t awh::OS::sysctl <uint32_t> (const string &) const noexcept;
-	template int64_t awh::OS::sysctl <int64_t> (const string &) const noexcept;
-	template uint64_t awh::OS::sysctl <uint64_t> (const string &) const noexcept;
-	template float awh::OS::sysctl <float> (const string &) const noexcept;
-	template double awh::OS::sysctl <double> (const string &) const noexcept;
-	template string awh::OS::sysctl <string> (const string &) const noexcept;
-	/**
-	 * Если операционной системой является MacOS X, Linux или MS Windows
-	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
-		template size_t awh::OS::sysctl <size_t> (const string &) const noexcept;
-		template ssize_t awh::OS::sysctl <ssize_t> (const string &) const noexcept;
-	#endif
-	/**
-	 * Объявляем прототипы для извлечения списка значений настроек ядра операционной системы
-	 */
-	template vector <int8_t> awh::OS::sysctl <vector <int8_t>> (const string &) const noexcept;
-	template vector <uint8_t> awh::OS::sysctl <vector <uint8_t>> (const string &) const noexcept;
-	template vector <int16_t> awh::OS::sysctl <vector <int16_t>> (const string &) const noexcept;
-	template vector <uint16_t> awh::OS::sysctl <vector <uint16_t>> (const string &) const noexcept;
-	template vector <int32_t> awh::OS::sysctl <vector <int32_t>> (const string &) const noexcept;
-	template vector <uint32_t> awh::OS::sysctl <vector <uint32_t>> (const string &) const noexcept;
-	template vector <int64_t> awh::OS::sysctl <vector <int64_t>> (const string &) const noexcept;
-	template vector <uint64_t> awh::OS::sysctl <vector <uint64_t>> (const string &) const noexcept;
-	template vector <float> awh::OS::sysctl <vector <float>> (const string &) const noexcept;
-	template vector <double> awh::OS::sysctl <vector <double>> (const string &) const noexcept;
-	template vector <string> awh::OS::sysctl <vector <string>> (const string &) const noexcept;
-	/**
-	 * Если операционной системой является MacOS X, Linux или MS Windows
-	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
-		template vector <size_t> awh::OS::sysctl <vector <size_t>> (const string &) const noexcept;
-		template vector <ssize_t> awh::OS::sysctl <vector <ssize_t>> (const string &) const noexcept;
-	#endif
-	/**
-	 * Объявляем прототипы для установки значений настроек ядра операционной системы
-	 */
-	template bool awh::OS::sysctl <int8_t> (const string &, const int8_t) const noexcept;
-	template bool awh::OS::sysctl <uint8_t> (const string &, const uint8_t) const noexcept;
-	template bool awh::OS::sysctl <int16_t> (const string &, const int16_t) const noexcept;
-	template bool awh::OS::sysctl <uint16_t> (const string &, const uint16_t) const noexcept;
-	template bool awh::OS::sysctl <int32_t> (const string &, const int32_t) const noexcept;
-	template bool awh::OS::sysctl <uint32_t> (const string &, const uint32_t) const noexcept;
-	template bool awh::OS::sysctl <int64_t> (const string &, const int64_t) const noexcept;
-	template bool awh::OS::sysctl <uint64_t> (const string &, const uint64_t) const noexcept;
-	template bool awh::OS::sysctl <float> (const string &, const float) const noexcept;
-	template bool awh::OS::sysctl <double> (const string &, const double) const noexcept;
-	/**
-	 * Если операционной системой является MacOS X, Linux или MS Windows
-	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
-		template bool awh::OS::sysctl <size_t> (const string &, const size_t) const noexcept;
-		template bool awh::OS::sysctl <ssize_t> (const string &, const ssize_t) const noexcept;
-	#endif
-	/**
 	 * Объявляем прототипы для установки списка значений настроек ядра операционной системы
 	 */
 	template bool awh::OS::sysctl <int8_t> (const string &, const vector <int8_t> &) const noexcept;
@@ -1826,7 +1826,6 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template bool awh::OS::sysctl <uint64_t> (const string &, const vector <uint64_t> &) const noexcept;
 	template bool awh::OS::sysctl <float> (const string &, const vector <float> &) const noexcept;
 	template bool awh::OS::sysctl <double> (const string &, const vector <double> &) const noexcept;
-	template bool awh::OS::sysctl <string> (const string &, const vector <string> &) const noexcept;
 	/**
 	 * Если операционной системой является MacOS X, Linux или MS Windows
 	 */
@@ -1834,6 +1833,33 @@ awh::OS::family_t awh::OS::family() const noexcept {
 		template bool awh::OS::sysctl <size_t> (const string &, const vector <size_t> &) const noexcept;
 		template bool awh::OS::sysctl <ssize_t> (const string &, const vector <ssize_t> &) const noexcept;
 	#endif
+	/**
+	 * @brief Метод установки настроек ядра операционной системы
+	 *
+	 * @param name  название записи для установки настроек
+	 * @param items значение записи для установки настроек
+	 * @return      результат выполнения установки
+	 */
+	bool awh::OS::sysctl(const string & name, const vector <string> & items) const noexcept {
+		// Если название записи для установки настроек передано
+		if(!name.empty()){
+			// Выполняем преобразование числа в строку
+			string param = "";
+			// Выполняем перебор всего списка параметров
+			for(auto & item : items){
+				// Если строка уже сформированна
+				if(!param.empty())
+					// Выполняем добавление пробела
+					param.append(1, ' ');
+				// Добавляем полученное значение в список
+				param.append(std::to_string(item));
+			}
+			// Выполняем установку буфера бинарных данных
+			return ::sysctl(name, param.c_str(), param.size());
+		}
+		// Сообщаем, что ничего не установленно
+		return false;
+	}
 #endif
 /**
  * @brief Метод запуска внешнего приложения
