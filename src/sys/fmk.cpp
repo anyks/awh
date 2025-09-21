@@ -1848,7 +1848,7 @@ template int64_t awh::Framework::timestamp <int64_t> (const chrono_t) const noex
 template uint64_t awh::Framework::timestamp <uint64_t> (const chrono_t) const noexcept;
 template float awh::Framework::timestamp <float> (const chrono_t) const noexcept;
 template double awh::Framework::timestamp <double> (const chrono_t) const noexcept;
-template double awh::Framework::timestamp <string> (const chrono_t) const noexcept;
+template string awh::Framework::timestamp <string> (const chrono_t) const noexcept;
 /**
  * Если операционной системой является MacOS X или Linux
  */
