@@ -283,6 +283,8 @@ using namespace std;
 			 * Операционной системой является Linux
 			 */
 			#elif __linux__
+				// Объект работы с операционной системой
+				awh::os_t os;
 				// Создаём комманду запуска
 				string command = "sysctl -w";
 				// Добавляем разделитель
@@ -294,7 +296,7 @@ using namespace std;
 				// Добавляем параметр для установки
 				command.append(reinterpret_cast <const char *> (buffer), size);
 				// Выполняем установку параметров ядра
-				return !this->exec(command, false).empty();
+				return !os.exec(command, false).empty();
 			#endif
 		}
 		// Сообщаем, что ничего не установленно
