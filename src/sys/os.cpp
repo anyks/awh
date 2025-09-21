@@ -1405,7 +1405,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				// Строка SID идентификатора пользователя/доменного имени
 				LPWSTR sid = nullptr;
 				// Выполняем извлечение SID идентификатор пользователя/доменного имени
-				if(::ConvertSidToStringSidW(pSid, &sid) && ((domain.compare(actualDomain) == 0) || (actualDomain.empty() && domain.empty()))){
+				if(::ConvertSidToStringSidW(pSid, &sid) && ((domain.compare(actualDomain) == 0) || actualDomain.empty())){
 					// Если результат мы получили
 					if((sid != nullptr) && (sid[0] != L'\0'))
 						// Выполняем получение SID-а
