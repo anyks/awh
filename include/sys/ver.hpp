@@ -152,6 +152,13 @@ namespace awh {
 			 * @return    текущий объект
 			 */
 			Version & operator = (const uint32_t ver) noexcept;
+			/**
+			 * @brief Оператор [=] присвоения версии
+			 *
+			 * @param ver версия для присвоения
+			 * @return    текущий объект
+			 */
+			Version & operator = (const Version & ver) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

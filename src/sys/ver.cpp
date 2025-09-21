@@ -277,7 +277,19 @@ awh::Version & awh::Version::operator = (const string & ver) noexcept {
  */
 awh::Version & awh::Version::operator = (const uint32_t ver) noexcept {
 	// Устанавливаем версию
-	this->_version = ver;
+	this->set(ver);
+	// Выводим результат
+	return (* this);
+}
+/**
+ * @brief Оператор [=] присвоения версии
+ *
+ * @param ver версия для присвоения
+ * @return    текущий объект
+ */
+awh::Version & awh::Version::operator = (const Version & ver) noexcept {
+	// Устанавливаем версию
+	this->_version = ver._version;
 	// Выводим результат
 	return (* this);
 }
@@ -321,13 +333,13 @@ awh::Version::Version(const uint32_t ver) noexcept : _version(0) {
  */
 istream & awh::operator >> (istream & is, ver_t & ver) noexcept {
 	// Версия в текстовом виде
-	string data = "";
+	string version = "";
 	// Считываем версию
-	is >> data;
+	is >> version;
 	// Если версия передана
-	if(!data.empty())
+	if(!version.empty())
 		// Устанавливаем версию
-		ver.set(data);
+		ver = version;
 	// Выводим результат
 	return is;
 }
