@@ -247,6 +247,9 @@ void awh::Base::boostingNetwork() const noexcept {
 					this->_os.sysctl("net.core.rmem_max", 16777216);
 					// Увеличиваем максимальный размер буферов для отправки
 					this->_os.sysctl("net.core.wmem_max", 16777216);
+
+					cout << " **************** " << net.core.wmem_max << " == " << 16777216 << endl;
+
 					// Разрешаем масштабирование TCP-окна
 					this->_os.sysctl("net.ipv4.tcp_window_scaling", 1);
 					// Запрещаем сохранять результаты измерений TCP-соединения в кэше при его закрытии
