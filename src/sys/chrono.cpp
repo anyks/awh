@@ -3993,11 +3993,16 @@ template void awh::Chrono::set(const int32_t, const unit_t) noexcept;
 template void awh::Chrono::set(const uint32_t, const unit_t) noexcept;
 template void awh::Chrono::set(const int64_t, const unit_t) noexcept;
 template void awh::Chrono::set(const uint64_t, const unit_t) noexcept;
-template void awh::Chrono::set(const size_t, const unit_t) noexcept;
-template void awh::Chrono::set(const ssize_t, const unit_t) noexcept;
 template void awh::Chrono::set(const float, const unit_t) noexcept;
 template void awh::Chrono::set(const double, const unit_t) noexcept;
 template void awh::Chrono::set(const string, const unit_t) noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template void awh::Chrono::set(const size_t, const unit_t) noexcept;
+	template void awh::Chrono::set(const ssize_t, const unit_t) noexcept;
+#endif
 /**
  * @brief Метод установки данных даты и времени
  *
@@ -4468,11 +4473,16 @@ template int32_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template uint32_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template int64_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template uint64_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
-template size_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
-template ssize_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template float awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template double awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template string awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+	template ssize_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+#endif
 /**
  * @brief Шаблон метода извлечения данных даты и времени
  *
@@ -4513,11 +4523,16 @@ template int32_t awh::Chrono::get(const unit_t) const noexcept;
 template uint32_t awh::Chrono::get(const unit_t) const noexcept;
 template int64_t awh::Chrono::get(const unit_t) const noexcept;
 template uint64_t awh::Chrono::get(const unit_t) const noexcept;
-template size_t awh::Chrono::get(const unit_t) const noexcept;
-template ssize_t awh::Chrono::get(const unit_t) const noexcept;
 template float awh::Chrono::get(const unit_t) const noexcept;
 template double awh::Chrono::get(const unit_t) const noexcept;
 template string awh::Chrono::get(const unit_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Chrono::get(const unit_t) const noexcept;
+	template ssize_t awh::Chrono::get(const unit_t) const noexcept;
+#endif
 /**
  * @brief Шаблон метода извлечения данных даты и времени
  *
@@ -4559,11 +4574,16 @@ template int32_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template uint32_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template int64_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template uint64_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
-template size_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
-template ssize_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template float awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template double awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template string awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+	template ssize_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+#endif
 /**
  * @brief Метод извлечения данных даты и времени
  *
