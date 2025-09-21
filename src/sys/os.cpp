@@ -1371,10 +1371,6 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				actualDomain = account.substr(0, pos);
 				// Удаляем из аккаунта доменное имя
 				account.erase(0, pos + 1);
-
-				// cout << " ^^^^^^^^^^^ " << ::convert(account) << " == " << ::convert(actualDomain) << endl;
-
-				::fprintf(stderr, "^^^^^^^^^^^ %s == %s\n\n", ::convert(account).c_str(), ::convert(actualDomain).c_str());
 			}
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
