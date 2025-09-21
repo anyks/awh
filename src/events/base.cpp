@@ -148,7 +148,7 @@ void awh::Base::boostingNetwork() const noexcept {
 		/**
 		 * Если необходимо выполнить тюннинг операционной системы
 		 */
-		#if BOOSTING_NET
+		#if AWH_BOOSTING_NET
 			/**
 			 * Для операционной системы MS Windows
 			 */

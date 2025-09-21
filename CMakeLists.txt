@@ -36,7 +36,7 @@ endif (CMAKE_MAX_COUNT_FDS)
 
 # Если активирован флаг оптимизации операционной системы
 if (CMAKE_BOOSTING_NET)
-    add_compile_definitions(BOOSTING_NET)
+    add_compile_definitions(AWH_BOOSTING_NET)
     message(STATUS "Build AWH BOOSTING NET: YES\n")
 endif (CMAKE_BOOSTING_NET)
 
