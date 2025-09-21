@@ -1824,10 +1824,15 @@ template int32_t awh::Framework::timestamp <int32_t> (const chrono_t) const noex
 template uint32_t awh::Framework::timestamp <uint32_t> (const chrono_t) const noexcept;
 template int64_t awh::Framework::timestamp <int64_t> (const chrono_t) const noexcept;
 template uint64_t awh::Framework::timestamp <uint64_t> (const chrono_t) const noexcept;
-template size_t awh::Framework::timestamp <size_t> (const chrono_t) const noexcept;
-template ssize_t awh::Framework::timestamp <ssize_t> (const chrono_t) const noexcept;
 template float awh::Framework::timestamp <float> (const chrono_t) const noexcept;
 template double awh::Framework::timestamp <double> (const chrono_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Framework::timestamp <size_t> (const chrono_t) const noexcept;
+	template ssize_t awh::Framework::timestamp <ssize_t> (const chrono_t) const noexcept;
+#endif
 /**
  * @brief Метод конвертирования строки кодировки
  *
@@ -2475,10 +2480,15 @@ template size_t awh::Framework::size <int32_t> (const int32_t) const noexcept;
 template size_t awh::Framework::size <uint32_t> (const uint32_t) const noexcept;
 template size_t awh::Framework::size <int64_t> (const int64_t) const noexcept;
 template size_t awh::Framework::size <uint64_t> (const uint64_t) const noexcept;
-template size_t awh::Framework::size <size_t> (const size_t) const noexcept;
-template size_t awh::Framework::size <ssize_t> (const ssize_t) const noexcept;
 template size_t awh::Framework::size <float> (const float) const noexcept;
 template size_t awh::Framework::size <double> (const double) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Framework::size <size_t> (const size_t) const noexcept;
+	template size_t awh::Framework::size <ssize_t> (const ssize_t) const noexcept;
+#endif
 /**
  * @brief Метод определения точного размера, сколько занимают данные (в байтах) в буфере
  *
@@ -2568,10 +2578,15 @@ template bool awh::Framework::compare <int32_t> (const int32_t, const int32_t) c
 template bool awh::Framework::compare <uint32_t> (const uint32_t, const uint32_t) const noexcept;
 template bool awh::Framework::compare <int64_t> (const int64_t, const int64_t) const noexcept;
 template bool awh::Framework::compare <uint64_t> (const uint64_t, const uint64_t) const noexcept;
-template bool awh::Framework::compare <size_t> (const size_t, const size_t) const noexcept;
-template bool awh::Framework::compare <ssize_t> (const ssize_t, const ssize_t) const noexcept;
 template bool awh::Framework::compare <float> (const float, const float) const noexcept;
 template bool awh::Framework::compare <double> (const double, const double) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template bool awh::Framework::compare <size_t> (const size_t, const size_t) const noexcept;
+	template bool awh::Framework::compare <ssize_t> (const ssize_t, const ssize_t) const noexcept;
+#endif
 /**
  * @brief Метод проверки больше первое число второго или нет (бинарным методом)
  *
@@ -2667,10 +2682,15 @@ template string awh::Framework::itoa <int32_t> (const int32_t, const uint8_t) co
 template string awh::Framework::itoa <uint32_t> (const uint32_t, const uint8_t) const noexcept;
 template string awh::Framework::itoa <int64_t> (const int64_t, const uint8_t) const noexcept;
 template string awh::Framework::itoa <uint64_t> (const uint64_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <size_t> (const size_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <ssize_t> (const ssize_t, const uint8_t) const noexcept;
 template string awh::Framework::itoa <float> (const float, const uint8_t) const noexcept;
 template string awh::Framework::itoa <double> (const double, const uint8_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template string awh::Framework::itoa <size_t> (const size_t, const uint8_t) const noexcept;
+	template string awh::Framework::itoa <ssize_t> (const ssize_t, const uint8_t) const noexcept;
+#endif
 /**
  * @brief Метод конвертации чисел в указанную систему счисления
  *
@@ -2879,10 +2899,15 @@ template int32_t awh::Framework::atoi <int32_t> (const string &, const uint8_t) 
 template uint32_t awh::Framework::atoi <uint32_t> (const string &, const uint8_t) const noexcept;
 template int64_t awh::Framework::atoi <int64_t> (const string &, const uint8_t) const noexcept;
 template uint64_t awh::Framework::atoi <uint64_t> (const string &, const uint8_t) const noexcept;
-template size_t awh::Framework::atoi <size_t> (const string &, const uint8_t) const noexcept;
-template ssize_t awh::Framework::atoi <ssize_t> (const string &, const uint8_t) const noexcept;
 template float awh::Framework::atoi <float> (const string &, const uint8_t) const noexcept;
 template double awh::Framework::atoi <double> (const string &, const uint8_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X, Linux или MS Windows
+ */
+#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	template size_t awh::Framework::atoi <size_t> (const string &, const uint8_t) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (const string &, const uint8_t) const noexcept;
+#endif
 /**
  * @brief Метод конвертации строковых чисел в десятичную систему счисления
  *
