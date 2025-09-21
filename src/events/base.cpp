@@ -233,7 +233,7 @@ void awh::Base::boostingNetwork() const noexcept {
 					#if DEBUG_MODE
 						// Для отладки активируем создание дампов ядра
 						this->_os.sysctl("kernel.core_uses_pid", 1);
-						this->_os.sysctl("kernel.core_pattern", string{"/tmp/%e-%p.core"});
+						this->_os.sysctl("kernel.core_pattern", "/tmp/%e-%p.core");
 					#endif
 					// Разрешаем выборочные подтверждения (Selective Acknowledgements, SACK)
 					this->_os.sysctl("net.ipv4.tcp_sack", 1);
@@ -256,12 +256,12 @@ void awh::Base::boostingNetwork() const noexcept {
 					// Определяем максимальное количество входящих пакетов
 					this->_os.sysctl("net.core.netdev_max_backlog", 2500);
 					// Увеличиваем лимит автонастройки TCP-буфера Linux до 64 МБ
-					this->_os.sysctl("net.ipv4.tcp_rmem", string{"\"4096 87380 16777216\""});
-					this->_os.sysctl("net.ipv4.tcp_wmem", string{"\"4096 65536 16777216\""});
+					this->_os.sysctl("net.ipv4.tcp_rmem", "\"4096 87380 16777216\"");
+					this->_os.sysctl("net.ipv4.tcp_wmem", "\"4096 65536 16777216\"");
 					// Рекомендуется для хостов с включенными большими фреймами
 					this->_os.sysctl("net.ipv4.tcp_mtu_probing", 1);
 					// Рекомендуется для хостов CentOS 7/Debian 8
-					this->_os.sysctl("net.core.default_qdisc", string{"fq"});
+					this->_os.sysctl("net.core.default_qdisc", "fq");
 					/**
 					 * Рекомендуемый контроль перегрузки по умолчанию — htcp.
 					 * Вы можете проверить, какие доступны алгоритмы получения доступных сообщений, используя net.ipv4.tcp_available_congestion_control
