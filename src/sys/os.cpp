@@ -1902,39 +1902,16 @@ string awh::OS::exec(const string & cmd, const bool multiline) const noexcept {
 		#else
 			// Создаем буфер для чтения результата
 			wchar_t buffer[128];
-			// Строка системной команды
-			wstring command = L"";
-			// Если используется BOOST
-			#ifdef USE_BOOST_CONVERT
-				// Объявляем конвертер
-				using boost::locale::conv::utf_to_utf;
-				// Выполняем конвертирование в utf-8 строку
-				command = utf_to_utf <wchar_t> (cmd.c_str(), cmd.c_str() + cmd.size());
-			// Если нужно использовать стандартную библиотеку
-			#else
-				// Объявляем конвертер
-				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-				wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
-				// Выполняем конвертирование в utf-8 строку
-				command = conv.from_bytes(cmd);
-			#endif
 			// Создаем пайп для чтения результата работы OS
-			FILE * stream = ::_wpopen(command.c_str(), L"rt");
+			FILE * stream = ::_wpopen(::convert(cmd).c_str(), L"rt");
 			// Если пайп открыт
 			if(stream){
 				/**
 				 * Считываем до тех пор пока все не прочитаем
 				 */
 				while(::fgetws(buffer, sizeof(buffer), stream) != nullptr){
-					// Если используется BOOST
-					#ifdef USE_BOOST_CONVERT
-						// Выполняем конвертирование в utf-8 строку
-						result.append(utf_to_utf <char> (buffer, buffer + strlen(buffer)));
-					// Если нужно использовать стандартную библиотеку
-					#else
-						// Выполняем конвертирование в utf-8 строку
-						result.append(conv.to_bytes(buffer));
-					#endif
+					// Выполняем конвертирование в utf-8 строку
+					result.append(::convert(buffer));
 					// Если это не мультилайн
 					if(!multiline)
 						// Выходим из цикла
