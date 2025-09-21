@@ -1364,7 +1364,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			// Выполняем конвертирование название пользователя/группы
 			wstring account = ::convert(name), actualDomain = L"";
 			// Выполняем поиск разделителя
-			const size_t pos = account.find("\\");
+			const size_t pos = account.find(L"\\");
 			// Если позиция разделителя доменного имя найдена
 			if(pos != wstring::npos){
 				// Извлекаем доменное имя
