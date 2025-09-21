@@ -1657,9 +1657,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template double awh::OS::sysctl <double> (const string &) const noexcept;
 	template string awh::OS::sysctl <string> (const string &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X, Linux или MS Windows
+	 * Если операционной системой является MacOS X или Linux
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	#if __APPLE__ || __MACH__ || __Linux__
 		template size_t awh::OS::sysctl <size_t> (const string &) const noexcept;
 		template ssize_t awh::OS::sysctl <ssize_t> (const string &) const noexcept;
 	#endif
@@ -1678,9 +1678,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template vector <double> awh::OS::sysctl <vector <double>> (const string &) const noexcept;
 	template vector <string> awh::OS::sysctl <vector <string>> (const string &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X, Linux или MS Windows
+	 * Если операционной системой является MacOS X или Linux
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	#if __APPLE__ || __MACH__ || __Linux__
 		template vector <size_t> awh::OS::sysctl <vector <size_t>> (const string &) const noexcept;
 		template vector <ssize_t> awh::OS::sysctl <vector <ssize_t>> (const string &) const noexcept;
 	#endif
@@ -1737,9 +1737,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template bool awh::OS::sysctl <float> (const string &, const float) const noexcept;
 	template bool awh::OS::sysctl <double> (const string &, const double) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X, Linux или MS Windows
+	 * Если операционной системой является MacOS X или Linux
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	#if __APPLE__ || __MACH__ || __Linux__
 		template bool awh::OS::sysctl <size_t> (const string &, const size_t) const noexcept;
 		template bool awh::OS::sysctl <ssize_t> (const string &, const ssize_t) const noexcept;
 	#endif
@@ -1827,9 +1827,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template bool awh::OS::sysctl <float> (const string &, const vector <float> &) const noexcept;
 	template bool awh::OS::sysctl <double> (const string &, const vector <double> &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X, Linux или MS Windows
+	 * Если операционной системой является MacOS X или Linux
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || _WIN32 || _WIN64
+	#if __APPLE__ || __MACH__ || __Linux__
 		template bool awh::OS::sysctl <size_t> (const string &, const vector <size_t> &) const noexcept;
 		template bool awh::OS::sysctl <ssize_t> (const string &, const vector <ssize_t> &) const noexcept;
 	#endif
