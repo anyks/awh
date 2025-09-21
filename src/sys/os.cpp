@@ -504,9 +504,9 @@ awh::OS::family_t awh::OS::family() const noexcept {
 		// Выполняем извлечение данных пользователя
 		if((::getpwuid_r(::geteuid(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr)){
 			/**
-			 * Для операционной системы MacOS X
+			 * Для операционной системы MacOS X или Sun Solaris
 			 */
-			#if __APPLE__ || __MACH__
+			#if __APPLE__ || __MACH__ || __sun__
 				// Добавляем текущую группу пользователя в список
 				result.push_back(pwd.pw_gid);
 				// Активируем перебор групп
