@@ -1362,7 +1362,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
-			const wstring & account = ::convert(name);
+			// const wstring & account = ::convert(name);
 
 
 			// std::wstring domain2 = L"BUILTIN";
