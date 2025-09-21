@@ -354,7 +354,7 @@ bool awh::FDS::limit(const uint64_t limit) const noexcept {
 			// Выводим положительный результат
 			return true;
 		// Пытаемся поднять soft лимит до min(target, hard)
-		const rlim_t soft = static_cast <rlim_t> (limit <= currentHard ? limit : currentHard);
+		const rlim_t soft = static_cast <rlim_t> (currentHard);
 		// Устанавливаем новое значение лимита
 		rl.rlim_cur = soft;
 		// Устанавливаем новое значение файловых дескрипторов
