@@ -148,6 +148,8 @@ using namespace std;
 			 * Если это Linux
 			 */
 			#elif __linux__
+				// Объект работы с операционной системой
+				os_t os;
 				// Создаём комманду запуска
 				string command = "sysctl";
 				// Добавляем разделитель
@@ -159,7 +161,7 @@ using namespace std;
 				// Добавляем усечение строки
 				command.append("| cut -d \"=\" -f2 | xargs");
 				// Выполняем получение значения команды
-				const string & result = this->exec(command, false);
+				const string & result = os.exec(command, false);
 				// Если результат получен
 				if(!result.empty()){
 					// Очередь собранных данных
