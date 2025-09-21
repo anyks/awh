@@ -1852,7 +1852,7 @@ awh::OS::family_t awh::OS::family() const noexcept {
 					// Выполняем добавление пробела
 					param.append(1, ' ');
 				// Добавляем полученное значение в список
-				param.append(std::to_string(item));
+				param.append(item);
 			}
 			// Выполняем установку буфера бинарных данных
 			return ::sysctl(name, param.c_str(), param.size());
