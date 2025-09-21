@@ -540,11 +540,11 @@ awh::OS::family_t awh::OS::family() const noexcept {
 				// Количество групп пользователя
 				int32_t count = 0;
 				// Первый вызов: нам необходимо определить количетсво групп пользователя
-				::getgrouplist(user.c_str(), pwd.pw_gid, nullptr, &count);
+				::getgrouplist(pwd.pw_name, pwd.pw_gid, nullptr, &count);
 				// Увеличиваем список групп пользователя
 				result.resize(static_cast <size_t> (count));
 				// Второй вызов: пробуем получить список групп пользователя
-				if(::getgrouplist(user.c_str(), pwd.pw_gid, reinterpret_cast <gid_t *> (result.data()), &count) == -1){
+				if(::getgrouplist(pwd.pw_name, pwd.pw_gid, reinterpret_cast <gid_t *> (result.data()), &count) == -1){
 					/**
 					 * Если включён режим отладки
 					 */
