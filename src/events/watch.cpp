@@ -283,8 +283,6 @@ void awh::Watch::wait(const SOCKET sock, const uint32_t delay) noexcept {
 		auto i = this->_notifiers.find(sock);
 		// Если уведомитель найден
 		if(i != this->_notifiers.end()){
-			// Выполняем обновление уведомителя
-			i->second->init();
 			// Создаём объект даты для передачи
 			unit_t unit;
 			// Устанавливаем идентификатор файлового дескриптора

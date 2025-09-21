@@ -31,14 +31,14 @@ endif (CMAKE_BUILD_IDN)
 # Сборка установкой количества доступных файловых дескрипторов
 if (CMAKE_MAX_COUNT_FDS)
     add_compile_definitions(AWH_MAX_COUNT_FDS=${CMAKE_MAX_COUNT_FDS})
-    message(STATUS "Build AWH with max fds: ${CMAKE_MAX_COUNT_FDS}\n")
+    message(STATUS "Build AWH MAX FDS: ${CMAKE_MAX_COUNT_FDS}\n")
 endif (CMAKE_MAX_COUNT_FDS)
 
 # Если активирован флаг оптимизации операционной системы
-if (CMAKE_AWH_BOOSTING_OS)
-    add_compile_definitions(AWH_BOOSTING_OS)
-    message(STATUS "Build AWH with boosting os: YES\n")
-endif (CMAKE_AWH_BOOSTING_OS)
+if (CMAKE_BOOSTING_NET)
+    add_compile_definitions(BOOSTING_NET)
+    message(STATUS "Build AWH BOOSTING NET: YES\n")
+endif (CMAKE_BOOSTING_NET)
 
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")

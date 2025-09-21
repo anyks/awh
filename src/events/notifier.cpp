@@ -547,20 +547,43 @@ uint64_t awh::Notifier::event() noexcept {
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
-			// Создаём объект события
-			struct kevent event;
-			// Выполняем удаление события
-			EV_SET(&event, USER_EVENT, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
-			// Выполняем обновления ядра операционной системы
-			::kevent(this->_sock, &event, 1, nullptr, 0, nullptr);
-			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
+			// Выполняем блокирование потока
+			this->_mtx.lock();
 			// Если очередь событий не пустая
 			if(!this->_events.empty()){
 				// Выполняем извлечение из очереди события
 				result = this->_events.front();
 				// Удаляем извлечённое событие
 				this->_events.pop();
+			}
+			// Выполняем разблокирование потока
+			this->_mtx.unlock();
+			// Если сообщений больше нет, удаляем событие
+			if(this->_events.empty()){
+				// Создаём объект события
+				struct kevent event;
+				// Выполняем удаление события
+				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
+				// Выполняем обновления ядра операционной системы
+				::kevent(this->_sock, &event, 1, nullptr, 0, nullptr);
+				// Выполняем активацию события
+				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, nullptr);
+				// Выполняем активацию нашего события
+				if(::kevent(this->_sock, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
 			}
 		#endif
 	/**

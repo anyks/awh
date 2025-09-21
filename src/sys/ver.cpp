@@ -48,7 +48,7 @@ using namespace std;
  */
 uint32_t awh::Version::num() const noexcept {
 	// Выводим версию в виде числа
-	return this->_version;
+	return htons(this->_version);
 }
 /**
  * @brief Метод извлечения версии в виде строки
@@ -110,7 +110,7 @@ string awh::Version::str(const uint8_t octets) const noexcept {
  */
 void awh::Version::set(const uint32_t ver) noexcept {
 	// Устанавливаем версию в виде числа
-	this->_version = ver;
+	this->_version = htonl(ver);
 }
 /**
  * @brief Метод установки версии

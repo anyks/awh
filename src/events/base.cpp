@@ -13,6 +13,29 @@
  */
 
 /**
+ * Если максимальное количество файловых дескрипторов не передано
+ */
+#ifndef AWH_MAX_COUNT_FDS
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * Устанавливаем максимальное количество доступных файловых дескрипторов 16384
+		 */
+		#define AWH_MAX_COUNT_FDS 0x4000
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		/**
+		 * Устанавливаем максимальное количество доступных файловых дескрипторов 131072
+		 */
+		#define AWH_MAX_COUNT_FDS 0x20000
+	#endif
+#endif
+
+/**
  * Подключаем заголовочный файл
  */
 #include <events/base.hpp>
@@ -125,7 +148,7 @@ void awh::Base::boostingNetwork() const noexcept {
 		/**
 		 * Если необходимо выполнить тюннинг операционной системы
 		 */
-		#if AWH_BOOSTING_OS
+		#if BOOSTING_NET
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -143,13 +166,13 @@ void awh::Base::boostingNetwork() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Administrator privileges are required to apply network optimizations");
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->print("%s", log_t::flag_t::WARNING, "Administrator privileges are required to apply network optimizations");
 					#endif
 				}
 			/**
@@ -171,13 +194,13 @@ void awh::Base::boostingNetwork() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Root privileges are required to apply network optimizations");
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->print("%s", log_t::flag_t::WARNING, "Root privileges are required to apply network optimizations");
 					#endif
 				}
 			/**
@@ -212,13 +235,13 @@ void awh::Base::boostingNetwork() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Root privileges are required to apply network optimizations");
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->print("%s", log_t::flag_t::WARNING, "Root privileges are required to apply network optimizations");
 					#endif
 				}
 			/**
@@ -285,13 +308,13 @@ void awh::Base::boostingNetwork() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Root privileges are required to apply network optimizations");
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->print("%s", log_t::flag_t::WARNING, "Root privileges are required to apply network optimizations");
 					#endif
 				}
 			/**
@@ -352,13 +375,13 @@ void awh::Base::boostingNetwork() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, "Root privileges are required to apply network optimizations");
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, "Operating system kernel settings, accessible only by the superuser");
+						this->_log->print("%s", log_t::flag_t::WARNING, "Root privileges are required to apply network optimizations");
 					#endif
 				}
 			#endif
