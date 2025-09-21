@@ -113,12 +113,7 @@ namespace awh {
 			 * @brief Метод удаления верхних записей
 			 *
 			 */
-			void pop() noexcept {
-				// Если мы не дошли до конца
-				if(!this->empty())
-					// Выполняем удаление указанного количества байт
-					this->erase(sizeof(T));
-			}
+			void pop() noexcept;
 		public:
 			/**
 			 * @brief Шаблон для метода получения количества элементов в бинарном буфере
@@ -131,14 +126,7 @@ namespace awh {
 			 *
 			 * @return количество всех добавленных лементов
 			 */
-			size_t count() const noexcept {
-				// Если мы не дошли до конца
-				if(!this->empty())
-					// Выводим размер данных в буфере
-					return (this->size() / sizeof(T));
-				// Выводим пустое значение
-				return 0;
-			}
+			size_t count() const noexcept;
 		public:
 			/**
 			 * @brief Шаблон для метода извлечения нижнего значения в буфере
@@ -151,19 +139,7 @@ namespace awh {
 			 *
 			 * @return данные содержащиеся в буфере
 			 */
-			T back() const noexcept {
-				// Результат работы функции
-				T result = 0;
-				// Если контейнер не пустой
-				if(!this->empty()){
-					// Получаем размер данных
-					const size_t size = sizeof(result);
-					// Выполняем копирование данных контейнера
-					::memcpy(&result, this->get() + (this->_buffer.size() - size), size);
-				}
-				// Выводим результат
-				return result;
-			}
+			T back() const noexcept;
 			/**
 			 * @brief Шаблон для метода извлечения верхнего значения в буфере
 			 *
@@ -175,19 +151,7 @@ namespace awh {
 			 *
 			 * @return данные содержащиеся в буфере
 			 */
-			T front() const noexcept {
-				// Результат работы функции
-				T result = 0;
-				// Если контейнер не пустой
-				if(!this->empty()){
-					// Получаем размер данных
-					const size_t size = sizeof(result);
-					// Выполняем копирование данных контейнера
-					::memcpy(&result, this->get(), size);
-				}
-				// Выводим результат
-				return result;
-			}
+			T front() const noexcept;
 		public:
 			/**
 			 * @brief Шаблон для метода извлечения содержимого контейнера по его индексу
@@ -201,19 +165,7 @@ namespace awh {
 			 * @param index индекс массива для извлечения
 			 * @return      данные содержащиеся в буфере
 			 */
-			T at(const size_t index) const noexcept {
-				// Результат работы функции
-				T result = 0;
-				// Если контейнер не пустой
-				if(!this->empty() && (index < this->size())){
-					// Получаем размер данных
-					const size_t size = sizeof(result);
-					// Выполняем копирование данных контейнера
-					::memcpy(&result, this->get() + (index * size), size);
-				}
-				// Выводим результат
-				return result;
-			}
+			T at(const size_t index) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон для метода установки значений в уже существующем буфере
@@ -227,15 +179,7 @@ namespace awh {
 			 * @param value значение для установки
 			 * @param index индекс значения для установки
 			 */
-			void set(const T value, const size_t index) noexcept {
-				// Если контейнер не пустой
-				if(!this->empty() && (index < this->size())){
-					// Получаем размер данных
-					const size_t size = sizeof(value);
-					// Выполняем установку значения
-					::memcpy(const_cast <uint8_t *> (this->get() + (index * size)), &value, size);
-				}
-			}
+			void set(const T value, const size_t index) noexcept;
 		public:
 			/**
 			 * @brief Получения данных указанного элемента в очереди

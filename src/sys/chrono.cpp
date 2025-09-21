@@ -3967,6 +3967,38 @@ bool awh::Chrono::leap(const storage_t storage) const noexcept {
 	return this->leap(this->timestamp(type_t::MILLISECONDS, storage));
 }
 /**
+ * @brief Шаблон метода установки данных даты и времени
+ *
+ * @tparam T тип данных в котором устанавливаются данные
+ */
+template <typename T>
+/**
+ * @brief Метод установки данных даты и времени
+ *
+ * @param date дата для обработки
+ * @param unit элементы данных для установки
+ */
+void awh::Chrono::set(const T date, const unit_t unit) noexcept {
+	// Выполняем установку данных
+	this->set(&date, sizeof(date), unit, is_class_v <T>);
+}
+/**
+ * Объявляем прототипы для метода установки данных даты и времени
+ */
+template void awh::Chrono::set(const int8_t, const unit_t) noexcept;
+template void awh::Chrono::set(const uint8_t, const unit_t) noexcept;
+template void awh::Chrono::set(const int16_t, const unit_t) noexcept;
+template void awh::Chrono::set(const uint16_t, const unit_t) noexcept;
+template void awh::Chrono::set(const int32_t, const unit_t) noexcept;
+template void awh::Chrono::set(const uint32_t, const unit_t) noexcept;
+template void awh::Chrono::set(const int64_t, const unit_t) noexcept;
+template void awh::Chrono::set(const uint64_t, const unit_t) noexcept;
+template void awh::Chrono::set(const size_t, const unit_t) noexcept;
+template void awh::Chrono::set(const ssize_t, const unit_t) noexcept;
+template void awh::Chrono::set(const float, const unit_t) noexcept;
+template void awh::Chrono::set(const double, const unit_t) noexcept;
+template void awh::Chrono::set(const string, const unit_t) noexcept;
+/**
  * @brief Метод установки данных даты и времени
  *
  * @param buffer бинарный буфер данных
@@ -4395,6 +4427,143 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 		}
 	}
 }
+/**
+ * @brief Шаблон метода извлечения данных даты и времени
+ *
+ * @tparam T тип данных в котором извлекаются данные
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения данных даты и времени
+ *
+ * @param date дата для обработки
+ * @param unit элементы данных для извлечения
+ * @return     значение данных даты и времени
+ */
+T awh::Chrono::get(const uint64_t date, const unit_t unit) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->get(&result, sizeof(result), date, unit, is_class_v <T>);
+	// Выводим полученный результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода извлечения данных даты и времени
+ */
+template int8_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template uint8_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template int16_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template uint16_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template int32_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template uint32_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template int64_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template uint64_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template size_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template ssize_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template float awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template double awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+template string awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
+/**
+ * @brief Шаблон метода извлечения данных даты и времени
+ *
+ * @tparam T тип данных в котором извлекаются данные
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения данных даты и времени
+ *
+ * @param unit элементы данных для извлечения
+ * @return     значение данных даты и времени
+ */
+T awh::Chrono::get(const unit_t unit) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->get(&result, sizeof(result), unit, is_class_v <T>, storage_t::GLOBAL);
+	// Выводим полученный результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода извлечения данных даты и времени
+ */
+template int8_t awh::Chrono::get(const unit_t) const noexcept;
+template uint8_t awh::Chrono::get(const unit_t) const noexcept;
+template int16_t awh::Chrono::get(const unit_t) const noexcept;
+template uint16_t awh::Chrono::get(const unit_t) const noexcept;
+template int32_t awh::Chrono::get(const unit_t) const noexcept;
+template uint32_t awh::Chrono::get(const unit_t) const noexcept;
+template int64_t awh::Chrono::get(const unit_t) const noexcept;
+template uint64_t awh::Chrono::get(const unit_t) const noexcept;
+template size_t awh::Chrono::get(const unit_t) const noexcept;
+template ssize_t awh::Chrono::get(const unit_t) const noexcept;
+template float awh::Chrono::get(const unit_t) const noexcept;
+template double awh::Chrono::get(const unit_t) const noexcept;
+template string awh::Chrono::get(const unit_t) const noexcept;
+/**
+ * @brief Шаблон метода извлечения данных даты и времени
+ *
+ * @tparam T тип данных в котором извлекаются данные
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения данных даты и времени
+ *
+ * @param unit    элементы данных для извлечения
+ * @param storage хранение значение времени
+ * @return        значение данных даты и времени
+ */
+T awh::Chrono::get(const unit_t unit, const storage_t storage) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->get(&result, sizeof(result), unit, is_class_v <T>, storage);
+	// Выводим полученный результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода извлечения данных даты и времени
+ */
+template int8_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template uint8_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template int16_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template uint16_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template int32_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template uint32_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template int64_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template uint64_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template size_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template ssize_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template float awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template double awh::Chrono::get(const unit_t, const storage_t) const noexcept;
+template string awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 /**
  * @brief Метод извлечения данных даты и времени
  *

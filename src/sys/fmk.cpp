@@ -695,7 +695,7 @@ static class Symbols {
 				{L'y','y'}, {L'z','z'}
 			};
 		}
-} standardSymbols;
+} symbols;
 
 /**
  * @brief Метод проверки текста на соответствие флагу
@@ -740,12 +740,12 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 				// Если установлен флаг проверки на латинские символы
 				case static_cast <uint8_t> (check_t::LATIAN):
 					// Если символ принадлежит к латинскому алфавиту
-					result = standardSymbols.isLetter(letter);
+					result = symbols.isLetter(letter);
 				break;
 				// Если установлен флаг проверки на число
 				case static_cast <uint8_t> (check_t::NUMBER):
 					// Если символ принадлежит к цифрам
-					result = standardSymbols.isArabic(letter);
+					result = symbols.isArabic(letter);
 				break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8):
@@ -818,12 +818,12 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 				// Если установлен флаг проверки на латинские символы
 				case static_cast <uint8_t> (check_t::LATIAN):
 					// Если символ принадлежит к латинскому алфавиту
-					result = standardSymbols.isLetter(letter);
+					result = symbols.isLetter(letter);
 				break;
 				// Если установлен флаг проверки на число
 				case static_cast <uint8_t> (check_t::NUMBER):
 					// Если символ принадлежит к цифрам
-					result = standardSymbols.isArabic(letter);
+					result = symbols.isArabic(letter);
 				break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8):
@@ -957,15 +957,15 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 									// Выполняем проверку на апостроф
 									result = (
 										(letter == '\'') && (((first != '\'') && (second != '\'')) ||
-										(standardSymbols.isLetter(first) && standardSymbols.isLetter(second)))
+										(symbols.isLetter(first) && symbols.isLetter(second)))
 									);
 								}
 								// Если результат не получен
 								if(!result)
 									// Выводим проверку как она есть
-									result = standardSymbols.isLetter(letter);
+									result = symbols.isLetter(letter);
 							// Выводим проверку как она есть
-							} else result = standardSymbols.isLetter(letter);
+							} else result = symbols.isLetter(letter);
 							// Выводим результат
 							return result;
 						};
@@ -981,7 +981,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								break;
 						}
 					// Если символ принадлежит к латинскому алфавиту
-					} else result = standardSymbols.isLetter(text.front());
+					} else result = symbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8): {
@@ -1062,9 +1062,9 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 							// Проверяем является ли слово арабским числом
 							result = !(
 								(i == j) ?
-								!standardSymbols.isArabic(text.at(i)) :
-								!standardSymbols.isArabic(text.at(i)) ||
-								!standardSymbols.isArabic(text.at(j))
+								!symbols.isArabic(text.at(i)) :
+								!symbols.isArabic(text.at(i)) ||
+								!symbols.isArabic(text.at(j))
 							);
 							// Если слово не соответствует тогда выходим
 							if(!result)
@@ -1072,7 +1072,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								break;
 						}
 					// Если символ всего один, проверяем его так
-					} else result = standardSymbols.isArabic(text.front());
+					} else result = symbols.isArabic(text.front());
 				} break;
 				// Если установлен флаг проверки на число с плавающей точкой
 				case static_cast <uint8_t> (check_t::DECIMAL): {
@@ -1101,7 +1101,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 							}
 						}
 					// Если символ всего один, проверяем его так
-					} else result = standardSymbols.isArabic(text.front());
+					} else result = symbols.isArabic(text.front());
 				} break;
 				// Если установлен флаг проверки наличия латинских символов в строке
 				case static_cast <uint8_t> (check_t::PRESENCE_LATIAN): {
@@ -1112,9 +1112,9 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 							// Проверяем является ли слово латинским
 							result = (
 								(i == j) ?
-								standardSymbols.isLetter(text.at(i)) :
-								standardSymbols.isLetter(text.at(i)) ||
-								standardSymbols.isLetter(text.at(j))
+								symbols.isLetter(text.at(i)) :
+								symbols.isLetter(text.at(i)) ||
+								symbols.isLetter(text.at(j))
 							);
 							// Если найдена хотя бы одна латинская буква тогда выходим
 							if(result)
@@ -1122,14 +1122,14 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								break;
 						}
 					// Если символ всего один, проверяем его так
-					} else result = standardSymbols.isLetter(text.front());
+					} else result = symbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на псевдо-число
 				case static_cast <uint8_t> (check_t::PSEUDO_NUMBER): {
 					// Если не является то проверяем дальше
 					if(!(result = this->is(text, check_t::NUMBER))){
 						// Проверяем являются ли первая и последняя буква слова, числом
-						result = (standardSymbols.isArabic(text.front()) || standardSymbols.isArabic(text.back()));
+						result = (symbols.isArabic(text.front()) || symbols.isArabic(text.back()));
 						// Если оба варианта не сработали
 						if(!result && (text.length() > 2)){
 							// Переходим по всему списку
@@ -1137,9 +1137,9 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 								// Проверяем является ли слово арабским числом
 								result = (
 									(i == j) ?
-									standardSymbols.isArabic(text.at(i)) :
-									standardSymbols.isArabic(text.at(i)) ||
-									standardSymbols.isArabic(text.at(j))
+									symbols.isArabic(text.at(i)) :
+									symbols.isArabic(text.at(i)) ||
+									symbols.isArabic(text.at(j))
 								);
 								// Если хоть один символ является числом, выходим
 								if(result)
@@ -1276,15 +1276,15 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 									// Выполняем проверку на апостроф
 									result = (
 										(letter == L'\'') && (((first != L'\'') && (second != L'\'')) ||
-										(standardSymbols.isLetter(first) && standardSymbols.isLetter(second)))
+										(symbols.isLetter(first) && symbols.isLetter(second)))
 									);
 								}
 								// Если результат не получен
 								if(!result)
 									// Выводим проверку как она есть
-									result = standardSymbols.isLetter(letter);
+									result = symbols.isLetter(letter);
 							// Выводим проверку как она есть
-							} else result = standardSymbols.isLetter(letter);
+							} else result = symbols.isLetter(letter);
 							// Выводим результат
 							return result;
 						};
@@ -1300,7 +1300,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								break;
 						}
 					// Если символ принадлежит к латинскому алфавиту
-					} else result = standardSymbols.isLetter(text.front());
+					} else result = symbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8): {
@@ -1381,9 +1381,9 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 							// Проверяем является ли слово арабским числом
 							result = !(
 								(i == j) ?
-								!standardSymbols.isArabic(text.at(i)) :
-								!standardSymbols.isArabic(text.at(i)) ||
-								!standardSymbols.isArabic(text.at(j))
+								!symbols.isArabic(text.at(i)) :
+								!symbols.isArabic(text.at(i)) ||
+								!symbols.isArabic(text.at(j))
 							);
 							// Если слово не соответствует тогда выходим
 							if(!result)
@@ -1391,7 +1391,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								break;
 						}
 					// Если символ всего один, проверяем его так
-					} else result = standardSymbols.isArabic(text.front());
+					} else result = symbols.isArabic(text.front());
 				} break;
 				// Если установлен флаг проверки на число с плавающей точкой
 				case static_cast <uint8_t> (check_t::DECIMAL): {
@@ -1420,7 +1420,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 							}
 						}
 					// Если символ всего один, проверяем его так
-					} else result = standardSymbols.isArabic(text.front());
+					} else result = symbols.isArabic(text.front());
 				} break;
 				// Если установлен флаг проверки наличия латинских символов в строке
 				case static_cast <uint8_t> (check_t::PRESENCE_LATIAN): {
@@ -1431,9 +1431,9 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 							// Проверяем является ли слово латинским
 							result = (
 								(i == j) ?
-								standardSymbols.isLetter(text.at(i)) :
-								standardSymbols.isLetter(text.at(i)) ||
-								standardSymbols.isLetter(text.at(j))
+								symbols.isLetter(text.at(i)) :
+								symbols.isLetter(text.at(i)) ||
+								symbols.isLetter(text.at(j))
 							);
 							// Если найдена хотя бы одна латинская буква тогда выходим
 							if(result)
@@ -1441,14 +1441,14 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								break;
 						}
 					// Если символ всего один, проверяем его так
-					} else result = standardSymbols.isLetter(text.front());
+					} else result = symbols.isLetter(text.front());
 				} break;
 				// Если установлен флаг проверки на псевдо-число
 				case static_cast <uint8_t> (check_t::PSEUDO_NUMBER): {
 					// Если не является то проверяем дальше
 					if(!(result = this->is(text, check_t::NUMBER))){
 						// Проверяем являются ли первая и последняя буква слова, числом
-						result = (standardSymbols.isArabic(text.front()) || standardSymbols.isArabic(text.back()));
+						result = (symbols.isArabic(text.front()) || symbols.isArabic(text.back()));
 						// Если оба варианта не сработали
 						if(!result && (text.length() > 2)){
 							// Переходим по всему списку
@@ -1456,9 +1456,9 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 								// Проверяем является ли слово арабским числом
 								result = (
 									(i == j) ?
-									standardSymbols.isArabic(text.at(i)) :
-									standardSymbols.isArabic(text.at(i)) ||
-									standardSymbols.isArabic(text.at(j))
+									symbols.isArabic(text.at(i)) :
+									symbols.isArabic(text.at(i)) ||
+									symbols.isArabic(text.at(j))
 								);
 								// Если хоть один символ является числом
 								if(result)
@@ -1784,6 +1784,50 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 		}
 	}
 }
+/**
+ * @brief Шаблон метода получения штампа времени в указанных единицах измерения
+ *
+ * @tparam T тип данных в котором извлекаются данные
+ */
+template <typename T>
+/**
+ * @brief Метод получения штампа времени в указанных единицах измерения
+ *
+ * @param type тип формируемого штампа времени
+ * @return     сгенерированный штамп времени
+ */
+T awh::Framework::timestamp(const chrono_t type) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->timestamp(&result, sizeof(result), type, is_class_v <T>);
+	// Выводим полученный результат
+	return result;
+}
+/**
+ * Объявляем прототипы для извлечения значений времени
+ */
+template int8_t awh::Framework::timestamp <int8_t> (const chrono_t) const noexcept;
+template uint8_t awh::Framework::timestamp <uint8_t> (const chrono_t) const noexcept;
+template int16_t awh::Framework::timestamp <int16_t> (const chrono_t) const noexcept;
+template uint16_t awh::Framework::timestamp <uint16_t> (const chrono_t) const noexcept;
+template int32_t awh::Framework::timestamp <int32_t> (const chrono_t) const noexcept;
+template uint32_t awh::Framework::timestamp <uint32_t> (const chrono_t) const noexcept;
+template int64_t awh::Framework::timestamp <int64_t> (const chrono_t) const noexcept;
+template uint64_t awh::Framework::timestamp <uint64_t> (const chrono_t) const noexcept;
+template size_t awh::Framework::timestamp <size_t> (const chrono_t) const noexcept;
+template ssize_t awh::Framework::timestamp <ssize_t> (const chrono_t) const noexcept;
+template float awh::Framework::timestamp <float> (const chrono_t) const noexcept;
+template double awh::Framework::timestamp <double> (const chrono_t) const noexcept;
 /**
  * @brief Метод конвертирования строки кодировки
  *
@@ -2401,6 +2445,41 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	return result;
 }
 /**
+ * @brief функции определения точного размера, сколько занимает число байт
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод определения точного размера, сколько занимает число байт
+ *
+ * @param num число для проверки
+ * @return    фактический размер занимаемым числом байт
+ */
+size_t awh::Framework::size(const T num) const noexcept {
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
+		// Выполняем подсчёт занимаемых числом данных
+		return this->size(&num, sizeof(num));
+	// Выводим значение по умолчанию
+	return 0;
+}
+/**
+ * Объявляем прототипы для извлечения точного размера числа байт
+ */
+template size_t awh::Framework::size <int8_t> (const int8_t) const noexcept;
+template size_t awh::Framework::size <uint8_t> (const uint8_t) const noexcept;
+template size_t awh::Framework::size <int16_t> (const int16_t) const noexcept;
+template size_t awh::Framework::size <uint16_t> (const uint16_t) const noexcept;
+template size_t awh::Framework::size <int32_t> (const int32_t) const noexcept;
+template size_t awh::Framework::size <uint32_t> (const uint32_t) const noexcept;
+template size_t awh::Framework::size <int64_t> (const int64_t) const noexcept;
+template size_t awh::Framework::size <uint64_t> (const uint64_t) const noexcept;
+template size_t awh::Framework::size <size_t> (const size_t) const noexcept;
+template size_t awh::Framework::size <ssize_t> (const ssize_t) const noexcept;
+template size_t awh::Framework::size <float> (const float) const noexcept;
+template size_t awh::Framework::size <double> (const double) const noexcept;
+/**
  * @brief Метод определения точного размера, сколько занимают данные (в байтах) в буфере
  *
  * @param value значение бинарного буфера для проверки
@@ -2458,6 +2537,42 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
 	return result;
 }
 /**
+ * @brief Шаблон функции проверки больше первое число второго или нет (бинарным методом)
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод проверки больше первое число второго или нет (бинарным методом)
+ *
+ * @param num1 значение первого числа в бинарном виде
+ * @param num2 значение второго числа в бинарном виде
+ * @return     результат проверки
+ */
+bool awh::Framework::compare(const T num1, const T num2) const noexcept {
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
+		// Выполняем проверку
+		return this->compare(&num1, &num2, sizeof(num1));
+	// Выводим значение по умолчанию
+	return false;
+}
+/**
+ * Объявляем прототипы для сравнения больших чисел без ограничения
+ */
+template bool awh::Framework::compare <int8_t> (const int8_t, const int8_t) const noexcept;
+template bool awh::Framework::compare <uint8_t> (const uint8_t, const uint8_t) const noexcept;
+template bool awh::Framework::compare <int16_t> (const int16_t, const int16_t) const noexcept;
+template bool awh::Framework::compare <uint16_t> (const uint16_t, const uint16_t) const noexcept;
+template bool awh::Framework::compare <int32_t> (const int32_t, const int32_t) const noexcept;
+template bool awh::Framework::compare <uint32_t> (const uint32_t, const uint32_t) const noexcept;
+template bool awh::Framework::compare <int64_t> (const int64_t, const int64_t) const noexcept;
+template bool awh::Framework::compare <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+template bool awh::Framework::compare <size_t> (const size_t, const size_t) const noexcept;
+template bool awh::Framework::compare <ssize_t> (const ssize_t, const ssize_t) const noexcept;
+template bool awh::Framework::compare <float> (const float, const float) const noexcept;
+template bool awh::Framework::compare <double> (const double, const double) const noexcept;
+/**
  * @brief Метод проверки больше первое число второго или нет (бинарным методом)
  *
  * @param value1 значение первого числа в бинарном виде
@@ -2465,7 +2580,7 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
  * @param size   размер бинарного буфера числа
  * @return       результат проверки
  */
-bool awh::Framework::greater(const void * value1, const void * value2, const size_t size) const noexcept {
+bool awh::Framework::compare(const void * value1, const void * value2, const size_t size) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы правильно
@@ -2520,6 +2635,42 @@ bool awh::Framework::greater(const void * value1, const void * value2, const siz
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Шаблон функции конвертации чисел в указанную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации чисел в указанную систему счисления
+ *
+ * @param value число для конвертации
+ * @param radix система счисления
+ * @return      полученная строка в указанной системе счисления
+ */
+string awh::Framework::itoa(const T value, const uint8_t radix) const noexcept {
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
+		// Выполняем конвертацию чисел в указанную систему счисления
+		return this->itoa(&value, sizeof(value), radix);
+	// Выводим пустое значение
+	return "";
+}
+/**
+ * Объявляем прототипы для метода конвертации чисел в указанную систему счисления
+ */
+template string awh::Framework::itoa <int8_t> (const int8_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <uint8_t> (const uint8_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <int16_t> (const int16_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <uint16_t> (const uint16_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <int32_t> (const int32_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <uint32_t> (const uint32_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <int64_t> (const int64_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <uint64_t> (const uint64_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <size_t> (const size_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <ssize_t> (const ssize_t, const uint8_t) const noexcept;
+template string awh::Framework::itoa <float> (const float, const uint8_t) const noexcept;
+template string awh::Framework::itoa <double> (const double, const uint8_t) const noexcept;
 /**
  * @brief Метод конвертации чисел в указанную систему счисления
  *
@@ -2687,6 +2838,51 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value число в бинарном виде для конвертации в 10-ю систему
+ * @param radix система счисления
+ * @return      полученное значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(const string & value, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->atoi(value, radix, &result, sizeof(result));
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (const string &, const uint8_t) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (const string &, const uint8_t) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (const string &, const uint8_t) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (const string &, const uint8_t) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (const string &, const uint8_t) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (const string &, const uint8_t) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (const string &, const uint8_t) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (const string &, const uint8_t) const noexcept;
+template size_t awh::Framework::atoi <size_t> (const string &, const uint8_t) const noexcept;
+template ssize_t awh::Framework::atoi <ssize_t> (const string &, const uint8_t) const noexcept;
+template float awh::Framework::atoi <float> (const string &, const uint8_t) const noexcept;
+template double awh::Framework::atoi <double> (const string &, const uint8_t) const noexcept;
 /**
  * @brief Метод конвертации строковых чисел в десятичную систему счисления
  *
@@ -2902,7 +3098,7 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 						// Увеличиваем значение итератора
 						++i;
 					// Проверяем является ли символ числом
-					else if(standardSymbols.isArabic(* i) || ((* i) == '.'))
+					else if(symbols.isArabic(* i) || ((* i) == '.'))
 						// Увеличиваем значение итератора
 						++i;
 					// Иначе удаляем символ
@@ -3002,7 +3198,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 						// Выполняем увеличение значения итератора
 						++i;
 					// Проверяем является ли символ числом
-					else if(standardSymbols.isArabic(* i) || ((* i) == '.'))
+					else if(symbols.isArabic(* i) || ((* i) == '.'))
 						// Выполняем увеличение значения итератора
 						++i;
 					// Иначе удаляем символ
@@ -3131,7 +3327,7 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 			// Получаем длину слова
 			const size_t length = word.length();
 			// Если слово состоит всего из одной буквы
-			if((length == 1) && !standardSymbols.isRome(word.front()))
+			if((length == 1) && !symbols.isRome(word.front()))
 				// Выводим результат
 				return result;
 			// Если слово длиннее одной буквы
@@ -3140,9 +3336,9 @@ uint16_t awh::Framework::rome2arabic(const string & word) const noexcept {
 				for(size_t i = 0, j = (length - 1); j > ((length / 2) - 1); i++, j--){
 					// Проверяем является ли слово римским числом
 					if(!((i == j) ?
-						standardSymbols.isRome(word.at(i)) :
-						standardSymbols.isRome(word.at(i)) &&
-						standardSymbols.isRome(word.at(j))
+						symbols.isRome(word.at(i)) :
+						symbols.isRome(word.at(i)) &&
+						symbols.isRome(word.at(j))
 					)) return result;
 				}
 			}
@@ -3272,7 +3468,7 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 			// Получаем длину слова
 			const size_t length = word.length();
 			// Если слово состоит всего из одной буквы
-			if((length == 1) && !standardSymbols.isRome(word.front()))
+			if((length == 1) && !symbols.isRome(word.front()))
 				// Выводим результат
 				return result;
 			// Если слово длиннее одной буквы
@@ -3281,9 +3477,9 @@ uint16_t awh::Framework::rome2arabic(const wstring & word) const noexcept {
 				for(size_t i = 0, j = (length - 1); j > ((length / 2) - 1); i++, j--){
 					// Проверяем является ли слово римским числом
 					if(!((i == j) ?
-						standardSymbols.isRome(word.at(i)) :
-						standardSymbols.isRome(word.at(i)) &&
-						standardSymbols.isRome(word.at(j))
+						symbols.isRome(word.at(i)) :
+						symbols.isRome(word.at(i)) &&
+						symbols.isRome(word.at(j))
 					)) return result;
 				}
 			}

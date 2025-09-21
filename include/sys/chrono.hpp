@@ -611,16 +611,6 @@ namespace awh {
 			 * @return        результат проверки
 			 */
 			bool leap(const storage_t storage = storage_t::GLOBAL) const noexcept;
-		private:
-			/**
-			 * @brief Метод установки данных даты и времени
-			 *
-			 * @param buffer бинарный буфер данных
-			 * @param size   размер бинарного буфера
-			 * @param unit   элементы данных для установки
-			 * @param text   данные переданы в виде текста
-			 */
-			void set(const void * buffer, const size_t size, const unit_t unit, const bool text) noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода установки данных даты и времени
@@ -634,10 +624,59 @@ namespace awh {
 			 * @param date дата для обработки
 			 * @param unit элементы данных для установки
 			 */
-			void set(const T date, const unit_t unit) noexcept {
-				// Выполняем установку данных
-				this->set(&date, sizeof(date), unit, is_class_v <T>);
-			}
+			void set(const T date, const unit_t unit) noexcept;
+		private:
+			/**
+			 * @brief Метод установки данных даты и времени
+			 *
+			 * @param buffer бинарный буфер данных
+			 * @param size   размер бинарного буфера
+			 * @param unit   элементы данных для установки
+			 * @param text   данные переданы в виде текста
+			 */
+			void set(const void * buffer, const size_t size, const unit_t unit, const bool text) noexcept;
+		public:
+			/**
+			 * @brief Шаблон метода извлечения данных даты и времени
+			 *
+			 * @tparam T тип данных в котором извлекаются данные
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод извлечения данных даты и времени
+			 *
+			 * @param date дата для обработки
+			 * @param unit элементы данных для извлечения
+			 * @return     значение данных даты и времени
+			 */
+			T get(const uint64_t date, const unit_t unit) const noexcept;
+			/**
+			 * @brief Шаблон метода извлечения данных даты и времени
+			 *
+			 * @tparam T тип данных в котором извлекаются данные
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод извлечения данных даты и времени
+			 *
+			 * @param unit элементы данных для извлечения
+			 * @return     значение данных даты и времени
+			 */
+			T get(const unit_t unit) const noexcept;
+			/**
+			 * @brief Шаблон метода извлечения данных даты и времени
+			 *
+			 * @tparam T тип данных в котором извлекаются данные
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод извлечения данных даты и времени
+			 *
+			 * @param unit    элементы данных для извлечения
+			 * @param storage хранение значение времени
+			 * @return        значение данных даты и времени
+			 */
+			T get(const unit_t unit, const storage_t storage) const noexcept;
 		private:
 			/**
 			 * @brief Метод извлечения данных даты и времени
@@ -659,67 +698,6 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 */
 			void get(void * buffer, const size_t size, const unit_t unit, const bool text, const storage_t storage) const noexcept;
-		public:
-			/**
-			 * @brief Шаблон метода извлечения данных даты и времени
-			 *
-			 * @tparam T тип данных в котором извлекаются данные
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод извлечения данных даты и времени
-			 *
-			 * @param date дата для обработки
-			 * @param unit элементы данных для извлечения
-			 * @return     значение данных даты и времени
-			 */
-			T get(const uint64_t date, const unit_t unit) const noexcept {
-				// Результат работы функции
-				T result;
-				// Если данные являются основными
-				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-					// Буфер результата по умолчанию
-					uint8_t buffer[sizeof(T)];
-					// Заполняем нулями буфер данных
-					::memset(buffer, 0, sizeof(T));
-					// Выполняем установку результата по умолчанию
-					::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
-				}
-				// Выполняем извлечение данных
-				this->get(&result, sizeof(result), date, unit, is_class_v <T>);
-				// Выводим полученный результат
-				return result;
-			}
-			/**
-			 * @brief Шаблон метода извлечения данных даты и времени
-			 *
-			 * @tparam T тип данных в котором извлекаются данные
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод извлечения данных даты и времени
-			 *
-			 * @param unit    элементы данных для извлечения
-			 * @param storage хранение значение времени
-			 * @return        значение данных даты и времени
-			 */
-			T get(const unit_t unit, const storage_t storage = storage_t::GLOBAL) const noexcept {
-				// Результат работы функции
-				T result;
-				// Если данные являются основными
-				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-					// Буфер результата по умолчанию
-					uint8_t buffer[sizeof(T)];
-					// Заполняем нулями буфер данных
-					::memset(buffer, 0, sizeof(T));
-					// Выполняем установку результата по умолчанию
-					::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
-				}
-				// Выполняем извлечение данных
-				this->get(&result, sizeof(result), unit, is_class_v <T>, storage);
-				// Выводим полученный результат
-				return result;
-			}
 		public:
 			/**
 			 * @brief Метод установки временной зоны

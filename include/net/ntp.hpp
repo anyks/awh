@@ -93,7 +93,9 @@ namespace awh {
 	 */
 	typedef class AWHSHARED_EXPORT NTP {
 		private:
-			// Дельта штампа времени (количество секунд между 1900 и 1970 годами)
+			/**
+			 * Дельта штампа времени (количество секунд между 1900 и 1970 годами)
+			 */
 			static constexpr uint64_t NTP_TIMESTAMP_DELTA {2208988800ull};
 		private:
 			/**
@@ -134,7 +136,9 @@ namespace awh {
 			 * @tparam T размерность буфера NTP-сервера
 			 */
 			template <uint8_t T>
-			// Создаём тип данных работы с NTP-серверами
+			/**
+			 * Создаём тип данных работы с NTP-серверами
+			 */
 			using server_t = Server <T>;
 		private:
 			private:

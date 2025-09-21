@@ -232,7 +232,6 @@ int32_t main(int32_t argc, char * argv[]){
 	result = chrono.format(date, "%A %e %B %Y %H:%M:%S.%s %Z AND %a %e %h %y %I:%M:%S.%s %p %o");
 	// Выводим сформированный результат даты
 	log.print("Date: %s (%llu)", log_t::flag_t::INFO, result.c_str(), date);
-
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

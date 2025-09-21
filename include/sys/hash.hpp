@@ -228,16 +228,7 @@ namespace awh {
 			 * @param type тип хэш-суммы
 			 * @return     результат хэширования
 			 */
-			auto hashing(const string & text, const type_t type) const noexcept -> T {
-				// Результат работы функции
-				T result;
-				// Если текст передан
-				if(!text.empty())
-					// Выполняем хэширование
-					this->hashing(text, type, result);
-				// Выводим результат
-				return result;
-			}
+			auto hashing(const string & text, const type_t type) const noexcept -> T;
 		public:
 			/**
 			 * @brief Метод хэширования текста
@@ -270,16 +261,7 @@ namespace awh {
 			 * @param type тип хэш-суммы
 			 * @return     результат хэширования
 			 */
-			auto hmac(const string & key, const string & text, const type_t type) const noexcept -> T {
-				// Результат работы функции
-				T result;
-				// Если текст передан
-				if(!text.empty())
-					// Выполняем хэширование
-					this->hmac(key, text, type, result);
-				// Выводим результат
-				return result;
-			}
+			auto hmac(const string & key, const string & text, const type_t type) const noexcept -> T;
 		public:
 			/**
 			 * @brief Метод хэширования текста с ключом
@@ -314,41 +296,7 @@ namespace awh {
 			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 			 * @return       результат кодирования
 			 */
-			auto encode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T {
-				// Результат работы функции
-				T result;
-				// Если буфер данных передан
-				if((buffer != nullptr) && (size > 0))
-					// Выполняем кодирование
-					this->encode(buffer, size, cipher, result);
-				// Выводим результат
-				return result;
-			}
-			/**
-			 * @brief Шаблон метода декодирования
-			 *
-			 * @tparam T тип возвращаемого результата
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод декодирования
-			 *
-			 * @param buffer буфер данных для шифрования
-			 * @param size   размер данных для шифрования
-			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
-			 * @return       результат кодирования
-			 */
-			auto decode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T {
-				// Результат работы функции
-				T result;
-				// Если буфер данных передан
-				if((buffer != nullptr) && (size > 0))
-					// Выполняем декодирование
-					this->decode(buffer, size, cipher, result);
-				// Выводим результат
-				return result;
-			}
-		public:
+			auto encode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T;
 			/**
 			 * @brief Метод кодирования
 			 *
@@ -369,6 +317,21 @@ namespace awh {
 			void encode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
 		public:
 			/**
+			 * @brief Шаблон метода декодирования
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод декодирования
+			 *
+			 * @param buffer буфер данных для шифрования
+			 * @param size   размер данных для шифрования
+			 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+			 * @return       результат кодирования
+			 */
+			auto decode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T;
+			/**
 			 * @brief Метод декодирования
 			 *
 			 * @param buffer буфер данных для шифрования
@@ -388,7 +351,7 @@ namespace awh {
 			void decode(const char * buffer, const size_t size, const cipher_t cipher, vector <char> & result) const noexcept;
 		public:
 			/**
-			 * @brief Шаблон метода декодирования
+			 * @brief Шаблон метода компрессии данных
 			 *
 			 * @tparam T тип возвращаемого результата
 			 */
@@ -401,41 +364,7 @@ namespace awh {
 			 * @param method метод компрессии
 			 * @return       результат компрессии
 			 */
-			auto compress(const char * buffer, const size_t size, const method_t method) const noexcept -> T {
-				// Результат работы функции
-				T result;
-				// Если буфер данных передан
-				if((buffer != nullptr) && (size > 0))
-					// Выполняем кодирование
-					this->compress(buffer, size, method, result);
-				// Выводим результат
-				return result;
-			}
-			/**
-			 * @brief Шаблон метода декодирования
-			 *
-			 * @tparam T тип возвращаемого результата
-			 */
-			template <typename T>
-			/**
-			 * @brief Метод декомпрессии данных
-			 *
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @param method метод компрессии
-			 * @return       результат декомпрессии
-			 */
-			auto decompress(const char * buffer, const size_t size, const method_t method) const noexcept -> T {
-				// Результат работы функции
-				T result;
-				// Если буфер данных передан
-				if((buffer != nullptr) && (size > 0))
-					// Выполняем декомпрессию
-					this->decompress(buffer, size, method, result);
-				// Выводим результат
-				return result;
-			}
-		public:
+			auto compress(const char * buffer, const size_t size, const method_t method) const noexcept -> T;
 			/**
 			 * @brief Метод компрессии данных
 			 *
@@ -455,6 +384,21 @@ namespace awh {
 			 */
 			void compress(const char * buffer, const size_t size, const method_t method, vector <char> & result) const noexcept;
 		public:
+			/**
+			 * @brief Шаблон метода декомпрессии данных
+			 *
+			 * @tparam T тип возвращаемого результата
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод декомпрессии данных
+			 *
+			 * @param buffer буфер данных для декомпрессии
+			 * @param size   размер данных для декомпрессии
+			 * @param method метод компрессии
+			 * @return       результат декомпрессии
+			 */
+			auto decompress(const char * buffer, const size_t size, const method_t method) const noexcept -> T;
 			/**
 			 * @brief Метод декомпрессии данных
 			 *

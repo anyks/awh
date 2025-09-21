@@ -334,23 +334,7 @@ namespace awh {
 			 * @param type тип формируемого штампа времени
 			 * @return     сгенерированный штамп времени
 			 */
-			T timestamp(const chrono_t type) const noexcept {
-				// Результат работы функции
-				T result;
-				// Если данные являются основными
-				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-					// Буфер результата по умолчанию
-					uint8_t buffer[sizeof(T)];
-					// Заполняем нулями буфер данных
-					::memset(buffer, 0, sizeof(T));
-					// Выполняем установку результата по умолчанию
-					::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
-				}
-				// Выполняем извлечение данных
-				this->timestamp(&result, sizeof(result), type, is_class_v <T>);
-				// Выводим полученный результат
-				return result;
-			}
+			T timestamp(const chrono_t type) const noexcept;
 		public:
 			/**
 			 * @brief Метод конвертирования строки кодировки
@@ -473,14 +457,7 @@ namespace awh {
 			 * @param num число для проверки
 			 * @return    фактический размер занимаемым числом байт
 			 */
-			size_t size(const T num) const noexcept {
-				// Если данные являются основными
-				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
-					// Выполняем подсчёт занимаемых числом данных
-					return this->size(&num, sizeof(num));
-				// Выводим значение по умолчанию
-				return 0;
-			}
+			size_t size(const T num) const noexcept;
 			/**
 			 * @brief Метод определения точного размера, сколько занимают данные (в байтах) в буфере
 			 *
@@ -503,14 +480,7 @@ namespace awh {
 			 * @param num2 значение второго числа в бинарном виде
 			 * @return     результат проверки
 			 */
-			bool greater(const T num1, const T num2) const noexcept {
-				// Если данные являются основными
-				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
-					// Выполняем проверку
-					return this->greater(&num1, &num2, sizeof(num1));
-				// Выводим значение по умолчанию
-				return false;
-			}
+			bool compare(const T num1, const T num2) const noexcept;
 			/**
 			 * @brief Метод проверки больше первое число второго или нет (бинарным методом)
 			 *
@@ -519,7 +489,7 @@ namespace awh {
 			 * @param size   размер бинарного буфера числа
 			 * @return       результат проверки
 			 */
-			bool greater(const void * value1, const void * value2, const size_t size) const noexcept;
+			bool compare(const void * value1, const void * value2, const size_t size) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон функции конвертации чисел в указанную систему счисления
@@ -534,14 +504,7 @@ namespace awh {
 			 * @param radix система счисления
 			 * @return      полученная строка в указанной системе счисления
 			 */
-			string itoa(const T value, const uint8_t radix) const noexcept {
-				// Если данные являются основными
-				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
-					// Выполняем конвертацию чисел в указанную систему счисления
-					return this->itoa(&value, sizeof(value), radix);
-				// Выводим пустое значение
-				return "";
-			}
+			string itoa(const T value, const uint8_t radix) const noexcept;
 			/**
 			 * @brief Метод конвертации чисел в указанную систему счисления
 			 *
@@ -565,23 +528,7 @@ namespace awh {
 			 * @param radix система счисления
 			 * @return      полученное значение в десятичной системе счисления
 			 */
-			T atoi(const string & value, const uint8_t radix) const noexcept {
-				// Результат работы функции
-				T result;
-				// Если данные являются основными
-				if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-					// Буфер результата по умолчанию
-					uint8_t buffer[sizeof(T)];
-					// Заполняем нулями буфер данных
-					::memset(buffer, 0, sizeof(T));
-					// Выполняем установку результата по умолчанию
-					::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
-				}
-				// Выполняем извлечение данных
-				this->atoi(value, radix, &result, sizeof(result));
-				// Выводим результат
-				return result;
-			}
+			T atoi(const string & value, const uint8_t radix) const noexcept;
 			/**
 			 * @brief Метод конвертации строковых чисел в десятичную систему счисления
 			 *

@@ -548,7 +548,7 @@ string && awh::Net::zerro(string && num, const uint8_t size) const noexcept {
  * @param size   размер бинарного буфера числа
  * @return       результат проверки
  */
-bool awh::Net::greater(const void * value1, const void * value2, const size_t size) const noexcept {
+bool awh::Net::compare(const void * value1, const void * value2, const size_t size) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы правильно
@@ -2824,7 +2824,7 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 					// Получаем данные сравниваемого адреса IPv6
 					const auto & second = addr.v6(endian_t::BIG);
 					// Выполняем бинарное сравнение
-					result = this->greater(reinterpret_cast <const uint8_t *> (second.data()), reinterpret_cast <const uint8_t *> (first.data()), sizeof(first));
+					result = this->compare(reinterpret_cast <const uint8_t *> (second.data()), reinterpret_cast <const uint8_t *> (first.data()), sizeof(first));
 				} break;
 			}
 		/**
@@ -2885,7 +2885,7 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 					// Получаем данные сравниваемого адреса IPv6
 					const auto & second = addr.v6(endian_t::BIG);
 					// Выполняем бинарное сравнение
-					result = this->greater(reinterpret_cast <const uint8_t *> (first.data()), reinterpret_cast <const uint8_t *> (second.data()), sizeof(first));
+					result = this->compare(reinterpret_cast <const uint8_t *> (first.data()), reinterpret_cast <const uint8_t *> (second.data()), sizeof(first));
 				} break;
 			}
 		/**
@@ -2950,7 +2950,7 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 					// Если адреса не совпадают
 					if(!result)
 						// Выполняем бинарное сравнение
-						result = this->greater(reinterpret_cast <const uint8_t *> (second.data()), reinterpret_cast <const uint8_t *> (first.data()), sizeof(first));
+						result = this->compare(reinterpret_cast <const uint8_t *> (second.data()), reinterpret_cast <const uint8_t *> (first.data()), sizeof(first));
 				} break;
 			}
 		/**
@@ -3015,7 +3015,7 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 					// Если адреса не совпадают
 					if(!result)
 						// Выполняем бинарное сравнение
-						result = this->greater(reinterpret_cast <const uint8_t *> (first.data()), reinterpret_cast <const uint8_t *> (second.data()), sizeof(first));
+						result = this->compare(reinterpret_cast <const uint8_t *> (first.data()), reinterpret_cast <const uint8_t *> (second.data()), sizeof(first));
 				} break;
 			}
 		/**

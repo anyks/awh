@@ -86,6 +86,225 @@ size_t awh::Buffer::capacity() const noexcept {
 	return this->_buffer.capacity();
 }
 /**
+ * @brief Шаблон для метода удаления верхних записей
+ *
+ * @tparam T тип данных для удаления
+ */
+template <typename T>
+/**
+ * @brief Метод удаления верхних записей
+ *
+ */
+void awh::Buffer::pop() noexcept {
+	// Если мы не дошли до конца
+	if(!this->empty())
+		// Выполняем удаление указанного количества байт
+		this->erase(sizeof(T));
+}
+/**
+ * Объявляем прототипы для метода удаления верхних записей
+ */
+template void awh::Buffer::pop <int8_t> () noexcept;
+template void awh::Buffer::pop <uint8_t> () noexcept;
+template void awh::Buffer::pop <int16_t> () noexcept;
+template void awh::Buffer::pop <uint16_t> () noexcept;
+template void awh::Buffer::pop <int32_t> () noexcept;
+template void awh::Buffer::pop <uint32_t> () noexcept;
+template void awh::Buffer::pop <int64_t> () noexcept;
+template void awh::Buffer::pop <uint64_t> () noexcept;
+template void awh::Buffer::pop <size_t> () noexcept;
+template void awh::Buffer::pop <ssize_t> () noexcept;
+template void awh::Buffer::pop <float> () noexcept;
+template void awh::Buffer::pop <double> () noexcept;
+/**
+ * @brief Шаблон для метода получения количества элементов в бинарном буфере
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получения количества элементов в бинарном буфере
+ *
+ * @return количество всех добавленных лементов
+ */
+size_t awh::Buffer::count() const noexcept {
+	// Если мы не дошли до конца
+	if(!this->empty())
+		// Выводим размер данных в буфере
+		return (this->size() / sizeof(T));
+	// Выводим пустое значение
+	return 0;
+}
+/**
+ * Объявляем прототипы для метода получения количества элементов в бинарном буфере
+ */
+template size_t awh::Buffer::count <int8_t> () const noexcept;
+template size_t awh::Buffer::count <uint8_t> () const noexcept;
+template size_t awh::Buffer::count <int16_t> () const noexcept;
+template size_t awh::Buffer::count <uint16_t> () const noexcept;
+template size_t awh::Buffer::count <int32_t> () const noexcept;
+template size_t awh::Buffer::count <uint32_t> () const noexcept;
+template size_t awh::Buffer::count <int64_t> () const noexcept;
+template size_t awh::Buffer::count <uint64_t> () const noexcept;
+template size_t awh::Buffer::count <size_t> () const noexcept;
+template size_t awh::Buffer::count <ssize_t> () const noexcept;
+template size_t awh::Buffer::count <float> () const noexcept;
+template size_t awh::Buffer::count <double> () const noexcept;
+/**
+ * @brief Шаблон для метода извлечения нижнего значения в буфере
+ *
+ * @tparam T тип данных для извлечения
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения нижнего значения в буфере
+ *
+ * @return данные содержащиеся в буфере
+ */
+T awh::Buffer::back() const noexcept {
+	// Результат работы функции
+	T result = 0;
+	// Если контейнер не пустой
+	if(!this->empty()){
+		// Получаем размер данных
+		const size_t size = sizeof(result);
+		// Выполняем копирование данных контейнера
+		::memcpy(&result, this->get() + (this->_buffer.size() - size), size);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода извлечения нижнего значения в буфере
+ */
+template int8_t awh::Buffer::back() const noexcept;
+template uint8_t awh::Buffer::back() const noexcept;
+template int16_t awh::Buffer::back() const noexcept;
+template uint16_t awh::Buffer::back() const noexcept;
+template int32_t awh::Buffer::back() const noexcept;
+template uint32_t awh::Buffer::back() const noexcept;
+template int64_t awh::Buffer::back() const noexcept;
+template uint64_t awh::Buffer::back() const noexcept;
+template size_t awh::Buffer::back() const noexcept;
+template ssize_t awh::Buffer::back() const noexcept;
+template float awh::Buffer::back() const noexcept;
+template double awh::Buffer::back() const noexcept;
+/**
+ * @brief Шаблон для метода извлечения верхнего значения в буфере
+ *
+ * @tparam T тип данных для извлечения
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения верхнего значения в буфере
+ *
+ * @return данные содержащиеся в буфере
+ */
+T awh::Buffer::front() const noexcept {
+	// Результат работы функции
+	T result = 0;
+	// Если контейнер не пустой
+	if(!this->empty()){
+		// Получаем размер данных
+		const size_t size = sizeof(result);
+		// Выполняем копирование данных контейнера
+		::memcpy(&result, this->get(), size);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода извлечения верхнего значения в буфере
+ */
+template int8_t awh::Buffer::front() const noexcept;
+template uint8_t awh::Buffer::front() const noexcept;
+template int16_t awh::Buffer::front() const noexcept;
+template uint16_t awh::Buffer::front() const noexcept;
+template int32_t awh::Buffer::front() const noexcept;
+template uint32_t awh::Buffer::front() const noexcept;
+template int64_t awh::Buffer::front() const noexcept;
+template uint64_t awh::Buffer::front() const noexcept;
+template size_t awh::Buffer::front() const noexcept;
+template ssize_t awh::Buffer::front() const noexcept;
+template float awh::Buffer::front() const noexcept;
+template double awh::Buffer::front() const noexcept;
+/**
+ * @brief Шаблон для метода извлечения содержимого контейнера по его индексу
+ *
+ * @tparam T тип данных для извлечения
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения содержимого контейнера по его индексу
+ *
+ * @param index индекс массива для извлечения
+ * @return      данные содержащиеся в буфере
+ */
+T awh::Buffer::at(const size_t index) const noexcept {
+	// Результат работы функции
+	T result = 0;
+	// Если контейнер не пустой
+	if(!this->empty() && (index < this->size())){
+		// Получаем размер данных
+		const size_t size = sizeof(result);
+		// Выполняем копирование данных контейнера
+		::memcpy(&result, this->get() + (index * size), size);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода извлечения содержимого контейнера по его индексу
+ */
+template int8_t awh::Buffer::at(const size_t) const noexcept;
+template uint8_t awh::Buffer::at(const size_t) const noexcept;
+template int16_t awh::Buffer::at(const size_t) const noexcept;
+template uint16_t awh::Buffer::at(const size_t) const noexcept;
+template int32_t awh::Buffer::at(const size_t) const noexcept;
+template uint32_t awh::Buffer::at(const size_t) const noexcept;
+template int64_t awh::Buffer::at(const size_t) const noexcept;
+template uint64_t awh::Buffer::at(const size_t) const noexcept;
+template size_t awh::Buffer::at(const size_t) const noexcept;
+template ssize_t awh::Buffer::at(const size_t) const noexcept;
+template float awh::Buffer::at(const size_t) const noexcept;
+template double awh::Buffer::at(const size_t) const noexcept;
+/**
+ * @brief Шаблон для метода установки значений в уже существующем буфере
+ *
+ * @tparam T тип данных для установки
+ */
+template <typename T>
+/**
+ * @brief Метод установки значений в уже существующем буфере
+ *
+ * @param value значение для установки
+ * @param index индекс значения для установки
+ */
+void awh::Buffer::set(const T value, const size_t index) noexcept {
+	// Если контейнер не пустой
+	if(!this->empty() && (index < this->size())){
+		// Получаем размер данных
+		const size_t size = sizeof(value);
+		// Выполняем установку значения
+		::memcpy(const_cast <uint8_t *> (this->get() + (index * size)), &value, size);
+	}
+}
+/**
+ * Объявляем прототипы для метода установки значений в уже существующем буфере
+ */
+template void awh::Buffer::set(const int8_t, const size_t) noexcept;
+template void awh::Buffer::set(const uint8_t, const size_t) noexcept;
+template void awh::Buffer::set(const int16_t, const size_t) noexcept;
+template void awh::Buffer::set(const uint16_t, const size_t) noexcept;
+template void awh::Buffer::set(const int32_t, const size_t) noexcept;
+template void awh::Buffer::set(const uint32_t, const size_t) noexcept;
+template void awh::Buffer::set(const int64_t, const size_t) noexcept;
+template void awh::Buffer::set(const uint64_t, const size_t) noexcept;
+template void awh::Buffer::set(const size_t, const size_t) noexcept;
+template void awh::Buffer::set(const ssize_t, const size_t) noexcept;
+template void awh::Buffer::set(const float, const size_t) noexcept;
+template void awh::Buffer::set(const double, const size_t) noexcept;
+/**
  * @brief Получения данных указанного элемента в очереди
  *
  * @return указатель на элемент очереди

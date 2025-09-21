@@ -39,11 +39,11 @@
 	 */
 	#include <cstdint>
 	#include <sys/event.h>
-	
+
 	/**
 	 * Создаём идентификатор события
 	 */
-	static constexpr uintptr_t USER_EVENT = 1;
+	static constexpr uintptr_t USER_EVENT = 0x01;
 #endif
 
 /**

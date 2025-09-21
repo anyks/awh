@@ -198,7 +198,7 @@ namespace awh {
 			 * @param size   размер бинарного буфера числа
 			 * @return       результат проверки
 			 */
-			bool greater(const void * value1, const void * value2, const size_t size) const noexcept;
+			bool compare(const void * value1, const void * value2, const size_t size) const noexcept;
 		private:
 			/**
 			 * @brief Метод разделения строк на составляющие

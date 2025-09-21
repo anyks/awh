@@ -13,11 +13,6 @@
  */
 
 /**
- * Стандартные модули
- */
-#include <regex>
-
-/**
  * Операционной системой является Linux
  */
 #if __linux__
@@ -1763,6 +1758,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template uint32_t awh::OS::sysctl <uint32_t> (const string &) const noexcept;
 	template int64_t awh::OS::sysctl <int64_t> (const string &) const noexcept;
 	template uint64_t awh::OS::sysctl <uint64_t> (const string &) const noexcept;
+	template size_t awh::OS::sysctl <size_t> (const string &) const noexcept;
+	template ssize_t awh::OS::sysctl <ssize_t> (const string &) const noexcept;
+	template float awh::OS::sysctl <float> (const string &) const noexcept;
+	template double awh::OS::sysctl <double> (const string &) const noexcept;
 	template string awh::OS::sysctl <string> (const string &) const noexcept;
 	/**
 	 * Объявляем прототипы для извлечения списка значений настроек ядра операционной системы
@@ -1775,6 +1774,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template vector <uint32_t> awh::OS::sysctl <vector <uint32_t>> (const string &) const noexcept;
 	template vector <int64_t> awh::OS::sysctl <vector <int64_t>> (const string &) const noexcept;
 	template vector <uint64_t> awh::OS::sysctl <vector <uint64_t>> (const string &) const noexcept;
+	template vector <size_t> awh::OS::sysctl <vector <size_t>> (const string &) const noexcept;
+	template vector <ssize_t> awh::OS::sysctl <vector <ssize_t>> (const string &) const noexcept;
+	template vector <float> awh::OS::sysctl <vector <float>> (const string &) const noexcept;
+	template vector <double> awh::OS::sysctl <vector <double>> (const string &) const noexcept;
 	template vector <string> awh::OS::sysctl <vector <string>> (const string &) const noexcept;
 	/**
 	 * Объявляем прототипы для установки значений настроек ядра операционной системы
@@ -1787,6 +1790,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template bool awh::OS::sysctl <uint32_t> (const string &, const uint32_t) const noexcept;
 	template bool awh::OS::sysctl <int64_t> (const string &, const int64_t) const noexcept;
 	template bool awh::OS::sysctl <uint64_t> (const string &, const uint64_t) const noexcept;
+	template bool awh::OS::sysctl <size_t> (const string &, const size_t) const noexcept;
+	template bool awh::OS::sysctl <ssize_t> (const string &, const ssize_t) const noexcept;
+	template bool awh::OS::sysctl <float> (const string &, const float) const noexcept;
+	template bool awh::OS::sysctl <double> (const string &, const double) const noexcept;
 	/**
 	 * Объявляем прототипы для установки списка значений настроек ядра операционной системы
 	 */
@@ -1798,6 +1805,10 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	template bool awh::OS::sysctl <uint32_t> (const string &, const vector <uint32_t> &) const noexcept;
 	template bool awh::OS::sysctl <int64_t> (const string &, const vector <int64_t> &) const noexcept;
 	template bool awh::OS::sysctl <uint64_t> (const string &, const vector <uint64_t> &) const noexcept;
+	template bool awh::OS::sysctl <size_t> (const string &, const vector <size_t> &) const noexcept;
+	template bool awh::OS::sysctl <ssize_t> (const string &, const vector <ssize_t> &) const noexcept;
+	template bool awh::OS::sysctl <float> (const string &, const vector <float> &) const noexcept;
+	template bool awh::OS::sysctl <double> (const string &, const vector <double> &) const noexcept;
 	template bool awh::OS::sysctl <string> (const string &, const vector <string> &) const noexcept;
 #endif
 /**

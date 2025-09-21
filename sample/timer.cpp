@@ -114,7 +114,9 @@ class Executor {
 		 *
 		 * @param log объект логирования
 		 */
-		Executor(log_t * log) : _ts(chrono::system_clock::now()), _is(chrono::system_clock::now()), _count(0), _log(log) {}
+		Executor(log_t * log) :
+		 _ts(chrono::system_clock::now()),
+		 _is(chrono::system_clock::now()), _count(0), _log(log) {}
 };
 /**
  * @brief Главная функция приложения

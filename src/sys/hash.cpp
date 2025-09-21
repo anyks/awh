@@ -1554,6 +1554,34 @@ void awh::Hash::setTail(vector <char> & buffer) const noexcept {
 	buffer.insert(buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
 }
 /**
+ * @brief Шаблон метода хэширования текста
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод хэширования текста
+ *
+ * @param text текст для хэширования
+ * @param type тип хэш-суммы
+ * @return     результат хэширования
+ */
+auto awh::Hash::hashing(const string & text, const type_t type) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если текст передан
+	if(!text.empty())
+		// Выполняем хэширование
+		this->hashing(text, type, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода хэширования текста
+ */
+template string awh::Hash::hashing <string> (const string &, const type_t) const noexcept;
+template vector <char> awh::Hash::hashing <vector <char>> (const string &, const type_t) const noexcept;
+/**
  * @brief Метод хэширования текста
  *
  * @param text   текст для хэширования
@@ -1589,6 +1617,35 @@ void awh::Hash::hashing(const string & text, const type_t type, vector <char> & 
 			this->_log->print("Text hashing \"%s\" could not be performed", log_t::flag_t::WARNING, text.c_str());
 	}
 }
+/**
+ * @brief Шаблон метода хэширования текста с ключом
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод хэширования текста с ключом
+ *
+ * @param key  ключ для подписи
+ * @param text текст для хэширования
+ * @param type тип хэш-суммы
+ * @return     результат хэширования
+ */
+auto awh::Hash::hmac(const string & key, const string & text, const type_t type) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если текст передан
+	if(!text.empty())
+		// Выполняем хэширование
+		this->hmac(key, text, type, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода хэширования текста с ключом
+ */
+template string awh::Hash::hmac(const string &, const string &, const type_t) const noexcept;
+template vector <char> awh::Hash::hmac(const string &, const string &, const type_t) const noexcept;
 /**
  * @brief Метод хэширования текста с ключом
  *
@@ -1627,6 +1684,35 @@ void awh::Hash::hmac(const string & key, const string & text, const type_t type,
 			this->_log->print("Key \"%s\" and text \"%s\" hashing  could not be performed", log_t::flag_t::WARNING, key.c_str(), text.c_str());
 	}
 }
+/**
+ * @brief Шаблон метода кодирования
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод кодирования
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат кодирования
+ */
+auto awh::Hash::encode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем кодирование
+		this->encode(buffer, size, cipher, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода кодирования
+ */
+template string awh::Hash::encode(const char *, const size_t, const cipher_t) const noexcept;
+template vector <char> awh::Hash::encode(const char *, const size_t, const cipher_t) const noexcept;
 /**
  * @brief Метод кодирования
  *
@@ -1675,6 +1761,35 @@ void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t ci
 		}
 	}
 }
+/**
+ * @brief Шаблон метода декодирования
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод декодирования
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат кодирования
+ */
+auto awh::Hash::decode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем декодирование
+		this->decode(buffer, size, cipher, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода декодирования
+ */
+template string awh::Hash::decode(const char *, const size_t, const cipher_t) const noexcept;
+template vector <char> awh::Hash::decode(const char *, const size_t, const cipher_t) const noexcept;
 /**
  * @brief Метод кодирования
  *
@@ -1819,6 +1934,35 @@ void awh::Hash::decode(const char * buffer, const size_t size, const cipher_t ci
 		}
 	}
 }
+/**
+ * @brief Шаблон метода компрессии данных
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод компрессии данных
+ *
+ * @param buffer буфер данных для компрессии
+ * @param size   размер данных для компрессии
+ * @param method метод компрессии
+ * @return       результат компрессии
+ */
+auto awh::Hash::compress(const char * buffer, const size_t size, const method_t method) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем кодирование
+		this->compress(buffer, size, method, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода компрессии данных
+ */
+template string awh::Hash::compress(const char *, const size_t, const method_t) const noexcept;
+template vector <char> awh::Hash::compress(const char *, const size_t, const method_t) const noexcept;
 /**
  * @brief Метод компрессии данных
  *
@@ -1991,6 +2135,35 @@ void awh::Hash::compress(const char * buffer, const size_t size, const method_t 
 		}
 	}
 }
+/**
+ * @brief Шаблон метода декомпрессии данных
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод декомпрессии данных
+ *
+ * @param buffer буфер данных для декомпрессии
+ * @param size   размер данных для декомпрессии
+ * @param method метод компрессии
+ * @return       результат декомпрессии
+ */
+auto awh::Hash::decompress(const char * buffer, const size_t size, const method_t method) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем декомпрессию
+		this->decompress(buffer, size, method, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода декомпрессии данных
+ */
+template string awh::Hash::decompress(const char *, const size_t, const method_t) const noexcept;
+template vector <char> awh::Hash::decompress(const char *, const size_t, const method_t) const noexcept;
 /**
  * @brief Метод декомпрессии данных
  *

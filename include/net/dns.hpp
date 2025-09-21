@@ -152,7 +152,9 @@ namespace awh {
 			 * @tclass T размерность буфера DNS-кэша
 			 */
 			template <uint8_t T>
-			// Создаём тип данных работы с DNS-кэшем
+			/**
+			 * Создаём тип данных работы с DNS-кэшем
+			 */
 			using cache_t = Cache <T>;
 			/**
 			 * @brief Шаблон формата данных DNS-сервера
@@ -160,7 +162,9 @@ namespace awh {
 			 * @tparam T размерность буфера DNS-сервера
 			 */
 			template <uint8_t T>
-			// Создаём тип данных работы с DNS-серверами
+			/**
+			 * Создаём тип данных работы с DNS-серверами
+			 */
 			using server_t = Server <T>;
 		private:
 			/**
