@@ -1498,9 +1498,20 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
  * @param second второе слово
  * @return       результат сравнения
  */
+bool awh::Framework::compare(const char * first, const char * second) const noexcept {
+	// Выполняем перебор обоих строк
+	return this->compare(string{first}, string{second});
+}
+/**
+ * @brief Метод сравнения двух строк без учёта регистра
+ *
+ * @param first  первое слово
+ * @param second второе слово
+ * @return       результат сравнения
+ */
 bool awh::Framework::compare(const string & first, const string & second) const noexcept {
 	// Выполняем перебор обоих строк
-	return ((first.size() == second.size()) ? equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
+	return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
 		// Выполняем сравнение каждого символа
 		return (::tolower(a) == ::tolower(b));
     }) : false);
@@ -1512,9 +1523,20 @@ bool awh::Framework::compare(const string & first, const string & second) const 
  * @param second второе слово
  * @return       результат сравнения
  */
+bool awh::Framework::compare(const wchar_t * first, const wchar_t * second) const noexcept {
+	// Выполняем перебор обоих строк
+	return this->compare(wstring{first}, wstring{second});
+}
+/**
+ * @brief Метод сравнения двух строк без учёта регистра
+ *
+ * @param first  первое слово
+ * @param second второе слово
+ * @return       результат сравнения
+ */
 bool awh::Framework::compare(const wstring & first, const wstring & second) const noexcept {
 	// Выполняем перебор обоих строк
-	return ((first.size() == second.size()) ? equal(first.begin(), first.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
+	return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
 		// Выполняем сравнение каждого символа
 		return (::towlower(a) == ::towlower(b));
     }) : false);

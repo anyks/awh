@@ -302,7 +302,24 @@ namespace awh {
 			 * @param second второе слово
 			 * @return       результат сравнения
 			 */
+			bool compare(const char * first, const char * second) const noexcept;
+			/**
+			 * @brief Метод сравнения двух строк без учёта регистра
+			 *
+			 * @param first  первое слово
+			 * @param second второе слово
+			 * @return       результат сравнения
+			 */
 			bool compare(const string & first, const string & second) const noexcept;
+		public:
+			/**
+			 * @brief Метод сравнения двух строк без учёта регистра
+			 *
+			 * @param first  первое слово
+			 * @param second второе слово
+			 * @return       результат сравнения
+			 */
+			bool compare(const wchar_t * first, const wchar_t * second) const noexcept;
 			/**
 			 * @brief Метод сравнения двух строк без учёта регистра
 			 *
