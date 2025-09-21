@@ -497,7 +497,7 @@ namespace awh {
 			 * @param num2 значение второго числа в бинарном виде
 			 * @return     результат проверки
 			 */
-			bool compare(const T num1, const T num2) const noexcept;
+			bool isGreater(const T num1, const T num2) const noexcept;
 			/**
 			 * @brief Метод проверки больше первое число второго или нет (бинарным методом)
 			 *
@@ -506,7 +506,7 @@ namespace awh {
 			 * @param size   размер бинарного буфера числа
 			 * @return       результат проверки
 			 */
-			bool compare(const void * value1, const void * value2, const size_t size) const noexcept;
+			bool isGreater(const void * value1, const void * value2, const size_t size) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон функции конвертации чисел в указанную систему счисления

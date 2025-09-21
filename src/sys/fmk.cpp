@@ -1848,6 +1848,7 @@ template int64_t awh::Framework::timestamp <int64_t> (const chrono_t) const noex
 template uint64_t awh::Framework::timestamp <uint64_t> (const chrono_t) const noexcept;
 template float awh::Framework::timestamp <float> (const chrono_t) const noexcept;
 template double awh::Framework::timestamp <double> (const chrono_t) const noexcept;
+template double awh::Framework::timestamp <string> (const chrono_t) const noexcept;
 /**
  * Если операционной системой является MacOS X или Linux
  */
@@ -2581,33 +2582,33 @@ template <typename T>
  * @param num2 значение второго числа в бинарном виде
  * @return     результат проверки
  */
-bool awh::Framework::compare(const T num1, const T num2) const noexcept {
+bool awh::Framework::isGreater(const T num1, const T num2) const noexcept {
 	// Если данные являются основными
 	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
 		// Выполняем проверку
-		return this->compare(&num1, &num2, sizeof(num1));
+		return this->isGreater(&num1, &num2, sizeof(num1));
 	// Выводим значение по умолчанию
 	return false;
 }
 /**
  * Объявляем прототипы для сравнения больших чисел без ограничения
  */
-template bool awh::Framework::compare <int8_t> (const int8_t, const int8_t) const noexcept;
-template bool awh::Framework::compare <uint8_t> (const uint8_t, const uint8_t) const noexcept;
-template bool awh::Framework::compare <int16_t> (const int16_t, const int16_t) const noexcept;
-template bool awh::Framework::compare <uint16_t> (const uint16_t, const uint16_t) const noexcept;
-template bool awh::Framework::compare <int32_t> (const int32_t, const int32_t) const noexcept;
-template bool awh::Framework::compare <uint32_t> (const uint32_t, const uint32_t) const noexcept;
-template bool awh::Framework::compare <int64_t> (const int64_t, const int64_t) const noexcept;
-template bool awh::Framework::compare <uint64_t> (const uint64_t, const uint64_t) const noexcept;
-template bool awh::Framework::compare <float> (const float, const float) const noexcept;
-template bool awh::Framework::compare <double> (const double, const double) const noexcept;
+template bool awh::Framework::isGreater <int8_t> (const int8_t, const int8_t) const noexcept;
+template bool awh::Framework::isGreater <uint8_t> (const uint8_t, const uint8_t) const noexcept;
+template bool awh::Framework::isGreater <int16_t> (const int16_t, const int16_t) const noexcept;
+template bool awh::Framework::isGreater <uint16_t> (const uint16_t, const uint16_t) const noexcept;
+template bool awh::Framework::isGreater <int32_t> (const int32_t, const int32_t) const noexcept;
+template bool awh::Framework::isGreater <uint32_t> (const uint32_t, const uint32_t) const noexcept;
+template bool awh::Framework::isGreater <int64_t> (const int64_t, const int64_t) const noexcept;
+template bool awh::Framework::isGreater <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+template bool awh::Framework::isGreater <float> (const float, const float) const noexcept;
+template bool awh::Framework::isGreater <double> (const double, const double) const noexcept;
 /**
  * Если операционной системой является MacOS X или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
-	template bool awh::Framework::compare <size_t> (const size_t, const size_t) const noexcept;
-	template bool awh::Framework::compare <ssize_t> (const ssize_t, const ssize_t) const noexcept;
+	template bool awh::Framework::isGreater <size_t> (const size_t, const size_t) const noexcept;
+	template bool awh::Framework::isGreater <ssize_t> (const ssize_t, const ssize_t) const noexcept;
 #endif
 /**
  * @brief Метод проверки больше первое число второго или нет (бинарным методом)
@@ -2617,7 +2618,7 @@ template bool awh::Framework::compare <double> (const double, const double) cons
  * @param size   размер бинарного буфера числа
  * @return       результат проверки
  */
-bool awh::Framework::compare(const void * value1, const void * value2, const size_t size) const noexcept {
+bool awh::Framework::isGreater(const void * value1, const void * value2, const size_t size) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы правильно
