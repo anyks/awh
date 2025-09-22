@@ -238,7 +238,8 @@ namespace awh {
 			/**
 			 * @brief Шаблон входных параметров для серриализатора
 			 *
-			 * @tclass TupType тип аргументов
+			 * @tparam TupType тип аргументов
+			 * @tparam I       список последовательности
 			 */
 			template <class TupType, size_t... I>
 			/**
@@ -262,7 +263,7 @@ namespace awh {
 			/**
 			 * @brief Шаблон входных параметров для серриализатора
 			 *
-			 * @tclass TupType тип аргументов
+			 * @tparam TupType тип аргументов
 			 */
 			template <class... TupType>
 			/**
@@ -308,7 +309,7 @@ namespace awh {
 			/**
 			 * @brief Шаблон входных аргументов функции
 			 *
-			 * @tclass T    тип входных аргументов функции
+			 * @tparam T    тип входных аргументов функции
 			 * @tparam Args список входящих аргументов
 			 */
 			template <class... T, typename... Args>
@@ -352,7 +353,7 @@ namespace awh {
 			/**
 			 * @brief Шаблон входных аргументов функции
 			 *
-			 * @tclass T    тип входных аргументов функции
+			 * @tparam T    тип входных аргументов функции
 			 * @tparam Args список входящих аргументов
 			 */
 			template <class... T, typename... Args>
@@ -397,7 +398,7 @@ namespace awh {
 			/**
 			 * @brief Шаблон входных аргументов функции
 			 *
-			 * @tclass T тип входных аргументов функции
+			 * @tparam T тип входных аргументов функции
 			 */
 			template <class... T>
 			/**
@@ -440,7 +441,7 @@ namespace awh {
 			/**
 			 * @brief Шаблон входных аргументов функции
 			 *
-			 * @tclass T тип входных аргументов функции
+			 * @tparam T тип входных аргументов функции
 			 */
 			template <class... T>
 			/**

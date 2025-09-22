@@ -148,8 +148,9 @@ namespace awh {
 				 forbidden(false), ip{0} {}
 			} __attribute__((packed));
 			/**
-			 * Шаблон формата данных DNS-кэша
-			 * @tclass T размерность буфера DNS-кэша
+			 * @brief формата данных DNS-кэша
+			 *
+			 * @tparam T размерность буфера DNS-кэша
 			 */
 			template <uint8_t T>
 			/**
