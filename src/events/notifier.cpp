@@ -410,6 +410,10 @@ SOCKET awh::Notifier::init() noexcept {
 				struct kevent event;
 				// Выполняем удаление события
 				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
+				// Выполняем обновления ядра операционной системы
+				::kevent(this->_sock, &event, 1, nullptr, 0, nullptr);
+				// Выполняем зануление объекта события
+				::memset(&event, 0, sizeof(event));
 				// Выполняем активацию события
 				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, nullptr);
 				// Выполняем активацию нашего события
@@ -566,6 +570,8 @@ uint64_t awh::Notifier::event() noexcept {
 				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
 				// Выполняем обновления ядра операционной системы
 				::kevent(this->_sock, &event, 1, nullptr, 0, nullptr);
+				// Выполняем зануление объекта события
+				::memset(&event, 0, sizeof(event));
 				// Выполняем активацию события
 				EV_SET(&event, USER_EVENT, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, nullptr);
 				// Выполняем активацию нашего события

@@ -104,36 +104,40 @@ void awh::Watch::process(const unit_t unit) noexcept {
 		this->_mtx.lock();
 		// Получаем текущее значение даты
 		const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
-		// Выполняем добавления нового таймера
-		this->_timers.emplace(std::make_pair(unit.delay + date, date), unit.sock);
 		// Выполняем перебор всего списка таймеров
 		for(auto i = this->_timers.begin(); i != this->_timers.end();){
-			// Если время вышло
-			if(date >= i->first.first){
-				// Выполняем поиск файловый дескриптор
-				auto j = this->_notifiers.find(i->second);
-				// Если файловый дескриптор найден в списке
-				if(j != this->_notifiers.end())
-					// Выполняем отправку сообщения
-					j->second->notify((date - i->first.second) / 1000000);
+			// Если мы нашли наш таймер
+			if(unit.sock == i->second)
 				// Выполняем удаление значение таймера
 				i = this->_timers.erase(i);
-			// Продолжаем перебор дальше
-			} else ++i;
+			// Если это другие таймеры
+			else {
+				// Если время вышло
+				if(date >= i->first.first){
+					// Выполняем поиск файловый дескриптор
+					auto j = this->_notifiers.find(i->second);
+					// Если файловый дескриптор найден в списке
+					if(j != this->_notifiers.end())
+						// Выполняем отправку сообщения
+						j->second->notify((date - i->first.second) / 1000000);
+					// Выполняем удаление значение таймера
+					i = this->_timers.erase(i);
+				// Продолжаем перебор дальше
+				} else ++i;
+			}
 		}
+		// Выполняем добавления нового таймера
+		this->_timers.emplace(std::make_pair(unit.delay + date, date), unit.sock);
+		// Получаем наименьшее значение даты в списке
+		const uint64_t smallest = this->_timers.begin()->first.first;
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
-		// Если список таймеров не пустой
-		if(!this->_timers.empty()){
-			// Получаем наименьшее значение даты в списке
-			const uint64_t smallest = this->_timers.begin()->first.first;
-			// Если время задержки выше нуля
-			if((smallest > date ? (smallest - date) : 0) > 0){
-				// Выполняем смену времени таймера
-				this->_screen = static_cast <uint64_t> (smallest - date);
-				// Выходим из функции
-				return;
-			}
+		// Если время задержки выше нуля
+		if((smallest > date ? (smallest - date) : 0) > 0){
+			// Выполняем смену времени таймера
+			this->_screen = static_cast <uint64_t> (smallest - date);
+			// Выходим из функции
+			return;
 		}
 		// Устанавливаем таймаут по умолчанию
 		this->_screen.timeout();
@@ -192,8 +196,14 @@ SOCKET awh::Watch::create() noexcept {
 		if(result != INVALID_SOCKET){
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
+			// Выполняем поиск уже существующего уведомителя
+			auto i = this->_notifiers.find(result);
+			// Если такой уведомитель уже существует
+			if(i != this->_notifiers.end())
+				// Выполняем замену уведомителя
+				i->second = ::move(notifier);
 			// Выполняем перенос нашего уведомителя в список уведомителей
-			this->_notifiers.emplace(result, ::move(notifier));
+			else this->_notifiers.emplace(result, ::move(notifier));
 		}
 	/**
 	 * Если возникает ошибка
@@ -248,6 +258,16 @@ void awh::Watch::away(const SOCKET sock) noexcept {
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выполняем удаление уведомителя
 			this->_notifiers.erase(sock);
+			// Выполняем перебор всего списка таймеров
+			for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
+				// Если мы нашли наш таймер
+				if(sock == i->second){
+					// Выполняем удаление значение таймера
+					this->_timers.erase(i);
+					// Выходим из цикла
+					break;
+				}
+			}
 		}
 	/**
 	 * Если возникает ошибка
