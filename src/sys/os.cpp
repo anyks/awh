@@ -43,15 +43,6 @@
 	#include <pwd.h>
 	#include <grp.h>
 	#include <sys/resource.h>
-/**
- * Для операционной системы MS Windows
- */
-#else
-	/**
-	 * Стандартные модули
-	 */
-	#include <wchar.h>
-	#include <psapi.h>
 #endif
 
 /**
@@ -103,6 +94,17 @@
  * Подключаем заголовочный файл
  */
 #include <sys/os.hpp>
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 && _WIN64
+	/**
+	 * Стандартные модули
+	 */
+	#include <wchar.h>
+	#include <psapi.h>
+#endif
 
 /**
  * Подписываемся на стандартное пространство имён

@@ -54,7 +54,7 @@
 	/**
 	 * Заменяем переменную AWH ERROR
 	 */
-	#define AWH_ERROR() (WSAGetLastError())
+	#define AWH_ERROR() (::WSAGetLastError())
 	/**
 	 * Файловый разделитель Windows
 	 */
