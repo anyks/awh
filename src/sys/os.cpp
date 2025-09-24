@@ -41,16 +41,52 @@
 	 * Стандартные модули
 	 */
 	#include <wchar.h>
+	#include <psapi.h>
 #endif
 
 /**
- * Если операционной системой является MacOS X, FreeBSD, NetBSD, OpenBSD
+ * Если операционной системой является MacOS X, FreeBSD, NetBSD и OpenBSD
  */
 #if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 	/**
 	 * Стандартные модули
 	 */
 	#include <sys/sysctl.h>
+#endif
+
+/**
+ * Если операционной системой является MacOS X и Unix
+ */
+#if __unix__ || __unix || unix || (__APPLE__ && __MACH__)
+	/**
+	 * Стандартные модули
+	 */
+	#include <unistd.h>
+	#include <sys/resource.h>
+
+	/**
+	 * Для операционной системы MacOS X
+	 */
+	#if __APPLE__ || __MACH__
+		#include <mach/mach.h>
+	/**
+	 * Для операционной системы Sun Solaris
+	 */
+	#elif (_AIX || __TOS__AIX__) || (__sun__ || __sun || sun && (__SVR4 || __svr4__))
+		/**
+		 * Стандартные модули
+		 */
+		#include <fcntl.h>
+		#include <procfs.h>
+	/**
+	 * Подключаем заголовки для Linux
+	 */
+	#elif __linux__ || __linux || linux || __gnu_linux__
+		/**
+		 * Стандартные модули
+		 */
+		#include <stdio.h>
+	#endif
 #endif
 
 /**
@@ -468,6 +504,352 @@ awh::OS::family_t awh::OS::family() const noexcept {
 		// Выводим результат
 		return family_t::NONE;
 	#endif
+}
+/**
+ * @brief Метод определения текущего расхода памяти
+ *
+ * @param mode режим потребления памяти
+ * @return     размер расхода памяти
+ */
+size_t awh::OS::rss(const rss_t mode) const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем режим потребления памяти
+		 */
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо получить текущее потребление памяти
+			case static_cast <uint8_t> (rss_t::CURRENT): {
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Создаём объект информации о памяти
+					PROCESS_MEMORY_COUNTERS info;
+					// Выполняем извлечение данных текущего процесса
+					if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &info, sizeof(info))){
+						// Создаём буфер сообщения ошибки
+						wchar_t message[256] = {0};
+						// Выполняем формирование текста ошибки
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+						#endif
+					// Выполняем извлечение размера пика потребляемой памяти
+					} else result = static_cast <size_t> (info.WorkingSetSize);
+				/**
+				 * Для операционной системы MacOS X
+				 */
+				#elif __APPLE__ || __MACH__
+					// Создаём объект информации о памяти
+					struct mach_task_basic_info info;
+					// Устанавливаем количество извлекаемой информации
+					mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+					// Выполняем извлечение информации о текущем потреблении памяти
+					if(::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast <task_info_t> (&info), &count) != KERN_SUCCESS){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Unable to access to determine memory consumption");
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", "Unable to access to determine memory consumption");
+						#endif
+						// Выводим пустой результат
+						return result;
+					}
+					// Выполняем извлечение размера пика потребляемой памяти
+					return static_cast <size_t> (info.resident_size);
+				/**
+				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
+				 */
+				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+					// Создаём объект информации о памяти
+					struct kinfo_proc info;
+					// Получаем размер объекта информации
+					size_t size = sizeof(info);
+					// Устанавливаем флаги для необходимых нам процессов
+					int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid())};
+					// Выполняем извлечение данных о потреблении памяти
+					if(::sysctl(mib, 4, &info, &size, nullptr, 0) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						#endif
+						// Выводим пустой результат
+						return result;
+					}
+					// RSS в страницах; переводим в байты
+					return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
+				/**
+				 * Для операционной системы Linux
+				 */
+				#elif __linux__ || __linux || linux || __gnu_linux__
+					// Размер потребления памяти
+					long rss = 0L;
+					// Создаём указатель файла
+					FILE * file = nullptr;
+					// Открываем файловый дескриптор для чтения памяти
+					if((file = ::fopen( "/proc/self/statm", "r" )) == nullptr){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						#endif
+						// Выводим пустой результат
+						return result;
+					}
+					// Выполняем чтение данных потребления памяти
+					if(::fscanf(file, "%*s%ld", &rss) != 1){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						#endif
+						// Выполняем закрытие файлового дескриптора
+						::fclose(file);
+						// Выводим пустой результат
+						return result;
+					}
+					// Выполняем закрытие файлового дескриптора
+					::fclose(file);
+					// Выполняем извлечение размера пика потребляемой памяти
+					result = (static_cast <size_t> (rss) * static_cast <size_t> (::sysconf(_SC_PAGESIZE)));
+				/**
+				 * Для операционной системы Sun Solaris
+				 */
+				#elif (_AIX || __TOS__AIX__) || (__sun__ || __sun || sun && (__SVR4 || __svr4__))
+					// Создаём файловый дескриптор для чтения файла
+					int32_t sock = -1;
+					// Создаём объект информации о памяти
+					struct psinfo psinfo;
+					// Открываем файловый дескриптор для чтения памяти
+					if((sock = ::open("/proc/self/psinfo", O_RDONLY)) == -1){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						#endif
+						// Выводим пустой результат
+						return result;
+					}
+					// Выполняем чтение данных потребления памяти
+					if(::read(sock, &psinfo, sizeof(psinfo) ) != sizeof(psinfo)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						#endif
+						// Выполняем закрытие файлового дескриптора
+						::close(sock);
+						// Выводим пустой результат
+						return result;
+					}
+					// Выполняем закрытие файлового дескриптора
+					::close(sock);
+					// Выполняем извлечение размера пика потребляемой памяти
+					result = static_cast <size_t> (psinfo.pr_rssize * 1024L);
+				#endif
+			} break;
+			// Если необходимо получить максимальное потребление памяти
+			case static_cast <uint8_t> (rss_t::MAXIMUM): {
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Создаём объект информации о памяти
+					PROCESS_MEMORY_COUNTERS info;
+					// Выполняем извлечение данных текущего процесса
+					if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &info, sizeof(info))){
+						// Создаём буфер сообщения ошибки
+						wchar_t message[256] = {0};
+						// Выполняем формирование текста ошибки
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::convert(message).c_str());
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::convert(message).c_str());
+						#endif
+					// Выполняем извлечение размера пика потребляемой памяти
+					} else result = static_cast <size_t> (info.PeakWorkingSetSize);
+				/**
+				 * Для операционной системы Sun Solaris
+				 */
+				#elif (_AIX || __TOS__AIX__) || (__sun__ || __sun || sun && (__SVR4 || __svr4__))
+					// Создаём файловый дескриптор для чтения файла
+					int32_t sock = -1;
+					// Создаём объект информации о памяти
+					struct psinfo psinfo;
+					// Открываем файловый дескриптор для чтения памяти
+					if((sock = ::open("/proc/self/psinfo", O_RDONLY)) == -1){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						#endif
+						// Выводим пустой результат
+						return result;
+					}
+					// Выполняем чтение данных потребления памяти
+					if(::read(sock, &psinfo, sizeof(psinfo) ) != sizeof(psinfo)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						#endif
+						// Выполняем закрытие файлового дескриптора
+						::close(sock);
+						// Выводим пустой результат
+						return result;
+					}
+					// Выполняем закрытие файлового дескриптора
+					::close(sock);
+					// Выполняем извлечение размера пика потребляемой памяти
+					result = static_cast <size_t> (psinfo.pr_rssize * 1024L);
+				/**
+				 * Если операционной системой является MacOS X, FreeBSD, NetBSD, OpenBSD и Linux
+				 */
+				#elif __unix__ || __unix || unix || (__APPLE__ && __MACH__)
+					// Создаём объект информации о памяти
+					struct rusage rusage;
+					// Если получить данные памяти не вышло
+					if(::getrusage(RUSAGE_SELF, &rusage) != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, ::strerror(errno));
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Выводим сообщение об ошибке
+							::fprintf(stderr, "ERROR! %s\n\n", ::strerror(errno));
+						#endif
+					// Если данные получили удачно
+					} else {
+						/**
+						 * Реализация под MacOS X
+						 */
+						#if __APPLE__ && __MACH__
+							// Выполняем извлечение размера пика потребляемой памяти
+							result = static_cast <size_t> (rusage.ru_maxrss);
+						/**
+						 * Реализация под Linux и FreeBSD
+						 */
+						#else
+							// Выполняем извлечение размера пика потребляемой памяти
+							result = static_cast <size_t> (rusage.ru_maxrss * 1024L);
+						#endif
+					}
+				#endif
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			::fprintf(stderr, "ERROR! %s\n\n", error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * Для операционной системы не являющейся MS Windows

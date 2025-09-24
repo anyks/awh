@@ -469,6 +469,21 @@ awh::cmp::Encoder & awh::cmp::Encoder::operator = (const size_t size) noexcept {
 	return (* this);
 }
 /**
+ * @brief Конструктор
+ *
+ * @param log объект для работы с логами
+ */
+awh::cmp::Encoder::Encoder(const log_t * log) noexcept :
+ _chunkSize(CHUNK_SIZE),
+ _hash(log), _buffer(log),
+ _cipher(hash_t::cipher_t::NONE),
+ _method(hash_t::method_t::NONE), _log(log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::cmp::Encoder::~Encoder() noexcept {}
+/**
  * @brief Метод удаления первой записи протокола
  *
  */
@@ -483,10 +498,6 @@ void awh::cmp::Decoder::pop() noexcept {
 		if(!this->_queue.empty())
 			// Выполняем удаление первой записи
 			this->_queue.pop();
-		// Если очередь пустая
-		if(this->_queue.empty())
-			// Выполняем очистку выделенной памяти
-			this->_queue.reset();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -520,7 +531,7 @@ void awh::cmp::Decoder::clear() noexcept {
 		// Выполняем сброс идентификатора процесса
 		this->_pid = 0;
 		// Выполняем очистку очереди данных
-		this->_queue.reset();
+		this->_queue.clear();
 		// Выполняем очистку буфера данных
 		this->_buffer.clear();
 		// Выполняем очистку объекта заголовка
@@ -582,9 +593,9 @@ awh::cmp::Decoder::message_t awh::cmp::Decoder::get() const noexcept {
 	// Если очередь не пустая
 	if(!this->_queue.empty()){
 		// Устанавливаем размер данных
-		result.size = this->_queue.size(queue_t::pos_t::FRONT);
+		result.size = this->_queue.size();
 		// Устанавливаем адрес заднных
-		result.buffer = reinterpret_cast <const char *> (this->_queue.get(queue_t::pos_t::FRONT));
+		result.buffer = reinterpret_cast <const char *> (this->_queue.data());
 		// Извлекаем идентификатор сообщения
 		result.mid = static_cast <uint8_t> (result.buffer[0]);
 		// Уменьшаем общий размер сообщения
@@ -1037,3 +1048,17 @@ awh::cmp::Decoder & awh::cmp::Decoder::operator = (const size_t size) noexcept {
 	// Выводим текущий объект
 	return (* this);
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::cmp::Decoder::Decoder(const fmk_t * fmk, const log_t * log) noexcept :
+ _pid(0), _hash(log), _queue(fmk, log), _buffer(log),
+ _chunkSize(CHUNK_SIZE), _tmp(2), _log(log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::cmp::Decoder::~Decoder() noexcept {}

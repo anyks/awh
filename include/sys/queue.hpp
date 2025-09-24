@@ -1,6 +1,6 @@
 /**
  * @file: queue.hpp
- * @date: 2024-12-17
+ * @date: 2025-09-24
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -16,23 +16,23 @@
 #define __AWH_QUEUE__
 
 /**
- * Если используется компилятор Borland C++
+ * Если максимальное количество записей очереди не указано
  */
-#if __BORLANDC__
-	typedef unsigned char uint8_t;
-	typedef __int64 int64_t;
-	typedef unsigned long uintptr_t;
+#ifndef AWH_MAX_RECORDS_QUEUE
+	/**
+	 * Устанавливаем максимальное количество записей очереди 1000
+	 */
+	#define AWH_MAX_RECORDS_QUEUE 0x3E8
+#endif
+
 /**
- * Если используется компилятор Microsoft Visual Studio
+ * Если максимальное значение потребляемой памяти не указано
  */
-#elif _MSC_VER
-	typedef unsigned char uint8_t;
-	typedef __int64 int64_t;
-/**
- * Если используется компилятор GNU GCC или Clang
- */
-#else
-	#include <stdint.h>
+#ifndef AWH_MAX_MEMORY_QUEUE
+	/**
+	 * Устанавливаем максимальное значение потребляемой памяти 512Мб
+	 */
+	#define AWH_MAX_MEMORY_QUEUE 0x20000000
 #endif
 
 /**
@@ -40,9 +40,8 @@
  */
 #include <mutex>
 #include <vector>
-#include <cstring>
-#include <cstdlib>
-#include <algorithm>
+#include <atomic>
+#include <condition_variable>
 
 /**
  * Подключаем наши заголовочные файлы
@@ -63,55 +62,88 @@ namespace awh {
 	 *
 	 */
 	typedef class AWHSHARED_EXPORT Queue {
-		public:
-			/**
-			 * Позиция в очереди
-			 */
-			enum class pos_t : uint8_t {
-				NONE  = 0x00, // Позиция не определена
-				BACK  = 0x01, // Конец очереди
-				FRONT = 0x02  // Начало очереди
-			};
-		public:
-			/**
-			 * Создаём тип данных инарного буфера
-			 */
-			typedef std::pair <const void *, size_t> buffer_t;
 		private:
-			// Количество аллоцированных элементов
-			static constexpr uint16_t BATCH = 0x3E8;
+			/**
+			 * @brief Структура условных переменных
+			 * 
+			 */
+			typedef struct CV {
+				// Условная переменная на чтение данных
+				std::condition_variable read;
+				// Условная переменная на запись данных
+				std::condition_variable write;
+			} cv_t;
+			/**
+			 * @brief Структура итерации записей
+			 * 
+			 */
+			typedef struct Iterator {
+				size_t end;   // Конец записи
+				size_t begin; // Начало записи
+				size_t count; // Количество добавленных записей
+				/**
+				 * @brief Конструктор
+				 * 
+				 */
+				Iterator() noexcept : end(0), begin(0), count(0) {}
+			} __attribute__((packed)) iter_t;
+			/**
+			 * @brief Структура параметров максимальных значений
+			 * 
+			 */
+			typedef struct Max {
+				size_t memory;  // Максимальный размер выделения памяти
+				size_t records; // Максимальное количество добавляемых записей
+				/**
+				 * @brief Конструктор
+				 * 
+				 */
+				Max() noexcept :
+				 memory(AWH_MAX_MEMORY_QUEUE),
+				 records(AWH_MAX_RECORDS_QUEUE) {}
+			} __attribute__((packed)) max_t;
+		public:
+			/**
+			 * Создаём тип данных добавляемой записи
+			 */
+			typedef std::pair <const void *, size_t> record_t;
+		private:
+			// Размеры максимальныйх ограничений
+			max_t _max;
+		private:
+			// Объект итерации данных
+			iter_t _iter;
+		private:
+			// Условные переменные
+			mutable cv_t _cv;
 		private:
 			// Мютекс для блокировки потока
-			std::mutex _mtx;
+			mutable std::mutex _mtx;
 		private:
-			// Последний элемент в очереди
-			size_t _end;
-			// Первый элемент в очереди
-			size_t _begin;
+			// Буфер данных выделенной памяти
+			vector <uint8_t> _buffer;
 		private:
-			// Текущий размер очереди
-			size_t _size;
+			// Флаг завершения работы очереди
+			std::atomic_bool _terminate;
 		private:
-			// Размер батча добавляемых элементов
-			size_t _batch;
-		private:
-			// Размер всех добавленных данных
-			size_t _bytes;
-		private:
-			// Размеры добавленных данных
-			size_t * _sizes;
-			// Адреса добавленных данных
-			uint64_t * _data;
-		private:
-			// Объект для работы с логами
+			// Объект фреймворка
+			const fmk_t * _fmk;
+			// Объект работы с логами
 			const log_t * _log;
 		private:
 			/**
-			 * @brief Метод выравнивания памяти
-			 *
-			 * @param size необходимый размер
+			 * @brief Метод контроля памяти
+			 * 
+			 * @param size желаемый размер выделения памяти
+			 * @return     результат выполнения операции
 			 */
-			void alignment(const size_t size = 0) noexcept;
+			bool rss(const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод удаления записи в очереди
+			 *
+			 */
+			void pop() noexcept;
 		public:
 			/**
 			 * @brief Метод очистки всех данных очереди
@@ -120,17 +152,10 @@ namespace awh {
 			void clear() noexcept;
 		public:
 			/**
-			 * @brief Метод очистки всех ресурсов
-			 *
+			 * @brief Метод полной очистки памяти
+			 * 
 			 */
 			void reset() noexcept;
-		public:
-			/**
-			 * @brief Метод проверки на заполненность очереди
-			 *
-			 * @return результат проверки
-			 */
-			bool empty() const noexcept;
 		public:
 			/**
 			 * @brief Количество добавленных элементов
@@ -140,56 +165,126 @@ namespace awh {
 			size_t count() const noexcept;
 		public:
 			/**
-			 * @brief Метод резервирования размера очереди
-			 *
-			 * @param count размер очереди для аллокации
-			 */
-			void reserve(const size_t count) noexcept;
-		public:
-			/**
-			 * @brief Метод удаления записи в очереди
-			 *
-			 * @param pos позиция в очереди
-			 */
-			void pop(const pos_t pos = pos_t::FRONT) noexcept;
-		public:
-			/**
 			 * @brief Метод получения размера добавленных данных
 			 *
-			 * @param pos позиция в очереди
-			 * @return    размер всех добавленных данных
+			 * @return размер всех добавленных данных
 			 */
-			size_t size(const pos_t pos = pos_t::FRONT) const noexcept;
+			size_t size() const noexcept;
+		public:
+			/**
+			 * @brief Метод вывода размера занимаемой памяти очередью
+			 * 
+			 * @return количество памяти которую занимает очередь
+			 */
+			size_t capacity() const noexcept;
 		public:
 			/**
 			 * @brief Получения данных указанного элемента в очереди
 			 *
-			 * @param pos позиция в очереди
-			 * @return    указатель на элемент очереди
+			 * @return указатель на элемент очереди
 			 */
-			const void * get(const pos_t pos = pos_t::FRONT) const noexcept;
+			const void * data() const noexcept;
+		public:
+			/**
+			 * @brief Метод проверки на заполненность очереди
+			 *
+			 * @param timeout время ожидания в миллисекундах
+			 * @return        результат проверки
+			 */
+			bool empty(const uint32_t timeout = 0) const noexcept;
 		public:
 			/**
 			 * @brief Метод добавления бинарного буфера данных в очередь
 			 *
 			 * @param buffer бинарный буфер для добавления
 			 * @param size   размер бинарного буфера
+			 * @return       текущий размер очереди
 			 */
-			void push(const void * buffer, const size_t size) noexcept;
+			size_t push(const void * buffer, const size_t size) noexcept;
 			/**
 			 * @brief Метод добавления бинарного буфера данных в очередь
 			 *
-			 * @param buffers список бинарных буферов для добавления
+			 * @param records список бинарных буферов для добавления
 			 * @param size    общий размер добавляемых данных
+			 * @return        текущий размер очереди
 			 */
-			void push(const vector <buffer_t> & buffers, const size_t size) noexcept;
+			size_t push(const vector <record_t> & records, const size_t size) noexcept;
 		public:
+			/**
+			 * @brief Метод установки максимального размера потребления памяти
+			 * 
+			 * @param size максимальный размер потребления памяти
+			 */
+			void setMaxMemory(const size_t size) noexcept;
+			/**
+			 * @brief Метод установки максимального количества записей очереди
+			 * 
+			 * @param count максимальное количество записей очереди
+			 */
+			void setMaxRecords(const size_t count) noexcept;
+		public:
+			/**
+			 * @brief Метод обмена очередями
+			 * 
+			 * @param queue очередь для обмена
+			 */
+			void swap(Queue & queue) noexcept;
+		public:
+			/**
+			 * @brief Получения размера данных в очереди
+			 *
+			 * @return размер данных в очереди
+			 */
+			operator size_t() const noexcept;
+			/**
+			 * @brief Получения бинарных данных очереди
+			 *
+			 * @return бинарные данные очереди
+			 */
+			operator const char * () const noexcept;
+		public:
+			/**
+			 * @brief Оператор перемещения
+			 *
+			 * @param queue очередь для перемещения
+			 * @return      текущий контейнер очереди
+			 */
+			Queue & operator = (Queue && queue) noexcept;
+			/**
+			 * @brief Оператор копирования
+			 *
+			 * @param queue очередь для копирования
+			 * @return      текущий контейнер очереди
+			 */
+			Queue & operator = (const Queue & queue) noexcept;
+		public:
+			/**
+			 * @brief Оператор сравнения двух очередей
+			 *
+			 * @param queue очередь для сравнения
+			 * @return      результат сравнения
+			 */
+			bool operator == (const Queue & queue) const noexcept;
+		public:
+			/**
+			 * @brief Конструктор перемещения
+			 *
+			 * @param queue очередь для перемещения
+			 */
+			Queue(Queue && queue) noexcept;
+			/**
+			 * @brief Конструктор копирования
+			 *
+			 * @param queue очередь для копирования
+			 */
+			Queue(const Queue & queue) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
+			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Queue(const log_t * log) noexcept;
+			Queue(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

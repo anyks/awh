@@ -40,6 +40,18 @@ if (CMAKE_BOOSTING_NET)
     message(STATUS "Build AWH BOOSTING NET: YES\n")
 endif (CMAKE_BOOSTING_NET)
 
+# Если активирован флаг установки максимального размера очереди
+if (CMAKE_MAX_RECORDS_QUEUE)
+    add_compile_definitions(AWH_MAX_RECORDS_QUEUE=${CMAKE_MAX_RECORDS_QUEUE})
+    message(STATUS "Build AWH MAX RECORDS QUEUE: ${CMAKE_MAX_RECORDS_QUEUE}\n")
+endif (CMAKE_MAX_RECORDS_QUEUE)
+
+# Если активирован флаг установки максимального размера потребления памяти очередью
+if (CMAKE_MAX_MEMORY_QUEUE)
+    add_compile_definitions(AWH_MAX_MEMORY_QUEUE=${CMAKE_MAX_MEMORY_QUEUE})
+    message(STATUS "Build AWH MAX MEMORY QUEUE: ${CMAKE_MAX_MEMORY_QUEUE}\n")
+endif (CMAKE_MAX_MEMORY_QUEUE)
+
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 

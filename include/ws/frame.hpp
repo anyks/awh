@@ -124,7 +124,9 @@ namespace awh {
 		 */
 		typedef class AWHSHARED_EXPORT Frame {
 			private:
-				// Устанавливаем максимальную версию фрейма
+				/**
+				 * Устанавливаем максимальную версию фрейма
+				 */
 				static constexpr uint32_t MAX_FRAME_SIZE = numeric_limits <uint32_t>::max();
 			public:
 				/**

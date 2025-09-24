@@ -151,17 +151,29 @@ namespace awh {
 				INADEQUATE_SECURITY = 0x0D  // Согласованные параметры SSL не приемлемы
 			};
 		public:
-			// Количество потоков по умолчанию
+			/**
+			 * Количество потоков по умолчанию
+			 */
 			static constexpr uint32_t CONCURRENT_STREAMS = 0x80;
-			// Максимальный размер таблицы заголовков по умолчанию
+			/**
+			 * Максимальный размер таблицы заголовков по умолчанию
+			 */
 			static constexpr uint32_t HEADER_TABLE_SIZE = 0x1000;
-			// Максимальный размер буфера полезной нагрузки
+			/**
+			 * Максимальный размер буфера полезной нагрузки
+			 */
 			static constexpr uint32_t MAX_PAYLOAD_SIZE = 0xFFFF;
-			// Максимальный размер окна по умолчанию
+			/**
+			 * Максимальный размер окна по умолчанию
+			 */
 			static constexpr uint32_t MAX_WINDOW_SIZE = 0xFFFFFFF;
-			// Минимальный размер фрейма по умолчанию
+			/**
+			 * Минимальный размер фрейма по умолчанию
+			 */
 			static constexpr uint32_t MAX_FRAME_SIZE_MIN = 0x4000;
-			// Максимальный размер фрейма по умолчанию
+			/**
+			 * Максимальный размер фрейма по умолчанию
+			 */
 			static constexpr uint32_t MAX_FRAME_SIZE_MAX = 0xFFFFFF;
 		private:
 			/**

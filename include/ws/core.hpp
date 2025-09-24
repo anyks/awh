@@ -45,11 +45,17 @@ namespace awh {
 	 */
 	typedef class AWHSHARED_EXPORT WCore : public http_t {
 		protected:
-			// Версия протокола WebSocket
+			/**
+			 * Версия протокола WebSocket
+			 */
 			static constexpr uint16_t WS_VERSION = 13;
-			// Размер минимального значения окна для сжатия данных GZIP
+			/**
+			 * Размер минимального значения окна для сжатия данных GZIP
+			 */
 			static constexpr int16_t GZIP_MIN_WBITS = 8;
-			// Размер максимального значения окна для сжатия данных GZIP
+			/**
+			 * Размер максимального значения окна для сжатия данных GZIP
+			 */
 			static constexpr int16_t GZIP_MAX_WBITS = 15;
 		public:
 			/**

@@ -211,6 +211,13 @@ namespace awh {
 			void push(const void * buffer, const size_t size) noexcept;
 		public:
 			/**
+			 * @brief Метод обмена буферами
+			 * 
+			 * @param buffer буфер для обмена
+			 */
+			void swap(Buffer & buffer) noexcept;
+		public:
+			/**
 			 * @brief Получения размера данных в буфере
 			 *
 			 * @return размер данных в буфере

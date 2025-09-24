@@ -92,7 +92,9 @@ namespace awh {
 			// Таймаут ожидания блокировки базы событий
 			std::chrono::nanoseconds _delay;
 		private:
-			// Таймаут блокировки времени по умолчанию (100ms)
+			/**
+			 * Таймаут блокировки времени по умолчанию (100ms)
+			 */
 			static constexpr const uint64_t TIMEOUT = 0x5F5E100;
 		private:
 			/**

@@ -156,7 +156,9 @@ namespace awh {
 			// Список интернет-адресов
 			std::unordered_map <string, string> _ips6;
 		private:
-			// Максимальный размер сетевого буфера
+			/**
+			 * Максимальный размер сетевого буфера
+			 */
 			static constexpr uint16_t IF_BUFFER_SIZE = 0xFA0;
 		private:
 			// Объект фреймворка

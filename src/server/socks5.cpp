@@ -469,14 +469,14 @@ void awh::server::ProxySocks5::available(const broker_t broker, const uint64_t b
 						// Если брокером является клиент
 						case static_cast <uint8_t> (broker_t::CLIENT): {
 							// Выполняем отправку заголовков запроса на сервер
-							if(dynamic_cast <client::core_t *> (core)->send(reinterpret_cast <const char *> (i->second->get()), i->second->size(), bid))
+							if(dynamic_cast <client::core_t *> (core)->send(reinterpret_cast <const char *> (i->second->data()), i->second->size(), bid))
 								// Выполняем удаление буфера полезной нагрузки
 								i->second->pop();
 						} break;
 						// Если брокером является сервер
 						case static_cast <uint8_t> (broker_t::SERVER): {
 							// Выполняем отправку заголовков запроса на сервер
-							if(dynamic_cast <server::core_t *> (core)->send(reinterpret_cast <const char *> (i->second->get()), i->second->size(), bid))
+							if(dynamic_cast <server::core_t *> (core)->send(reinterpret_cast <const char *> (i->second->data()), i->second->size(), bid))
 								// Выполняем удаление буфера полезной нагрузки
 								i->second->pop();
 						} break;
@@ -517,7 +517,7 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
-				auto ret = this->_payloads.emplace(bid, std::make_unique <queue_t> (this->_log));
+				auto ret = this->_payloads.emplace(bid, std::make_unique <queue_t> (this->_fmk, this->_log));
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
 				ret.first->second->push(buffer, size);
 			}

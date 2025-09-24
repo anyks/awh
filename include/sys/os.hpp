@@ -128,6 +128,13 @@ namespace awh {
 	typedef class AWHSHARED_EXPORT OS {
 		public:
 			/**
+			 * Режимы извлечения потребления памяти
+			 */
+			enum class rss_t : uint8_t {
+				CURRENT = 0x00, // Текущее потребление памяти
+				MAXIMUM = 0x01  // Максимальное потребление памяти
+			};
+			/**
 			 * Семейстов поддерживаемых операционных систем
 			 */
 			enum class family_t : uint8_t {
@@ -156,6 +163,14 @@ namespace awh {
 			 * @return название операционной системы
 			 */
 			family_t family() const noexcept;
+		public:
+			/**
+			 * @brief Метод определения текущего расхода памяти
+			 *
+			 * @param mode режим потребления памяти
+			 * @return     размер расхода памяти
+			 */
+			size_t rss(const rss_t mode) const noexcept;
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */

@@ -457,6 +457,19 @@ void awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 	}
 }
 /**
+ * @brief Метод обмена буферами
+ * 
+ * @param buffer буфер для обмена
+ */
+void awh::Buffer::swap(buffer_t & buffer) noexcept {
+	// Выполняем блокировку потока для текущего объекта
+	const lock_guard <std::mutex> lock1(this->_mtx);
+	// Выполняем блокировку потока для перемещаемого объекта
+	const lock_guard <std::mutex> lock2(buffer._mtx);
+	// Выполняем обмен буферами
+	this->_buffer.swap(buffer._buffer);
+}
+/**
  * @brief Получения размера данных в буфере
  *
  * @return размер данных в буфере

@@ -223,16 +223,12 @@ namespace awh {
 				 *
 				 * @param log объект для работы с логами
 				 */
-				Encoder(const log_t * log) noexcept :
-				 _chunkSize(CHUNK_SIZE),
-				 _hash(log), _buffer(log),
-				 _cipher(hash_t::cipher_t::NONE),
-				 _method(hash_t::method_t::NONE), _log(log) {}
+				Encoder(const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Encoder() noexcept {}
+				~Encoder() noexcept;
 		} encoder_t;
 		/**
 		 * @brief Класс для работы с протоколом получения данных
@@ -274,8 +270,8 @@ namespace awh {
 				// Мютекс для блокировки потока
 				mutable std::mutex _mtx;
 			private:
-				// Временный буфер для вставки в очередь
-				vector <queue_t::buffer_t> _tmp;
+				// Временные записи для вставки в очередь
+				vector <queue_t::record_t> _tmp;
 			private:
 				// Объект работы с логами
 				const log_t * _log;
@@ -395,16 +391,15 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
+				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Decoder(const log_t * log) noexcept :
-				 _pid(0), _hash(log), _queue(log), _buffer(log),
-				 _chunkSize(CHUNK_SIZE), _tmp(2), _log(log) {}
+				Decoder(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Decoder() noexcept {}
+				~Decoder() noexcept;
 		} decoder_t;
 	};
 };

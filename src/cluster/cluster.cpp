@@ -710,7 +710,7 @@ void awh::Cluster::accept(const uint16_t wid, const SOCKET sock, const base_t::e
 			this->_server.socket.bufferSize(client->sock, this->_bandwidth.write, socket_t::mode_t::WRITE);
 			{
 				// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-				auto ret = i->second->_decoders.emplace(client->sock, std::make_unique <cmp::decoder_t> (this->_log));
+				auto ret = i->second->_decoders.emplace(client->sock, std::make_unique <cmp::decoder_t> (this->_fmk, this->_log));
 				// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 				ret.first->second->chunkSize(this->_server.socket.bufferSize(client->sock, socket_t::mode_t::READ));
 				// Если размер шифрования и пароль установлены
@@ -1077,7 +1077,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										this->_server.socket.bufferSize(this->_server.sock, this->_bandwidth.write, socket_t::mode_t::WRITE);
 										{
 											// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-											auto ret = i->second->_decoders.emplace(this->_server.sock, std::make_unique <cmp::decoder_t> (this->_log));
+											auto ret = i->second->_decoders.emplace(this->_server.sock, std::make_unique <cmp::decoder_t> (this->_fmk, this->_log));
 											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.sock, socket_t::mode_t::READ));
 											// Если размер шифрования и пароль установлены
@@ -1162,7 +1162,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 										this->_server.socket.bufferSize(broker->mfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 										{
 											// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-											auto ret = i->second->_decoders.emplace(broker->cfds[0], std::make_unique <cmp::decoder_t> (this->_log));
+											auto ret = i->second->_decoders.emplace(broker->cfds[0], std::make_unique <cmp::decoder_t> (this->_fmk, this->_log));
 											// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
 											// Если размер шифрования и пароль установлены
@@ -1261,7 +1261,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								// Устанавливаем размер буфера на запись
 								this->_server.socket.bufferSize(broker->cfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 								// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-								auto ret = i->second->_decoders.emplace(broker->mfds[0], std::make_unique <cmp::decoder_t> (this->_log));
+								auto ret = i->second->_decoders.emplace(broker->mfds[0], std::make_unique <cmp::decoder_t> (this->_fmk, this->_log));
 								// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 								ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[0], socket_t::mode_t::READ));
 								// Если размер шифрования и пароль установлены
@@ -1489,7 +1489,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											this->_server.socket.bufferSize(this->_server.sock, this->_bandwidth.write, socket_t::mode_t::WRITE);
 											{
 												// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-												auto ret = i->second->_decoders.emplace(this->_server.sock, std::make_unique <cmp::decoder_t> (this->_log));
+												auto ret = i->second->_decoders.emplace(this->_server.sock, std::make_unique <cmp::decoder_t> (this->_fmk, this->_log));
 												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.sock, socket_t::mode_t::READ));
 												// Если размер шифрования и пароль установлены
@@ -1567,7 +1567,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 											this->_server.socket.bufferSize(broker->mfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 											{
 												// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-												auto ret = i->second->_decoders.emplace(broker->cfds[0], std::make_unique <cmp::decoder_t> (this->_log));
+												auto ret = i->second->_decoders.emplace(broker->cfds[0], std::make_unique <cmp::decoder_t> (this->_fmk, this->_log));
 												// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->cfds[0], socket_t::mode_t::READ));
 												// Если размер шифрования и пароль установлены
@@ -1704,7 +1704,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									// Устанавливаем размер буфера на запись
 									this->_server.socket.bufferSize(broker->cfds[1], this->_bandwidth.write, socket_t::mode_t::WRITE);
 									// Добавляем новый декодер для созданного сокета чтения входящих сообщений
-									auto ret = i->second->_decoders.emplace(broker->mfds[0], std::make_unique <cmp::decoder_t> (this->_log));
+									auto ret = i->second->_decoders.emplace(broker->mfds[0], std::make_unique <cmp::decoder_t> (this->_fmk, this->_log));
 									// Устанавливаем размер блока декодерва по размеру буфера данных сокета
 									ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[0], socket_t::mode_t::READ));
 									// Если размер шифрования и пароль установлены
