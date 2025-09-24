@@ -21,6 +21,16 @@
 	 */
 	#include <queue>
 	#include <linux/sysctl.h>
+/**
+ * Если операционной системой является FreeBSD, NetBSD и OpenBSD
+ */
+#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	/**
+	 * Стандартные модули
+	 */
+	#define _WANT_KINFO_PROC
+	#include <sys/param.h>
+	#include <sys/user.h>
 #endif
 
 /**
