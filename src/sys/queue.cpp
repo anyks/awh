@@ -98,13 +98,22 @@ bool awh::Queue::rss(const size_t size) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("You are trying to map %s of data into a %s data buffer, which is impossible", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, this->_fmk->bytes(static_cast <double> (bytes)).c_str(), this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str());
+					this->_log->debug(
+						"You are trying to map %s of data into a %s data buffer, which is impossible",
+						__PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL,
+						this->_fmk->bytes(static_cast <double> (bytes)).c_str(),
+						this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str()
+					);
 				/**
 				* Если режим отладки не включён
 				*/
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("You are trying to map %s of data into a %s data buffer, which is impossible", log_t::flag_t::CRITICAL, this->_fmk->bytes(static_cast <double> (bytes)).c_str(), this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str());
+					this->_log->print(
+						"You are trying to map %s of data into a %s data buffer, which is impossible",
+						log_t::flag_t::CRITICAL, this->_fmk->bytes(static_cast <double> (bytes)).c_str(),
+						this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str()
+					);
 				#endif
 			}
 		/**
