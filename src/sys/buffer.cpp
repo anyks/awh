@@ -13,6 +13,13 @@
  */
 
 /**
+ * Стандартные библиотеки
+ */
+#include <cstring>
+#include <cstdlib>
+#include <algorithm>
+
+/**
  * Подключаем заголовочный файл
  */
 #include <sys/buffer.hpp>

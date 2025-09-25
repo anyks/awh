@@ -13,30 +13,7 @@
  */
 
 /**
- * Если используется компилятор Borland C++
- */
-#if __BORLANDC__
-	typedef unsigned char uint8_t;
-	typedef __int64 int64_t;
-	typedef unsigned long uintptr_t;
-/**
- * Если используется компилятор Microsoft Visual Studio
- */
-#elif _MSC_VER
-	typedef unsigned char uint8_t;
-	typedef __int64 int64_t;
-/**
- * Если используется компилятор GNU GCC или Clang
- */
-#else
-	/**
-	 * Подключаем стандартные заголовки
-	 */
-	#include <cstdint>
-#endif
-
-/**
- * Подключаем стандартные заголовки
+ * Стандартные библиотеки
  */
 #include <chrono>
 #include <cstring>

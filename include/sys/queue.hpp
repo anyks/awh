@@ -41,6 +41,7 @@
 #include <mutex>
 #include <vector>
 #include <atomic>
+#include <cstdint>
 #include <condition_variable>
 
 /**

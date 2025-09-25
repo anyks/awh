@@ -16,36 +16,11 @@
 #define __AWH_BUFFER__
 
 /**
- * Если используется компилятор Borland C++
- */
-#if __BORLANDC__
-	typedef unsigned char uint8_t;
-	typedef __int64 int64_t;
-	typedef unsigned long uintptr_t;
-/**
- * Если используется компилятор Microsoft Visual Studio
- */
-#elif _MSC_VER
-	typedef unsigned char uint8_t;
-	typedef __int64 int64_t;
-/**
- * Если используется компилятор GNU GCC или Clang
- */
-#else
-	/**
-	 * Подключаем модуль числовых типов данных
-	 */
-	#include <stdint.h>
-#endif
-
-/**
- * Стандартная библиотека
+ * Стандартные библиотеки
  */
 #include <mutex>
 #include <vector>
-#include <cstring>
-#include <cstdlib>
-#include <algorithm>
+#include <cstdint>
 
 /**
  * Подключаем наши заголовочные файлы
