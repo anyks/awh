@@ -240,8 +240,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.5.2
-	VER="3.5.2"
+	# Версия OpenSSL v3.5.3
+	VER="3.5.3"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*
@@ -1063,7 +1063,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия PCRE2
-	VER="10.45"
+	VER="10.46"
 
 	# Выполняем удаление предыдущей закаченной версии
 	git tag -d pcre2-${VER}
@@ -1364,7 +1364,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия NgHttp2
-	VER="1.66.0"
+	VER="1.67.1"
 
 	# Переключаемся на master
 	git checkout master
