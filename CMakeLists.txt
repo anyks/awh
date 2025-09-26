@@ -278,7 +278,7 @@ endif (TcMalloc_FOUND)
 # Выполняем подключение хидеров
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
-include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/contrib/include)
+include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 
 # Выполняем подключение исходников
