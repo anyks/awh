@@ -130,7 +130,7 @@ cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/share/$PACKAGE_NAME/cmak
 cp "$ROOT/../package/Solaris"/postinstall "$APP_DIR/usr/sbin"/postinstall-$PACKAGE_NAME
 
 # Активируем глобальную сорку
-gsed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $APP_DIR/usr/share/$PACKAGE_NAME/cmake/FindAWH.cmake
+gsed -i "s%SET(AWH_GLOBAL_INSTALLATION FALSE)%SET(AWH_GLOBAL_INSTALLATION TRUE)%g" $APP_DIR/usr/share/$PACKAGE_NAME/cmake/FindAWH.cmake
 
 # Выставляем права доступа на каталог
 find $APP_DIR -type d ! -perm 755 -exec chmod 755 {} \;

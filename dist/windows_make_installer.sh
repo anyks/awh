@@ -102,7 +102,7 @@ cp -ar "$ROOT/../third_party/include"/* $ROOT/../setup/include/
 cp -ar "$ROOT/../include"/* $ROOT/../setup/include/$PACKAGE_NAME/
 
 # Активируем глобальную сорку
-sed -i "s%SET(AHW_GLOBAL_INSTALLATION FALSE)%SET(AHW_GLOBAL_INSTALLATION TRUE)%g" $ROOT/../setup/FindAWH.cmake
+sed -i "s%SET(AWH_GLOBAL_INSTALLATION FALSE)%SET(AWH_GLOBAL_INSTALLATION TRUE)%g" $ROOT/../setup/FindAWH.cmake
 
 # Извлекаем все библиотеки зависимостей
 for i in $(ldd $ROOT/../setup/lib$PACKAGE_NAME.dll | awk '{print $3}');

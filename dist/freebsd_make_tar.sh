@@ -89,7 +89,7 @@ cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/local/share/$PACKAGE_NAM
 ln -s /usr/local/share/$PACKAGE_NAME/cmake/FindAWH.cmake $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake
 
 # Активируем глобальную сорку
-sed -i -e "s!SET(AHW_GLOBAL_INSTALLATION FALSE)!SET(AHW_GLOBAL_INSTALLATION TRUE)!" "$APP_DIR/usr/local/share/$PACKAGE_NAME/cmake"/FindAWH.cmake
+sed -i -e "s!SET(AWH_GLOBAL_INSTALLATION FALSE)!SET(AWH_GLOBAL_INSTALLATION TRUE)!" "$APP_DIR/usr/local/share/$PACKAGE_NAME/cmake"/FindAWH.cmake
 
 # Удаляем временные паразитные файлы
 find "$APP_DIR/usr/local/share/$PACKAGE_NAME/cmake" -type f -name "*-e" -exec rm {} \;
