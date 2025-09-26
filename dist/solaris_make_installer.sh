@@ -22,7 +22,7 @@ readonly PACKAGE_VENDOR="ANYKS LLC"
 # Адрес электронной почты
 readonly PACKAGE_EMAIL="info@anyks.com"
 # Название продавца
-readonly PACKAGE_DISTRIBUTION="ANYKS - WEB (AWH)"
+readonly PACKAGE_DISTRIBUTION="ANYKS - WEB HUB (AWH)"
 
 # Название приложения
 readonly PACKAGE_SMMARY="Modern network technologies"

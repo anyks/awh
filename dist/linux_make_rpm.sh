@@ -29,7 +29,7 @@ readonly PACKAGE_EMAIL="info@anyks.com"
 # URL-адрес сайта
 readonly PACKAGE_URL="https://anyks.com"
 # Название продавца
-readonly PACKAGE_DISTRIBUTION="ANYKS - WEB (AWH)"
+readonly PACKAGE_DISTRIBUTION="ANYKS - WEB HUB (AWH)"
 # Название приложения
 readonly PACKAGE_SMMARY="Modern network technologies"
 # Описание приложения
