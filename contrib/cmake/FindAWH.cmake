@@ -112,7 +112,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если нужно загрузить статическую библиотеку
     else (CMAKE_SHARED_LIB_AWH)
         # Устанавливаем расширение поиска библиотеки
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".lib")
         # Поиск библиотеки AWH
         find_library(AWH_LIBRARY NAMES awh PATHS ${AHW_LIBRARY_PATH} NO_DEFAULT_PATH)
     endif (CMAKE_SHARED_LIB_AWH)
