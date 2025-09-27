@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.15)
 project(awh LANGUAGES CXX)
 
 # Устанавливаем название приложения
-SET(PROJECT_VENDOR_LONG "ANYKS - WEB")
+SET(PROJECT_VENDOR_LONG "ANYKS - WEB HUB (AWH)")
 
 # Опции сборки
 SET(PROJECT_COPYRIGHT "Copyright (c) ${CURRENT_YEAR} ${PROJECT_VENDOR_LONG}")
