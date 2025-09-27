@@ -2846,13 +2846,13 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Binary data buffer cannot be cast to a number");
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Binary data buffer cannot be cast to a number");
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n", "Binary data buffer cannot be cast to a number");
+							::fprintf(stderr, "ERROR! %s\n\n", "Binary data buffer cannot be cast to a number");
 						#endif
 					}
 				}
@@ -3076,13 +3076,13 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Only binary number can be converted to binary buffer");
+							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Only binary number can be converted to binary buffer");
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
 							// Выводим сообщение об ошибке
-							::fprintf(stderr, "ERROR! %s\n", "Only binary number can be converted to binary buffer");
+							::fprintf(stderr, "ERROR! %s\n\n", "Only binary number can be converted to binary buffer");
 						#endif
 					}
 				}
