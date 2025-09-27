@@ -31,11 +31,6 @@
 #include <condition_variable>
 
 /**
- * Разрешаем сборку под Windows
- */
-#include "global.hpp"
-
-/**
  * @brief пространство имён
  *
  */

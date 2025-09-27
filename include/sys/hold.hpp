@@ -23,11 +23,6 @@
 #include <stack>
 
 /**
- * Разрешаем сборку под Windows
- */
-#include "global.hpp"
-
-/**
  * @brief пространство имён
  *
  */

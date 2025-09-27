@@ -229,7 +229,6 @@ namespace awh {
 			 * @return     результат хэширования
 			 */
 			auto hashing(const string & text, const type_t type) const noexcept -> T;
-		public:
 			/**
 			 * @brief Метод хэширования текста
 			 *
@@ -262,7 +261,6 @@ namespace awh {
 			 * @return     результат хэширования
 			 */
 			auto hmac(const string & key, const string & text, const type_t type) const noexcept -> T;
-		public:
 			/**
 			 * @brief Метод хэширования текста с ключом
 			 *

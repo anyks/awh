@@ -1762,35 +1762,6 @@ void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t ci
 	}
 }
 /**
- * @brief Шаблон метода декодирования
- *
- * @tparam T тип возвращаемого результата
- */
-template <typename T>
-/**
- * @brief Метод декодирования
- *
- * @param buffer буфер данных для шифрования
- * @param size   размер данных для шифрования
- * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
- * @return       результат кодирования
- */
-auto awh::Hash::decode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T {
-	// Результат работы функции
-	T result;
-	// Если буфер данных передан
-	if((buffer != nullptr) && (size > 0))
-		// Выполняем декодирование
-		this->decode(buffer, size, cipher, result);
-	// Выводим результат
-	return result;
-}
-/**
- * Объявляем прототипы для метода декодирования
- */
-template string awh::Hash::decode(const char *, const size_t, const cipher_t) const noexcept;
-template vector <char> awh::Hash::decode(const char *, const size_t, const cipher_t) const noexcept;
-/**
  * @brief Метод кодирования
  *
  * @param buffer буфер данных для шифрования
@@ -1838,6 +1809,35 @@ void awh::Hash::encode(const char * buffer, const size_t size, const cipher_t ci
 		}
 	}
 }
+/**
+ * @brief Шаблон метода декодирования
+ *
+ * @tparam T тип возвращаемого результата
+ */
+template <typename T>
+/**
+ * @brief Метод декодирования
+ *
+ * @param buffer буфер данных для шифрования
+ * @param size   размер данных для шифрования
+ * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
+ * @return       результат кодирования
+ */
+auto awh::Hash::decode(const char * buffer, const size_t size, const cipher_t cipher) const noexcept -> T {
+	// Результат работы функции
+	T result;
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем декодирование
+		this->decode(buffer, size, cipher, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода декодирования
+ */
+template string awh::Hash::decode(const char *, const size_t, const cipher_t) const noexcept;
+template vector <char> awh::Hash::decode(const char *, const size_t, const cipher_t) const noexcept;
 /**
  * @brief Метод декодирования
  *
