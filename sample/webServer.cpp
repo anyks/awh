@@ -265,11 +265,15 @@ class WebServer {
 				*/
 				// Если клиент запросил передачу трейлеров
 				if(awh->trailers(sid, bid)){
+					// Хэш MD5 тела запроса
+					string md5 = "";
+					// Выполняем получение хэша MD5
+					this->_hash.hashing(body, hash_t::type_t::MD5, md5);
 					// Устанавливаем тестовые трейлеры
 					awh->trailer(sid, bid, "Goga", "Hello");
 					awh->trailer(sid, bid, "Hello", "World");
 					awh->trailer(sid, bid, "Anyks", "Best of the best");
-					awh->trailer(sid, bid, "Checksum", this->_hash.hashing <string> (body, hash_t::type_t::MD5));
+					awh->trailer(sid, bid, "Checksum", md5);
 				}
 				// Отправляем сообщение клиенту
 				awh->send(sid, bid, 200, "OK", vector <char> (body.begin(), body.end()));
