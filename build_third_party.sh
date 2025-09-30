@@ -130,6 +130,7 @@ elif [ $OS = "Linux" ] && [ ! -n "$CC" ]; then
 	else
 		# Устанавливаем жёстко компилятор
 		export CC="clang"
+		export CXX="clang++"
 	fi
 fi
 
