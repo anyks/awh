@@ -423,22 +423,22 @@ using namespace placeholders;
 			::exit(EXIT_FAILURE);
 		}
 	}
-	/**
-	 * @brief Конструктор
-	 *
-	 * @param wid идентификатор воркера
-	 * @param ctx родительский объект кластера
-	 * @param fmk объект фреймворка
-	 * @param log объект для работы с логами
-	 */
-	awh::Cluster::Worker::Worker(const uint16_t wid, const Cluster * ctx, const fmk_t * fmk, const log_t * log) noexcept :
-	 _working(false), _autoRestart(false), _wid(wid), _count(1), _fmk(fmk), _log(log), _ctx(ctx) {}
-	/**
-	 * @brief Деструктор
-	 *
-	 */
-	awh::Cluster::Worker::~Worker() noexcept {}
 #endif
+/**
+ * @brief Конструктор
+ *
+ * @param wid идентификатор воркера
+ * @param ctx родительский объект кластера
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Cluster::Worker::Worker(const uint16_t wid, const Cluster * ctx, const fmk_t * fmk, const log_t * log) noexcept :
+ _working(false), _autoRestart(false), _wid(wid), _count(1), _fmk(fmk), _log(log), _ctx(ctx) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Cluster::Worker::~Worker() noexcept {}
 /**
  * Для операционной системы не являющейся MS Windows
  */
