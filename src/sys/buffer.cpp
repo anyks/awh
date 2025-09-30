@@ -244,6 +244,62 @@ size_t awh::Buffer::capacity() const noexcept {
 	return this->_buffer.capacity();
 }
 /**
+ * @brief Метод извлечения буфера сырых данных
+ * 
+ * @return буфер сырых данных
+ */
+const vector <char> & awh::Buffer::raw() const noexcept {
+	// Если буфер данных не пустой
+	if(!this->_buffer.empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
+			// Если буфер не соответствует итераторам
+			if((this->_iter.begin > 0) || (this->_iter.end < this->_buffer.size())){
+				// Выполняем усечение буфера
+				vector <decltype(this->_buffer)::value_type> (
+					this->_buffer.begin() + this->_iter.begin,
+					this->_buffer.begin() + this->_iter.end
+				).swap(const_cast <buffer_t *> (this)->_buffer);
+				// Выполняем сброс верхнего итератора
+				const_cast <buffer_t *> (this)->_iter.begin = 0;
+				// Выполняем сброс нижнего итератора
+				const_cast <buffer_t *> (this)->_iter.end = this->_buffer.size();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	// Если буфер пустой
+	} else {
+		// Выполняем блокировку потока
+		const lock_guard <std::mutex> lock(this->_mtx);
+		// Выполняем сброс нижнего итератора
+		const_cast <buffer_t *> (this)->_iter.end = 0;
+		// Выполняем сброс верхнего итератора
+		const_cast <buffer_t *> (this)->_iter.begin = 0;
+	}
+	// Выводим значение буфера как есть
+	return this->_buffer;
+}
+/**
  * @brief Шаблон для метода удаления верхних записей
  *
  * @tparam T тип данных для удаления
@@ -859,18 +915,9 @@ awh::Buffer::operator const char * () const noexcept {
  *
  * @return бинарные данные буфера
  */
-awh::Buffer::operator vector <char> () const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если буфер данных не пустой
-	if(!this->empty())
-		// Выполняем формирование итогового буфера
-		result.assign(
-			reinterpret_cast <const char *> (this->data()),
-			reinterpret_cast <const char *> (this->data()) + this->size()
-		);
+awh::Buffer::operator const vector <char> & () const noexcept {
 	// Выводим результат
-	return result;
+	return this->raw();
 }
 /**
  * @brief Оператор перемещения

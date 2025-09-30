@@ -126,6 +126,13 @@ namespace awh {
 			size_t capacity() const noexcept;
 		public:
 			/**
+			 * @brief Метод извлечения буфера сырых данных
+			 * 
+			 * @return буфер сырых данных
+			 */
+			const vector <char> & raw() const noexcept;
+		public:
+			/**
 			 * @brief Шаблон для метода удаления верхних записей
 			 *
 			 * @tparam T тип данных для удаления
@@ -264,7 +271,7 @@ namespace awh {
 			 *
 			 * @return бинарные данные буфера
 			 */
-			operator vector <char> () const noexcept;
+			operator const vector <char> & () const noexcept;
 		public:
 			/**
 			 * @brief Оператор перемещения

@@ -285,11 +285,8 @@ void awh::Web::Chunk::clear() noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  */
-awh::Web::Chunk::Chunk(const fmk_t * fmk, const log_t * log) noexcept :
- size(0), state(process_t::SIZE), buffer(fmk, log) {}
+awh::Web::Chunk::Chunk() noexcept : size(0), state(process_t::SIZE) {}
 /**
  * @brief Деструктор
  *
@@ -316,11 +313,11 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Запоминаем количество обработанных байт
 					result = size;
 					// Заполняем собранные данные в промежуточный буфер
-					this->_chunk.intermediate.assign(buffer, buffer + result);
+					this->_chunk.buffer.assign(buffer, buffer + result);
 					// Если функция обратного вызова на перехват входящих чанков установлена
 					if(this->_callback.is("binary"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.intermediate, this);
+						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.buffer, this);
 				// Если размер установлен конкретный
 				} else {
 					// Получаем актуальный размер тела
@@ -330,11 +327,11 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Увеличиваем общий размер полученных данных
 					this->_chunk.size += result;
 					// Заполняем собранные данные в промежуточный буфер
-					this->_chunk.intermediate.assign(buffer, buffer + result);
+					this->_chunk.buffer.assign(buffer, buffer + result);
 					// Если функция обратного вызова на перехват входящих чанков установлена
 					if(this->_callback.is("binary"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.intermediate, this);
+						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.buffer, this);
 					// Если тело сообщения полностью собранно
 					if(this->_bodySize == this->_chunk.size){
 						// Очищаем собранные данные
@@ -391,10 +388,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы получили возврат каретки
 							} else if(buffer[i] == '\r') {
 								// Получаем заголовок переданного трейлера
-								const string header(
-									static_cast <const char *> (this->_chunk.buffer),
-									static_cast <size_t> (this->_chunk.buffer)
-								);
+								const string header(this->_chunk.buffer.begin(), this->_chunk.buffer.end());
 								// Выполняем поиск разделителя заголовка
 								const size_t pos = header.find(':');
 								// Если позиция разделителя найдена
@@ -439,7 +433,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Выполняем сброс тела данных
 								this->_chunk.buffer.clear();
 							// Выполняем сборку трейлера, выполняем сборку размера чанка
-							} else this->_chunk.buffer.push(&buffer[i], 1);
+							} else this->_chunk.buffer.push_back(buffer[i]);
 						} break;
 						// Если мы ожидаем получения размера тела чанка
 						case static_cast <uint8_t> (process_t::SIZE): {
@@ -449,8 +443,8 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								this->_chunk.state = process_t::END_SIZE;
 								// Получаем размер чанка
 								this->_chunk.size = this->_fmk->atoi <size_t> (
-									static_cast <const char *> (this->_chunk.buffer),
-									static_cast <size_t> (this->_chunk.buffer), 16
+									this->_chunk.buffer.data(),
+									this->_chunk.buffer.size(), 16
 								);
 								// Устанавливаем смещение
 								offset = (i + 1);
@@ -491,7 +485,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Запоминаем количество обработанных байт
 								result = (i + 1);
 								// Выполняем сборку размера чанка
-								this->_chunk.buffer.push(&buffer[i], 1);
+								this->_chunk.buffer.push_back(buffer[i]);
 							}
 						} break;
 						// Если мы ожидаем получение окончания сбора размера тела чанка
@@ -529,12 +523,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									if((size - offset) >= this->_chunk.size){
 										// Меняем стейт чанка
 										this->_chunk.state = process_t::STOP_BODY;
+										// Определяем конец буфера
+										size_t end = (offset + this->_chunk.size);
 										// Собираем тело чанка
-										this->_chunk.buffer.push(buffer + offset, this->_chunk.size);
+										this->_chunk.buffer.insert(this->_chunk.buffer.end(), buffer + offset, buffer + end);
 										// Выполняем смещение итератора
-										i = ((offset + this->_chunk.size) - 1);
+										i = (end - 1);
 										// Увеличиваем смещение
-										offset += this->_chunk.size;
+										offset = end;
 										// Запоминаем количество обработанных байт
 										result = offset;
 									// Если количества байт не достаточно для сбора тела
@@ -542,7 +538,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										// Меняем стейт чанка
 										this->_chunk.state = process_t::BODY;
 										// Собираем тело чанка
-										this->_chunk.buffer.push(buffer + offset, size - offset);
+										this->_chunk.buffer.insert(this->_chunk.buffer.end(), buffer + offset, buffer + size);
 										// Запоминаем количество обработанных байт
 										result = size;
 										// Выходим из функции
@@ -566,7 +562,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Меняем стейт чанка
 								this->_chunk.state = process_t::STOP_BODY;
 								// Собираем тело чанка
-								this->_chunk.buffer.push(buffer, rem);
+								this->_chunk.buffer.insert(this->_chunk.buffer.end(), buffer, buffer + rem);
 								// Выполняем смещение итератора
 								i = (rem - 1);
 								// Увеличиваем смещение
@@ -576,7 +572,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если количества байт не достаточно для сбора тела
 							} else {
 								// Собираем тело чанка
-								this->_chunk.buffer.push(buffer, size);
+								this->_chunk.buffer.insert(this->_chunk.buffer.end(), buffer, buffer + size);
 								// Запоминаем количество обработанных байт
 								result = size;
 								// Выходим из функции
@@ -1853,8 +1849,8 @@ void awh::Web::callback(const callback_t & callback) noexcept {
  * @param log объект для работы с логами
  */
 awh::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _separator('\0'), _pos{-1, -1}, _bodySize(-1),
- _uri(fmk, log), _chunk(fmk, log), _callback(log),
+ _separator('\0'), _pos{-1, -1},
+ _bodySize(-1), _uri(fmk, log), _callback(log),
  _hid(hid_t::NONE), _state(state_t::QUERY),
  _body(fmk, log), _upgrade{""}, _fmk(fmk), _log(log) {
 	// Выполняем заполнение списка стандартных заголовков

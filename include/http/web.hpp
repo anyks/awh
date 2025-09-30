@@ -350,10 +350,8 @@ namespace awh {
 					size_t size;
 					// Стейт чанка
 					process_t state;
-					// Данные чанка
-					buffer_t buffer;
 					// Промежуточный временный буфер
-					vector <char> intermediate;
+					vector <char> buffer;
 				public:
 					/**
 					 * @brief Метод очистки данных чанка
@@ -364,10 +362,8 @@ namespace awh {
 					/**
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
 					 */
-					Chunk(const fmk_t * fmk, const log_t * log) noexcept;
+					Chunk() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
