@@ -908,7 +908,7 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 					std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
 				#endif
 				// Тело WEB сообщения
-				vector <char> entity;
+				buffer_t payload(this->_fmk, this->_log);
 				// Получаем объект биндинга ядра TCP/IP
 				client::core_t * core = const_cast <client::core_t *> (this->_core);
 				// Выполняем отправку заголовков запроса на сервер
@@ -916,16 +916,16 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				/**
 				 * Получаем данные тела запроса
 				 */
-				while(!(entity = this->_http.payload()).empty()){
+				while(!(payload = ::move(this->_http.payload())).empty()){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение о выводе чанка тела
-						std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
+						std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 					#endif
 					// Выполняем отправку тела запроса на сервер
-					core->send(entity.data(), entity.size(), this->_bid);
+					core->send(static_cast <const char *> (payload), static_cast <size_t> (payload), this->_bid);
 				}
 			}
 			// Если установлена функция отлова завершения запроса
@@ -1085,26 +1085,26 @@ bool awh::client::Http1::send(const char * buffer, const size_t size, const bool
 		// Если данные переданы верные
 		if((result = ((this->_core != nullptr) && (buffer != nullptr) && (size > 0)))){
 			// Тело WEB сообщения
-			vector <char> entity;
+			buffer_t payload(this->_fmk, this->_log);
 			// Выполняем сброс данных тела
 			this->_http.clear(http_t::suite_t::BODY);
 			// Устанавливаем тело запроса
-			this->_http.body(vector <char> (buffer, buffer + size));
+			this->_http.body(buffer, size);
 			/**
 			 * Получаем данные тела запроса
 			 */
-			while(!(entity = this->_http.payload()).empty()){
+			while(!(payload = ::move(this->_http.payload())).empty()){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение о выводе чанка тела
-					std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
+					std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 				#endif
 				// Устанавливаем флаг закрытия подключения
 				this->_stopped = (end && this->_http.empty(awh::http_t::suite_t::BODY));
 				// Выполняем отправку тела запроса на сервер
-				const_cast <client::core_t *> (this->_core)->send(entity.data(), entity.size(), this->_bid);
+				const_cast <client::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), this->_bid);
 			}
 		}
 	}

@@ -335,13 +335,26 @@ namespace awh {
 			 *
 			 * @return текущий чанк полезной нагрузки
 			 */
-			const vector <char> payload() const noexcept;
+			buffer_t payload() const noexcept;
 			/**
 			 * @brief Метод установки чанка полезной нагрузки
 			 *
-			 * @param payload буфер чанка полезной нагрузки
+			 * @param buffer буфер чанка полезной нагрузки
 			 */
-			void payload(const vector <char> & payload) noexcept;
+			void payload(const buffer_t & buffer) noexcept;
+			/**
+			 * @brief Метод установки чанка полезной нагрузки
+			 *
+			 * @param buffer буфер чанка полезной нагрузки
+			 */
+			void payload(const vector <char> & buffer) noexcept;
+			/**
+			 * @brief Метод установки чанка полезной нагрузки
+			 *
+			 * @param buffer буфер чанка полезной нагрузки
+			 * @param size   размер буфера теля для добавления
+			 */
+			void payload(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод добавления заголовка в чёрный список
@@ -351,11 +364,17 @@ namespace awh {
 			void blacklist(const string & key) noexcept;
 		public:
 			/**
-			 * @brief Метод получения данных тела запроса
+			 * @brief Метод получения данных тела
 			 *
-			 * @return буфер данных тела запроса
+			 * @return буфер данных тела
 			 */
-			const awh::buffer_t & body() const noexcept;
+			const buffer_t & body() const noexcept;
+			/**
+			 * @brief Метод добавления данных тела
+			 *
+			 * @param buffer буфер данных тела
+			 */
+			void body(const buffer_t & buffer) noexcept;
 			/**
 			 * @brief Метод добавления данных тела
 			 *
@@ -584,7 +603,7 @@ namespace awh {
 			 *
 			 * @return буфер данных ответа в бинарном виде
 			 */
-			vector <char> trailer() const noexcept;
+			buffer_t trailer() const noexcept;
 			/**
 			 * @brief Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
 			 *

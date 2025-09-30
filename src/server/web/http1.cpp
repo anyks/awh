@@ -245,7 +245,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 								// Если ответ получен
 								if(!response.empty()){
 									// Тело полезной нагрузки
-									vector <char> payload;
+									buffer_t payload(this->_fmk, this->_log);
 									/**
 									 * Если включён режим отладки
 									 */
@@ -260,7 +260,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 									/**
 									 * Получаем тело полезной нагрузки ответа
 									 */
-									while(!(payload = options->http.payload()).empty()){
+									while(!(payload = ::move(options->http.payload())).empty()){
 										/**
 										 * Если включён режим отладки
 										 */
@@ -273,7 +273,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 											// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 											options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 										// Выполняем отправку тела ответа клиенту
-										const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
+										const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
 									}
 								// Выполняем отключение брокера
 								} else const_cast <server::core_t *> (this->_core)->close(bid);
@@ -381,7 +381,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 												// Устанавливаем закрытие подключения
 												options->http.header("Connection", "close");
 											// Формируем запрос авторизации
-											response = options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (401)));
+											response = ::move(options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (401))));
 										} break;
 										// Если сервер соответствует PROXY-серверу
 										case static_cast <uint8_t> (http_t::identity_t::PROXY): {
@@ -393,13 +393,13 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 												options->http.header("Proxy-Connection", "close");
 											}
 											// Формируем запрос авторизации
-											response = options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (407)));
+											response = ::move(options->http.reject(awh::web_t::res_t(static_cast <uint32_t> (407))));
 										} break;
 									}
 									// Если ответ получен
 									if(!response.empty()){
 										// Тело полезной нагрузки
-										vector <char> payload;
+										buffer_t payload(this->_fmk, this->_log);
 										/**
 										 * Если включён режим отладки
 										 */
@@ -414,7 +414,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 										/**
 										 * Получаем данные полезной нагрузки ответа
 										 */
-										while(!(payload = options->http.payload()).empty()){
+										while(!(payload = ::move(options->http.payload())).empty()){
 											/**
 											 * Если включён режим отладки
 											 */
@@ -427,7 +427,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 												// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 												options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 											// Отправляем тело ответа клиенту
-											const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
+											const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
 										}
 									// Выполняем отключение брокера
 									} else const_cast <server::core_t *> (this->_core)->close(bid);
@@ -637,14 +637,14 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Проверяем версию протокола
 					if(!options->http.check(ws_core_t::flag_t::VERSION)){
 						// Получаем бинарные данные REST ответа
-						buffer = web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Unsupported protocol version"));
+						buffer = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Unsupported protocol version")));
 						// Завершаем работу
 						goto End;
 					}
 					// Проверяем ключ брокера
 					if(!options->http.check(ws_core_t::flag_t::KEY)){
 						// Получаем бинарные данные REST ответа
-						buffer = web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (400), "Wrong client key"));
+						buffer = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (400), "Wrong client key")));
 						// Завершаем работу
 						goto End;
 					}
@@ -675,7 +675,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Выполняем установку HTTP-заголовков
 						options->http.headers(this->_ws1._headers);
 					// Получаем бинарные данные REST-ответа клиенту
-					buffer = options->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <uint32_t> (101)));
+					buffer = ::move(options->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <uint32_t> (101))));
 					// Если бинарные данные ответа получены
 					if(!buffer.empty()){
 						/**
@@ -714,15 +714,15 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Завершаем работу
 						return;
 					// Формируем ответ, что страница не доступна
-					} else buffer = web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (500)));
+					} else buffer = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (500))));
 				// Сообщаем, что рукопожатие не выполнено
-				} else buffer = web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (403), "Handshake failed"));
+				} else buffer = ::move(web->http.reject(awh::web_t::res_t(static_cast <uint32_t> (403), "Handshake failed")));
 				// Устанавливаем метку завершения запроса
 				End:
 				// Если бинарные данные запроса получены, отправляем клиенту
 				if(!buffer.empty()){
 					// Тело полезной нагрузки
-					vector <char> payload;
+					buffer_t payload(this->_fmk, this->_log);
 					/**
 					 * Если включён режим отладки
 					 */
@@ -743,7 +743,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					/**
 					 * Получаем данные тела ответа
 					 */
-					while(!(payload = web->http.payload()).empty()){
+					while(!(payload = ::move(web->http.payload())).empty()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -756,7 +756,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 							options->stopped = (!this->_service.alive && !web->alive && !web->http.is(http_t::state_t::ALIVE));
 						// Выполняем отправку ответа клиенту
-						const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
 					}
 					// Если получение данных нужно остановить
 					if(options->stopped)
@@ -1109,26 +1109,26 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Тело WEB сообщения
-				vector <char> entity;
+				buffer_t payload(this->_fmk, this->_log);
 				// Выполняем очистку данных тела
 				options->http.clear(http_t::suite_t::BODY);
 				// Устанавливаем тело запроса
-				options->http.body(vector <char> (buffer, buffer + size));
+				options->http.body(buffer, size);
 				/**
 				 * Получаем данные тела полезной нагрузки
 				 */
-				while(!(entity = options->http.payload()).empty()){
+				while(!(payload = ::move(options->http.payload())).empty()){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение о выводе чанка тела
-						std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
+						std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем флаг закрытия подключения
 					options->stopped = (end && options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0));
 					// Выполняем отправку ответа клиенту
-					const_cast <server::core_t *> (this->_core)->send(entity.data(), entity.size(), bid);
+					const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
 				}
 				// Если список трейлеров установлен
 				if(options->http.trailers() > 0){
@@ -1142,18 +1142,18 @@ bool awh::server::Http1::send(const uint64_t bid, const char * buffer, const siz
 					/**
 					 * Получаем отправляемые трейлеры
 					 */
-					while(!(entity = options->http.trailer()).empty()){
+					while(!(payload = ::move(options->http.trailer())).empty()){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение о выводе чанка тела
-							std::cout << this->_fmk->format("%s", string(entity.begin(), entity.end()).c_str()) << std::flush;
+							std::cout << this->_fmk->format("%s", string(static_cast <const char *> (payload), static_cast <size_t> (payload)).c_str()) << std::flush;
 						#endif
 						// Устанавливаем флаг закрытия подключения
 						options->stopped = (end && (options->http.trailers() == 0));
 						// Выполняем отправку трейлера клиенту
-						const_cast <server::core_t *> (this->_core)->send(entity.data(), entity.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
 					}
 					/**
 					 * Если включён режим отладки
@@ -1252,7 +1252,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 			// Если параметры активного клиента получены
 			if(options != nullptr){
 				// Тело полезной нагрузки
-				vector <char> payload;
+				buffer_t payload(this->_fmk, this->_log);
 				// Получаем флаг постоянного подключения
 				const bool alive = options->http.is(http_t::state_t::ALIVE);
 				// Выполняем сброс состояния HTTP-парсера
@@ -1317,7 +1317,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 					/**
 					 * Получаем данные тела полезной нагрузки
 					 */
-					while(!(payload = options->http.payload()).empty()){
+					while(!(payload = ::move(options->http.payload())).empty()){
 						// Если включён режим отладки
 						#if DEBUG_MODE
 							// Выводим сообщение о выводе чанка полезной нагрузки
@@ -1328,7 +1328,7 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 							options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 						// Отправляем тело ответа клиенту
-						const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
 					}
 					// Если список трейлеров установлен
 					if(options->http.trailers() > 0){
@@ -1342,20 +1342,20 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 						/**
 						 * Получаем отправляемые трейлеры
 						 */
-						while(!(payload = options->http.trailer()).empty()){
+						while(!(payload = ::move(options->http.trailer())).empty()){
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение о выводе чанка тела
-								std::cout << this->_fmk->format("%s", string(payload.begin(), payload.end()).c_str()) << std::flush;
+								std::cout << this->_fmk->format("%s", string(static_cast <const char *> (payload), static_cast <size_t> (payload)).c_str()) << std::flush;
 							#endif
 							// Если все трейлеры были отправлены
 							if(options->http.trailers() == 0)
 								// Устанавливаем флаг закрытия подключения
 								options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 							// Выполняем отправку трейлера клиенту
-							const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
+							const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
 						}
 						/**
 						 * Если включён режим отладки

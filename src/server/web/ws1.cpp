@@ -251,7 +251,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 							// Если выполняется запрос метода CONNECT
 							if(options->http.request().method == awh::web_t::method_t::CONNECT){
 								// Получаем бинарные данные REST ответа
-								buffer = http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Requested protocol is not supported by this server"));
+								buffer = ::move(http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Requested protocol is not supported by this server")));
 								// Выполняем запрет работы подключения
 								goto Reject;
 							}
@@ -266,14 +266,14 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										// Проверяем версию протокола
 										if(!options->http.check(ws_core_t::flag_t::VERSION)){
 											// Получаем бинарные данные REST ответа
-											buffer = http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Unsupported protocol version"));
+											buffer = ::move(http.reject(awh::web_t::res_t(static_cast <uint32_t> (505), "Unsupported protocol version")));
 											// Завершаем работу
 											break;
 										}
 										// Проверяем ключ брокера
 										if(!options->http.check(ws_core_t::flag_t::KEY)){
 											// Получаем бинарные данные REST ответа
-											buffer = http.reject(awh::web_t::res_t(static_cast <uint32_t> (400), "Wrong client key"));
+											buffer = ::move(http.reject(awh::web_t::res_t(static_cast <uint32_t> (400), "Wrong client key")));
 											// Завершаем работу
 											break;
 										}
@@ -350,9 +350,9 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 											// Завершаем работу
 											return;
 										// Формируем ответ, что страница не доступна
-										} else buffer = http.reject(awh::web_t::res_t(static_cast <uint32_t> (500)));
+										} else buffer = ::move(http.reject(awh::web_t::res_t(static_cast <uint32_t> (500))));
 									// Сообщаем, что рукопожатие не выполнено
-									} else buffer = http.reject(awh::web_t::res_t(static_cast <uint32_t> (403), "Handshake failed"));
+									} else buffer = ::move(http.reject(awh::web_t::res_t(static_cast <uint32_t> (403), "Handshake failed")));
 								} break;
 								// Если запрос неудачный
 								case static_cast <uint8_t> (http_t::status_t::FAULT): {
@@ -389,10 +389,10 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										}
 									}
 									// Формируем запрос авторизации
-									buffer = http.reject(awh::web_t::res_t(static_cast <uint32_t> (401)));
+									buffer = ::move(http.reject(awh::web_t::res_t(static_cast <uint32_t> (401))));
 								} break;
 								// Если результат определить не получилось
-								default: buffer = http.reject(awh::web_t::res_t(static_cast <uint32_t> (506), "Unknown request"));
+								default: buffer = ::move(http.reject(awh::web_t::res_t(static_cast <uint32_t> (506), "Unknown request")));
 							}
 							// Устанавливаем метку запрета протокола
 							Reject:

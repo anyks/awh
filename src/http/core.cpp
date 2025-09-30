@@ -1272,9 +1272,9 @@ std::set <awh::web_t::proto_t> awh::Http::proto(const string & key) const noexce
  *
  * @return текущий чанк полезной нагрузки
  */
-const vector <char> awh::Http::payload() const noexcept {
+awh::buffer_t awh::Http::payload() const noexcept {
 	// Результат работы функции
-	vector <char> result;
+	buffer_t result(this->_fmk, this->_log);
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1311,19 +1311,11 @@ const vector <char> awh::Http::payload() const noexcept {
 					// Если тело сообщения больше размера чанка
 					if(body.size() >= this->_chunk){
 						// Формируем результат
-						result.assign(
-							static_cast <const char *> (body),
-							static_cast <const char *> (body) + this->_chunk
-						);
+						result.push(static_cast <const char *> (body), static_cast <size_t> (this->_chunk));
 						// Удаляем полученные данные в теле сообщения
 						body.erase(static_cast <size_t> (this->_chunk));
 					// Если тело сообщения полностью убирается в размер чанка
-					} else {
-						// Формируем результат
-						result = body;
-						// Очищаем объект тела запроса
-						body.clear();
-					}
+					} else result = ::move(body);
 				// Выполняем сборку чанков для протокола HTTP/1.1
 				} else {
 					// Тело чанка запроса
@@ -1379,29 +1371,18 @@ const vector <char> awh::Http::payload() const noexcept {
 						body.clear();
 					}
 					// Формируем результат
-					result.assign(chunk.begin(), chunk.end());
+					result.push(chunk.c_str(), chunk.length());
 				}
 			// Выводим данные тела как есть
 			} else {
 				// Если тело сообщения больше размера чанка
 				if(body.size() >= this->_chunk){
 					// Получаем нужный нам размер данных
-					result.assign(
-						static_cast <const char *> (body),
-						static_cast <const char *> (body) + this->_chunk
-					);
+					result.push(static_cast <const char *> (body), static_cast <size_t> (this->_chunk));
 					// Удаляем полученные данные в теле сообщения
 					body.erase(static_cast <size_t> (this->_chunk));
 				// Если тело сообщения полностью убирается в размер чанка
-				} else {
-					// Получаем нужный нам размер данных
-					result.assign(
-						static_cast <const char *> (body),
-						static_cast <const char *> (body) + static_cast <size_t> (body)
-					);
-					// Очищаем данные тела
-					body.clear();
-				}
+				} else result = ::move(body);
 			}
 		}
 		// Если тело передаваемых данных уже пустое
@@ -1439,11 +1420,36 @@ const vector <char> awh::Http::payload() const noexcept {
 /**
  * @brief Метод установки чанка полезной нагрузки
  *
- * @param payload буфер чанка полезной нагрузки
+ * @param buffer буфер чанка полезной нагрузки
  */
-void awh::Http::payload(const vector <char> & payload) noexcept {
-	// Устанавливаем данные телал сообщения
-	this->_web.body(payload);
+void awh::Http::payload(const buffer_t & buffer) noexcept {
+	// Если буфер чанка полезной нагрузки передан
+	if(!buffer.empty())
+		// Выполняем добавление буфера чанка полезной нагрузки
+		this->payload(static_cast <const char *> (buffer), static_cast <size_t> (buffer));
+}
+/**
+ * @brief Метод установки чанка полезной нагрузки
+ *
+ * @param buffer буфер чанка полезной нагрузки
+ */
+void awh::Http::payload(const vector <char> & buffer) noexcept {
+	// Если буфер чанка полезной нагрузки передан
+	if(!buffer.empty())
+		// Выполняем добавление буфера чанка полезной нагрузки
+		this->payload(buffer.data(), buffer.size());
+}
+/**
+ * @brief Метод установки чанка полезной нагрузки
+ *
+ * @param buffer буфер чанка полезной нагрузки
+ * @param size   размер буфера теля для добавления
+ */
+void awh::Http::payload(const char * buffer, const size_t size) noexcept {
+	// Если буфер чанка полезной нагрузки передан
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем добавление буфера чанка полезной нагрузки
+		this->_web.body(buffer, size);
 }
 /**
  * @brief Метод добавления заголовка в чёрный список
@@ -1457,9 +1463,9 @@ void awh::Http::blacklist(const string & key) noexcept {
 		this->_blacklist.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
 }
 /**
- * @brief Метод получения данных тела запроса
+ * @brief Метод получения данных тела
  *
- * @return буфер данных тела запроса
+ * @return буфер данных тела
  */
 const awh::buffer_t & awh::Http::body() const noexcept {
 	// Выполняем дешифрование полезной нагрузки
@@ -1472,15 +1478,24 @@ const awh::buffer_t & awh::Http::body() const noexcept {
 /**
  * @brief Метод добавления данных тела
  *
+ * @param buffer буфер данных тела
+ */
+void awh::Http::body(const buffer_t & buffer) noexcept {
+	// Если буфер тела сообщения передан
+	if(!buffer.empty())
+		// Выполняем добавление бинарных данных тела сообщения
+		this->body(static_cast <const char *> (buffer), static_cast <size_t> (buffer));
+}
+/**
+ * @brief Метод добавления данных тела
+ *
  * @param body буфер тела для добавления
  */
 void awh::Http::body(const vector <char> & body) noexcept {
-	// Выполняем дешифрование полезной нагрузки
-	this->decrypt();
-	// Выполняем декомпрессию полезной нагрузки
-	this->decompress();
-	// Добавляем данные телал сообщения
-	this->_web.body(body);
+	// Если буфер тела сообщения передан
+	if(!body.empty())
+		// Выполняем добавление бинарных данных тела сообщения
+		this->body(body.data(), body.size());
 }
 /**
  * @brief Метод добавления данных тела
@@ -1489,12 +1504,15 @@ void awh::Http::body(const vector <char> & body) noexcept {
  * @param size   размер буфера теля для добавления
  */
 void awh::Http::body(const char * buffer, const size_t size) noexcept {
-	// Выполняем дешифрование полезной нагрузки
-	this->decrypt();
-	// Выполняем декомпрессию полезной нагрузки
-	this->decompress();
-	// Добавляем данные телал сообщения
-	this->_web.body(buffer, size);
+	// Если данные тела сообщения переданы
+	if((buffer != nullptr) && (size > 0)){
+		// Выполняем дешифрование полезной нагрузки
+		this->decrypt();
+		// Выполняем декомпрессию полезной нагрузки
+		this->decompress();
+		// Добавляем данные телал сообщения
+		this->_web.body(buffer, size);
+	}
 }
 /**
  * @brief Метод получение названия протокола для переключения
@@ -2831,9 +2849,9 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
  *
  * @return буфер данных ответа в бинарном виде
  */
-vector <char> awh::Http::trailer() const noexcept {
+awh::buffer_t awh::Http::trailer() const noexcept {
 	// Результат работы функции
-	vector <char> result;
+	buffer_t result(this->_fmk, this->_log);
 	// Если разрешено добавление трейлеров
 	if(this->_te.trailers){
 		/**
@@ -2857,7 +2875,7 @@ vector <char> awh::Http::trailer() const noexcept {
 					// Выполняем добавление конца запроса
 					response.append("\r\n");
 				// Устанавливаем результат
-				result.assign(response.begin(), response.end());
+				result.push(response.c_str(), response.length());
 			}
 		/**
 		 * Если возникает ошибка

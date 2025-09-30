@@ -170,7 +170,7 @@ int32_t awh::client::Web2::chunkProxySignal(const int32_t sid, const uint8_t * b
 	// Если идентификатор сессии клиента совпадает
 	if(this->_proxy.sid == sid)
 		// Добавляем полученный чанк в тело данных
-		this->_scheme.proxy.http.body(vector <char> (buffer, buffer + size));
+		this->_scheme.proxy.http.body(reinterpret_cast <const char *> (buffer), size);
 	// Выводим результат
 	return 0;
 }

@@ -453,7 +453,7 @@ int32_t awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, c
 						// Если протокол соответствует HTTP-протоколу
 						case static_cast <uint8_t> (agent_t::HTTP): {
 							// Добавляем полученный чанк в тело данных
-							stream->http.payload(vector <char> (buffer, buffer + size));
+							stream->http.payload(reinterpret_cast <const char *> (buffer), size);
 							// Обновляем время отправленного пинга
 							options->sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 						} break;
@@ -465,7 +465,7 @@ int32_t awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, c
 						return 0;
 					}
 				// Добавляем полученный чанк в тело данных
-				} else stream->http.body(vector <char> (buffer, buffer + size));
+				} else stream->http.body(reinterpret_cast <const char *> (buffer), size);
 			}
 			// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 			if(this->_callback.is("chunks"))
@@ -752,24 +752,24 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 								// Если тело запроса существует
 								if(!stream->http.empty(awh::http_t::suite_t::BODY)){
 									// Тело HTTP-запроса
-									vector <char> entity;
+									buffer_t payload(this->_fmk, this->_log);
 									/**
 									 * Получаем данные тела запроса
 									 */
-									while(!(entity = stream->http.payload()).empty()){
+									while(!(payload = ::move(stream->http.payload())).empty()){
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение о выводе чанка тела
-											std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
+											std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 										#endif
 										// Если нужно установить флаг закрытия потока
 										if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
 											// Устанавливаем флаг завершения потока
 											flag = awh::http2_t::flag_t::END_STREAM;
 										// Выполняем отправку тела запроса на сервер
-										if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
+										if(!web2_t::send(sid, bid, static_cast <const char *> (payload), static_cast <size_t> (payload), flag))
 											// Выходим из функции
 											return;
 									}
@@ -889,24 +889,24 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 						// Если тело запроса существует
 						if(!stream->http.empty(awh::http_t::suite_t::BODY)){
 							// Тело HTTP-запроса
-							vector <char> entity;
+							buffer_t payload(this->_fmk, this->_log);
 							/**
 							 * Получаем данные тела запроса
 							 */
-							while(!(entity = stream->http.payload()).empty()){
+							while(!(payload = ::move(stream->http.payload())).empty()){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение о выводе чанка тела
-									std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
+									std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 								#endif
 								// Если нужно установить флаг закрытия потока
 								if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
 									// Устанавливаем флаг завершения потока
 									flag = awh::http2_t::flag_t::END_STREAM;
 								// Выполняем отправку тела запроса на сервер
-								if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
+								if(!web2_t::send(sid, bid, static_cast <const char *> (payload), static_cast <size_t> (payload), flag))
 									// Выходим из функции
 									return;
 							}
@@ -1188,24 +1188,24 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 					// Если тело запроса существует
 					if(!options->http.empty(awh::http_t::suite_t::BODY)){
 						// Тело HTTP-запроса
-						vector <char> entity;
+						buffer_t payload(this->_fmk, this->_log);
 						/**
 						 * Получаем данные тела запроса
 						 */
-						while(!(entity = options->http.payload()).empty()){
+						while(!(payload = ::move(options->http.payload())).empty()){
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение о выводе чанка тела
-								std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
+								std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 							#endif
 							// Если нужно установить флаг закрытия потока
 							if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
 								// Устанавливаем флаг завершения потока
 								flag = awh::http2_t::flag_t::END_STREAM;
 							// Выполняем отправку тела запроса на сервер
-							if(!web2_t::send(options->sid, bid, entity.data(), entity.size(), flag))
+							if(!web2_t::send(options->sid, bid, static_cast <const char *> (payload), static_cast <size_t> (payload), flag))
 								// Выходим из функции
 								return;
 						}
@@ -2008,7 +2008,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 							// Если протокол соответствует HTTP-протоколу
 							case static_cast <uint8_t> (agent_t::HTTP): {
 								// Тело WEB сообщения
-								vector <char> entity;
+								buffer_t payload(this->_fmk, this->_log);
 								// Извлекаем данные потока
 								scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
 								// Если поток получен удачно
@@ -2016,26 +2016,26 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 									// Выполняем очистку данных тела
 									stream->http.clear(http_t::suite_t::BODY);
 									// Устанавливаем тело запроса
-									stream->http.body(vector <char> (buffer, buffer + size));
+									stream->http.body(buffer, size);
 									// Флаг отправляемого фрейма
 									awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
 									/**
 									 * Получаем данные тела запроса
 									 */
-									while(!(entity = stream->http.payload()).empty()){
+									while(!(payload = ::move(stream->http.payload())).empty()){
 										/**
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение о выводе чанка тела
-											std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
+											std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 										#endif
 										// Если нужно установить флаг закрытия потока
 										if(end && stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
 											// Устанавливаем флаг завершения потока
 											flag = awh::http2_t::flag_t::END_STREAM;
 										// Выполняем отправку данных на удалённый сервер
-										result = web2_t::send(sid, bid, entity.data(), entity.size(), flag);
+										result = web2_t::send(sid, bid, static_cast <const char *> (payload), static_cast <size_t> (payload), flag);
 									}
 									// Если список трейлеров установлен
 									if(result && (stream->http.trailers() > 0)){
@@ -2288,24 +2288,24 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 											// Если тело запроса существует
 											if((code >= 200) && !stream->http.empty(awh::http_t::suite_t::BODY)){
 												// Тело HTTP-запроса
-												vector <char> entity;
+												buffer_t payload(this->_fmk, this->_log);
 												/**
 												 * Получаем данные тела запроса
 												 */
-												while(!(entity = stream->http.payload()).empty()){
+												while(!(payload = ::move(stream->http.payload())).empty()){
 													/**
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение о выводе чанка тела
-														std::cout << this->_fmk->format("<chunk %zu>", entity.size()) << std::endl << std::endl << std::flush;
+														std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 													#endif
 													// Если нужно установить флаг закрытия потока
 													if(stream->http.empty(awh::http_t::suite_t::BODY) && (stream->http.trailers() == 0))
 														// Устанавливаем флаг завершения потока
 														flag = awh::http2_t::flag_t::END_STREAM;
 													// Выполняем отправку тела запроса на сервер
-													if(!web2_t::send(sid, bid, entity.data(), entity.size(), flag))
+													if(!web2_t::send(sid, bid, static_cast <const char *> (payload), static_cast <size_t> (payload), flag))
 														// Выходим из функции
 														return;
 												}
