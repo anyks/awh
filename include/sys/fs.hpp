@@ -105,7 +105,7 @@ namespace awh {
 	 * @brief Класс модуля работы с файловой системой
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT FS {
+	typedef class AWH_SHARED_EXPORT FS {
 		public:
 			/**
 			 * Типы файловой системы

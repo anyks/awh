@@ -147,7 +147,7 @@ namespace awh {
 	 * @brief Класс работы с сетевыми интерфейсами
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT IfNet {
+	typedef class AWH_SHARED_EXPORT IfNet {
 		private:
 			// Список сетевых интерфейсов
 			std::unordered_map <string, string> _ifs;

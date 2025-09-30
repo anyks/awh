@@ -1522,9 +1522,9 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					 */
 					do {
 						// Если подключение выполнено и чтение данных разрешено
-						if((broker->buffer.size > 0) && (shm->status.real == scheme_t::mode_t::CONNECT)){
+						if((broker->payload.size > 0) && (shm->status.real == scheme_t::mode_t::CONNECT)){
 							// Выполняем получение сообщения от клиента
-							const int64_t bytes = broker->ectx.read(broker->buffer.data.get(), broker->buffer.size);
+							const int64_t bytes = broker->ectx.read(broker->payload.buffer.get(), broker->payload.size);
 							// Если данные получены
 							if(bytes > 0){
 								// Если таймер ожидания получения данных установлен
@@ -1536,11 +1536,11 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 									// Если функция обратного вызова для вывода записи существует
 									if(this->_callback.is("readProxy"))
 										// Выводим функцию обратного вызова
-										this->_callback.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", broker->buffer.data.get(), static_cast <size_t> (bytes), bid, i->first);
+										this->_callback.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("readProxy", broker->payload.buffer.get(), static_cast <size_t> (bytes), bid, i->first);
 								// Если прокси-сервер не используется
 								} else if(this->_callback.is("read"))
 									// Выводим функцию обратного вызова
-									this->_callback.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->buffer.data.get(), static_cast <size_t> (bytes), bid, i->first);
+									this->_callback.call <void (const char *, const size_t, const uint64_t, const uint16_t)> ("read", broker->payload.buffer.get(), static_cast <size_t> (bytes), bid, i->first);
 							// Если данные небыли получены
 							} else if(bytes <= 0) {
 								// Если чтение не выполнена, закрываем подключение
@@ -1627,7 +1627,7 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 					// Если для потока очередь полезной нагрузки получена
 					if((i != this->_payloads.end()) && !i->second->empty()){
 						// Выполняем запись в сокет
-						const size_t bytes = this->write(reinterpret_cast <const char *> (i->second->get()), i->second->size(), bid);
+						const size_t bytes = this->write(static_cast <const char *> (* i->second), static_cast <size_t> (* i->second), bid);
 						// Если данные записаны удачно
 						if((bytes > 0) && this->has(bid))
 							// Выполняем освобождение памяти хранения полезной нагрузки

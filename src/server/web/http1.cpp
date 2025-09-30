@@ -183,7 +183,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 					 */
 					while(!options->close){
 						// Выполняем парсинг полученных данных
-						const size_t bytes = options->http.parse(reinterpret_cast <const char *> (options->buffer.get()), options->buffer.size());
+						const size_t bytes = options->http.parse(static_cast <const char *> (options->buffer), static_cast <size_t> (options->buffer));
 						// Если все данные получены
 						if((bytes > 0) && options->http.is(http_t::state_t::END)){
 							// Получаем флаг постоянного подключения
@@ -793,10 +793,6 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					options->buffer.payload.clear();
 					// Выполняем очистку фрагментированных сообщений
 					options->buffer.fragments.clear();
-					// Если размер выделенной памяти выше максимального размера буфера
-					if(options->buffer.fragments.capacity() > AWH_BUFFER_SIZE)
-						// Выполняем очистку временного буфера данных
-						vector <decltype(options->buffer.fragments)::value_type> ().swap(options->buffer.fragments);
 					// Завершаем работу
 					return;
 				}

@@ -16,7 +16,7 @@
 #define __AWH_CONFIG__
 
 // Версия приложения
-#define AWH_VERSION "4.3.7"
+#define AWH_VERSION "4.3.8"
 // Короткое название библиотеки
 #define AWH_SHORT_NAME "AWH"
 // Название библиотеки
@@ -85,6 +85,16 @@
 #define AWH_BUFFER_SIZE_RCV 0x8000
 // Размер буфера на запись
 #define AWH_BUFFER_SIZE_SND 0x8000
+
+/**
+ * Если максимальный размер HTTP-тела запроса/ответа установлено
+ */
+#ifndef AWH_MAX_BODY_SIZE
+	/**
+	 * Устанавливаем максимальный размер HTTP-тела 100Mb
+	 */
+	#define AWH_MAX_BODY_SIZE 0x6400000
+#endif
 
 /**
  * HTTP заголовки по умолчанию

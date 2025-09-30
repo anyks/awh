@@ -38,7 +38,7 @@ namespace awh {
 		 * @brief Класс клиента для работы с socks5 прокси-сервером
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Socks5 : public awh::socks5_t {
+		typedef class AWH_SHARED_EXPORT Socks5 : public awh::socks5_t {
 			private:
 				// Пароль пользователя
 				string _pass;
@@ -93,7 +93,8 @@ namespace awh {
 				 *
 				 * @param log объект для работы с логами
 				 */
-				Socks5(const log_t * log) noexcept : awh::socks5_t(log), _pass{""}, _login{""} {}
+				Socks5(const log_t * log) noexcept :
+				 awh::socks5_t(log), _pass{""}, _login{""} {}
 				/**
 				 * @brief Деструктор
 				 *

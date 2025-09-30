@@ -43,7 +43,7 @@ namespace awh {
 		 * @brief Класс сервера для работы с socks5 прокси-сервером
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Socks5 : public awh::socks5_t {
+		typedef class AWH_SHARED_EXPORT Socks5 : public awh::socks5_t {
 			public:
 				/**
 				 * @brief Структура параметров запрашиваемого сервера

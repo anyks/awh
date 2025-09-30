@@ -39,7 +39,7 @@ namespace awh {
 		 * @brief Класс клиентского ядра биндинга TCP/IP
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Core : public awh::core_t {
+		typedef class AWH_SHARED_EXPORT Core : public awh::core_t {
 			public:
 				/**
 				 * Коды ошибок клиента

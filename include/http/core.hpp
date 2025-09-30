@@ -46,7 +46,7 @@ namespace awh {
 	 * @brief Класс для работы с REST
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Http {
+	typedef class AWH_SHARED_EXPORT Http {
 		public:
 			/**
 			 * Флаги наборов
@@ -355,7 +355,7 @@ namespace awh {
 			 *
 			 * @return буфер данных тела запроса
 			 */
-			const vector <char> & body() const noexcept;
+			const awh::buffer_t & body() const noexcept;
 			/**
 			 * @brief Метод добавления данных тела
 			 *
@@ -485,13 +485,20 @@ namespace awh {
 			 *
 			 * @return бинарный дамп данных
 			 */
-			vector <char> dump() const noexcept;
+			buffer_t dump() const noexcept;
 			/**
 			 * @brief Метод установки бинарного дампа
 			 *
 			 * @param data бинарный дамп данных
 			 */
-			void dump(const vector <char> & data) noexcept;
+			void dump(const buffer_t & data) noexcept;
+			/**
+			 * @brief Метод установки бинарного дампа
+			 *
+			 * @param buffer буфер бинарных данных
+			 * @param size   размер бинарных данных
+			 */
+			void dump(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки существования данных

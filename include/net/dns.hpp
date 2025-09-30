@@ -87,7 +87,7 @@ namespace awh {
 	 * @brief Класс DNS ресолвера
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT DNS {
+	typedef class AWH_SHARED_EXPORT DNS {
 		private:
 			/**
 			 * Статус работы DNS-резолвера
@@ -201,7 +201,7 @@ namespace awh {
 			 * @brief Класс бинарного буфера данных
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Buffer {
+			typedef class AWH_SHARED_EXPORT Buffer {
 				public:
 					/**
 					 * Тип бинарного буфера
@@ -306,7 +306,7 @@ namespace awh {
 			 * @brief Класс воркера резолвинга
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Worker {
+			typedef class AWH_SHARED_EXPORT Worker {
 				private:
 					/**
 					 * @brief Устанавливаем дружбу с классом DNS-резолвера

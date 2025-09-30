@@ -30,9 +30,9 @@
  */
 #ifndef AWH_MAX_MEMORY_QUEUE
 	/**
-	 * Устанавливаем максимальное значение потребляемой памяти 512Мб
+	 * Устанавливаем максимальное значение потребляемой памяти
 	 */
-	#define AWH_MAX_MEMORY_QUEUE 0x20000000
+	#define AWH_MAX_MEMORY_QUEUE AWH_MAX_BODY_SIZE
 #endif
 
 /**
@@ -47,6 +47,7 @@
 /**
  * Подключаем наши заголовочные файлы
  */
+#include "fmk.hpp"
 #include "log.hpp"
 
 /**
@@ -59,10 +60,10 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
-	 * @brief Класс создания очереди
+	 * @brief Класс бинарной очереди
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Queue {
+	typedef class AWH_SHARED_EXPORT Queue {
 		private:
 			/**
 			 * @brief Структура условных переменных

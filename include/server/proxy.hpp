@@ -49,7 +49,7 @@ namespace awh {
 		 * @brief Класс Proxy-сервера
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Proxy {
+		typedef class AWH_SHARED_EXPORT Proxy {
 			public:
 				/**
 				 * Брокеры учавствующие в передаче данных
@@ -79,8 +79,15 @@ namespace awh {
 				 */
 				typedef struct Request {
 					awh::web_t::req_t params;                         // Параметры запроса
-					vector <char> entity;                             // Тело запроса
+					awh::buffer_t entity;                             // Тело запроса
 					std::unordered_multimap <string, string> headers; // Заголовки запроса
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					Request(const fmk_t * fmk, const log_t * log) noexcept : entity(fmk, log) {}
 				} request_t;
 				/**
 				 * @brief Объект параметров ответа
@@ -88,8 +95,15 @@ namespace awh {
 				 */
 				typedef struct Response {
 					awh::web_t::res_t params;                         // Параметры ответа
-					vector <char> entity;                             // Тело ответа
+					awh::buffer_t entity;                             // Тело ответа
 					std::unordered_multimap <string, string> headers; // Заголовки ответа
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					Response(const fmk_t * fmk, const log_t * log) noexcept : entity(fmk, log) {}
 				} response_t;
 				/**
 				 * @brief Структура параметров жизни подключения
@@ -239,7 +253,7 @@ namespace awh {
 					Client(const fmk_t * fmk, const log_t * log) noexcept :
 					 sid(-1), busy(false), sending(false), upgrade(false),
 					 method(awh::web_t::method_t::NONE), agent(client::web_t::agent_t::HTTP),
-					 core(fmk, log), awh(&core, fmk, log) {}
+					 request(fmk, log), response(fmk, log), core(fmk, log), awh(&core, fmk, log) {}
 				} client_t;
 				/**
 				 * @brief Структура параметров клиента

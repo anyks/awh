@@ -74,7 +74,7 @@ namespace awh {
 	 * @brief Структура схемы сети
 	 *
 	 */
-	typedef struct AWHSHARED_EXPORT Scheme {
+	typedef struct AWH_SHARED_EXPORT Scheme {
 		private:
 			/**
 			 * @brief Core Устанавливаем дружбу с нодой сетевого ядра
@@ -140,26 +140,26 @@ namespace awh {
 			 * @brief Структура буфера полезной нагрузки
 			 *
 			 */
-			typedef struct Buffer {
-				size_t size;                    // Размер буфера
-				std::unique_ptr <char []> data; // Данные буфера
+			typedef struct Payload {
+				size_t size;                      // Размер буфера
+				std::unique_ptr <char []> buffer; // Данные буфера
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				Buffer() noexcept : size(0), data(nullptr) {}
+				Payload() noexcept : size(0), buffer(nullptr) {}
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Buffer() noexcept {}
-			} buffer_t;
+				~Payload() noexcept {}
+			} payload_t;
 		private:
 			/**
 			 * @brief Класс брокера подключения
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Broker {
+			typedef class AWH_SHARED_EXPORT Broker {
 				private:
 					// Идентификатор брокера
 					uint64_t _id;
@@ -181,7 +181,7 @@ namespace awh {
 					event_t _event;
 				public:
 					// Буфер полезной нагрузки
-					buffer_t buffer;
+					payload_t payload;
 					// Объект таймаутов
 					timeouts_t timeouts;
 				private:

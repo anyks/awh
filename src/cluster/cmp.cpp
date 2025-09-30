@@ -178,7 +178,7 @@ void awh::cmp::Encoder::clear() noexcept {
  */
 const void * awh::cmp::Encoder::data() const noexcept {
 	// Выводим бинарные данные буфера
-	return this->_buffer.get();
+	return this->_buffer.data();
 }
 /**
  * @brief Метод удаления количества первых байт буфера
@@ -471,11 +471,12 @@ awh::cmp::Encoder & awh::cmp::Encoder::operator = (const size_t size) noexcept {
 /**
  * @brief Конструктор
  *
+ * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::cmp::Encoder::Encoder(const log_t * log) noexcept :
+awh::cmp::Encoder::Encoder(const fmk_t * fmk, const log_t * log) noexcept :
  _chunkSize(CHUNK_SIZE),
- _hash(log), _buffer(log),
+ _hash(log), _buffer(fmk, log),
  _cipher(hash_t::cipher_t::NONE),
  _method(hash_t::method_t::NONE), _log(log) {}
 /**
@@ -1055,7 +1056,8 @@ awh::cmp::Decoder & awh::cmp::Decoder::operator = (const size_t size) noexcept {
  * @param log объект для работы с логами
  */
 awh::cmp::Decoder::Decoder(const fmk_t * fmk, const log_t * log) noexcept :
- _pid(0), _hash(log), _queue(fmk, log), _buffer(log),
+ _pid(0), _hash(log),
+ _queue(fmk, log), _buffer(fmk, log),
  _chunkSize(CHUNK_SIZE), _tmp(2), _log(log) {}
 /**
  * @brief Деструктор

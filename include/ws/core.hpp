@@ -43,7 +43,7 @@ namespace awh {
 	 * @brief Класс для работы с WebSocket
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT WCore : public http_t {
+	typedef class AWH_SHARED_EXPORT WCore : public http_t {
 		protected:
 			/**
 			 * Версия протокола WebSocket
@@ -157,13 +157,20 @@ namespace awh {
 			 *
 			 * @return бинарный дамп данных
 			 */
-			vector <char> dump() const noexcept;
+			buffer_t dump() const noexcept;
 			/**
 			 * @brief Метод установки бинарного дампа
 			 *
 			 * @param data бинарный дамп данных
 			 */
-			void dump(const vector <char> & data) noexcept;
+			void dump(const buffer_t & data) noexcept;
+			/**
+			 * @brief Метод установки бинарного дампа
+			 *
+			 * @param buffer буфер бинарных данных
+			 * @param size   размер бинарных данных
+			 */
+			void dump(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод очистки собранных данных

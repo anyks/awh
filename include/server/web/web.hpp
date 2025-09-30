@@ -51,7 +51,7 @@ namespace awh {
 		 * @brief Базовый класс web-сервера
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Web {
+		typedef class AWH_SHARED_EXPORT Web {
 			public:
 				/**
 				 * Режим работы клиента

@@ -68,7 +68,7 @@ namespace awh {
 	 * @brief Класс работы с логами
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Log {
+	typedef class AWH_SHARED_EXPORT Log {
 		public:
 			/**
 			 * Флаги логирования
@@ -114,7 +114,7 @@ namespace awh {
 			 * @brief Класс полезной нагрузки
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Payload {
+			typedef class AWH_SHARED_EXPORT Payload {
 				public:
 					// Флаг полезной нагрузки
 					flag_t flag;

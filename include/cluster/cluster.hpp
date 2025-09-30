@@ -60,7 +60,7 @@ namespace awh {
 	 * @brief Класс работы с кластером
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Cluster {
+	typedef class AWH_SHARED_EXPORT Cluster {
 		public:
 			/**
 			 * Режим обмена сообщениям
@@ -99,7 +99,7 @@ namespace awh {
 			 * @brief Структура буфера
 			 *
 			 */
-			typedef struct Buffer {
+			typedef struct Payload {
 				// Размер бинарного буфера данных
 				size_t size;
 				// Бинарный буфер полученных данных
@@ -108,13 +108,13 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Buffer() noexcept : size(0), data(nullptr) {}
-			} buffer_t;
+				Payload() noexcept : size(0), data(nullptr) {}
+			} payload_t;
 			/**
 			 * @brief Класс воркера
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Worker {
+			typedef class AWH_SHARED_EXPORT Worker {
 				private:
 					// Устанавливаем дружбу с родительским классом
 					friend class Cluster;
@@ -130,13 +130,15 @@ namespace awh {
 					// Количество рабочих процессов
 					uint16_t _count;
 				private:
-					// Бинарный буфер полученных данных
-					buffer_t _buffer;
+					// Бинарный буфер полезной нагрузки
+					payload_t _payload;
 				private:
 					// Список декодеров для декодирования сообщений
 					std::map <SOCKET, std::unique_ptr <cmp::decoder_t>> _decoders;
 				private:
-					// Объект для работы с логами
+					// Объект фреймворка
+					const fmk_t * _fmk;
+					// Объект работы с логами
 					const log_t * _log;
 					// Родительский объект кластера
 					const Cluster * _ctx;
@@ -159,16 +161,15 @@ namespace awh {
 					 *
 					 * @param wid идентификатор воркера
 					 * @param ctx родительский объект кластера
+					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Worker(const uint16_t wid, const Cluster * ctx, const log_t * log) noexcept :
-					 _working(false), _autoRestart(false),
-					 _wid(wid), _count(1), _log(log), _ctx(ctx) {}
+					Worker(const uint16_t wid, const Cluster * ctx, const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~Worker() noexcept {}
+					~Worker() noexcept;
 			} worker_t;
 		private:
 			/**
@@ -223,7 +224,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Client(const fmk_t * fmk, const log_t * log) noexcept :
-				 sock(INVALID_SOCKET), wid(0), ev(awh::event_t::type_t::EVENT, fmk, log) {}
+				 sock(INVALID_SOCKET), wid(0),
+				 ev(awh::event_t::type_t::EVENT, fmk, log) {}
 			} client_t;
 			/**
 			 * @brief Структура сервера

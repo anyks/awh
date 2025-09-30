@@ -42,7 +42,7 @@ namespace awh {
 	 * @brief Класс ядра биндинга TCP/IP
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Core {
+	typedef class AWH_SHARED_EXPORT Core {
 		private:
 			/**
 			 * @brief Устанавливаем дружбу с схемой сети
@@ -75,7 +75,7 @@ namespace awh {
 			 * @brief Класс работы с событиями
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Dispatch {
+			typedef class AWH_SHARED_EXPORT Dispatch {
 				private:
 					// Идентификатор процесса
 					pid_t _pid;

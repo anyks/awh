@@ -55,7 +55,7 @@ namespace awh {
 		 * @brief Базовый класс web-клиента
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Web {
+		typedef class AWH_SHARED_EXPORT Web {
 			public:
 				/**
 				 * Режим работы клиента
@@ -102,13 +102,13 @@ namespace awh {
 				 * @brief Класс HTTP-запроса клиента
 				 *
 				 */
-				typedef class AWHSHARED_EXPORT Request {
+				typedef class AWH_SHARED_EXPORT Request {
 					public:
 						uint64_t id;                                      // Идентификатор запроса
 						agent_t agent;                                    // Агент воркера выполнения запроса
 						uri_t::url_t url;                                 // URL-запроса запроса
 						web_t::method_t method;                           // Метод запроса
-						vector <char> entity;                             // Тело запроса
+						awh::buffer_t entity;                             // Тело запроса
 						vector <http_t::compressor_t> compressors;        // Список поддерживаемых компрессоров
 						std::unordered_multimap <string, string> headers; // Заголовки клиента
 					public:
@@ -136,28 +136,17 @@ namespace awh {
 						bool operator == (const Request & request) noexcept;
 					public:
 						/**
-						 * @brief Конструктор перемещения
-						 *
-						 * @param request объект параметров запроса
-						 */
-						Request(Request && request) noexcept;
-						/**
-						 * @brief Конструктор копирования
-						 *
-						 * @param request объект параметров запроса
-						 */
-						Request(const Request & request) noexcept;
-					public:
-						/**
 						 * @brief Конструктор
 						 *
+						 * @param fmk объект фреймворка
+						 * @param log объект для работы с логами
 						 */
-						Request() noexcept;
+						Request(const fmk_t * fmk, const log_t * log) noexcept;
 						/**
 						 * @brief Деструктор
 						 *
 						 */
-						~Request() noexcept {}
+						~Request() noexcept;
 				} request_t;
 			protected:
 				/**

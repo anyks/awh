@@ -51,7 +51,7 @@ namespace awh {
 			 * @brief Структура схемы сети WEB сервера
 			 *
 			 */
-			typedef struct AWHSHARED_EXPORT WEB : public scheme_t {
+			typedef struct AWH_SHARED_EXPORT WEB : public scheme_t {
 				public:
 					/**
 					 * @brief Структура параметров активного клиента
@@ -81,7 +81,7 @@ namespace awh {
 						 mode(false), alive(false), close(false),
 						 crypted(false), stopped(false),
 						 sid(1), requests(0), respPong(0),
-						 http(fmk, log), buffer(log),
+						 http(fmk, log), buffer(fmk, log),
 						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),
 						 compressor(awh::http_t::compressor_t::NONE) {}

@@ -91,7 +91,7 @@ namespace awh {
 	 * @brief Класс NTP-клиента
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT NTP {
+	typedef class AWH_SHARED_EXPORT NTP {
 		private:
 			/**
 			 * Дельта штампа времени (количество секунд между 1900 и 1970 годами)
@@ -213,7 +213,7 @@ namespace awh {
 			 * @brief Класс воркера резолвинга
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Worker {
+			typedef class AWH_SHARED_EXPORT Worker {
 				private:
 					/**
 					 * @brief Устанавливаем дружбу с классом NTP-клиента

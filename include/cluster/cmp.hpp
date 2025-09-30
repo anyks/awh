@@ -55,7 +55,7 @@ namespace awh {
 		 * @brief Структура работы с заголовком буфера данных
 		 *
 		 */
-		typedef struct AWHSHARED_EXPORT Header {
+		typedef struct AWH_SHARED_EXPORT Header {
 			// Идентификатор процесса
 			pid_t pid;
 			// Идентификатор сообщения
@@ -78,7 +78,7 @@ namespace awh {
 		 * @brief Класс для работы с протоколом передачи данных
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Encoder {
+		typedef class AWH_SHARED_EXPORT Encoder {
 			private:
 				// Мютекс для блокировки потока
 				std::mutex _mtx;
@@ -221,9 +221,10 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
+				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Encoder(const log_t * log) noexcept;
+				Encoder(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
@@ -234,7 +235,7 @@ namespace awh {
 		 * @brief Класс для работы с протоколом получения данных
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Decoder {
+		typedef class AWH_SHARED_EXPORT Decoder {
 			public:
 				/**
 				 * @brief Структура сообщения

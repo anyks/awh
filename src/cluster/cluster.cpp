@@ -136,14 +136,14 @@ using namespace placeholders;
 				// Если выполняется событие чтения данных с сокета
 				case static_cast <uint8_t> (base_t::event_type_t::READ): {
 					// Если буфер данных её не инициализирован
-					if(this->_buffer.size == 0){
+					if(this->_payload.size == 0){
 						// Извлекаем размер сформированного буфера
-						this->_buffer.size = this->_ctx->_server.socket.bufferSize(sock, socket_t::mode_t::READ);
+						this->_payload.size = this->_ctx->_server.socket.bufferSize(sock, socket_t::mode_t::READ);
 						// Выполняем инициализацию буфера
-						this->_buffer.data = std::unique_ptr <uint8_t []> (new uint8_t [this->_buffer.size]);
+						this->_payload.data = std::unique_ptr <uint8_t []> (new uint8_t [this->_payload.size]);
 					}
 					// Размер входящих сообщений
-					const ssize_t bytes = ::recv(sock, this->_buffer.data.get(), this->_buffer.size, 0);
+					const ssize_t bytes = ::recv(sock, this->_payload.data.get(), this->_payload.size, 0);
 					// Если сообщение получено полностью
 					if(bytes != 0){
 						// Если мы получили данные
@@ -153,7 +153,7 @@ using namespace placeholders;
 							// Если необходимый декодер найден
 							if(i != this->_decoders.end()){
 								// Выполняем добавление бинарных данных в протокол
-								i->second->push(reinterpret_cast <char *> (this->_buffer.data.get()), static_cast <size_t> (bytes));
+								i->second->push(reinterpret_cast <char *> (this->_payload.data.get()), static_cast <size_t> (bytes));
 								/**
 								 * Выполняем извлечение записей
 								 */
@@ -169,7 +169,7 @@ using namespace placeholders;
 											// Добавляем полученный идентификатор процесса в список активных сокетов
 											const_cast <cluster_t *> (this->_ctx)->_sockets.emplace(sock, i->second->pid());
 											// Создаём новый объект энкодеров для передачи данных
-											auto ret = const_cast <cluster_t *> (this->_ctx)->_encoders.emplace(i->second->pid(), std::make_unique <cmp::encoder_t> (this->_log));
+											auto ret = const_cast <cluster_t *> (this->_ctx)->_encoders.emplace(i->second->pid(), std::make_unique <cmp::encoder_t> (this->_fmk, this->_log));
 											// Если метод компрессии сообщений установлен
 											if(this->_ctx->_method != hash_t::method_t::NONE)
 												// Выполняем установку метода компрессии
@@ -352,14 +352,14 @@ using namespace placeholders;
 							return;
 						}
 						// Если буфер данных её не инициализирован
-						if(this->_buffer.size == 0){
+						if(this->_payload.size == 0){
 							// Извлекаем размер сформированного буфера
-							this->_buffer.size = this->_ctx->_server.socket.bufferSize(sock, socket_t::mode_t::READ);
+							this->_payload.size = this->_ctx->_server.socket.bufferSize(sock, socket_t::mode_t::READ);
 							// Выполняем инициализацию буфера
-							this->_buffer.data = std::unique_ptr <uint8_t []> (new uint8_t [this->_buffer.size]);
+							this->_payload.data = std::unique_ptr <uint8_t []> (new uint8_t [this->_payload.size]);
 						}
 						// Размер входящих сообщений
-						const int32_t bytes = ::recv(sock, this->_buffer.data.get(), this->_buffer.size, 0);
+						const int32_t bytes = ::recv(sock, this->_payload.data.get(), this->_payload.size, 0);
 						// Если сообщение получено полностью
 						if(bytes != 0){
 							// Если данные прочитанны правильно
@@ -371,7 +371,7 @@ using namespace placeholders;
 									// Если необходимый декодер найден
 									if(i != this->_decoders.end()){
 										// Выполняем добавление бинарных данных в протокол
-										i->second->push(reinterpret_cast <char *> (this->_buffer.data.get()), static_cast <size_t> (bytes));
+										i->second->push(reinterpret_cast <char *> (this->_payload.data.get()), static_cast <size_t> (bytes));
 										/**
 										 * Выполняем извлечение записей
 										 */
@@ -423,6 +423,21 @@ using namespace placeholders;
 			::exit(EXIT_FAILURE);
 		}
 	}
+	/**
+	 * @brief Конструктор
+	 *
+	 * @param wid идентификатор воркера
+	 * @param ctx родительский объект кластера
+	 * @param fmk объект фреймворка
+	 * @param log объект для работы с логами
+	 */
+	awh::Cluster::Worker::Worker(const uint16_t wid, const Cluster * ctx, const fmk_t * fmk, const log_t * log) noexcept :
+	 _working(false), _autoRestart(false), _wid(wid), _count(1), _fmk(fmk), _log(log), _ctx(ctx) {}
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	awh::Cluster::Worker::~Worker() noexcept {}
 #endif
 /**
  * Для операционной системы не являющейся MS Windows
@@ -774,7 +789,7 @@ void awh::Cluster::write(const uint16_t wid, const pid_t pid, const SOCKET sock)
 					// Получаем бинарный буфер данных
 					const void * buffer = i->second->data();
 					// Если данных в буфере нету, выходим из цикла
-					if(buffer == nullptr){
+					if((buffer == nullptr) || (i->second->size() == 0)){
 						// Процесс превратился в зомби, самоликвидируем его
 						this->_log->print("Cluster [%s] message sending stack was broken for process [%u]", log_t::flag_t::WARNING, this->_name.c_str(), ::getpid());
 						// Выходим из цикла
@@ -1091,7 +1106,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 											}
 										}{
 											// Создаём новый объект энкодеров для передачи данных
-											auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_log));
+											auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_fmk, this->_log));
 											// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.sock, socket_t::mode_t::WRITE));
 											// Выполняем добавление буфера данных в протокол
@@ -1176,7 +1191,7 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 											}
 										}{
 											// Создаём новый объект энкодеров для передачи данных
-											auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_log));
+											auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_fmk, this->_log));
 											// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 											ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[1], socket_t::mode_t::WRITE));
 											// Выполняем добавление буфера данных в протокол
@@ -1503,7 +1518,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 												}
 											}{
 												// Создаём новый объект энкодеров для передачи данных
-												auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_log));
+												auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_fmk, this->_log));
 												// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(this->_server.sock, socket_t::mode_t::WRITE));
 												// Выполняем добавление буфера данных в протокол
@@ -1581,7 +1596,7 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 												}
 											}{
 												// Создаём новый объект энкодеров для передачи данных
-												auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_log));
+												auto ret = this->_encoders.emplace(this->_pid, std::make_unique <cmp::encoder_t> (this->_fmk, this->_log));
 												// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 												ret.first->second->chunkSize(this->_server.socket.bufferSize(broker->mfds[1], socket_t::mode_t::WRITE));
 												// Выполняем добавление буфера данных в протокол
@@ -2270,8 +2285,8 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 			if(i != this->_workers.end()){
 				// Очищаем декодер воркера
 				i->second->_decoders.clear();
-				// Очищаем буфер получения данных
-				i->second->_buffer = buffer_t();
+				// Очищаем буфер полезной нагрузки
+				i->second->_payload = payload_t();
 				// Возвращаем значение флага автоматического перезапуска процесса
 				i->second->_autoRestart = autoRestart;
 			}
@@ -2631,7 +2646,7 @@ void awh::Cluster::init(const uint16_t wid, const uint16_t count) noexcept {
 		// Если воркер не найден
 		if(i == this->_workers.end())
 			// Добавляем воркер в список воркеров
-			this->_workers.emplace(wid, std::make_unique <worker_t> (wid, this, this->_log));
+			this->_workers.emplace(wid, std::make_unique <worker_t> (wid, this, this->_fmk, this->_log));
 		// Выполняем установку максимально-возможного количества процессов
 		this->count(wid, count);
 	/**

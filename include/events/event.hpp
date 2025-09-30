@@ -33,7 +33,7 @@ namespace awh {
 	 * @brief Класс события AWHEvent
 	 *
 	 */
-	typedef class Event {
+	typedef class AWH_SHARED_EXPORT Event {
 		public:
 			/**
 			 * Типы события

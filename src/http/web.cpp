@@ -278,14 +278,23 @@ void awh::Web::Chunk::clear() noexcept {
 	// Обнуляем размер чанка
 	this->size = 0;
 	// Обнуляем буфер данных
-	this->data.clear();
+	this->buffer.clear();
 	// Выполняем сброс стейта чанка
 	this->state = process_t::SIZE;
-	// Если размер выделенной памяти выше максимального размера чанка
-	if(this->data.capacity() > AWH_CHUNK_SIZE)
-		// Выполняем удаление памяти чанка
-		vector <decltype(this->data)::value_type> ().swap(this->data);
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Web::Chunk::Chunk(const fmk_t * fmk, const log_t * log) noexcept :
+ size(0), state(process_t::SIZE), buffer(fmk, log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Web::Chunk::~Chunk() noexcept {}
 /**
  * @brief Метод извлечения полезной нагрузки
  *
@@ -306,12 +315,12 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				if(this->_bodySize == 0){
 					// Запоминаем количество обработанных байт
 					result = size;
-					// Заполняем собранные данные тела
-					this->_chunk.data.assign(buffer, buffer + result);
+					// Заполняем собранные данные в промежуточный буфер
+					this->_chunk.intermediate.assign(buffer, buffer + result);
 					// Если функция обратного вызова на перехват входящих чанков установлена
 					if(this->_callback.is("binary"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.data, this);
+						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.intermediate, this);
 				// Если размер установлен конкретный
 				} else {
 					// Получаем актуальный размер тела
@@ -320,12 +329,12 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					result = (size > result ? result : size);
 					// Увеличиваем общий размер полученных данных
 					this->_chunk.size += result;
-					// Заполняем собранные данные тела
-					this->_chunk.data.assign(buffer, buffer + result);
+					// Заполняем собранные данные в промежуточный буфер
+					this->_chunk.intermediate.assign(buffer, buffer + result);
 					// Если функция обратного вызова на перехват входящих чанков установлена
 					if(this->_callback.is("binary"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.data, this);
+						this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.intermediate, this);
 					// Если тело сообщения полностью собранно
 					if(this->_bodySize == this->_chunk.size){
 						// Очищаем собранные данные
@@ -382,7 +391,10 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы получили возврат каретки
 							} else if(buffer[i] == '\r') {
 								// Получаем заголовок переданного трейлера
-								const string header(this->_chunk.data.begin(), this->_chunk.data.end());
+								const string header(
+									static_cast <const char *> (this->_chunk.buffer),
+									static_cast <size_t> (this->_chunk.buffer)
+								);
 								// Выполняем поиск разделителя заголовка
 								const size_t pos = header.find(':');
 								// Если позиция разделителя найдена
@@ -425,9 +437,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									}
 								}
 								// Выполняем сброс тела данных
-								this->_chunk.data.clear();
+								this->_chunk.buffer.clear();
 							// Выполняем сборку трейлера, выполняем сборку размера чанка
-							} else this->_chunk.data.push_back(buffer[i]);
+							} else this->_chunk.buffer.push(&buffer[i], 1);
 						} break;
 						// Если мы ожидаем получения размера тела чанка
 						case static_cast <uint8_t> (process_t::SIZE): {
@@ -436,22 +448,50 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Меняем стейт чанка
 								this->_chunk.state = process_t::END_SIZE;
 								// Получаем размер чанка
-								this->_chunk.size = this->_fmk->atoi <size_t> (string(
-									this->_chunk.data.begin(),
-									this->_chunk.data.end()
-								), 16);
+								this->_chunk.size = this->_fmk->atoi <size_t> (
+									static_cast <const char *> (this->_chunk.buffer),
+									static_cast <size_t> (this->_chunk.buffer), 16
+								);
 								// Устанавливаем смещение
 								offset = (i + 1);
 								// Запоминаем количество обработанных байт
 								result = offset;
 								// Выполняем сброс тела данных
-								this->_chunk.data.clear();
+								this->_chunk.buffer.clear();
+								// Если размер тела слишком большой
+								if((this->_chunk.size + this->_body.size()) > AWH_MAX_BODY_SIZE){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug(
+											"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
+											__PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL,
+											this->_fmk->bytes(static_cast <double> (this->_chunk.size + this->_body.size())).c_str(),
+											this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
+										);
+									/**
+									* Если режим отладки не включён
+									*/
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print(
+											"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
+											log_t::flag_t::CRITICAL,
+											this->_fmk->bytes(static_cast <double> (this->_chunk.size + this->_body.size())).c_str(),
+											this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
+										);
+									#endif
+									// Выполняем переход к ошибке
+									goto Stop;
+								}
 							// Выполняем сборку 16-го размера чанка
 							} else {
 								// Запоминаем количество обработанных байт
 								result = (i + 1);
 								// Выполняем сборку размера чанка
-								this->_chunk.data.push_back(buffer[i]);
+								this->_chunk.buffer.push(&buffer[i], 1);
 							}
 						} break;
 						// Если мы ожидаем получение окончания сбора размера тела чанка
@@ -469,7 +509,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										// Если мы работаем с клиентом
 										if(this->_hid == hid_t::CLIENT){
 											// Выполняем сброс тела данных
-											this->_chunk.data.clear();
+											this->_chunk.buffer.clear();
 											// Меняем стейт чанка на получение трейлеров
 											this->_chunk.state = process_t::TRAILERS;
 										// Если мы работаем с сервером
@@ -489,14 +529,12 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									if((size - offset) >= this->_chunk.size){
 										// Меняем стейт чанка
 										this->_chunk.state = process_t::STOP_BODY;
-										// Определяем конец буфера
-										size_t end = (offset + this->_chunk.size);
 										// Собираем тело чанка
-										this->_chunk.data.insert(this->_chunk.data.end(), buffer + offset, buffer + end);
+										this->_chunk.buffer.push(buffer + offset, this->_chunk.size);
 										// Выполняем смещение итератора
-										i = (end - 1);
+										i = ((offset + this->_chunk.size) - 1);
 										// Увеличиваем смещение
-										offset = end;
+										offset += this->_chunk.size;
 										// Запоминаем количество обработанных байт
 										result = offset;
 									// Если количества байт не достаточно для сбора тела
@@ -504,7 +542,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										// Меняем стейт чанка
 										this->_chunk.state = process_t::BODY;
 										// Собираем тело чанка
-										this->_chunk.data.insert(this->_chunk.data.end(), buffer + offset, buffer + size);
+										this->_chunk.buffer.push(buffer + offset, size - offset);
 										// Запоминаем количество обработанных байт
 										result = size;
 										// Выходим из функции
@@ -522,13 +560,13 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если мы ожидаем сбора тела чанка
 						case static_cast <uint8_t> (process_t::BODY): {
 							// Определяем количество необходимых байт
-							size_t rem = (this->_chunk.size - this->_chunk.data.size());
+							size_t rem = (this->_chunk.size - this->_chunk.buffer.size());
 							// Если количества байт достаточно для сбора тела чанка
 							if(size >= rem){
 								// Меняем стейт чанка
 								this->_chunk.state = process_t::STOP_BODY;
 								// Собираем тело чанка
-								this->_chunk.data.insert(this->_chunk.data.end(), buffer, buffer + rem);
+								this->_chunk.buffer.push(buffer, rem);
 								// Выполняем смещение итератора
 								i = (rem - 1);
 								// Увеличиваем смещение
@@ -538,7 +576,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если количества байт не достаточно для сбора тела
 							} else {
 								// Собираем тело чанка
-								this->_chunk.data.insert(this->_chunk.data.end(), buffer, buffer + size);
+								this->_chunk.buffer.push(buffer, size);
 								// Запоминаем количество обработанных байт
 								result = size;
 								// Выходим из функции
@@ -578,7 +616,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на перехват входящих чанков установлена
 								else if(this->_callback.is("binary"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.data, this);
+									this->_callback.call <void (const uint64_t, const vector <char> &, const web_t *)> ("binary", this->_id, this->_chunk.buffer, this);
 								// Выполняем очистку чанка
 								this->_chunk.clear();
 							// Если символ отличается, значит ошибка
@@ -714,6 +752,35 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									// Выходим из функции
 									return;
 								}
+							// Если размер тела слишком большой
+							} else if(this->_bodySize > AWH_MAX_BODY_SIZE) {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug(
+										"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
+										__PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL,
+										this->_fmk->bytes(static_cast <double> (this->_bodySize)).c_str(),
+										this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
+									);
+								/**
+								* Если режим отладки не включён
+								*/
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print(
+										"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
+										log_t::flag_t::CRITICAL,
+										this->_fmk->bytes(static_cast <double> (this->_bodySize)).c_str(),
+										this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
+									);
+								#endif
+								// Тело в запросе не передано
+								this->_state = state_t::END;
+								// Выходим из функции
+								return;
 							}
 							// Устанавливаем стейт поиска тела запроса
 							this->_state = state_t::BODY;
@@ -1127,32 +1194,32 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
  *
  * @return бинарный дамп данных
  */
-vector <char> awh::Web::dump() const noexcept {
+awh::buffer_t awh::Web::dump() const noexcept {
 	// Результат работы функции
-	vector <char> result;
+	buffer_t result(this->_fmk, this->_log);
 	{
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
 		// Устанавливаем идентификатор HTTP-модуля
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_id), reinterpret_cast <const char *> (&this->_id) + sizeof(this->_id));
+		result.push(&this->_id, sizeof(this->_id));
 		// Устанавливаем тип используемого HTTP-модуля
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_hid), reinterpret_cast <const char *> (&this->_hid) + sizeof(this->_hid));
+		result.push(&this->_hid, sizeof(this->_hid));
 		// Устанавливаем массив позиций в буфере сепаратора
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_pos), reinterpret_cast <const char *> (&this->_pos) + sizeof(this->_pos));
+		result.push(&this->_pos, sizeof(this->_pos));
 		// Устанавливаем стейт текущего запроса
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_state), reinterpret_cast <const char *> (&this->_state) + sizeof(this->_state));
+		result.push(&this->_state, sizeof(this->_state));
 		// Устанавливаем размер тела сообщения
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_bodySize), reinterpret_cast <const char *> (&this->_bodySize) + sizeof(this->_bodySize));
+		result.push(&this->_bodySize, sizeof(this->_bodySize));
 		// Устанавливаем сепаратор для детекции в буфере
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_separator), reinterpret_cast <const char *> (&this->_separator) + sizeof(this->_separator));
+		result.push(&this->_separator, sizeof(this->_separator));
 		// Устанавливаем код ответа на HTTP ответа
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_response.code), reinterpret_cast <const char *> (&this->_response.code) + sizeof(this->_response.code));
+		result.push(&this->_response.code, sizeof(this->_response.code));
 		// Устанавливаем версию протокола HTTP ответа
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_response.version), reinterpret_cast <const char *> (&this->_response.version) + sizeof(this->_response.version));
+		result.push(&this->_response.version, sizeof(this->_response.version));
 		// Устанавливаем метод HTTP-запроса
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_request.method), reinterpret_cast <const char *> (&this->_request.method) + sizeof(this->_request.method));
+		result.push(&this->_request.method, sizeof(this->_request.method));
 		// Устанавливаем версию протокола HTTP-запроса
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_request.version), reinterpret_cast <const char *> (&this->_request.version) + sizeof(this->_request.version));
+		result.push(&this->_request.version, sizeof(this->_request.version));
 		// Если URL-адрес запроса установлен
 		if(!this->_request.url.empty()){
 			// Получаем адрес URL-запроса
@@ -1160,55 +1227,55 @@ vector <char> awh::Web::dump() const noexcept {
 			// Получаем размер записи параметров HTTP-запроса
 			length = url.size();
 			// Устанавливаем размер записи параметров HTTP-запроса
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 			// Устанавливаем параметры HTTP-запроса
-			result.insert(result.end(), url.begin(), url.end());
+			result.push(url.data(), url.size());
 		// Если URL-адрес запроса не установлен
 		} else {
 			// Получаем размер записи параметров HTTP-запроса
 			length = 0;
 			// Устанавливаем размер записи параметров HTTP-запроса
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 		}
 		// Если текст ответа установлен
 		if(!this->_response.message.empty()){
 			// Получаем размер сообщения HTTP ответа
 			length = this->_response.message.size();
 			// Устанавливаем размер сообщения HTTP ответа
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 			// Устанавливаем данные сообщения HTTP ответа
-			result.insert(result.end(), this->_response.message.begin(), this->_response.message.end());
+			result.push(this->_response.message.data(), this->_response.message.size());
 		// Если текст ответа не установлен
 		} else {
 			// Получаем размер записи параметров HTTP-запроса
 			length = 0;
 			// Устанавливаем размер записи параметров HTTP-запроса
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 		}
 		// Получаем размер тела сообщения
 		length = this->_body.size();
 		// Устанавливаем размер тела сообщения
-		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+		result.push(&length, sizeof(length));
 		// Устанавливаем данные тела сообщения
-		result.insert(result.end(), this->_body.begin(), this->_body.end());
+		result.push(static_cast <const char *> (this->_body), static_cast <size_t> (this->_body));
 		// Получаем количество HTTP заголовков
 		count = this->_headers.size();
 		// Устанавливаем количество HTTP заголовков
-		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+		result.push(&count, sizeof(count));
 		// Выполняем перебор всех HTTP заголовков
 		for(auto & header : this->_headers){
 			// Получаем размер названия HTTP заголовка
 			length = header.first.size();
 			// Устанавливаем размер названия HTTP заголовка
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 			// Устанавливаем данные названия HTTP заголовка
-			result.insert(result.end(), header.first.begin(), header.first.end());
+			result.push(header.first.data(), header.first.size());
 			// Получаем размер значения HTTP заголовка
 			length = header.second.size();
 			// Устанавливаем размер значения HTTP заголовка
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 			// Устанавливаем данные значения HTTP заголовка
-			result.insert(result.end(), header.second.begin(), header.second.end());
+			result.push(header.second.data(), header.second.size());
 		}
 	}
 	// Выводим результат
@@ -1219,133 +1286,169 @@ vector <char> awh::Web::dump() const noexcept {
  *
  * @param data бинарный дамп данных
  */
-void awh::Web::dump(const vector <char> & data) noexcept {
+void awh::Web::dump(const awh::buffer_t & data) noexcept {
 	// Если данные бинарного дампа переданы
-	if(!data.empty()){
-		// Длина строки, количество элементов и смещение в буфере
-		size_t length = 0, count = 0, offset = 0;
-		// Выполняем получение идентификатора HTTP-модуля
-		::memcpy(reinterpret_cast <void *> (&this->_id), data.data() + offset, sizeof(this->_id));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_id);
-		// Выполняем получение типа используемого HTTP-модуля
-		::memcpy(reinterpret_cast <void *> (&this->_hid), data.data() + offset, sizeof(this->_hid));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_hid);
-		// Выполняем получение массива позиций в буфере сепаратора
-		::memcpy(reinterpret_cast <void *> (&this->_pos), data.data() + offset, sizeof(this->_pos));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_pos);
-		// Выполняем получение стейта текущего запроса
-		::memcpy(reinterpret_cast <void *> (&this->_state), data.data() + offset, sizeof(this->_state));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_state);
-		// Выполняем получение размера тела сообщения
-		::memcpy(reinterpret_cast <void *> (&this->_bodySize), data.data() + offset, sizeof(this->_bodySize));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_bodySize);
-		// Выполняем получение сепаратора для детекции в буфере
-		::memcpy(reinterpret_cast <void *> (&this->_separator), data.data() + offset, sizeof(this->_separator));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_separator);
-		// Выполняем получение кода ответа на HTTP-запрос
-		::memcpy(reinterpret_cast <void *> (&this->_response.code), data.data() + offset, sizeof(this->_response.code));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_response.code);
-		// Выполняем получение версии протокола HTTP ответа
-		::memcpy(reinterpret_cast <void *> (&this->_response.version), data.data() + offset, sizeof(this->_response.version));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_response.version);
-		// Выполняем получение метода HTTP-запроса
-		::memcpy(reinterpret_cast <void *> (&this->_request.method), data.data() + offset, sizeof(this->_request.method));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_request.method);
-		// Выполняем получение версии протокола HTTP-запроса
-		::memcpy(reinterpret_cast <void *> (&this->_request.version), data.data() + offset, sizeof(this->_request.version));
-		// Выполняем смещение в буфере
-		offset += sizeof(this->_request.version);
-		// Выполняем получение размера записи параметров HTTP-запроса
-		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-		// Выполняем смещение в буфере
-		offset += sizeof(length);
-		// Если URL-адрес запроса установлен
-		if(length > 0){
-			// Создаём URL-адрес запроса
-			string url(length, 0);
-			// Выполняем получение параметров HTTP-запроса
-			::memcpy(reinterpret_cast <void *> (url.data()), data.data() + offset, length);
-			// Устанавливаем URL-адрес запроса
-			this->_request.url = this->_uri.parse(url);
+	if(!data.empty())
+		// Выполняем установку дампа данных
+		this->dump(static_cast <const char *> (data), static_cast <size_t> (data));
+}
+/**
+ * @brief Метод установки бинарного дампа
+ *
+ * @param buffer буфер бинарных данных
+ * @param size   размер бинарных данных
+ */
+void awh::Web::dump(const char * buffer, const size_t size) noexcept {
+	// Если данные бинарного дампа переданы
+	if((buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Длина строки, количество элементов и смещение в буфере
+			size_t length = 0, count = 0, offset = 0;
+			// Выполняем получение идентификатора HTTP-модуля
+			::memcpy(reinterpret_cast <void *> (&this->_id), buffer + offset, sizeof(this->_id));
 			// Выполняем смещение в буфере
-			offset += length;
-		}
-		// Выполняем получение размера сообщения HTTP ответа
-		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-		// Выполняем смещение в буфере
-		offset += sizeof(length);
-		// Если сообщение ответа установлено
-		if(length > 0){
-			// Выделяем память для сообщения HTTP ответа
-			this->_response.message.resize(length, 0);
-			// Выполняем получение сообщения HTTP ответа
-			::memcpy(reinterpret_cast <void *> (this->_response.message.data()), data.data() + offset, length);
+			offset += sizeof(this->_id);
+			// Выполняем получение типа используемого HTTP-модуля
+			::memcpy(reinterpret_cast <void *> (&this->_hid), buffer + offset, sizeof(this->_hid));
 			// Выполняем смещение в буфере
-			offset += length;
-		}
-		// Выполняем получение размера тела сообщения
-		::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
-		// Выполняем смещение в буфере
-		offset += sizeof(length);
-		// Если сообщение ответа установлено
-		if(length > 0){
-			// Выделяем память для данных тела сообщения
-			this->_body.resize(length, 0);
-			// Выполняем получение данных тела сообщения
-			::memcpy(reinterpret_cast <void *> (this->_body.data()), data.data() + offset, length);
+			offset += sizeof(this->_hid);
+			// Выполняем получение массива позиций в буфере сепаратора
+			::memcpy(reinterpret_cast <void *> (&this->_pos), buffer + offset, sizeof(this->_pos));
 			// Выполняем смещение в буфере
-			offset += length;
-		}
-		// Выполняем получение количества HTTP заголовков
-		::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
-		// Выполняем смещение в буфере
-		offset += sizeof(count);
-		// Выполняем сброс заголовков
-		this->_headers.clear();
-		// Если количество заголовков больше чем ничего
-		if(count > 0){
-			// Выполняем последовательную загрузку всех заголовков
-			for(size_t i = 0; i < count; i++){
-				// Выполняем получение размера названия HTTP заголовка
-				::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			offset += sizeof(this->_pos);
+			// Выполняем получение стейта текущего запроса
+			::memcpy(reinterpret_cast <void *> (&this->_state), buffer + offset, sizeof(this->_state));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_state);
+			// Выполняем получение размера тела сообщения
+			::memcpy(reinterpret_cast <void *> (&this->_bodySize), buffer + offset, sizeof(this->_bodySize));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_bodySize);
+			// Выполняем получение сепаратора для детекции в буфере
+			::memcpy(reinterpret_cast <void *> (&this->_separator), buffer + offset, sizeof(this->_separator));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_separator);
+			// Выполняем получение кода ответа на HTTP-запрос
+			::memcpy(reinterpret_cast <void *> (&this->_response.code), buffer + offset, sizeof(this->_response.code));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_response.code);
+			// Выполняем получение версии протокола HTTP ответа
+			::memcpy(reinterpret_cast <void *> (&this->_response.version), buffer + offset, sizeof(this->_response.version));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_response.version);
+			// Выполняем получение метода HTTP-запроса
+			::memcpy(reinterpret_cast <void *> (&this->_request.method), buffer + offset, sizeof(this->_request.method));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_request.method);
+			// Выполняем получение версии протокола HTTP-запроса
+			::memcpy(reinterpret_cast <void *> (&this->_request.version), buffer + offset, sizeof(this->_request.version));
+			// Выполняем смещение в буфере
+			offset += sizeof(this->_request.version);
+			// Выполняем получение размера записи параметров HTTP-запроса
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			// Выполняем смещение в буфере
+			offset += sizeof(length);
+			// Если URL-адрес запроса установлен
+			if(length > 0){
+				// Создаём URL-адрес запроса
+				string url(length, 0);
+				// Выполняем получение параметров HTTP-запроса
+				::memcpy(reinterpret_cast <void *> (url.data()), buffer + offset, length);
+				// Устанавливаем URL-адрес запроса
+				this->_request.url = this->_uri.parse(url);
 				// Выполняем смещение в буфере
-				offset += sizeof(length);
-				// Если размер получен
-				if(length > 0){
-					// Выпделяем память для ключа заголовка
-					string key(length, 0);
-					// Выполняем получение ключа заголовка
-					::memcpy(reinterpret_cast <void *> (key.data()), data.data() + offset, length);
-					// Выполняем смещение в буфере
-					offset += length;
-					// Выполняем получение размера значения HTTP заголовка
-					::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+				offset += length;
+			}
+			// Выполняем получение размера сообщения HTTP ответа
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			// Выполняем смещение в буфере
+			offset += sizeof(length);
+			// Если сообщение ответа установлено
+			if(length > 0){
+				// Выделяем память для сообщения HTTP ответа
+				this->_response.message.resize(length, 0);
+				// Выполняем получение сообщения HTTP ответа
+				::memcpy(reinterpret_cast <void *> (this->_response.message.data()), buffer + offset, length);
+				// Выполняем смещение в буфере
+				offset += length;
+			}
+			// Выполняем получение размера тела сообщения
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+			// Выполняем смещение в буфере
+			offset += sizeof(length);
+			// Если сообщение ответа установлено
+			if(length > 0){
+				// Выполняем получение данных тела сообщения
+				this->_body.push(buffer + offset, length);
+				// Выполняем смещение в буфере
+				offset += length;
+			}
+			// Выполняем получение количества HTTP заголовков
+			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
+			// Выполняем смещение в буфере
+			offset += sizeof(count);
+			// Выполняем сброс заголовков
+			this->_headers.clear();
+			// Если количество заголовков больше чем ничего
+			if(count > 0){
+				// Выполняем последовательную загрузку всех заголовков
+				for(size_t i = 0; i < count; i++){
+					// Выполняем получение размера названия HTTP заголовка
+					::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 					// Выполняем смещение в буфере
 					offset += sizeof(length);
 					// Если размер получен
 					if(length > 0){
-						// Выпделяем память для значения заголовка
-						string value(length, 0);
-						// Выполняем получение значения заголовка
-						::memcpy(reinterpret_cast <void *> (value.data()), data.data() + offset, length);
+						// Выпделяем память для ключа заголовка
+						string key(length, 0);
+						// Выполняем получение ключа заголовка
+						::memcpy(reinterpret_cast <void *> (key.data()), buffer + offset, length);
 						// Выполняем смещение в буфере
 						offset += length;
-						// Если и ключ и значение заголовка получены
-						if(!key.empty() && !value.empty())
-							// Добавляем заголовок в список заголовков
-							this->_headers.emplace(::move(key), ::move(value));
+						// Выполняем получение размера значения HTTP заголовка
+						::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
+						// Выполняем смещение в буфере
+						offset += sizeof(length);
+						// Если размер получен
+						if(length > 0){
+							// Выпделяем память для значения заголовка
+							string value(length, 0);
+							// Выполняем получение значения заголовка
+							::memcpy(reinterpret_cast <void *> (value.data()), buffer + offset, length);
+							// Выполняем смещение в буфере
+							offset += length;
+							// Если и ключ и значение заголовка получены
+							if(!key.empty() && !value.empty())
+								// Добавляем заголовок в список заголовков
+								this->_headers.emplace(::move(key), ::move(value));
+						}
 					}
 				}
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Если функция обратного вызова на на вывод ошибок установлена
+			if(this->_callback.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+			#endif
 		}
 	}
 }
@@ -1403,8 +1506,6 @@ void awh::Web::clear() noexcept {
 	this->_headers.clear();
 	// Выполняем сброс списка трейлеров
 	this->_trailers.clear();
-	// Выполняем удаление памяти тела
-	vector <decltype(this->_body)::value_type> ().swap(this->_body);
 	// Выполняем удаление памяти списка трейлеров
 	std::unordered_set <decltype(this->_trailers)::value_type> ().swap(this->_trailers);
 	// Выполняем удаление памяти полученных HTTP заголовков
@@ -1544,7 +1645,7 @@ void awh::Web::clearHeaders() noexcept {
  *
  * @return буфер данных тела запроса
  */
-const vector <char> & awh::Web::body() const noexcept {
+const awh::buffer_t & awh::Web::body() const noexcept {
 	// Выводим данные тела
 	return this->_body;
 }
@@ -1557,7 +1658,7 @@ void awh::Web::body(const vector <char> & body) noexcept {
 	// Если тело данных передано
 	if(!body.empty())
 		// Выполняем установку данных тела
-		this->_body.insert(this->_body.end(), body.begin(), body.end());
+		this->_body.push(body.data(), body.size());
 }
 /**
  * @brief Метод добавления данных тела
@@ -1569,7 +1670,7 @@ void awh::Web::body(const char * buffer, const size_t size) noexcept {
 	// Если тело данных передано
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем установку данных тела
-		this->_body.insert(this->_body.end(), buffer, buffer + size);
+		this->_body.push(buffer, size);
 }
 /**
  * @brief Метод получение названия протокола для переключения
@@ -1752,8 +1853,10 @@ void awh::Web::callback(const callback_t & callback) noexcept {
  * @param log объект для работы с логами
  */
 awh::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
- _separator('\0'), _pos{-1, -1}, _bodySize(-1), _uri(fmk, log), _callback(log),
- _hid(hid_t::NONE), _state(state_t::QUERY), _upgrade{""}, _fmk(fmk), _log(log) {
+ _separator('\0'), _pos{-1, -1}, _bodySize(-1),
+ _uri(fmk, log), _chunk(fmk, log), _callback(log),
+ _hid(hid_t::NONE), _state(state_t::QUERY),
+ _body(fmk, log), _upgrade{""}, _fmk(fmk), _log(log) {
 	// Выполняем заполнение списка стандартных заголовков
 	this->_standardHeaders.insert({
 		{"via", {proto_t::PROXY}},

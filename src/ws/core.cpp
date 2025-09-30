@@ -919,9 +919,9 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
  *
  * @return бинарный дамп данных
  */
-vector <char> awh::WCore::dump() const noexcept {
+awh::buffer_t awh::WCore::dump() const noexcept {
 	// Результат работы функции
-	vector <char> result;
+	buffer_t result(this->_fmk, this->_log);
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -929,29 +929,29 @@ vector <char> awh::WCore::dump() const noexcept {
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
 		// Устанавливаем параметры партнёра клиента
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_client), reinterpret_cast <const char *> (&this->_client) + sizeof(this->_client));
+		result.push(&this->_client, sizeof(this->_client));
 		// Устанавливаем параметры партнёра сервера
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_server), reinterpret_cast <const char *> (&this->_server) + sizeof(this->_server));
+		result.push(&this->_server, sizeof(this->_server));
 		// Устанавливаем метод компрессии отправляемых данных
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_compressors.selected), reinterpret_cast <const char *> (&this->_compressors.selected) + sizeof(this->_compressors.selected));
+		result.push(&this->_compressors.selected, sizeof(this->_compressors.selected));
 		// Получаем количество поддерживаемых компрессоров
 		count = this->_compressors.supports.size();
 		// Устанавливаем количество поддерживаемых компрессоров
-		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+		result.push(&count, sizeof(count));
 		// Если список поддерживаемых компрессоров не пустой
 		if(!this->_compressors.supports.empty()){
 			// Выполняем перебор всех поддерживаемых компрессоров
 			for(auto & compressor : this->_compressors.supports){
 				// Выполняем установку веска компрессора
-				result.insert(result.end(), reinterpret_cast <const char *> (&compressor.first), reinterpret_cast <const char *> (&compressor.first) + sizeof(compressor.first));
+				result.push(&compressor.first, sizeof(compressor.first));
 				// Выполняем установку идентификатора компрессора
-				result.insert(result.end(), reinterpret_cast <const char *> (&compressor.second), reinterpret_cast <const char *> (&compressor.second) + sizeof(compressor.second));
+				result.push(&compressor.second, sizeof(compressor.second));
 			}
 		}
 		// Получаем количество расширений
 		count = this->_extensions.size();
 		// Устанавливаем количество расширений
-		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+		result.push(&count, sizeof(count));
 		// Если расширения установлены
 		if(!this->_extensions.empty()){
 			// Выполняем перебор всего списка расширений
@@ -959,58 +959,58 @@ vector <char> awh::WCore::dump() const noexcept {
 				// Получаем количество расширений
 				count = extensions.size();
 				// Устанавливаем количество расширений
-				result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+				result.push(&count, sizeof(count));
 				// Выполняем перебор всего количества расширений
 				for(auto & extension : extensions){
 					// Получаем размер текущего расширения
 					length = extension.size();
 					// Устанавливаем количество расширений
-					result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+					result.push(&length, sizeof(length));
 					// Устанавливаем значение полученного расширения
-					result.insert(result.end(), extension.begin(), extension.end());
+					result.push(extension.data(), extension.size());
 				}
 			}
 		}
 		// Получаем размер ключа клиента
 		length = this->_key.size();
 		// Устанавливаем размер ключа клиента
-		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+		result.push(&length, sizeof(length));
 		// Добавляем ключ клиента
-		result.insert(result.end(), this->_key.begin(), this->_key.end());
+		result.push(this->_key.data(), this->_key.size());
 		// Получаем количество выбранных сабпротоколов
 		count = this->_selectedProtocols.size();
 		// Устанавливаем количество выбранных сабпротоколов
-		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+		result.push(&count, sizeof(count));
 		// Выполняем перебор всех выбранных сабпротоколов
 		for(auto & subprotocol : this->_selectedProtocols){
 			// Получаем размер выбранному сабпротокола
 			length = subprotocol.size();
 			// Устанавливаем размер выбранному сабпротокола
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 			// Устанавливаем данные выбранному сабпротокола
-			result.insert(result.end(), subprotocol.begin(), subprotocol.end());
+			result.push(subprotocol.data(), subprotocol.size());
 		}
 		// Получаем количество поддерживаемых сабпротоколов
 		count = this->_supportedProtocols.size();
 		// Устанавливаем количество поддерживаемых сабпротоколов
-		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+		result.push(&count, sizeof(count));
 		// Выполняем перебор всех поддерживаемых сабпротоколов
 		for(auto & subprotocol : this->_supportedProtocols){
 			// Получаем размер поддерживаемого сабпротокола
 			length = subprotocol.size();
 			// Устанавливаем размер поддерживаемого сабпротокола
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 			// Устанавливаем данные поддерживаемого сабпротокола
-			result.insert(result.end(), subprotocol.begin(), subprotocol.end());
+			result.push(subprotocol.data(), subprotocol.size());
 		}{
 			// Выполняем получение дампа основного класса
 			const auto & dump = http_t::dump();
 			// Получаем размер дамп бинарных данных модуля
 			length = dump.size();
 			// Устанавливаем размер дампа бинарных данных модуля
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 			// Добавляем дамп бинарных данных модуля
-			result.insert(result.end(), dump.begin(), dump.end());
+			result.push(static_cast <const char *> (dump), static_cast <size_t> (dump));
 		}
 	/**
 	 * Если возникает ошибка
@@ -1042,9 +1042,21 @@ vector <char> awh::WCore::dump() const noexcept {
  *
  * @param data бинарный дамп данных
  */
-void awh::WCore::dump(const vector <char> & data) noexcept {
+void awh::WCore::dump(const buffer_t & data) noexcept {
 	// Если данные бинарного дампа переданы
-	if(!data.empty()){
+	if(!data.empty())
+		// Выполняем установку дампа данных
+		this->dump(static_cast <const char *> (data), static_cast <size_t> (data));
+}
+/**
+ * @brief Метод установки бинарного дампа
+ *
+ * @param buffer буфер бинарных данных
+ * @param size   размер бинарных данных
+ */
+void awh::WCore::dump(const char * buffer, const size_t size) noexcept {
+	// Если данные бинарного дампа переданы
+	if((buffer != nullptr) && (size > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1052,19 +1064,19 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 			// Длина строки, количество элементов и смещение в буфере
 			size_t length = 0, count = 0, offset = 0;
 			// Выполняем получение параметров партнёра клиента
-			::memcpy(reinterpret_cast <void *> (&this->_client), data.data() + offset, sizeof(this->_client));
+			::memcpy(reinterpret_cast <void *> (&this->_client), buffer + offset, sizeof(this->_client));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_client);
 			// Выполняем получение параметров партнёра сервера
-			::memcpy(reinterpret_cast <void *> (&this->_server), data.data() + offset, sizeof(this->_server));
+			::memcpy(reinterpret_cast <void *> (&this->_server), buffer + offset, sizeof(this->_server));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_server);
 			// Выполняем получение метода компрессии отправляемых данных
-			::memcpy(reinterpret_cast <void *> (&this->_compressors.selected), data.data() + offset, sizeof(this->_compressors.selected));
+			::memcpy(reinterpret_cast <void *> (&this->_compressors.selected), buffer + offset, sizeof(this->_compressors.selected));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_compressors.selected);
 			// Выполняем получение количества поддерживаемых компрессоров
-			::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
+			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем очистку списку поддерживаемых компрессоров
@@ -1080,11 +1092,11 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 					// Идентификатор компрессора
 					compressor_t compressor = compressor_t::NONE;
 					// Выполняем получение веса компрессора
-					::memcpy(reinterpret_cast <void *> (&weight), data.data() + offset, sizeof(weight));
+					::memcpy(reinterpret_cast <void *> (&weight), buffer + offset, sizeof(weight));
 					// Выполняем смещение в буфере
 					offset += sizeof(weight);
 					// Выполняем получение идентификатора компрессора
-					::memcpy(reinterpret_cast <void *> (&compressor), data.data() + offset, sizeof(compressor));
+					::memcpy(reinterpret_cast <void *> (&compressor), buffer + offset, sizeof(compressor));
 					// Выполняем смещение в буфере
 					offset += sizeof(compressor);
 					// Выполняем установку метода компрессора
@@ -1092,7 +1104,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				}
 			}
 			// Выполняем получение количества расширений
-			::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
+			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Если количество расширений получено
@@ -1102,7 +1114,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				// Выполняем перебор всех групп расширений
 				for(size_t i = 0; i < this->_extensions.size(); i++){
 					// Выполняем получение количества групп расширений
-					::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
+					::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
 					// Выполняем смещение в буфере
 					offset += sizeof(count);
 					// Выполняем инициализацию списка групп расширений
@@ -1110,7 +1122,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 					// Выполняем перебор всех расширений
 					for(size_t j = 0; j < this->_extensions.at(i).size(); j++){
 						// Выполняем получение размера расширения
-						::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+						::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 						// Выполняем смещение в буфере
 						offset += sizeof(length);
 						// Если размер получен
@@ -1126,7 +1138,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				}
 			}
 			// Выполняем получение размера ключа клиента
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
@@ -1134,12 +1146,12 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				// Выполняем выделение памяти для ключа клиента
 				this->_key.resize(length, 0);
 				// Выполняем получение ключа клиента
-				::memcpy(reinterpret_cast <void *> (this->_key.data()), data.data() + offset, length);
+				::memcpy(reinterpret_cast <void *> (this->_key.data()), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение количества выбранных сабпротоколов
-			::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
+			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем сброс списка выбранных сабпротоколов
@@ -1149,7 +1161,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				// Выполняем последовательную загрузку всех выбранных сабпротоколов
 				for(size_t i = 0; i < count; i++){
 					// Выполняем получение размера поддерживаемого сабпротокола
-					::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+					::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 					// Выполняем смещение в буфере
 					offset += sizeof(length);
 					// Если размер получен
@@ -1157,7 +1169,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 						// Выделяем память для поддерживаемого сабпротокола
 						string subprotocol(length, 0);
 						// Выполняем получение поддерживаемого сабпротокола
-						::memcpy(reinterpret_cast <void *> (subprotocol.data()), data.data() + offset, length);
+						::memcpy(reinterpret_cast <void *> (subprotocol.data()), buffer + offset, length);
 						// Выполняем смещение в буфере
 						offset += length;
 						// Если сабпротокол получен, добавляем его в список
@@ -1168,7 +1180,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				}
 			}
 			// Выполняем получение количества поддерживаемых сабпротоколов
-			::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
+			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем сброс списка поддерживаемых сабпротоколов
@@ -1178,7 +1190,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				// Выполняем последовательную загрузку всех поддерживаемых сабпротоколов
 				for(size_t i = 0; i < count; i++){
 					// Выполняем получение размера поддерживаемого сабпротокола
-					::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+					::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 					// Выполняем смещение в буфере
 					offset += sizeof(length);
 					// Если размер получен
@@ -1186,7 +1198,7 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 						// Выделяем память для поддерживаемого сабпротокола
 						string subprotocol(length, 0);
 						// Выполняем получение поддерживаемого сабпротокола
-						::memcpy(reinterpret_cast <void *> (subprotocol.data()), data.data() + offset, length);
+						::memcpy(reinterpret_cast <void *> (subprotocol.data()), buffer + offset, length);
 						// Выполняем смещение в буфере
 						offset += length;
 						// Если сабпротокол получен, добавляем его в список
@@ -1197,19 +1209,15 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 				}
 			}
 			// Выполняем получение размера дампа бинарных данных модуля
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
 			if(length > 0){
-				// Создаём бинарный буфер дампа
-				vector <char> dump(length, 0);
-				// Выполняем получение бинарного буфера дампа
-				::memcpy(reinterpret_cast <void *> (dump.data()), data.data() + offset, length);
+				// Выполняем установку бинарного буфера данных
+				http_t::dump(buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
-				// Выполняем установку бинарного буфера данных
-				http_t::dump(dump);
 			}
 		/**
 		 * Если возникает ошибка
@@ -1224,13 +1232,13 @@ void awh::WCore::dump(const vector <char> & data) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(data.data(), data.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
 			#endif
 		}
 	}

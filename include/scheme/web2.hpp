@@ -50,7 +50,7 @@ namespace awh {
 			 * @brief Структура схемы сети WEB/2 сервера
 			 *
 			 */
-			typedef struct AWHSHARED_EXPORT WEB2 : public scheme_t {
+			typedef struct AWH_SHARED_EXPORT WEB2 : public scheme_t {
 				public:
 					/**
 					 * @brief Структура потока

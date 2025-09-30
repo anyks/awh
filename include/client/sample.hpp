@@ -46,7 +46,7 @@ namespace awh {
 		 * @brief Класс работы с примером клиента
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Sample {
+		typedef class AWH_SHARED_EXPORT Sample {
 			public:
 				/**
 				 * Режим работы клиента

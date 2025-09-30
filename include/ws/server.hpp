@@ -39,7 +39,7 @@ namespace awh {
 		 * @brief Класс для работы с сервером WebSocket
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT WS : public ws_core_t {
+		typedef class AWH_SHARED_EXPORT WS : public ws_core_t {
 			public:
 				/**
 				 * @brief Метод применения полученных результатов

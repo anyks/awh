@@ -69,7 +69,7 @@ namespace awh {
 	 * @brief Класс работы с фреймами Http2
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Http2 {
+	typedef class AWH_SHARED_EXPORT Http2 {
 		public:
 			/**
 			 * Идентификации сервиса

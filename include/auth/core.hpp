@@ -40,7 +40,7 @@ namespace awh {
 	 * @brief Класс работы с авторизацией
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Authorization {
+	typedef class AWH_SHARED_EXPORT Authorization {
 		public:
 			/**
 			 * Тип авторизации

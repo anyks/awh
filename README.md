@@ -310,7 +310,8 @@ class WebClient {
 			if(mode == client::web_t::mode_t::CONNECT){
 				uri_t uri(this->_fmk, this->_log);
 
-				client::web_t::request_t req1, req2;
+				client::web_t::request_t req1(this->_fmk, this->_log),
+				                         req2(this->_fmk, this->_log);
 
 				req1.method = web_t::method_t::GET;
 				req2.method = web_t::method_t::GET;

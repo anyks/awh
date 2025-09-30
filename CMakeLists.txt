@@ -40,6 +40,12 @@ if (CMAKE_BOOSTING_NET)
     message(STATUS "Build AWH BOOSTING NET: YES\n")
 endif (CMAKE_BOOSTING_NET)
 
+# Если активирован флаг установки максимального размера HTTP-тела запроса/ответа
+if (CMAKE_MAX_HTTP_BODY_SIZE)
+    add_compile_definitions(AWH_MAX_BODY_SIZE=${CMAKE_MAX_HTTP_BODY_SIZE})
+    message(STATUS "Build AWH MAX BODY SIZE: ${CMAKE_MAX_HTTP_BODY_SIZE}\n")
+endif (CMAKE_MAX_HTTP_BODY_SIZE)
+
 # Если активирован флаг установки максимального размера очереди
 if (CMAKE_MAX_RECORDS_QUEUE)
     add_compile_definitions(AWH_MAX_RECORDS_QUEUE=${CMAKE_MAX_RECORDS_QUEUE})
@@ -51,6 +57,12 @@ if (CMAKE_MAX_MEMORY_QUEUE)
     add_compile_definitions(AWH_MAX_MEMORY_QUEUE=${CMAKE_MAX_MEMORY_QUEUE})
     message(STATUS "Build AWH MAX MEMORY QUEUE: ${CMAKE_MAX_MEMORY_QUEUE}\n")
 endif (CMAKE_MAX_MEMORY_QUEUE)
+
+# Если активирован флаг установки максимального размера потребления памяти буфера
+if (CMAKE_MAX_MEMORY_BUFFER)
+    add_compile_definitions(AWH_MAX_MEMORY_BUFFER=${CMAKE_MAX_MEMORY_BUFFER})
+    message(STATUS "Build AWH MAX MEMORY BUFFER: ${CMAKE_MAX_MEMORY_BUFFER}\n")
+endif (CMAKE_MAX_MEMORY_BUFFER)
 
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")

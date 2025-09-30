@@ -72,7 +72,7 @@ void awh::Http::encrypt() noexcept {
 			// Если тело сообщения получено
 			if(!body.empty()){
 				// Выполняем шифрование полезной нагрузки
-				const vector <char> & result = this->_hash.encode <vector <char>> (body.data(), body.size(), this->_cipher);
+				const auto & result = this->_hash.encode <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), this->_cipher);
 				// Если шифрование выполнено
 				if((this->_crypted = !result.empty())){
 					// Выполняем очистку данных тела
@@ -129,7 +129,7 @@ void awh::Http::decrypt() noexcept {
 			// Если тело сообщения получено
 			if(!body.empty()){
 				// Выполняем дешифрование полезной нагрузки
-				const vector <char> & result = this->_hash.decode <vector <char>> (body.data(), body.size(), this->_cipher);
+				const auto & result = this->_hash.decode <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), this->_cipher);
 				// Если дешифрование выполнено
 				if(!(this->_crypted = result.empty())){
 					// Выполняем очистку данных тела
@@ -192,7 +192,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::LZ4);
+						const auto & result = this->_hash.compress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::LZ4);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -214,7 +214,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом Zstandard
 					case static_cast <uint8_t> (compressor_t::ZSTD): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::ZSTD);
+						const auto & result = this->_hash.compress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::ZSTD);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -236,7 +236,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом LZma
 					case static_cast <uint8_t> (compressor_t::LZMA): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::LZMA);
+						const auto & result = this->_hash.compress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::LZMA);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -258,7 +258,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом Brotli
 					case static_cast <uint8_t> (compressor_t::BROTLI): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::BROTLI);
+						const auto & result = this->_hash.compress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::BROTLI);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -280,7 +280,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом BZip2
 					case static_cast <uint8_t> (compressor_t::BZIP2): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::BZIP2);
+						const auto & result = this->_hash.compress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::BZIP2);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -302,7 +302,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом GZip
 					case static_cast <uint8_t> (compressor_t::GZIP): {
 						// Выполняем компрессию полезной нагрузки
-						const auto & result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::GZIP);
+						const auto & result = this->_hash.compress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::GZIP);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -324,7 +324,7 @@ void awh::Http::compress() noexcept {
 					// Если полезную нагрузку необходимо сжать методом Deflate
 					case static_cast <uint8_t> (compressor_t::DEFLATE): {
 						// Выполняем компрессию полезной нагрузки
-						auto result = this->_hash.compress <vector <char>> (body.data(), body.size(), hash_t::method_t::DEFLATE);
+						auto result = this->_hash.compress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::DEFLATE);
 						// Если компрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -393,7 +393,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом LZ4
 					case static_cast <uint8_t> (compressor_t::LZ4): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::LZ4);
+						const auto & result = this->_hash.decompress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::LZ4);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -407,7 +407,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом Zstandard
 					case static_cast <uint8_t> (compressor_t::ZSTD): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::ZSTD);
+						const auto & result = this->_hash.decompress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::ZSTD);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -421,7 +421,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом LZma
 					case static_cast <uint8_t> (compressor_t::LZMA): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::LZMA);
+						const auto & result = this->_hash.decompress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::LZMA);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -435,7 +435,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом Brotli
 					case static_cast <uint8_t> (compressor_t::BROTLI): {
 						// Выполняем декомпрессию данных
-						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::BROTLI);
+						const auto & result = this->_hash.decompress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::BROTLI);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -449,7 +449,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом BZip2
 					case static_cast <uint8_t> (compressor_t::BZIP2): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::BZIP2);
+						const auto & result = this->_hash.decompress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::BZIP2);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -463,7 +463,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом GZip
 					case static_cast <uint8_t> (compressor_t::GZIP): {
 						// Выполняем декомпрессию полезной нагрузки
-						const auto & result = this->_hash.decompress <vector <char>> (body.data(), body.size(), hash_t::method_t::GZIP);
+						const auto & result = this->_hash.decompress <vector <char>> (static_cast <const char *> (body), static_cast <size_t> (body), hash_t::method_t::GZIP);
 						// Если декомпрессия выполнена
 						if(!result.empty()){
 							// Выполняем очистку данных тела
@@ -477,7 +477,7 @@ void awh::Http::decompress() noexcept {
 					// Если полезную нагрузку нужно извлечь методом Deflate
 					case static_cast <uint8_t> (compressor_t::DEFLATE): {
 						// Получаем данные тела в бинарном виде
-						vector <char> buffer(body.begin(), body.end());
+						vector <char> buffer = body;
 						// Добавляем хвост в полученные данные
 						this->_hash.setTail(buffer);
 						// Выполняем декомпрессию полезной нагрузки
@@ -1284,9 +1284,9 @@ const vector <char> awh::Http::payload() const noexcept {
 		// Выполняем шифрование полезной нагрузки
 		const_cast <http_t *> (this)->encrypt();
 		// Получаем собранные данные тела
-		vector <char> * body = const_cast <vector <char> *> (&this->_web.body());
+		buffer_t & body = const_cast <buffer_t &> (this->_web.body());
 		// Если данные тела ещё существуют
-		if(!body->empty()){
+		if(!body.empty()){
 			// Версия протокола HTTP
 			double version = 1.1;
 			/**
@@ -1309,46 +1309,53 @@ const vector <char> awh::Http::payload() const noexcept {
 				// Если версия протокола интернета выше 1.1
 				if(version > 1.1){
 					// Если тело сообщения больше размера чанка
-					if(body->size() >= this->_chunk){
+					if(body.size() >= this->_chunk){
 						// Формируем результат
-						result.assign(body->begin(), body->begin() + this->_chunk);
+						result.assign(
+							static_cast <const char *> (body),
+							static_cast <const char *> (body) + this->_chunk
+						);
 						// Удаляем полученные данные в теле сообщения
-						// body->erase(body->begin(), body->begin() + this->_chunk);
-						vector <char> (body->begin() + this->_chunk, body->end()).swap(* body);
+						body.erase(static_cast <size_t> (this->_chunk));
 					// Если тело сообщения полностью убирается в размер чанка
 					} else {
 						// Формируем результат
-						result.assign(body->begin(), body->end());
+						result = body;
 						// Очищаем объект тела запроса
-						body->clear();
-						// Освобождаем память
-						vector <char> ().swap(* body);
+						body.clear();
 					}
 				// Выполняем сборку чанков для протокола HTTP/1.1
 				} else {
 					// Тело чанка запроса
 					string chunk = "";
 					// Если тело сообщения больше размера чанка
-					if(body->size() >= this->_chunk){
+					if(body.size() >= this->_chunk){
 						// Получаем размер чанка
 						chunk = this->_fmk->itoa <size_t> (this->_chunk, 16);
 						// Добавляем разделитель
 						chunk.append("\r\n");
 						// Формируем тело чанка
-						chunk.insert(chunk.end(), body->begin(), body->begin() + this->_chunk);
+						chunk.insert(
+							chunk.end(),
+							static_cast <const char *> (body),
+							static_cast <const char *> (body) + this->_chunk
+						);
 						// Добавляем конец запроса
 						chunk.append("\r\n");
 						// Удаляем полученные данные в теле сообщения
-						// body->erase(body->begin(), body->begin() + this->_chunk);
-						vector <char> (body->begin() + this->_chunk, body->end()).swap(* body);
+						body.erase(static_cast <size_t> (this->_chunk));
 					// Если тело сообщения полностью убирается в размер чанка
 					} else {
 						// Получаем размер чанка
-						chunk = this->_fmk->itoa <size_t> (body->size(), 16);
+						chunk = this->_fmk->itoa <size_t> (body.size(), 16);
 						// Добавляем разделитель
 						chunk.append("\r\n");
 						// Формируем тело чанка
-						chunk.insert(chunk.end(), body->begin(), body->end());
+						chunk.insert(
+							chunk.end(),
+							static_cast <const char *> (body),
+							static_cast <const char *> (body) + static_cast <size_t> (body)
+						);
 						/**
 						 * Определяем тип HTTP-модуля
 						 */
@@ -1369,37 +1376,36 @@ const vector <char> awh::Http::payload() const noexcept {
 							} break;
 						}
 						// Очищаем данные тела
-						body->clear();
-						// Освобождаем память
-						vector <char> ().swap(* body);
+						body.clear();
 					}
 					// Формируем результат
 					result.assign(chunk.begin(), chunk.end());
-					// Освобождаем память
-					string().swap(chunk);
 				}
 			// Выводим данные тела как есть
 			} else {
 				// Если тело сообщения больше размера чанка
-				if(body->size() >= this->_chunk){
+				if(body.size() >= this->_chunk){
 					// Получаем нужный нам размер данных
-					result.assign(body->begin(), body->begin() + this->_chunk);
+					result.assign(
+						static_cast <const char *> (body),
+						static_cast <const char *> (body) + this->_chunk
+					);
 					// Удаляем полученные данные в теле сообщения
-					// body->erase(body->begin(), body->begin() + this->_chunk);
-					vector <char> (body->begin() + this->_chunk, body->end()).swap(* body);
+					body.erase(static_cast <size_t> (this->_chunk));
 				// Если тело сообщения полностью убирается в размер чанка
 				} else {
 					// Получаем нужный нам размер данных
-					result.assign(body->begin(), body->end());
+					result.assign(
+						static_cast <const char *> (body),
+						static_cast <const char *> (body) + static_cast <size_t> (body)
+					);
 					// Очищаем данные тела
-					body->clear();
-					// Освобождаем память
-					vector <char> ().swap(* body);
+					body.clear();
 				}
 			}
 		}
 		// Если тело передаваемых данных уже пустое
-		if(body->empty()){
+		if(body.empty()){
 			// Снимаем флаг зашифрованной полезной нагрузки
 			const_cast <http_t *> (this)->_crypted = false;
 			// Снимаем флаг сжатой полезной нагрузки
@@ -1455,7 +1461,7 @@ void awh::Http::blacklist(const string & key) noexcept {
  *
  * @return буфер данных тела запроса
  */
-const vector <char> & awh::Http::body() const noexcept {
+const awh::buffer_t & awh::Http::body() const noexcept {
 	// Выполняем дешифрование полезной нагрузки
 	const_cast <http_t *> (this)->decrypt();
 	// Выполняем декомпрессию полезной нагрузки
@@ -2074,9 +2080,9 @@ void awh::Http::compressors(const vector <compressor_t> & compressors) noexcept 
  *
  * @return бинарный дамп данных
  */
-vector <char> awh::Http::dump() const noexcept {
+awh::buffer_t awh::Http::dump() const noexcept {
 	// Результат работы функции
-	vector <char> result;
+	buffer_t result(this->_fmk, this->_log);
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2084,80 +2090,80 @@ vector <char> awh::Http::dump() const noexcept {
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
 		// Устанавливаем флаг разрешающий параметры Transfer-Encoding
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_te), reinterpret_cast <const char *> (&this->_te) + sizeof(this->_te));
+		result.push(&this->_te, sizeof(this->_te));
 		// Устанавливаем размер одного чанка
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_chunk), reinterpret_cast <const char *> (&this->_chunk) + sizeof(this->_chunk));
+		result.push(&this->_chunk, sizeof(this->_chunk));
 		// Устанавливаем стейт текущего запроса
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_state), reinterpret_cast <const char *> (&this->_state) + sizeof(this->_state));
+		result.push(&this->_state, sizeof(this->_state));
 		// Устанавливаем стейт проверки авторизации
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_status), reinterpret_cast <const char *> (&this->_status) + sizeof(this->_status));
+		result.push(&this->_status, sizeof(this->_status));
 		// Устанавливаем флаг зашифрованных данных полузной нагрузки
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_crypted), reinterpret_cast <const char *> (&this->_crypted) + sizeof(this->_crypted));
+		result.push(&this->_crypted, sizeof(this->_crypted));
 		// Устанавливаем флаг требования шифрования данных полезной нагрузки
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_encryption), reinterpret_cast <const char *> (&this->_encryption) + sizeof(this->_encryption));
+		result.push(&this->_encryption, sizeof(this->_encryption));
 		// Устанавливаем метод компрессии хранимых данных
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_compressors.current), reinterpret_cast <const char *> (&this->_compressors.current) + sizeof(this->_compressors.current));
+		result.push(&this->_compressors.current, sizeof(this->_compressors.current));
 		// Устанавливаем метод компрессии отправляемых данных
-		result.insert(result.end(), reinterpret_cast <const char *> (&this->_compressors.selected), reinterpret_cast <const char *> (&this->_compressors.selected) + sizeof(this->_compressors.selected));
+		result.push(&this->_compressors.selected, sizeof(this->_compressors.selected));
 		// Получаем количество поддерживаемых компрессоров
 		count = this->_compressors.supports.size();
 		// Устанавливаем количество поддерживаемых компрессоров
-		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+		result.push(&count, sizeof(count));
 		// Если список поддерживаемых компрессоров не пустой
 		if(!this->_compressors.supports.empty()){
 			// Выполняем перебор всех поддерживаемых компрессоров
 			for(auto & compressor : this->_compressors.supports){
 				// Выполняем установку веска компрессора
-				result.insert(result.end(), reinterpret_cast <const char *> (&compressor.first), reinterpret_cast <const char *> (&compressor.first) + sizeof(compressor.first));
+				result.push(&compressor.first, sizeof(compressor.first));
 				// Выполняем установку идентификатора компрессора
-				result.insert(result.end(), reinterpret_cast <const char *> (&compressor.second), reinterpret_cast <const char *> (&compressor.second) + sizeof(compressor.second));
+				result.push(&compressor.second, sizeof(compressor.second));
 			}
 		}
 		// Получаем размер идентификатора сервиса
 		length = this->_ident.id.size();
 		// Устанавливаем размер идентификатора сервиса
-		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+		result.push(&length, sizeof(length));
 		// Устанавливаем данные идентификатора сервиса
-		result.insert(result.end(), this->_ident.id.begin(), this->_ident.id.end());
+		result.push(this->_ident.id.data(), this->_ident.id.size());
 		// Получаем размер версии модуля приложения
 		length = this->_ident.version.size();
 		// Устанавливаем размер версии модуля приложения
-		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+		result.push(&length, sizeof(length));
 		// Устанавливаем данные версии модуля приложения
-		result.insert(result.end(), this->_ident.version.begin(), this->_ident.version.end());
+		result.push(this->_ident.version.data(), this->_ident.version.size());
 		// Получаем размер названия сервиса
 		length = this->_ident.name.size();
 		// Устанавливаем размер названия сервиса
-		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+		result.push(&length, sizeof(length));
 		// Устанавливаем данные названия сервиса
-		result.insert(result.end(), this->_ident.name.begin(), this->_ident.name.end());
+		result.push(this->_ident.name.data(), this->_ident.name.size());
 		// Получаем размер User-Agent для HTTP-запроса
 		length = this->_userAgent.size();
 		// Устанавливаем размер User-Agent для HTTP-запроса
-		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+		result.push(&length, sizeof(length));
 		// Устанавливаем данные User-Agent для HTTP-запроса
-		result.insert(result.end(), this->_userAgent.begin(), this->_userAgent.end());
+		result.push(this->_userAgent.data(), this->_userAgent.size());
 		// Получаем количество записей чёрного списка
 		count = this->_blacklist.size();
 		// Устанавливаем количество записей чёрного списка
-		result.insert(result.end(), reinterpret_cast <const char *> (&count), reinterpret_cast <const char *> (&count) + sizeof(count));
+		result.push(&count, sizeof(count));
 		// Выполняем переход по всему чёрному списку
 		for(auto & header : this->_blacklist){
 			// Получаем размер заголовка из чёрного списка
 			length = header.size();
 			// Устанавливаем размер заголовка из чёрного списка
-			result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+			result.push(&length, sizeof(length));
 			// Устанавливаем данные заголовка из чёрного списка
-			result.insert(result.end(), header.begin(), header.end());
+			result.push(header.data(), header.size());
 		}
 		// Получаем дамп WEB данных
 		const auto & web = this->_web.dump();
 		// Получаем размер буфера WEB данных
 		length = web.size();
 		// Устанавливаем размер буфера WEB данных
-		result.insert(result.end(), reinterpret_cast <const char *> (&length), reinterpret_cast <const char *> (&length) + sizeof(length));
+		result.push(&length, sizeof(length));
 		// Устанавливаем данные буфера WEB данных
-		result.insert(result.end(), web.begin(), web.end());
+		result.push(static_cast <const char *> (web), static_cast <size_t> (web));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2188,9 +2194,21 @@ vector <char> awh::Http::dump() const noexcept {
  *
  * @param data бинарный дамп данных
  */
-void awh::Http::dump(const vector <char> & data) noexcept {
+void awh::Http::dump(const awh::buffer_t & data) noexcept {
 	// Если данные бинарного дампа переданы
-	if(!data.empty()){
+	if(!data.empty())
+		// Выполняем установку дампа данных
+		this->dump(static_cast <const char *> (data), static_cast <size_t> (data));
+}
+/**
+ * @brief Метод установки бинарного дампа
+ *
+ * @param buffer буфер бинарных данных
+ * @param size   размер бинарных данных
+ */
+void awh::Http::dump(const char * buffer, const size_t size) noexcept {
+	// Если данные бинарного дампа переданы
+	if((buffer != nullptr) && (size > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2198,39 +2216,39 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 			// Длина строки, количество элементов и смещение в буфере
 			size_t length = 0, count = 0, offset = 0;
 			// Выполняем получение флага разрешающий параметры Transfer-Encoding
-			::memcpy(reinterpret_cast <void *> (&this->_te), data.data() + offset, sizeof(this->_te));
+			::memcpy(reinterpret_cast <void *> (&this->_te), buffer + offset, sizeof(this->_te));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_te);
 			// Выполняем получение размера одного чанка
-			::memcpy(reinterpret_cast <void *> (&this->_chunk), data.data() + offset, sizeof(this->_chunk));
+			::memcpy(reinterpret_cast <void *> (&this->_chunk), buffer + offset, sizeof(this->_chunk));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_chunk);
 			// Выполняем получение стейта текущего запроса
-			::memcpy(reinterpret_cast <void *> (&this->_state), data.data() + offset, sizeof(this->_state));
+			::memcpy(reinterpret_cast <void *> (&this->_state), buffer + offset, sizeof(this->_state));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_state);
 			// Выполняем получение стейта проверки авторизации
-			::memcpy(reinterpret_cast <void *> (&this->_status), data.data() + offset, sizeof(this->_status));
+			::memcpy(reinterpret_cast <void *> (&this->_status), buffer + offset, sizeof(this->_status));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_status);
 			// Выполняем получение флага зашифрованных хранимых данных полезной нагрузки
-			::memcpy(reinterpret_cast <void *> (&this->_crypted), data.data() + offset, sizeof(this->_crypted));
+			::memcpy(reinterpret_cast <void *> (&this->_crypted), buffer + offset, sizeof(this->_crypted));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_crypted);
 			// Выполняем получение флага требования шифрования данных полезной нагрузки
-			::memcpy(reinterpret_cast <void *> (&this->_encryption), data.data() + offset, sizeof(this->_encryption));
+			::memcpy(reinterpret_cast <void *> (&this->_encryption), buffer + offset, sizeof(this->_encryption));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_encryption);
 			// Выполняем получение метода компрессии хранимых данных
-			::memcpy(reinterpret_cast <void *> (&this->_compressors.current), data.data() + offset, sizeof(this->_compressors.current));
+			::memcpy(reinterpret_cast <void *> (&this->_compressors.current), buffer + offset, sizeof(this->_compressors.current));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_compressors.current);
 			// Выполняем получение метода компрессии отправляемых данных
-			::memcpy(reinterpret_cast <void *> (&this->_compressors.selected), data.data() + offset, sizeof(this->_compressors.selected));
+			::memcpy(reinterpret_cast <void *> (&this->_compressors.selected), buffer + offset, sizeof(this->_compressors.selected));
 			// Выполняем смещение в буфере
 			offset += sizeof(this->_compressors.selected);
 			// Выполняем получение количества поддерживаемых компрессоров
-			::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
+			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем очистку списку поддерживаемых компрессоров
@@ -2244,11 +2262,11 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 					// Идентификатор компрессора
 					compressor_t compressor = compressor_t::NONE;
 					// Выполняем получение веса компрессора
-					::memcpy(reinterpret_cast <void *> (&weight), data.data() + offset, sizeof(weight));
+					::memcpy(reinterpret_cast <void *> (&weight), buffer + offset, sizeof(weight));
 					// Выполняем смещение в буфере
 					offset += sizeof(weight);
 					// Выполняем получение идентификатора компрессора
-					::memcpy(reinterpret_cast <void *> (&compressor), data.data() + offset, sizeof(compressor));
+					::memcpy(reinterpret_cast <void *> (&compressor), buffer + offset, sizeof(compressor));
 					// Выполняем смещение в буфере
 					offset += sizeof(compressor);
 					// Выполняем установку метода компрессора
@@ -2256,7 +2274,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				}
 			}
 			// Выполняем получение размера идентификатора сервиса
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
@@ -2264,12 +2282,12 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				// Выделяем память для данных идентификатора сервиса
 				this->_ident.id.resize(length, 0);
 				// Выполняем получение данных идентификатора сервиса
-				::memcpy(reinterpret_cast <void *> (this->_ident.id.data()), data.data() + offset, length);
+				::memcpy(reinterpret_cast <void *> (this->_ident.id.data()), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение размера версии модуля приложения
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
@@ -2277,12 +2295,12 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				// Выделяем память для данных версии модуля приложения
 				this->_ident.version.resize(length, 0);
 				// Выполняем получение данных версии модуля приложения
-				::memcpy(reinterpret_cast <void *> (this->_ident.version.data()), data.data() + offset, length);
+				::memcpy(reinterpret_cast <void *> (this->_ident.version.data()), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение размера названия сервиса
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
@@ -2290,12 +2308,12 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				// Выделяем память для данных названия сервиса
 				this->_ident.name.resize(length, 0);
 				// Выполняем получение данных названия сервиса
-				::memcpy(reinterpret_cast <void *> (this->_ident.name.data()), data.data() + offset, length);
+				::memcpy(reinterpret_cast <void *> (this->_ident.name.data()), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение размера User-Agent для HTTP-запроса
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
@@ -2303,12 +2321,12 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				// Выделяем память для данных User-Agent для HTTP-запроса
 				this->_userAgent.resize(length, 0);
 				// Выполняем получение данных User-Agent для HTTP-запроса
-				::memcpy(reinterpret_cast <void *> (this->_userAgent.data()), data.data() + offset, length);
+				::memcpy(reinterpret_cast <void *> (this->_userAgent.data()), buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
 			}
 			// Выполняем получение количества записей чёрного списка
-			::memcpy(reinterpret_cast <void *> (&count), data.data() + offset, sizeof(count));
+			::memcpy(reinterpret_cast <void *> (&count), buffer + offset, sizeof(count));
 			// Выполняем смещение в буфере
 			offset += sizeof(count);
 			// Выполняем сброс заголовков чёрного списка
@@ -2318,7 +2336,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				// Выполняем последовательную загрузку всех заголовков
 				for(size_t i = 0; i < count; i++){
 					// Выполняем получение размера заголовка из чёрного списка
-					::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+					::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 					// Выполняем смещение в буфере
 					offset += sizeof(length);
 					// Если размер получен
@@ -2326,7 +2344,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 						// Выделяем память для заголовка чёрного списка
 						string header(length, 0);
 						// Выполняем получение заголовка чёрного списка
-						::memcpy(reinterpret_cast <void *> (header.data()), data.data() + offset, length);
+						::memcpy(reinterpret_cast <void *> (header.data()), buffer + offset, length);
 						// Выполняем смещение в буфере
 						offset += length;
 						// Если заголовок чёрного списка получен
@@ -2337,21 +2355,15 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 				}
 			}
 			// Выполняем получение размера дампа WEB данных
-			::memcpy(reinterpret_cast <void *> (&length), data.data() + offset, sizeof(length));
+			::memcpy(reinterpret_cast <void *> (&length), buffer + offset, sizeof(length));
 			// Выполняем смещение в буфере
 			offset += sizeof(length);
 			// Если размер получен
 			if(length > 0){
-				// Выделяем память для дампа WEB данных
-				vector <char> buffer(length, 0);
-				// Выполняем получение дампа WEB данных
-				::memcpy(reinterpret_cast <void *> (buffer.data()), data.data() + offset, length);
+				// Выполняем установку буфера модуля Web
+				this->_web.dump(buffer + offset, length);
 				// Выполняем смещение в буфере
 				offset += length;
-				// Если дамп Web-данных получен, устанавливаем его
-				if(!buffer.empty())
-					// Выполняем установку буфера модуля Web
-					this->_web.dump(buffer);
 			}
 		/**
 		 * Если возникает ошибка
@@ -2366,7 +2378,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(data.data(), data.size()), log_t::flag_t::WARNING, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, error.what());
 			/**
 			* Если режим отладки не включён
 			*/

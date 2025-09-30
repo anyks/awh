@@ -48,7 +48,7 @@ namespace awh {
 		 * @brief Класс Websocket-сервера
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Websocket2 : public web2_t {
+		typedef class AWH_SHARED_EXPORT Websocket2 : public web2_t {
 			private:
 				/**
 				 * @brief Устанавливаем дружбу с классом HTTP/2 сервера
@@ -191,9 +191,10 @@ namespace awh {
 				 *
 				 * @param bid    идентификатор брокера
 				 * @param buffer данные в чистом виде полученные с сервера
+				 * @param size   размер бинарных данных полученных с сервера
 				 * @param text   данные передаются в текстовом виде
 				 */
-				void extraction(const uint64_t bid, const vector <char> & buffer, const bool text) noexcept;
+				void extraction(const uint64_t bid, const char * buffer, const size_t size, const bool text) noexcept;
 			private:
 				/**
 				 * @brief Метод проверки доступности сервера

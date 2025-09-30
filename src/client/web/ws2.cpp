@@ -197,10 +197,6 @@ void awh::client::Websocket2::disconnectEvent(const uint64_t bid, const uint16_t
 		this->_buffer.clear();
 		// Выполняем очистку оставшихся фрагментов
 		this->_fragments.clear();
-		// Если размер выделенной памяти выше максимального размера буфера
-		if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
-			// Выполняем очистку временного буфера данных
-			vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 	// Если подключение не является постоянным
 	} else {
 		// Выполняем сброс параметров запроса
@@ -224,10 +220,6 @@ void awh::client::Websocket2::disconnectEvent(const uint64_t bid, const uint16_t
 	this->_buffer.clear();
 	// Выполняем очистку оставшихся фрагментов
 	this->_fragments.clear();
-	// Если размер выделенной памяти выше максимального размера буфера
-	if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
-		// Выполняем очистку временного буфера данных
-		vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 	// Выполняем переключение протокола интернета обратно на HTTP/1.1
 	this->_proto = engine_t::proto_t::HTTP1_1;
 	// Если функция обратного вызова при подключении/отключении установлена
@@ -658,10 +650,6 @@ int32_t awh::client::Websocket2::beginSignal(const int32_t sid) noexcept {
 			this->_buffer.clear();
 			// Выполняем очистку оставшихся фрагментов
 			this->_fragments.clear();
-			// Если размер выделенной памяти выше максимального размера буфера
-			if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
-				// Выполняем очистку временного буфера данных
-				vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 		}
 	}
 	// Выводим результат
@@ -850,10 +838,6 @@ void awh::client::Websocket2::flush() noexcept {
 		this->_buffer.clear();
 		// Выполняем очистку оставшихся фрагментов
 		this->_fragments.clear();
-		// Если размер выделенной памяти выше максимального размера буфера
-		if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
-			// Выполняем очистку временного буфера данных
-			vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 	}
 }
 /**
@@ -1032,10 +1016,6 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
 					this->_fragments.clear();
-					// Если размер выделенной памяти выше максимального размера буфера
-					if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
-						// Выполняем очистку временного буфера данных
-						vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
@@ -1139,7 +1119,7 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 		 */
 		while(!this->_close && this->_allow.receive && !this->_buffer.empty()){
 			// Выполняем чтение фрейма Websocket
-			const auto & payload = this->_frame.methods.get(head, reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
+			const auto & payload = this->_frame.methods.get(head, static_cast <const char *> (this->_buffer), static_cast <size_t> (this->_buffer));
 			// Если буфер данных получен
 			if(!payload.empty() || (head.optcode == ws::frame_t::opcode_t::PING) || (head.optcode == ws::frame_t::opcode_t::PONG) || (head.optcode == ws::frame_t::opcode_t::CLOSE)){
 				/**
@@ -1198,10 +1178,6 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 						} else if(!this->_fragments.empty()) {
 							// Очищаем список фрагментированных сообщений
 							this->_fragments.clear();
-							// Если размер выделенной памяти выше максимального размера буфера
-							if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
-								// Выполняем очистку временного буфера данных
-								vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 							// Создаём сообщение
 							this->_mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
@@ -1211,15 +1187,15 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 						// Если сообщение является не последнем
 						} else if(!head.fin)
 							// Заполняем фрагментированное сообщение
-							this->_fragments.insert(this->_fragments.end(), payload.begin(), payload.end());
+							this->_fragments.push(payload.data(), payload.size());
 						// Если сообщение является последним
 						else {
 							// Если тредпул активирован
 							if(this->_thr.initialized())
 								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-								this->_thr.push(std::bind(&ws2_t::extraction, this, payload, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+								this->_thr.push(std::bind(&ws2_t::extraction, this, payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
 							// Если тредпул не активирован, выполняем извлечение полученных сообщений
-							else this->extraction(payload, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+							else this->extraction(payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 						}
 					} break;
 					// Если ответом является CONTINUATION
@@ -1227,21 +1203,23 @@ awh::client::Web::status_t awh::client::Websocket2::prepare(const int32_t sid, c
 						// Если фрагменты сообщения уже собраны
 						if(!this->_fragments.empty()){
 							// Заполняем фрагментированное сообщение
-							this->_fragments.insert(this->_fragments.end(), payload.begin(), payload.end());
+							if(!this->_fragments.push(payload.data(), payload.size())){
+								// Создаём сообщение
+								this->_mess = ws::mess_t(1007, "Fragmented payload data is too large for system limitations to support");
+								// Выводим сообщение
+								this->error(this->_mess);
+								// Выполняем реконнект
+								return status_t::NEXT;
 							// Если сообщение является последним
-							if(head.fin){
+							} else if(head.fin) {
 								// Если тредпул активирован
 								if(this->_thr.initialized())
 									// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-									this->_thr.push(std::bind(&ws2_t::extraction, this, this->_fragments, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+									this->_thr.push(std::bind(&ws2_t::extraction, this, static_cast <const char *> (this->_fragments), static_cast <size_t> (this->_fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
 								// Если тредпул не активирован, выполняем извлечение полученных сообщений
-								else this->extraction(this->_fragments, (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+								else this->extraction(static_cast <const char *> (this->_fragments), static_cast <size_t> (this->_fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 								// Очищаем список фрагментированных сообщений
 								this->_fragments.clear();
-								// Если размер выделенной памяти выше максимального размера буфера
-								if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
-									// Выполняем очистку временного буфера данных
-									vector <decltype(this->_fragments)::value_type> ().swap(this->_fragments);
 							}
 						// Если фрагментированные сообщения не существуют
 						} else {
@@ -1305,10 +1283,6 @@ void awh::client::Websocket2::error(const ws::mess_t & message) const noexcept {
 	const_cast <ws2_t *> (this)->_buffer.clear();
 	// Очищаем список фрагментированных сообщений
 	const_cast <ws2_t *> (this)->_fragments.clear();
-	// Если размер выделенной памяти выше максимального размера буфера
-	if(this->_fragments.capacity() > AWH_BUFFER_SIZE)
-		// Выполняем очистку временного буфера данных
-		vector <decltype(this->_fragments)::value_type> ().swap(const_cast <ws2_t *> (this)->_fragments);
 	// Если код ошибки указан
 	if(message.code > 0){
 		// Если сообщение об ошибке пришло
@@ -1334,17 +1308,20 @@ void awh::client::Websocket2::error(const ws::mess_t & message) const noexcept {
  * @brief Метод извлечения полученных данных
  *
  * @param buffer данные в чистом виде полученные с сервера
+ * @param size   размер бинарных данных полученных с сервера
  * @param text   данные передаются в текстовом виде
  */
-void awh::client::Websocket2::extraction(const vector <char> & buffer, const bool text) noexcept {
+void awh::client::Websocket2::extraction(const char * buffer, const size_t size, const bool text) noexcept {
 	// Если буфер данных передан
-	if(!buffer.empty() && !this->_freeze && web2_t::_callback.is("messageWebsocket")){
+	if((buffer != nullptr) && (size > 0) && !this->_freeze && web2_t::_callback.is("messageWebsocket")){
 		// Декомпрессионные данные
-		vector <char> result(buffer.begin(), buffer.end());
+		buffer_t result(this->_fmk, this->_log);
 		// Если нужно производить дешифрование
 		if(this->_crypted)
 			// Выполняем дешифрование полезной нагрузки
-			result = this->_hash.decode <vector <char>> (result.data(), result.size(), this->_cipher);
+			result = this->_hash.decode <vector <char>> (buffer, size, this->_cipher);
+		// Устанавливаем буфер результата как есть
+		else result.push(buffer, size);
 		// Если данные пришли в сжатом виде
 		if(this->_inflate && (this->_compressor != http_t::compressor_t::NONE)){
 			/**
@@ -1354,41 +1331,43 @@ void awh::client::Websocket2::extraction(const vector <char> & buffer, const boo
 				// Если метод компрессии выбран LZ4
 				case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::LZ4);
+					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::LZ4);
 				break;
 				// Если метод компрессии выбран Zstandard
 				case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::ZSTD);
+					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::ZSTD);
 				break;
 				// Если метод компрессии выбран LZma
 				case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::LZMA);
+					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::LZMA);
 				break;
 				// Если метод компрессии выбран Brotli
 				case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::BROTLI);
+					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::BROTLI);
 				break;
 				// Если метод компрессии выбран BZip2
 				case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::BZIP2);
+					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::BZIP2);
 				break;
 				// Если метод компрессии выбран GZip
 				case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::GZIP);
+					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::GZIP);
 				break;
 				// Если метод компрессии выбран Deflate
 				case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
+					// Получаем буфер данных
+					vector <char> buffer = result;
 					// Устанавливаем размер скользящего окна
 					this->_hash.wbit(this->_server.wbit);
 					// Добавляем хвост в полученные данные
-					this->_hash.setTail(result);
+					this->_hash.setTail(buffer);
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (result.data(), result.size(), hash_t::method_t::DEFLATE);
+					result = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
 				} break;
 			}
 		}
@@ -1399,7 +1378,7 @@ void awh::client::Websocket2::extraction(const vector <char> & buffer, const boo
 		// Выводим сообщение об ошибке
 		else {
 			// Иначе выводим сообщение так - как оно пришло
-			web2_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", buffer, text);
+			web2_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", vector <char> (), text);
 			// Создаём сообщение
 			this->_mess = ws::mess_t(1007, "Received data decompression error");
 			// Выполняем отправку сообщения об ошибке
@@ -2125,7 +2104,7 @@ awh::client::Websocket2::Websocket2(const fmk_t * fmk, const log_t * log) noexce
  _threads(0), _waitPong(_pingInterval * 2), _respPong(0), _ws1(fmk, log),
  _http(fmk, log), _hash(log), _frame(fmk, log), _callback(log),
  _cipher(hash_t::cipher_t::AES128), _proto(engine_t::proto_t::HTTP1_1),
- _compressor(awh::http_t::compressor_t::NONE) {
+ _compressor(awh::http_t::compressor_t::NONE), _fragments(fmk, log) {
 	// Если размер фрейма не установлен
 	if(this->_frame.size == 0)
 		// Устанавливаем размер сегментов фрейма
@@ -2148,7 +2127,7 @@ awh::client::Websocket2::Websocket2(const client::core_t * core, const fmk_t * f
  _threads(0), _waitPong(_pingInterval * 2), _respPong(0), _ws1(fmk, log),
  _http(fmk, log), _hash(log), _frame(fmk, log), _callback(log),
  _cipher(hash_t::cipher_t::AES128), _proto(engine_t::proto_t::HTTP1_1),
- _compressor(awh::http_t::compressor_t::NONE) {
+ _compressor(awh::http_t::compressor_t::NONE), _fragments(fmk, log) {
 	// Если размер фрейма не установлен
 	if(this->_frame.size == 0)
 		// Устанавливаем размер сегментов фрейма

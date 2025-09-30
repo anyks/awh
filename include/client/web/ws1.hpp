@@ -56,7 +56,7 @@ namespace awh {
 		 * @brief Класс Websocket-клиента
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Websocket1 : public web_t {
+		typedef class AWH_SHARED_EXPORT Websocket1 : public web_t {
 			private:
 				/**
 				 * @brief Устанавливаем дружбу с классом HTTP/1.1 клиента
@@ -171,7 +171,7 @@ namespace awh {
 				http_t::compressor_t _compressor;
 			private:
 				// Данные фрагметрированного сообщения
-				vector <char> _fragments;
+				awh::buffer_t _fragments;
 				// Полученные HTTP заголовки
 				std::unordered_multimap <string, string> _headers;
 			private:
@@ -306,9 +306,10 @@ namespace awh {
 				 * @brief Метод извлечения полученных данных
 				 *
 				 * @param buffer данные в чистом виде полученные с сервера
+				 * @param size   размер бинарных данных полученных с сервера
 				 * @param text   данные передаются в текстовом виде
 				 */
-				void extraction(const vector <char> & buffer, const bool text) noexcept;
+				void extraction(const char * buffer, const size_t size, const bool text) noexcept;
 			public:
 				/**
 				 * @brief Метод отправки сообщения об ошибке

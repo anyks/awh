@@ -289,11 +289,11 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 		// Если сокет подключения активен
 		if(broker->addr.sock != INVALID_SOCKET){
 			// Если буфер полезной нагрузки уже инициализирован
-			if(broker->buffer.size > 0){
+			if(broker->payload.size > 0){
 				// Выполняем зануление размера буфера данных
-				broker->buffer.size = 0;
+				broker->payload.size = 0;
 				// Выполняем удаление буфера данных
-				broker->buffer.data.reset(nullptr);
+				broker->payload.buffer.reset(nullptr);
 			}
 			// Получаем максимальный размер буфера
 			const int64_t size = broker->ectx.buffer(engine_t::method_t::READ);
@@ -304,9 +304,9 @@ void awh::Node::initBuffer(const uint64_t bid) noexcept {
 				 */
 				try {
 					// Устанавливаем размер буфера данных
-					broker->buffer.size = size;
+					broker->payload.size = size;
 					// Выполняем создание буфера данных
-					broker->buffer.data = std::unique_ptr <char []> (new char [size]);
+					broker->payload.buffer = std::unique_ptr <char []> (new char [size]);
 				/**
 				 * Если возникает ошибка
 				 */
@@ -813,7 +813,7 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 				// Если для потока почередь полезной нагрузки ещё не сформированна
 				else {
 					// Создаём новую очередь полезной нагрузки
-					auto ret = this->_payloads.emplace(bid, std::make_unique <buffer_t> (this->_log));
+					auto ret = this->_payloads.emplace(bid, std::make_unique <buffer_t> (this->_fmk, this->_log));
 					// Выполняем добавление полезной нагрузки
 					ret.first->second->push(buffer, size);
 				}

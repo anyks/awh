@@ -91,7 +91,7 @@ namespace awh {
 	 * @brief Класс хеширования данных
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Hash {
+	typedef class AWH_SHARED_EXPORT Hash {
 		public:
 			/**
 			 * @brief Стрейт шифрования

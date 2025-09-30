@@ -39,7 +39,7 @@ namespace awh {
 		 * @brief Класс для работы с REST сервером
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Http : public awh::http_t {
+		typedef class AWH_SHARED_EXPORT Http : public awh::http_t {
 			private:
 				/**
 				 * @brief Метод проверки текущего статуса

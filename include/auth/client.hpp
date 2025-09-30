@@ -38,7 +38,7 @@ namespace awh {
 		 * @brief Класс работы с авторизацией клиента
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Auth : public auth_t {
+		typedef class AWH_SHARED_EXPORT Auth : public auth_t {
 			public:
 				/**
 				 * @brief Структура данных авторизации

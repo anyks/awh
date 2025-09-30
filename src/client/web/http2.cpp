@@ -830,10 +830,6 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 												j->second->entity.clear();
 												// Выполняем установку метода запроса
 												j->second->method = awh::web_t::method_t::GET;
-												// Если размер выделенной памяти выше максимального размера буфера
-												if(j->second->entity.capacity() > AWH_BUFFER_SIZE)
-													// Выполняем очистку временного буфера данных
-													vector <decltype(j->second->entity)::value_type> ().swap(j->second->entity);
 											}
 										}
 										// Выполняем установку следующего экшена на открытие подключения
@@ -906,10 +902,6 @@ bool awh::client::Http2::redirect(const uint64_t bid, const uint16_t sid) noexce
 											j->second->entity.clear();
 											// Выполняем установку метода запроса
 											j->second->method = awh::web_t::method_t::GET;
-											// Если размер выделенной памяти выше максимального размера буфера
-											if(j->second->entity.capacity() > AWH_BUFFER_SIZE)
-												// Выполняем очистку временного буфера данных
-												vector <decltype(j->second->entity)::value_type> ().swap(j->second->entity);
 										}
 									}
 									// Выполняем установку следующего экшена на открытие подключения
@@ -1138,16 +1130,9 @@ int32_t awh::client::Http2::update(request_t & request) noexcept {
 						// Если тело запроса существует
 						if(!j->second->entity.empty())
 							// Устанавливаем тело запроса
-							request.entity.assign(j->second->entity.begin(), j->second->entity.end());
-						// Если тело запроса не существует
-						else {
-							// Выполняем очистку полученных данных тела запроса
-							request.entity.clear();
-							// Если размер выделенной памяти выше максимального размера буфера
-							if(request.entity.capacity() > AWH_BUFFER_SIZE)
-								// Выполняем очистку временного буфера данных
-								vector <decltype(request.entity)::value_type> ().swap(request.entity);
-						}
+							request.entity = ::move(j->second->entity);
+						// Выполняем очистку полученных данных тела запроса
+						else request.entity.clear();
 					}
 					// Выполняем извлечение полученных данных запроса
 					i->second->http.mapping(http_t::process_t::REQUEST, this->_http);
@@ -1557,7 +1542,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						// Если список запросов уже заполнен
 						if(!this->_http1._requests.empty())
 							// Выполняем замену активного запроса
-							this->_http1._requests.begin()->second = request;
+							(* this->_http1._requests.begin()->second) = request;
 						// Выполняем отправку на сервер запроса
 						result = this->_http1.send(request);
 					}
@@ -1617,7 +1602,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 			if(result > 0){
 				{
 					// Добавляем полученный запрос в список запросов
-					auto ret = this->_requests.emplace(result, std::make_unique <request_t> ());
+					auto ret = this->_requests.emplace(result, std::make_unique <request_t> (this->_fmk, this->_log));
 					// Выполняем установку идентификатора запроса
 					ret.first->second->id = request.id;
 					// Выполняем копирование URL-адреса
@@ -1631,7 +1616,10 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 					// Если тело запроса передано
 					if(!request.entity.empty())
 						// Выполняем копирование тела запроса
-						ret.first->second->entity.assign(request.entity.begin(), request.entity.end());
+						ret.first->second->entity.push(
+							static_cast <const char *> (request.entity),
+							static_cast <size_t> (request.entity)
+						);
 				}{
 					// Выполняем установку объекта воркера
 					auto ret = this->_workers.emplace(result, std::make_unique <worker_t> (this->_fmk, this->_log));

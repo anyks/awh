@@ -48,7 +48,7 @@ namespace awh {
 	 * @brief Класс рабочей ноды сетевого ядра
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Node : public awh::core_t {
+	typedef class AWH_SHARED_EXPORT Node : public awh::core_t {
 		public:
 			/**
 			 * Режим отправки сообщений
@@ -62,7 +62,7 @@ namespace awh {
 			 * @brief Класс SSL-параметров
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT SSL {
+			typedef class AWH_SHARED_EXPORT SSL {
 				public:
 					// Флаг выполнения валидации доменного имени
 					bool verify;

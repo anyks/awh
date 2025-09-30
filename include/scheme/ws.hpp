@@ -52,7 +52,7 @@ namespace awh {
 			 * @brief Структура схемы сети WebSocket сервера
 			 *
 			 */
-			typedef struct AWHSHARED_EXPORT WebSocket : public scheme_t {
+			typedef struct AWH_SHARED_EXPORT WebSocket : public scheme_t {
 				public:
 					/**
 					 * @brief Структура буфера данных
@@ -62,13 +62,15 @@ namespace awh {
 						// Бинарный буфер полезной нагрузки
 						awh::buffer_t payload;
 						// Данные фрагметрированного сообщения
-						vector <char> fragments;
+						awh::buffer_t fragments;
 						/**
 						 * @brief Конструктор
 						 *
+						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Buffer(const log_t * log) noexcept : payload(log) {}
+						Buffer(const fmk_t * fmk, const log_t * log) noexcept :
+						 payload(fmk, log), fragments(fmk, log) {}
 					} buffer_t;
 					/**
 					 * @brief Структура флагов разрешения обменом данных
@@ -150,7 +152,7 @@ namespace awh {
 						 close(false), shake(false),
 						 crypted(false), inflate(false), stopped(false),
 						 sid(1), respPong(0), sendPing(0), hash(log),
-						 frame(fmk, log), buffer(log), http(fmk, log),
+						 frame(fmk, log), buffer(fmk, log), http(fmk, log),
 						 cipher(hash_t::cipher_t::AES128),
 						 proto(engine_t::proto_t::HTTP1_1),
 						 compressor(http_t::compressor_t::NONE) {}

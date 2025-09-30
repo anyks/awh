@@ -33,17 +33,17 @@
  * Если активирован экспорт динамической библиотеки
  */
 #if AWH_SHARED_LIBRARY_EXPORT
-	#define AWHSHARED_EXPORT DECL_EXPORT
+	#define AWH_SHARED_EXPORT DECL_EXPORT
 /**
  * Если активирован импорт динамической библиотеки
  */
 #elif AWH_SHARED_LIBRARY_IMPORT
-	#define AWHSHARED_EXPORT DECL_IMPORT
+	#define AWH_SHARED_EXPORT DECL_IMPORT
 /**
  * Если мы работаем со статической библиотекой
  */
 #else
-	#define AWHSHARED_EXPORT
+	#define AWH_SHARED_EXPORT
 #endif
 
 #endif // __AWH_GLOBAL__

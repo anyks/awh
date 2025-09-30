@@ -38,7 +38,7 @@ namespace awh {
 		 * @brief Класс работы с Websocket-клиентом
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Websocket {
+		typedef class AWH_SHARED_EXPORT Websocket {
 			private:
 				// Объект DNS-резолвера
 				dns_t _dns;

@@ -347,7 +347,7 @@ istream & awh::operator >> (istream & is, ver_t & ver) noexcept {
  * @brief Оператор [<<] вывода в поток версии
  *
  * @param os  поток куда нужно вывести данные
- * @param ver верси для присвоения
+ * @param ver верси извлечения
  */
 ostream & awh::operator << (ostream & os, const ver_t & ver) noexcept {
 	// Записываем в поток версию

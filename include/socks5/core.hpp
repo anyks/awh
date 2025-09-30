@@ -56,7 +56,7 @@ namespace awh {
 	 * @brief Класс работы с socks5 прокси-сервером
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Socks5 {
+	typedef class AWH_SHARED_EXPORT Socks5 {
 		private:
 			// Список ответов сервера
 			std::map <uint8_t, string> _responses;
@@ -138,7 +138,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				ResMethod() noexcept : ver(0x0), method(0x0) {}
+				ResMethod() noexcept : ver(0x00), method(0x00) {}
 			} __attribute__((packed)) res_method_t;
 			/**
 			 * @brief Структура ответа на авторизацию
@@ -151,7 +151,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Auth() noexcept : ver(0x0), status(0x0) {}
+				Auth() noexcept : ver(0x00), status(0x00) {}
 			} __attribute__((packed)) auth_t;
 			/**
 			 * @brief Структура запроса
@@ -166,7 +166,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Req() noexcept : ver(0x0), cmd(0x0), rsv(0x0), atyp(0x0) {}
+				Req() noexcept :
+				 ver(0x00), cmd(0x00),
+				 rsv(0x00), atyp(0x00) {}
 			} __attribute__((packed)) req_t;
 			/**
 			 * @brief Структура ответа
@@ -181,7 +183,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Res() noexcept : ver(0x0), rep(0x0), rsv(0x0), atyp(0x0) {}
+				Res() noexcept :
+				 ver(0x00), rep(0x00),
+				 rsv(0x00), atyp(0x00) {}
 			} __attribute__((packed)) res_t;
 			/**
 			 * @brief Структура ip адреса сервера
@@ -194,7 +198,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				IP() noexcept : host(0x0), port(0x0) {}
+				IP() noexcept : host(0x00), port(0x00) {}
 			} __attribute__((packed)) ip_t;
 		protected:
 			// URL параметры REST запроса

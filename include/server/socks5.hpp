@@ -42,7 +42,7 @@ namespace awh {
 		 * @brief Класс работы с SOCKS5 сервером
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT ProxySocks5 {
+		typedef class AWH_SHARED_EXPORT ProxySocks5 {
 			private:
 				/**
 				 * Брокеры учавствующие в передаче данных

@@ -45,7 +45,7 @@ namespace awh {
 		 * @brief Класс HTTP-сервера
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Http1 : public web_t {
+		typedef class AWH_SHARED_EXPORT Http1 : public web_t {
 			private:
 				/**
 				 * @brief Устанавливаем дружбу с классом HTTP/2 сервера

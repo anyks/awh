@@ -2932,6 +2932,57 @@ template double awh::Framework::atoi <double> (const string &, const uint8_t) co
 	template ssize_t awh::Framework::atoi <ssize_t> (const string &, const uint8_t) const noexcept;
 #endif
 /**
+ * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  буфер числа в бинарном виде для конвертации в 10-ю систему
+ * @param length длина буфера числа в бинарном виде
+ * @param radix  система счисления
+ * @return       полученное значение в десятичной системе счисления
+ */
+T awh::Framework::atoi(const char * value, const size_t length, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	T result;
+	// Если данные являются основными
+	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+		// Буфер результата по умолчанию
+		uint8_t buffer[sizeof(T)];
+		// Заполняем нулями буфер данных
+		::memset(buffer, 0, sizeof(T));
+		// Выполняем установку результата по умолчанию
+		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
+	}
+	// Выполняем извлечение данных
+	this->atoi(value, length, radix, &result, sizeof(result));
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
+ */
+template int8_t awh::Framework::atoi <int8_t> (const char *, const size_t, const uint8_t) const noexcept;
+template uint8_t awh::Framework::atoi <uint8_t> (const char *, const size_t, const uint8_t) const noexcept;
+template int16_t awh::Framework::atoi <int16_t> (const char *, const size_t, const uint8_t) const noexcept;
+template uint16_t awh::Framework::atoi <uint16_t> (const char *, const size_t, const uint8_t) const noexcept;
+template int32_t awh::Framework::atoi <int32_t> (const char *, const size_t, const uint8_t) const noexcept;
+template uint32_t awh::Framework::atoi <uint32_t> (const char *, const size_t, const uint8_t) const noexcept;
+template int64_t awh::Framework::atoi <int64_t> (const char *, const size_t, const uint8_t) const noexcept;
+template uint64_t awh::Framework::atoi <uint64_t> (const char *, const size_t, const uint8_t) const noexcept;
+template float awh::Framework::atoi <float> (const char *, const size_t, const uint8_t) const noexcept;
+template double awh::Framework::atoi <double> (const char *, const size_t, const uint8_t) const noexcept;
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template size_t awh::Framework::atoi <size_t> (const char *, const size_t, const uint8_t) const noexcept;
+	template ssize_t awh::Framework::atoi <ssize_t> (const char *, const size_t, const uint8_t) const noexcept;
+#endif
+/**
  * @brief Метод конвертации строковых чисел в десятичную систему счисления
  *
  * @param value  число в бинарном виде для конвертации в 10-ю систему
@@ -2941,13 +2992,28 @@ template double awh::Framework::atoi <double> (const string &, const uint8_t) co
  */
 void awh::Framework::atoi(const string & value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
 	// Если данные для конвертации переданы
-	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0)){
+	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0))
+		// Выполняем конвертацию строки числа в десятичную систему счисления
+		this->atoi(value.c_str(), value.length(), radix, buffer, size);
+}
+/**
+ * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ *
+ * @param value  число в бинарном виде для конвертации в 10-ю систему
+ * @param length длина буфера числа в бинарном виде
+ * @param radix  система счисления
+ * @param buffer бинарный буфер куда следует положить результат
+ * @param size   размер бинарного буфера куда следует положить результат
+ */
+void awh::Framework::atoi(const char * value, const size_t length, const uint8_t radix, void * buffer, const size_t size) const noexcept {
+	// Если данные для конвертации переданы
+	if((value != nullptr) && (length > 0) && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Выполняем перевод в верхний регистр
-			string number = value;
+			string number(value, length);
 			// Позиция в строке алфавита
 			size_t pos = string::npos;
 			// Устанавливаем числовые обозначения
@@ -3040,13 +3106,13 @@ void awh::Framework::atoi(const string & value, const uint8_t radix, void * buff
 						// Результат с которым будем работать
 						bitset <8> result(0);
 						// Получаем первоначальное значение индексов
-						size_t i = value.size(), j = 0, offset = 0;
+						size_t i = length, j = 0, offset = 0;
 						/**
 						 * Выполняем перебор всей строки
 						 */
 						while(i--){
 							// Если бит положительный
-							if(value.at(i) == '1')
+							if(value[i] == '1')
 								// Устанавливаем бит результата
 								result.set(j);
 							// Если бит отрицательный, снимаем его

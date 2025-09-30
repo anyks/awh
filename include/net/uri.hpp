@@ -63,7 +63,7 @@ namespace awh {
 	 * @brief Класс dns ресолвера
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT URI {
+	typedef class AWH_SHARED_EXPORT URI {
 		public:
 			/**
 			 * Основные флаги приложения
@@ -98,7 +98,7 @@ namespace awh {
 			 * @brief Класс URL-адреса
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT URL {
+			typedef class AWH_SHARED_EXPORT URL {
 				public:
 					// Порт сервера
 					uint32_t port;
@@ -373,7 +373,7 @@ namespace awh {
 	 * @param os  поток куда нужно вывести данные
 	 * @param url параметры URL-запроса
 	 */
-	AWHSHARED_EXPORT ostream & operator << (ostream & os, const uri_t::url_t & url) noexcept;
+	AWH_SHARED_EXPORT ostream & operator << (ostream & os, const uri_t::url_t & url) noexcept;
 };
 
 #endif // __AWH_URI__

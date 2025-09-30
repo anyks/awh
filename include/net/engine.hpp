@@ -85,7 +85,7 @@ namespace awh {
 	 * @brief Класс для работы с двигателем передачи данных
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Engine {
+	typedef class AWH_SHARED_EXPORT Engine {
 		public:
 			/**
 			 * Режим работы
@@ -159,7 +159,7 @@ namespace awh {
 			 * @brief Класс сетевого пространства
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Address {
+			typedef class AWH_SHARED_EXPORT Address {
 				public:
 					/**
 					 * Статус подключения
@@ -382,7 +382,7 @@ namespace awh {
 			 * @brief Класс контекста двигателя
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Context {
+			typedef class AWH_SHARED_EXPORT Context {
 				private:
 					/**
 					 * @brief Устанавливаем дружбу с родительским объектом двигателя

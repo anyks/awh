@@ -76,7 +76,7 @@ namespace awh {
 	 * @brief Класс фреймворка
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Framework {
+	typedef class AWH_SHARED_EXPORT Framework {
 		public:
 			/**
 			 * Типы кодировок адресов файлов и каталогов
@@ -547,6 +547,21 @@ namespace awh {
 			 */
 			T atoi(const string & value, const uint8_t radix) const noexcept;
 			/**
+			 * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
+			 *
+			 * @tparam T тип данных с которым работает функция
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод конвертации строковых чисел в десятичную систему счисления
+			 *
+			 * @param value  буфер числа в бинарном виде для конвертации в 10-ю систему
+			 * @param length длина буфера числа в бинарном виде
+			 * @param radix  система счисления
+			 * @return       полученное значение в десятичной системе счисления
+			 */
+			T atoi(const char * value, const size_t length, const uint8_t radix) const noexcept;
+			/**
 			 * @brief Метод конвертации строковых чисел в десятичную систему счисления
 			 *
 			 * @param value  число в бинарном виде для конвертации в 10-ю систему
@@ -555,6 +570,16 @@ namespace awh {
 			 * @param size   размер бинарного буфера куда следует положить результат
 			 */
 			void atoi(const string & value, const uint8_t radix, void * buffer, const size_t size) const noexcept;
+			/**
+			 * @brief Метод конвертации строковых чисел в десятичную систему счисления
+			 *
+			 * @param value  число в бинарном виде для конвертации в 10-ю систему
+			 * @param length длина буфера числа в бинарном виде
+			 * @param radix  система счисления
+			 * @param buffer бинарный буфер куда следует положить результат
+			 * @param size   размер бинарного буфера куда следует положить результат
+			 */
+			void atoi(const char * value, const size_t length, const uint8_t radix, void * buffer, const size_t size) const noexcept;
 		public:
 			/**
 			 * @brief Метод перевода числа в безэкспоненциальную форму

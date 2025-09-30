@@ -82,7 +82,7 @@ namespace awh {
 	 * @brief Класс работы с дознователем
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Investigator {
+	typedef class AWH_SHARED_EXPORT Investigator {
 		public:
 			/**
 			 * @brief Метод проведения дознания

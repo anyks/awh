@@ -81,7 +81,7 @@ namespace awh {
 	 * @brief Класс пинга
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Ping {
+	typedef class AWH_SHARED_EXPORT Ping {
 		private:
 			/**
 			 * Статус работы NTP-резолвера

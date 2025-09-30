@@ -504,11 +504,9 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 					// Если запрашивается клиентом метод OPTIONS
 					case static_cast <uint8_t> (awh::web_t::method_t::OPTIONS): {
 						// Создаём объект запроса
-						client::web_t::request_t request;
+						client::web_t::request_t request(this->_fmk, this->_log);
 						// Выполняем установку активного агента клиента
 						request.agent = i->second->agent;
-						// Устанавливаем тепло запроса
-						request.entity = i->second->request.entity;
 						// Запоминаем переданные заголовки
 						request.headers = i->second->request.headers;
 						// Устанавливаем адрес запроса
@@ -517,6 +515,10 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 						request.method = i->second->request.params.method;
 						// Выполняем генерацию идентификатора запроса
 						request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
+						// Если тело запроса передано
+						if(!i->second->request.entity.empty())
+							// Устанавливаем тепло запроса
+							request.entity = i->second->request.entity;
 						// Выполняем установку метода подключения
 						i->second->method = i->second->request.params.method;
 						// Выполняем установку потока в список потоков
@@ -533,11 +535,9 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 							// Если активирован Websocket клиент
 							if(i->second->agent == client::web_t::agent_t::WEBSOCKET){
 								// Создаём объект запроса
-								client::web_t::request_t request;
+								client::web_t::request_t request(this->_fmk, this->_log);
 								// Выполняем установку активного агента клиента
 								request.agent = i->second->agent;
-								// Устанавливаем тепло запроса
-								request.entity = i->second->request.entity;
 								// Запоминаем переданные заголовки
 								request.headers = i->second->request.headers;
 								// Устанавливаем адрес запроса
@@ -546,6 +546,10 @@ void awh::server::Proxy::activeClient(const uint64_t bid, const client::web_t::m
 								request.method = i->second->request.params.method;
 								// Выполняем генерацию идентификатора запроса
 								request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
+								// Если тело запроса передано
+								if(!i->second->request.entity.empty())
+									// Устанавливаем тепло запроса
+									request.entity = i->second->request.entity;
 								// Выполняем установку потока в список потоков
 								i->second->streams.emplace(request.id, i->second->sid);
 								// Выполняем запрос на сервер
@@ -614,20 +618,13 @@ void awh::server::Proxy::entityServer(const int32_t sid, const uint64_t bid, con
 		// Если тело запроса с сервера получено
 		if(!entity.empty()){
 			// Устанавливаем полученные данные тела запроса
-			i->second->request.entity.assign(entity.begin(), entity.end());
+			i->second->request.entity = entity;
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("entityServer"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, vector <char> *)> ("entityServer", sid, bid, method, url, &i->second->request.entity);
-		// Если тело запроса с сервера не получено
-		} else {
-			// Выполняем очистку тела запроса
-			i->second->request.entity.clear();
-			// Если размер выделенной памяти выше максимального размера буфера
-			if(i->second->request.entity.capacity() > AWH_BUFFER_SIZE)
-				// Выполняем очистку временного буфера данных
-				vector <decltype(i->second->request.entity)::value_type> ().swap(i->second->request.entity);
-		}
+				this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", sid, bid, method, url, entity);
+		// Если тело запроса с сервера не получено, выполняем очистку тела запроса
+		} else i->second->request.entity.clear();
 	}
 }
 /**
@@ -648,20 +645,13 @@ void awh::server::Proxy::entityClient(const int32_t sid, const uint64_t bid, con
 		// Если тело ответа с сервера получено
 		if(!entity.empty()){
 			// Устанавливаем полученные данные тела ответа
-			i->second->response.entity.assign(entity.begin(), entity.end());
+			i->second->response.entity = entity;
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("entityClient"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const int32_t, const uint64_t, const uint64_t, const uint32_t, const string &, vector <char> *)> ("entityClient", sid, bid, rid, code, message, &i->second->response.entity);
-		// Если тело ответа с сервера не получено
-		} else {
-			// Выполняем очистку тела ответа
-			i->second->response.entity.clear();
-			// Если размер выделенной памяти выше максимального размера буфера
-			if(i->second->response.entity.capacity() > AWH_BUFFER_SIZE)
-				// Выполняем очистку временного буфера данных
-				vector <decltype(i->second->response.entity)::value_type> ().swap(i->second->response.entity);
-		}
+				this->_callback.call <void (const int32_t, const uint64_t, const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", sid, bid, rid, code, message, entity);
+		// Если тело ответа с сервера не получено, выполняем очистку тела ответа
+		} else i->second->response.entity.clear();
 		// Снимаем флаг отправки результата
 		i->second->sending = false;
 		// Выполняем поиск идентификатора потока
@@ -1003,11 +993,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 						// Если подключение уже выполнено
 						} else {
 							// Создаём объект запроса
-							client::web_t::request_t request;
+							client::web_t::request_t request(this->_fmk, this->_log);
 							// Выполняем установку активного агента клиента
 							request.agent = i->second->agent;
-							// Устанавливаем тепло запроса
-							request.entity = i->second->request.entity;
 							// Запоминаем переданные заголовки
 							request.headers = i->second->request.headers;
 							// Устанавливаем адрес запроса
@@ -1016,6 +1004,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							request.method = i->second->request.params.method;
 							// Выполняем генерацию идентификатора запроса
 							request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
+							// Если тело запроса передано
+							if(!i->second->request.entity.empty())
+								// Устанавливаем тепло запроса
+								request.entity = i->second->request.entity;
 							// Выполняем установку потока в список потоков
 							i->second->streams.emplace(request.id, i->second->sid);
 							// Выполняем запрос на сервер
@@ -1092,11 +1084,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								// Если подключение уже выполнено
 								} else {
 									// Создаём объект запроса
-									client::web_t::request_t request;
+									client::web_t::request_t request(this->_fmk, this->_log);
 									// Выполняем установку активного агента клиента
 									request.agent = i->second->agent;
-									// Устанавливаем тепло запроса
-									request.entity = i->second->request.entity;
 									// Запоминаем переданные заголовки
 									request.headers = i->second->request.headers;
 									// Устанавливаем адрес запроса
@@ -1105,6 +1095,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									request.method = i->second->request.params.method;
 									// Выполняем генерацию идентификатора запроса
 									request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
+									// Если тело запроса передано
+									if(!i->second->request.entity.empty())
+										// Устанавливаем тепло запроса
+										request.entity = i->second->request.entity;
 									// Выполняем установку потока в список потоков
 									i->second->streams.emplace(request.id, i->second->sid);
 									// Выполняем запрос на сервер
@@ -1117,11 +1111,9 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 								if((i->second->method == awh::web_t::method_t::CONNECT) &&
 								   (i->second->agent == client::web_t::agent_t::WEBSOCKET)){
 									// Создаём объект запроса
-									client::web_t::request_t request;
+									client::web_t::request_t request(this->_fmk, this->_log);
 									// Выполняем установку активного агента клиента
 									request.agent = i->second->agent;
-									// Устанавливаем тепло запроса
-									request.entity = i->second->request.entity;
 									// Запоминаем переданные заголовки
 									request.headers = i->second->request.headers;
 									// Устанавливаем адрес запроса
@@ -1130,6 +1122,10 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 									request.method = i->second->request.params.method;
 									// Выполняем генерацию идентификатора запроса
 									request.id = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS);
+									// Если тело запроса передано
+									if(!i->second->request.entity.empty())
+										// Устанавливаем тепло запроса
+										request.entity = i->second->request.entity;
 									// Выполняем установку потока в список потоков
 									i->second->streams.emplace(request.id, i->second->sid);
 									// Выполняем запрос на сервер

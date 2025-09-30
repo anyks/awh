@@ -917,7 +917,7 @@ ssize_t awh::Http2::send([[maybe_unused]] nghttp2_session * session, const int32
 			// Определяем размер данных который мы можем отправить
 			result = static_cast <ssize_t> (i->second.front().first > size ? size : i->second.front().first);
 			// Выполняем копирование нужного нам количества данных
-			::memcpy(buffer, j->second->get(), result);
+			::memcpy(buffer, j->second->data(), result);
 			// Выполняем удаление из буфера отправленные данные
 			j->second->erase(result);
 			// Уменьшаем размер отправленных данных записи
@@ -1647,7 +1647,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 					// Если буфер полезной нагрузки не существует
 					else {
 						// Выполняем создание буфера полезной нагрузки
-						auto ret = this->_payloads.emplace(id, std::make_unique <buffer_t> (this->_log));
+						auto ret = this->_payloads.emplace(id, std::make_unique <buffer_t> (this->_fmk, this->_log));
 						// Выполняем добавление в буфер данных полезной нагрузки
 						ret.first->second->push(buffer, size);
 					}

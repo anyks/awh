@@ -40,7 +40,7 @@ namespace awh {
 		 * @brief структура прокси-сервера
 		 *
 		 */
-		typedef struct AWHSHARED_EXPORT Proxy {
+		typedef struct AWH_SHARED_EXPORT Proxy {
 			public:
 				/**
 				 * Типы прокси-сервера
@@ -94,7 +94,7 @@ namespace awh {
 		 * @brief Структура схемы сети клиента
 		 *
 		 */
-		typedef struct AWHSHARED_EXPORT Scheme : public awh::scheme_t {
+		typedef struct AWH_SHARED_EXPORT Scheme : public awh::scheme_t {
 			private:
 				/**
 				 * @brief Core Устанавливаем дружбу с клиентским классом ядра

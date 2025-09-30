@@ -33,6 +33,7 @@
 #include "../net/net.hpp"
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
+#include "../sys/buffer.hpp"
 #include "../sys/callback.hpp"
 
 /**
@@ -48,7 +49,7 @@ namespace awh {
 	 * @brief Класс для работы с парсером HTTP
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Web {
+	typedef class AWH_SHARED_EXPORT Web {
 		public:
 			/**
 			 * Тип используемого HTTP-модуля
@@ -119,7 +120,7 @@ namespace awh {
 			 * @brief Класс HTTP-запроса клиента
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Request : public provider_t {
+			typedef class AWH_SHARED_EXPORT Request : public provider_t {
 				public:
 					// Метод запроса клиента
 					method_t method;
@@ -225,7 +226,7 @@ namespace awh {
 			 * @brief Класс HTTP-ответа сервера
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Response : public provider_t {
+			typedef class AWH_SHARED_EXPORT Response : public provider_t {
 				public:
 					// Код ответа сервера
 					uint32_t code;
@@ -343,14 +344,16 @@ namespace awh {
 			 * @brief Структура собираемого чанка
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT Chunk {
+			typedef class AWH_SHARED_EXPORT Chunk {
 				public:
 					// Размер чанка
 					size_t size;
 					// Стейт чанка
 					process_t state;
 					// Данные чанка
-					vector <char> data;
+					buffer_t buffer;
+					// Промежуточный временный буфер
+					vector <char> intermediate;
 				public:
 					/**
 					 * @brief Метод очистки данных чанка
@@ -361,8 +364,15 @@ namespace awh {
 					/**
 					 * @brief Конструктор
 					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
 					 */
-					Chunk() noexcept : size(0), state(process_t::SIZE) {}
+					Chunk(const fmk_t * fmk, const log_t * log) noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~Chunk() noexcept;
 			} chunk_t;
 		private:
 			// Идентификатор объекта
@@ -393,11 +403,11 @@ namespace awh {
 			// Стейт текущего запроса
 			state_t _state;
 		private:
+			// Полученное тело HTTP-запроса
+			buffer_t _body;
+		private:
 			// Протокол на который запрошено переключение
 			string _upgrade;
-		private:
-			// Полученное тело HTTP-запроса
-			vector <char> _body;
 		private:
 			// Загруженные трейлеры
 			std::unordered_set <string> _trailers;
@@ -442,13 +452,20 @@ namespace awh {
 			 *
 			 * @return бинарный дамп данных
 			 */
-			vector <char> dump() const noexcept;
+			buffer_t dump() const noexcept;
 			/**
 			 * @brief Метод установки бинарного дампа
 			 *
 			 * @param data бинарный дамп данных
 			 */
-			void dump(const vector <char> & data) noexcept;
+			void dump(const buffer_t & data) noexcept;
+			/**
+			 * @brief Метод установки бинарного дампа
+			 *
+			 * @param buffer буфер бинарных данных
+			 * @param size   размер бинарных данных
+			 */
+			void dump(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод выполнения парсинга HTTP буфера данных
@@ -545,7 +562,7 @@ namespace awh {
 			 *
 			 * @return буфер данных тела запроса
 			 */
-			const vector <char> & body() const noexcept;
+			const buffer_t & body() const noexcept;
 			/**
 			 * @brief Метод добавления данных тела
 			 *

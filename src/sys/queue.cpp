@@ -61,7 +61,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
 							this->_buffer.resize(this->_buffer.size() + (bytes - available), 0);
 					}
 				// Если мы не выходим за лимиты, выделяем ещё памяти
-				} else if((result = ((this->_buffer.capacity() + bytes) <= this->_max.memory)))
+				} else if((result = ((this->_buffer.size() + bytes) <= this->_max.memory)))
 					// Выделяем ещё памяти
 					this->_buffer.resize(this->_buffer.size() + bytes, 0);
 			// Если буфер данных пустой
@@ -77,7 +77,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"You are trying to map %s of data into a %s data buffer, which is impossible",
-						__PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL,
+						__PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL,
 						this->_fmk->bytes(static_cast <double> (bytes)).c_str(),
 						this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str()
 					);
@@ -102,7 +102,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -402,7 +402,7 @@ bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
@@ -481,7 +481,7 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -564,7 +564,7 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -602,7 +602,7 @@ void awh::Queue::setMaxMemory(const size_t size) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -638,7 +638,7 @@ void awh::Queue::setMaxRecords(const size_t count) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(count), log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
@@ -755,7 +755,7 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 		std::unique_lock lock1(this->_mtx);
 		// Выполняем блокировку потока сторонней очереди
 		std::unique_lock lock2(queue._mtx);
-		// Выполняем перемен буферами данных
+		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(queue._buffer);
 		// Выполняем копирование последнего итератора
 		this->_iter.end = queue._iter.end;
@@ -817,8 +817,6 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 		this->_cv.write.notify_all();
 		// Выполняем блокировку потока текущей очереди
 		std::unique_lock lock(this->_mtx);
-		// Выполняем перемен буферами данных
-		this->_buffer = queue._buffer;
 		// Выполняем копирование последнего итератора
 		this->_iter.end = queue._iter.end;
 		// Выполняем копирование начального итератора
@@ -829,6 +827,8 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
 		this->_max.records = queue._max.records;
+		// Выполняем копирование буфера данных
+		this->_buffer.assign(queue._buffer.begin(), queue._buffer.end());
 		// Деактивируем флаг завершения работы текущей очереди
 		this->_terminate = false;
 	/**
@@ -870,8 +870,6 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
 			(this->_iter.end == queue._iter.end) &&
 			(this->_iter.begin == queue._iter.begin) &&
 			(this->_iter.count == queue._iter.count) &&
-			(this->_max.memory == queue._max.memory) &&
-			(this->_max.records == queue._max.records) &&
 			(this->_buffer.size() == queue._buffer.size()) &&
 			(::memcmp(this->_buffer.data(), queue._buffer.data(), this->_buffer.size()) == 0)
 		);

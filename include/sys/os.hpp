@@ -125,7 +125,7 @@ namespace awh {
 	 * @brief Класс работы с операционной системой
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT OS {
+	typedef class AWH_SHARED_EXPORT OS {
 		public:
 			/**
 			 * Режимы извлечения потребления памяти

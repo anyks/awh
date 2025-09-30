@@ -39,7 +39,7 @@ namespace awh {
 		 * @brief Структура схемы сети сервера
 		 *
 		 */
-		typedef struct AWHSHARED_EXPORT Scheme : public awh::scheme_t {
+		typedef struct AWH_SHARED_EXPORT Scheme : public awh::scheme_t {
 			private:
 				/**
 				 * @brief Core Устанавливаем дружбу с серверным классом ядра

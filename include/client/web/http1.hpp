@@ -44,7 +44,7 @@ namespace awh {
 		 * @brief Класс HTTP-клиента
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Http1 : public web_t {
+		typedef class AWH_SHARED_EXPORT Http1 : public web_t {
 			private:
 				/**
 				 * @brief Устанавливаем дружбу с классом HTTP/2 клиента
@@ -72,7 +72,7 @@ namespace awh {
 				callback_t _callback;
 			private:
 				// Список активых запросов
-				std::map <int32_t, request_t> _requests;
+				std::map <int32_t, std::unique_ptr <request_t>> _requests;
 			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к серверу

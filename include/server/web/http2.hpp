@@ -41,7 +41,7 @@ namespace awh {
 		 * @brief Класс HTTP-сервера
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Http2 : public web2_t {
+		typedef class AWH_SHARED_EXPORT Http2 : public web2_t {
 			private:
 				// Флаг разрешения использования протокол Websocket
 				bool _webSocket;

@@ -40,7 +40,7 @@ namespace awh {
 		 * @brief Класс работы с SAMPLE сервером
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Sample {
+		typedef class AWH_SHARED_EXPORT Sample {
 			public:
 				/**
 				 * Режим работы брокера

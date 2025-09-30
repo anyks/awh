@@ -49,7 +49,7 @@ namespace awh {
 		 * @brief Структура сообщений удалённой стороны
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Message {
+		typedef class AWH_SHARED_EXPORT Message {
 			public:
 				// Код сообщения
 				uint16_t code;
@@ -122,7 +122,7 @@ namespace awh {
 		 * @brief Класс для работы с фреймом WebSocket
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Frame {
+		typedef class AWH_SHARED_EXPORT Frame {
 			private:
 				/**
 				 * Устанавливаем максимальную версию фрейма

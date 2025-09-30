@@ -41,7 +41,7 @@ namespace awh {
 	 * @brief Класс для работы с часами
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Watch {
+	typedef class AWH_SHARED_EXPORT Watch {
 		private:
 			/**
 			 * @brief структура участника обмена данными

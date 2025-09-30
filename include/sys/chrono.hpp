@@ -49,7 +49,7 @@ namespace awh {
 	 * @brief Структура модуля Chrono
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Chrono {
+	typedef class AWH_SHARED_EXPORT Chrono {
 		private:
 			/**
 			 * Формат парсинга даты

@@ -50,7 +50,7 @@ namespace awh {
 			 * @brief Структура схемы сети SAMPLE сервера
 			 *
 			 */
-			typedef struct AWHSHARED_EXPORT Sample : public scheme_t {
+			typedef struct AWH_SHARED_EXPORT Sample : public scheme_t {
 				public:
 					/**
 					 * @brief Структура флагов разрешения обменом данных

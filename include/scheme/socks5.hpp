@@ -51,7 +51,7 @@ namespace awh {
 			 * @brief Структура схемы сети Socks5 сервера
 			 *
 			 */
-			typedef struct AWHSHARED_EXPORT Socks5 : public scheme_t {
+			typedef struct AWH_SHARED_EXPORT Socks5 : public scheme_t {
 				public:
 					/**
 					 * @brief Структура локера

@@ -41,7 +41,7 @@ namespace awh {
 	 * @brief Структура списка параметров URL
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT NWT {
+	typedef class AWH_SHARED_EXPORT NWT {
 		public:
 			// Типы URL-адреса
 			enum class types_t : uint8_t {
@@ -59,7 +59,7 @@ namespace awh {
 			 * @brief Класс URL-адреса
 			 *
 			 */
-			typedef class AWHSHARED_EXPORT URL {
+			typedef class AWH_SHARED_EXPORT URL {
 				public:
 					types_t type;  // Тип URL-адреса
 					uint32_t port; // Порт URL-адреса

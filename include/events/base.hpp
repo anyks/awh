@@ -78,7 +78,7 @@ namespace awh {
 	 * @brief Класс базы событий
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Base {
+	typedef class AWH_SHARED_EXPORT Base {
 		private:
 			/**
 			 * @brief Устанавливаем дружбу с модулем события

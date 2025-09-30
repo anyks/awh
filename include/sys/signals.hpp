@@ -52,7 +52,7 @@ namespace awh {
 	 * @brief Класс работы с сигналами
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Signals {
+	typedef class AWH_SHARED_EXPORT Signals {
 		private:
 			/**
 			 * Для операционной системы не являющейся MS Windows

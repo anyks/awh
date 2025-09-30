@@ -254,7 +254,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 					// Если данные не получены
 					if(!this->_scheme.proxy.socks5.is(socks5_t::state_t::END)){
 						// Выполняем парсинг входящих данных
-						this->_scheme.proxy.socks5.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
+						this->_scheme.proxy.socks5.parse(static_cast <const char *> (this->_buffer), static_cast <size_t> (this->_buffer));
 						// Получаем данные запроса
 						const auto & buffer = this->_scheme.proxy.socks5.get();
 						// Если данные получены
@@ -314,7 +314,7 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 					 */
 					while(this->_reading){
 						// Выполняем парсинг полученных данных
-						const size_t bytes = this->_scheme.proxy.http.parse(reinterpret_cast <const char *> (this->_buffer.get()), this->_buffer.size());
+						const size_t bytes = this->_scheme.proxy.http.parse(static_cast <const char *> (this->_buffer), static_cast <size_t> (this->_buffer));
 						// Если все данные получены
 						if((bytes > 0) && this->_scheme.proxy.http.is(http_t::state_t::END)){
 							// Выполняем очистку буфера данных
@@ -761,7 +761,7 @@ void awh::client::Sample::authTypeProxy(const auth_t::type_t type, const auth_t:
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _bid(0), _reading(false), _complete(true), _attempt(0), _attempts(15), _net(log),
- _uri(fmk, log), _scheme(fmk, log), _buffer(log), _callback(log), _fmk(fmk), _log(log), _core(core) {
+ _uri(fmk, log), _scheme(fmk, log), _buffer(fmk, log), _callback(log), _fmk(fmk), _log(log), _core(core) {
 	// Если объект сетевого ядра установлен
 	if(this->_core != nullptr){
 		// Устанавливаем функцию обработки вызова для получения чанков для HTTP-клиента

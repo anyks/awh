@@ -33,7 +33,7 @@ namespace awh {
 	 * @brief Класс таймера ядра биндинга
 	 *
 	 */
-	typedef class AWHSHARED_EXPORT Timer : public awh::core_t {
+	typedef class AWH_SHARED_EXPORT Timer : public awh::core_t {
 		private:
 			/**
 			 * @brief Класс брокера

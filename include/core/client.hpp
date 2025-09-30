@@ -40,7 +40,7 @@ namespace awh {
 		 * @brief Класс клиентского сетевого ядра
 		 *
 		 */
-		typedef class AWHSHARED_EXPORT Core : public awh::node_t {
+		typedef class AWH_SHARED_EXPORT Core : public awh::node_t {
 			public:
 				/**
 				 * Правила передачи данных

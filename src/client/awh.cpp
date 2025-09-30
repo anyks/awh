@@ -27,6 +27,27 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * @brief Структура ответа сервера
+ *
+ */
+typedef struct Response {
+	int32_t sid;                                        // Идентификатор потока
+	uint64_t rid;                                       // Идентификатор запроса
+	uint32_t code;                                      // Код ответа сервера
+	string message;                                     // Сообщение ответа сервера
+	vector <char> & entity;                             // Тело ответа
+	std::unordered_multimap <string, string> & headers; // Заголовки ответа
+	/**
+	 * @brief Конструктор
+	 *
+	 * @param headers заголовки ответа
+	 * @param entity  тело ответа
+	 */
+	Response(std::unordered_multimap <string, string> & headers, vector <char> & entity) noexcept :
+	 sid(-1), rid(0), code(0), message{""}, entity(entity), headers(headers) {}
+} response_t;
+
+/**
  * @brief Метод извлечения поддерживаемого протокола подключения
  *
  * @return поддерживаемый протокол подключения (HTTP1_1, HTTP2)
@@ -827,7 +848,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 		 */
 		try {
 			// Создаём объект запроса
-			web_t::request_t request;
+			web_t::request_t request(this->_fmk, this->_log);
 			// Устанавливаем адрес запроса
 			request.url = url;
 			// Устанавливаем метод запроса
@@ -837,7 +858,7 @@ void awh::client::AWH::REQUEST(const awh::web_t::method_t method, const uri_t::u
 			// Если тело запроса передано
 			if((entity != nullptr) && (size > 0))
 				// Устанавливаем тепло запроса
-				request.entity.assign(entity, entity + size);
+				request.entity.push(entity, size);
 			// Создаём объект ответа сервера
 			response_t response(headers, result);
 			/**

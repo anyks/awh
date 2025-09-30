@@ -69,7 +69,8 @@ class WebClient {
 				// Создаём объект URI
 				uri_t uri(this->_fmk, this->_log);
 				// Создаём объект запроса
-				client::web_t::request_t req1, req2;
+				client::web_t::request_t req1(this->_fmk, this->_log),
+				                         req2(this->_fmk, this->_log);
 				// Устанавливаем метод запроса
 				req1.method = web_t::method_t::GET;
 				// Устанавливаем метод запроса
@@ -79,9 +80,9 @@ class WebClient {
 				// Устанавливаем параметры запроса
 				req2.url = uri.parse("/api/v3/exchangeInfo?symbol=BTCUSDT");
 				// Выполняем первый запрос на сервер
-				awh->send(std::move(req1));
+				awh->send(req1);
 				// Выполняем второй запрос на сервер
-				awh->send(std::move(req2));
+				awh->send(req2);
 			}
 		}
 		/**
