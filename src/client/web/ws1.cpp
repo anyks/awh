@@ -137,7 +137,9 @@ void awh::client::Websocket1::disconnectEvent(const uint64_t bid, const uint16_t
 		// Выполняем очистку оставшихся данных
 		this->_buffer.clear();
 		// Выполняем очистку оставшихся фрагментов
-		this->_fragments.clear();
+		this->_inter.fragments.clear();
+		// Выполняем очистку буфера извлечений данных
+		this->_inter.extraction.clear();
 	// Если подключение не является постоянным
 	} else {
 		// Выполняем сброс параметров запроса
@@ -468,7 +470,9 @@ void awh::client::Websocket1::flush() noexcept {
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
 	// Выполняем очистку оставшихся фрагментов
-	this->_fragments.clear();
+	this->_inter.fragments.clear();
+	// Выполняем очистку буфера извлечений данных
+	this->_inter.extraction.clear();
 }
 /**
  * @brief Метод таймера выполнения пинга удалённого сервера
@@ -654,7 +658,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Выполняем сброс количества попыток
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
-					this->_fragments.clear();
+					this->_inter.fragments.clear();
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
@@ -826,9 +830,9 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 							// Выполняем реконнект
 							return status_t::STOP;
 						// Если список фрагментированных сообщений существует
-						} else if(!this->_fragments.empty()) {
+						} else if(!this->_inter.fragments.empty()) {
 							// Очищаем список фрагментированных сообщений
-							this->_fragments.clear();
+							this->_inter.fragments.clear();
 							// Создаём сообщение
 							this->_mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
@@ -842,7 +846,7 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 						// Если сообщение является не последнем
 						} else if(!head.fin)
 							// Заполняем фрагментированное сообщение
-							this->_fragments.push(payload.data(), payload.size());
+							this->_inter.fragments.push(payload.data(), payload.size());
 						// Если сообщение является последним
 						else {
 							// Если тредпул активирован
@@ -856,9 +860,9 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Если ответом является CONTINUATION
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
 						// Если фрагменты сообщения уже собраны
-						if(!this->_fragments.empty()){
+						if(!this->_inter.fragments.empty()){
 							// Заполняем фрагментированное сообщение
-							if(!this->_fragments.push(payload.data(), payload.size())){
+							if(!this->_inter.fragments.push(payload.data(), payload.size())){
 								// Создаём сообщение
 								this->_mess = ws::mess_t(1007, "Fragmented payload data is too large for system limitations to support");
 								// Выводим сообщение
@@ -870,11 +874,11 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 								// Если тредпул активирован
 								if(this->_thr.initialized())
 									// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-									this->_thr.push(std::bind(&ws1_t::extraction, this, static_cast <const char *> (this->_fragments), static_cast <size_t> (this->_fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+									this->_thr.push(std::bind(&ws1_t::extraction, this, static_cast <const char *> (this->_inter.fragments), static_cast <size_t> (this->_inter.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
 								// Если тредпул не активирован, выполняем извлечение полученных сообщений
-								else this->extraction(static_cast <const char *> (this->_fragments), static_cast <size_t> (this->_fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+								else this->extraction(static_cast <const char *> (this->_inter.fragments), static_cast <size_t> (this->_inter.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 								// Очищаем список фрагментированных сообщений
-								this->_fragments.clear();
+								this->_inter.fragments.clear();
 							}
 						// Если фрагментированные сообщения не существуют
 						} else {
@@ -955,7 +959,9 @@ void awh::client::Websocket1::error(const ws::mess_t & message) const noexcept {
 	// Очищаем список буффер бинарных данных
 	const_cast <ws1_t *> (this)->_buffer.clear();
 	// Очищаем список фрагментированных сообщений
-	const_cast <ws1_t *> (this)->_fragments.clear();
+	const_cast <ws1_t *> (this)->_inter.fragments.clear();
+	// Выполняем очистку буфера извлечений данных
+	const_cast <ws1_t *> (this)->_inter.extraction.clear();
 	// Если код ошибки указан
 	if(message.code > 0){
 		// Если сообщение об ошибке пришло
@@ -987,14 +993,14 @@ void awh::client::Websocket1::error(const ws::mess_t & message) const noexcept {
 void awh::client::Websocket1::extraction(const char * buffer, const size_t size, const bool text) noexcept {
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0) && !this->_freeze && web_t::_callback.is("messageWebsocket")){
-		// Декомпрессионные данные
-		buffer_t result(this->_fmk, this->_log);
+		// Выполняем очистку буфера извлечений данных
+		this->_inter.extraction.clear();
 		// Если нужно производить дешифрование
 		if(this->_crypted)
 			// Выполняем дешифрование полезной нагрузки
-			result = this->_hash.decode <vector <char>> (buffer, size, this->_cipher);
+			this->_inter.extraction = this->_hash.decode <vector <char>> (buffer, size, this->_cipher);
 		// Устанавливаем буфер результата как есть
-		else result.push(buffer, size);
+		else this->_inter.extraction.push(buffer, size);
 		// Если данные пришли в сжатом виде
 		if(this->_inflate && (this->_compressor != http_t::compressor_t::NONE)){
 			/**
@@ -1004,50 +1010,74 @@ void awh::client::Websocket1::extraction(const char * buffer, const size_t size,
 				// Если метод компрессии выбран LZ4
 				case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::LZ4);
+					this->_inter.extraction = this->_hash.decompress <vector <char>> (
+						static_cast <const char *> (this->_inter.extraction),
+						static_cast <size_t> (this->_inter.extraction),
+						hash_t::method_t::LZ4
+					);
 				break;
 				// Если метод компрессии выбран Zstandard
 				case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::ZSTD);
+					this->_inter.extraction = this->_hash.decompress <vector <char>> (
+						static_cast <const char *> (this->_inter.extraction),
+						static_cast <size_t> (this->_inter.extraction),
+						hash_t::method_t::ZSTD
+					);
 				break;
 				// Если метод компрессии выбран LZma
 				case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::LZMA);
+					this->_inter.extraction = this->_hash.decompress <vector <char>> (
+						static_cast <const char *> (this->_inter.extraction),
+						static_cast <size_t> (this->_inter.extraction),
+						hash_t::method_t::LZMA
+					);
 				break;
 				// Если метод компрессии выбран Brotli
 				case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::BROTLI);
+					this->_inter.extraction = this->_hash.decompress <vector <char>> (
+						static_cast <const char *> (this->_inter.extraction),
+						static_cast <size_t> (this->_inter.extraction),
+						hash_t::method_t::BROTLI
+					);
 				break;
 				// Если метод компрессии выбран BZip2
 				case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::BZIP2);
+					this->_inter.extraction = this->_hash.decompress <vector <char>> (
+						static_cast <const char *> (this->_inter.extraction),
+						static_cast <size_t> (this->_inter.extraction),
+						hash_t::method_t::BZIP2
+					);
 				break;
 				// Если метод компрессии выбран GZip
 				case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::GZIP);
+					this->_inter.extraction = this->_hash.decompress <vector <char>> (
+						static_cast <const char *> (this->_inter.extraction),
+						static_cast <size_t> (this->_inter.extraction),
+						hash_t::method_t::GZIP
+					);
 				break;
 				// Если метод компрессии выбран Deflate
 				case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
 					// Получаем буфер данных
-					vector <char> buffer = result;
+					const vector <char> & buffer = this->_inter.extraction;
 					// Устанавливаем размер скользящего окна
 					this->_hash.wbit(this->_server.wbit);
 					// Добавляем хвост в полученные данные
-					this->_hash.setTail(buffer);
+					this->_hash.setTail(const_cast <vector <char> &> (buffer));
 					// Выполняем декомпрессию полученных данных
-					result = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
+					this->_inter.extraction = this->_hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
 				} break;
 			}
 		}
 		// Если данные получены
-		if(!result.empty())
+		if(!this->_inter.extraction.empty())
 			// Отправляем полученный результат
-			web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", result, text);
+			web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", this->_inter.extraction, text);
 		// Выводим сообщение об ошибке
 		else {
 			// Иначе выводим сообщение так - как оно пришло
@@ -1665,8 +1695,9 @@ void awh::client::Websocket1::encryption(const string & pass, const string & sal
 awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexcept :
  web_t(fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _waitPong(_pingInterval * 2), _respPong(0), _http(fmk, log), _hash(log), _frame(fmk, log), _callback(log),
- _cipher(hash_t::cipher_t::AES128), _compressor(awh::http_t::compressor_t::NONE), _fragments(fmk, log) {
+ _waitPong(_pingInterval * 2), _respPong(0), _http(fmk, log),
+ _hash(log), _frame(fmk, log), _inter(fmk, log), _callback(log),
+ _cipher(hash_t::cipher_t::AES128), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.on <void (const uint64_t, const string &, const string &)> ("header", &ws1_t::header, this, _1, _2, _3);
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос
@@ -1688,8 +1719,9 @@ awh::client::Websocket1::Websocket1(const fmk_t * fmk, const log_t * log) noexce
 awh::client::Websocket1::Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  web_t(core, fmk, log), _sid(-1), _rid(0), _verb(true), _close(false),
  _shake(false), _freeze(false), _crypted(false), _inflate(false),
- _waitPong(_pingInterval * 2), _respPong(0), _http(fmk, log), _hash(log), _frame(fmk, log), _callback(log),
- _cipher(hash_t::cipher_t::AES128), _compressor(awh::http_t::compressor_t::NONE), _fragments(fmk, log) {
+ _waitPong(_pingInterval * 2), _respPong(0), _http(fmk, log),
+ _hash(log), _frame(fmk, log), _inter(fmk, log), _callback(log),
+ _cipher(hash_t::cipher_t::AES128), _compressor(awh::http_t::compressor_t::NONE) {
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
 	this->_http.on <void (const uint64_t, const string &, const string &)> ("header", &ws1_t::header, this, _1, _2, _3);
 	// Устанавливаем функцию обработки вызова для вывода ответа сервера на ранее выполненный запрос

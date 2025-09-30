@@ -696,6 +696,8 @@ void awh::server::Websocket1::error(const uint64_t bid, const ws::mess_t & messa
 		options->buffer.payload.clear();
 		// Очищаем список фрагментированных сообщений
 		options->buffer.fragments.clear();
+		// Выполняем очистку буфера извлечений данных
+		options->buffer.extraction.clear();
 	}
 	// Если идентификатор брокера передан и код ошибки указан
 	if((bid > 0) && (message.code > 0)){
@@ -735,14 +737,14 @@ void awh::server::Websocket1::extraction(const uint64_t bid, const char * buffer
 		if(options != nullptr){
 			// Выполняем блокировку потока
 			const lock_guard <std::recursive_mutex> lock(options->mtx);
-			// Декомпрессионные данные
-			buffer_t result(this->_fmk, this->_log);
+			// Выполняем очистку буфера извлечений данных
+			options->buffer.extraction.clear();
 			// Если нужно производить дешифрование
 			if(options->crypted)
 				// Выполняем дешифрование полезной нагрузки
-				result = options->hash.decode <vector <char>> (buffer, size, options->cipher);
+				options->buffer.extraction = options->hash.decode <vector <char>> (buffer, size, options->cipher);
 			// Устанавливаем буфер результата как есть
-			else result.push(buffer, size);
+			else options->buffer.extraction.push(buffer, size);
 			// Если данные пришли в сжатом виде
 			if(options->inflate && (options->compressor != http_t::compressor_t::NONE)){
 				/**
@@ -752,62 +754,86 @@ void awh::server::Websocket1::extraction(const uint64_t bid, const char * buffer
 					// Если метод компрессии выбран LZ4
 					case static_cast <uint8_t> (http_t::compressor_t::LZ4):
 						// Выполняем декомпрессию полученных данных
-						result = options->hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::LZ4);
+						options->buffer.extraction = options->hash.decompress <vector <char>> (
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction),
+							hash_t::method_t::LZ4
+						);
 					break;
 					// Если метод компрессии выбран Zstandard
 					case static_cast <uint8_t> (http_t::compressor_t::ZSTD):
 						// Выполняем декомпрессию полученных данных
-						result = options->hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::ZSTD);
+						options->buffer.extraction = options->hash.decompress <vector <char>> (
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction),
+							hash_t::method_t::ZSTD
+						);
 					break;
 					// Если метод компрессии выбран LZma
 					case static_cast <uint8_t> (http_t::compressor_t::LZMA):
 						// Выполняем декомпрессию полученных данных
-						result = options->hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::LZMA);
+						options->buffer.extraction = options->hash.decompress <vector <char>> (
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction),
+							hash_t::method_t::LZMA
+						);
 					break;
 					// Если метод компрессии выбран Brotli
 					case static_cast <uint8_t> (http_t::compressor_t::BROTLI):
 						// Выполняем декомпрессию полученных данных
-						result = options->hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::BROTLI);
+						options->buffer.extraction = options->hash.decompress <vector <char>> (
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction),
+							hash_t::method_t::BROTLI
+						);
 					break;
 					// Если метод компрессии выбран BZip2
 					case static_cast <uint8_t> (http_t::compressor_t::BZIP2):
 						// Выполняем декомпрессию полученных данных
-						result = options->hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::BZIP2);
+						options->buffer.extraction = options->hash.decompress <vector <char>> (
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction),
+							hash_t::method_t::BZIP2
+						);
 					break;
 					// Если метод компрессии выбран GZip
 					case static_cast <uint8_t> (http_t::compressor_t::GZIP):
 						// Выполняем декомпрессию полученных данных
-						result = options->hash.decompress <vector <char>> (static_cast <const char *> (result), static_cast <size_t> (result), hash_t::method_t::GZIP);
+						options->buffer.extraction = options->hash.decompress <vector <char>> (
+							static_cast <const char *> (options->buffer.extraction),
+							static_cast <size_t> (options->buffer.extraction),
+							hash_t::method_t::GZIP
+						);
 					break;
 					// Если метод компрессии выбран Deflate
 					case static_cast <uint8_t> (http_t::compressor_t::DEFLATE): {
 						// Получаем буфер данных
-						vector <char> buffer = result;
+						const vector <char> & buffer = options->buffer.extraction;
 						// Устанавливаем размер скользящего окна
 						options->hash.wbit(options->client.wbit);
 						// Добавляем хвост в полученные данные
-						options->hash.setTail(buffer);
+						options->hash.setTail(const_cast <vector <char> &> (buffer));
 						// Выполняем декомпрессию полученных данных
-						result = options->hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
+						options->buffer.extraction = options->hash.decompress <vector <char>> (buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
 					} break;
 				}
 			}
 			// Если данные получены
-			if(!result.empty())
+			if(!options->buffer.extraction.empty())
 				// Отправляем полученный результат
-				this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, result, text);
+				this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, options->buffer.extraction, text);
 			// Выводим сообщение об ошибке
 			else if(this->_core != nullptr) {
 				// Создаём сообщение
 				options->mess = ws::mess_t(1007, "Received data decompression error");
 				// Получаем буфер сообщения
-				result = options->frame.methods.message(options->mess);
+				options->buffer.extraction = options->frame.methods.message(options->mess);
 				// Если данные сообщения получены
-				if((options->stopped = !result.empty())){
+				if((options->stopped = !options->buffer.extraction.empty())){
 					// Выполняем запрет на получение входящих данных
 					const_cast <server::core_t *> (this->_core)->events(bid, awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 					// Выполняем отправку сообщения брокеру
-					const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (result), static_cast <size_t> (result), bid);
+					const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (options->buffer.extraction), static_cast <size_t> (options->buffer.extraction), bid);
 				// Завершаем работу
 				} else const_cast <server::core_t *> (this->_core)->close(bid);
 			}
@@ -887,6 +913,8 @@ void awh::server::Websocket1::erase(const uint64_t bid) noexcept {
 				options->buffer.payload.clear();
 				// Выполняем очистку оставшихся фрагментов
 				options->buffer.fragments.clear();
+				// Выполняем очистку буфера извлечений данных
+				options->buffer.extraction.clear();
 			}
 			// Выполняем удаление параметров брокера
 			this->_scheme.rm(bid);

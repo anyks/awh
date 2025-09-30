@@ -61,8 +61,10 @@ namespace awh {
 					typedef struct Buffer {
 						// Бинарный буфер полезной нагрузки
 						awh::buffer_t payload;
-						// Данные фрагметрированного сообщения
+						// Буфер фрагментированного сообщения
 						awh::buffer_t fragments;
+						// Буфер извлечения данных
+						awh::buffer_t extraction;
 						/**
 						 * @brief Конструктор
 						 *
@@ -70,7 +72,7 @@ namespace awh {
 						 * @param log объект для работы с логами
 						 */
 						Buffer(const fmk_t * fmk, const log_t * log) noexcept :
-						 payload(fmk, log), fragments(fmk, log) {}
+						 payload(fmk, log), fragments(fmk, log), extraction(fmk, log) {}
 					} buffer_t;
 					/**
 					 * @brief Структура флагов разрешения обменом данных

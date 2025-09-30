@@ -99,6 +99,24 @@ namespace awh {
 					 size(AWH_CHUNK_SIZE), methods(fmk, log),
 					 opcode(ws::frame_t::opcode_t::TEXT) {}
 				} frame_t;
+				/**
+				 * @brief Структура промежуточных буферов
+				 * 
+				 */
+				typedef struct Intermediate {
+					// Буфер фрагментированного сообщения
+					awh::buffer_t fragments;
+					// Буфер извлечения данных
+					awh::buffer_t extraction;
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					Intermediate(const fmk_t * fmk, const log_t * log) noexcept :
+					 fragments(fmk, log), extraction(fmk, log) {}
+				} inter_t;
 			private:
 				// Идентификатор подключения
 				int32_t _sid;
@@ -140,6 +158,8 @@ namespace awh {
 				frame_t _frame;
 				// Объект разрешения обмена данными
 				allow_t _allow;
+				// Объект промежуточных буферов
+				inter_t _inter;
 				// Объект отправляемого сообщения
 				ws::mess_t _mess;
 			private:
@@ -160,8 +180,6 @@ namespace awh {
 				// Метод компрессии данных
 				http_t::compressor_t _compressor;
 			private:
-				// Данные фрагметрированного сообщения
-				awh::buffer_t _fragments;
 				// Полученные HTTP заголовки
 				std::unordered_multimap <string, string> _headers;
 			private:
