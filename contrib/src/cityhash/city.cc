@@ -190,7 +190,7 @@ static uint32 Hash32Len5to12(const char *s, size_t len) {
   return fmix(Mur(c, Mur(b, Mur(a, d))));
 }
 
-CITYHASH_API uint32 CityHash32(const char *s, size_t len) {
+uint32 CityHash32(const char *s, size_t len) {
   if (len <= 24) {
     return len <= 12 ?
         (len <= 4 ? Hash32Len0to4(s, len) : Hash32Len5to12(s, len)) :
@@ -367,7 +367,7 @@ static uint64 HashLen33to64(const char *s, size_t len) {
   return b + x;
 }
 
-CITYHASH_API uint64 CityHash64(const char *s, size_t len) {
+uint64 CityHash64(const char *s, size_t len) {
   if (len <= 32) {
     if (len <= 16) {
       return HashLen0to16(s, len);
@@ -405,11 +405,11 @@ CITYHASH_API uint64 CityHash64(const char *s, size_t len) {
                    HashLen16(v.second, w.second) + x);
 }
 
-CITYHASH_API uint64 CityHash64WithSeed(const char *s, size_t len, uint64 seed) {
+uint64 CityHash64WithSeed(const char *s, size_t len, uint64 seed) {
   return CityHash64WithSeeds(s, len, k2, seed);
 }
 
-CITYHASH_API uint64 CityHash64WithSeeds(const char *s, size_t len,
+uint64 CityHash64WithSeeds(const char *s, size_t len,
                            uint64 seed0, uint64 seed1) {
   return HashLen16(CityHash64(s, len) - seed0, seed1);
 }
@@ -446,7 +446,7 @@ static uint128 CityMurmur(const char *s, size_t len, uint128 seed) {
   return uint128(a ^ b, HashLen16(b, a));
 }
 
-CITYHASH_API uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed) {
+uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed) {
   if (len < 128) {
     return CityMurmur(s, len, seed);
   }
@@ -509,7 +509,7 @@ CITYHASH_API uint128 CityHash128WithSeed(const char *s, size_t len, uint128 seed
                  HashLen16(x + w.second, y + v.second));
 }
 
-CITYHASH_API uint128 CityHash128(const char *s, size_t len) {
+uint128 CityHash128(const char *s, size_t len) {
   return len >= 16 ?
       CityHash128WithSeed(s + 16, len - 16,
                           uint128(Fetch64(s), Fetch64(s + 8) + k0)) :
