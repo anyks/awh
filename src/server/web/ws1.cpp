@@ -204,10 +204,10 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 						}
 						// Если все данные получены
 						if(options->http.is(http_t::state_t::END)){
-							// Буфер данных для записи в сокет
-							vector <char> buffer;
 							// Выполняем создание объекта для генерации HTTP-ответа
 							http_t http(this->_fmk, this->_log);
+							// Буфер данных для записи в сокет
+							buffer_t buffer(this->_fmk, this->_log);
 							// Если подключение не постоянное
 							if(!options->http.is(http_t::state_t::ALIVE))
 								// Устанавливаем правила закрытия подключения
@@ -238,7 +238,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										// Выводим заголовок запроса
 										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры запроса
-										std::cout << string(request.begin(), request.end()) << std::endl << std::flush;
+										std::cout << string(static_cast <const char *> (request), static_cast <size_t> (request)) << std::endl << std::flush;
 										// Если тело запроса существует
 										if(bodySize > 0)
 											// Выводим сообщение о выводе чанка тела
@@ -311,7 +311,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 											// Выполняем установку HTTP-заголовков
 											options->http.headers(this->_headers);
 										// Получаем бинарные данные REST-ответа клиенту
-										buffer = options->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <uint32_t> (101)));
+										buffer = ::move(options->http.process(http_t::process_t::RESPONSE, awh::web_t::res_t(static_cast <uint32_t> (101))));
 										// Если бинарные данные ответа получены
 										if(!buffer.empty()){
 											/**
@@ -321,10 +321,10 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 												// Выводим заголовок ответа
 												std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 												// Выводим параметры ответа
-												std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+												std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 											#endif
 											// Выполняем отправку данных брокеру
-											const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
+											const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
 											// Выполняем извлечение параметров запроса
 											const auto & request = options->http.request();
 											// Если функция обратного вызова активности потока установлена
@@ -399,7 +399,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 							// Если бинарные данные запроса получены, отправляем клиенту
 							if(!buffer.empty()){
 								// Тело полезной нагрузки
-								vector <char> payload;
+								buffer_t payload(this->_fmk, this->_log);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -407,18 +407,18 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 									// Выводим заголовок ответа
 									std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 									// Выводим параметры ответа
-									std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+									std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 								#endif
 								// Выполняем извлечение параметров запроса
 								const auto & request = options->http.request();
 								// Получаем параметры ответа
 								const auto response = options->http.response();
 								// Выполняем отправку заголовков сообщения
-								const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
+								const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
 								/**
 								 * Получаем данные тела ответа
 								 */
-								while(!(payload = http.payload()).empty()){
+								while(!(payload = ::move(http.payload())).empty()){
 									/**
 									 * Если включён режим отладки
 									 */
@@ -429,7 +429,7 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 									// Устанавливаем флаг закрытия подключения
 									options->stopped = (!http.is(http_t::state_t::ALIVE) && http.empty(awh::http_t::suite_t::BODY));
 									// Выполняем отправку чанков
-									const_cast <server::core_t *> (this->_core)->send(payload.data(), payload.size(), bid);
+									const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
 								}
 								// Если получение данных нужно остановить
 								if(options->stopped)

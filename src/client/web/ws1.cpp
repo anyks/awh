@@ -102,10 +102,10 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 				// Выводим заголовок запроса
 				std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 				// Выводим параметры запроса
-				std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+				std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 			#endif
 			// Выполняем отправку сообщения на сервер
-			const_cast <client::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
+			const_cast <client::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
 		}
 		// Если функция обратного вызова при подключении/отключении установлена
 		if(web_t::_callback.is("active"))
@@ -223,7 +223,7 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 									// Выводим заголовок ответа
 									std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 									// Выводим параметры ответа
-									std::cout << string(response.begin(), response.end()) << std::endl << std::flush;
+									std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::flush;
 									// Если тело ответа существует
 									if(bodySize > 0)
 										// Выводим сообщение о выводе чанка тела

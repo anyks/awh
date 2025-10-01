@@ -164,7 +164,7 @@ void awh::client::Http1::readEvent(const char * buffer, const size_t size, const
 												// Выводим заголовок ответа
 												std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 												// Выводим параметры ответа
-												std::cout << string(response.begin(), response.end()) << std::endl << std::flush;
+												std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::flush;
 												// Если тело ответа существует
 												if(!this->_http.empty(awh::http_t::suite_t::BODY))
 													// Выводим сообщение о выводе чанка тела
@@ -905,14 +905,14 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 					// Выводим заголовок запроса
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры запроса
-					std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+					std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 				#endif
 				// Тело WEB сообщения
 				buffer_t payload(this->_fmk, this->_log);
 				// Получаем объект биндинга ядра TCP/IP
 				client::core_t * core = const_cast <client::core_t *> (this->_core);
 				// Выполняем отправку заголовков запроса на сервер
-				core->send(buffer.data(), buffer.size(), this->_bid);
+				core->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), this->_bid);
 				/**
 				 * Получаем данные тела запроса
 				 */
@@ -1012,7 +1012,7 @@ int32_t awh::client::Http1::send(const request_t & request) noexcept {
 							// Если активирован режим прокси-сервера
 							if(this->_proxy.mode)
 								// Выполняем сброс заголовков прокси-сервера
-								this->_ws1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
+								this->_ws1._scheme.proxy.http.authorization(this->_scheme.proxy.http.authorization());
 							// Выполняем установку подключения с Websocket-сервером
 							this->_ws1.connectEvent(this->_bid, this->_scheme.id);
 						} break;
@@ -1167,12 +1167,12 @@ int32_t awh::client::Http1::send(const uri_t::url_t & url, const awh::web_t::met
 					// Выводим заголовок запроса
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры запроса
-					std::cout << string(headers.begin(), headers.end()) << std::endl << std::endl << std::flush;
+					std::cout << string(static_cast <const char *> (headers), static_cast <size_t> (headers)) << std::endl << std::endl << std::flush;
 				#endif
 				// Устанавливаем флаг закрытия подключения
 				this->_stopped = end;
 				// Выполняем отправку заголовков запроса на сервер
-				const_cast <client::core_t *> (this->_core)->send(headers.data(), headers.size(), this->_bid);
+				const_cast <client::core_t *> (this->_core)->send(static_cast <const char *> (headers), static_cast <size_t> (headers), this->_bid);
 				// Устанавливаем результат
 				result = 1;
 			}

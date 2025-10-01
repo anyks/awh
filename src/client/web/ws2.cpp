@@ -77,7 +77,7 @@ void awh::client::Websocket2::send(const uint64_t bid) noexcept {
 		// Если бинарные данные запроса получены
 		if(!buffer.empty())
 			// Выводим параметры запроса
-			std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+			std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 	#endif
 	// Запоминаем предыдущее значение идентификатора потока
 	const int32_t sid = this->_sid;
@@ -162,7 +162,7 @@ void awh::client::Websocket2::connectEvent(const uint64_t bid, const uint16_t si
 			// Если активирован режим прокси-сервера
 			if(this->_proxy.mode)
 				// Выполняем сброс заголовков прокси-сервера
-				this->_ws1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
+				this->_ws1._scheme.proxy.http.authorization(this->_scheme.proxy.http.authorization());
 			// Выполняем переброс вызова коннекта на клиент Websocket
 			this->_ws1.connectEvent(bid, sid);
 		}
@@ -523,7 +523,7 @@ int32_t awh::client::Websocket2::frameSignal(const int32_t sid, const http2_t::d
 									// Если параметры ответа получены
 									if(!response.empty())
 										// Выводим параметры ответа
-										std::cout << string(response.begin(), response.end()) << std::endl << std::flush;
+										std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::flush;
 								}
 							#endif
 							// Получаем параметры запроса

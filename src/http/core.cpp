@@ -2959,7 +2959,9 @@ vector <std::pair <string, string>> awh::Http::trailers2() const noexcept {
  * @param req объект параметров REST-запроса
  * @return    буфер данных запроса в бинарном виде
  */
-vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
+awh::buffer_t awh::Http::proxy(const web_t::req_t & req) const noexcept {
+	// Результат работы функции
+	buffer_t result(this->_fmk, this->_log);
 	// Если хост сервера получен
 	if(!req.url.host.empty() && (req.url.port > 0) && (req.method == web_t::method_t::CONNECT)){
 		/**
@@ -2985,7 +2987,7 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 			// Устанавливаем парарметр запроса
 			this->_web.request(req);
 			// Выполняем создание запроса
-			return this->process(process_t::REQUEST, dynamic_cast <const web_t::provider_t &> (req));
+			result = ::move(this->process(process_t::REQUEST, dynamic_cast <const web_t::provider_t &> (req)));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -3010,7 +3012,7 @@ vector <char> awh::Http::proxy(const web_t::req_t & req) const noexcept {
 		}
 	}
 	// Выводим результат
-	return vector <char> ();
+	return result;
 }
 /**
  * @brief Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
@@ -3045,7 +3047,9 @@ vector <std::pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) 
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
+awh::buffer_t awh::Http::reject(const web_t::res_t & res) const noexcept {
+	// Результат работы функции
+	buffer_t result(this->_fmk, this->_log);
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -3131,7 +3135,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 			// Устанавливаем парарметр ответа
 			this->_web.response(res);
 			// Выводим результат
-			return this->process(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res));
+			result = ::move(this->process(process_t::RESPONSE, dynamic_cast <const web_t::provider_t &> (res)));
 		}
 	/**
 	 * Если возникает ошибка
@@ -3156,7 +3160,7 @@ vector <char> awh::Http::reject(const web_t::res_t & res) const noexcept {
 		#endif
 	}
 	// Выводим результат
-	return vector <char> ();
+	return result;
 }
 /**
  * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
@@ -3272,9 +3276,9 @@ vector <std::pair <string, string>> awh::Http::reject2(const web_t::res_t & res)
  * @param prov параметры провайдера обмена сообщениями
  * @return     буфер данных в бинарном виде
  */
-vector <char> awh::Http::process(const process_t flag, const web_t::provider_t & prov) const noexcept {
+awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t & prov) const noexcept {
 	// Результат работы функции
-	vector <char> result;
+	buffer_t result(this->_fmk, this->_log);
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -3946,7 +3950,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 					// Устанавливаем завершающий разделитель
 					request.append("\r\n");
 					// Формируем результат запроса
-					result.assign(request.begin(), request.end());
+					result.push(request.c_str(), request.length());
 				}
 			} break;
 			// Если нужно сформировать данные ответа
@@ -4337,7 +4341,7 @@ vector <char> awh::Http::process(const process_t flag, const web_t::provider_t &
 					// Устанавливаем завершающий разделитель
 					response.append("\r\n");
 					// Формируем результат ответа
-					result.assign(response.begin(), response.end());
+					result.push(response.c_str(), response.length());
 				}
 			} break;
 		}

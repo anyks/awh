@@ -118,24 +118,6 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 	return result;
 }
 /**
- * @brief Метод извлечения данных авторизации
- *
- * @return данные модуля авторизации
- */
-awh::server::auth_t::data_t awh::server::Http::dataAuth() const noexcept {
-	// Выполняем извлечение данных авторизации
-	return this->_auth.server.data();
-}
-/**
- * @brief Метод установки данных авторизации
- *
- * @param data данные авторизации для установки
- */
-void awh::server::Http::dataAuth(const server::auth_t::data_t & data) noexcept {
-	// Выполняем установку данных авторизации
-	this->_auth.server.data(data);
-}
-/**
  * @brief Метод установки название сервера
  *
  * @param realm название сервера
@@ -156,6 +138,24 @@ void awh::server::Http::opaque(const string & opaque) noexcept {
 	if(!opaque.empty())
 		// Устанавливаем временный ключ сессии
 		this->_auth.server.opaque(opaque);
+}
+/**
+ * @brief Метод извлечения данных авторизации
+ *
+ * @return данные модуля авторизации
+ */
+awh::server::auth_t::data_t awh::server::Http::authorization() const noexcept {
+	// Выполняем извлечение данных авторизации
+	return this->_auth.server.data();
+}
+/**
+ * @brief Метод установки данных авторизации
+ *
+ * @param data данные авторизации для установки
+ */
+void awh::server::Http::authorization(const server::auth_t::data_t & data) noexcept {
+	// Выполняем установку данных авторизации
+	this->_auth.server.data(data);
 }
 /**
  * @brief Метод добавления функции извлечения пароля

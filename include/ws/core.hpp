@@ -43,7 +43,7 @@ namespace awh {
 	 * @brief Класс для работы с WebSocket
 	 *
 	 */
-	typedef class AWH_SHARED_EXPORT WCore : public http_t {
+	typedef class AWH_SHARED_EXPORT WebsocketCore : public http_t {
 		protected:
 			/**
 			 * Версия протокола WebSocket
@@ -116,7 +116,7 @@ namespace awh {
 			 *
 			 * @param flag флаг направления передачи данных
 			 */
-			void applyExtensions(const process_t flag) noexcept;
+			void extensions(const process_t flag) noexcept;
 		protected:
 			/**
 			 * @brief Метод генерации ключа
@@ -137,7 +137,7 @@ namespace awh {
 			 * @param extension запись из которой нужно извлечь расширение
 			 * @return          результат извлечения
 			 */
-			bool extractExtension(const string & extension) noexcept;
+			bool extract(const string & extension) noexcept;
 		public:
 			/**
 			 * @brief Метод применения полученных результатов
@@ -262,7 +262,7 @@ namespace awh {
 			 * @param req объект параметров REST-ответа
 			 * @return    буфер данных ответа в бинарном виде
 			 */
-			vector <char> reject(const web_t::res_t & res) const noexcept;
+			buffer_t reject(const web_t::res_t & res) const noexcept;
 			/**
 			 * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
 			 *
@@ -278,7 +278,7 @@ namespace awh {
 			 * @param provider параметры провайдера обмена сообщениями
 			 * @return         буфер данных в бинарном виде
 			 */
-			vector <char> process(const process_t flag, const web_t::provider_t & provider) const noexcept;
+			buffer_t process(const process_t flag, const web_t::provider_t & provider) const noexcept;
 			/**
 			 * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
 			 *
@@ -328,12 +328,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			WCore(const fmk_t * fmk, const log_t * log) noexcept;
+			WebsocketCore(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			virtual ~WCore() noexcept {}
+			virtual ~WebsocketCore() noexcept {}
 	} ws_core_t;
 };
 

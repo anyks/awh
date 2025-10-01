@@ -27,7 +27,7 @@ using namespace std;
  *
  * @param flag флаг направления передачи данных
  */
-void awh::WCore::init(const process_t flag) noexcept {
+void awh::WebsocketCore::init(const process_t flag) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -82,7 +82,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 					}
 				}
 				// Выполняем применение расширений
-				this->applyExtensions(flag);
+				this->extensions(flag);
 				// Добавляем заголовок Accept
 				this->header("Accept", "*/*");
 				// Добавляем заголовок отключения кеширования
@@ -205,7 +205,7 @@ void awh::WCore::init(const process_t flag) noexcept {
 				// Если ответ сервера положительный
 				if((res.version >= 2.f) ? (res.code == 200) : (res.code == 101)){
 					// Выполняем применение расширений
-					this->applyExtensions(flag);
+					this->extensions(flag);
 					// Добавляем в чёрный список заголовок Content-Encoding
 					this->blacklist("Content-Encoding");
 					// Добавляем в чёрный список заголовок X-AWH-Encryption
@@ -268,7 +268,7 @@ void awh::WCore::init(const process_t flag) noexcept {
  *
  * @param flag флаг направления передачи данных
  */
-void awh::WCore::applyExtensions(const process_t flag) noexcept {
+void awh::WebsocketCore::extensions(const process_t flag) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -428,7 +428,7 @@ void awh::WCore::applyExtensions(const process_t flag) noexcept {
  *
  * @return сгенерированный ключ
  */
-string awh::WCore::key() const noexcept {
+string awh::WebsocketCore::key() const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -481,7 +481,7 @@ string awh::WCore::key() const noexcept {
  *
  * @return сгенерированный хэш ключа клиента
  */
-string awh::WCore::sha1() const noexcept {
+string awh::WebsocketCore::sha1() const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если ключ клиента передан
@@ -538,7 +538,7 @@ string awh::WCore::sha1() const noexcept {
  * @param extension запись из которой нужно извлечь расширение
  * @return          результат извлечения
  */
-bool awh::WCore::extractExtension(const string & extension) noexcept {
+bool awh::WebsocketCore::extract(const string & extension) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если заголовок передан
@@ -919,7 +919,7 @@ bool awh::WCore::extractExtension(const string & extension) noexcept {
  *
  * @return бинарный дамп данных
  */
-awh::buffer_t awh::WCore::dump() const noexcept {
+awh::buffer_t awh::WebsocketCore::dump() const noexcept {
 	// Результат работы функции
 	buffer_t result(this->_fmk, this->_log);
 	/**
@@ -1042,7 +1042,7 @@ awh::buffer_t awh::WCore::dump() const noexcept {
  *
  * @param data бинарный дамп данных
  */
-void awh::WCore::dump(const buffer_t & data) noexcept {
+void awh::WebsocketCore::dump(const buffer_t & data) noexcept {
 	// Если данные бинарного дампа переданы
 	if(!data.empty())
 		// Выполняем установку дампа данных
@@ -1054,7 +1054,7 @@ void awh::WCore::dump(const buffer_t & data) noexcept {
  * @param buffer буфер бинарных данных
  * @param size   размер бинарных данных
  */
-void awh::WCore::dump(const char * buffer, const size_t size) noexcept {
+void awh::WebsocketCore::dump(const char * buffer, const size_t size) noexcept {
 	// Если данные бинарного дампа переданы
 	if((buffer != nullptr) && (size > 0)){
 		/**
@@ -1247,7 +1247,7 @@ void awh::WCore::dump(const char * buffer, const size_t size) noexcept {
  * @brief Метод очистки собранных данных
  *
  */
-void awh::WCore::clean() noexcept {
+void awh::WebsocketCore::clean() noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1292,7 +1292,7 @@ void awh::WCore::clean() noexcept {
  *
  * @return флаг проверки на зашифрованные данные
  */
-bool awh::WCore::crypted() const noexcept {
+bool awh::WebsocketCore::crypted() const noexcept {
 	// Выводим флаг шифрования данных
 	return this->_encryption;
 }
@@ -1301,7 +1301,7 @@ bool awh::WCore::crypted() const noexcept {
  *
  * @param mode флаг активации шифрования
  */
-void awh::WCore::encryption(const bool mode) noexcept {
+void awh::WebsocketCore::encryption(const bool mode) noexcept {
 	// Устанавливаем флаг шифрования
 	this->_encryption = mode;
 	// Устанавливаем флаг шифрования у родительского модуля
@@ -1314,7 +1314,7 @@ void awh::WCore::encryption(const bool mode) noexcept {
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::WCore::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::WebsocketCore::encryption(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования у родительского модуля
 	http_t::encryption(pass, salt, cipher);
 }
@@ -1323,7 +1323,7 @@ void awh::WCore::encryption(const string & pass, const string & salt, const hash
  *
  * @return метод компрессии
  */
-awh::Http::compressor_t awh::WCore::compression() const noexcept {
+awh::Http::compressor_t awh::WebsocketCore::compression() const noexcept {
 	// Выполняем извлечение выбранного метода компрессии
 	return this->_compressors.selected;
 }
@@ -1332,7 +1332,7 @@ awh::Http::compressor_t awh::WCore::compression() const noexcept {
  *
  * @param compressor метод компрессии
  */
-void awh::WCore::compression(const compressor_t compressor) noexcept {
+void awh::WebsocketCore::compression(const compressor_t compressor) noexcept {
 	// Выполняем установку выбранного метода компрессии
 	this->_compressors.selected = compressor;
 }
@@ -1341,7 +1341,7 @@ void awh::WCore::compression(const compressor_t compressor) noexcept {
  *
  * @param compressors методы компрессии данных полезной нагрузки
  */
-void awh::WCore::compressors(const vector <compressor_t> & compressors) noexcept {
+void awh::WebsocketCore::compressors(const vector <compressor_t> & compressors) noexcept {
 	// Если список архиваторов передан
 	if(!compressors.empty()){
 		/**
@@ -1388,7 +1388,7 @@ void awh::WCore::compressors(const vector <compressor_t> & compressors) noexcept
  *
  * @return список поддерживаемых расширений
  */
-const vector <vector <string>> & awh::WCore::extensions() const noexcept {
+const vector <vector <string>> & awh::WebsocketCore::extensions() const noexcept {
 	// Выводим результат
 	return this->_extensions;
 }
@@ -1397,7 +1397,7 @@ const vector <vector <string>> & awh::WCore::extensions() const noexcept {
  *
  * @param extensions список поддерживаемых расширений
  */
-void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcept {
+void awh::WebsocketCore::extensions(const vector <vector <string>> & extensions) noexcept {
 	// Если список поддерживаемых расширений переданы
 	if(!extensions.empty())
 		// Выполняем установку списка поддерживаемых расширений
@@ -1411,7 +1411,7 @@ void awh::WCore::extensions(const vector <vector <string>> & extensions) noexcep
  * @param flag флаг выполняемого процесса
  * @return     результат выполнения проверки рукопожатия
  */
-bool awh::WCore::handshake(const process_t flag) noexcept {
+bool awh::WebsocketCore::handshake(const process_t flag) noexcept {
 	// Результат работы функции
 	bool result = (this->_state == state_t::HANDSHAKE);
 	// Если рукопожатие не выполнено
@@ -1525,7 +1525,7 @@ bool awh::WCore::handshake(const process_t flag) noexcept {
  * @param flag флаг выполнения проверки
  * @return     результат проверки соответствия
  */
-bool awh::WCore::check(const flag_t flag) noexcept {
+bool awh::WebsocketCore::check(const flag_t flag) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1580,7 +1580,7 @@ bool awh::WCore::check(const flag_t flag) noexcept {
  * @param hid тип модуля
  * @return    размер скользящего окна
  */
-int16_t awh::WCore::wbit(const web_t::hid_t hid) const noexcept {
+int16_t awh::WebsocketCore::wbit(const web_t::hid_t hid) const noexcept {
 	/**
 	 * Определяем флаг типа текущего модуля
 	 */
@@ -1603,11 +1603,11 @@ int16_t awh::WCore::wbit(const web_t::hid_t hid) const noexcept {
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-vector <char> awh::WCore::reject(const web_t::res_t & res) const noexcept {
+awh::buffer_t awh::WebsocketCore::reject(const web_t::res_t & res) const noexcept {
 	// Выполняем очистку выбранного сабпротокола
 	const_cast <ws_core_t *> (this)->_selectedProtocols.clear();
 	// Выполняем генерацию сообщения ответа
-	return http_t::reject(res);
+	return ::move(http_t::reject(res));
 }
 /**
  * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
@@ -1615,7 +1615,7 @@ vector <char> awh::WCore::reject(const web_t::res_t & res) const noexcept {
  * @param req объект параметров REST-ответа
  * @return    буфер данных ответа в бинарном виде
  */
-vector <std::pair <string, string>> awh::WCore::reject2(const web_t::res_t & res) const noexcept {
+vector <std::pair <string, string>> awh::WebsocketCore::reject2(const web_t::res_t & res) const noexcept {
 	// Выполняем очистку выбранного сабпротокола
 	const_cast <ws_core_t *> (this)->_selectedProtocols.clear();
 	// Выполняем генерацию сообщения ответа
@@ -1628,7 +1628,9 @@ vector <std::pair <string, string>> awh::WCore::reject2(const web_t::res_t & res
  * @param provider параметры провайдера обмена сообщениями
  * @return         буфер данных в бинарном виде
  */
-vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t & provider) const noexcept {
+awh::buffer_t awh::WebsocketCore::process(const process_t flag, const web_t::provider_t & provider) const noexcept {
+	// Результат работы функции
+	buffer_t result(this->_fmk, this->_log);
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1670,7 +1672,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Address or request method for WebSocket-client is incorrect");
 					// Выходим из функции
-					return vector <char> ();
+					return result;
 				}
 			} break;
 			// Если нужно сформировать данные ответа
@@ -1707,7 +1709,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "SHA1 key could not be generated, no further work possiblet");
 							// Выходим из функции
-							return vector <char> ();
+							return result;
 						}
 						// Добавляем заголовок хеша ключа
 						const_cast <ws_core_t *> (this)->header("Sec-WebSocket-Accept", sha1.c_str());
@@ -1723,7 +1725,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "WebSocket-server response code set incorrectly");
 					// Выходим из функции
-					return vector <char> ();
+					return result;
 				}
 			} break;
 		}
@@ -1752,7 +1754,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
 		#endif
 	}
 	// Выводим результат
-	return http_t::process(flag, provider);
+	return ::move(http_t::process(flag, provider));
 }
 /**
  * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)
@@ -1761,7 +1763,7 @@ vector <char> awh::WCore::process(const process_t flag, const web_t::provider_t 
  * @param provider параметры провайдера обмена сообщениями
  * @return         буфер данных в бинарном виде
  */
-vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
+vector <std::pair <string, string>> awh::WebsocketCore::process2(const process_t flag, const web_t::provider_t & provider) const noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1861,7 +1863,7 @@ vector <std::pair <string, string>> awh::WCore::process2(const process_t flag, c
  *
  * @param subprotocol сабпротокол для установки
  */
-void awh::WCore::subprotocol(const string & subprotocol) noexcept {
+void awh::WebsocketCore::subprotocol(const string & subprotocol) noexcept {
 	// Если сабпротокол передан
 	if(!subprotocol.empty())
 		// Выполняем установку поддерживаемого сабпротокола
@@ -1872,7 +1874,7 @@ void awh::WCore::subprotocol(const string & subprotocol) noexcept {
  *
  * @return список выбранных сабпротоколов
  */
-const std::unordered_set <string> & awh::WCore::subprotocols() const noexcept {
+const std::unordered_set <string> & awh::WebsocketCore::subprotocols() const noexcept {
 	// Выводим список выбранных сабпротоколов
 	return this->_selectedProtocols;
 }
@@ -1881,7 +1883,7 @@ const std::unordered_set <string> & awh::WCore::subprotocols() const noexcept {
  *
  * @param subprotocols сабпротоколы для установки
  */
-void awh::WCore::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
+void awh::WebsocketCore::subprotocols(const std::unordered_set <string> & subprotocols) noexcept {
 	// Если список сабпротоколов получен
 	if(!subprotocols.empty())
 		// Выполняем установку списка поддерживаемых сабпротоколов
@@ -1893,7 +1895,7 @@ void awh::WCore::subprotocols(const std::unordered_set <string> & subprotocols) 
  * @param hid тип текущего модуля
  * @return    флаг запрета переиспользования контекста компрессии
  */
-bool awh::WCore::takeover(const web_t::hid_t hid) const noexcept {
+bool awh::WebsocketCore::takeover(const web_t::hid_t hid) const noexcept {
 	/**
 	 * Определяем флаг типа текущего модуля
 	 */
@@ -1916,7 +1918,7 @@ bool awh::WCore::takeover(const web_t::hid_t hid) const noexcept {
  * @param hid  тип текущего модуля
  * @param flag флаг запрета переиспользования контекста компрессии
  */
-void awh::WCore::takeover(const web_t::hid_t hid, const bool flag) noexcept {
+void awh::WebsocketCore::takeover(const web_t::hid_t hid, const bool flag) noexcept {
 	/**
 	 * Определяем флаг типа текущего модуля
 	 */
@@ -1939,5 +1941,5 @@ void awh::WCore::takeover(const web_t::hid_t hid, const bool flag) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::WCore::WCore(const fmk_t * fmk, const log_t * log) noexcept :
+awh::WebsocketCore::WebsocketCore(const fmk_t * fmk, const log_t * log) noexcept :
  http_t(fmk, log), _encryption(false), _key{""} {}

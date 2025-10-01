@@ -342,7 +342,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 										// Если параметры запроса получены
 										if(!request.empty())
 											// Выводим параметры запроса
-											std::cout << string(request.begin(), request.end()) << std::endl << std::flush;
+											std::cout << string(static_cast <const char *> (request), static_cast <size_t> (request)) << std::endl << std::flush;
 									}
 								#endif
 								// Если функция обратного вызова на вывода запроса клиента к серверу
@@ -488,7 +488,7 @@ int32_t awh::client::Http2::frameSignal(const int32_t sid, const awh::http2_t::d
 												// Если параметры ответа получены
 												if(!response.empty())
 													// Выводим параметры ответа
-													std::cout << string(response.begin(), response.end()) << std::endl << std::flush;
+													std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::flush;
 											}
 										#endif
 										// Получаем параметры запроса
@@ -1446,7 +1446,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Получаем бинарные данные HTTP-запроса
 								const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 								// Выводим параметры запроса
-								std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+								std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 							#endif
 							// Выполняем запрос на получение заголовков
 							const auto & headers = this->_http.process2(http_t::process_t::REQUEST, query);
@@ -1520,7 +1520,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 								// Если заголовок авторизации получен
 								if(!header.empty())
 									// Выполняем сброс заголовков прокси-сервера
-									this->_http1._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
+									this->_http1._scheme.proxy.http.authorization(this->_scheme.proxy.http.authorization());
 								// Если заголовок параметров подключения не установлен
 								if(request.headers.find("Proxy-Connection") == request.headers.end()){
 									// Если установлено постоянное подключение к прокси-серверу
@@ -1562,7 +1562,7 @@ int32_t awh::client::Http2::send(const request_t & request) noexcept {
 						// Если заголовок авторизации получен
 						if(!header.empty())
 							// Выполняем сброс заголовков прокси-сервера
-							this->_ws2._scheme.proxy.http.dataAuth(this->_scheme.proxy.http.dataAuth());
+							this->_ws2._scheme.proxy.http.authorization(this->_scheme.proxy.http.authorization());
 						// Если заголовок параметров подключения не установлен
 						if(request.headers.find("Proxy-Connection") == request.headers.end()){
 							// Если установлено постоянное подключение к прокси-серверу
@@ -1814,7 +1814,7 @@ int32_t awh::client::Http2::send(const int32_t sid, const uri_t::url_t & url, co
 						// Получаем бинарные данные HTTP-запроса
 						const auto & buffer = this->_http.process(http_t::process_t::REQUEST, query);
 						// Выводим параметры запроса
-						std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+						std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 					#endif
 					// Выполняем заголовки запроса на сервер
 					result = web2_t::send(sid, headers, (end ? awh::http2_t::flag_t::END_STREAM : awh::http2_t::flag_t::NONE));

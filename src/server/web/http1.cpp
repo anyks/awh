@@ -198,7 +198,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 										// Выводим заголовок запроса
 										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры запроса
-										std::cout << string(request.begin(), request.end()) << std::endl << std::endl << std::flush;
+										std::cout << string(static_cast <const char *> (request), static_cast <size_t> (request)) << std::endl << std::endl << std::flush;
 										// Если тело запроса существует
 										if(!options->http.empty(awh::http_t::suite_t::BODY))
 											// Выводим сообщение о выводе чанка тела
@@ -253,10 +253,10 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 										// Выводим заголовок ответа
 										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры ответа
-										std::cout << string(response.begin(), response.end()) << std::endl << std::endl << std::flush;
+										std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
 									#endif
 									// Отправляем ответ брокеру
-									const_cast <server::core_t *> (this->_core)->send(response.data(), response.size(), bid);
+									const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
 									/**
 									 * Получаем тело полезной нагрузки ответа
 									 */
@@ -363,7 +363,7 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 								// Если запрос неудачный
 								case static_cast <uint8_t> (http_t::status_t::FAULT): {
 									// Ответ на запрос об авторизации
-									vector <char> response;
+									buffer_t response(this->_fmk, this->_log);
 									// Выполняем очистку HTTP-парсера
 									options->http.clear();
 									// Выполняем сброс состояния HTTP-парсера
@@ -407,10 +407,10 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 											// Выводим заголовок ответа
 											std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 											// Выводим параметры ответа
-											std::cout << string(response.begin(), response.end()) << std::endl << std::endl << std::flush;
+											std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
 										#endif
 										// Отправляем ответ брокеру
-										const_cast <server::core_t *> (this->_core)->send(response.data(), response.size(), bid);
+										const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
 										/**
 										 * Получаем данные полезной нагрузки ответа
 										 */
@@ -621,7 +621,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 			// Если параметры активного клиента получены
 			if(web != nullptr){
 				// Буфер данных для записи в сокет
-				vector <char> buffer;
+				buffer_t buffer(this->_fmk, this->_log);
 				// Выполняем установку параметров запроса
 				options->http.request(web->http.request());
 				// Выполняем установку полученных заголовков
@@ -685,14 +685,14 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 							// Выводим заголовок ответа
 							std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 							// Выводим параметры ответа
-							std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+							std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 						#endif
 						// Выполняем замену активного агнета
 						this->_agents.at(bid) = agent_t::WEBSOCKET;
 						// Выполняем установку сетевого ядра
 						this->_ws1._core = this->_core;
 						// Выполняем отправку данных брокеру
-						const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
+						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
 						// Выполняем извлечение параметров запроса
 						const auto & request = options->http.request();
 						// Если функция обратного вызова активности потока установлена
@@ -730,7 +730,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Выводим заголовок ответа
 						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Выводим параметры ответа
-						std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+						std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем метод компрессии данных ответа
 					web->http.compression(compressor);
@@ -739,7 +739,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Получаем параметры ответа
 					const auto response = options->http.response();
 					// Выполняем отправку заголовков сообщения
-					const_cast <server::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
+					const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
 					/**
 					 * Получаем данные тела ответа
 					 */
@@ -1215,12 +1215,12 @@ int32_t awh::server::Http1::send(const uint64_t bid, const uint32_t code, const 
 						// Выводим заголовок запроса
 						std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 						// Выводим параметры запроса
-						std::cout << string(headers.begin(), headers.end()) << std::endl << std::endl << std::flush;
+						std::cout << string(static_cast <const char *> (headers), static_cast <size_t> (headers)) << std::endl << std::endl << std::flush;
 					#endif
 					// Устанавливаем флаг закрытия подключения
 					options->stopped = end;
 					// Выполняем отправку заголовков запроса на сервер
-					const_cast <server::core_t *> (this->_core)->send(headers.data(), headers.size(), bid);
+					const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (headers), static_cast <size_t> (headers), bid);
 					// Устанавливаем результат
 					result = 1;
 				}
@@ -1304,14 +1304,14 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 					// Выводим заголовок ответа
 					std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 					// Выводим параметры ответа
-					std::cout << string(response.begin(), response.end()) << std::endl << std::endl << std::flush;
+					std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
 				#endif
 				// Если тело данных не установлено для отправки
 				if(options->http.empty(awh::http_t::suite_t::BODY))
 					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 					options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 				// Отправляем серверу сообщение
-				const_cast <server::core_t *> (this->_core)->send(response.data(), response.size(), bid);
+				const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
 				// Если код ответа содержит тело ответа
 				if((code >= 200) && !options->http.empty(awh::http_t::suite_t::BODY)){
 					/**

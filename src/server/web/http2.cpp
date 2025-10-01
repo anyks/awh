@@ -689,7 +689,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 					// Если параметры ответа получены
 					if(!buffer.empty())
 						// Выводим параметры ответа
-						std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+						std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 					// Если тело ответа существует
 					if(!stream->http.empty(awh::http_t::suite_t::BODY))
 						// Выводим сообщение о выводе чанка тела
@@ -736,7 +736,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 										// Если бинарные данные ответа получены
 										if(!buffer.empty())
 											// Выводим параметры ответа
-											std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+											std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 									}
 								#endif
 								// Флаг отправляемого фрейма
@@ -873,7 +873,7 @@ void awh::server::Http2::prepare(const int32_t sid, const uint64_t bid) noexcept
 								// Если бинарные данные ответа получены
 								if(!buffer.empty())
 									// Выводим параметры ответа
-									std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+									std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 							}
 						#endif
 						// Флаг отправляемого фрейма
@@ -1104,7 +1104,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 								// Если бинарные данные ответа получены
 								if(!buffer.empty())
 									// Выводим параметры ответа
-									std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+									std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 							}
 						#endif
 						// Выполняем замену активного агнета
@@ -1172,7 +1172,7 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 							// Если бинарные данные ответа получены
 							if(!buffer.empty())
 								// Выводим параметры ответа
-								std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+								std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 						}
 					#endif
 					// Флаг отправляемого фрейма
@@ -2160,7 +2160,7 @@ int32_t awh::server::Http2::send(const int32_t sid, const uint64_t bid, const ui
 												// Если бинарные данные ответа получены
 												if(!buffer.empty())
 													// Выводим параметры ответа
-													std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+													std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 											}
 										#endif
 										// Флаг отправляемого фрейма
@@ -2272,7 +2272,7 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 													// Если бинарные данные ответа получены
 													if(!buffer.empty())
 														// Выводим параметры ответа
-														std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+														std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 												}
 											#endif
 											// Флаг отправляемого фрейма
@@ -2638,7 +2638,7 @@ int32_t awh::server::Http2::push2(const int32_t sid, const uint64_t bid, const v
 									// Получаем бинарные данные HTTP-запроса
 									const auto & buffer = http.process(http_t::process_t::REQUEST, http.request());
 									// Выводим параметры запроса
-									std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+									std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 								}
 							#endif
 							// Выполняем отправку push-уведомлений

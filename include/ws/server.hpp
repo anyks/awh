@@ -80,13 +80,13 @@ namespace awh {
 				 *
 				 * @return данные модуля авторизации
 				 */
-				server::auth_t::data_t dataAuth() const noexcept;
+				server::auth_t::data_t authorization() const noexcept;
 				/**
 				 * @brief Метод установки данных авторизации
 				 *
 				 * @param data данные авторизации для установки
 				 */
-				void dataAuth(const server::auth_t::data_t & data) noexcept;
+				void authorization(const server::auth_t::data_t & data) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления функции извлечения пароля

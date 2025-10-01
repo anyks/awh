@@ -88,7 +88,7 @@ awh::Http::status_t awh::client::Http::status() noexcept {
  *
  * @return данные модуля авторизации
  */
-awh::client::auth_t::data_t awh::client::Http::dataAuth() const noexcept {
+awh::client::auth_t::data_t awh::client::Http::authorization() const noexcept {
 	// Выполняем извлечение данных авторизации
 	return this->_auth.client.data();
 }
@@ -97,7 +97,7 @@ awh::client::auth_t::data_t awh::client::Http::dataAuth() const noexcept {
  *
  * @param data данные авторизации для установки
  */
-void awh::client::Http::dataAuth(const client::auth_t::data_t & data) noexcept {
+void awh::client::Http::authorization(const client::auth_t::data_t & data) noexcept {
 	// Выполняем установку данных авторизации
 	this->_auth.client.data(data);
 }

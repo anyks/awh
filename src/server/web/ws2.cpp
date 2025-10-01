@@ -768,7 +768,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 										// Если параметры ответа получены
 										if(!buffer.empty())
 											// Выводим параметры ответа
-											std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+											std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 									}
 								#endif
 								/**
@@ -845,7 +845,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 														// Если бинарные данные ответа получены
 														if(!buffer.empty())
 															// Выводим параметры ответа
-															std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+															std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 													}
 												#endif
 												// Выполняем ответ подключившемуся клиенту
@@ -926,7 +926,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 											// Если бинарные данные ответа получены
 											if(!buffer.empty())
 												// Выводим параметры ответа
-												std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+												std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 										}
 									#endif
 									// Флаг отправляемого фрейма

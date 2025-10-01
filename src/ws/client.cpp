@@ -149,7 +149,7 @@ void awh::client::WS::commit() noexcept {
 									// Если буква соответствует разделителю расширения
 									case ';': {
 										// Если слово собранно
-										if(!extension.empty() && !this->extractExtension(extension))
+										if(!extension.empty() && !this->extract(extension))
 											// Выполняем добавление слова в список записей
 											extensions.push_back(::move(extension));
 										// Выполняем очистку слова записи
@@ -165,7 +165,7 @@ void awh::client::WS::commit() noexcept {
 									// Если буква соответствует разделителю группы расширений
 									case ',': {
 										// Если слово собранно
-										if(!extension.empty() && !this->extractExtension(extension))
+										if(!extension.empty() && !this->extract(extension))
 											// Выполняем добавление слова в список записей
 											extensions.push_back(::move(extension));
 										// Выполняем очистку слова записи
@@ -180,7 +180,7 @@ void awh::client::WS::commit() noexcept {
 								}
 							}
 							// Если слово собранно
-							if(!extension.empty() && !this->extractExtension(extension))
+							if(!extension.empty() && !this->extract(extension))
 								// Выполняем добавление слова в список записей
 								extensions.push_back(::move(extension));
 							// Выполняем очистку слова записи
@@ -388,7 +388,7 @@ bool awh::client::WS::check(const flag_t flag) noexcept {
  *
  * @return данные модуля авторизации
  */
-awh::client::auth_t::data_t awh::client::WS::dataAuth() const noexcept {
+awh::client::auth_t::data_t awh::client::WS::authorization() const noexcept {
 	// Выполняем извлечение данных авторизации
 	return this->_auth.client.data();
 }
@@ -397,7 +397,7 @@ awh::client::auth_t::data_t awh::client::WS::dataAuth() const noexcept {
  *
  * @param data данные авторизации для установки
  */
-void awh::client::WS::dataAuth(const client::auth_t::data_t & data) noexcept {
+void awh::client::WS::authorization(const client::auth_t::data_t & data) noexcept {
 	// Выполняем установку данных авторизации
 	this->_auth.client.data(data);
 }

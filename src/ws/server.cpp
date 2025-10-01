@@ -138,7 +138,7 @@ void awh::server::WS::commit() noexcept {
 								// Если буква соответствует разделителю расширения
 								case ';': {
 									// Если слово собранно
-									if(!extension.empty() && !this->extractExtension(extension))
+									if(!extension.empty() && !this->extract(extension))
 										// Выполняем добавление слова в список записей
 										extensions.push_back(::move(extension));
 									// Выполняем очистку слова записи
@@ -154,7 +154,7 @@ void awh::server::WS::commit() noexcept {
 								// Если буква соответствует разделителю группы расширений
 								case ',': {
 									// Если слово собранно
-									if(!extension.empty() && !this->extractExtension(extension))
+									if(!extension.empty() && !this->extract(extension))
 										// Выполняем добавление слова в список записей
 										extensions.push_back(::move(extension));
 									// Выполняем очистку слова записи
@@ -169,7 +169,7 @@ void awh::server::WS::commit() noexcept {
 							}
 						}
 						// Если слово собранно
-						if(!extension.empty() && !this->extractExtension(extension))
+						if(!extension.empty() && !this->extract(extension))
 							// Выполняем добавление слова в список записей
 							extensions.push_back(::move(extension));
 						// Выполняем очистку слова записи
@@ -402,7 +402,7 @@ void awh::server::WS::opaque(const string & opaque) noexcept {
  *
  * @return данные модуля авторизации
  */
-awh::server::auth_t::data_t awh::server::WS::dataAuth() const noexcept {
+awh::server::auth_t::data_t awh::server::WS::authorization() const noexcept {
 	// Выполняем извлечение данных авторизации
 	return this->_auth.server.data();
 }
@@ -411,7 +411,7 @@ awh::server::auth_t::data_t awh::server::WS::dataAuth() const noexcept {
  *
  * @param data данные авторизации для установки
  */
-void awh::server::WS::dataAuth(const server::auth_t::data_t & data) noexcept {
+void awh::server::WS::authorization(const server::auth_t::data_t & data) noexcept {
 	// Выполняем установку данных авторизации
 	this->_auth.server.data(data);
 }

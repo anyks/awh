@@ -67,13 +67,13 @@ namespace awh {
 				 *
 				 * @return данные модуля авторизации
 				 */
-				client::auth_t::data_t dataAuth() const noexcept;
+				client::auth_t::data_t authorization() const noexcept;
 				/**
 				 * @brief Метод установки данных авторизации
 				 *
 				 * @param data данные авторизации для установки
 				 */
-				void dataAuth(const client::auth_t::data_t & data) noexcept;
+				void authorization(const client::auth_t::data_t & data) noexcept;
 			public:
 				/**
 				 * @brief Метод установки параметров авторизации

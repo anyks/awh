@@ -261,10 +261,10 @@ void awh::client::Web::proxyConnectEvent(const uint64_t bid, const uint16_t sid)
 								// Выводим заголовок запроса
 								std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 								// Выводим параметры запроса
-								std::cout << string(buffer.begin(), buffer.end()) << std::endl << std::endl << std::flush;
+								std::cout << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer)) << std::endl << std::endl << std::flush;
 							#endif
 							// Выполняем отправку сообщения на сервер
-							const_cast <client::core_t *> (this->_core)->send(buffer.data(), buffer.size(), bid);
+							const_cast <client::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
 						}
 					// Если протокол подключения не является защищённым подключением
 					} else {
@@ -398,7 +398,7 @@ void awh::client::Web::proxyReadEvent(const char * buffer, const size_t size, co
 										// Выводим заголовок ответа
 										std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
 										// Выводим параметры ответа
-										std::cout << string(response.begin(), response.end()) << std::endl << std::endl << std::flush;
+										std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
 										// Если тело ответа существует
 										if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY))
 											// Выводим сообщение о выводе чанка тела
