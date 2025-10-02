@@ -57,7 +57,7 @@
 #include <nghttp2/nghttp2.h>
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

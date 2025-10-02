@@ -23,7 +23,7 @@
 #include <stack>
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

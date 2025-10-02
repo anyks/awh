@@ -50,9 +50,9 @@ bool awh::Queue::rss(const size_t size) noexcept {
 			// Если буфер данных не пустой
 			if(!this->_buffer.empty()){
 				// Если для записи в буфере ещё есть место
-				if(this->_buffer.size() > this->_iter.end){
+				if(this->_buffer.size() > this->_range.end){
 					// Определяем количество свободного места в буфере
-					const size_t available = (this->_buffer.size() - this->_iter.end);
+					const size_t available = (this->_buffer.size() - this->_range.end);
 					// Если в буфере больше нет места для добавления данных
 					if(!(result = (available >= bytes))){
 						// Если при добавлении новых данных мы не переходим через лимит
@@ -121,7 +121,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
  */
 void awh::Queue::pop() noexcept {
 	// Если буфер данных не пустой и записи есть
-	if(!this->_buffer.empty() && (this->_iter.count > 0)){
+	if(!this->_buffer.empty() && (this->_range.count > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -131,21 +131,21 @@ void awh::Queue::pop() noexcept {
 			// Размер верхней записи в очереди
 			size_t size = 0;
 			// Извлекаем текущее значение размера записи
-			::memcpy(&size, this->_buffer.data() + this->_iter.begin, sizeof(size));
+			::memcpy(&size, this->_buffer.data() + this->_range.begin, sizeof(size));
 			// Если размер записи получен
 			if(size > 0){
 				// Уменьшаем количество записей в очереди
-				this->_iter.count--;
+				this->_range.count--;
 				// Увеличиваем смещение
-				this->_iter.begin += (size + sizeof(size));
+				this->_range.begin += (size + sizeof(size));
 				// Если мы извлекли все данные очереди
-				if(this->_iter.begin == this->_iter.end){
+				if(this->_range.begin == this->_range.end){
 					// Выполняем сброс конца очереди
-					this->_iter.end = 0;
+					this->_range.end = 0;
 					// Выполняем сброс начала очереди
-					this->_iter.begin = 0;
+					this->_range.begin = 0;
 					// Выполняем сброс количества записей в очереди
-					this->_iter.count = 0;
+					this->_range.count = 0;
 					// Выполняем зануление всего буфера данных
 					::memset(this->_buffer.data(), 0, this->_buffer.size());
 					// Отправляем сообщение о готовности для записи
@@ -193,7 +193,7 @@ void awh::Queue::pop() noexcept {
  */
 void awh::Queue::clear() noexcept {
 	// Если буфер данных не пустой и записи есть
-	if(!this->_buffer.empty() && (this->_iter.count > 0)){
+	if(!this->_buffer.empty() && (this->_range.count > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -201,11 +201,11 @@ void awh::Queue::clear() noexcept {
 			// Выполняем блокировку потока
 			std::unique_lock lock(this->_mtx);
 			// Выполняем сброс конца очереди
-			this->_iter.end = 0;
+			this->_range.end = 0;
 			// Выполняем сброс начала очереди
-			this->_iter.begin = 0;
+			this->_range.begin = 0;
 			// Выполняем сброс количества записей в очереди
-			this->_iter.count = 0;
+			this->_range.count = 0;
 			// Выполняем зануление всего буфера данных
 			::memset(this->_buffer.data(), 0, this->_buffer.size());
 			// Отправляем сообщение о готовности для записи
@@ -274,7 +274,7 @@ void awh::Queue::reset() noexcept {
  */
 size_t awh::Queue::count() const noexcept {
 	// Выводим количество записей в очереди
-	return this->_iter.count;
+	return this->_range.count;
 }
 /**
  * @brief Метод получения размера добавленных данных
@@ -285,13 +285,13 @@ size_t awh::Queue::size() const noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если буфер данных не пустой и записи есть
-	if(!this->_buffer.empty() && (this->_iter.count > 0)){
+	if(!this->_buffer.empty() && (this->_range.count > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Извлекаем текущее значение размера записи
-			::memcpy(&result, this->_buffer.data() + this->_iter.begin, sizeof(result));
+			::memcpy(&result, this->_buffer.data() + this->_range.begin, sizeof(result));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -332,13 +332,13 @@ const void * awh::Queue::data() const noexcept {
 	// Результат работы функции
 	const void * result = nullptr;
 	// Если буфер данных не пустой и записи есть
-	if(!this->_buffer.empty() && (this->_iter.count > 0)){
+	if(!this->_buffer.empty() && (this->_range.count > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Выводим данные записи в бинарном виде
-			result = (this->_buffer.data() + this->_iter.begin + sizeof(size_t));
+			result = (this->_buffer.data() + this->_range.begin + sizeof(size_t));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -379,7 +379,7 @@ bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 			// Сообщаем, что очередь пустая
 			return result;
 		// Если очередь пустая
-		if((result = (this->_iter.count == 0))){
+		if((result = (this->_range.count == 0))){
 			// Если таймаут ожидания установлен
 			if(timeout > 0){
 				// Выполняем блокировку потока
@@ -387,10 +387,10 @@ bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 				// Выполняем ожидание на поступление данных
 				this->_cv.read.wait_for(lock, std::chrono::duration(std::chrono::milliseconds(timeout)), [this]() noexcept -> bool {
 					// Если в очереди появились данные
-					return (this->_terminate || (this->_iter.count > 0));
+					return (this->_terminate || (this->_range.count > 0));
 				});
 				// Проверяем пустая ли очередь в данный момент
-				result = (this->_terminate || (this->_iter.count == 0));
+				result = (this->_terminate || (this->_range.count == 0));
 			}
 		}
 	/**
@@ -433,31 +433,31 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 			// Если очередь завершила работу
 			if(this->_terminate)
 				// Выводим текущий размер очереди
-				return this->_iter.count;
+				return this->_range.count;
 			// Если все данные добавлены в очередь
-			if(this->_iter.count >= this->_max.records){
+			if(this->_range.count >= this->_max.records){
 				// Выполняем ожидание доступности записей
 				this->_cv.write.wait(lock, [this]() noexcept -> bool {
 					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_iter.count < this->_max.records));
+					return (this->_terminate || (this->_range.count < this->_max.records));
 				});
 				// Если очередь завершила работу
 				if(this->_terminate)
 					// Выводим текущий размер очереди
-					return this->_iter.count;
+					return this->_range.count;
 			}
 			// Выполняем выделение памяти
 			if(this->rss(size)){
 				// Увеличиваем количество записей в очереди
-				this->_iter.count++;
+				this->_range.count++;
 				// Выполняем запись данных в буфер
-				::memcpy(this->_buffer.data() + this->_iter.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
+				::memcpy(this->_buffer.data() + this->_range.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
 				// Увеличиваем смещение конца данных буфера
-				this->_iter.end += sizeof(size);
+				this->_range.end += sizeof(size);
 				// Выполняем добавление самих данных полезной нагрузки
-				::memcpy(this->_buffer.data() + this->_iter.end, buffer, size);
+				::memcpy(this->_buffer.data() + this->_range.end, buffer, size);
 				// Увеличиваем смещение конца данных буфера
-				this->_iter.end += size;
+				this->_range.end += size;
 				// Отправляем сообщение, что очередь готова на чтение
 				this->_cv.read.notify_one();
 			// Если память не выделена
@@ -465,12 +465,12 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 				// Выполняем ожидание доступности записей
 				this->_cv.write.wait(lock, [this]() noexcept -> bool {
 					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_iter.end == 0));
+					return (this->_terminate || (this->_range.end == 0));
 				});
 				// Если очередь завершила работу
 				if(this->_terminate)
 					// Выводим текущий размер очереди
-					return this->_iter.count;
+					return this->_range.count;
 			}
 		/**
 		 * Если возникает ошибка
@@ -492,7 +492,7 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 		}
 	}
 	// Выводим результат
-	return this->_iter.count;
+	return this->_range.count;
 }
 /**
  * @brief Метод добавления бинарного буфера данных в очередь
@@ -513,33 +513,33 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 			// Если очередь завершила работу
 			if(this->_terminate)
 				// Выводим текущий размер очереди
-				return this->_iter.count;
+				return this->_range.count;
 			// Если все данные добавлены в очередь
-			if(this->_iter.count >= this->_max.records){
+			if(this->_range.count >= this->_max.records){
 				// Выполняем ожидание доступности записей
 				this->_cv.write.wait(lock, [this]() noexcept -> bool {
 					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_iter.count < this->_max.records));
+					return (this->_terminate || (this->_range.count < this->_max.records));
 				});
 				// Если очередь завершила работу
 				if(this->_terminate)
 					// Выводим текущий размер очереди
-					return this->_iter.count;
+					return this->_range.count;
 			}
 			// Выполняем выделение памяти
 			if(this->rss(size)){
 				// Увеличиваем количество записей в очереди
-				this->_iter.count++;
+				this->_range.count++;
 				// Выполняем запись данных в буфер
-				::memcpy(this->_buffer.data() + this->_iter.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
+				::memcpy(this->_buffer.data() + this->_range.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
 				// Увеличиваем смещение конца данных буфера
-				this->_iter.end += sizeof(size);
+				this->_range.end += sizeof(size);
 				// Выполняем перебор всех записей
 				for(auto & record : records){
 					// Выполняем добавление самих данных полезной нагрузки
-					::memcpy(this->_buffer.data() + this->_iter.end, record.first, record.second);
+					::memcpy(this->_buffer.data() + this->_range.end, record.first, record.second);
 					// Увеличиваем смещение конца данных буфера
-					this->_iter.end += record.second;
+					this->_range.end += record.second;
 				}
 				// Отправляем сообщение, что очередь готова на чтение
 				this->_cv.read.notify_one();
@@ -548,12 +548,12 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 				// Выполняем ожидание доступности записей
 				this->_cv.write.wait(lock, [this]() noexcept -> bool {
 					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_iter.end == 0));
+					return (this->_terminate || (this->_range.end == 0));
 				});
 				// Если очередь завершила работу
 				if(this->_terminate)
 					// Выводим текущий размер очереди
-					return this->_iter.count;
+					return this->_range.count;
 			}
 		/**
 		 * Если возникает ошибка
@@ -575,7 +575,7 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 		}
 	}
 	// Выводим результат
-	return this->_iter.count;
+	return this->_range.count;
 }
 /**
  * @brief Метод установки максимального размера потребления памяти
@@ -678,11 +678,11 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 		// Выполняем обмен буферами данных
 		this->_buffer.swap(queue._buffer);
 		// Выполняем обмен последними итераторами
-		this->_iter.end += (queue._iter.end - (queue._iter.end = this->_iter.end));
+		this->_range.end += (queue._range.end - (queue._range.end = this->_range.end));
 		// Выполняем обмен начальными итераторами
-		this->_iter.begin += (queue._iter.begin - (queue._iter.begin = this->_iter.begin));
+		this->_range.begin += (queue._range.begin - (queue._range.begin = this->_range.begin));
 		// Выполняем обмен количествами добавленных записями
-		this->_iter.count += (queue._iter.count - (queue._iter.count = this->_iter.count));
+		this->_range.count += (queue._range.count - (queue._range.count = this->_range.count));
 		// Выполняем обмен максимальными размерами памяти
 		this->_max.memory += (queue._max.memory - (queue._max.memory = this->_max.memory));
 		// Выполняем обмен максимальными количествами записей
@@ -758,21 +758,21 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(queue._buffer);
 		// Выполняем копирование последнего итератора
-		this->_iter.end = queue._iter.end;
+		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
-		this->_iter.begin = queue._iter.begin;
+		this->_range.begin = queue._range.begin;
 		// Выполняем копирование количества добавленных записей
-		this->_iter.count = queue._iter.count;
+		this->_range.count = queue._range.count;
 		// Выполняем копирование максимального размера памяти
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
 		this->_max.records = queue._max.records;
 		// Выполняем сброс последнего итератора сторонней очереди
-		queue._iter.end = 0;
+		queue._range.end = 0;
 		// Выполняем сброс начального итератора сторонней очереди
-		queue._iter.begin = 0;
+		queue._range.begin = 0;
 		// Выполняем сброс количества добавленных записей сторонней очереди
-		queue._iter.count = 0;
+		queue._range.count = 0;
 		// Деактивируем флаг завершения работы текущей очереди
 		this->_terminate = false;
 		// Деактивируем флаг завершения работы сторонней очереди
@@ -818,11 +818,11 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 		// Выполняем блокировку потока текущей очереди
 		std::unique_lock lock(this->_mtx);
 		// Выполняем копирование последнего итератора
-		this->_iter.end = queue._iter.end;
+		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
-		this->_iter.begin = queue._iter.begin;
+		this->_range.begin = queue._range.begin;
 		// Выполняем копирование количества добавленных записей
-		this->_iter.count = queue._iter.count;
+		this->_range.count = queue._range.count;
 		// Выполняем копирование максимального размера памяти
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
@@ -867,9 +867,9 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
 		 * Выполняем сравнения всей внутренней составляющей
 		 */
 		return (
-			(this->_iter.end == queue._iter.end) &&
-			(this->_iter.begin == queue._iter.begin) &&
-			(this->_iter.count == queue._iter.count) &&
+			(this->_range.end == queue._range.end) &&
+			(this->_range.begin == queue._range.begin) &&
+			(this->_range.count == queue._range.count) &&
 			(this->_buffer.size() == queue._buffer.size()) &&
 			(::memcmp(this->_buffer.data(), queue._buffer.data(), this->_buffer.size()) == 0)
 		);
@@ -923,21 +923,21 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 		// Выполняем перемен буферами данных
 		this->_buffer = ::move(queue._buffer);
 		// Выполняем копирование последнего итератора
-		this->_iter.end = queue._iter.end;
+		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
-		this->_iter.begin = queue._iter.begin;
+		this->_range.begin = queue._range.begin;
 		// Выполняем копирование количества добавленных записей
-		this->_iter.count = queue._iter.count;
+		this->_range.count = queue._range.count;
 		// Выполняем копирование максимального размера памяти
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
 		this->_max.records = queue._max.records;
 		// Выполняем сброс последнего итератора сторонней очереди
-		queue._iter.end = 0;
+		queue._range.end = 0;
 		// Выполняем сброс начального итератора сторонней очереди
-		queue._iter.begin = 0;
+		queue._range.begin = 0;
 		// Выполняем сброс количества добавленных записей сторонней очереди
-		queue._iter.count = 0;
+		queue._range.count = 0;
 		// Деактивируем флаг завершения работы текущей очереди
 		this->_terminate = false;
 		// Деактивируем флаг завершения работы сторонней очереди
@@ -982,11 +982,11 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 		// Выполняем перемен буферами данных
 		this->_buffer = queue._buffer;
 		// Выполняем копирование последнего итератора
-		this->_iter.end = queue._iter.end;
+		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
-		this->_iter.begin = queue._iter.begin;
+		this->_range.begin = queue._range.begin;
 		// Выполняем копирование количества добавленных записей
-		this->_iter.count = queue._iter.count;
+		this->_range.count = queue._range.count;
 		// Выполняем копирование максимального размера памяти
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей

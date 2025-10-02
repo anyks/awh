@@ -73,7 +73,7 @@
 #include <openssl/x509v3.h>
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

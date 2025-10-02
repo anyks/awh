@@ -29,7 +29,7 @@
 #include "../socks5/server.hpp"
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

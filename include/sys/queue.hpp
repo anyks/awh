@@ -51,7 +51,7 @@
 #include "log.hpp"
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {
@@ -76,10 +76,10 @@ namespace awh {
 				std::condition_variable write;
 			} cv_t;
 			/**
-			 * @brief Структура итерации записей
+			 * @brief Структура диапазонов записей
 			 * 
 			 */
-			typedef struct Iterator {
+			typedef struct Range {
 				size_t end;   // Конец записи
 				size_t begin; // Начало записи
 				size_t count; // Количество добавленных записей
@@ -87,8 +87,8 @@ namespace awh {
 				 * @brief Конструктор
 				 * 
 				 */
-				Iterator() noexcept : end(0), begin(0), count(0) {}
-			} __attribute__((packed)) iter_t;
+				Range() noexcept : end(0), begin(0), count(0) {}
+			} __attribute__((packed)) range_t;
 			/**
 			 * @brief Структура параметров максимальных значений
 			 * 
@@ -113,8 +113,8 @@ namespace awh {
 			// Размеры максимальныйх ограничений
 			max_t _max;
 		private:
-			// Объект итерации данных
-			iter_t _iter;
+			// Объект диапазонов записей
+			range_t _range;
 		private:
 			// Условные переменные
 			mutable cv_t _cv;

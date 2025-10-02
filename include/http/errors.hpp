@@ -21,12 +21,12 @@
 #include <cstdint>
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {
 	/**
-	 * @brief пространство имён
+	 * @brief пространство имён модуля
 	 *
 	 */
 	namespace http {

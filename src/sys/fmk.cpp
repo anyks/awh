@@ -183,7 +183,9 @@ static uint8_t decimalPlaces(double number) noexcept {
 #endif
 
 /**
- * Устанавливаем шаблон функции
+ * @brief Шаблон функции разделения строк на составляющие
+ *
+ * @tparam T тип контейнера в котором извлекается результат
  */
 template <typename T>
 /**
@@ -296,7 +298,9 @@ static T & split(const string & str, const string & delim, T & container) noexce
 	return container;
 }
 /**
- * Устанавливаем шаблон функции
+ * @brief Шаблон функции разделения строк на составляющие
+ *
+ * @tparam T тип контейнера в котором извлекается результат
  */
 template <typename T>
 /**

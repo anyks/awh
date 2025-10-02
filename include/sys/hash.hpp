@@ -79,7 +79,7 @@
 #define MOD_GZIP_ZLIB_BSIZE 8096
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

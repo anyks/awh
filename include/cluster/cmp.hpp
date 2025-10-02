@@ -34,7 +34,7 @@
 #include "../sys/buffer.hpp"
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

@@ -21,7 +21,7 @@
 #include "web/ws2.hpp"
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

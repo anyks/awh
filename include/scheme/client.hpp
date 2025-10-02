@@ -23,7 +23,7 @@
 #include "../socks5/client.hpp"
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

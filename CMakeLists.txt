@@ -331,6 +331,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/http/http2.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/http/headers.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"

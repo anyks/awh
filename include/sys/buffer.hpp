@@ -39,7 +39,7 @@
 #include "log.hpp"
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {
@@ -54,21 +54,21 @@ namespace awh {
 	typedef class AWH_SHARED_EXPORT Buffer {
 		private:
 			/**
-			 * @brief Структура итерации записей
+			 * @brief Структура диапазонов записей
 			 * 
 			 */
-			typedef struct Iterator {
+			typedef struct Range {
 				size_t end;   // Конец записи
 				size_t begin; // Начало записи
 				/**
 				 * @brief Конструктор
 				 * 
 				 */
-				Iterator() noexcept : end(0), begin(0) {}
-			} __attribute__((packed)) iter_t;
+				Range() noexcept : end(0), begin(0) {}
+			} __attribute__((packed)) range_t;
 		private:
-			// Объект итерации данных
-			iter_t _iter;
+			// Объект диапазонов записей
+			range_t _range;
 		private:
 			// Максимальный размер выделения памяти
 			size_t _maxMemory;
@@ -231,6 +231,33 @@ namespace awh {
 			 */
 			void reserve(const size_t size) noexcept;
 		public:
+			/**
+			 * @brief Шаблон для добавления числа в буфер
+			 *
+			 * @tparam T тип данных для добавления
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод добавления числа в буфер
+			 *
+			 * @param value значение для добавления
+			 * @return       результат добавления данных
+			 */
+			bool push(const T value) noexcept;
+			/**
+			 * @brief Метод добавления текста в буфер
+			 *
+			 * @param text текст для добавления
+			 * @return     результат добавления данных
+			 */
+			bool push(const string & text) noexcept;
+			/**
+			 * @brief Метод добавления бинарного буфера данных в буфер
+			 *
+			 * @param buffer бинарный буфер для добавления
+			 * @return       результат добавления данных
+			 */
+			bool push(const vector <char> & buffer) noexcept;
 			/**
 			 * @brief Метод добавления бинарного буфера данных в буфер
 			 *

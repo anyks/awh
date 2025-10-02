@@ -25,7 +25,7 @@
 #include <condition_variable>
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

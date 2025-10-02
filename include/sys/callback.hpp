@@ -33,7 +33,7 @@
 #include <cityhash/city.h>
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

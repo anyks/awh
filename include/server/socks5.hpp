@@ -25,7 +25,7 @@
 #include "../scheme/socks5.hpp"
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

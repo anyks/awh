@@ -77,7 +77,7 @@
 #include "../sys/log.hpp"
 
 /**
- * @brief пространство имён
+ * @brief основное пространство имён
  *
  */
 namespace awh {

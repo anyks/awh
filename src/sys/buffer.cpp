@@ -47,15 +47,15 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 			// Если буфер данных не пустой
 			if(!this->_buffer.empty()){
 				// Если для записи в буфере ещё есть место
-				if(this->_buffer.size() > this->_iter.end){
+				if(this->_buffer.size() > this->_range.end){
 					// Определяем количество свободного места в буфере
-					size_t bytes = (this->_buffer.size() - this->_iter.end);
+					size_t bytes = (this->_buffer.size() - this->_range.end);
 					// Если в буфере больше нет места для добавления данных
 					if(!(result = (bytes >= size))){
 						// Если в буфере уже освободилась память
-						if(this->_iter.begin > 0){
+						if(this->_range.begin > 0){
 							// Определяем необходимое нам место
-							bytes = ((this->_iter.end - this->_iter.begin) + size);
+							bytes = ((this->_range.end - this->_range.begin) + size);
 							// Если количество записываемых байт помещается в максимальный размер буфера
 							if((result = (bytes <= this->_maxMemory))){
 								// Если выделенной памяти в буфере не хватает
@@ -63,15 +63,15 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 									// Выделяем ещё памяти
 									this->_buffer.resize(bytes, 0);
 								// Определяем размер данных в буфере для перемещения
-								bytes = (this->_iter.end - this->_iter.begin);
+								bytes = (this->_range.end - this->_range.begin);
 								// Если нам есть чего перемещать
 								if(bytes > 0)
 									// Выполняем перемещение верхней границы памяти
-									::memcpy(this->_buffer.data(), this->_buffer.data() + this->_iter.begin, bytes);
+									::memcpy(this->_buffer.data(), this->_buffer.data() + this->_range.begin, bytes);
 								// Выполняем смещение верхней границы буфера
-								this->_iter.begin = 0;
+								this->_range.begin = 0;
 								// Выполняем смещение нижней границы буфера
-								this->_iter.end = bytes;
+								this->_range.end = bytes;
 							}
 						// Если в буфере ещё не освобождалась память
 						} else {
@@ -84,9 +84,9 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 				// Если в буфере уже нет места
 				} else {
 					// Если в буфере уже освободилась память
-					if(this->_iter.begin > 0){
+					if(this->_range.begin > 0){
 						// Определяем необходимое нам место
-						size_t bytes = ((this->_iter.end - this->_iter.begin) + size);
+						size_t bytes = ((this->_range.end - this->_range.begin) + size);
 						// Если количество записываемых байт помещается в максимальный размер буфера
 						if((result = (bytes <= this->_maxMemory))){
 							// Если выделенной памяти в буфере не хватает
@@ -94,15 +94,15 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 								// Выделяем ещё памяти
 								this->_buffer.resize(bytes, 0);
 							// Определяем размер данных в буфере для перемещения
-							bytes = (this->_iter.end - this->_iter.begin);
+							bytes = (this->_range.end - this->_range.begin);
 							// Если нам есть чего перемещать
 							if(bytes > 0)
 								// Выполняем перемещение верхней границы памяти
-								::memcpy(this->_buffer.data(), this->_buffer.data() + this->_iter.begin, bytes);
+								::memcpy(this->_buffer.data(), this->_buffer.data() + this->_range.begin, bytes);
 							// Выполняем смещение верхней границы буфера
-							this->_iter.begin = 0;
+							this->_range.begin = 0;
 							// Выполняем смещение нижней границы буфера
-							this->_iter.end = bytes;
+							this->_range.end = bytes;
 						}
 					// Если мы не выходим за лимиты, выделяем ещё памяти
 					} else if((result = ((this->_buffer.size() + size) <= this->_maxMemory)))
@@ -141,7 +141,7 @@ bool awh::Buffer::rss(const size_t size) noexcept {
  */
 void awh::Buffer::clear() noexcept {
 	// Если буфер данных не пустой и записи есть
-	if(!this->_buffer.empty() && (this->_iter.end > 0)){
+	if(!this->_buffer.empty() && (this->_range.end > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -149,9 +149,9 @@ void awh::Buffer::clear() noexcept {
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Выполняем сброс конца буфера
-			this->_iter.end = 0;
+			this->_range.end = 0;
 			// Выполняем сброс начала буфера
-			this->_iter.begin = 0;
+			this->_range.begin = 0;
 			// Выполняем зануление всего буфера данных
 			::memset(this->_buffer.data(), 0, this->_buffer.size());
 		/**
@@ -221,8 +221,8 @@ void awh::Buffer::reset() noexcept {
 bool awh::Buffer::empty() const noexcept {
 	// Выводим результат проверки
 	return (
-		(this->_iter.end == 0) ||
-		(this->_iter.end == this->_iter.begin)
+		(this->_range.end == 0) ||
+		(this->_range.end == this->_range.begin)
 	);
 }
 /**
@@ -232,7 +232,7 @@ bool awh::Buffer::empty() const noexcept {
  */
 size_t awh::Buffer::size() const noexcept {
 	// Выводим размер добавленных данных в буфер
-	return (this->_iter.end - this->_iter.begin);
+	return (this->_range.end - this->_range.begin);
 }
 /**
  * @brief Метод вывода размера занимаемой памяти очередью
@@ -258,16 +258,16 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если буфер не соответствует итераторам
-			if((this->_iter.begin > 0) || (this->_iter.end < this->_buffer.size())){
+			if((this->_range.begin > 0) || (this->_range.end < this->_buffer.size())){
 				// Выполняем усечение буфера
 				vector <decltype(this->_buffer)::value_type> (
-					this->_buffer.begin() + this->_iter.begin,
-					this->_buffer.begin() + this->_iter.end
+					this->_buffer.begin() + this->_range.begin,
+					this->_buffer.begin() + this->_range.end
 				).swap(const_cast <buffer_t *> (this)->_buffer);
 				// Выполняем сброс верхнего итератора
-				const_cast <buffer_t *> (this)->_iter.begin = 0;
+				const_cast <buffer_t *> (this)->_range.begin = 0;
 				// Выполняем сброс нижнего итератора
-				const_cast <buffer_t *> (this)->_iter.end = this->_buffer.size();
+				const_cast <buffer_t *> (this)->_range.end = this->_buffer.size();
 			}
 		/**
 		 * Если возникает ошибка
@@ -292,9 +292,9 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем сброс нижнего итератора
-		const_cast <buffer_t *> (this)->_iter.end = 0;
+		const_cast <buffer_t *> (this)->_range.end = 0;
 		// Выполняем сброс верхнего итератора
-		const_cast <buffer_t *> (this)->_iter.begin = 0;
+		const_cast <buffer_t *> (this)->_range.begin = 0;
 	}
 	// Выводим значение буфера как есть
 	return this->_buffer;
@@ -405,9 +405,9 @@ T awh::Buffer::back() const noexcept {
 		// Получаем размер данных
 		const size_t size = sizeof(result);
 		// Если данных достаточно в буфере
-		if(this->_iter.end > size)
+		if(this->_range.end > size)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + (this->_iter.end - size), size);
+			::memcpy(&result, this->_buffer.data() + (this->_range.end - size), size);
 	}
 	// Выводим результат
 	return result;
@@ -457,9 +457,9 @@ T awh::Buffer::front() const noexcept {
 		// Получаем размер данных
 		const size_t size = sizeof(result);
 		// Если данные есть в буфере
-		if((this->_iter.end - this->_iter.begin) >= size)
+		if((this->_range.end - this->_range.begin) >= size)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + this->_iter.begin, size);
+			::memcpy(&result, this->_buffer.data() + this->_range.begin, size);
 	}
 	// Выводим результат
 	return result;
@@ -510,9 +510,9 @@ T awh::Buffer::at(const size_t index) const noexcept {
 		// Получаем размер данных
 		const size_t size = sizeof(result);
 		// Если в буфере данных есть данные
-		if(((this->_iter.begin + (index * size)) + size) <= this->_iter.end)
+		if(((this->_range.begin + (index * size)) + size) <= this->_range.end)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + (this->_iter.begin + (index * size)), size);
+			::memcpy(&result, this->_buffer.data() + (this->_range.begin + (index * size)), size);
 		// Если данных нет в буфере
 		else {
 			/**
@@ -579,9 +579,9 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 		// Получаем размер данных
 		const size_t size = sizeof(value);
 		// Если в буфере данных есть данные
-		if(((this->_iter.begin + (index * size)) + size) <= this->_iter.end)
+		if(((this->_range.begin + (index * size)) + size) <= this->_range.end)
 			// Выполняем установку значения
-			::memcpy(const_cast <char *> (this->_buffer.data() + (this->_iter.begin + (index * size))), &value, size);
+			::memcpy(const_cast <char *> (this->_buffer.data() + (this->_range.begin + (index * size))), &value, size);
 		// Если данных нет в буфере
 		else {
 			/**
@@ -635,7 +635,7 @@ const void * awh::Buffer::data() const noexcept {
 	// Если буфер данных не пустой
 	if(!this->empty())
 		// Выводим текущий результат
-		return (this->_buffer.data() + this->_iter.begin);
+		return (this->_buffer.data() + this->_range.begin);
 	// Выводим значение по умолчанию
 	return nullptr;
 }
@@ -654,11 +654,11 @@ void awh::Buffer::erase(const size_t size) noexcept {
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если размер удаляемых данных не выше максимального буфера
-			if((this->_iter.end - this->_iter.begin) >= size)
+			if((this->_range.end - this->_range.begin) >= size)
 				// Выполняем удаление указанного количества данных
-				this->_iter.begin += size;
+				this->_range.begin += size;
 			// Удаляем все что есть
-			else this->_iter.begin = this->_iter.end;
+			else this->_range.begin = this->_range.end;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -713,6 +713,76 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	}
 }
 /**
+ * @brief Шаблон для добавления числа в буфер
+ *
+ * @tparam T тип данных для добавления
+ */
+template <typename T>
+/**
+ * @brief Метод добавления числа в буфер
+ *
+ * @param value значение для добавления
+ * @return       результат добавления данных
+ */
+bool awh::Buffer::push(const T value) noexcept {
+	// Выполняем добавление числа
+	return this->push(&value, sizeof(value));
+}
+/**
+ * Объявляем прототипы для метода добавления числа в буфер
+ */
+template bool awh::Buffer::push(const int8_t) noexcept;
+template bool awh::Buffer::push(const uint8_t) noexcept;
+template bool awh::Buffer::push(const int16_t) noexcept;
+template bool awh::Buffer::push(const uint16_t) noexcept;
+template bool awh::Buffer::push(const int32_t) noexcept;
+template bool awh::Buffer::push(const uint32_t) noexcept;
+template bool awh::Buffer::push(const int64_t) noexcept;
+template bool awh::Buffer::push(const uint64_t) noexcept;
+template bool awh::Buffer::push(const float) noexcept;
+template bool awh::Buffer::push(const double) noexcept;
+/**
+ * Реализация под операционные системы кроме Sun Solaris
+ */
+#if !__sun__
+	template bool awh::Buffer::push(const char) noexcept;
+#endif
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template bool awh::Buffer::push(const size_t) noexcept;
+	template bool awh::Buffer::push(const ssize_t) noexcept;
+#endif
+/**
+ * @brief Метод добавления текста в буфер
+ *
+ * @param text текст для добавления
+ * @return     результат добавления данных
+ */
+bool awh::Buffer::push(const string & text) noexcept {
+	// Если текст передан не пустой
+	if(!text.empty())
+		// Выполняем добавление текста
+		return this->push(text.c_str(), text.length());
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод добавления бинарного буфера данных в буфер
+ *
+ * @param buffer бинарный буфер для добавления
+ * @return       результат добавления данных
+ */
+bool awh::Buffer::push(const vector <char> & buffer) noexcept {
+	// Если буфер данных передан не пустой
+	if(!buffer.empty())
+		// Выполняем добавление бинарного буфера данных
+		return this->push(buffer.data(), buffer.size());
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод добавления бинарного буфера данных в буфер
  *
  * @param buffer бинарный буфер для добавления
@@ -735,9 +805,9 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 				// Выполняем выделение памяти
 				if((result = this->rss(size))){
 					// Выполняем добавление самих данных полезной нагрузки
-					::memcpy(this->_buffer.data() + this->_iter.end, buffer, size);
+					::memcpy(this->_buffer.data() + this->_range.end, buffer, size);
 					// Увеличиваем смещение конца данных буфера
-					this->_iter.end += size;
+					this->_range.end += size;
 				// Выполняем сброс буфера
 				} else {
 					/**
@@ -754,9 +824,9 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
 					#endif
 					// Выполняем сброс конца буфера
-					this->_iter.end = 0;
+					this->_range.end = 0;
 					// Выполняем сброс начала буфера
-					this->_iter.begin = 0;
+					this->_range.begin = 0;
 					// Выполняем зануление всего буфера данных
 					::memset(this->_buffer.data(), 0, this->_buffer.size());
 				}
@@ -787,9 +857,9 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 				// Выполняем блокировку потока
 				const lock_guard <std::mutex> lock(this->_mtx);
 				// Выполняем сброс конца буфера
-				this->_iter.end = 0;
+				this->_range.end = 0;
 				// Выполняем сброс начала буфера
-				this->_iter.begin = 0;
+				this->_range.begin = 0;
 				// Выполняем зануление всего буфера данных
 				::memset(this->_buffer.data(), 0, this->_buffer.size());
 			}
@@ -868,9 +938,9 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 		// Выполняем обмен буферами данных
 		this->_buffer.swap(buffer._buffer);
 		// Выполняем обмен последними итераторами
-		this->_iter.end += (buffer._iter.end - (buffer._iter.end = this->_iter.end));
+		this->_range.end += (buffer._range.end - (buffer._range.end = this->_range.end));
 		// Выполняем обмен начальными итераторами
-		this->_iter.begin += (buffer._iter.begin - (buffer._iter.begin = this->_iter.begin));
+		this->_range.begin += (buffer._range.begin - (buffer._range.begin = this->_range.begin));
 		// Выполняем обмен максимальными размерами памяти
 		this->_maxMemory += (buffer._maxMemory - (buffer._maxMemory = this->_maxMemory));
 	/**
@@ -933,9 +1003,9 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
 		// Выполняем блокировку потока текущего буфера
 		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем копирование начального итератора
-		this->_iter.begin = 0;
+		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
-		this->_iter.end = buffer.size();
+		this->_range.end = buffer.size();
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer);
 	/**
@@ -973,9 +1043,9 @@ awh::Buffer & awh::Buffer::operator = (const vector <char> & buffer) noexcept {
 		// Выполняем блокировку потока текущего буфера
 		const lock_guard <std::mutex> lock(this->_mtx);
 		// Выполняем копирование начального итератора
-		this->_iter.begin = 0;
+		this->_range.begin = 0;
 		// Выполняем копирование последнего итератора
-		this->_iter.end = buffer.size();
+		this->_range.end = buffer.size();
 		// Выполняем перемещение буфера данных
 		this->_buffer.assign(buffer.begin(), buffer.end());
 	/**
@@ -1017,15 +1087,15 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Выполняем копирование последнего итератора
-		this->_iter.end = buffer._iter.end;
+		this->_range.end = buffer._range.end;
 		// Выполняем копирование начального итератора
-		this->_iter.begin = buffer._iter.begin;
+		this->_range.begin = buffer._range.begin;
 		// Выполняем копирование максимального размера памяти
 		this->_maxMemory = buffer._maxMemory;
 		// Выполняем сброс последнего итератора стороннего буфера
-		buffer._iter.end = 0;
+		buffer._range.end = 0;
 		// Выполняем сброс начального итератора стороннего буфера
-		buffer._iter.begin = 0;
+		buffer._range.begin = 0;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1063,9 +1133,9 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 		// Выполняем блокировку потока стороннего буфера
 		const lock_guard <std::mutex> lock2(buffer._mtx);
 		// Выполняем копирование последнего итератора
-		this->_iter.end = buffer._iter.end;
+		this->_range.end = buffer._range.end;
 		// Выполняем копирование начального итератора
-		this->_iter.begin = buffer._iter.begin;
+		this->_range.begin = buffer._range.begin;
 		// Выполняем копирование максимального размера памяти
 		this->_maxMemory = buffer._maxMemory;
 		// Выполняем перемен буферами данных
@@ -1106,8 +1176,8 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 		 * Выполняем сравнения всей внутренней составляющей
 		 */
 		return (
-			(this->_iter.end == buffer._iter.end) &&
-			(this->_iter.begin == buffer._iter.begin) &&
+			(this->_range.end == buffer._range.end) &&
+			(this->_range.begin == buffer._range.begin) &&
 			(this->_buffer.size() == buffer._buffer.size()) &&
 			(::memcmp(this->_buffer.data(), buffer._buffer.data(), this->_buffer.size()) == 0)
 		);
@@ -1149,15 +1219,15 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Выполняем копирование последнего итератора
-		this->_iter.end = buffer._iter.end;
+		this->_range.end = buffer._range.end;
 		// Выполняем копирование начального итератора
-		this->_iter.begin = buffer._iter.begin;
+		this->_range.begin = buffer._range.begin;
 		// Выполняем копирование максимального размера памяти
 		this->_maxMemory = buffer._maxMemory;
 		// Выполняем сброс последнего итератора стороннего буфера
-		buffer._iter.end = 0;
+		buffer._range.end = 0;
 		// Выполняем сброс начального итератора стороннего буфера
-		buffer._iter.begin = 0;
+		buffer._range.begin = 0;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1192,9 +1262,9 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 		// Выполняем блокировку потока стороннего буфера
 		const lock_guard <std::mutex> lock2(buffer._mtx);
 		// Выполняем копирование последнего итератора
-		this->_iter.end = buffer._iter.end;
+		this->_range.end = buffer._range.end;
 		// Выполняем копирование начального итератора
-		this->_iter.begin = buffer._iter.begin;
+		this->_range.begin = buffer._range.begin;
 		// Выполняем копирование максимального размера памяти
 		this->_maxMemory = buffer._maxMemory;
 		// Выполняем перемен буферами данных
