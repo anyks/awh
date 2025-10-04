@@ -56,11 +56,6 @@
  */
 namespace awh {
 	/**
-	 * @brief Прототип класса контейнера HTTP-заголовков
-	 *
-	 */
-	class Headers;
-	/**
 	 * Подписываемся на стандартное пространство имён
 	 */
 	using namespace std;
@@ -80,10 +75,7 @@ namespace awh {
 			 * @brief Итератор как вложенный класс
 			 * 
 			 */
-			typedef class Iterator {
-				private:
-					// Объект родительского контейнера
-					Headers * _ctx;
+			typedef class AWH_SHARED_EXPORT Iterator {
 				public:
 					/**
 					 * Создаём необходимые нам типы данных
@@ -97,10 +89,15 @@ namespace awh {
 					/**
 					 * Создаём тип данных итератора
 					 */
-					using iterator = std::multimap <uint32_t, uintptr_t>::iterator;
+					using iterator = std::multimap <uint32_t, item_t>::iterator;
 				private:
 					// Текущее значение итератора
 					iterator _it;
+				private:
+					// Объект фреймворка
+					const fmk_t * _fmk;
+					// Объект работы с логами
+					const log_t * _log;
 				public:
 					/**
 					 * @brief Оператор извлечения указателя заголовка
@@ -113,7 +110,7 @@ namespace awh {
 					 * 
 					 * @return значение заголовка
 					 */
-					reference operator * () noexcept;
+					reference operator * () const noexcept;
 				public:
 					/**
 					 * @brief Оператор смещения вперед
@@ -122,24 +119,11 @@ namespace awh {
 					 */
 					Iterator & operator ++ () noexcept;
 					/**
-					 * @brief Оператор смещения вперёд на указанную позицию
-					 * 
-					 * @return значение текущего итератора
-					 */
-					Iterator operator ++ (const int32_t) noexcept;
-				public:
-					/**
 					 * @brief Оператор смещения назад
 					 * 
 					 * @return значение текущего итератора
 					 */
 					Iterator & operator -- () noexcept;
-					/**
-					 * @brief Оператор смещения назад на указанную позицию
-					 * 
-					 * @return значение текущего итератора
-					 */
-					Iterator operator -- (const int32_t) noexcept;
 				public:
 					/**
 					 * @brief Оператор сравнения соответствия итератора
@@ -159,26 +143,13 @@ namespace awh {
 					/**
 					 * @brief Конструктор
 					 *
-					 * @param ctx объект родительского контейнера
-					 * @param it   итератор для установки
+					 * @param it  итератор для установки
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
 					 */
-					explicit Iterator(Headers * ctx, iterator it) noexcept : _ctx(ctx), _it(it) {}
+					explicit Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept : _it(it), _fmk(fmk), _log(log) {}
 			} iterator_t;
 		private:
-			/**
-			 * @brief Структура диапазона записей
-			 * 
-			 */
-			typedef struct Range {
-				size_t end;   // Конец записи
-				size_t begin; // Начало записи
-				size_t count; // Количество добавленных записей
-				/**
-				 * @brief Конструктор
-				 * 
-				 */
-				Range() noexcept : end(0), begin(0), count(0) {}
-			} __attribute__((packed)) range_t;
 			/**
 			 * @brief Структура параметров максимальных значений
 			 * 
@@ -201,17 +172,11 @@ namespace awh {
 			// Текущее значение записи
 			item_t _item;
 		private:
-			// Объект диапазонов записей
-			range_t _range;
-		private:
 			// Мютекс для блокировки потока
 			mutable std::mutex _mtx;
 		private:
-			// Буфер данных выделенной памяти
-			vector <uint8_t> _buffer;
-		private:
-			// Список записей HTTP-заголовков
-			std::multimap <uint32_t, uintptr_t> _records;
+			// Набор установленных HTTP-заголовков
+			std::multimap <uint32_t, item_t> _items;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -219,12 +184,12 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * @brief Метод контроля памяти
-			 * 
-			 * @param size желаемый размер выделения памяти
-			 * @return     результат выполнения операции
+			 * @brief Метод генерации идентификатора заголовка
+			 *
+			 * @param name название заголовка для генерации идентификатора
+			 * @return     сгенерированный идентификатор заголовка
 			 */
-			bool rss(const size_t size) noexcept;
+			uint32_t id(const string name) const noexcept;
 		public:
 			/**
 			 * @brief Метод очистки всех данных очереди
@@ -244,13 +209,6 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			bool empty() const noexcept;
-		public:
-			/**
-			 * @brief Количество добавленных заголовков
-			 *
-			 * @return количество добавленных заголовков
-			 */
-			size_t count() const noexcept;
 		public:
 			/**
 			 * @brief Метод печати содержимого заголовков в формате HTTP/1.1
@@ -282,12 +240,20 @@ namespace awh {
 			bool has(const string & name) const noexcept;
 		public:
 			/**
+			 * @brief Количество добавленных заголовков
+			 *
+			 * @param name название заголовка количество которых нужно определить
+			 * @return     количество добавленных заголовков
+			 */
+			size_t count(const string & name = "") const noexcept;
+		public:
+			/**
 			 * @brief Метод извлечения содержимого заголовка
 			 * 
 			 * @param name название заголовка
 			 * @return     содержимое заголовка
 			 */
-			string at(const string & name) const noexcept;
+			const string & at(const string & name) const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения названий заголовков
@@ -305,13 +271,35 @@ namespace awh {
 			vector <string> range(const string & name) const noexcept;
 		public:
 			/**
+			 * @brief Шаблон добавления нового заголовка
+			 *
+			 * @tparam T тип добавляемого контента
+			 */
+			template <typename T>
+			/**
 			 * @brief Метод добавления нового заголовка
 			 *
 			 * @param name    название заголовка
 			 * @param content содержимое заголовка
-			 * @return        результат выполнения операции
+			 * @return        общее количество заголовков
 			 */
-			bool emplace(const string & name, const string & content) noexcept;
+			size_t emplace(const string & name, const T content) noexcept;
+			/**
+			 * @brief Метод добавления нового заголовка
+			 *
+			 * @param name    название заголовка
+			 * @param content содержимое заголовка
+			 * @return        общее количество заголовков
+			 */
+			size_t emplace(const string & name, const char * content) noexcept;
+			/**
+			 * @brief Метод добавления нового заголовка
+			 *
+			 * @param name    название заголовка
+			 * @param content содержимое заголовка
+			 * @return        общее количество заголовков
+			 */
+			size_t emplace(const string & name, const string & content) noexcept;
 		public:
 			/**
 			 * @brief Метод установки максимального размера потребления памяти
@@ -372,7 +360,7 @@ namespace awh {
 			 *
 			 * @return список всех добавленных заголовков
 			 */
-			operator vector <std::pair <string, string>> () const noexcept;
+			operator vector <item_t> () const noexcept;
 		public:
 			/**
 			 * @brief Оператор получения списка заголовков
@@ -393,7 +381,14 @@ namespace awh {
 			 * @param name название заголовка для извлечения
 			 * @return     содержимое заголовка
 			 */
-			string operator[](const string & name) const noexcept;
+			const string & operator[](const char * name) const noexcept;
+			/**
+			 * @brief Оператор извлечения содержимого заголовка
+			 * 
+			 * @param name название заголовка для извлечения
+			 * @return     содержимое заголовка
+			 */
+			const string & operator[](const string & name) const noexcept;
 		public:
 			/**
 			 * @brief Оператор перемещения
@@ -416,7 +411,7 @@ namespace awh {
 			 * @param headers заголовки для копирования
 			 * @return        текущий контейнер заголовков
 			 */
-			Headers & operator = (const vector <std::pair <string, string>> & headers) noexcept;
+			Headers & operator = (const vector <item_t> & headers) noexcept;
 		public:
 			/**
 			 * @brief Оператор копирования
@@ -466,6 +461,13 @@ namespace awh {
 			 */
 			~Headers() noexcept;
 	} headers_t;
+	/**
+	 * @brief Оператор [<<] вывода в поток буфера
+	 *
+	 * @param os      поток куда нужно вывести данные
+	 * @param headers контейнер заголовков
+	 */
+	AWH_SHARED_EXPORT ostream & operator << (ostream & os, const headers_t & headers) noexcept;
 };
 
 #endif // __AWH_HEADERS__

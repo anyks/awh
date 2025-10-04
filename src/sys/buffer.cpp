@@ -300,6 +300,88 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 	return this->_buffer;
 }
 /**
+ * @brief Шаблон для метода получения конечного итератора
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получения конечного итератора
+ * 
+ * @return конечный итератор
+ */
+awh::Buffer::Iterator <T> awh::Buffer::end() noexcept {
+	// Выполняем установку конечного значения итератора
+	return Iterator <T> (reinterpret_cast <T *> (this->_buffer.data() + this->_range.end));
+}
+/**
+ * Объявляем прототипы для метода получения конечного итератора
+ */
+template awh::Buffer::Iterator <int8_t> awh::Buffer::end <int8_t> () noexcept;
+template awh::Buffer::Iterator <uint8_t> awh::Buffer::end <uint8_t> () noexcept;
+template awh::Buffer::Iterator <int16_t> awh::Buffer::end <int16_t> () noexcept;
+template awh::Buffer::Iterator <uint16_t> awh::Buffer::end <uint16_t> () noexcept;
+template awh::Buffer::Iterator <int32_t> awh::Buffer::end <int32_t> () noexcept;
+template awh::Buffer::Iterator <uint32_t> awh::Buffer::end <uint32_t> () noexcept;
+template awh::Buffer::Iterator <int64_t> awh::Buffer::end <int64_t> () noexcept;
+template awh::Buffer::Iterator <uint64_t> awh::Buffer::end <uint64_t> () noexcept;
+template awh::Buffer::Iterator <float> awh::Buffer::end <float> () noexcept;
+template awh::Buffer::Iterator <double> awh::Buffer::end <double> () noexcept;
+/**
+ * Реализация под операционные системы кроме Sun Solaris
+ */
+#if !__sun__
+	template awh::Buffer::Iterator <char> awh::Buffer::end <char> () noexcept;
+#endif
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template awh::Buffer::Iterator <size_t> awh::Buffer::end <size_t> () noexcept;
+	template awh::Buffer::Iterator <ssize_t> awh::Buffer::end <ssize_t> () noexcept;
+#endif
+/**
+ * @brief Шаблон для метода получение начального итератора
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получение начального итератора
+ * 
+ * @return начальный итератор
+ */
+awh::Buffer::Iterator <T> awh::Buffer::begin() noexcept {
+	// Выполняем установку начального значения итератора
+	return Iterator <T> (reinterpret_cast <T *> (this->_buffer.data() + this->_range.begin));
+}
+/**
+ * Объявляем прототипы для метода получение начального итератора
+ */
+template awh::Buffer::Iterator <int8_t> awh::Buffer::begin <int8_t> () noexcept;
+template awh::Buffer::Iterator <uint8_t> awh::Buffer::begin <uint8_t> () noexcept;
+template awh::Buffer::Iterator <int16_t> awh::Buffer::begin <int16_t> () noexcept;
+template awh::Buffer::Iterator <uint16_t> awh::Buffer::begin <uint16_t> () noexcept;
+template awh::Buffer::Iterator <int32_t> awh::Buffer::begin <int32_t> () noexcept;
+template awh::Buffer::Iterator <uint32_t> awh::Buffer::begin <uint32_t> () noexcept;
+template awh::Buffer::Iterator <int64_t> awh::Buffer::begin <int64_t> () noexcept;
+template awh::Buffer::Iterator <uint64_t> awh::Buffer::begin <uint64_t> () noexcept;
+template awh::Buffer::Iterator <float> awh::Buffer::begin <float> () noexcept;
+template awh::Buffer::Iterator <double> awh::Buffer::begin <double> () noexcept;
+/**
+ * Реализация под операционные системы кроме Sun Solaris
+ */
+#if !__sun__
+	template awh::Buffer::Iterator <char> awh::Buffer::begin <char> () noexcept;
+#endif
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template awh::Buffer::Iterator <size_t> awh::Buffer::begin <size_t> () noexcept;
+	template awh::Buffer::Iterator <ssize_t> awh::Buffer::begin <ssize_t> () noexcept;
+#endif
+/**
  * @brief Шаблон для метода удаления верхних записей
  *
  * @tparam T тип данных для удаления
@@ -754,6 +836,20 @@ template bool awh::Buffer::push(const double) noexcept;
 	template bool awh::Buffer::push(const size_t) noexcept;
 	template bool awh::Buffer::push(const ssize_t) noexcept;
 #endif
+/**
+ * @brief Метод добавления текста в буфер
+ *
+ * @param text текст для добавления
+ * @return     результат добавления данных
+ */
+bool awh::Buffer::push(const char * text) noexcept {
+	// Если текст передан не пустой
+	if(text != nullptr)
+		// Выполняем добавление текста
+		return this->push(text, ::strlen(text));
+	// Выводим результат по умолчанию
+	return false;
+}
 /**
  * @brief Метод добавления текста в буфер
  *

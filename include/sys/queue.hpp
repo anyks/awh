@@ -112,7 +112,6 @@ namespace awh {
 		private:
 			// Размеры максимальныйх ограничений
 			max_t _max;
-		private:
 			// Объект диапазонов записей
 			range_t _range;
 		private:

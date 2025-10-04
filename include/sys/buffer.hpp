@@ -30,6 +30,7 @@
  */
 #include <mutex>
 #include <vector>
+#include <cstddef>
 #include <cstdint>
 
 /**
@@ -66,6 +67,83 @@ namespace awh {
 				 */
 				Range() noexcept : end(0), begin(0) {}
 			} __attribute__((packed)) range_t;
+		public:
+			/**
+			 * @brief Шаблон типа данных итератора
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Класс итератора как вложенный класс
+			 * 
+			 */
+			class Iterator {
+				private:
+					// Позиция в бинарном буфере
+					T * _ptr;
+				public:
+					/**
+					 * @brief Оператор разыменования
+					 * 
+					 * @return значение заголовка
+					 */
+					const T & operator * () const noexcept {
+						// Извлекаем значение сдвига итератора
+						return * this->_ptr;
+					}
+				public:
+					/**
+					 * @brief Оператор смещения вперед
+					 * 
+					 * @return значение текущего итератора
+					 */
+					Iterator & operator ++ () noexcept {
+						// Выполняем смещение текущего значения итератора
+						++this->_ptr;
+						// Выводим текущее значение итератора
+						return (* this);
+					}
+					/**
+					 * @brief Оператор смещения назад
+					 * 
+					 * @return значение текущего итератора
+					 */
+					Iterator & operator -- () noexcept {
+						// Выполняем смещение текущего значения итератора
+						--this->_ptr;
+						// Выводим текущее значение итератора
+						return (* this);
+					}
+				public:
+					/**
+					 * @brief Оператор сравнения соответствия итератора
+					 * 
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator == (const Iterator & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr == other._ptr);
+					}
+					/**
+					 * @brief Оператора сравнения несоответствия итератора
+					 * 
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator != (const Iterator & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr != other._ptr);
+					}
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param ptr позиция в контейнера
+					 */
+					explicit Iterator(T * ptr) noexcept : _ptr(ptr) {}
+			};
 		private:
 			// Объект диапазонов записей
 			range_t _range;
@@ -131,6 +209,31 @@ namespace awh {
 			 * @return буфер сырых данных
 			 */
 			const vector <char> & raw() const noexcept;
+		public:
+			/**
+			 * @brief Шаблон для метода получения конечного итератора
+			 *
+			 * @tparam T тип данных для подсчёта
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод получения конечного итератора
+			 * 
+			 * @return конечный итератор
+			 */
+			Iterator <T> end() noexcept;
+			/**
+			 * @brief Шаблон для метода получение начального итератора
+			 *
+			 * @tparam T тип данных для подсчёта
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод получение начального итератора
+			 * 
+			 * @return начальный итератор
+			 */
+			Iterator <T> begin() noexcept;
 		public:
 			/**
 			 * @brief Шаблон для метода удаления верхних записей
@@ -250,6 +353,13 @@ namespace awh {
 			 * @param text текст для добавления
 			 * @return     результат добавления данных
 			 */
+			bool push(const char * text) noexcept;
+			/**
+			 * @brief Метод добавления текста в буфер
+			 *
+			 * @param text текст для добавления
+			 * @return     результат добавления данных
+			 */
 			bool push(const string & text) noexcept;
 			/**
 			 * @brief Метод добавления бинарного буфера данных в буфер
@@ -362,6 +472,63 @@ namespace awh {
 			 *
 			 */
 			~Buffer() noexcept;
+		private:
+			/**
+			 * @brief Шаблон типа данных обёртки буфера
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Класс обёртки буфера
+			 * 
+			 */
+			class view {
+				// Буфер который необходимо обернуть
+				Buffer & _buffer;
+			public:
+				/**
+				 * @brief Метод получения конечного итератора
+				 * 
+				 * @return конечный итератор буфера
+				 */
+				auto end() noexcept -> decltype(this->_buffer.template end <T> ()) {
+					// Выводим конечный итератор буфера
+					return this->_buffer.template end <T> ();
+				}
+				/**
+				 * @brief Метод получения начального итератора
+				 * 
+				 * @return начальный итератор буфера
+				 */
+				auto begin() noexcept -> decltype(this->_buffer.template begin <T> ()) {
+					// Выводим начальный итератор буфера
+					return this->_buffer.template begin <T> ();
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 * 
+				 * @param buffer обёртываемый буфер
+				 */
+				explicit view(Buffer & buffer) noexcept : _buffer(buffer) {}
+			};
+		public:
+			/**
+			 * @brief Шаблон типа данных обёртки буфера
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод обёртки бинарного буфера
+			 * 
+			 * @return обёрнутый бинарный буфер
+			 */
+			view <T> as() & {
+				// Выводим буфер & — только для lvalue
+				return view <T> (* this);
+			}
 	} buffer_t;
 	/**
 	 * @brief Оператор [>>] чтения из потока буфера
