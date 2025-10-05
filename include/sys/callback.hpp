@@ -98,7 +98,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Итератор как вложенный класс
-			 * 
+			 *
 			 */
 			typedef class Iterator {
 				public:
@@ -124,7 +124,7 @@ namespace awh {
 				public:
 					/**
 					 * @brief Оператор извлечения указателя заголовка
-					 * 
+					 *
 					 * @return указатель заголовка
 					 */
 					pointer operator -> () noexcept {
@@ -133,7 +133,7 @@ namespace awh {
 					}
 					/**
 					 * @brief Оператор разыменования заголовка
-					 * 
+					 *
 					 * @return значение заголовка
 					 */
 					reference operator * () const noexcept {
@@ -143,7 +143,7 @@ namespace awh {
 				public:
 					/**
 					 * @brief Оператор смещения вперед
-					 * 
+					 *
 					 * @return значение текущего итератора
 					 */
 					Iterator & operator ++ () noexcept {
@@ -176,7 +176,7 @@ namespace awh {
 					}
 					/**
 					 * @brief Оператор смещения назад
-					 * 
+					 *
 					 * @return значение текущего итератора
 					 */
 					Iterator & operator -- () noexcept {
@@ -210,7 +210,7 @@ namespace awh {
 				public:
 					/**
 					 * @brief Оператор сравнения соответствия итератора
-					 * 
+					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
 					 */
@@ -220,7 +220,7 @@ namespace awh {
 					}
 					/**
 					 * @brief Оператора сравнения несоответствия итератора
-					 * 
+					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
 					 */
@@ -1302,7 +1302,7 @@ namespace awh {
 			template <typename Signature, typename Func, typename... Args>
 			/**
 			 * @brief Метод подключения финкции обратного вызова
-			 * 
+			 *
 			 * @param name     название функции обратного вызова
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
@@ -1328,7 +1328,7 @@ namespace awh {
 			template <typename Signature, typename Func, typename... Args>
 			/**
 			 * @brief Метод подключения финкции обратного вызова
-			 * 
+			 *
 			 * @param name     название функции обратного вызова
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
@@ -1348,7 +1348,7 @@ namespace awh {
 			template <typename Signature, typename Func, typename... Args>
 			/**
 			 * @brief Метод подключения финкции обратного вызова
-			 * 
+			 *
 			 * @param id       идентификатор функции обратного вызова
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
@@ -1375,7 +1375,7 @@ namespace awh {
 			template <typename A, typename Signature, typename Func, typename... Args>
 			/**
 			 * @brief Метод подключения финкции обратного вызова
-			 * 
+			 *
 			 * @param id       идентификатор функции обратного вызова
 			 * @param callback функция обратного вызова для подключения
 			 * @param args     аргументы фукнции обратного вызова
@@ -1483,7 +1483,7 @@ namespace awh {
 			template <typename Signature, typename... Args>
 			/**
 			 * @brief Метод выполнения функции обратного вызова
-			 * 
+			 *
 			 * @param id   идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
@@ -1575,7 +1575,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод выполнения всех функций обратного вызова
-			 * 
+			 *
 			 */
 			void call() const noexcept {
 				// Выполняем блокировку потока
@@ -1606,7 +1606,7 @@ namespace awh {
 			template <typename Signature, typename... Args>
 			/**
 			 * @brief Метод выполнения функции обратного вызова
-			 * 
+			 *
 			 * @param name название функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
@@ -1635,7 +1635,7 @@ namespace awh {
 			template <typename Signature, typename... Args>
 			/**
 			 * @brief Метод выполнения функции обратного вызова
-			 * 
+			 *
 			 * @param name название функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
@@ -1653,7 +1653,7 @@ namespace awh {
 			template <typename Signature, typename... Args>
 			/**
 			 * @brief Метод выполнения функции обратного вызова
-			 * 
+			 *
 			 * @param id   идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
@@ -1672,7 +1672,7 @@ namespace awh {
 			template <typename A, typename Signature, typename... Args>
 			/**
 			 * @brief Метод выполнения функции обратного вызова
-			 * 
+			 *
 			 * @param id   идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
@@ -1697,7 +1697,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод получения конечного итератора
-			 * 
+			 *
 			 * @return конечный итератор
 			 */
 			iterator_t end() noexcept {
@@ -1706,7 +1706,7 @@ namespace awh {
 			}
 			/**
 			 * @brief Метод получение начального итератора
-			 * 
+			 *
 			 * @return начальный итератор
 			 */
 			iterator_t begin() noexcept {
@@ -1716,7 +1716,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Оператор перемещения контейнера функций обратного вызова
-			 * 
+			 *
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        текущее значение объекта
 			 */
@@ -1754,7 +1754,7 @@ namespace awh {
 			}
 			/**
 			 * @brief Оператор копирование контейнера функций обратного вызова
-			 * 
+			 *
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        текущее значение объекта
 			 */
@@ -1791,14 +1791,14 @@ namespace awh {
 		public:
 			/**
 			 * @brief Конструктор
-			 * 
+			 *
 			 * @param log объект для работы с логами
 			 */
 			explicit Callback(const log_t * log) noexcept : _log(log) {}
 	};
 	/**
 	 * @brief Создаём более осознанный тип данных контейнера функций обратного вызова
-	 * 
+	 *
 	 */
 	using callback_t = Callback;
 };

@@ -31,7 +31,7 @@ using namespace std;
 
 /**
  * @brief Метод контроля памяти
- * 
+ *
  * @param size желаемый размер выделения памяти
  * @return     результат выполнения операции
  */
@@ -176,7 +176,7 @@ void awh::Buffer::clear() noexcept {
 }
 /**
  * @brief Метод полной очистки памяти
- * 
+ *
  */
 void awh::Buffer::reset() noexcept {
 	// Если буфер данных не пустой
@@ -236,7 +236,7 @@ size_t awh::Buffer::size() const noexcept {
 }
 /**
  * @brief Метод вывода размера занимаемой памяти очередью
- * 
+ *
  * @return количество памяти которую занимает буфер
  */
 size_t awh::Buffer::capacity() const noexcept {
@@ -245,7 +245,7 @@ size_t awh::Buffer::capacity() const noexcept {
 }
 /**
  * @brief Метод извлечения буфера сырых данных
- * 
+ *
  * @return буфер сырых данных
  */
 const vector <char> & awh::Buffer::raw() const noexcept {
@@ -307,7 +307,7 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 template <typename T>
 /**
  * @brief Метод получения конечного итератора
- * 
+ *
  * @return конечный итератор
  */
 awh::Buffer::Iterator <T> awh::Buffer::end() noexcept {
@@ -348,7 +348,7 @@ template awh::Buffer::Iterator <double> awh::Buffer::end <double> () noexcept;
 template <typename T>
 /**
  * @brief Метод получение начального итератора
- * 
+ *
  * @return начальный итератор
  */
 awh::Buffer::Iterator <T> awh::Buffer::begin() noexcept {
@@ -983,7 +983,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 }
 /**
  * @brief Метод установки максимального размера потребления памяти
- * 
+ *
  * @param size максимальный размер потребления памяти
  */
 void awh::Buffer::setMaxMemory(const size_t size) noexcept {
@@ -1019,7 +1019,7 @@ void awh::Buffer::setMaxMemory(const size_t size) noexcept {
 }
 /**
  * @brief Метод обмена очередями
- * 
+ *
  * @param buffer бинарный буфер для обмена
  */
 void awh::Buffer::swap(Buffer & buffer) noexcept {

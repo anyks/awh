@@ -67,13 +67,13 @@ namespace awh {
 		private:
 			/**
 			 * @brief Значение записи итератора
-			 * 
+			 *
 			 */
 			using item_t = std::pair <string, string>;
 		public:
 			/**
 			 * @brief Итератор как вложенный класс
-			 * 
+			 *
 			 */
 			typedef class AWH_SHARED_EXPORT Iterator {
 				public:
@@ -101,40 +101,40 @@ namespace awh {
 				public:
 					/**
 					 * @brief Оператор извлечения указателя заголовка
-					 * 
+					 *
 					 * @return указатель заголовка
 					 */
 					pointer operator -> () noexcept;
 					/**
 					 * @brief Оператор разыменования заголовка
-					 * 
+					 *
 					 * @return значение заголовка
 					 */
 					reference operator * () const noexcept;
 				public:
 					/**
 					 * @brief Оператор смещения вперед
-					 * 
+					 *
 					 * @return значение текущего итератора
 					 */
 					Iterator & operator ++ () noexcept;
 					/**
 					 * @brief Оператор смещения назад
-					 * 
+					 *
 					 * @return значение текущего итератора
 					 */
 					Iterator & operator -- () noexcept;
 				public:
 					/**
 					 * @brief Оператор сравнения соответствия итератора
-					 * 
+					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
 					 */
 					bool operator == (const Iterator & other) const noexcept;
 					/**
 					 * @brief Оператора сравнения несоответствия итератора
-					 * 
+					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
 					 */
@@ -152,14 +152,14 @@ namespace awh {
 		private:
 			/**
 			 * @brief Структура параметров максимальных значений
-			 * 
+			 *
 			 */
 			typedef struct Max {
 				size_t memory;  // Максимальный размер выделения памяти
 				size_t records; // Максимальное количество добавляемых записей
 				/**
 				 * @brief Конструктор
-				 * 
+				 *
 				 */
 				Max() noexcept :
 				 memory(AWH_MAX_MEMORY_HEADERS),
@@ -199,7 +199,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод полной очистки памяти
-			 * 
+			 *
 			 */
 			void reset() noexcept;
 		public:
@@ -212,13 +212,13 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод печати содержимого заголовков в формате HTTP/1.1
-			 * 
+			 *
 			 * @return заголовки в формате HTTP/1.1
 			 */
 			string print() const noexcept;
 			/**
 			 * @brief Метод печати содержимого заголовка
-			 * 
+			 *
 			 * @param name печать заголовка в формате HTTP/1.1
 			 * @return     распечатанный заголовок
 			 */
@@ -233,7 +233,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод проверки существования заголовка
-			 * 
+			 *
 			 * @param name название заголовка для проверки
 			 * @return     результат выполнения проверки
 			 */
@@ -249,7 +249,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод извлечения содержимого заголовка
-			 * 
+			 *
 			 * @param name название заголовка
 			 * @return     содержимое заголовка
 			 */
@@ -257,14 +257,14 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод извлечения названий заголовков
-			 * 
+			 *
 			 * @return список названий заголовков
 			 */
 			vector <string> names() const noexcept;
 		public:
 			/**
 			 * @brief Метод вывода списка значений одинаковых заголовков
-			 * 
+			 *
 			 * @param name название заголовка
 			 * @return     список значений одинаковых заголовков
 			 */
@@ -303,40 +303,40 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод установки максимального размера потребления памяти
-			 * 
+			 *
 			 * @param size максимальный размер потребления памяти
 			 */
 			void setMaxMemory(const size_t size) noexcept;
 			/**
 			 * @brief Метод установки максимального количества заголовков
-			 * 
+			 *
 			 * @param count максимальное количество заголовков
 			 */
 			void setMaxRecords(const size_t count) noexcept;
 		public:
 			/**
 			 * @brief Метод обмена заголовками
-			 * 
+			 *
 			 * @param headers заголовки для обмена
 			 */
 			void swap(Headers & headers) noexcept;
 		public:
 			/**
 			 * @brief Метод получения конечного итератора
-			 * 
+			 *
 			 * @return конечный итератор
 			 */
 			iterator_t end() noexcept;
 			/**
 			 * @brief Метод получение начального итератора
-			 * 
+			 *
 			 * @return начальный итератор
 			 */
 			iterator_t begin() noexcept;
 		public:
 			/**
 			 * @brief Метод поиска указанного заголовка
-			 * 
+			 *
 			 * @param name название заголовка для поиска
 			 * @return     итератор указанного заголовка
 			 */
@@ -377,14 +377,14 @@ namespace awh {
 		public:
 			/**
 			 * @brief Оператор извлечения содержимого заголовка
-			 * 
+			 *
 			 * @param name название заголовка для извлечения
 			 * @return     содержимое заголовка
 			 */
 			const string & operator[](const char * name) const noexcept;
 			/**
 			 * @brief Оператор извлечения содержимого заголовка
-			 * 
+			 *
 			 * @param name название заголовка для извлечения
 			 * @return     содержимое заголовка
 			 */

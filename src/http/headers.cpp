@@ -36,7 +36,7 @@ using namespace std;
 
 /**
  * @brief Оператор извлечения указателя заголовка
- * 
+ *
  * @return указатель заголовка
  */
 awh::Headers::Iterator::pointer awh::Headers::Iterator::operator -> () noexcept {
@@ -45,7 +45,7 @@ awh::Headers::Iterator::pointer awh::Headers::Iterator::operator -> () noexcept 
 }
 /**
  * @brief Оператор разыменования заголовка
- * 
+ *
  * @return значение заголовка
  */
 awh::Headers::Iterator::reference awh::Headers::Iterator::operator * () const noexcept {
@@ -54,7 +54,7 @@ awh::Headers::Iterator::reference awh::Headers::Iterator::operator * () const no
 }
 /**
  * @brief Оператор смещения вперед
- * 
+ *
  * @return значение текущего итератора
  */
 awh::Headers::Iterator & awh::Headers::Iterator::operator ++ () noexcept {
@@ -87,7 +87,7 @@ awh::Headers::Iterator & awh::Headers::Iterator::operator ++ () noexcept {
 }
 /**
  * @brief Оператор смещения назад
- * 
+ *
  * @return значение текущего итератора
  */
 awh::Headers::Iterator & awh::Headers::Iterator::operator -- () noexcept {
@@ -120,7 +120,7 @@ awh::Headers::Iterator & awh::Headers::Iterator::operator -- () noexcept {
 }
 /**
  * @brief Оператор сравнения соответствия итератора
- * 
+ *
  * @param other итератор для сравнения
  * @return      результат сравнения
  */
@@ -133,7 +133,7 @@ bool awh::Headers::Iterator::operator == (const iterator_t & other) const noexce
 }
 /**
  * @brief Оператора сравнения несоответствия итератора
- * 
+ *
  * @param other итератор для сравнения
  * @return      результат сравнения
  */
@@ -223,7 +223,7 @@ void awh::Headers::clear() noexcept {
 }
 /**
  * @brief Метод полной очистки памяти
- * 
+ *
  */
 void awh::Headers::reset() noexcept {
 	/**
@@ -266,7 +266,7 @@ bool awh::Headers::empty() const noexcept {
 }
 /**
  * @brief Метод печати содержимого заголовков в формате HTTP/1.1
- * 
+ *
  * @return заголовки в формате HTTP/1.1
  */
 string awh::Headers::print() const noexcept {
@@ -315,7 +315,7 @@ string awh::Headers::print() const noexcept {
 }
 /**
  * @brief Метод печати содержимого заголовка
- * 
+ *
  * @param name печать заголовка в формате HTTP/1.1
  * @return     распечатанный заголовок
  */
@@ -406,7 +406,7 @@ void awh::Headers::erase(const string & name) noexcept {
 }
 /**
  * @brief Метод проверки существования заголовка
- * 
+ *
  * @param name название заголовка для проверки
  * @return     результат выполнения проверки
  */
@@ -434,7 +434,7 @@ size_t awh::Headers::count(const string & name) const noexcept {
 }
 /**
  * @brief Метод извлечения содержимого заголовка
- * 
+ *
  * @param name название заголовка
  * @return     содержимое заголовка
  */
@@ -475,7 +475,7 @@ const string & awh::Headers::at(const string & name) const noexcept {
 }
 /**
  * @brief Метод извлечения названий заголовков
- * 
+ *
  * @return список названий заголовков
  */
 vector <string> awh::Headers::names() const noexcept {
@@ -517,7 +517,7 @@ vector <string> awh::Headers::names() const noexcept {
 }
 /**
  * @brief Метод вывода списка значений одинаковых заголовков
- * 
+ *
  * @param name название заголовка
  * @return     список значений одинаковых заголовков
  */
@@ -704,7 +704,7 @@ size_t awh::Headers::emplace(const string & name, const string & content) noexce
 }
 /**
  * @brief Метод установки максимального размера потребления памяти
- * 
+ *
  * @param size максимальный размер потребления памяти
  */
 void awh::Headers::setMaxMemory(const size_t size) noexcept {
@@ -740,7 +740,7 @@ void awh::Headers::setMaxMemory(const size_t size) noexcept {
 }
 /**
  * @brief Метод установки максимального количества заголовков
- * 
+ *
  * @param count максимальное количество заголовков
  */
 void awh::Headers::setMaxRecords(const size_t count) noexcept {
@@ -776,7 +776,7 @@ void awh::Headers::setMaxRecords(const size_t count) noexcept {
 }
 /**
  * @brief Метод обмена заголовками
- * 
+ *
  * @param headers заголовки для обмена
  */
 void awh::Headers::swap(headers_t & headers) noexcept {
@@ -815,7 +815,7 @@ void awh::Headers::swap(headers_t & headers) noexcept {
 }
 /**
  * @brief Метод получения конечного итератора
- * 
+ *
  * @return конечный итератор
  */
 awh::Headers::iterator_t awh::Headers::end() noexcept {
@@ -824,7 +824,7 @@ awh::Headers::iterator_t awh::Headers::end() noexcept {
 }
 /**
  * @brief Метод получение начального итератора
- * 
+ *
  * @return начальный итератор
  */
 awh::Headers::iterator_t awh::Headers::begin() noexcept {
@@ -833,7 +833,7 @@ awh::Headers::iterator_t awh::Headers::begin() noexcept {
 }
 /**
  * @brief Метод поиска указанного заголовка
- * 
+ *
  * @param name название заголовка для поиска
  * @return     итератор указанного заголовка
  */
@@ -1031,7 +1031,7 @@ awh::Headers::operator std::unordered_multimap <string, string> () const noexcep
 }
 /**
  * @brief Оператор извлечения содержимого заголовка
- * 
+ *
  * @param name название заголовка для извлечения
  * @return     содержимое заголовка
  */
@@ -1041,7 +1041,7 @@ const string & awh::Headers::operator[](const char * name) const noexcept {
 }
 /**
  * @brief Оператор извлечения содержимого заголовка
- * 
+ *
  * @param name название заголовка для извлечения
  * @return     содержимое заголовка
  */

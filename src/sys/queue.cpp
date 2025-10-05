@@ -32,7 +32,7 @@ using namespace std;
 
 /**
  * @brief Метод контроля памяти
- * 
+ *
  * @param size желаемый размер выделения памяти
  * @return     результат выполнения операции
  */
@@ -232,7 +232,7 @@ void awh::Queue::clear() noexcept {
 }
 /**
  * @brief Метод полной очистки памяти
- * 
+ *
  */
 void awh::Queue::reset() noexcept {
 	// Если буфер данных не пустой
@@ -316,7 +316,7 @@ size_t awh::Queue::size() const noexcept {
 }
 /**
  * @brief Метод вывода размера занимаемой памяти очередью
- * 
+ *
  * @return количество памяти которую занимает очередь
  */
 size_t awh::Queue::capacity() const noexcept {
@@ -579,7 +579,7 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 }
 /**
  * @brief Метод установки максимального размера потребления памяти
- * 
+ *
  * @param size максимальный размер потребления памяти
  */
 void awh::Queue::setMaxMemory(const size_t size) noexcept {
@@ -615,7 +615,7 @@ void awh::Queue::setMaxMemory(const size_t size) noexcept {
 }
 /**
  * @brief Метод установки максимального количества записей очереди
- * 
+ *
  * @param count максимальное количество записей очереди
  */
 void awh::Queue::setMaxRecords(const size_t count) noexcept {
@@ -651,7 +651,7 @@ void awh::Queue::setMaxRecords(const size_t count) noexcept {
 }
 /**
  * @brief Метод обмена очередями
- * 
+ *
  * @param queue очередь для обмена
  */
 void awh::Queue::swap(queue_t & queue) noexcept {

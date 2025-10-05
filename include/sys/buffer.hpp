@@ -56,14 +56,14 @@ namespace awh {
 		private:
 			/**
 			 * @brief Структура диапазонов записей
-			 * 
+			 *
 			 */
 			typedef struct Range {
 				size_t end;   // Конец записи
 				size_t begin; // Начало записи
 				/**
 				 * @brief Конструктор
-				 * 
+				 *
 				 */
 				Range() noexcept : end(0), begin(0) {}
 			} __attribute__((packed)) range_t;
@@ -76,7 +76,7 @@ namespace awh {
 			template <typename T>
 			/**
 			 * @brief Класс итератора как вложенный класс
-			 * 
+			 *
 			 */
 			class Iterator {
 				private:
@@ -85,7 +85,7 @@ namespace awh {
 				public:
 					/**
 					 * @brief Оператор разыменования
-					 * 
+					 *
 					 * @return значение заголовка
 					 */
 					const T & operator * () const noexcept {
@@ -95,7 +95,7 @@ namespace awh {
 				public:
 					/**
 					 * @brief Оператор смещения вперед
-					 * 
+					 *
 					 * @return значение текущего итератора
 					 */
 					Iterator & operator ++ () noexcept {
@@ -106,7 +106,7 @@ namespace awh {
 					}
 					/**
 					 * @brief Оператор смещения назад
-					 * 
+					 *
 					 * @return значение текущего итератора
 					 */
 					Iterator & operator -- () noexcept {
@@ -118,7 +118,7 @@ namespace awh {
 				public:
 					/**
 					 * @brief Оператор сравнения соответствия итератора
-					 * 
+					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
 					 */
@@ -128,7 +128,7 @@ namespace awh {
 					}
 					/**
 					 * @brief Оператора сравнения несоответствия итератора
-					 * 
+					 *
 					 * @param other итератор для сравнения
 					 * @return      результат сравнения
 					 */
@@ -164,7 +164,7 @@ namespace awh {
 		private:
 			/**
 			 * @brief Метод контроля памяти
-			 * 
+			 *
 			 * @param size желаемый размер выделения памяти
 			 * @return     результат выполнения операции
 			 */
@@ -178,7 +178,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод полной очистки памяти
-			 * 
+			 *
 			 */
 			void reset() noexcept;
 		public:
@@ -198,14 +198,14 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод вывода размера занимаемой памяти очередью
-			 * 
+			 *
 			 * @return количество памяти которую занимает буфер
 			 */
 			size_t capacity() const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения буфера сырых данных
-			 * 
+			 *
 			 * @return буфер сырых данных
 			 */
 			const vector <char> & raw() const noexcept;
@@ -218,7 +218,7 @@ namespace awh {
 			template <typename T>
 			/**
 			 * @brief Метод получения конечного итератора
-			 * 
+			 *
 			 * @return конечный итератор
 			 */
 			Iterator <T> end() noexcept;
@@ -230,7 +230,7 @@ namespace awh {
 			template <typename T>
 			/**
 			 * @brief Метод получение начального итератора
-			 * 
+			 *
 			 * @return начальный итератор
 			 */
 			Iterator <T> begin() noexcept;
@@ -379,14 +379,14 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод установки максимального размера потребления памяти
-			 * 
+			 *
 			 * @param size максимальный размер потребления памяти
 			 */
 			void setMaxMemory(const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод обмена очередями
-			 * 
+			 *
 			 * @param buffer бинарный буфер для обмена
 			 */
 			void swap(Buffer & buffer) noexcept;
@@ -481,7 +481,7 @@ namespace awh {
 			template <typename T>
 			/**
 			 * @brief Класс обёртки буфера
-			 * 
+			 *
 			 */
 			class view {
 				// Буфер который необходимо обернуть
@@ -489,7 +489,7 @@ namespace awh {
 			public:
 				/**
 				 * @brief Метод получения конечного итератора
-				 * 
+				 *
 				 * @return конечный итератор буфера
 				 */
 				auto end() noexcept -> decltype(this->_buffer.template end <T> ()) {
@@ -498,7 +498,7 @@ namespace awh {
 				}
 				/**
 				 * @brief Метод получения начального итератора
-				 * 
+				 *
 				 * @return начальный итератор буфера
 				 */
 				auto begin() noexcept -> decltype(this->_buffer.template begin <T> ()) {
@@ -508,7 +508,7 @@ namespace awh {
 			public:
 				/**
 				 * @brief Конструктор
-				 * 
+				 *
 				 * @param buffer обёртываемый буфер
 				 */
 				explicit view(Buffer & buffer) noexcept : _buffer(buffer) {}
@@ -522,7 +522,7 @@ namespace awh {
 			template <typename T>
 			/**
 			 * @brief Метод обёртки бинарного буфера
-			 * 
+			 *
 			 * @return обёрнутый бинарный буфер
 			 */
 			view <T> as() & {

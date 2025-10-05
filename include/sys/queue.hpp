@@ -67,7 +67,7 @@ namespace awh {
 		private:
 			/**
 			 * @brief Структура условных переменных
-			 * 
+			 *
 			 */
 			typedef struct CV {
 				// Условная переменная на чтение данных
@@ -77,7 +77,7 @@ namespace awh {
 			} cv_t;
 			/**
 			 * @brief Структура диапазонов записей
-			 * 
+			 *
 			 */
 			typedef struct Range {
 				size_t end;   // Конец записи
@@ -85,20 +85,20 @@ namespace awh {
 				size_t count; // Количество добавленных записей
 				/**
 				 * @brief Конструктор
-				 * 
+				 *
 				 */
 				Range() noexcept : end(0), begin(0), count(0) {}
 			} __attribute__((packed)) range_t;
 			/**
 			 * @brief Структура параметров максимальных значений
-			 * 
+			 *
 			 */
 			typedef struct Max {
 				size_t memory;  // Максимальный размер выделения памяти
 				size_t records; // Максимальное количество добавляемых записей
 				/**
 				 * @brief Конструктор
-				 * 
+				 *
 				 */
 				Max() noexcept :
 				 memory(AWH_MAX_MEMORY_QUEUE),
@@ -134,7 +134,7 @@ namespace awh {
 		private:
 			/**
 			 * @brief Метод контроля памяти
-			 * 
+			 *
 			 * @param size желаемый размер выделения памяти
 			 * @return     результат выполнения операции
 			 */
@@ -154,7 +154,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод полной очистки памяти
-			 * 
+			 *
 			 */
 			void reset() noexcept;
 		public:
@@ -174,7 +174,7 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод вывода размера занимаемой памяти очередью
-			 * 
+			 *
 			 * @return количество памяти которую занимает очередь
 			 */
 			size_t capacity() const noexcept;
@@ -213,20 +213,20 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод установки максимального размера потребления памяти
-			 * 
+			 *
 			 * @param size максимальный размер потребления памяти
 			 */
 			void setMaxMemory(const size_t size) noexcept;
 			/**
 			 * @brief Метод установки максимального количества записей очереди
-			 * 
+			 *
 			 * @param count максимальное количество записей очереди
 			 */
 			void setMaxRecords(const size_t count) noexcept;
 		public:
 			/**
 			 * @brief Метод обмена очередями
-			 * 
+			 *
 			 * @param queue очередь для обмена
 			 */
 			void swap(Queue & queue) noexcept;
